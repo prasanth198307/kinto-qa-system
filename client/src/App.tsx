@@ -18,7 +18,8 @@ import MaintenanceSchedule from "@/components/MaintenanceSchedule";
 import AdminUserManagement from "@/components/AdminUserManagement";
 import AdminMachineConfig from "@/components/AdminMachineConfig";
 import AdminChecklistBuilder from "@/components/AdminChecklistBuilder";
-import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut } from "lucide-react";
+import AdminSparePartsManagement from "@/components/AdminSparePartsManagement";
+import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -223,6 +224,10 @@ function AdminDashboard() {
                 <FileText className="h-4 w-4 mr-1" />
                 Checklists
               </TabsTrigger>
+              <TabsTrigger value="spare-parts" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-spare-parts">
+                <Package className="h-4 w-4 mr-1" />
+                Spare Parts
+              </TabsTrigger>
               <TabsTrigger value="maintenance" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-maintenance">
                 <Wrench className="h-4 w-4 mr-1" />
                 Maintenance
@@ -240,6 +245,10 @@ function AdminDashboard() {
 
           <TabsContent value="checklists" className="p-4">
             <AdminChecklistBuilder />
+          </TabsContent>
+
+          <TabsContent value="spare-parts" className="p-4">
+            <AdminSparePartsManagement />
           </TabsContent>
 
           <TabsContent value="maintenance" className="p-4">

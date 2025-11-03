@@ -6,30 +6,111 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, X, GripVertical } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import type { Machine } from "@shared/schema";
 
 interface ChecklistTask {
   id: string;
-  name: string;
+  taskName: string;
   verificationCriteria: string;
+  orderIndex: number;
 }
 
 export default function AdminChecklistBuilder() {
   const [checklistName, setChecklistName] = useState('');
-  const [selectedMachine, setSelectedMachine] = useState('');
+  const [selectedMachine, setSelectedMachine] = useState('none');
   const [tasks, setTasks] = useState<ChecklistTask[]>([
-    { id: '1', name: '', verificationCriteria: '' }
+    { id: '1', taskName: '', verificationCriteria: '', orderIndex: 0 }
   ]);
+  const { toast } = useToast();
+
+  const { data: machines = [] } = useQuery<Machine[]>({
+    queryKey: ['/api/machines'],
+  });
+
+  const saveChecklistMutation = useMutation({
+    mutationFn: async (data: { name: string; machineId?: string; tasks: { taskName: string; verificationCriteria?: string; orderIndex: number }[] }) => {
+      return await apiRequest('POST', '/api/checklist-templates', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/checklist-templates'] });
+      toast({
+        title: "Checklist saved",
+        description: "Checklist template has been saved successfully.",
+      });
+      resetForm();
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to save checklist. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const resetForm = () => {
+    setChecklistName('');
+    setSelectedMachine('none');
+    setTasks([{ id: '1', taskName: '', verificationCriteria: '', orderIndex: 0 }]);
+  };
 
   const addTask = () => {
-    setTasks([...tasks, { id: Date.now().toString(), name: '', verificationCriteria: '' }]);
+    const newId = Date.now().toString();
+    setTasks([...tasks, { id: newId, taskName: '', verificationCriteria: '', orderIndex: tasks.length }]);
   };
 
   const removeTask = (id: string) => {
-    setTasks(tasks.filter(t => t.id !== id));
+    if (tasks.length === 1) {
+      toast({
+        title: "Cannot remove",
+        description: "At least one task is required.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setTasks(tasks.filter(t => t.id !== id).map((t, idx) => ({ ...t, orderIndex: idx })));
   };
 
   const updateTask = (id: string, field: keyof ChecklistTask, value: string) => {
     setTasks(tasks.map(t => t.id === id ? { ...t, [field]: value } : t));
+  };
+
+  const handleSave = () => {
+    if (!checklistName.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter a checklist name.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const hasEmptyTaskNames = tasks.some(t => !t.taskName.trim());
+    if (hasEmptyTaskNames) {
+      toast({
+        title: "Validation Error",
+        description: "All tasks must have a name.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const validTasks = tasks.map(({ taskName, verificationCriteria, orderIndex }) => ({
+      taskName: taskName.trim(),
+      verificationCriteria: verificationCriteria?.trim() || '',
+      orderIndex
+    }));
+
+    const machineIdToSave = selectedMachine === 'none' || !selectedMachine ? undefined : selectedMachine;
+    
+    saveChecklistMutation.mutate({
+      name: checklistName.trim(),
+      machineId: machineIdToSave,
+      tasks: validTasks
+    });
   };
 
   return (
@@ -51,15 +132,16 @@ export default function AdminChecklistBuilder() {
           </div>
 
           <div>
-            <Label htmlFor="machine">Assign to Machine</Label>
+            <Label htmlFor="machine">Assign to Machine (Optional)</Label>
             <Select value={selectedMachine} onValueChange={setSelectedMachine}>
               <SelectTrigger className="mt-1" data-testid="select-machine">
                 <SelectValue placeholder="Select machine" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="rfc">RFC Machine</SelectItem>
-                <SelectItem value="pet">PET Blowing Machine</SelectItem>
-                <SelectItem value="batch">Batch Coding Machine</SelectItem>
+                <SelectItem value="none">None (General Checklist)</SelectItem>
+                {machines.map((machine) => (
+                  <SelectItem key={machine.id} value={machine.id}>{machine.name}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -92,8 +174,8 @@ export default function AdminChecklistBuilder() {
                       <Input
                         id={`task-name-${task.id}`}
                         placeholder="e.g., Clean the Machine"
-                        value={task.name}
-                        onChange={(e) => updateTask(task.id, 'name', e.target.value)}
+                        value={task.taskName}
+                        onChange={(e) => updateTask(task.id, 'taskName', e.target.value)}
                         className="mt-1"
                         data-testid={`input-task-name-${index}`}
                       />
@@ -129,17 +211,18 @@ export default function AdminChecklistBuilder() {
       <div className="flex gap-2">
         <Button
           className="flex-1"
-          onClick={() => console.log('Save checklist', { checklistName, selectedMachine, tasks })}
+          onClick={handleSave}
+          disabled={saveChecklistMutation.isPending}
           data-testid="button-save"
         >
-          Save Checklist
+          {saveChecklistMutation.isPending ? 'Saving...' : 'Save Checklist'}
         </Button>
         <Button
           variant="outline"
-          onClick={() => console.log('Preview checklist')}
-          data-testid="button-preview"
+          onClick={resetForm}
+          data-testid="button-reset"
         >
-          Preview
+          Clear Form
         </Button>
       </div>
     </div>

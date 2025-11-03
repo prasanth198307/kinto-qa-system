@@ -29,7 +29,7 @@ export const users = pgTable("users", {
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
-  role: varchar("role", { length: 50 }).default('operator'),
+  role: varchar("role", { length: 50 }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -72,6 +72,13 @@ export const checklistTemplates = pgTable("checklist_templates", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const insertChecklistTemplateSchema = createInsertSchema(checklistTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertChecklistTemplate = z.infer<typeof insertChecklistTemplateSchema>;
 export type ChecklistTemplate = typeof checklistTemplates.$inferSelect;
 
 // Template tasks
@@ -84,6 +91,12 @@ export const templateTasks = pgTable("template_tasks", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const insertTemplateTaskSchema = createInsertSchema(templateTasks).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertTemplateTask = z.infer<typeof insertTemplateTaskSchema>;
 export type TemplateTask = typeof templateTasks.$inferSelect;
 
 // Checklist submissions
@@ -135,6 +148,13 @@ export const sparePartsCatalog = pgTable("spare_parts_catalog", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const insertSparePartSchema = createInsertSchema(sparePartsCatalog).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertSparePart = z.infer<typeof insertSparePartSchema>;
 export type SparePartCatalog = typeof sparePartsCatalog.$inferSelect;
 
 // Required spares (linked to submissions)
