@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -302,6 +302,173 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting spare part:", error);
       res.status(500).json({ message: "Failed to delete spare part" });
+    }
+  });
+
+  // Machine Types API
+  app.get('/api/machine-types', isAuthenticated, async (req: any, res) => {
+    try {
+      const machineTypes = await storage.getAllMachineTypes();
+      res.json(machineTypes);
+    } catch (error) {
+      console.error("Error fetching machine types:", error);
+      res.status(500).json({ message: "Failed to fetch machine types" });
+    }
+  });
+
+  app.post('/api/machine-types', isAuthenticated, async (req: any, res) => {
+    try {
+      const validatedData = insertMachineTypeSchema.parse(req.body);
+      const machineType = await storage.createMachineType(validatedData);
+      res.json(machineType);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error creating machine type:", error);
+      res.status(500).json({ message: "Failed to create machine type" });
+    }
+  });
+
+  app.patch('/api/machine-types/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertMachineTypeSchema.partial().parse(req.body);
+      const machineType = await storage.updateMachineType(id, validatedData);
+      if (!machineType) {
+        return res.status(404).json({ message: "Machine type not found" });
+      }
+      res.json(machineType);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error updating machine type:", error);
+      res.status(500).json({ message: "Failed to update machine type" });
+    }
+  });
+
+  app.delete('/api/machine-types/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteMachineType(id);
+      res.json({ message: "Machine type deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting machine type:", error);
+      res.status(500).json({ message: "Failed to delete machine type" });
+    }
+  });
+
+  // Machine-Spare Parts Relationships API
+  app.get('/api/machines/:machineId/spares', isAuthenticated, async (req: any, res) => {
+    try {
+      const { machineId } = req.params;
+      const machineSpares = await storage.getMachineSpares(machineId);
+      res.json(machineSpares);
+    } catch (error) {
+      console.error("Error fetching machine spares:", error);
+      res.status(500).json({ message: "Failed to fetch machine spares" });
+    }
+  });
+
+  app.post('/api/machines/:machineId/spares', isAuthenticated, async (req: any, res) => {
+    try {
+      const { machineId } = req.params;
+      const validatedData = insertMachineSpareSchema.parse({
+        ...req.body,
+        machineId
+      });
+      const machineSpare = await storage.createMachineSpare(validatedData);
+      res.json(machineSpare);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error creating machine spare:", error);
+      res.status(500).json({ message: "Failed to create machine spare" });
+    }
+  });
+
+  app.delete('/api/machine-spares/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteMachineSpare(id);
+      res.json({ message: "Machine spare relationship deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting machine spare:", error);
+      res.status(500).json({ message: "Failed to delete machine spare" });
+    }
+  });
+
+  // Purchase Orders API
+  app.get('/api/purchase-orders', isAuthenticated, async (req: any, res) => {
+    try {
+      const purchaseOrders = await storage.getAllPurchaseOrders();
+      res.json(purchaseOrders);
+    } catch (error) {
+      console.error("Error fetching purchase orders:", error);
+      res.status(500).json({ message: "Failed to fetch purchase orders" });
+    }
+  });
+
+  app.post('/api/purchase-orders', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const validatedData = insertPurchaseOrderSchema.partial({ requestedBy: true, approvedBy: true }).parse({
+        ...req.body,
+        requestedBy: userId
+      });
+      const purchaseOrder = await storage.createPurchaseOrder(validatedData);
+      res.json(purchaseOrder);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error creating purchase order:", error);
+      res.status(500).json({ message: "Failed to create purchase order" });
+    }
+  });
+
+  app.get('/api/purchase-orders/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const purchaseOrder = await storage.getPurchaseOrder(id);
+      if (!purchaseOrder) {
+        return res.status(404).json({ message: "Purchase order not found" });
+      }
+      res.json(purchaseOrder);
+    } catch (error) {
+      console.error("Error fetching purchase order:", error);
+      res.status(500).json({ message: "Failed to fetch purchase order" });
+    }
+  });
+
+  app.patch('/api/purchase-orders/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertPurchaseOrderSchema.partial().parse(req.body);
+      const purchaseOrder = await storage.updatePurchaseOrder(id, validatedData);
+      if (!purchaseOrder) {
+        return res.status(404).json({ message: "Purchase order not found" });
+      }
+      res.json(purchaseOrder);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error updating purchase order:", error);
+      res.status(500).json({ message: "Failed to update purchase order" });
+    }
+  });
+
+  app.delete('/api/purchase-orders/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deletePurchaseOrder(id);
+      res.json({ message: "Purchase order deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting purchase order:", error);
+      res.status(500).json({ message: "Failed to delete purchase order" });
     }
   });
 

@@ -4,6 +4,9 @@ import {
   checklistTemplates,
   templateTasks,
   sparePartsCatalog,
+  machineTypes,
+  machineSpares,
+  purchaseOrders,
   type User,
   type UpsertUser,
   type Machine,
@@ -11,6 +14,12 @@ import {
   type ChecklistTemplate,
   type TemplateTask,
   type SparePartCatalog,
+  type MachineType,
+  type InsertMachineType,
+  type MachineSpare,
+  type InsertMachineSpare,
+  type PurchaseOrder,
+  type InsertPurchaseOrder,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
@@ -38,6 +47,22 @@ export interface IStorage {
   getSparePart(id: string): Promise<SparePartCatalog | undefined>;
   updateSparePart(id: string, sparePart: Partial<{ partName: string; partNumber?: string; category?: string; unitPrice?: number; reorderThreshold?: number; currentStock?: number }>): Promise<SparePartCatalog | undefined>;
   deleteSparePart(id: string): Promise<void>;
+  
+  createMachineType(machineType: InsertMachineType): Promise<MachineType>;
+  getAllMachineTypes(): Promise<MachineType[]>;
+  getMachineType(id: string): Promise<MachineType | undefined>;
+  updateMachineType(id: string, machineType: Partial<InsertMachineType>): Promise<MachineType | undefined>;
+  deleteMachineType(id: string): Promise<void>;
+  
+  createMachineSpare(machineSpare: InsertMachineSpare): Promise<MachineSpare>;
+  getMachineSpares(machineId: string): Promise<MachineSpare[]>;
+  deleteMachineSpare(id: string): Promise<void>;
+  
+  createPurchaseOrder(purchaseOrder: InsertPurchaseOrder): Promise<PurchaseOrder>;
+  getAllPurchaseOrders(): Promise<PurchaseOrder[]>;
+  getPurchaseOrder(id: string): Promise<PurchaseOrder | undefined>;
+  updatePurchaseOrder(id: string, purchaseOrder: Partial<InsertPurchaseOrder>): Promise<PurchaseOrder | undefined>;
+  deletePurchaseOrder(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -162,6 +187,73 @@ export class DatabaseStorage implements IStorage {
 
   async deleteSparePart(id: string): Promise<void> {
     await db.delete(sparePartsCatalog).where(eq(sparePartsCatalog.id, id));
+  }
+
+  async createMachineType(machineType: InsertMachineType): Promise<MachineType> {
+    const [created] = await db.insert(machineTypes).values(machineType).returning();
+    return created;
+  }
+
+  async getAllMachineTypes(): Promise<MachineType[]> {
+    return await db.select().from(machineTypes);
+  }
+
+  async getMachineType(id: string): Promise<MachineType | undefined> {
+    const [type] = await db.select().from(machineTypes).where(eq(machineTypes.id, id));
+    return type;
+  }
+
+  async updateMachineType(id: string, machineType: Partial<InsertMachineType>): Promise<MachineType | undefined> {
+    const [updated] = await db
+      .update(machineTypes)
+      .set({ ...machineType, updatedAt: new Date() })
+      .where(eq(machineTypes.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteMachineType(id: string): Promise<void> {
+    await db.delete(machineTypes).where(eq(machineTypes.id, id));
+  }
+
+  async createMachineSpare(machineSpare: InsertMachineSpare): Promise<MachineSpare> {
+    const [created] = await db.insert(machineSpares).values(machineSpare).returning();
+    return created;
+  }
+
+  async getMachineSpares(machineId: string): Promise<MachineSpare[]> {
+    return await db.select().from(machineSpares).where(eq(machineSpares.machineId, machineId));
+  }
+
+  async deleteMachineSpare(id: string): Promise<void> {
+    await db.delete(machineSpares).where(eq(machineSpares.id, id));
+  }
+
+  async createPurchaseOrder(purchaseOrder: InsertPurchaseOrder): Promise<PurchaseOrder> {
+    const [created] = await db.insert(purchaseOrders).values(purchaseOrder).returning();
+    return created;
+  }
+
+  async getAllPurchaseOrders(): Promise<PurchaseOrder[]> {
+    return await db.select().from(purchaseOrders);
+  }
+
+  async getPurchaseOrder(id: string): Promise<PurchaseOrder | undefined> {
+    const [po] = await db.select().from(purchaseOrders).where(eq(purchaseOrders.id, id));
+    return po;
+  }
+
+  async updatePurchaseOrder(id: string, purchaseOrder: Partial<InsertPurchaseOrder>): Promise<PurchaseOrder | undefined> {
+    const [updated] = await db
+      .update(purchaseOrders)
+      .set({ ...purchaseOrder, updatedAt: new Date() })
+      .where(eq(purchaseOrders.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deletePurchaseOrder(id: string): Promise<void> {
+    await db.delete(purchaseOrders).where(eq(purchaseOrders.id, id));
   }
 }
 

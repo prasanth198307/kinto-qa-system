@@ -9,19 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Machine } from "@shared/schema";
-
-const machineTypes = [
-  "Water Treatment Plant",
-  "PET Blowing Machine",
-  "RFC (Rinse-Fill-Cap) Machine",
-  "Batch Coding Machine",
-  "BOPP Labeling Machine",
-  "Shrink Wrap Machine",
-  "Air Compressor",
-  "Air Dryer",
-  "Chiller"
-];
+import type { Machine, MachineType } from "@shared/schema";
 
 export default function AdminMachineConfig() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -37,6 +25,10 @@ export default function AdminMachineConfig() {
 
   const { data: machines = [], isLoading } = useQuery<Machine[]>({
     queryKey: ['/api/machines'],
+  });
+
+  const { data: machineTypes = [] } = useQuery<MachineType[]>({
+    queryKey: ['/api/machine-types'],
   });
 
   const createMutation = useMutation({
@@ -234,8 +226,8 @@ export default function AdminMachineConfig() {
                     <SelectValue placeholder="Select machine type" />
                   </SelectTrigger>
                   <SelectContent>
-                    {machineTypes.map((type) => (
-                      <SelectItem key={type} value={type}>{type}</SelectItem>
+                    {machineTypes.filter(t => t.isActive === 'true').map((type) => (
+                      <SelectItem key={type.id} value={type.name}>{type.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -291,8 +283,8 @@ export default function AdminMachineConfig() {
                     <SelectValue placeholder="Select machine type" />
                   </SelectTrigger>
                   <SelectContent>
-                    {machineTypes.map((type) => (
-                      <SelectItem key={type} value={type}>{type}</SelectItem>
+                    {machineTypes.filter(t => t.isActive === 'true').map((type) => (
+                      <SelectItem key={type.id} value={type.name}>{type.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

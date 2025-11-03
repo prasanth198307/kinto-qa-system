@@ -128,6 +128,7 @@ export const submissionTasks = pgTable("submission_tasks", {
   taskName: varchar("task_name", { length: 255 }).notNull(),
   result: varchar("result", { length: 10 }),
   remarks: text("remarks"),
+  photoUrl: varchar("photo_url", { length: 500 }),
   verifiedByName: varchar("verified_by_name", { length: 255 }),
   verifiedSignature: text("verified_signature"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -215,3 +216,67 @@ export const userAssignments = pgTable("user_assignments", {
 });
 
 export type UserAssignment = typeof userAssignments.$inferSelect;
+
+// Machine types configuration
+export const machineTypes = pgTable("machine_types", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 255 }).notNull().unique(),
+  description: text("description"),
+  isActive: varchar("is_active", { length: 10 }).default('true'),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertMachineTypeSchema = createInsertSchema(machineTypes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertMachineType = z.infer<typeof insertMachineTypeSchema>;
+export type MachineType = typeof machineTypes.$inferSelect;
+
+// Machine-Spare Parts relationship
+export const machineSpares = pgTable("machine_spares", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  machineId: varchar("machine_id").references(() => machines.id).notNull(),
+  sparePartId: varchar("spare_part_id").references(() => sparePartsCatalog.id).notNull(),
+  recommendedQuantity: integer("recommended_quantity").default(1),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertMachineSpareSchema = createInsertSchema(machineSpares).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertMachineSpare = z.infer<typeof insertMachineSpareSchema>;
+export type MachineSpare = typeof machineSpares.$inferSelect;
+
+// Purchase Orders
+export const purchaseOrders = pgTable("purchase_orders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  poNumber: varchar("po_number", { length: 100 }).notNull().unique(),
+  sparePartId: varchar("spare_part_id").references(() => sparePartsCatalog.id),
+  quantity: integer("quantity").notNull(),
+  urgency: varchar("urgency", { length: 50 }).notNull(),
+  status: varchar("status", { length: 50 }).default('pending'),
+  requestedBy: varchar("requested_by").references(() => users.id),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  supplier: varchar("supplier", { length: 255 }),
+  estimatedCost: integer("estimated_cost"),
+  expectedDeliveryDate: timestamp("expected_delivery_date"),
+  actualDeliveryDate: timestamp("actual_delivery_date"),
+  remarks: text("remarks"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertPurchaseOrderSchema = createInsertSchema(purchaseOrders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPurchaseOrder = z.infer<typeof insertPurchaseOrderSchema>;
+export type PurchaseOrder = typeof purchaseOrders.$inferSelect;
