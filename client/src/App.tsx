@@ -1,27 +1,31 @@
 import { useState } from "react";
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, useMutation } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { useToast } from "@/hooks/use-toast";
 import NotFound from "@/pages/not-found";
+import { useAuth } from "@/hooks/useAuth";
+import Landing from "@/components/Landing";
 import RoleSelector from "@/components/RoleSelector";
 import MobileHeader from "@/components/MobileHeader";
 import DashboardStats from "@/components/DashboardStats";
 import ChecklistForm from "@/components/ChecklistForm";
-import AlertsList from "@/components/AlertsList";
 import MachineCard from "@/components/MachineCard";
 import ChecklistHistoryTable from "@/components/ChecklistHistoryTable";
 import MaintenanceSchedule from "@/components/MaintenanceSchedule";
 import AdminUserManagement from "@/components/AdminUserManagement";
 import AdminMachineConfig from "@/components/AdminMachineConfig";
 import AdminChecklistBuilder from "@/components/AdminChecklistBuilder";
-import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus } from "lucide-react";
+import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { apiRequest } from "@/lib/queryClient";
+import { isUnauthorizedError } from "@/lib/authUtils";
 
-type Role = 'admin' | 'operator' | 'reviewer' | 'manager' | null;
+type Role = 'admin' | 'operator' | 'reviewer' | 'manager';
 
 function OperatorDashboard() {
   const [activeView, setActiveView] = useState<'dashboard' | 'checklist' | 'history'>('dashboard');
@@ -41,13 +45,17 @@ function OperatorDashboard() {
   ];
 
   const mockRecords = [
-    { id: '1', machine: 'RFC Machine', date: 'Oct 31, 2025', shift: 'Morning', operator: 'Ramesh Kumar', status: 'approved' as const },
+    { id: '1', machine: 'RFC Machine', date: 'Oct 31, 2025', shift: 'Morning', operator: 'You', status: 'approved' as const },
     { id: '2', machine: 'PET Blowing Machine', date: 'Oct 31, 2025', shift: 'Afternoon', operator: 'You', status: 'in_review' as const },
   ];
 
   return (
     <div className="min-h-screen bg-background">
-      <MobileHeader notificationCount={1} title="Operator Dashboard" />
+      <MobileHeader notificationCount={1} title="Operator Dashboard" onMenuClick={() => {
+        if (confirm('Do you want to logout?')) {
+          window.location.href = '/api/logout';
+        }
+      }} />
       
       <div className="pt-14 pb-20">
         {activeView === 'dashboard' && (
@@ -134,7 +142,11 @@ function ReviewerDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      <MobileHeader notificationCount={2} title="Reviewer Dashboard" />
+      <MobileHeader notificationCount={2} title="Reviewer Dashboard" onMenuClick={() => {
+        if (confirm('Do you want to logout?')) {
+          window.location.href = '/api/logout';
+        }
+      }} />
       
       <div className="pt-14 p-4 space-y-4">
         <Card className="p-6">
@@ -158,7 +170,11 @@ function ManagerDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      <MobileHeader notificationCount={1} title="Manager Dashboard" />
+      <MobileHeader notificationCount={1} title="Manager Dashboard" onMenuClick={() => {
+        if (confirm('Do you want to logout?')) {
+          window.location.href = '/api/logout';
+        }
+      }} />
       
       <div className="pt-14 p-4 space-y-4">
         <Card className="p-6">
@@ -185,7 +201,11 @@ function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      <MobileHeader notificationCount={0} title="Admin Dashboard" />
+      <MobileHeader notificationCount={0} title="Admin Dashboard" onMenuClick={() => {
+        if (confirm('Do you want to logout?')) {
+          window.location.href = '/api/logout';
+        }
+      }} />
       
       <div className="pt-14">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -240,35 +260,99 @@ function AdminDashboard() {
   );
 }
 
+function RoleAssignment() {
+  const { toast } = useToast();
+  
+  const setRoleMutation = useMutation({
+    mutationFn: async (role: Role) => {
+      return await apiRequest('POST', '/api/auth/set-role', { role });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      toast({
+        title: "Role assigned",
+        description: "Your role has been assigned successfully.",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to assign role. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  return (
+    <RoleSelector 
+      onRoleSelect={(role) => {
+        setRoleMutation.mutate(role);
+      }}
+    />
+  );
+}
+
+function AuthenticatedApp() {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user?.role) {
+    return <RoleAssignment />;
+  }
+
+  const role = user.role as Role;
+
+  return (
+    <>
+      {role === 'operator' && <OperatorDashboard />}
+      {role === 'reviewer' && <ReviewerDashboard />}
+      {role === 'manager' && <ManagerDashboard />}
+      {role === 'admin' && <AdminDashboard />}
+    </>
+  );
+}
+
 function Router() {
+  const { isAuthenticated, isLoading } = useAuth();
+
   return (
     <Switch>
+      {isLoading || !isAuthenticated ? (
+        <Route path="/" component={Landing} />
+      ) : (
+        <Route path="/" component={AuthenticatedApp} />
+      )}
       <Route component={NotFound} />
     </Switch>
   );
 }
 
 function App() {
-  const [selectedRole, setSelectedRole] = useState<Role>(null);
-
-  if (!selectedRole) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <RoleSelector onRoleSelect={setSelectedRole} />
-          <Toaster />
-        </TooltipProvider>
-      </QueryClientProvider>
-    );
-  }
-
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        {selectedRole === 'operator' && <OperatorDashboard />}
-        {selectedRole === 'reviewer' && <ReviewerDashboard />}
-        {selectedRole === 'manager' && <ManagerDashboard />}
-        {selectedRole === 'admin' && <AdminDashboard />}
+        <Router />
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>
