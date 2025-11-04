@@ -4,6 +4,8 @@ import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema } from "@shared/schema";
 import { z } from "zod";
+import path from "path";
+import fs from "fs";
 
 // Authentication middleware
 function isAuthenticated(req: Request, res: Response, next: NextFunction) {
@@ -14,6 +16,34 @@ function isAuthenticated(req: Request, res: Response, next: NextFunction) {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Serve deployment guide files
+  app.get('/download.html', (req, res) => {
+    const filePath = path.join(process.cwd(), 'public', 'download.html');
+    if (fs.existsSync(filePath)) {
+      res.sendFile(filePath);
+    } else {
+      res.status(404).send('File not found');
+    }
+  });
+
+  app.get('/KINTO_QA_Deployment_Guide.pdf', (req, res) => {
+    const filePath = path.join(process.cwd(), 'public', 'KINTO_QA_Deployment_Guide.pdf');
+    if (fs.existsSync(filePath)) {
+      res.download(filePath);
+    } else {
+      res.status(404).send('File not found');
+    }
+  });
+
+  app.get('/KINTO_QA_Deployment_Guide.docx', (req, res) => {
+    const filePath = path.join(process.cwd(), 'public', 'KINTO_QA_Deployment_Guide.docx');
+    if (fs.existsSync(filePath)) {
+      res.download(filePath);
+    } else {
+      res.status(404).send('File not found');
+    }
+  });
+
   setupAuth(app);
 
   // Auth routes are handled by setupAuth() in auth.ts
