@@ -53,6 +53,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/download-project.html', (req, res) => {
+    const filePath = path.join(process.cwd(), 'public', 'download-project.html');
+    if (fs.existsSync(filePath)) {
+      res.sendFile(filePath);
+    } else {
+      res.status(404).send('File not found');
+    }
+  });
+
   setupAuth(app);
 
   // Auth routes are handled by setupAuth() in auth.ts
