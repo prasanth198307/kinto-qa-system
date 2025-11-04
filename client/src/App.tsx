@@ -28,7 +28,8 @@ import SchedulePMDialog from "@/components/SchedulePMDialog";
 import PurchaseOrderManagement from "@/components/PurchaseOrderManagement";
 import PMHistoryView from "@/components/PMHistoryView";
 import PMExecutionDialog from "@/components/PMExecutionDialog";
-import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard } from "lucide-react";
+import InventoryManagement from "@/pages/inventory-management";
+import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -287,6 +288,10 @@ function AdminDashboard() {
                 <ShoppingCart className="h-4 w-4 mr-1" />
                 Purchase Orders
               </TabsTrigger>
+              <TabsTrigger value="inventory" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-inventory">
+                <Archive className="h-4 w-4 mr-1" />
+                Inventory
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -337,6 +342,10 @@ function AdminDashboard() {
 
           <TabsContent value="purchase-orders" className="p-4">
             <PurchaseOrderManagement />
+          </TabsContent>
+
+          <TabsContent value="inventory">
+            <InventoryManagement />
           </TabsContent>
         </Tabs>
         

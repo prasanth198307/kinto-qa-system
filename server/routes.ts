@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema } from "@shared/schema";
 import { z } from "zod";
 import path from "path";
 import fs from "fs";
@@ -13,6 +13,55 @@ function isAuthenticated(req: Request, res: Response, next: NextFunction) {
     return next();
   }
   res.status(401).json({ message: "Unauthorized" });
+}
+
+// Role-based authorization middleware
+function requireRole(...allowedRoles: string[]) {
+  return async (req: any, res: Response, next: NextFunction) => {
+    if (!req.isAuthenticated()) {
+      console.log(`[AUDIT] Unauthorized access attempt to ${req.path}`);
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    try {
+      // Validate user ID exists in session
+      if (!req.user || !req.user.id) {
+        console.error(`[AUDIT] Missing user.id in session for ${req.path}`);
+        return res.status(401).json({ message: "Unauthorized: Invalid session" });
+      }
+
+      // Fetch fresh user data from database (don't trust session completely)
+      const user = await storage.getUser(req.user.id);
+      if (!user) {
+        console.error(`[AUDIT] User ${req.user.id} not found in database for ${req.path}`);
+        return res.status(401).json({ message: "Unauthorized: User not found" });
+      }
+
+      if (!user.roleId) {
+        console.log(`[AUDIT] User ${user.id} has no role assigned, denying access to ${req.path}`);
+        return res.status(403).json({ message: "Forbidden: No role assigned" });
+      }
+
+      // Get the user's role name from database
+      const role = await storage.getUserRole(user.roleId);
+      if (!role) {
+        console.error(`[AUDIT] Invalid roleId ${user.roleId} for user ${user.id}`);
+        return res.status(403).json({ message: "Forbidden: Invalid role" });
+      }
+
+      if (!allowedRoles.includes(role.name)) {
+        console.log(`[AUDIT] User ${user.id} with role ${role.name} denied access to ${req.path} (requires: ${allowedRoles.join(', ')})`);
+        return res.status(403).json({ message: "Forbidden: Insufficient permissions" });
+      }
+
+      // Store validated role in request for downstream use
+      req.userRole = role.name;
+      next();
+    } catch (error) {
+      console.error(`[AUDIT] Role check error for ${req.path}:`, error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  };
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -72,11 +121,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.id;
       const { role } = req.body;
       
-      if (!['admin', 'operator', 'reviewer', 'manager'].includes(role)) {
+      // Only allow non-privileged roles for self-assignment
+      // Admin and Manager roles can only be assigned by another admin via /api/users/:id/role
+      if (!['operator', 'reviewer'].includes(role)) {
+        console.log(`[AUDIT] User ${userId} attempted to self-assign privileged role: ${role}`);
+        return res.status(403).json({ message: "Cannot self-assign admin or manager roles. Contact your administrator." });
+      }
+
+      // Check if user already has a role (prevent role changes through this endpoint)
+      const currentUser = await storage.getUser(userId);
+      if (currentUser?.roleId) {
+        console.log(`[AUDIT] User ${userId} attempted to change existing role ${currentUser.roleId} to ${role}`);
+        return res.status(403).json({ message: "Role already assigned. Contact administrator to change roles." });
+      }
+
+      // Validate role exists in database and get the roleId
+      const validRole = await storage.getRoleByName(role);
+      if (!validRole) {
         return res.status(400).json({ message: "Invalid role" });
       }
 
-      const user = await storage.updateUserRole(userId, role);
+      console.log(`[AUDIT] User ${userId} performing initial role assignment: ${role}`);
+      const user = await storage.updateUserRole(userId, validRole.id);
       res.json(user);
     } catch (error) {
       console.error("Error updating role:", error);
@@ -95,7 +161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/users/:id/role', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/users/:id/role', requireRole('admin'), async (req: any, res) => {
     try {
       const { id } = req.params;
       const { role } = req.body;
@@ -104,7 +170,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid role" });
       }
 
-      const user = await storage.updateUserRole(id, role);
+      // Validate role exists in database and get the roleId
+      const validRole = await storage.getRoleByName(role);
+      if (!validRole) {
+        return res.status(400).json({ message: "Invalid role" });
+      }
+
+      // Audit log
+      console.log(`[AUDIT] Admin ${req.user.id} changing role for user ${id} to ${role} (${validRole.id})`);
+
+      const user = await storage.updateUserRole(id, validRole.id);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -126,7 +201,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/machines', isAuthenticated, async (req: any, res) => {
+  app.post('/api/machines', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const validatedData = insertMachineSchema.parse(req.body);
       const machine = await storage.createMachine(validatedData);
@@ -154,7 +229,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/machines/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/machines/:id', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const { id } = req.params;
       const validatedData = insertMachineSchema.partial().parse(req.body);
@@ -172,7 +247,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/machines/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/machines/:id', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const { id } = req.params;
       await storage.deleteMachine(id);
@@ -194,7 +269,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/checklist-templates', isAuthenticated, async (req: any, res) => {
+  app.post('/api/checklist-templates', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { name, machineId, shiftTypes, tasks } = req.body;
@@ -261,7 +336,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/checklist-templates/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/checklist-templates/:id', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const { id } = req.params;
       await storage.deleteChecklistTemplate(id);
@@ -283,7 +358,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/spare-parts', isAuthenticated, async (req: any, res) => {
+  app.post('/api/spare-parts', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const validatedData = insertSparePartSchema.parse(req.body);
       const cleanData = {
@@ -319,7 +394,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/spare-parts/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/spare-parts/:id', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const { id } = req.params;
       const validatedData = insertSparePartSchema.partial().parse(req.body);
@@ -345,7 +420,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/spare-parts/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/spare-parts/:id', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const { id } = req.params;
       await storage.deleteSparePart(id);
@@ -367,7 +442,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/machine-types', isAuthenticated, async (req: any, res) => {
+  app.post('/api/machine-types', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const validatedData = insertMachineTypeSchema.parse(req.body);
       const machineType = await storage.createMachineType(validatedData);
@@ -381,7 +456,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/machine-types/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/machine-types/:id', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const { id } = req.params;
       const validatedData = insertMachineTypeSchema.partial().parse(req.body);
@@ -399,7 +474,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/machine-types/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/machine-types/:id', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const { id } = req.params;
       await storage.deleteMachineType(id);
@@ -422,7 +497,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/machines/:machineId/spares', isAuthenticated, async (req: any, res) => {
+  app.post('/api/machines/:machineId/spares', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const { machineId } = req.params;
       const validatedData = insertMachineSpareSchema.parse({
@@ -440,7 +515,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/machine-spares', isAuthenticated, async (req: any, res) => {
+  app.post('/api/machine-spares', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const validatedData = insertMachineSpareSchema.parse(req.body);
       const machineSpare = await storage.createMachineSpare(validatedData);
@@ -476,7 +551,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/machine-spares/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/machine-spares/:id', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const { id } = req.params;
       await storage.deleteMachineSpare(id);
@@ -498,7 +573,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/purchase-orders', isAuthenticated, async (req: any, res) => {
+  app.post('/api/purchase-orders', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const validatedData = insertPurchaseOrderSchema.partial({ requestedBy: true, approvedBy: true }).parse({
@@ -530,7 +605,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/purchase-orders/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/purchase-orders/:id', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const { id } = req.params;
       const validatedData = insertPurchaseOrderSchema.partial().parse(req.body);
@@ -548,7 +623,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/purchase-orders/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/purchase-orders/:id', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const { id } = req.params;
       await storage.deletePurchaseOrder(id);
@@ -570,7 +645,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/maintenance-plans', isAuthenticated, async (req: any, res) => {
+  app.post('/api/maintenance-plans', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const validatedData = insertMaintenancePlanSchema.parse(req.body);
       const plan = await storage.createMaintenancePlan(validatedData);
@@ -598,7 +673,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/maintenance-plans/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/maintenance-plans/:id', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const { id } = req.params;
       const validatedData = insertMaintenancePlanSchema.partial().parse(req.body);
@@ -616,7 +691,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/maintenance-plans/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/maintenance-plans/:id', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const { id } = req.params;
       await storage.deleteMaintenancePlan(id);
@@ -638,7 +713,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/pm-task-list-templates', isAuthenticated, async (req: any, res) => {
+  app.post('/api/pm-task-list-templates', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const { template, tasks } = req.body;
       const validatedTemplate = insertPMTaskListTemplateSchema.parse(template);
@@ -774,6 +849,323 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching PM executions by plan:", error);
       res.status(500).json({ message: "Failed to fetch PM executions by plan" });
+    }
+  });
+
+  // UOM (Unit of Measurement) API
+  app.get('/api/uom', isAuthenticated, async (req: any, res) => {
+    try {
+      const uoms = await storage.getAllUoms();
+      res.json(uoms);
+    } catch (error) {
+      console.error("Error fetching UOMs:", error);
+      res.status(500).json({ message: "Failed to fetch UOMs" });
+    }
+  });
+
+  app.post('/api/uom', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const validatedData = insertUomSchema.parse(req.body);
+      const created = await storage.createUom(validatedData);
+      res.json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error creating UOM:", error);
+      res.status(500).json({ message: "Failed to create UOM" });
+    }
+  });
+
+  app.get('/api/uom/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const uom = await storage.getUom(id);
+      if (!uom) {
+        return res.status(404).json({ message: "UOM not found" });
+      }
+      res.json(uom);
+    } catch (error) {
+      console.error("Error fetching UOM:", error);
+      res.status(500).json({ message: "Failed to fetch UOM" });
+    }
+  });
+
+  app.patch('/api/uom/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertUomSchema.partial().parse(req.body);
+      const updated = await storage.updateUom(id, validatedData);
+      if (!updated) {
+        return res.status(404).json({ message: "UOM not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error updating UOM:", error);
+      res.status(500).json({ message: "Failed to update UOM" });
+    }
+  });
+
+  app.delete('/api/uom/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteUom(id);
+      res.json({ message: "UOM deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting UOM:", error);
+      res.status(500).json({ message: "Failed to delete UOM" });
+    }
+  });
+
+  // Products API
+  app.get('/api/products', isAuthenticated, async (req: any, res) => {
+    try {
+      const products = await storage.getAllProducts();
+      res.json(products);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      res.status(500).json({ message: "Failed to fetch products" });
+    }
+  });
+
+  app.post('/api/products', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const productData = { ...req.body, createdBy: userId };
+      const validatedData = insertProductSchema.parse(productData);
+      const created = await storage.createProduct(validatedData);
+      res.json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error creating product:", error);
+      res.status(500).json({ message: "Failed to create product" });
+    }
+  });
+
+  app.get('/api/products/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const product = await storage.getProduct(id);
+      if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+      res.json(product);
+    } catch (error) {
+      console.error("Error fetching product:", error);
+      res.status(500).json({ message: "Failed to fetch product" });
+    }
+  });
+
+  app.patch('/api/products/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertProductSchema.partial().parse(req.body);
+      const updated = await storage.updateProduct(id, validatedData);
+      if (!updated) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error updating product:", error);
+      res.status(500).json({ message: "Failed to update product" });
+    }
+  });
+
+  app.delete('/api/products/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteProduct(id);
+      res.json({ message: "Product deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting product:", error);
+      res.status(500).json({ message: "Failed to delete product" });
+    }
+  });
+
+  // Raw Materials API
+  app.get('/api/raw-materials', isAuthenticated, async (req: any, res) => {
+    try {
+      const materials = await storage.getAllRawMaterials();
+      res.json(materials);
+    } catch (error) {
+      console.error("Error fetching raw materials:", error);
+      res.status(500).json({ message: "Failed to fetch raw materials" });
+    }
+  });
+
+  app.post('/api/raw-materials', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const materialData = { ...req.body, createdBy: userId };
+      const validatedData = insertRawMaterialSchema.parse(materialData);
+      const created = await storage.createRawMaterial(validatedData);
+      res.json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error creating raw material:", error);
+      res.status(500).json({ message: "Failed to create raw material" });
+    }
+  });
+
+  app.get('/api/raw-materials/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const material = await storage.getRawMaterial(id);
+      if (!material) {
+        return res.status(404).json({ message: "Raw material not found" });
+      }
+      res.json(material);
+    } catch (error) {
+      console.error("Error fetching raw material:", error);
+      res.status(500).json({ message: "Failed to fetch raw material" });
+    }
+  });
+
+  app.patch('/api/raw-materials/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertRawMaterialSchema.partial().parse(req.body);
+      const updated = await storage.updateRawMaterial(id, validatedData);
+      if (!updated) {
+        return res.status(404).json({ message: "Raw material not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error updating raw material:", error);
+      res.status(500).json({ message: "Failed to update raw material" });
+    }
+  });
+
+  app.delete('/api/raw-materials/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteRawMaterial(id);
+      res.json({ message: "Raw material deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting raw material:", error);
+      res.status(500).json({ message: "Failed to delete raw material" });
+    }
+  });
+
+  // Raw Material Transactions API
+  app.post('/api/raw-material-transactions', requireRole('admin', 'manager', 'operator'), async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const transactionData = { ...req.body, performedBy: userId };
+      const validatedData = insertRawMaterialTransactionSchema.parse(transactionData);
+      const created = await storage.createRawMaterialTransaction(validatedData);
+      res.json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error creating raw material transaction:", error);
+      res.status(500).json({ message: "Failed to create raw material transaction" });
+    }
+  });
+
+  app.get('/api/raw-material-transactions/:materialId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { materialId } = req.params;
+      const transactions = await storage.getRawMaterialTransactions(materialId);
+      res.json(transactions);
+    } catch (error) {
+      console.error("Error fetching raw material transactions:", error);
+      res.status(500).json({ message: "Failed to fetch raw material transactions" });
+    }
+  });
+
+  // Finished Goods API
+  app.get('/api/finished-goods', isAuthenticated, async (req: any, res) => {
+    try {
+      const goods = await storage.getAllFinishedGoods();
+      res.json(goods);
+    } catch (error) {
+      console.error("Error fetching finished goods:", error);
+      res.status(500).json({ message: "Failed to fetch finished goods" });
+    }
+  });
+
+  app.post('/api/finished-goods', requireRole('admin', 'manager', 'operator'), async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const goodData = { ...req.body, createdBy: userId };
+      const validatedData = insertFinishedGoodSchema.parse(goodData);
+      const created = await storage.createFinishedGood(validatedData);
+      res.json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error creating finished good:", error);
+      res.status(500).json({ message: "Failed to create finished good" });
+    }
+  });
+
+  app.get('/api/finished-goods/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const good = await storage.getFinishedGood(id);
+      if (!good) {
+        return res.status(404).json({ message: "Finished good not found" });
+      }
+      res.json(good);
+    } catch (error) {
+      console.error("Error fetching finished good:", error);
+      res.status(500).json({ message: "Failed to fetch finished good" });
+    }
+  });
+
+  app.patch('/api/finished-goods/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertFinishedGoodSchema.partial().parse(req.body);
+      const updated = await storage.updateFinishedGood(id, validatedData);
+      if (!updated) {
+        return res.status(404).json({ message: "Finished good not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error updating finished good:", error);
+      res.status(500).json({ message: "Failed to update finished good" });
+    }
+  });
+
+  app.delete('/api/finished-goods/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteFinishedGood(id);
+      res.json({ message: "Finished good deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting finished good:", error);
+      res.status(500).json({ message: "Failed to delete finished good" });
+    }
+  });
+
+  app.get('/api/finished-goods/product/:productId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { productId } = req.params;
+      const goods = await storage.getFinishedGoodsByProduct(productId);
+      res.json(goods);
+    } catch (error) {
+      console.error("Error fetching finished goods by product:", error);
+      res.status(500).json({ message: "Failed to fetch finished goods by product" });
     }
   });
 

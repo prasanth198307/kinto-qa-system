@@ -411,3 +411,125 @@ export const insertPurchaseOrderSchema = createInsertSchema(purchaseOrders).omit
 
 export type InsertPurchaseOrder = z.infer<typeof insertPurchaseOrderSchema>;
 export type PurchaseOrder = typeof purchaseOrders.$inferSelect;
+
+// Unit of Measurement (UOM) Master
+export const uom = pgTable("uom", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  code: varchar("code", { length: 50 }).notNull().unique(),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+  isActive: varchar("is_active").default('true'),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertUomSchema = createInsertSchema(uom).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertUom = z.infer<typeof insertUomSchema>;
+export type Uom = typeof uom.$inferSelect;
+
+// Product Master
+export const products = pgTable("products", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  productCode: varchar("product_code", { length: 100 }).notNull().unique(),
+  productName: varchar("product_name", { length: 255 }).notNull(),
+  description: text("description"),
+  category: varchar("category", { length: 100 }),
+  uomId: varchar("uom_id").references(() => uom.id),
+  standardCost: integer("standard_cost"),
+  isActive: varchar("is_active").default('true'),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertProductSchema = createInsertSchema(products).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertProduct = z.infer<typeof insertProductSchema>;
+export type Product = typeof products.$inferSelect;
+
+// Raw Materials/Inventory
+export const rawMaterials = pgTable("raw_materials", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  materialCode: varchar("material_code", { length: 100 }).notNull().unique(),
+  materialName: varchar("material_name", { length: 255 }).notNull(),
+  description: text("description"),
+  category: varchar("category", { length: 100 }),
+  uomId: varchar("uom_id").references(() => uom.id),
+  currentStock: integer("current_stock").default(0),
+  reorderLevel: integer("reorder_level"),
+  maxStockLevel: integer("max_stock_level"),
+  unitCost: integer("unit_cost"),
+  location: varchar("location", { length: 255 }),
+  supplier: varchar("supplier", { length: 255 }),
+  isActive: varchar("is_active").default('true'),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertRawMaterialSchema = createInsertSchema(rawMaterials).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertRawMaterial = z.infer<typeof insertRawMaterialSchema>;
+export type RawMaterial = typeof rawMaterials.$inferSelect;
+
+// Raw Material Stock Transactions
+export const rawMaterialTransactions = pgTable("raw_material_transactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  materialId: varchar("material_id").references(() => rawMaterials.id).notNull(),
+  transactionType: varchar("transaction_type", { length: 50 }).notNull(),
+  quantity: integer("quantity").notNull(),
+  reference: varchar("reference", { length: 255 }),
+  remarks: text("remarks"),
+  performedBy: varchar("performed_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertRawMaterialTransactionSchema = createInsertSchema(rawMaterialTransactions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertRawMaterialTransaction = z.infer<typeof insertRawMaterialTransactionSchema>;
+export type RawMaterialTransaction = typeof rawMaterialTransactions.$inferSelect;
+
+// Finished Goods
+export const finishedGoods = pgTable("finished_goods", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  productId: varchar("product_id").references(() => products.id).notNull(),
+  batchNumber: varchar("batch_number", { length: 100 }).notNull(),
+  productionDate: timestamp("production_date").notNull(),
+  quantity: integer("quantity").notNull(),
+  uomId: varchar("uom_id").references(() => uom.id),
+  qualityStatus: varchar("quality_status", { length: 50 }).default('pending'),
+  machineId: varchar("machine_id").references(() => machines.id),
+  operatorId: varchar("operator_id").references(() => users.id),
+  inspectedBy: varchar("inspected_by").references(() => users.id),
+  inspectionDate: timestamp("inspection_date"),
+  storageLocation: varchar("storage_location", { length: 255 }),
+  remarks: text("remarks"),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertFinishedGoodSchema = createInsertSchema(finishedGoods).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertFinishedGood = z.infer<typeof insertFinishedGoodSchema>;
+export type FinishedGood = typeof finishedGoods.$inferSelect;

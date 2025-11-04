@@ -13,6 +13,11 @@ import {
   pmTemplateTasks,
   pmExecutions,
   pmExecutionTasks,
+  uom,
+  products,
+  rawMaterials,
+  rawMaterialTransactions,
+  finishedGoods,
   type User,
   type UpsertUser,
   type InsertUser,
@@ -37,6 +42,16 @@ import {
   type InsertPMExecution,
   type PMExecutionTask,
   type InsertPMExecutionTask,
+  type Uom,
+  type InsertUom,
+  type Product,
+  type InsertProduct,
+  type RawMaterial,
+  type InsertRawMaterial,
+  type RawMaterialTransaction,
+  type InsertRawMaterialTransaction,
+  type FinishedGood,
+  type InsertFinishedGood,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
@@ -50,6 +65,8 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserByResetToken(token: string): Promise<User | undefined>;
+  getUserRole(roleId: string): Promise<{ id: string; name: string } | undefined>;
+  getRoleByName(roleName: string): Promise<{ id: string; name: string } | undefined>;
   createUser(user: InsertUser): Promise<User>;
   upsertUser(user: UpsertUser): Promise<User>;
   updateUserRole(id: string, roleId: string): Promise<User | undefined>;
@@ -112,6 +129,39 @@ export interface IStorage {
   getPMExecution(id: string): Promise<PMExecution | undefined>;
   getPMExecutionTasks(executionId: string): Promise<PMExecutionTask[]>;
   getPMExecutionsByPlan(planId: string): Promise<PMExecution[]>;
+  
+  // UOM Management
+  createUom(uom: InsertUom): Promise<Uom>;
+  getAllUoms(): Promise<Uom[]>;
+  getUom(id: string): Promise<Uom | undefined>;
+  updateUom(id: string, uom: Partial<InsertUom>): Promise<Uom | undefined>;
+  deleteUom(id: string): Promise<void>;
+  
+  // Product Master
+  createProduct(product: InsertProduct): Promise<Product>;
+  getAllProducts(): Promise<Product[]>;
+  getProduct(id: string): Promise<Product | undefined>;
+  updateProduct(id: string, product: Partial<InsertProduct>): Promise<Product | undefined>;
+  deleteProduct(id: string): Promise<void>;
+  
+  // Raw Materials/Inventory
+  createRawMaterial(material: InsertRawMaterial): Promise<RawMaterial>;
+  getAllRawMaterials(): Promise<RawMaterial[]>;
+  getRawMaterial(id: string): Promise<RawMaterial | undefined>;
+  updateRawMaterial(id: string, material: Partial<InsertRawMaterial>): Promise<RawMaterial | undefined>;
+  deleteRawMaterial(id: string): Promise<void>;
+  
+  // Raw Material Transactions
+  createRawMaterialTransaction(transaction: InsertRawMaterialTransaction): Promise<RawMaterialTransaction>;
+  getRawMaterialTransactions(materialId: string): Promise<RawMaterialTransaction[]>;
+  
+  // Finished Goods
+  createFinishedGood(finishedGood: InsertFinishedGood): Promise<FinishedGood>;
+  getAllFinishedGoods(): Promise<FinishedGood[]>;
+  getFinishedGood(id: string): Promise<FinishedGood | undefined>;
+  updateFinishedGood(id: string, finishedGood: Partial<InsertFinishedGood>): Promise<FinishedGood | undefined>;
+  deleteFinishedGood(id: string): Promise<void>;
+  getFinishedGoodsByProduct(productId: string): Promise<FinishedGood[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -236,6 +286,22 @@ export class DatabaseStorage implements IStorage {
         updatedAt: new Date() 
       })
       .where(eq(users.id, userId));
+  }
+
+  async getUserRole(roleId: string): Promise<{ id: string; name: string } | undefined> {
+    const [role] = await db
+      .select({ id: roles.id, name: roles.name })
+      .from(roles)
+      .where(eq(roles.id, roleId));
+    return role;
+  }
+
+  async getRoleByName(roleName: string): Promise<{ id: string; name: string } | undefined> {
+    const [role] = await db
+      .select({ id: roles.id, name: roles.name })
+      .from(roles)
+      .where(eq(roles.name, roleName));
+    return role;
   }
 
   async createMachine(machine: InsertMachine): Promise<Machine> {
@@ -517,6 +583,143 @@ export class DatabaseStorage implements IStorage {
 
   async getPMExecutionsByPlan(planId: string): Promise<PMExecution[]> {
     return await db.select().from(pmExecutions).where(eq(pmExecutions.maintenancePlanId, planId));
+  }
+
+  // UOM Management
+  async createUom(uomData: InsertUom): Promise<Uom> {
+    const [created] = await db.insert(uom).values(uomData).returning();
+    return created;
+  }
+
+  async getAllUoms(): Promise<Uom[]> {
+    return await db.select().from(uom);
+  }
+
+  async getUom(id: string): Promise<Uom | undefined> {
+    const [result] = await db.select().from(uom).where(eq(uom.id, id));
+    return result;
+  }
+
+  async updateUom(id: string, uomData: Partial<InsertUom>): Promise<Uom | undefined> {
+    const [updated] = await db
+      .update(uom)
+      .set({ ...uomData, updatedAt: new Date() })
+      .where(eq(uom.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteUom(id: string): Promise<void> {
+    await db.delete(uom).where(eq(uom.id, id));
+  }
+
+  // Product Master
+  async createProduct(product: InsertProduct): Promise<Product> {
+    const [created] = await db.insert(products).values(product).returning();
+    return created;
+  }
+
+  async getAllProducts(): Promise<Product[]> {
+    return await db.select().from(products);
+  }
+
+  async getProduct(id: string): Promise<Product | undefined> {
+    const [product] = await db.select().from(products).where(eq(products.id, id));
+    return product;
+  }
+
+  async updateProduct(id: string, productData: Partial<InsertProduct>): Promise<Product | undefined> {
+    const [updated] = await db
+      .update(products)
+      .set({ ...productData, updatedAt: new Date() })
+      .where(eq(products.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteProduct(id: string): Promise<void> {
+    await db.delete(products).where(eq(products.id, id));
+  }
+
+  // Raw Materials/Inventory
+  async createRawMaterial(material: InsertRawMaterial): Promise<RawMaterial> {
+    const [created] = await db.insert(rawMaterials).values(material).returning();
+    return created;
+  }
+
+  async getAllRawMaterials(): Promise<RawMaterial[]> {
+    return await db.select().from(rawMaterials);
+  }
+
+  async getRawMaterial(id: string): Promise<RawMaterial | undefined> {
+    const [material] = await db.select().from(rawMaterials).where(eq(rawMaterials.id, id));
+    return material;
+  }
+
+  async updateRawMaterial(id: string, materialData: Partial<InsertRawMaterial>): Promise<RawMaterial | undefined> {
+    const [updated] = await db
+      .update(rawMaterials)
+      .set({ ...materialData, updatedAt: new Date() })
+      .where(eq(rawMaterials.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteRawMaterial(id: string): Promise<void> {
+    await db.delete(rawMaterials).where(eq(rawMaterials.id, id));
+  }
+
+  // Raw Material Transactions
+  async createRawMaterialTransaction(transaction: InsertRawMaterialTransaction): Promise<RawMaterialTransaction> {
+    const [created] = await db.insert(rawMaterialTransactions).values(transaction).returning();
+    
+    // Update the material's current stock
+    const material = await this.getRawMaterial(transaction.materialId);
+    if (material) {
+      const stockChange = transaction.transactionType === 'receipt' ? transaction.quantity : -transaction.quantity;
+      await db
+        .update(rawMaterials)
+        .set({ currentStock: (material.currentStock || 0) + stockChange })
+        .where(eq(rawMaterials.id, transaction.materialId));
+    }
+    
+    return created;
+  }
+
+  async getRawMaterialTransactions(materialId: string): Promise<RawMaterialTransaction[]> {
+    return await db.select().from(rawMaterialTransactions).where(eq(rawMaterialTransactions.materialId, materialId));
+  }
+
+  // Finished Goods
+  async createFinishedGood(finishedGood: InsertFinishedGood): Promise<FinishedGood> {
+    const [created] = await db.insert(finishedGoods).values(finishedGood).returning();
+    return created;
+  }
+
+  async getAllFinishedGoods(): Promise<FinishedGood[]> {
+    return await db.select().from(finishedGoods);
+  }
+
+  async getFinishedGood(id: string): Promise<FinishedGood | undefined> {
+    const [good] = await db.select().from(finishedGoods).where(eq(finishedGoods.id, id));
+    return good;
+  }
+
+  async updateFinishedGood(id: string, finishedGoodData: Partial<InsertFinishedGood>): Promise<FinishedGood | undefined> {
+    const [updated] = await db
+      .update(finishedGoods)
+      .set({ ...finishedGoodData, updatedAt: new Date() })
+      .where(eq(finishedGoods.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteFinishedGood(id: string): Promise<void> {
+    await db.delete(finishedGoods).where(eq(finishedGoods.id, id));
+  }
+
+  async getFinishedGoodsByProduct(productId: string): Promise<FinishedGood[]> {
+    return await db.select().from(finishedGoods).where(eq(finishedGoods.productId, productId));
   }
 }
 

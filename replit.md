@@ -58,11 +58,21 @@ Preferred communication style: Simple, everyday language.
 - **Email/Password Authentication** with secure password hashing (scrypt algorithm)
 - Passport.js Local Strategy for authentication flows
 - **Dynamic Role-Based Access Control (RBAC)** with roles table supporting:
-  - admin: System Administrator with full access to all features
-  - operator: Machine Operator who can execute checklists and PM tasks
+  - admin: System Administrator with full access to all features and user management
+  - manager: Manager with inventory management, reporting, and approval permissions
+  - operator: Machine Operator who can execute checklists, PM tasks, record transactions, and create finished goods
   - reviewer: Quality Reviewer who can review and approve checklists
-  - manager: Manager who can view reports and approve actions
-- Role permissions are stored and managed in the database
+- **Role Assignment Security**:
+  - Self-assignment restricted to operator/reviewer roles only (via `/api/auth/set-role`)
+  - Admin and manager roles can ONLY be assigned by existing admins
+  - Role changes prevented after initial assignment (users must contact admin)
+  - All role assignments validated against roles table
+  - Comprehensive audit logging for all role-related operations
+- **Route-Level Authorization**:
+  - `requireRole` middleware validates fresh user data from database (no session trust)
+  - Admin/Manager routes: machines, checklist templates, spare parts, machine types, purchase orders, maintenance plans
+  - Inventory routes: UOM/products/raw materials (admin/manager only), finished goods & transactions (admin/manager/operator for creation)
+  - All mutations audit logged with user ID and role information
 - Session-based authentication with secure cookies (httpOnly, secure, 7-day TTL)
 - PostgreSQL-backed session store using `connect-pg-simple`
 - Password reset functionality with time-limited reset tokens
@@ -83,18 +93,31 @@ Preferred communication style: Simple, everyday language.
 **Database Schema**
 Core tables include:
 - `sessions` - Session storage for authentication
-- `users` - User profiles with role assignment
+- `roles` - Role definitions (admin, manager, operator, reviewer)
+- `users` - User profiles with role assignment via foreign key to roles table
 - `machines` - Equipment/machine registry with status and maintenance tracking
 - `checklistTemplates` - Reusable checklist templates linked to machines
 - `templateTasks` - Individual tasks within checklist templates
 - `sparePartsCatalog` - Inventory management for spare parts
+- `uom` - Units of measure for inventory management
+- `products` - Product master data
+- `rawMaterials` - Raw material inventory with UOM and product relationships
+- `rawMaterialTransactions` - Transaction log for raw material usage/receipt
+- `finishedGoods` - Finished goods production records
 
 **API Design**
 - RESTful API endpoints under `/api` prefix
-- Authentication middleware (`isAuthenticated`) protecting all routes
-- Structured error handling with HTTP status codes
+- Multi-layer authorization:
+  - `isAuthenticated` middleware for basic authentication (all routes)
+  - `requireRole(...roles)` middleware for role-based authorization (admin/manager routes)
+  - Fresh database lookup for role validation (no session trust)
+- Structured error handling with HTTP status codes (401 for auth, 403 for authz)
 - JSON request/response format
-- CRUD operations for machines, checklist templates, spare parts, and users
+- Comprehensive audit logging for security events
+- CRUD operations with role-based access control:
+  - Admin/Manager: Full CRUD on machines, templates, spare parts, inventory master data
+  - Operator: Create finished goods and raw material transactions
+  - All users: Read-only access to most data
 
 **Storage Pattern**
 - Repository pattern via `IStorage` interface and `DatabaseStorage` implementation
