@@ -1,4 +1,5 @@
 import {
+  roles,
   users,
   machines,
   checklistTemplates,
@@ -130,13 +131,49 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUser(id: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
+    const [result] = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        password: users.password,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+        roleId: users.roleId,
+        role: roles.name,
+        resetToken: users.resetToken,
+        resetTokenExpiry: users.resetTokenExpiry,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+      })
+      .from(users)
+      .leftJoin(roles, eq(users.roleId, roles.id))
+      .where(eq(users.id, id));
+    return result as any;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
-    return user;
+    const [result] = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        password: users.password,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+        roleId: users.roleId,
+        role: roles.name,
+        resetToken: users.resetToken,
+        resetTokenExpiry: users.resetTokenExpiry,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+      })
+      .from(users)
+      .leftJoin(roles, eq(users.roleId, roles.id))
+      .where(eq(users.username, username));
+    return result as any;
   }
 
   async createUser(userData: InsertUser): Promise<User> {
