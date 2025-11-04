@@ -1278,6 +1278,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { name, description, permissions } = req.body;
 
+      // Check if this is a default role
+      const existingRole = await storage.getRole(id);
+      if (!existingRole) {
+        return res.status(404).json({ message: "Role not found" });
+      }
+
+      const DEFAULT_ROLES = ['admin', 'manager', 'operator', 'reviewer'];
+      
+      // Prevent renaming default roles
+      if (DEFAULT_ROLES.includes(existingRole.name) && name !== undefined && name !== existingRole.name) {
+        console.log(`[AUDIT] Admin ${req.user.id} attempted to rename default role ${existingRole.name} - BLOCKED`);
+        return res.status(403).json({ message: "Cannot rename default system roles" });
+      }
+
       console.log(`[AUDIT] Admin ${req.user.id} updating role: ${id}`);
 
       const roleData: any = {};
