@@ -338,3 +338,5 @@ export function PMExecutionDialog({ open, onOpenChange, plan }: PMExecutionDialo
     </Dialog>
   );
 }
+
+export default PMExecutionDialog;
