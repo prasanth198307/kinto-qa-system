@@ -1221,6 +1221,246 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Role Management API
+  app.get('/api/roles', requireRole('admin'), async (req: any, res) => {
+    try {
+      const roles = await storage.getAllRoles();
+      res.json(roles);
+    } catch (error) {
+      console.error("Error fetching roles:", error);
+      res.status(500).json({ message: "Failed to fetch roles" });
+    }
+  });
+
+  app.get('/api/roles/:id', requireRole('admin'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const role = await storage.getRole(id);
+      if (!role) {
+        return res.status(404).json({ message: "Role not found" });
+      }
+      res.json(role);
+    } catch (error) {
+      console.error("Error fetching role:", error);
+      res.status(500).json({ message: "Failed to fetch role" });
+    }
+  });
+
+  app.post('/api/roles', requireRole('admin'), async (req: any, res) => {
+    try {
+      const { name, description, permissions } = req.body;
+      
+      if (!name) {
+        return res.status(400).json({ message: "Role name is required" });
+      }
+
+      console.log(`[AUDIT] Admin ${req.user.id} creating new role: ${name}`);
+      
+      const roleData = {
+        name,
+        description,
+        permissions: permissions || [],
+      };
+      
+      const created = await storage.createRole(roleData);
+      res.json(created);
+    } catch (error: any) {
+      if (error?.code === '23505') { // Unique constraint violation
+        return res.status(400).json({ message: "Role with this name already exists" });
+      }
+      console.error("Error creating role:", error);
+      res.status(500).json({ message: "Failed to create role" });
+    }
+  });
+
+  app.patch('/api/roles/:id', requireRole('admin'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { name, description, permissions } = req.body;
+
+      console.log(`[AUDIT] Admin ${req.user.id} updating role: ${id}`);
+
+      const roleData: any = {};
+      if (name !== undefined) roleData.name = name;
+      if (description !== undefined) roleData.description = description;
+      if (permissions !== undefined) roleData.permissions = permissions;
+
+      const updated = await storage.updateRole(id, roleData);
+      if (!updated) {
+        return res.status(404).json({ message: "Role not found" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      if (error?.code === '23505') {
+        return res.status(400).json({ message: "Role with this name already exists" });
+      }
+      console.error("Error updating role:", error);
+      res.status(500).json({ message: "Failed to update role" });
+    }
+  });
+
+  app.delete('/api/roles/:id', requireRole('admin'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+
+      // Don't allow deleting default roles
+      const role = await storage.getRole(id);
+      if (role && ['admin', 'manager', 'operator', 'reviewer'].includes(role.name)) {
+        return res.status(400).json({ message: "Cannot delete default system roles" });
+      }
+
+      console.log(`[AUDIT] Admin ${req.user.id} deleting role: ${id}`);
+
+      await storage.deleteRole(id);
+      res.json({ message: "Role deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting role:", error);
+      res.status(500).json({ message: "Failed to delete role" });
+    }
+  });
+
+  // Role Permissions API
+  app.get('/api/role-permissions', requireRole('admin'), async (req: any, res) => {
+    try {
+      const permissions = await storage.getAllRolePermissions();
+      res.json(permissions);
+    } catch (error) {
+      console.error("Error fetching role permissions:", error);
+      res.status(500).json({ message: "Failed to fetch role permissions" });
+    }
+  });
+
+  app.get('/api/role-permissions/:roleId', requireRole('admin'), async (req: any, res) => {
+    try {
+      const { roleId } = req.params;
+      const permissions = await storage.getRolePermissions(roleId);
+      res.json(permissions);
+    } catch (error) {
+      console.error("Error fetching role permissions:", error);
+      res.status(500).json({ message: "Failed to fetch role permissions" });
+    }
+  });
+
+  app.post('/api/role-permissions', requireRole('admin'), async (req: any, res) => {
+    try {
+      const { roleId, screenKey, canView, canCreate, canEdit, canDelete } = req.body;
+
+      if (!roleId || !screenKey) {
+        return res.status(400).json({ message: "Role ID and screen key are required" });
+      }
+
+      console.log(`[AUDIT] Admin ${req.user.id} creating permission for role ${roleId}, screen ${screenKey}`);
+
+      const permissionData = {
+        roleId,
+        screenKey,
+        canView: canView ? 1 : 0,
+        canCreate: canCreate ? 1 : 0,
+        canEdit: canEdit ? 1 : 0,
+        canDelete: canDelete ? 1 : 0,
+      };
+
+      const created = await storage.createRolePermission(permissionData);
+      res.json(created);
+    } catch (error) {
+      console.error("Error creating role permission:", error);
+      res.status(500).json({ message: "Failed to create role permission" });
+    }
+  });
+
+  app.patch('/api/role-permissions/:id', requireRole('admin'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { canView, canCreate, canEdit, canDelete } = req.body;
+
+      console.log(`[AUDIT] Admin ${req.user.id} updating permission: ${id}`);
+
+      const permissionData: any = {};
+      if (canView !== undefined) permissionData.canView = canView ? 1 : 0;
+      if (canCreate !== undefined) permissionData.canCreate = canCreate ? 1 : 0;
+      if (canEdit !== undefined) permissionData.canEdit = canEdit ? 1 : 0;
+      if (canDelete !== undefined) permissionData.canDelete = canDelete ? 1 : 0;
+
+      const updated = await storage.updateRolePermission(id, permissionData);
+      if (!updated) {
+        return res.status(404).json({ message: "Permission not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating role permission:", error);
+      res.status(500).json({ message: "Failed to update role permission" });
+    }
+  });
+
+  app.delete('/api/role-permissions/:id', requireRole('admin'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+
+      console.log(`[AUDIT] Admin ${req.user.id} deleting permission: ${id}`);
+
+      await storage.deleteRolePermission(id);
+      res.json({ message: "Permission deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting role permission:", error);
+      res.status(500).json({ message: "Failed to delete role permission" });
+    }
+  });
+
+  // Batch update role permissions (for easier bulk updates)
+  app.put('/api/roles/:roleId/permissions', requireRole('admin'), async (req: any, res) => {
+    try {
+      const { roleId } = req.params;
+      const { permissions } = req.body; // Array of { screenKey, canView, canCreate, canEdit, canDelete }
+
+      if (!Array.isArray(permissions)) {
+        return res.status(400).json({ message: "Permissions must be an array" });
+      }
+
+      console.log(`[AUDIT] Admin ${req.user.id} batch updating permissions for role ${roleId}`);
+
+      // Get existing permissions for this role
+      const existing = await storage.getRolePermissions(roleId);
+      const existingMap = new Map(existing.map(p => [p.screenKey, p]));
+
+      const results = [];
+
+      // Process each permission
+      for (const perm of permissions) {
+        const { screenKey, canView, canCreate, canEdit, canDelete } = perm;
+        
+        if (!screenKey) continue;
+
+        const permData = {
+          canView: canView ? 1 : 0,
+          canCreate: canCreate ? 1 : 0,
+          canEdit: canEdit ? 1 : 0,
+          canDelete: canDelete ? 1 : 0,
+        };
+
+        const existingPerm = existingMap.get(screenKey);
+
+        if (existingPerm) {
+          // Update existing permission
+          const updated = await storage.updateRolePermission(existingPerm.id, permData);
+          results.push(updated);
+        } else {
+          // Create new permission
+          const created = await storage.createRolePermission({
+            roleId,
+            screenKey,
+            ...permData,
+          });
+          results.push(created);
+        }
+      }
+
+      res.json(results);
+    } catch (error) {
+      console.error("Error batch updating role permissions:", error);
+      res.status(500).json({ message: "Failed to batch update role permissions" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
