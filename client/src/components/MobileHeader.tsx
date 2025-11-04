@@ -14,32 +14,32 @@ export default function MobileHeader({
   title = "KINTO QA"
 }: MobileHeaderProps) {
   return (
-    <header className="fixed top-0 left-0 right-0 h-14 bg-gradient-to-r from-primary to-teal-600 text-white shadow-md z-50">
+    <header className="fixed top-0 left-0 right-0 h-14 bg-white border-b border-gray-200 shadow-sm z-50">
       <div className="flex items-center justify-between h-full px-4">
         <Button
           size="icon"
           variant="ghost"
-          className="text-white hover:bg-white/20"
+          className="text-gray-700 hover:bg-gray-100"
           onClick={() => {
             console.log('Menu clicked');
             onMenuClick?.();
           }}
           data-testid="button-menu"
         >
-          <Menu className="h-6 w-6" />
+          <Menu className="h-5 w-5" />
         </Button>
         
-        <h1 className="text-lg font-semibold" data-testid="text-app-title">{title}</h1>
+        <h1 className="text-base font-semibold text-gray-900" data-testid="text-app-title">{title}</h1>
         
         <div className="relative">
           <Button
             size="icon"
             variant="ghost"
-            className="text-white hover:bg-white/20"
+            className="text-gray-700 hover:bg-gray-100"
             onClick={() => console.log('Notifications clicked')}
             data-testid="button-notifications"
           >
-            <Bell className="h-6 w-6" />
+            <Bell className="h-5 w-5" />
           </Button>
           {notificationCount > 0 && (
             <Badge 

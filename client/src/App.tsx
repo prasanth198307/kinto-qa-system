@@ -204,7 +204,7 @@ function AdminDashboard() {
   const [isExecutionDialogOpen, setIsExecutionDialogOpen] = useState(false);
   const [selectedPlanForExecution, setSelectedPlanForExecution] = useState<any>(null);
 
-  const { data: maintenancePlans = [] } = useQuery({
+  const { data: maintenancePlans = [] } = useQuery<any[]>({
     queryKey: ['/api/maintenance-plans'],
   });
 
