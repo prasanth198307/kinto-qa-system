@@ -62,7 +62,7 @@ export default function RoleSelector({ onRoleSelect }: RoleSelectorProps) {
             return (
               <Card
                 key={role.id}
-                className="p-8 cursor-pointer transition-all duration-200 border-2 hover:border-primary hover:shadow-lg transform hover:scale-105"
+                className="p-8 cursor-pointer transition-all duration-200 border-2 hover:border-primary hover:shadow-lg"
                 onClick={() => {
                   console.log('Role selected:', role.id);
                   onRoleSelect(role.id);

@@ -19,7 +19,7 @@ export default function MobileHeader({
         <Button
           size="icon"
           variant="ghost"
-          className="text-gray-700 hover:bg-gray-100"
+          className="text-gray-700"
           onClick={() => {
             console.log('Menu clicked');
             onMenuClick?.();
@@ -35,7 +35,7 @@ export default function MobileHeader({
           <Button
             size="icon"
             variant="ghost"
-            className="text-gray-700 hover:bg-gray-100"
+            className="text-gray-700"
             onClick={() => console.log('Notifications clicked')}
             data-testid="button-notifications"
           >
