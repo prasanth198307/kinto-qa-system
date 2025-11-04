@@ -116,6 +116,12 @@ export class DatabaseStorage implements IStorage {
     this.sessionStore = new PostgresSessionStore({
       pool: (db as any)._.session.client,
       createTableIfMissing: true,
+      errorLog: (error) => {
+        if (error.message?.includes('already exists')) {
+          return;
+        }
+        console.error('Session store error:', error);
+      },
     });
   }
 
