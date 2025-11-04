@@ -185,6 +185,13 @@ export const maintenancePlans = pgTable("maintenance_plans", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const insertMaintenancePlanSchema = createInsertSchema(maintenancePlans).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertMaintenancePlan = z.infer<typeof insertMaintenancePlanSchema>;
 export type MaintenancePlan = typeof maintenancePlans.$inferSelect;
 
 // Maintenance history

@@ -7,6 +7,7 @@ import {
   machineTypes,
   machineSpares,
   purchaseOrders,
+  maintenancePlans,
   type User,
   type UpsertUser,
   type Machine,
@@ -20,6 +21,8 @@ import {
   type InsertMachineSpare,
   type PurchaseOrder,
   type InsertPurchaseOrder,
+  type MaintenancePlan,
+  type InsertMaintenancePlan,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
@@ -56,6 +59,7 @@ export interface IStorage {
   
   createMachineSpare(machineSpare: InsertMachineSpare): Promise<MachineSpare>;
   getMachineSpares(machineId: string): Promise<MachineSpare[]>;
+  getSparePartMachines(sparePartId: string): Promise<MachineSpare[]>;
   deleteMachineSpare(id: string): Promise<void>;
   
   createPurchaseOrder(purchaseOrder: InsertPurchaseOrder): Promise<PurchaseOrder>;
@@ -63,6 +67,12 @@ export interface IStorage {
   getPurchaseOrder(id: string): Promise<PurchaseOrder | undefined>;
   updatePurchaseOrder(id: string, purchaseOrder: Partial<InsertPurchaseOrder>): Promise<PurchaseOrder | undefined>;
   deletePurchaseOrder(id: string): Promise<void>;
+  
+  createMaintenancePlan(plan: InsertMaintenancePlan): Promise<MaintenancePlan>;
+  getAllMaintenancePlans(): Promise<MaintenancePlan[]>;
+  getMaintenancePlan(id: string): Promise<MaintenancePlan | undefined>;
+  updateMaintenancePlan(id: string, plan: Partial<InsertMaintenancePlan>): Promise<MaintenancePlan | undefined>;
+  deleteMaintenancePlan(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -225,6 +235,10 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(machineSpares).where(eq(machineSpares.machineId, machineId));
   }
 
+  async getSparePartMachines(sparePartId: string): Promise<MachineSpare[]> {
+    return await db.select().from(machineSpares).where(eq(machineSpares.sparePartId, sparePartId));
+  }
+
   async deleteMachineSpare(id: string): Promise<void> {
     await db.delete(machineSpares).where(eq(machineSpares.id, id));
   }
@@ -254,6 +268,33 @@ export class DatabaseStorage implements IStorage {
 
   async deletePurchaseOrder(id: string): Promise<void> {
     await db.delete(purchaseOrders).where(eq(purchaseOrders.id, id));
+  }
+
+  async createMaintenancePlan(plan: InsertMaintenancePlan): Promise<MaintenancePlan> {
+    const [created] = await db.insert(maintenancePlans).values(plan).returning();
+    return created;
+  }
+
+  async getAllMaintenancePlans(): Promise<MaintenancePlan[]> {
+    return await db.select().from(maintenancePlans);
+  }
+
+  async getMaintenancePlan(id: string): Promise<MaintenancePlan | undefined> {
+    const [plan] = await db.select().from(maintenancePlans).where(eq(maintenancePlans.id, id));
+    return plan;
+  }
+
+  async updateMaintenancePlan(id: string, plan: Partial<InsertMaintenancePlan>): Promise<MaintenancePlan | undefined> {
+    const [updated] = await db
+      .update(maintenancePlans)
+      .set({ ...plan, updatedAt: new Date() })
+      .where(eq(maintenancePlans.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteMaintenancePlan(id: string): Promise<void> {
+    await db.delete(maintenancePlans).where(eq(maintenancePlans.id, id));
   }
 }
 

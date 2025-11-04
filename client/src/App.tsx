@@ -20,6 +20,7 @@ import AdminMachineConfig from "@/components/AdminMachineConfig";
 import AdminChecklistBuilder from "@/components/AdminChecklistBuilder";
 import AdminSparePartsManagement from "@/components/AdminSparePartsManagement";
 import AdminMachineTypeConfig from "@/components/AdminMachineTypeConfig";
+import SchedulePMDialog from "@/components/SchedulePMDialog";
 import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package, Layers } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -195,6 +196,7 @@ function ManagerDashboard() {
 
 function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('users');
+  const [isPMDialogOpen, setIsPMDialogOpen] = useState(false);
 
   const mockMaintenanceTasks = [
     { id: '1', machine: 'RFC Machine', taskType: 'Quarterly Deep Clean', scheduledDate: 'Nov 5, 2025', status: 'upcoming' as const, assignedTo: 'Team A' },
@@ -264,7 +266,7 @@ function AdminDashboard() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-semibold">Preventive Maintenance</h2>
-                <Button data-testid="button-add-maintenance">
+                <Button onClick={() => setIsPMDialogOpen(true)} data-testid="button-add-maintenance">
                   <Plus className="h-4 w-4 mr-1" />
                   Schedule PM
                 </Button>
@@ -273,6 +275,8 @@ function AdminDashboard() {
             </div>
           </TabsContent>
         </Tabs>
+        
+        <SchedulePMDialog open={isPMDialogOpen} onOpenChange={setIsPMDialogOpen} />
       </div>
     </div>
   );

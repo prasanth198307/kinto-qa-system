@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -171,9 +171,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdBy: validatedTemplate.createdBy ?? undefined
       };
       
+      const cleanTasks = validatedTasks.map(task => ({
+        taskName: task.taskName,
+        verificationCriteria: task.verificationCriteria ?? undefined,
+        orderIndex: task.orderIndex ?? 0
+      }));
+      
       const template = await storage.createChecklistTemplate(
         cleanTemplate,
-        validatedTasks
+        cleanTasks
       );
       res.json(template);
     } catch (error) {
@@ -389,6 +395,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/machine-spares', isAuthenticated, async (req: any, res) => {
+    try {
+      const validatedData = insertMachineSpareSchema.parse(req.body);
+      const machineSpare = await storage.createMachineSpare(validatedData);
+      res.json(machineSpare);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error creating machine spare:", error);
+      res.status(500).json({ message: "Failed to create machine spare" });
+    }
+  });
+
+  app.get('/api/spare-parts/:sparePartId/machines', isAuthenticated, async (req: any, res) => {
+    try {
+      const { sparePartId } = req.params;
+      const machineSpares = await storage.getSparePartMachines(sparePartId);
+      res.json(machineSpares);
+    } catch (error) {
+      console.error("Error fetching spare part machines:", error);
+      res.status(500).json({ message: "Failed to fetch spare part machines" });
+    }
+  });
+
   app.delete('/api/machine-spares/:id', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
@@ -469,6 +500,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting purchase order:", error);
       res.status(500).json({ message: "Failed to delete purchase order" });
+    }
+  });
+
+  // Maintenance Plans API
+  app.get('/api/maintenance-plans', isAuthenticated, async (req: any, res) => {
+    try {
+      const plans = await storage.getAllMaintenancePlans();
+      res.json(plans);
+    } catch (error) {
+      console.error("Error fetching maintenance plans:", error);
+      res.status(500).json({ message: "Failed to fetch maintenance plans" });
+    }
+  });
+
+  app.post('/api/maintenance-plans', isAuthenticated, async (req: any, res) => {
+    try {
+      const validatedData = insertMaintenancePlanSchema.parse(req.body);
+      const plan = await storage.createMaintenancePlan(validatedData);
+      res.json(plan);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error creating maintenance plan:", error);
+      res.status(500).json({ message: "Failed to create maintenance plan" });
+    }
+  });
+
+  app.get('/api/maintenance-plans/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const plan = await storage.getMaintenancePlan(id);
+      if (!plan) {
+        return res.status(404).json({ message: "Maintenance plan not found" });
+      }
+      res.json(plan);
+    } catch (error) {
+      console.error("Error fetching maintenance plan:", error);
+      res.status(500).json({ message: "Failed to fetch maintenance plan" });
+    }
+  });
+
+  app.patch('/api/maintenance-plans/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertMaintenancePlanSchema.partial().parse(req.body);
+      const plan = await storage.updateMaintenancePlan(id, validatedData);
+      if (!plan) {
+        return res.status(404).json({ message: "Maintenance plan not found" });
+      }
+      res.json(plan);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error updating maintenance plan:", error);
+      res.status(500).json({ message: "Failed to update maintenance plan" });
+    }
+  });
+
+  app.delete('/api/maintenance-plans/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteMaintenancePlan(id);
+      res.json({ message: "Maintenance plan deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting maintenance plan:", error);
+      res.status(500).json({ message: "Failed to delete maintenance plan" });
     }
   });
 

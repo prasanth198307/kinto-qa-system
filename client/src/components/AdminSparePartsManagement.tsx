@@ -3,19 +3,23 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Edit, Trash2, Search } from "lucide-react";
+import { Plus, Edit, Trash2, Search, Link2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { SparePartCatalog } from "@shared/schema";
+import type { SparePartCatalog, Machine, MachineSpare } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function AdminSparePartsManagement() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isMachineDialogOpen, setIsMachineDialogOpen] = useState(false);
   const [editingSparePart, setEditingSparePart] = useState<SparePartCatalog | null>(null);
+  const [selectedPartForMachines, setSelectedPartForMachines] = useState<SparePartCatalog | null>(null);
+  const [selectedMachineIds, setSelectedMachineIds] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     partName: '',
     partNumber: '',
@@ -28,6 +32,10 @@ export default function AdminSparePartsManagement() {
 
   const { data: spareParts = [], isLoading } = useQuery<SparePartCatalog[]>({
     queryKey: ['/api/spare-parts'],
+  });
+
+  const { data: machines = [] } = useQuery<Machine[]>({
+    queryKey: ['/api/machines'],
   });
 
   const createMutation = useMutation({
@@ -95,6 +103,38 @@ export default function AdminSparePartsManagement() {
     },
   });
 
+  const assignMachineMutation = useMutation({
+    mutationFn: async ({ sparePartId, machineId }: { sparePartId: string; machineId: string }) => {
+      return await apiRequest('POST', '/api/machine-spares', { sparePartId, machineId, urgencyLevel: 'medium' });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/spare-parts'] });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to assign machine to spare part.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const unassignMachineMutation = useMutation({
+    mutationFn: async (machineSpareId: string) => {
+      return await apiRequest('DELETE', `/api/machine-spares/${machineSpareId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/spare-parts'] });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to unassign machine from spare part.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const resetForm = () => {
     setFormData({
       partName: '',
@@ -156,6 +196,52 @@ export default function AdminSparePartsManagement() {
     if (confirm('Are you sure you want to delete this spare part?')) {
       deleteMutation.mutate(id);
     }
+  };
+
+  const handleAssignMachines = async (part: SparePartCatalog) => {
+    setSelectedPartForMachines(part);
+    const response = await fetch(`/api/spare-parts/${part.id}/machines`);
+    if (response.ok) {
+      const machineSpares: MachineSpare[] = await response.json();
+      setSelectedMachineIds(machineSpares.map(ms => ms.machineId));
+    }
+    setIsMachineDialogOpen(true);
+  };
+
+  const handleSaveMachineAssignments = async () => {
+    if (!selectedPartForMachines) return;
+
+    const response = await fetch(`/api/spare-parts/${selectedPartForMachines.id}/machines`);
+    const currentMachineSpares: MachineSpare[] = response.ok ? await response.json() : [];
+    
+    const currentMachineIds = currentMachineSpares.map(ms => ms.machineId);
+    const toAdd = selectedMachineIds.filter(id => !currentMachineIds.includes(id));
+    const toRemove = currentMachineSpares.filter(ms => !selectedMachineIds.includes(ms.machineId));
+
+    for (const machineId of toAdd) {
+      await assignMachineMutation.mutateAsync({ sparePartId: selectedPartForMachines.id, machineId });
+    }
+
+    for (const machineSpare of toRemove) {
+      await unassignMachineMutation.mutateAsync(machineSpare.id);
+    }
+
+    toast({
+      title: "Machines assigned",
+      description: "Machine assignments have been updated successfully.",
+    });
+
+    setIsMachineDialogOpen(false);
+    setSelectedPartForMachines(null);
+    setSelectedMachineIds([]);
+  };
+
+  const toggleMachine = (machineId: string) => {
+    setSelectedMachineIds(prev =>
+      prev.includes(machineId)
+        ? prev.filter(id => id !== machineId)
+        : [...prev, machineId]
+    );
   };
 
   const filteredSpareParts = spareParts.filter(part =>
@@ -232,6 +318,16 @@ export default function AdminSparePartsManagement() {
                     >
                       <Edit className="h-4 w-4 mr-1" />
                       Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => handleAssignMachines(part)}
+                      data-testid={`button-assign-machines-${index}`}
+                    >
+                      <Link2 className="h-4 w-4 mr-1" />
+                      Machines
                     </Button>
                     <Button
                       variant="outline"
@@ -424,6 +520,48 @@ export default function AdminSparePartsManagement() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isMachineDialogOpen} onOpenChange={setIsMachineDialogOpen}>
+        <DialogContent data-testid="dialog-assign-machines">
+          <DialogHeader>
+            <DialogTitle>Assign Machines to Spare Part</DialogTitle>
+            <DialogDescription>
+              Select which machines use this spare part: {selectedPartForMachines?.partName}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-4 max-h-96 overflow-y-auto">
+            {machines.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">No machines available. Add machines first.</p>
+            ) : (
+              machines.map((machine) => (
+                <div key={machine.id} className="flex items-center space-x-2 p-3 rounded-md hover-elevate">
+                  <Checkbox
+                    id={`machine-${machine.id}`}
+                    checked={selectedMachineIds.includes(machine.id)}
+                    onCheckedChange={() => toggleMachine(machine.id)}
+                    data-testid={`checkbox-machine-${machine.id}`}
+                  />
+                  <label
+                    htmlFor={`machine-${machine.id}`}
+                    className="flex-1 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                  >
+                    <div>{machine.name}</div>
+                    <div className="text-xs text-muted-foreground">{machine.type} - {machine.location}</div>
+                  </label>
+                </div>
+              ))
+            )}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsMachineDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveMachineAssignments} data-testid="button-save-machine-assignments">
+              Save Assignments
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
