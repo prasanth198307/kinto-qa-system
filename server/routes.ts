@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -579,6 +579,150 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting maintenance plan:", error);
       res.status(500).json({ message: "Failed to delete maintenance plan" });
+    }
+  });
+
+  // PM Task List Templates API
+  app.get('/api/pm-task-list-templates', isAuthenticated, async (req: any, res) => {
+    try {
+      const templates = await storage.getAllPMTaskListTemplates();
+      res.json(templates);
+    } catch (error) {
+      console.error("Error fetching PM task list templates:", error);
+      res.status(500).json({ message: "Failed to fetch PM task list templates" });
+    }
+  });
+
+  app.post('/api/pm-task-list-templates', isAuthenticated, async (req: any, res) => {
+    try {
+      const { template, tasks } = req.body;
+      const validatedTemplate = insertPMTaskListTemplateSchema.parse(template);
+      const validatedTasks = z.array(insertPMTemplateTaskSchema).parse(tasks);
+      const created = await storage.createPMTaskListTemplate(validatedTemplate, validatedTasks);
+      res.json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error creating PM task list template:", error);
+      res.status(500).json({ message: "Failed to create PM task list template" });
+    }
+  });
+
+  app.get('/api/pm-task-list-templates/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const template = await storage.getPMTaskListTemplate(id);
+      if (!template) {
+        return res.status(404).json({ message: "PM task list template not found" });
+      }
+      res.json(template);
+    } catch (error) {
+      console.error("Error fetching PM task list template:", error);
+      res.status(500).json({ message: "Failed to fetch PM task list template" });
+    }
+  });
+
+  app.get('/api/pm-task-list-templates/:id/tasks', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const tasks = await storage.getPMTemplateTasks(id);
+      res.json(tasks);
+    } catch (error) {
+      console.error("Error fetching PM template tasks:", error);
+      res.status(500).json({ message: "Failed to fetch PM template tasks" });
+    }
+  });
+
+  app.patch('/api/pm-task-list-templates/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertPMTaskListTemplateSchema.partial().parse(req.body);
+      const template = await storage.updatePMTaskListTemplate(id, validatedData);
+      if (!template) {
+        return res.status(404).json({ message: "PM task list template not found" });
+      }
+      res.json(template);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error updating PM task list template:", error);
+      res.status(500).json({ message: "Failed to update PM task list template" });
+    }
+  });
+
+  app.delete('/api/pm-task-list-templates/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deletePMTaskListTemplate(id);
+      res.json({ message: "PM task list template deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting PM task list template:", error);
+      res.status(500).json({ message: "Failed to delete PM task list template" });
+    }
+  });
+
+  // PM Executions API
+  app.get('/api/pm-executions', isAuthenticated, async (req: any, res) => {
+    try {
+      const executions = await storage.getAllPMExecutions();
+      res.json(executions);
+    } catch (error) {
+      console.error("Error fetching PM executions:", error);
+      res.status(500).json({ message: "Failed to fetch PM executions" });
+    }
+  });
+
+  app.post('/api/pm-executions', isAuthenticated, async (req: any, res) => {
+    try {
+      const { execution, tasks } = req.body;
+      const validatedExecution = insertPMExecutionSchema.parse(execution);
+      const validatedTasks = z.array(insertPMExecutionTaskSchema).parse(tasks);
+      const created = await storage.createPMExecution(validatedExecution, validatedTasks);
+      res.json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error creating PM execution:", error);
+      res.status(500).json({ message: "Failed to create PM execution" });
+    }
+  });
+
+  app.get('/api/pm-executions/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const execution = await storage.getPMExecution(id);
+      if (!execution) {
+        return res.status(404).json({ message: "PM execution not found" });
+      }
+      res.json(execution);
+    } catch (error) {
+      console.error("Error fetching PM execution:", error);
+      res.status(500).json({ message: "Failed to fetch PM execution" });
+    }
+  });
+
+  app.get('/api/pm-executions/:id/tasks', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const tasks = await storage.getPMExecutionTasks(id);
+      res.json(tasks);
+    } catch (error) {
+      console.error("Error fetching PM execution tasks:", error);
+      res.status(500).json({ message: "Failed to fetch PM execution tasks" });
+    }
+  });
+
+  app.get('/api/pm-executions/plan/:planId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { planId } = req.params;
+      const executions = await storage.getPMExecutionsByPlan(planId);
+      res.json(executions);
+    } catch (error) {
+      console.error("Error fetching PM executions by plan:", error);
+      res.status(500).json({ message: "Failed to fetch PM executions by plan" });
     }
   });
 

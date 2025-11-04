@@ -8,6 +8,10 @@ import {
   machineSpares,
   purchaseOrders,
   maintenancePlans,
+  pmTaskListTemplates,
+  pmTemplateTasks,
+  pmExecutions,
+  pmExecutionTasks,
   type User,
   type UpsertUser,
   type Machine,
@@ -23,6 +27,14 @@ import {
   type InsertPurchaseOrder,
   type MaintenancePlan,
   type InsertMaintenancePlan,
+  type PMTaskListTemplate,
+  type InsertPMTaskListTemplate,
+  type PMTemplateTask,
+  type InsertPMTemplateTask,
+  type PMExecution,
+  type InsertPMExecution,
+  type PMExecutionTask,
+  type InsertPMExecutionTask,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
@@ -74,6 +86,19 @@ export interface IStorage {
   getMaintenancePlan(id: string): Promise<MaintenancePlan | undefined>;
   updateMaintenancePlan(id: string, plan: Partial<InsertMaintenancePlan>): Promise<MaintenancePlan | undefined>;
   deleteMaintenancePlan(id: string): Promise<void>;
+  
+  createPMTaskListTemplate(template: InsertPMTaskListTemplate, tasks: InsertPMTemplateTask[]): Promise<PMTaskListTemplate>;
+  getAllPMTaskListTemplates(): Promise<PMTaskListTemplate[]>;
+  getPMTaskListTemplate(id: string): Promise<PMTaskListTemplate | undefined>;
+  getPMTemplateTasks(templateId: string): Promise<PMTemplateTask[]>;
+  updatePMTaskListTemplate(id: string, template: Partial<InsertPMTaskListTemplate>): Promise<PMTaskListTemplate | undefined>;
+  deletePMTaskListTemplate(id: string): Promise<void>;
+  
+  createPMExecution(execution: InsertPMExecution, tasks: InsertPMExecutionTask[]): Promise<PMExecution>;
+  getAllPMExecutions(): Promise<PMExecution[]>;
+  getPMExecution(id: string): Promise<PMExecution | undefined>;
+  getPMExecutionTasks(executionId: string): Promise<PMExecutionTask[]>;
+  getPMExecutionsByPlan(planId: string): Promise<PMExecution[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -315,6 +340,80 @@ export class DatabaseStorage implements IStorage {
 
   async deleteMaintenancePlan(id: string): Promise<void> {
     await db.delete(maintenancePlans).where(eq(maintenancePlans.id, id));
+  }
+
+  async createPMTaskListTemplate(template: InsertPMTaskListTemplate, tasks: InsertPMTemplateTask[]): Promise<PMTaskListTemplate> {
+    const [created] = await db.insert(pmTaskListTemplates).values(template).returning();
+    
+    if (tasks.length > 0) {
+      await db.insert(pmTemplateTasks).values(
+        tasks.map(task => ({
+          ...task,
+          templateId: created.id,
+        }))
+      );
+    }
+    
+    return created;
+  }
+
+  async getAllPMTaskListTemplates(): Promise<PMTaskListTemplate[]> {
+    return await db.select().from(pmTaskListTemplates);
+  }
+
+  async getPMTaskListTemplate(id: string): Promise<PMTaskListTemplate | undefined> {
+    const [template] = await db.select().from(pmTaskListTemplates).where(eq(pmTaskListTemplates.id, id));
+    return template;
+  }
+
+  async getPMTemplateTasks(templateId: string): Promise<PMTemplateTask[]> {
+    return await db.select().from(pmTemplateTasks).where(eq(pmTemplateTasks.templateId, templateId));
+  }
+
+  async updatePMTaskListTemplate(id: string, template: Partial<InsertPMTaskListTemplate>): Promise<PMTaskListTemplate | undefined> {
+    const [updated] = await db
+      .update(pmTaskListTemplates)
+      .set({ ...template, updatedAt: new Date() })
+      .where(eq(pmTaskListTemplates.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deletePMTaskListTemplate(id: string): Promise<void> {
+    await db.delete(pmTemplateTasks).where(eq(pmTemplateTasks.templateId, id));
+    await db.delete(pmTaskListTemplates).where(eq(pmTaskListTemplates.id, id));
+  }
+
+  async createPMExecution(execution: InsertPMExecution, tasks: InsertPMExecutionTask[]): Promise<PMExecution> {
+    const [created] = await db.insert(pmExecutions).values(execution).returning();
+    
+    if (tasks.length > 0) {
+      await db.insert(pmExecutionTasks).values(
+        tasks.map(task => ({
+          ...task,
+          executionId: created.id,
+        }))
+      );
+    }
+    
+    return created;
+  }
+
+  async getAllPMExecutions(): Promise<PMExecution[]> {
+    return await db.select().from(pmExecutions);
+  }
+
+  async getPMExecution(id: string): Promise<PMExecution | undefined> {
+    const [execution] = await db.select().from(pmExecutions).where(eq(pmExecutions.id, id));
+    return execution;
+  }
+
+  async getPMExecutionTasks(executionId: string): Promise<PMExecutionTask[]> {
+    return await db.select().from(pmExecutionTasks).where(eq(pmExecutionTasks.executionId, executionId));
+  }
+
+  async getPMExecutionsByPlan(planId: string): Promise<PMExecution[]> {
+    return await db.select().from(pmExecutions).where(eq(pmExecutions.maintenancePlanId, planId));
   }
 }
 

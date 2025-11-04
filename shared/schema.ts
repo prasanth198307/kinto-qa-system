@@ -171,6 +171,49 @@ export const requiredSpares = pgTable("required_spares", {
 
 export type RequiredSpare = typeof requiredSpares.$inferSelect;
 
+// PM Task List Templates (Master templates)
+export const pmTaskListTemplates = pgTable("pm_task_list_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  machineTypeId: varchar("machine_type_id").references(() => machineTypes.id),
+  category: varchar("category", { length: 100 }),
+  isActive: varchar("is_active").default('true'),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertPMTaskListTemplateSchema = createInsertSchema(pmTaskListTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPMTaskListTemplate = z.infer<typeof insertPMTaskListTemplateSchema>;
+export type PMTaskListTemplate = typeof pmTaskListTemplates.$inferSelect;
+
+// PM Template Tasks (Tasks within master templates)
+export const pmTemplateTasks = pgTable("pm_template_tasks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  templateId: varchar("template_id").references(() => pmTaskListTemplates.id).notNull(),
+  taskName: varchar("task_name", { length: 255 }).notNull(),
+  description: text("description"),
+  verificationCriteria: text("verification_criteria"),
+  orderIndex: integer("order_index"),
+  requiresPhoto: varchar("requires_photo").default('false'),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPMTemplateTaskSchema = createInsertSchema(pmTemplateTasks).omit({
+  id: true,
+  templateId: true,
+  createdAt: true,
+});
+
+export type InsertPMTemplateTask = z.infer<typeof insertPMTemplateTaskSchema>;
+export type PMTemplateTask = typeof pmTemplateTasks.$inferSelect;
+
 // Maintenance plans
 export const maintenancePlans = pgTable("maintenance_plans", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -179,6 +222,7 @@ export const maintenancePlans = pgTable("maintenance_plans", {
   planType: varchar("plan_type", { length: 100 }).notNull(),
   frequency: varchar("frequency", { length: 50 }).notNull(),
   nextDueDate: timestamp("next_due_date"),
+  taskListTemplateId: varchar("task_list_template_id").references(() => pmTaskListTemplates.id),
   assignedTo: varchar("assigned_to").references(() => users.id),
   isActive: varchar("is_active").default('true'),
   createdAt: timestamp("created_at").defaultNow(),
@@ -193,6 +237,52 @@ export const insertMaintenancePlanSchema = createInsertSchema(maintenancePlans).
 
 export type InsertMaintenancePlan = z.infer<typeof insertMaintenancePlanSchema>;
 export type MaintenancePlan = typeof maintenancePlans.$inferSelect;
+
+// PM Executions (History of PM task completions)
+export const pmExecutions = pgTable("pm_executions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  maintenancePlanId: varchar("maintenance_plan_id").references(() => maintenancePlans.id).notNull(),
+  machineId: varchar("machine_id").references(() => machines.id).notNull(),
+  taskListTemplateId: varchar("task_list_template_id").references(() => pmTaskListTemplates.id),
+  completedBy: varchar("completed_by").references(() => users.id).notNull(),
+  completedAt: timestamp("completed_at").notNull(),
+  status: varchar("status", { length: 50 }).default('completed'),
+  overallResult: varchar("overall_result", { length: 50 }),
+  remarks: text("remarks"),
+  downtimeHours: integer("downtime_hours"),
+  sparePartsUsed: text("spare_parts_used"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPMExecutionSchema = createInsertSchema(pmExecutions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPMExecution = z.infer<typeof insertPMExecutionSchema>;
+export type PMExecution = typeof pmExecutions.$inferSelect;
+
+// PM Execution Tasks (Individual task results in execution)
+export const pmExecutionTasks = pgTable("pm_execution_tasks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  executionId: varchar("execution_id").references(() => pmExecutions.id).notNull(),
+  taskName: varchar("task_name", { length: 255 }).notNull(),
+  description: text("description"),
+  result: varchar("result", { length: 10 }),
+  remarks: text("remarks"),
+  photoUrl: varchar("photo_url", { length: 500 }),
+  orderIndex: integer("order_index"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPMExecutionTaskSchema = createInsertSchema(pmExecutionTasks).omit({
+  id: true,
+  executionId: true,
+  createdAt: true,
+});
+
+export type InsertPMExecutionTask = z.infer<typeof insertPMExecutionTaskSchema>;
+export type PMExecutionTask = typeof pmExecutionTasks.$inferSelect;
 
 // Maintenance history
 export const maintenanceHistory = pgTable("maintenance_history", {
