@@ -30,7 +30,8 @@ import PMHistoryView from "@/components/PMHistoryView";
 import PMExecutionDialog from "@/components/PMExecutionDialog";
 import InventoryManagement from "@/pages/inventory-management";
 import InventorySummaryDashboard from "@/components/InventorySummaryDashboard";
-import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive } from "lucide-react";
+import RolePermissionsView from "@/components/RolePermissionsView";
+import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -291,6 +292,10 @@ function AdminDashboard() {
                 <Users className="h-4 w-4 mr-1" />
                 Users
               </TabsTrigger>
+              <TabsTrigger value="role-permissions" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-role-permissions">
+                <Shield className="h-4 w-4 mr-1" />
+                Role Permissions
+              </TabsTrigger>
               <TabsTrigger value="machines" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-machines">
                 <Settings className="h-4 w-4 mr-1" />
                 Machines
@@ -339,6 +344,10 @@ function AdminDashboard() {
 
           <TabsContent value="users" className="p-4">
             <AdminUserManagement />
+          </TabsContent>
+
+          <TabsContent value="role-permissions" className="p-4">
+            <RolePermissionsView />
           </TabsContent>
 
           <TabsContent value="machines" className="p-4">
