@@ -175,10 +175,9 @@ export default function SchedulePMDialog({ open, onOpenChange }: SchedulePMDialo
               <Label htmlFor="assignedTo">Assign To (Optional)</Label>
               <Select value={formData.assignedTo} onValueChange={(value) => setFormData({ ...formData, assignedTo: value })}>
                 <SelectTrigger data-testid="select-assigned-to">
-                  <SelectValue placeholder="Select a user" />
+                  <SelectValue placeholder="Select a user (optional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Unassigned</SelectItem>
                   {users.map((user) => (
                     <SelectItem key={user.id} value={user.id}>
                       {user.firstName} {user.lastName} ({user.email})
