@@ -55,11 +55,24 @@ Preferred communication style: Simple, everyday language.
 - Session management with `express-session` and PostgreSQL store
 
 **Authentication & Authorization**
-- **Replit Auth** via OpenID Connect (OIDC) integration
-- Passport.js strategy for authentication flows
-- Role-based access control (RBAC) with roles: admin, operator, reviewer, manager
+- **Email/Password Authentication** with secure password hashing (scrypt algorithm)
+- Passport.js Local Strategy for authentication flows
+- **Dynamic Role-Based Access Control (RBAC)** with roles table supporting:
+  - admin: System Administrator with full access to all features
+  - operator: Machine Operator who can execute checklists and PM tasks
+  - reviewer: Quality Reviewer who can review and approve checklists
+  - manager: Manager who can view reports and approve actions
+- Role permissions are stored and managed in the database
 - Session-based authentication with secure cookies (httpOnly, secure, 7-day TTL)
 - PostgreSQL-backed session store using `connect-pg-simple`
+- Password reset functionality with time-limited reset tokens
+- **No self-registration** - Only admins can create new users
+
+**Default Admin Credentials**
+- Username: `admin`
+- Password: `Admin@123`
+- Email: `admin@kinto.com`
+- Role: Administrator
 
 **Database Layer**
 - **Neon Serverless PostgreSQL** as the database provider

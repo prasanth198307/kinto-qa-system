@@ -47,9 +47,13 @@ const PostgresSessionStore = connectPg(session);
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByResetToken(token: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   upsertUser(user: UpsertUser): Promise<User>;
-  updateUserRole(id: string, role: string): Promise<User | undefined>;
+  updateUserRole(id: string, roleId: string): Promise<User | undefined>;
+  setPasswordResetToken(userId: string, token: string, expiry: Date): Promise<void>;
+  resetPassword(userId: string, hashedPassword: string): Promise<void>;
   getAllUsers(): Promise<User[]>;
   sessionStore: session.Store;
   
@@ -155,10 +159,10 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async updateUserRole(id: string, role: string): Promise<User | undefined> {
+  async updateUserRole(id: string, roleId: string): Promise<User | undefined> {
     const [user] = await db
       .update(users)
-      .set({ role, updatedAt: new Date() })
+      .set({ roleId, updatedAt: new Date() })
       .where(eq(users.id, id))
       .returning();
     return user;
@@ -166,6 +170,35 @@ export class DatabaseStorage implements IStorage {
 
   async getAllUsers(): Promise<User[]> {
     return await db.select().from(users);
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async getUserByResetToken(token: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.resetToken, token));
+    return user;
+  }
+
+  async setPasswordResetToken(userId: string, token: string, expiry: Date): Promise<void> {
+    await db
+      .update(users)
+      .set({ resetToken: token, resetTokenExpiry: expiry, updatedAt: new Date() })
+      .where(eq(users.id, userId));
+  }
+
+  async resetPassword(userId: string, hashedPassword: string): Promise<void> {
+    await db
+      .update(users)
+      .set({ 
+        password: hashedPassword, 
+        resetToken: null, 
+        resetTokenExpiry: null,
+        updatedAt: new Date() 
+      })
+      .where(eq(users.id, userId));
   }
 
   async createMachine(machine: InsertMachine): Promise<Machine> {
