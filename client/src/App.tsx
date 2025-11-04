@@ -175,6 +175,7 @@ function ReviewerDashboard() {
 }
 
 function ManagerDashboard() {
+  const [activeTab, setActiveTab] = useState('overview');
   const mockRecords = [
     { id: '1', machine: 'RFC Machine', date: 'Oct 31, 2025', shift: 'Morning', operator: 'Ramesh Kumar', status: 'in_review' as const },
   ];
@@ -187,16 +188,45 @@ function ManagerDashboard() {
         }
       }} />
       
-      <div className="pt-14 p-4 space-y-4">
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-2">Awaiting Final Approval</h3>
-          <p className="text-3xl font-bold text-primary">{mockRecords.length}</p>
-        </Card>
+      <div className="pt-14">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <div className="border-b bg-card sticky top-14 z-40">
+            <TabsList className="w-full justify-start h-auto p-0 bg-transparent rounded-none">
+              <TabsTrigger value="overview" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-overview">
+                <LayoutDashboard className="h-4 w-4 mr-1" />
+                Overview
+              </TabsTrigger>
+              <TabsTrigger value="inventory" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-inventory">
+                <Archive className="h-4 w-4 mr-1" />
+                Inventory
+              </TabsTrigger>
+              <TabsTrigger value="purchase-orders" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-purchase-orders">
+                <ShoppingCart className="h-4 w-4 mr-1" />
+                Purchase Orders
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
-        <div>
-          <h3 className="text-base font-semibold mb-3">For Your Approval</h3>
-          <ChecklistHistoryTable records={mockRecords} />
-        </div>
+          <TabsContent value="overview" className="p-4 space-y-4">
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold mb-2">Awaiting Final Approval</h3>
+              <p className="text-3xl font-bold text-primary">{mockRecords.length}</p>
+            </Card>
+
+            <div>
+              <h3 className="text-base font-semibold mb-3">For Your Approval</h3>
+              <ChecklistHistoryTable records={mockRecords} />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="inventory">
+            <InventoryManagement />
+          </TabsContent>
+
+          <TabsContent value="purchase-orders" className="p-4">
+            <PurchaseOrderManagement />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
