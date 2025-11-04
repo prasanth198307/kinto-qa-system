@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { Search } from "lucide-react";
+import { Search, Plus } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -15,8 +15,17 @@ import type { User } from "@shared/schema";
 export default function AdminUserManagement() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [selectedRole, setSelectedRole] = useState('');
+  
+  // Create user form state
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserPassword, setNewUserPassword] = useState('');
+  const [newUserFirstName, setNewUserFirstName] = useState('');
+  const [newUserLastName, setNewUserLastName] = useState('');
+  const [newUserRole, setNewUserRole] = useState('operator');
+  
   const { toast } = useToast();
 
   const { data: users = [], isLoading } = useQuery<User[]>({
@@ -45,6 +54,28 @@ export default function AdminUserManagement() {
     },
   });
 
+  const createUserMutation = useMutation({
+    mutationFn: async (userData: { email: string; password: string; firstName: string; lastName: string; role: string }) => {
+      return await apiRequest('POST', '/api/users', userData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/users'] });
+      setIsCreateDialogOpen(false);
+      resetCreateForm();
+      toast({
+        title: "User created",
+        description: "New user has been created successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create user. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleEditRole = (user: User) => {
     setEditingUser(user);
     setSelectedRole(user.role || 'operator');
@@ -55,6 +86,33 @@ export default function AdminUserManagement() {
     if (editingUser) {
       updateRoleMutation.mutate({ userId: editingUser.id, role: selectedRole });
     }
+  };
+
+  const resetCreateForm = () => {
+    setNewUserEmail('');
+    setNewUserPassword('');
+    setNewUserFirstName('');
+    setNewUserLastName('');
+    setNewUserRole('operator');
+  };
+
+  const handleCreateUser = () => {
+    if (!newUserEmail || !newUserPassword) {
+      toast({
+        title: "Validation Error",
+        description: "Email and password are required.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    createUserMutation.mutate({
+      email: newUserEmail,
+      password: newUserPassword,
+      firstName: newUserFirstName,
+      lastName: newUserLastName,
+      role: newUserRole,
+    });
   };
 
   const roleColors = {
@@ -80,9 +138,18 @@ export default function AdminUserManagement() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold" data-testid="text-title">User Management</h2>
-        <p className="text-sm text-muted-foreground">{users.length} total users</p>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-semibold" data-testid="text-title">User Management</h2>
+          <p className="text-sm text-muted-foreground">{users.length} total users</p>
+        </div>
+        <Button 
+          onClick={() => setIsCreateDialogOpen(true)}
+          data-testid="button-create-user"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Create User
+        </Button>
       </div>
 
       <div className="relative">
@@ -135,6 +202,85 @@ export default function AdminUserManagement() {
           ))}
         </div>
       )}
+
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <DialogContent data-testid="dialog-create-user">
+          <DialogHeader>
+            <DialogTitle>Create New User</DialogTitle>
+            <DialogDescription>
+              Add a new user to the system with assigned role
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email *</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="user@example.com"
+                value={newUserEmail}
+                onChange={(e) => setNewUserEmail(e.target.value)}
+                data-testid="input-email"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password *</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="Enter password"
+                value={newUserPassword}
+                onChange={(e) => setNewUserPassword(e.target.value)}
+                data-testid="input-password"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">First Name</Label>
+                <Input
+                  id="firstName"
+                  placeholder="John"
+                  value={newUserFirstName}
+                  onChange={(e) => setNewUserFirstName(e.target.value)}
+                  data-testid="input-first-name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Last Name</Label>
+                <Input
+                  id="lastName"
+                  placeholder="Doe"
+                  value={newUserLastName}
+                  onChange={(e) => setNewUserLastName(e.target.value)}
+                  data-testid="input-last-name"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="newUserRole">Role *</Label>
+              <Select value={newUserRole} onValueChange={setNewUserRole}>
+                <SelectTrigger data-testid="select-new-user-role">
+                  <SelectValue placeholder="Select role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="operator">Operator</SelectItem>
+                  <SelectItem value="reviewer">Reviewer</SelectItem>
+                  <SelectItem value="manager">Manager</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => { setIsCreateDialogOpen(false); resetCreateForm(); }}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateUser} disabled={createUserMutation.isPending} data-testid="button-submit-create">
+              {createUserMutation.isPending ? 'Creating...' : 'Create User'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent data-testid="dialog-edit-user">
