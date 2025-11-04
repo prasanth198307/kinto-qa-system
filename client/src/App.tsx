@@ -20,9 +20,10 @@ import AdminMachineConfig from "@/components/AdminMachineConfig";
 import AdminChecklistBuilder from "@/components/AdminChecklistBuilder";
 import AdminSparePartsManagement from "@/components/AdminSparePartsManagement";
 import AdminMachineTypeConfig from "@/components/AdminMachineTypeConfig";
+import AdminPMTaskListTemplates from "@/components/AdminPMTaskListTemplates";
 import SchedulePMDialog from "@/components/SchedulePMDialog";
 import PurchaseOrderManagement from "@/components/PurchaseOrderManagement";
-import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package, Layers, ShoppingCart } from "lucide-react";
+import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -236,6 +237,10 @@ function AdminDashboard() {
                 <Layers className="h-4 w-4 mr-1" />
                 Machine Types
               </TabsTrigger>
+              <TabsTrigger value="pm-templates" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-pm-templates">
+                <ListChecks className="h-4 w-4 mr-1" />
+                PM Templates
+              </TabsTrigger>
               <TabsTrigger value="maintenance" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-maintenance">
                 <Wrench className="h-4 w-4 mr-1" />
                 Maintenance
@@ -265,6 +270,10 @@ function AdminDashboard() {
 
           <TabsContent value="machine-types" className="p-4">
             <AdminMachineTypeConfig />
+          </TabsContent>
+
+          <TabsContent value="pm-templates" className="p-4">
+            <AdminPMTaskListTemplates />
           </TabsContent>
 
           <TabsContent value="maintenance" className="p-4">

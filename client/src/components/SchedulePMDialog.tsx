@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Machine, User } from "@shared/schema";
+import type { Machine, User, PMTaskListTemplate } from "@shared/schema";
 
 interface SchedulePMDialogProps {
   open: boolean;
@@ -21,7 +21,8 @@ export default function SchedulePMDialog({ open, onOpenChange }: SchedulePMDialo
     planType: '',
     frequency: 'monthly',
     nextDueDate: '',
-    assignedTo: ''
+    assignedTo: '',
+    taskListTemplateId: ''
   });
   const { toast } = useToast();
 
@@ -31,6 +32,10 @@ export default function SchedulePMDialog({ open, onOpenChange }: SchedulePMDialo
 
   const { data: users = [] } = useQuery<User[]>({
     queryKey: ['/api/users'],
+  });
+
+  const { data: pmTemplates = [] } = useQuery<PMTaskListTemplate[]>({
+    queryKey: ['/api/pm-task-list-templates'],
   });
 
   const createPMMutation = useMutation({
@@ -62,7 +67,8 @@ export default function SchedulePMDialog({ open, onOpenChange }: SchedulePMDialo
       planType: '',
       frequency: 'monthly',
       nextDueDate: '',
-      assignedTo: ''
+      assignedTo: '',
+      taskListTemplateId: ''
     });
   };
 
@@ -84,6 +90,7 @@ export default function SchedulePMDialog({ open, onOpenChange }: SchedulePMDialo
       planType: formData.planType.trim(),
       frequency: formData.frequency,
       nextDueDate: new Date(formData.nextDueDate),
+      taskListTemplateId: formData.taskListTemplateId || undefined,
       assignedTo: formData.assignedTo || undefined,
       isActive: 'true'
     };
@@ -116,6 +123,28 @@ export default function SchedulePMDialog({ open, onOpenChange }: SchedulePMDialo
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="taskListTemplate">PM Task List Template (Optional)</Label>
+              <Select value={formData.taskListTemplateId} onValueChange={(value) => setFormData({ ...formData, taskListTemplateId: value })}>
+                <SelectTrigger data-testid="select-task-list-template">
+                  <SelectValue placeholder="Select a task list template (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {pmTemplates.map((template) => (
+                    <SelectItem key={template.id} value={template.id}>
+                      {template.name}
+                      {template.category && ` - ${template.category}`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {pmTemplates.length === 0 && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  No PM task list templates available. Create one in the PM Templates tab.
+                </p>
+              )}
             </div>
 
             <div>
