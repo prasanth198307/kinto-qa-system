@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Download Deployment Guide - KINTO QA</title>
+    <title>KINTO QA - Documentation Downloads</title>
     <style>
         * {
             margin: 0;
@@ -13,180 +13,313 @@
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #1f2937;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
             padding: 20px;
         }
         
         .container {
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            padding: 50px;
-            max-width: 600px;
-            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
             text-align: center;
-        }
-        
-        .icon {
-            width: 80px;
-            height: 80px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 30px;
-            font-size: 40px;
-        }
-        
-        h1 {
-            color: #1a1a1a;
-            margin-bottom: 10px;
-            font-size: 32px;
-        }
-        
-        .subtitle {
-            color: #666;
-            margin-bottom: 40px;
-            font-size: 16px;
-        }
-        
-        .download-btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            border: none;
-            padding: 18px 50px;
-            border-radius: 50px;
-            font-size: 18px;
-            font-weight: 600;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-            transition: transform 0.2s, box-shadow 0.2s;
-            margin-bottom: 30px;
+            margin-bottom: 40px;
+            padding: 40px 20px;
         }
         
-        .download-btn:hover {
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .content {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        .section {
+            margin-bottom: 40px;
+        }
+        
+        .section h2 {
+            color: #667eea;
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        
+        .docs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .doc-card {
+            background: #f9fafb;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 24px;
+            transition: all 0.3s ease;
+        }
+        
+        .doc-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
             transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
         }
         
-        .download-btn:active {
-            transform: translateY(0);
+        .doc-card h3 {
+            color: #1f2937;
+            font-size: 1.3rem;
+            margin-bottom: 10px;
         }
         
-        .file-info {
-            background: #f5f5f5;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 30px;
+        .doc-card p {
+            color: #6b7280;
+            margin-bottom: 16px;
+            font-size: 0.95rem;
         }
         
-        .file-info p {
-            color: #666;
-            margin: 5px 0;
-            font-size: 14px;
+        .doc-card .downloads {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        
+        .btn-pdf {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .btn-pdf:hover {
+            background: #dc2626;
+        }
+        
+        .btn-md {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .btn-md:hover {
+            background: #2563eb;
+        }
+        
+        .btn-sql {
+            background: #10b981;
+            color: white;
+        }
+        
+        .btn-sql:hover {
+            background: #059669;
+        }
+        
+        .info-box {
+            background: #eff6ff;
+            border-left: 4px solid #3b82f6;
+            padding: 16px;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+        
+        .info-box h4 {
+            color: #1e40af;
+            margin-bottom: 8px;
+        }
+        
+        .info-box p {
+            color: #1e3a8a;
+            font-size: 0.9rem;
+        }
+        
+        .info-box ul {
+            margin-top: 12px;
+            margin-left: 20px;
+            color: #1e3a8a;
+        }
+        
+        .info-box li {
+            margin-bottom: 4px;
         }
         
         .credentials {
             background: #fff3cd;
-            border: 2px solid #ffc107;
-            padding: 20px;
-            border-radius: 10px;
-            margin-top: 30px;
-            text-align: left;
+            border-left: 4px solid #ffc107;
+            padding: 16px;
+            border-radius: 4px;
+            margin-top: 20px;
         }
         
-        .credentials h3 {
+        .credentials h4 {
             color: #856404;
-            margin-bottom: 15px;
-            font-size: 18px;
+            margin-bottom: 8px;
         }
         
         .credentials p {
             color: #856404;
-            margin: 8px 0;
+            margin: 4px 0;
             font-family: 'Courier New', monospace;
         }
         
-        .warning {
+        .credentials .warning {
             color: #dc3545;
             font-weight: 600;
-            margin-top: 15px;
-            font-size: 14px;
+            margin-top: 12px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
         
-        .alternative-downloads {
-            margin-top: 30px;
-            padding-top: 30px;
-            border-top: 1px solid #e0e0e0;
+        footer {
+            text-align: center;
+            color: white;
+            margin-top: 40px;
+            padding: 20px;
+            opacity: 0.9;
         }
         
-        .alternative-downloads h3 {
-            color: #666;
-            font-size: 16px;
-            margin-bottom: 15px;
-        }
-        
-        .alt-link {
-            display: block;
-            color: #667eea;
-            text-decoration: none;
-            margin: 10px 0;
-            font-size: 14px;
-        }
-        
-        .alt-link:hover {
-            text-decoration: underline;
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 2rem;
+            }
+            
+            .content {
+                padding: 24px;
+            }
+            
+            .docs-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="icon">📄</div>
-        <h1>KINTO QA Deployment Guide</h1>
-        <p class="subtitle">On-Premise Deployment Documentation</p>
+        <header>
+            <h1>📚 KINTO QA Documentation</h1>
+            <p>Complete deployment guides and technical documentation</p>
+        </header>
         
-        <div class="file-info">
-            <p><strong>📦 File Name:</strong> KINTO_QA_Deployment_Guide.pdf</p>
-            <p><strong>📏 File Size:</strong> 14 KB</p>
-            <p><strong>📅 Version:</strong> 1.0 | November 2025</p>
+        <div class="content">
+            <div class="section">
+                <h2>📖 Complete Documentation Package</h2>
+                <p>Download comprehensive guides for deploying and building KINTO QA Management System</p>
+                
+                <div class="docs-grid">
+                    <div class="doc-card">
+                        <h3>🚀 Deployment Guide</h3>
+                        <p>Step-by-step instructions for on-premise deployment including database setup, server configuration, and security hardening.</p>
+                        <div class="downloads">
+                            <a href="/KINTO_QA_Deployment_Guide.pdf" class="btn btn-pdf" download data-testid="download-deployment-pdf">
+                                📄 PDF
+                            </a>
+                            <a href="/DEPLOYMENT_GUIDE.md" class="btn btn-md" download data-testid="download-deployment-md">
+                                📝 Markdown
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="doc-card">
+                        <h3>🏗️ System Design</h3>
+                        <p>Complete architecture documentation including ERD, API design, security architecture, and technology stack details.</p>
+                        <div class="downloads">
+                            <a href="/KINTO_QA_System_Design.pdf" class="btn btn-pdf" download data-testid="download-design-pdf">
+                                📄 PDF
+                            </a>
+                            <a href="/SYSTEM_DESIGN.md" class="btn btn-md" download data-testid="download-design-md">
+                                📝 Markdown
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="doc-card">
+                        <h3>🤖 Android APK Guide</h3>
+                        <p>Build native Android apps using Capacitor or PWA Builder. Includes signing, testing, and Google Play Store publishing.</p>
+                        <div class="downloads">
+                            <a href="/KINTO_QA_Android_APK_Guide.pdf" class="btn btn-pdf" download data-testid="download-android-pdf">
+                                📄 PDF
+                            </a>
+                            <a href="/MOBILE_APK_BUILD_GUIDE.md" class="btn btn-md" download data-testid="download-android-md">
+                                📝 Markdown
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="doc-card">
+                        <h3>🍎 iOS IPA Guide</h3>
+                        <p>Build native iOS apps with Xcode and Capacitor. Covers code signing, TestFlight, and App Store submission.</p>
+                        <div class="downloads">
+                            <a href="/KINTO_QA_iOS_IPA_Guide.pdf" class="btn btn-pdf" download data-testid="download-ios-pdf">
+                                📄 PDF
+                            </a>
+                            <a href="/MOBILE_IPA_BUILD_GUIDE.md" class="btn btn-md" download data-testid="download-ios-md">
+                                📝 Markdown
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="doc-card">
+                        <h3>🗄️ Database Schema</h3>
+                        <p>Complete PostgreSQL database schema with all tables, indexes, foreign keys, and initial seed data.</p>
+                        <div class="downloads">
+                            <a href="/database_schema.sql" class="btn btn-sql" download data-testid="download-schema-sql">
+                                💾 SQL File
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="section">
+                <div class="credentials">
+                    <h4>🔐 Default Login Credentials</h4>
+                    <p><strong>Username:</strong> admin</p>
+                    <p><strong>Password:</strong> Admin@123</p>
+                    <p><strong>Email:</strong> admin@kinto.com</p>
+                    <p class="warning">⚠️ IMPORTANT: Change this password immediately after first login for security!</p>
+                </div>
+                
+                <div class="info-box">
+                    <h4>📋 What's Included</h4>
+                    <ul>
+                        <li><strong>Deployment Guide:</strong> Server setup, database configuration, PM2/systemd, Nginx reverse proxy, SSL certificates, backup strategies</li>
+                        <li><strong>System Design:</strong> Architecture diagrams, ERD, API documentation, security model, technology stack, performance considerations</li>
+                        <li><strong>Android APK Guide:</strong> Capacitor setup, Android Studio configuration, APK signing, Google Play Store publishing</li>
+                        <li><strong>iOS IPA Guide:</strong> Xcode configuration, code signing, TestFlight beta testing, App Store submission</li>
+                        <li><strong>Database Schema:</strong> Complete SQL script with 25+ tables, indexes, constraints, and seed data</li>
+                    </ul>
+                </div>
+            </div>
         </div>
         
-        <a href="/KINTO_QA_Deployment_Guide.pdf" download="KINTO_QA_Deployment_Guide.pdf" class="download-btn">
-            ⬇️ Download PDF Guide
-        </a>
-        
-        <div class="credentials">
-            <h3>🔐 Default Login Credentials</h3>
-            <p><strong>Username:</strong> admin</p>
-            <p><strong>Password:</strong> Admin@123</p>
-            <p><strong>Email:</strong> admin@kinto.com</p>
-            <p class="warning">⚠️ IMPORTANT: Change password after first login!</p>
-        </div>
-        
-        <div class="alternative-downloads">
-            <h3>Additional Documentation</h3>
-            <a href="/KINTO_QA_Mobile_App_Guide.pdf" download="KINTO_QA_Mobile_App_Guide.pdf" class="alt-link">
-                📱 Mobile App Development Guide (APK & IPA)
-            </a>
-            <a href="/KINTO_QA_Deployment_Guide.docx" download="KINTO_QA_Deployment_Guide.docx" class="alt-link">
-                📝 Deployment Guide - Word Document (.docx)
-            </a>
-        </div>
+        <footer>
+            <p>KINTO QA Management System v1.0</p>
+            <p>© 2025 KINTO. All rights reserved.</p>
+        </footer>
     </div>
-    
-    <script>
-        // Track download
-        document.querySelector('.download-btn').addEventListener('click', function() {
-            setTimeout(function() {
-                alert('Download started! Check your downloads folder.');
-            }, 100);
-        });
-    </script>
 </body>
 </html>
