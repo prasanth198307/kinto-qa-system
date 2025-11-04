@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider, useMutation } from "@tanstack/react-query";
+import { QueryClientProvider, useMutation, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
@@ -23,7 +23,9 @@ import AdminMachineTypeConfig from "@/components/AdminMachineTypeConfig";
 import AdminPMTaskListTemplates from "@/components/AdminPMTaskListTemplates";
 import SchedulePMDialog from "@/components/SchedulePMDialog";
 import PurchaseOrderManagement from "@/components/PurchaseOrderManagement";
-import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks } from "lucide-react";
+import PMHistoryView from "@/components/PMHistoryView";
+import PMExecutionDialog from "@/components/PMExecutionDialog";
+import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -199,11 +201,36 @@ function ManagerDashboard() {
 function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('users');
   const [isPMDialogOpen, setIsPMDialogOpen] = useState(false);
+  const [isExecutionDialogOpen, setIsExecutionDialogOpen] = useState(false);
+  const [selectedPlanForExecution, setSelectedPlanForExecution] = useState<any>(null);
 
-  const mockMaintenanceTasks = [
-    { id: '1', machine: 'RFC Machine', taskType: 'Quarterly Deep Clean', scheduledDate: 'Nov 5, 2025', status: 'upcoming' as const, assignedTo: 'Team A' },
-    { id: '2', machine: 'Air Compressor', taskType: 'Oil Change', scheduledDate: 'Oct 30, 2025', status: 'overdue' as const, assignedTo: 'Rajesh Singh' },
-  ];
+  const { data: maintenancePlans = [] } = useQuery({
+    queryKey: ['/api/maintenance-plans'],
+  });
+
+  const mockMaintenanceTasks = maintenancePlans.length > 0 
+    ? maintenancePlans.map((plan: any) => {
+        const isActive = plan.isActive === true || plan.isActive === 'true';
+        const isOverdue = plan.nextDueDate && new Date(plan.nextDueDate) < new Date();
+        const status = !isActive ? 'completed' : (isOverdue ? 'overdue' : 'upcoming');
+        return {
+          id: plan.id,
+          machine: plan.machineId || 'Unassigned',
+          taskType: plan.planName,
+          scheduledDate: plan.nextDueDate ? new Date(plan.nextDueDate).toLocaleDateString() : 'Not scheduled',
+          status: status as 'upcoming' | 'overdue' | 'completed',
+          assignedTo: plan.assignedTo || 'Unassigned',
+          planData: plan,
+        };
+      })
+    : [];
+
+  const handleCompletePM = (task: any) => {
+    if (task.planData) {
+      setSelectedPlanForExecution(task.planData);
+      setIsExecutionDialogOpen(true);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -245,6 +272,10 @@ function AdminDashboard() {
                 <Wrench className="h-4 w-4 mr-1" />
                 Maintenance
               </TabsTrigger>
+              <TabsTrigger value="pm-history" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-pm-history">
+                <History className="h-4 w-4 mr-1" />
+                PM History
+              </TabsTrigger>
               <TabsTrigger value="purchase-orders" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-purchase-orders">
                 <ShoppingCart className="h-4 w-4 mr-1" />
                 Purchase Orders
@@ -285,8 +316,12 @@ function AdminDashboard() {
                   Schedule PM
                 </Button>
               </div>
-              <MaintenanceSchedule tasks={mockMaintenanceTasks} />
+              <MaintenanceSchedule tasks={mockMaintenanceTasks} onComplete={handleCompletePM} />
             </div>
+          </TabsContent>
+
+          <TabsContent value="pm-history" className="p-4">
+            <PMHistoryView />
           </TabsContent>
 
           <TabsContent value="purchase-orders" className="p-4">
@@ -295,6 +330,11 @@ function AdminDashboard() {
         </Tabs>
         
         <SchedulePMDialog open={isPMDialogOpen} onOpenChange={setIsPMDialogOpen} />
+        <PMExecutionDialog 
+          open={isExecutionDialogOpen} 
+          onOpenChange={setIsExecutionDialogOpen} 
+          plan={selectedPlanForExecution} 
+        />
       </div>
     </div>
   );

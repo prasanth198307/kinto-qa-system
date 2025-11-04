@@ -14,9 +14,10 @@ interface MaintenanceTask {
 
 interface MaintenanceScheduleProps {
   tasks: MaintenanceTask[];
+  onComplete?: (task: MaintenanceTask) => void;
 }
 
-export default function MaintenanceSchedule({ tasks }: MaintenanceScheduleProps) {
+export default function MaintenanceSchedule({ tasks, onComplete }: MaintenanceScheduleProps) {
   const statusColors = {
     upcoming: 'bg-blue-100 text-blue-800',
     overdue: 'bg-red-100 text-red-800',
@@ -52,16 +53,16 @@ export default function MaintenanceSchedule({ tasks }: MaintenanceScheduleProps)
               </Badge>
             </div>
 
-            {task.status !== 'completed' && (
+            {task.status !== 'completed' && onComplete && (
               <Button
                 variant="outline"
                 size="sm"
                 className="w-full"
-                onClick={() => console.log('Complete maintenance', task.id)}
+                onClick={() => onComplete(task)}
                 data-testid={`button-complete-${index}`}
               >
                 <CheckCircle className="h-4 w-4 mr-1" />
-                Mark as Completed
+                Complete PM
               </Button>
             )}
           </div>

@@ -677,7 +677,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/pm-executions', isAuthenticated, async (req: any, res) => {
     try {
       const { execution, tasks } = req.body;
-      const validatedExecution = insertPMExecutionSchema.parse(execution);
+      const userId = req.user.claims.sub;
+      const executionWithUser = {
+        ...execution,
+        completedBy: userId,
+        completedAt: new Date(),
+      };
+      const validatedExecution = insertPMExecutionSchema.parse(executionWithUser);
       const validatedTasks = z.array(insertPMExecutionTaskSchema).parse(tasks);
       const created = await storage.createPMExecution(validatedExecution, validatedTasks);
       res.json(created);
