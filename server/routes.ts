@@ -420,6 +420,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/machines/:machineId/spare-parts', isAuthenticated, async (req: any, res) => {
+    try {
+      const { machineId } = req.params;
+      const spareParts = await storage.getMachineSpareParts(machineId);
+      res.json(spareParts);
+    } catch (error) {
+      console.error("Error fetching machine spare parts:", error);
+      res.status(500).json({ message: "Failed to fetch machine spare parts" });
+    }
+  });
+
   app.delete('/api/machine-spares/:id', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;

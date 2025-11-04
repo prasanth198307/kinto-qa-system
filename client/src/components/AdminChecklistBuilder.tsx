@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Machine } from "@shared/schema";
+import type { Machine, SparePartCatalog } from "@shared/schema";
+import { Badge } from "@/components/ui/badge";
 
 interface ChecklistTask {
   id: string;
@@ -28,6 +29,18 @@ export default function AdminChecklistBuilder() {
 
   const { data: machines = [] } = useQuery<Machine[]>({
     queryKey: ['/api/machines'],
+  });
+
+  const { data: machineSpareParts = [], isLoading: isLoadingSpareParts } = useQuery<SparePartCatalog[]>({
+    queryKey: ['/api/machines', selectedMachine, 'spare-parts'],
+    queryFn: async () => {
+      const response = await fetch(`/api/machines/${selectedMachine}/spare-parts`, {
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Failed to fetch machine spare parts');
+      return response.json();
+    },
+    enabled: selectedMachine !== 'none' && !!selectedMachine,
   });
 
   const saveChecklistMutation = useMutation({
@@ -145,6 +158,26 @@ export default function AdminChecklistBuilder() {
               </SelectContent>
             </Select>
           </div>
+
+          {selectedMachine && selectedMachine !== 'none' && (
+            <div className="mt-4">
+              <Label className="text-sm font-medium mb-2">Relevant Spare Parts</Label>
+              {isLoadingSpareParts ? (
+                <p className="text-sm text-muted-foreground">Loading spare parts...</p>
+              ) : machineSpareParts.length > 0 ? (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {machineSpareParts.map((part) => (
+                    <Badge key={part.id} variant="secondary" className="text-xs" data-testid={`badge-spare-part-${part.id}`}>
+                      {part.partName}
+                      {part.partNumber && ` (${part.partNumber})`}
+                    </Badge>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground mt-2">No spare parts assigned to this machine yet.</p>
+              )}
+            </div>
+          )}
         </Card>
       </div>
 

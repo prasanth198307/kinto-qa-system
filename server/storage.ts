@@ -60,6 +60,7 @@ export interface IStorage {
   createMachineSpare(machineSpare: InsertMachineSpare): Promise<MachineSpare>;
   getMachineSpares(machineId: string): Promise<MachineSpare[]>;
   getSparePartMachines(sparePartId: string): Promise<MachineSpare[]>;
+  getMachineSpareParts(machineId: string): Promise<SparePartCatalog[]>;
   deleteMachineSpare(id: string): Promise<void>;
   
   createPurchaseOrder(purchaseOrder: InsertPurchaseOrder): Promise<PurchaseOrder>;
@@ -237,6 +238,25 @@ export class DatabaseStorage implements IStorage {
 
   async getSparePartMachines(sparePartId: string): Promise<MachineSpare[]> {
     return await db.select().from(machineSpares).where(eq(machineSpares.sparePartId, sparePartId));
+  }
+
+  async getMachineSpareParts(machineId: string): Promise<SparePartCatalog[]> {
+    const result = await db
+      .select({
+        id: sparePartsCatalog.id,
+        partName: sparePartsCatalog.partName,
+        partNumber: sparePartsCatalog.partNumber,
+        category: sparePartsCatalog.category,
+        unitPrice: sparePartsCatalog.unitPrice,
+        reorderThreshold: sparePartsCatalog.reorderThreshold,
+        currentStock: sparePartsCatalog.currentStock,
+        createdAt: sparePartsCatalog.createdAt,
+        updatedAt: sparePartsCatalog.updatedAt,
+      })
+      .from(machineSpares)
+      .innerJoin(sparePartsCatalog, eq(machineSpares.sparePartId, sparePartsCatalog.id))
+      .where(eq(machineSpares.machineId, machineId));
+    return result;
   }
 
   async deleteMachineSpare(id: string): Promise<void> {
