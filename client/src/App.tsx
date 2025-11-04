@@ -21,7 +21,8 @@ import AdminChecklistBuilder from "@/components/AdminChecklistBuilder";
 import AdminSparePartsManagement from "@/components/AdminSparePartsManagement";
 import AdminMachineTypeConfig from "@/components/AdminMachineTypeConfig";
 import SchedulePMDialog from "@/components/SchedulePMDialog";
-import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package, Layers } from "lucide-react";
+import PurchaseOrderManagement from "@/components/PurchaseOrderManagement";
+import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package, Layers, ShoppingCart } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -239,6 +240,10 @@ function AdminDashboard() {
                 <Wrench className="h-4 w-4 mr-1" />
                 Maintenance
               </TabsTrigger>
+              <TabsTrigger value="purchase-orders" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-purchase-orders">
+                <ShoppingCart className="h-4 w-4 mr-1" />
+                Purchase Orders
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -273,6 +278,10 @@ function AdminDashboard() {
               </div>
               <MaintenanceSchedule tasks={mockMaintenanceTasks} />
             </div>
+          </TabsContent>
+
+          <TabsContent value="purchase-orders" className="p-4">
+            <PurchaseOrderManagement />
           </TabsContent>
         </Tabs>
         
