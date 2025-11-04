@@ -31,6 +31,7 @@ import PMExecutionDialog from "@/components/PMExecutionDialog";
 import InventoryManagement from "@/pages/inventory-management";
 import InventorySummaryDashboard from "@/components/InventorySummaryDashboard";
 import RolePermissionsView from "@/components/RolePermissionsView";
+import RoleManagement from "@/components/RoleManagement";
 import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -347,7 +348,7 @@ function AdminDashboard() {
           </TabsContent>
 
           <TabsContent value="role-permissions" className="p-4">
-            <RolePermissionsView />
+            <RoleManagement />
           </TabsContent>
 
           <TabsContent value="machines" className="p-4">
