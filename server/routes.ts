@@ -242,6 +242,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete('/api/users/:id', requireRole('admin'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Audit log
+      console.log(`[AUDIT] Admin ${req.user.id} deleting user ${id}`);
+      
+      await storage.deleteUser(id);
+      res.json({ message: "User deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      res.status(500).json({ message: "Failed to delete user" });
+    }
+  });
+
   // Machines API
   app.get('/api/machines', isAuthenticated, async (req: any, res) => {
     try {
@@ -323,7 +338,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/checklist-templates', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { name, machineId, shiftTypes, tasks } = req.body;
       
       const validatedTemplate = insertChecklistTemplateSchema.partial({ shiftTypes: true, isActive: true }).parse({
@@ -627,7 +642,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/purchase-orders', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const validatedData = insertPurchaseOrderSchema.partial({ requestedBy: true, approvedBy: true }).parse({
         ...req.body,
         requestedBy: userId
@@ -849,7 +864,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/pm-executions', isAuthenticated, async (req: any, res) => {
     try {
       const { execution, tasks } = req.body;
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const executionWithUser = {
         ...execution,
         completedBy: userId,

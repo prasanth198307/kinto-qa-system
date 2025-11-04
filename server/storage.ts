@@ -78,6 +78,7 @@ export interface IStorage {
   setPasswordResetToken(userId: string, token: string, expiry: Date): Promise<void>;
   resetPassword(userId: string, hashedPassword: string): Promise<void>;
   getAllUsers(): Promise<User[]>;
+  deleteUser(id: string): Promise<void>;
   sessionStore: session.Store;
   
   createMachine(machine: InsertMachine): Promise<Machine>;
@@ -277,6 +278,13 @@ export class DatabaseStorage implements IStorage {
 
   async getAllUsers(): Promise<User[]> {
     return await db.select().from(users).where(eq(users.recordStatus, 1));
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    await db
+      .update(users)
+      .set({ recordStatus: 0, updatedAt: new Date() })
+      .where(eq(users.id, id));
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
@@ -489,7 +497,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createPurchaseOrder(purchaseOrder: InsertPurchaseOrder): Promise<PurchaseOrder> {
-    const [created] = await db.insert(purchaseOrders).values(purchaseOrder).returning();
+    // Generate unique PO number based on timestamp
+    const poNumber = `PO-${Date.now()}`;
+    const [created] = await db.insert(purchaseOrders).values({
+      ...purchaseOrder,
+      poNumber
+    }).returning();
     return created;
   }
 

@@ -446,6 +446,7 @@ export const purchaseOrders = pgTable("purchase_orders", {
 
 export const insertPurchaseOrderSchema = createInsertSchema(purchaseOrders).omit({
   id: true,
+  poNumber: true,
   recordStatus: true,
   createdAt: true,
   updatedAt: true,
