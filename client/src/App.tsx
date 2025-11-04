@@ -15,6 +15,7 @@ import ChecklistForm from "@/components/ChecklistForm";
 import MachineCard from "@/components/MachineCard";
 import ChecklistHistoryTable from "@/components/ChecklistHistoryTable";
 import MaintenanceSchedule from "@/components/MaintenanceSchedule";
+import AdminDashboardOverview from "@/components/AdminDashboardOverview";
 import AdminUserManagement from "@/components/AdminUserManagement";
 import AdminMachineConfig from "@/components/AdminMachineConfig";
 import AdminChecklistBuilder from "@/components/AdminChecklistBuilder";
@@ -25,7 +26,7 @@ import SchedulePMDialog from "@/components/SchedulePMDialog";
 import PurchaseOrderManagement from "@/components/PurchaseOrderManagement";
 import PMHistoryView from "@/components/PMHistoryView";
 import PMExecutionDialog from "@/components/PMExecutionDialog";
-import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History } from "lucide-react";
+import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -199,7 +200,7 @@ function ManagerDashboard() {
 }
 
 function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState('users');
+  const [activeTab, setActiveTab] = useState('overview');
   const [isPMDialogOpen, setIsPMDialogOpen] = useState(false);
   const [isExecutionDialogOpen, setIsExecutionDialogOpen] = useState(false);
   const [selectedPlanForExecution, setSelectedPlanForExecution] = useState<any>(null);
@@ -244,6 +245,10 @@ function AdminDashboard() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <div className="border-b bg-card sticky top-14 z-40">
             <TabsList className="w-full justify-start h-auto p-0 bg-transparent rounded-none">
+              <TabsTrigger value="overview" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-overview">
+                <LayoutDashboard className="h-4 w-4 mr-1" />
+                Overview
+              </TabsTrigger>
               <TabsTrigger value="users" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-users">
                 <Users className="h-4 w-4 mr-1" />
                 Users
@@ -282,6 +287,10 @@ function AdminDashboard() {
               </TabsTrigger>
             </TabsList>
           </div>
+
+          <TabsContent value="overview" className="p-4">
+            <AdminDashboardOverview />
+          </TabsContent>
 
           <TabsContent value="users" className="p-4">
             <AdminUserManagement />
