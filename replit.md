@@ -43,7 +43,7 @@ Preferred communication style: Simple, everyday language.
 **Component Architecture**
 - Role-based dashboard components (Admin, Operator, Reviewer, Manager)
 - Reusable UI components: MobileHeader, DashboardStats, MachineCard, ChecklistForm, ChecklistHistoryTable, MaintenanceSchedule
-- Admin components: UserManagement, MachineConfig, ChecklistBuilder, SparePartsManagement
+- Admin components: UserManagement, MachineConfig, ChecklistBuilder, SparePartsManagement, RoleManagement
 - Form validation using react-hook-form with zod resolvers
 
 ### Backend Architecture
@@ -93,7 +93,8 @@ Preferred communication style: Simple, everyday language.
 **Database Schema**
 Core tables include:
 - `sessions` - Session storage for authentication
-- `roles` - Role definitions (admin, manager, operator, reviewer)
+- `roles` - Role definitions (admin, manager, operator, reviewer, custom roles)
+- `role_permissions` - Screen-level permissions for each role (canView, canCreate, canEdit, canDelete)
 - `users` - User profiles with role assignment via foreign key to roles table
 - `machines` - Equipment/machine registry with status and maintenance tracking
 - `checklistTemplates` - Reusable checklist templates linked to machines
@@ -123,6 +124,38 @@ Core tables include:
 - Repository pattern via `IStorage` interface and `DatabaseStorage` implementation
 - Centralized data access layer abstracting Drizzle ORM operations
 - Type-safe CRUD operations using Drizzle schema types
+
+**Role Management System**
+- **Full CRUD for Roles and Permissions**: Administrators can create, read, update, and delete custom roles
+- **Screen-Level Permissions**: Each role can be configured with granular permissions (View, Create, Edit, Delete) for each screen/module in the system
+- **Default Role Protection**: System roles (admin, manager, operator, reviewer) cannot be renamed or deleted to maintain system integrity
+- **Custom Roles**: Administrators can create custom roles (e.g., supervisor, quality_inspector) with tailored permission sets
+- **Batch Permission Updates**: Efficient endpoint for updating multiple permissions at once
+- **Available Screens for Permission Configuration**:
+  - Dashboard, User Management, Role Management, Machines, Machine Types
+  - Checklist Templates, Checklists, Spare Parts, Purchase Orders
+  - Maintenance Plans, PM Task Templates, PM Execution
+  - Inventory Management, Units of Measure, Products, Raw Materials, Finished Goods, Reports
+- **API Endpoints** (all require admin role):
+  - `GET /api/roles` - Fetch all roles
+  - `POST /api/roles` - Create new role
+  - `PATCH /api/roles/:id` - Update role (blocks renaming default roles)
+  - `DELETE /api/roles/:id` - Delete role (blocks deleting default roles)
+  - `GET /api/role-permissions/:roleId` - Fetch permissions for a role
+  - `PUT /api/roles/:roleId/permissions` - Batch update permissions
+- **Security Features**:
+  - All role management routes protected with `requireRole('admin')`
+  - Audit logging for all role creation, modification, and deletion
+  - Backend validation prevents renaming or deleting default roles (403 status)
+  - Frontend UI disables name field for default roles
+  - Unique constraint on role names
+- **UI Features**:
+  - Role cards showing name, description, and default/custom status
+  - Create/Edit dialogs with validation
+  - Permission matrix table for easy visual configuration
+  - Success/error toast notifications
+  - Confirmation dialogs for destructive actions
+  - Comprehensive data-testid attributes for automated testing
 
 ### Build & Deployment
 
