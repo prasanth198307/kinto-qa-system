@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { Search, Plus } from "lucide-react";
+import { Search, Plus, Trash2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -76,6 +76,26 @@ export default function AdminUserManagement() {
     },
   });
 
+  const deleteUserMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest('DELETE', `/api/users/${id}`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/users'] });
+      toast({
+        title: "User deleted",
+        description: "User has been deleted successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to delete user. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleEditRole = (user: User) => {
     setEditingUser(user);
     setSelectedRole(user.role || 'operator');
@@ -113,6 +133,12 @@ export default function AdminUserManagement() {
       lastName: newUserLastName,
       role: newUserRole,
     });
+  };
+
+  const handleDeleteUser = (id: string, userName: string) => {
+    if (confirm(`Are you sure you want to delete user "${userName}"? This action cannot be undone.`)) {
+      deleteUserMutation.mutate(id);
+    }
   };
 
   const roleColors = {
@@ -195,6 +221,14 @@ export default function AdminUserManagement() {
                     data-testid={`button-edit-${index}`}
                   >
                     Change Role
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => handleDeleteUser(user.id, user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email || 'this user')}
+                    data-testid={`button-delete-${index}`}
+                  >
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </div>

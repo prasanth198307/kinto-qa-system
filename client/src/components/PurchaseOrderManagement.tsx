@@ -10,7 +10,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { PurchaseOrder, SparePartCatalog } from "@shared/schema";
-import { Package, AlertTriangle, CheckCircle, Clock, Plus } from "lucide-react";
+import { Package, AlertTriangle, CheckCircle, Clock, Plus, Trash2 } from "lucide-react";
 
 export default function PurchaseOrderManagement() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -44,6 +44,26 @@ export default function PurchaseOrderManagement() {
       toast({
         title: "Error",
         description: "Failed to create purchase order. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deletePOMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest('DELETE', `/api/purchase-orders/${id}`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/purchase-orders'] });
+      toast({
+        title: "Purchase Order Deleted",
+        description: "Purchase order has been deleted successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to delete purchase order. Please try again.",
         variant: "destructive",
       });
     },
@@ -87,6 +107,12 @@ export default function PurchaseOrderManagement() {
     };
 
     createPOMutation.mutate(data);
+  };
+
+  const handleDeletePO = (id: string) => {
+    if (confirm('Are you sure you want to delete this purchase order? This action cannot be undone.')) {
+      deletePOMutation.mutate(id);
+    }
   };
 
   // Get low stock items (below reorder threshold)
@@ -201,6 +227,14 @@ export default function PurchaseOrderManagement() {
                         {po.expectedDeliveryDate && <p>Expected Delivery: {new Date(po.expectedDeliveryDate).toLocaleDateString()}</p>}
                       </div>
                     </div>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleDeletePO(po.id)}
+                      data-testid={`button-delete-po-${po.id}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </Card>
               );
