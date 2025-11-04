@@ -18,7 +18,11 @@ import {
 } from "lucide-react";
 import type { User, Machine, ChecklistTemplate, SparePartCatalog, MaintenancePlan } from "@shared/schema";
 
-export default function AdminDashboardOverview() {
+interface AdminDashboardOverviewProps {
+  onNavigateToTab: (tab: string) => void;
+}
+
+export default function AdminDashboardOverview({ onNavigateToTab }: AdminDashboardOverviewProps) {
   const { data: users = [] } = useQuery<User[]>({
     queryKey: ['/api/users'],
   });
@@ -57,7 +61,7 @@ export default function AdminDashboardOverview() {
       icon: Users,
       color: "text-blue-600",
       bgColor: "bg-blue-100",
-      trend: "+12%"
+      testId: "stat-total-users"
     },
     {
       title: "Active Machines",
@@ -66,7 +70,7 @@ export default function AdminDashboardOverview() {
       icon: Settings,
       color: "text-green-600",
       bgColor: "bg-green-100",
-      trend: "+5%"
+      testId: "stat-active-machines"
     },
     {
       title: "Checklist Templates",
@@ -75,7 +79,7 @@ export default function AdminDashboardOverview() {
       icon: ClipboardCheck,
       color: "text-purple-600",
       bgColor: "bg-purple-100",
-      trend: "+3"
+      testId: "stat-checklist-templates"
     },
     {
       title: "Low Stock Alerts",
@@ -84,7 +88,7 @@ export default function AdminDashboardOverview() {
       icon: AlertTriangle,
       color: "text-orange-600",
       bgColor: "bg-orange-100",
-      trend: lowStockParts > 0 ? "Action needed" : "All good"
+      testId: "stat-low-stock-alerts"
     }
   ];
 
@@ -168,19 +172,15 @@ export default function AdminDashboardOverview() {
                 <div className="flex items-start justify-between">
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-gray-600">{stat.title}</p>
-                    <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
+                    <p className="text-3xl font-bold text-gray-900" data-testid={stat.testId}>
+                      {stat.value}
+                    </p>
                     <p className="text-xs text-gray-500">{stat.subtitle}</p>
                   </div>
                   <div className={`${stat.bgColor} p-3 rounded-lg`}>
                     <Icon className={`h-6 w-6 ${stat.color}`} />
                   </div>
                 </div>
-                {stat.trend && (
-                  <div className="mt-4 flex items-center gap-1">
-                    <TrendingUp className="h-4 w-4 text-green-600" />
-                    <span className="text-sm font-medium text-green-600">{stat.trend}</span>
-                  </div>
-                )}
               </CardContent>
             </Card>
           );
@@ -202,9 +202,10 @@ export default function AdminDashboardOverview() {
             {quickActions.map((action, index) => {
               const Icon = action.icon;
               return (
-                <div
+                <button
                   key={index}
-                  className="flex items-start gap-4 p-4 rounded-lg border border-gray-200 hover:border-primary hover:shadow-sm transition-all cursor-pointer"
+                  onClick={() => onNavigateToTab(action.action)}
+                  className="w-full flex items-start gap-4 p-4 rounded-lg border border-gray-200 hover:border-primary hover:shadow-sm transition-all cursor-pointer text-left"
                   data-testid={`quick-action-${action.action}`}
                 >
                   <div className={`${action.color} mt-1`}>
@@ -215,7 +216,7 @@ export default function AdminDashboardOverview() {
                     <p className="text-sm text-gray-600">{action.description}</p>
                   </div>
                   <ArrowRight className="h-5 w-5 text-gray-400 mt-1" />
-                </div>
+                </button>
               );
             })}
           </CardContent>
@@ -273,7 +274,13 @@ export default function AdminDashboardOverview() {
                   Review inventory and generate purchase orders to avoid stockouts
                 </p>
               </div>
-              <Button variant="outline" size="sm" className="border-orange-300" data-testid="button-view-spare-parts">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="border-orange-300" 
+                onClick={() => onNavigateToTab('spare-parts')}
+                data-testid="button-view-spare-parts"
+              >
                 View Parts
               </Button>
             </div>
@@ -293,21 +300,27 @@ export default function AdminDashboardOverview() {
               <div className="h-2 w-2 rounded-full bg-green-500"></div>
               <div>
                 <p className="text-sm font-medium text-gray-900">Active Machines</p>
-                <p className="text-xs text-gray-500">{activeMachines} operational</p>
+                <p className="text-xs text-gray-500" data-testid="status-active-machines">
+                  {activeMachines} operational
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <div className="h-2 w-2 rounded-full bg-blue-500"></div>
               <div>
                 <p className="text-sm font-medium text-gray-900">PM Schedules</p>
-                <p className="text-xs text-gray-500">{activePMPlans} active plans</p>
+                <p className="text-xs text-gray-500" data-testid="status-pm-schedules">
+                  {activePMPlans} active plans
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <div className="h-2 w-2 rounded-full bg-purple-500"></div>
               <div>
                 <p className="text-sm font-medium text-gray-900">Checklists</p>
-                <p className="text-xs text-gray-500">{checklists.length} templates ready</p>
+                <p className="text-xs text-gray-500" data-testid="status-checklists">
+                  {checklists.length} templates ready
+                </p>
               </div>
             </div>
           </div>

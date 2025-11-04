@@ -289,7 +289,7 @@ function AdminDashboard() {
           </div>
 
           <TabsContent value="overview" className="p-4">
-            <AdminDashboardOverview />
+            <AdminDashboardOverview onNavigateToTab={setActiveTab} />
           </TabsContent>
 
           <TabsContent value="users" className="p-4">
