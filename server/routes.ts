@@ -44,6 +44,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/KINTO_QA_Mobile_App_Guide.pdf', (req, res) => {
+    const filePath = path.join(process.cwd(), 'public', 'KINTO_QA_Mobile_App_Guide.pdf');
+    if (fs.existsSync(filePath)) {
+      res.download(filePath);
+    } else {
+      res.status(404).send('File not found');
+    }
+  });
+
   setupAuth(app);
 
   // Auth routes are handled by setupAuth() in auth.ts
