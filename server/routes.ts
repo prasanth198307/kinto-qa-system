@@ -1,8 +1,8 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth } from "./auth";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema } from "@shared/schema";
+import { setupAuth, hashPassword } from "./auth";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertUserSchema } from "@shared/schema";
 import { z } from "zod";
 import path from "path";
 import fs from "fs";
@@ -158,6 +158,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching users:", error);
       res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.post('/api/users', requireRole('admin'), async (req: any, res) => {
+    try {
+      const { email, password, firstName, lastName, role } = req.body;
+
+      // Validate required fields
+      if (!email || !password) {
+        return res.status(400).json({ message: "Email and password are required" });
+      }
+
+      // Validate role
+      if (!['admin', 'operator', 'reviewer', 'manager'].includes(role)) {
+        return res.status(400).json({ message: "Invalid role" });
+      }
+
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ message: "User with this email already exists" });
+      }
+
+      // Get role ID from database
+      const validRole = await storage.getRoleByName(role);
+      if (!validRole) {
+        return res.status(400).json({ message: "Invalid role" });
+      }
+
+      // Hash password
+      const hashedPassword = await hashPassword(password);
+
+      // Create user with hashed password and role
+      const userData = {
+        email,
+        password: hashedPassword,
+        firstName: firstName || null,
+        lastName: lastName || null,
+        roleId: validRole.id,
+      };
+
+      const user = await storage.createUser(userData);
+
+      // Audit log
+      console.log(`[AUDIT] Admin ${req.user.id} created new user ${user.id} with role ${role}`);
+
+      // Return user without password
+      const { password: _, ...userWithoutPassword } = user;
+      res.status(201).json(userWithoutPassword);
+    } catch (error) {
+      console.error("Error creating user:", error);
+      res.status(500).json({ message: "Failed to create user" });
     }
   });
 
