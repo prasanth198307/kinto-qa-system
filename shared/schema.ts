@@ -28,18 +28,44 @@ export const roles = pgTable("roles", {
   name: varchar("name", { length: 50 }).notNull().unique(),
   description: text("description"),
   permissions: text("permissions").array(),
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Role Permissions table - defines which screens each role can access
+export const rolePermissions = pgTable("role_permissions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  roleId: varchar("role_id").references(() => roles.id).notNull(),
+  screenKey: varchar("screen_key", { length: 100 }).notNull(),
+  canView: integer("can_view").default(0).notNull(),
+  canCreate: integer("can_create").default(0).notNull(),
+  canEdit: integer("can_edit").default(0).notNull(),
+  canDelete: integer("can_delete").default(0).notNull(),
+  recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const insertRoleSchema = createInsertSchema(roles).omit({
   id: true,
+  recordStatus: true,
   createdAt: true,
   updatedAt: true,
 });
 
 export type InsertRole = z.infer<typeof insertRoleSchema>;
 export type Role = typeof roles.$inferSelect;
+
+export const insertRolePermissionSchema = createInsertSchema(rolePermissions).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertRolePermission = z.infer<typeof insertRolePermissionSchema>;
+export type RolePermission = typeof rolePermissions.$inferSelect;
 
 // User storage table - Email/Password authentication
 export const users = pgTable("users", {
@@ -53,6 +79,7 @@ export const users = pgTable("users", {
   roleId: varchar("role_id").references(() => roles.id),
   resetToken: varchar("reset_token", { length: 255 }),
   resetTokenExpiry: timestamp("reset_token_expiry"),
+  recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -63,6 +90,7 @@ export const insertUserSchema = createInsertSchema(users, {
   email: z.string().email("Invalid email address").optional(),
 }).omit({
   id: true,
+  recordStatus: true,
   createdAt: true,
   updatedAt: true,
 });
@@ -81,12 +109,14 @@ export const machines = pgTable("machines", {
   installationDate: timestamp("installation_date"),
   lastMaintenance: timestamp("last_maintenance"),
   nextPmDue: timestamp("next_pm_due"),
+  recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const insertMachineSchema = createInsertSchema(machines).omit({
   id: true,
+  recordStatus: true,
   createdAt: true,
   updatedAt: true,
 });
@@ -102,12 +132,14 @@ export const checklistTemplates = pgTable("checklist_templates", {
   shiftTypes: text("shift_types").array(),
   createdBy: varchar("created_by").references(() => users.id),
   isActive: varchar("is_active").default('true'),
+  recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const insertChecklistTemplateSchema = createInsertSchema(checklistTemplates).omit({
   id: true,
+  recordStatus: true,
   createdAt: true,
   updatedAt: true,
 });
@@ -179,12 +211,14 @@ export const sparePartsCatalog = pgTable("spare_parts_catalog", {
   unitPrice: integer("unit_price"),
   reorderThreshold: integer("reorder_threshold"),
   currentStock: integer("current_stock").default(0),
+  recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const insertSparePartSchema = createInsertSchema(sparePartsCatalog).omit({
   id: true,
+  recordStatus: true,
   createdAt: true,
   updatedAt: true,
 });
@@ -213,6 +247,7 @@ export const pmTaskListTemplates = pgTable("pm_task_list_templates", {
   machineTypeId: varchar("machine_type_id").references(() => machineTypes.id),
   category: varchar("category", { length: 100 }),
   isActive: varchar("is_active").default('true'),
+  recordStatus: integer("record_status").default(1).notNull(),
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -220,6 +255,7 @@ export const pmTaskListTemplates = pgTable("pm_task_list_templates", {
 
 export const insertPMTaskListTemplateSchema = createInsertSchema(pmTaskListTemplates).omit({
   id: true,
+  recordStatus: true,
   createdAt: true,
   updatedAt: true,
 });
@@ -259,12 +295,14 @@ export const maintenancePlans = pgTable("maintenance_plans", {
   taskListTemplateId: varchar("task_list_template_id").references(() => pmTaskListTemplates.id),
   assignedTo: varchar("assigned_to").references(() => users.id),
   isActive: varchar("is_active").default('true'),
+  recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const insertMaintenancePlanSchema = createInsertSchema(maintenancePlans).omit({
   id: true,
+  recordStatus: true,
   createdAt: true,
   updatedAt: true,
 });
@@ -354,12 +392,14 @@ export const machineTypes = pgTable("machine_types", {
   name: varchar("name", { length: 255 }).notNull().unique(),
   description: text("description"),
   isActive: varchar("is_active", { length: 10 }).default('true'),
+  recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const insertMachineTypeSchema = createInsertSchema(machineTypes).omit({
   id: true,
+  recordStatus: true,
   createdAt: true,
   updatedAt: true,
 });
@@ -399,12 +439,14 @@ export const purchaseOrders = pgTable("purchase_orders", {
   expectedDeliveryDate: timestamp("expected_delivery_date"),
   actualDeliveryDate: timestamp("actual_delivery_date"),
   remarks: text("remarks"),
+  recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const insertPurchaseOrderSchema = createInsertSchema(purchaseOrders).omit({
   id: true,
+  recordStatus: true,
   createdAt: true,
   updatedAt: true,
 });
@@ -419,12 +461,14 @@ export const uom = pgTable("uom", {
   name: varchar("name", { length: 100 }).notNull(),
   description: text("description"),
   isActive: varchar("is_active").default('true'),
+  recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const insertUomSchema = createInsertSchema(uom).omit({
   id: true,
+  recordStatus: true,
   createdAt: true,
   updatedAt: true,
 });
@@ -442,6 +486,7 @@ export const products = pgTable("products", {
   uomId: varchar("uom_id").references(() => uom.id),
   standardCost: integer("standard_cost"),
   isActive: varchar("is_active").default('true'),
+  recordStatus: integer("record_status").default(1).notNull(),
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -449,6 +494,7 @@ export const products = pgTable("products", {
 
 export const insertProductSchema = createInsertSchema(products).omit({
   id: true,
+  recordStatus: true,
   createdAt: true,
   updatedAt: true,
 });
@@ -471,6 +517,7 @@ export const rawMaterials = pgTable("raw_materials", {
   location: varchar("location", { length: 255 }),
   supplier: varchar("supplier", { length: 255 }),
   isActive: varchar("is_active").default('true'),
+  recordStatus: integer("record_status").default(1).notNull(),
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -478,6 +525,7 @@ export const rawMaterials = pgTable("raw_materials", {
 
 export const insertRawMaterialSchema = createInsertSchema(rawMaterials).omit({
   id: true,
+  recordStatus: true,
   createdAt: true,
   updatedAt: true,
 });
@@ -520,6 +568,7 @@ export const finishedGoods = pgTable("finished_goods", {
   inspectionDate: timestamp("inspection_date"),
   storageLocation: varchar("storage_location", { length: 255 }),
   remarks: text("remarks"),
+  recordStatus: integer("record_status").default(1).notNull(),
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -527,6 +576,7 @@ export const finishedGoods = pgTable("finished_goods", {
 
 export const insertFinishedGoodSchema = createInsertSchema(finishedGoods).omit({
   id: true,
+  recordStatus: true,
   createdAt: true,
   updatedAt: true,
 });
