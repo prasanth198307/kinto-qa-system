@@ -197,10 +197,6 @@ function ManagerDashboard() {
                 <LayoutDashboard className="h-4 w-4 mr-1" />
                 Overview
               </TabsTrigger>
-              <TabsTrigger value="summary" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-summary">
-                <AlertTriangle className="h-4 w-4 mr-1" />
-                Summary
-              </TabsTrigger>
               <TabsTrigger value="inventory" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-inventory">
                 <Archive className="h-4 w-4 mr-1" />
                 Inventory
@@ -212,19 +208,19 @@ function ManagerDashboard() {
             </TabsList>
           </div>
 
-          <TabsContent value="overview" className="p-4 space-y-4">
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-2">Awaiting Final Approval</h3>
-              <p className="text-3xl font-bold text-primary">{mockRecords.length}</p>
-            </Card>
+          <TabsContent value="overview" className="space-y-4">
+            <div className="p-4 space-y-4">
+              <Card className="p-6">
+                <h3 className="text-lg font-semibold mb-2">Awaiting Final Approval</h3>
+                <p className="text-3xl font-bold text-primary">{mockRecords.length}</p>
+              </Card>
 
-            <div>
-              <h3 className="text-base font-semibold mb-3">For Your Approval</h3>
-              <ChecklistHistoryTable records={mockRecords} />
+              <div>
+                <h3 className="text-base font-semibold mb-3">For Your Approval</h3>
+                <ChecklistHistoryTable records={mockRecords} />
+              </div>
             </div>
-          </TabsContent>
 
-          <TabsContent value="summary">
             <InventorySummaryDashboard />
           </TabsContent>
 
@@ -291,10 +287,6 @@ function AdminDashboard() {
                 <LayoutDashboard className="h-4 w-4 mr-1" />
                 Overview
               </TabsTrigger>
-              <TabsTrigger value="summary" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-summary">
-                <AlertTriangle className="h-4 w-4 mr-1" />
-                Summary
-              </TabsTrigger>
               <TabsTrigger value="users" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-users">
                 <Users className="h-4 w-4 mr-1" />
                 Users
@@ -338,11 +330,10 @@ function AdminDashboard() {
             </TabsList>
           </div>
 
-          <TabsContent value="overview" className="p-4">
-            <AdminDashboardOverview onNavigateToTab={setActiveTab} />
-          </TabsContent>
-
-          <TabsContent value="summary">
+          <TabsContent value="overview">
+            <div className="p-4">
+              <AdminDashboardOverview onNavigateToTab={setActiveTab} />
+            </div>
             <InventorySummaryDashboard />
           </TabsContent>
 
