@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KINTO QA - Deployment Files</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .section {
+            margin-bottom: 40px;
+        }
+        
+        .section h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        
+        .file-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .file-card {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            transition: all 0.3s;
+            background: #f9f9f9;
+        }
+        
+        .file-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+        
+        .file-card h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+        }
+        
+        .file-card p {
+            color: #666;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+        }
+        
+        .file-card .file-type {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            margin-bottom: 10px;
+        }
+        
+        .download-btn {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+        
+        .download-btn:hover {
+            background: #5568d3;
+        }
+        
+        .warning-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .warning-box strong {
+            color: #856404;
+        }
+        
+        .info-box {
+            background: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .footer {
+            background: #f5f5f5;
+            padding: 20px 40px;
+            text-align: center;
+            color: #666;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📦 KINTO QA Deployment Files</h1>
+            <p>Complete documentation and scripts for on-premise deployment</p>
+        </div>
+        
+        <div class="content">
+            <!-- Quick Start -->
+            <div class="section">
+                <h2>🚀 Quick Start</h2>
+                <div class="info-box">
+                    <strong>New Installation?</strong> Follow these steps:
+                    <ol style="margin-top: 10px; margin-left: 20px;">
+                        <li>Download the Complete Deployment Guide</li>
+                        <li>Setup PostgreSQL database using SQL scripts</li>
+                        <li>Configure and deploy the application</li>
+                        <li>Optional: Deploy mobile apps (APK/IPA)</li>
+                    </ol>
+                </div>
+            </div>
+            
+            <!-- Database Scripts -->
+            <div class="section">
+                <h2>💾 Database Scripts</h2>
+                <div class="warning-box">
+                    <strong>⚠️ Important:</strong> Execute SQL scripts in the correct order (01, 02, 03). Backup any existing data before running these scripts!
+                </div>
+                
+                <div class="file-grid">
+                    <div class="file-card">
+                        <span class="file-type">SQL</span>
+                        <h3>01_schema.sql</h3>
+                        <p>Creates all database tables, indexes, and constraints. Run this first on a new database.</p>
+                        <a href="/database_scripts/01_schema.sql" class="download-btn" download>Download SQL</a>
+                    </div>
+                    
+                    <div class="file-card">
+                        <span class="file-type">SQL</span>
+                        <h3>02_seed_data.sql</h3>
+                        <p>Inserts default roles, admin user (admin/Admin@123), and sample master data.</p>
+                        <a href="/database_scripts/02_seed_data.sql" class="download-btn" download>Download SQL</a>
+                    </div>
+                    
+                    <div class="file-card">
+                        <span class="file-type">SQL</span>
+                        <h3>03_indexes.sql</h3>
+                        <p>Creates performance indexes. Optional but highly recommended for production.</p>
+                        <a href="/database_scripts/03_indexes.sql" class="download-btn" download>Download SQL</a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Deployment Guides -->
+            <div class="section">
+                <h2>📖 Deployment Documentation</h2>
+                
+                <div class="file-grid">
+                    <div class="file-card">
+                        <span class="file-type">MARKDOWN</span>
+                        <h3>Complete Deployment Guide</h3>
+                        <p>Comprehensive guide covering database setup, application deployment, security, and maintenance.</p>
+                        <a href="/KINTO_QA_Deployment_Guide_Complete.md" class="download-btn" download>Download Guide</a>
+                    </div>
+                    
+                    <div class="file-card">
+                        <span class="file-type">PDF</span>
+                        <h3>Deployment Guide (PDF)</h3>
+                        <p>PDF version of the deployment guide for easy printing and sharing.</p>
+                        <a href="/KINTO_QA_Deployment_Guide.pdf" class="download-btn" download>Download PDF</a>
+                    </div>
+                    
+                    <div class="file-card">
+                        <span class="file-type">DOCX</span>
+                        <h3>Deployment Guide (Word)</h3>
+                        <p>Editable Word document version of the deployment guide.</p>
+                        <a href="/KINTO_QA_Deployment_Guide.docx" class="download-btn" download>Download DOCX</a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Mobile Deployment -->
+            <div class="section">
+                <h2>📱 Mobile App Deployment</h2>
+                
+                <div class="file-grid">
+                    <div class="file-card">
+                        <span class="file-type">GUIDE</span>
+                        <h3>Android APK Deployment</h3>
+                        <p>Complete guide for deploying KINTO QA as Android app (PWA + Native APK with Capacitor).</p>
+                        <a href="/MOBILE_APK_DEPLOYMENT.md" class="download-btn" download>Download Guide</a>
+                    </div>
+                    
+                    <div class="file-card">
+                        <span class="file-type">GUIDE</span>
+                        <h3>iOS IPA Deployment</h3>
+                        <p>Complete guide for deploying KINTO QA as iOS app (PWA + Native IPA with Capacitor).</p>
+                        <a href="/MOBILE_IPA_DEPLOYMENT.md" class="download-btn" download>Download Guide</a>
+                    </div>
+                    
+                    <div class="file-card">
+                        <span class="file-type">PDF</span>
+                        <h3>Mobile App Quick Guide</h3>
+                        <p>Quick reference for installing and using KINTO QA on mobile devices.</p>
+                        <a href="/KINTO_QA_Mobile_App_Guide.pdf" class="download-btn" download>Download PDF</a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Database Documentation -->
+            <div class="section">
+                <h2>📚 Database Documentation</h2>
+                
+                <div class="file-grid">
+                    <div class="file-card">
+                        <span class="file-type">README</span>
+                        <h3>Database Scripts README</h3>
+                        <p>Installation instructions, troubleshooting, and database configuration guide.</p>
+                        <a href="/database_scripts/README.md" class="download-btn" download>View README</a>
+                    </div>
+                    
+                    <div class="file-card">
+                        <span class="file-type">INDEX</span>
+                        <h3>Database Scripts Index</h3>
+                        <p>Quick reference for all database scripts with execution order and verification commands.</p>
+                        <a href="/database_scripts/DATABASE_SCRIPTS_INDEX.md" class="download-btn" download>View Index</a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Default Credentials -->
+            <div class="section">
+                <h2>🔐 Default Credentials</h2>
+                <div class="warning-box">
+                    <strong>⚠️ Security Warning:</strong> After running the seed data script, the following default credentials are created. 
+                    <strong>You MUST change the password immediately after first login!</strong>
+                    <ul style="margin-top: 10px; margin-left: 20px;">
+                        <li><strong>Username:</strong> admin</li>
+                        <li><strong>Password:</strong> Admin@123</li>
+                        <li><strong>Email:</strong> admin@kinto.com</li>
+                        <li><strong>Role:</strong> Administrator (full access)</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- System Requirements -->
+            <div class="section">
+                <h2>💻 System Requirements</h2>
+                <div class="info-box">
+                    <strong>Minimum Requirements:</strong>
+                    <ul style="margin-top: 10px; margin-left: 20px;">
+                        <li>PostgreSQL 13 or higher</li>
+                        <li>Node.js 18 or higher</li>
+                        <li>2 CPU cores, 4GB RAM</li>
+                        <li>20GB storage (SSD recommended)</li>
+                        <li>Ubuntu 20.04+ / CentOS 8+ / Windows Server 2019+</li>
+                    </ul>
+                    
+                    <strong style="display: block; margin-top: 15px;">Recommended for Production:</strong>
+                    <ul style="margin-top: 10px; margin-left: 20px;">
+                        <li>4+ CPU cores, 8GB+ RAM</li>
+                        <li>50GB+ SSD storage</li>
+                        <li>Nginx reverse proxy</li>
+                        <li>SSL/TLS certificate</li>
+                        <li>Daily automated backups</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Support -->
+            <div class="section">
+                <h2>📞 Support & Contact</h2>
+                <p>For technical support or questions about deployment:</p>
+                <ul style="margin-left: 20px; margin-top: 10px;">
+                    <li>Email: support@your-company.com</li>
+                    <li>Documentation: Review the deployment guides above</li>
+                    <li>Database Issues: Check database_scripts/README.md</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p><strong>KINTO QA Management System</strong> v2.0.0</p>
+            <p>© 2025 Your Company Name. All rights reserved.</p>
+            <p style="margin-top: 10px;">Last Updated: November 2025</p>
+        </div>
+    </div>
+</body>
+</html>
