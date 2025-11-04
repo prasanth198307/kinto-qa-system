@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KINTO QA Management System - User Manual</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 { color: #1a365d; border-bottom: 3px solid #3182ce; padding-bottom: 10px; }
+        h2 { color: #2d3748; margin-top: 40px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; }
+        h3 { color: #4a5568; margin-top: 30px; }
+        img { 
+            max-width: 100%; 
+            height: auto; 
+            border: 1px solid #e2e8f0; 
+            border-radius: 8px; 
+            margin: 20px 0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .screenshot-label {
+            font-weight: 600;
+            color: #2d3748;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        code {
+            background: #f7fafc;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #e53e3e;
+        }
+        ul, ol { padding-left: 30px; }
+        li { margin: 8px 0; }
+        .toc { 
+            background: #f7fafc; 
+            padding: 20px; 
+            border-radius: 6px; 
+            margin: 20px 0;
+        }
+        .toc a {
+            color: #3182ce;
+            text-decoration: none;
+        }
+        .toc a:hover {
+            text-decoration: underline;
+        }
+        strong { color: #2d3748; }
+        hr { border: none; border-top: 1px solid #e2e8f0; margin: 30px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>KINTO Manufacturing QA Management System - User Manual</h1>
+        
+        <div class="toc">
+            <h2>Table of Contents</h2>
+            <ol>
+                <li><a href="#getting-started">Getting Started</a></li>
+                <li><a href="#admin-role">Admin Role</a></li>
+                <li><a href="#operator-role">Operator Role</a></li>
+                <li><a href="#reviewer-role">Reviewer Role</a></li>
+                <li><a href="#manager-role">Manager Role</a></li>
+                <li><a href="#common-features">Common Features</a></li>
+            </ol>
+        </div>
+
+        <hr>
+
+        <h2 id="getting-started">Getting Started</h2>
+        
+        <h3>Accessing the Application</h3>
+        <ol>
+            <li>Navigate to your application URL in a web browser (works on desktop and mobile)</li>
+            <li>Click <strong>"Log in with Replit"</strong> on the landing page</li>
+            <li>After authentication, you'll see the <strong>Role Selector</strong> screen</li>
+            <li>Choose your role: Admin, Operator, Reviewer, or Manager</li>
+        </ol>
+
+        <div class="screenshot-label">Landing Page:</div>
+        <img src="attached_assets/generated_images/KINTO_QA_system_landing_page_6af60112.png" alt="Landing Page">
+
+        <div class="screenshot-label">Role Selector:</div>
+        <img src="attached_assets/generated_images/Role_selection_interface_627a87e2.png" alt="Role Selector">
+
+        <hr>
+
+        <h2 id="admin-role">Admin Role</h2>
+        
+        <p>The Admin role has access to all system features including configuration, user management, and reporting.</p>
+
+        <h3>Dashboard Overview</h3>
+        <p>After selecting "Admin" role, you'll see 8 main tabs:</p>
+        <ul>
+            <li><strong>Dashboard</strong> - Overview statistics</li>
+            <li><strong>Machines</strong> - Machine configuration</li>
+            <li><strong>Checklists</strong> - Quality checklist templates</li>
+            <li><strong>Maintenance</strong> - PM scheduling</li>
+            <li><strong>PM Templates</strong> - Reusable PM task lists</li>
+            <li><strong>PM History</strong> - Completed PM records</li>
+            <li><strong>Spare Parts</strong> - Inventory management</li>
+            <li><strong>Purchase Orders</strong> - PO generation</li>
+        </ul>
+
+        <div class="screenshot-label">Admin Dashboard:</div>
+        <img src="attached_assets/generated_images/Admin_dashboard_overview_d3871574.png" alt="Admin Dashboard">
+
+        <hr>
+
+        <h2 id="operator-role">Operator Role</h2>
+        
+        <p>Operators perform daily quality checks, complete checklists, and execute preventive maintenance.</p>
+
+        <h3>Use Case: Completing a Daily Quality Checklist</h3>
+        <p><strong>Objective:</strong> Perform and document daily machine inspection</p>
+        
+        <p><strong>Steps:</strong></p>
+        <ol>
+            <li>From Operator Dashboard, click on an assigned machine card</li>
+            <li>The active checklist loads with all tasks</li>
+            <li>For each task:
+                <ul>
+                    <li>Read the task name and verification criteria</li>
+                    <li>Perform the inspection</li>
+                    <li>Select <strong>Pass</strong> or <strong>Fail</strong> radio button</li>
+                    <li>If photo required, take photo of the verification point</li>
+                    <li>Add optional notes in the remarks field</li>
+                </ul>
+            </li>
+            <li>Complete all tasks in the checklist</li>
+            <li>Add optional "General Notes" at bottom</li>
+            <li>Click <strong>"Submit Checklist"</strong></li>
+        </ol>
+
+        <div class="screenshot-label">Mobile Checklist Form:</div>
+        <img src="attached_assets/generated_images/Mobile_checklist_form_ca71bc67.png" alt="Mobile Checklist">
+
+        <h3>Use Case: Completing Preventive Maintenance</h3>
+        <p><strong>Objective:</strong> Execute scheduled PM with task list template</p>
+        
+        <p><strong>Steps:</strong></p>
+        <ol>
+            <li>From Operator Dashboard, scroll to "Scheduled Maintenance" section</li>
+            <li>Find the upcoming or overdue PM task</li>
+            <li>Click <strong>"Complete PM"</strong> button</li>
+            <li>PM Execution Dialog opens with template tasks</li>
+            <li>Work through each task:
+                <ul>
+                    <li>Read task description and verification criteria</li>
+                    <li>Perform the maintenance step</li>
+                    <li>Select Pass or Fail status</li>
+                    <li>Upload photo if required</li>
+                    <li>Add notes about the task</li>
+                </ul>
+            </li>
+            <li>Add "General Notes" for overall execution</li>
+            <li>Click <strong>"Complete PM"</strong> button</li>
+        </ol>
+
+        <div class="screenshot-label">PM Execution Dialog:</div>
+        <img src="attached_assets/generated_images/PM_execution_dialog_ecf06071.png" alt="PM Execution">
+
+        <hr>
+
+        <h2 id="admin-pm-history">PM History Review (Admin)</h2>
+        
+        <h3>Use Case: Reviewing PM Execution History</h3>
+        <p><strong>Objective:</strong> Audit completed preventive maintenance records</p>
+        
+        <p><strong>Steps:</strong></p>
+        <ol>
+            <li>Click the <strong>"PM History"</strong> tab</li>
+            <li>Browse completed PM executions (most recent first)</li>
+            <li>Each card shows:
+                <ul>
+                    <li>Machine name</li>
+                    <li>Template used (if any)</li>
+                    <li>Completion date</li>
+                    <li>Executor name</li>
+                    <li>Pass/Fail summary</li>
+                </ul>
+            </li>
+            <li>Click <strong>"View Details"</strong> on any execution</li>
+            <li>Review detailed task results with photos and notes</li>
+            <li>Click "Close" to return to list</li>
+        </ol>
+
+        <div class="screenshot-label">PM History View:</div>
+        <img src="attached_assets/generated_images/PM_history_view_cd8eda31.png" alt="PM History">
+
+        <p><strong>Use for:</strong></p>
+        <ul>
+            <li>Compliance audits</li>
+            <li>Identifying recurring issues</li>
+            <li>Performance tracking</li>
+            <li>Training documentation</li>
+        </ul>
+
+        <hr>
+
+        <h2 id="common-features">Common Features</h2>
+        
+        <h3>Photo Upload (Mobile-Optimized)</h3>
+        <p><strong>Mobile Camera Access:</strong></p>
+        <ol>
+            <li>When photo required, tap file input</li>
+            <li>Mobile devices show option: "Take Photo" or "Choose from Gallery"</li>
+            <li>Select "Take Photo" to open camera</li>
+            <li>Capture clear, well-lit image</li>
+            <li>Photo preview appears immediately</li>
+        </ol>
+
+        <p><strong>Best Practices:</strong></p>
+        <ul>
+            <li>Ensure good lighting</li>
+            <li>Focus on relevant detail</li>
+            <li>Include context (wider shot if helpful)</li>
+            <li>Photos stored as base64 (works offline)</li>
+        </ul>
+
+        <hr>
+
+        <p style="text-align: center; color: #718096; margin-top: 60px;">
+            <strong>System Version:</strong> 1.0.0<br>
+            <strong>Last Updated:</strong> November 2025<br>
+            <strong>Platform:</strong> Web-based (iOS/Android compatible)
+        </p>
+    </div>
+</body>
+</html>
