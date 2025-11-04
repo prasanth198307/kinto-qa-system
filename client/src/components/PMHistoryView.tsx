@@ -277,3 +277,5 @@ export function PMHistoryView() {
     </div>
   );
 }
+
+export default PMHistoryView;
