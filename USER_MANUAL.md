@@ -19,7 +19,13 @@
 3. After authentication, you'll see the **Role Selector** screen
 4. Choose your role: Admin, Operator, Reviewer, or Manager
 
-**Screenshot Reference:** Landing page shows the KINTO branding with login button centered on screen.
+**Landing Page:**
+
+![Landing Page](attached_assets/generated_images/KINTO_QA_system_landing_page_6af60112.png)
+
+**Role Selector:**
+
+![Role Selector](attached_assets/generated_images/Role_selection_interface_627a87e2.png)
 
 ---
 
@@ -38,6 +44,10 @@ After selecting "Admin" role, you'll see 8 main tabs:
 - **PM History** - Completed PM records
 - **Spare Parts** - Inventory management
 - **Purchase Orders** - PO generation
+
+**Admin Dashboard:**
+
+![Admin Dashboard](attached_assets/generated_images/Admin_dashboard_overview_d3871574.png)
 
 ---
 
@@ -219,6 +229,10 @@ After selecting "Admin" role, you'll see 8 main tabs:
 
 **Expected Result:** Complete audit trail of all maintenance activities with photo evidence.
 
+**PM History View:**
+
+![PM History View](attached_assets/generated_images/PM_history_view_cd8eda31.png)
+
 **Use for:** 
 - Compliance audits
 - Identifying recurring issues
@@ -267,6 +281,10 @@ Operator dashboard shows 3 main views:
 - Sent to Reviewer for approval (if reviewer role enabled)
 - Statistics updated on dashboard
 
+**Checklist Form (Mobile View):**
+
+![Mobile Checklist Form](attached_assets/generated_images/Mobile_checklist_form_ca71bc67.png)
+
 **Best Practice:** 
 - Take clear, well-lit photos
 - Note any abnormalities even if task passes
@@ -302,6 +320,10 @@ Operator dashboard shows 3 main views:
 - Appears in PM History tab with all task details
 - Maintenance plan status updated
 - Admin can review with photo evidence
+
+**PM Execution Dialog:**
+
+![PM Execution Dialog](attached_assets/generated_images/PM_execution_dialog_ecf06071.png)
 
 **Important Notes:**
 - All tasks must be completed (pass or fail) before submission
