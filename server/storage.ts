@@ -19,6 +19,8 @@ import {
   rawMaterials,
   rawMaterialTransactions,
   finishedGoods,
+  rawMaterialIssuance,
+  gatepasses,
   type User,
   type UpsertUser,
   type InsertUser,
@@ -53,6 +55,10 @@ import {
   type InsertRawMaterialTransaction,
   type FinishedGood,
   type InsertFinishedGood,
+  type RawMaterialIssuance,
+  type InsertRawMaterialIssuance,
+  type Gatepass,
+  type InsertGatepass,
   type Role,
   type InsertRole,
   type RolePermission,
@@ -169,6 +175,23 @@ export interface IStorage {
   updateFinishedGood(id: string, finishedGood: Partial<InsertFinishedGood>): Promise<FinishedGood | undefined>;
   deleteFinishedGood(id: string): Promise<void>;
   getFinishedGoodsByProduct(productId: string): Promise<FinishedGood[]>;
+  
+  // Raw Material Issuance
+  createRawMaterialIssuance(issuance: InsertRawMaterialIssuance): Promise<RawMaterialIssuance>;
+  getAllRawMaterialIssuances(): Promise<RawMaterialIssuance[]>;
+  getRawMaterialIssuance(id: string): Promise<RawMaterialIssuance | undefined>;
+  updateRawMaterialIssuance(id: string, updates: Partial<InsertRawMaterialIssuance>): Promise<RawMaterialIssuance | undefined>;
+  deleteRawMaterialIssuance(id: string): Promise<void>;
+  getRawMaterialIssuancesByDate(date: Date): Promise<RawMaterialIssuance[]>;
+  
+  // Gatepasses
+  createGatepass(gatepass: InsertGatepass): Promise<Gatepass>;
+  getAllGatepasses(): Promise<Gatepass[]>;
+  getGatepass(id: string): Promise<Gatepass | undefined>;
+  updateGatepass(id: string, updates: Partial<InsertGatepass>): Promise<Gatepass | undefined>;
+  deleteGatepass(id: string): Promise<void>;
+  getGatepassesByDate(date: Date): Promise<Gatepass[]>;
+  getGatepassByNumber(gatepassNumber: string): Promise<Gatepass | undefined>;
   
   // Role Management
   createRole(role: InsertRole): Promise<Role>;
@@ -818,6 +841,79 @@ export class DatabaseStorage implements IStorage {
 
   async getFinishedGoodsByProduct(productId: string): Promise<FinishedGood[]> {
     return await db.select().from(finishedGoods).where(and(eq(finishedGoods.productId, productId), eq(finishedGoods.recordStatus, 1)));
+  }
+
+  // Raw Material Issuance
+  async createRawMaterialIssuance(issuance: InsertRawMaterialIssuance): Promise<RawMaterialIssuance> {
+    const [created] = await db.insert(rawMaterialIssuance).values(issuance).returning();
+    return created;
+  }
+
+  async getAllRawMaterialIssuances(): Promise<RawMaterialIssuance[]> {
+    return await db.select().from(rawMaterialIssuance).where(eq(rawMaterialIssuance.recordStatus, 1));
+  }
+
+  async getRawMaterialIssuance(id: string): Promise<RawMaterialIssuance | undefined> {
+    const [result] = await db.select().from(rawMaterialIssuance).where(and(eq(rawMaterialIssuance.id, id), eq(rawMaterialIssuance.recordStatus, 1)));
+    return result;
+  }
+
+  async updateRawMaterialIssuance(id: string, updates: Partial<InsertRawMaterialIssuance>): Promise<RawMaterialIssuance | undefined> {
+    const [updated] = await db.update(rawMaterialIssuance).set(updates).where(and(eq(rawMaterialIssuance.id, id), eq(rawMaterialIssuance.recordStatus, 1))).returning();
+    return updated;
+  }
+
+  async deleteRawMaterialIssuance(id: string): Promise<void> {
+    await db.update(rawMaterialIssuance).set({ recordStatus: 0 }).where(eq(rawMaterialIssuance.id, id));
+  }
+
+  async getRawMaterialIssuancesByDate(date: Date): Promise<RawMaterialIssuance[]> {
+    const startOfDay = new Date(date.setHours(0, 0, 0, 0));
+    const endOfDay = new Date(date.setHours(23, 59, 59, 999));
+    return await db.select().from(rawMaterialIssuance).where(
+      and(
+        eq(rawMaterialIssuance.recordStatus, 1)
+      )
+    );
+  }
+
+  // Gatepasses
+  async createGatepass(gatepass: InsertGatepass): Promise<Gatepass> {
+    const [created] = await db.insert(gatepasses).values(gatepass).returning();
+    return created;
+  }
+
+  async getAllGatepasses(): Promise<Gatepass[]> {
+    return await db.select().from(gatepasses).where(eq(gatepasses.recordStatus, 1));
+  }
+
+  async getGatepass(id: string): Promise<Gatepass | undefined> {
+    const [result] = await db.select().from(gatepasses).where(and(eq(gatepasses.id, id), eq(gatepasses.recordStatus, 1)));
+    return result;
+  }
+
+  async updateGatepass(id: string, updates: Partial<InsertGatepass>): Promise<Gatepass | undefined> {
+    const [updated] = await db.update(gatepasses).set(updates).where(and(eq(gatepasses.id, id), eq(gatepasses.recordStatus, 1))).returning();
+    return updated;
+  }
+
+  async deleteGatepass(id: string): Promise<void> {
+    await db.update(gatepasses).set({ recordStatus: 0 }).where(eq(gatepasses.id, id));
+  }
+
+  async getGatepassesByDate(date: Date): Promise<Gatepass[]> {
+    const startOfDay = new Date(date.setHours(0, 0, 0, 0));
+    const endOfDay = new Date(date.setHours(23, 59, 59, 999));
+    return await db.select().from(gatepasses).where(
+      and(
+        eq(gatepasses.recordStatus, 1)
+      )
+    );
+  }
+
+  async getGatepassByNumber(gatepassNumber: string): Promise<Gatepass | undefined> {
+    const [result] = await db.select().from(gatepasses).where(and(eq(gatepasses.gatepassNumber, gatepassNumber), eq(gatepasses.recordStatus, 1)));
+    return result;
   }
 
   // Role Management

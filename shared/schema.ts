@@ -603,3 +603,83 @@ export const insertFinishedGoodSchema = createInsertSchema(finishedGoods, {
 
 export type InsertFinishedGood = z.infer<typeof insertFinishedGoodSchema>;
 export type FinishedGood = typeof finishedGoods.$inferSelect;
+
+// Raw Material Issuance for Production
+export const rawMaterialIssuance = pgTable("raw_material_issuance", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  issuanceDate: timestamp("issuance_date").notNull(),
+  materialId: varchar("material_id").references(() => rawMaterials.id).notNull(),
+  quantityIssued: integer("quantity_issued").notNull(),
+  uomId: varchar("uom_id").references(() => uom.id),
+  productId: varchar("product_id").references(() => products.id),
+  batchNumber: varchar("batch_number", { length: 100 }),
+  issuedTo: varchar("issued_to", { length: 255 }),
+  remarks: text("remarks"),
+  recordStatus: integer("record_status").default(1).notNull(),
+  issuedBy: varchar("issued_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertRawMaterialIssuanceSchema = createInsertSchema(rawMaterialIssuance, {
+  issuanceDate: z.union([z.string(), z.date()]).transform(val => {
+    if (!val) return new Date();
+    if (typeof val === 'string') {
+      if (val.trim() === '') return new Date();
+      const date = new Date(val);
+      return isNaN(date.getTime()) ? new Date() : date;
+    }
+    return val;
+  }),
+}).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertRawMaterialIssuance = z.infer<typeof insertRawMaterialIssuanceSchema>;
+export type RawMaterialIssuance = typeof rawMaterialIssuance.$inferSelect;
+
+// Gatepasses for Finished Goods Dispatch
+export const gatepasses = pgTable("gatepasses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  gatepassNumber: varchar("gatepass_number", { length: 100 }).notNull().unique(),
+  gatepassDate: timestamp("gatepass_date").notNull(),
+  finishedGoodId: varchar("finished_good_id").references(() => finishedGoods.id).notNull(),
+  productId: varchar("product_id").references(() => products.id).notNull(),
+  quantityDispatched: integer("quantity_dispatched").notNull(),
+  uomId: varchar("uom_id").references(() => uom.id),
+  vehicleNumber: varchar("vehicle_number", { length: 50 }).notNull(),
+  driverName: varchar("driver_name", { length: 255 }).notNull(),
+  driverContact: varchar("driver_contact", { length: 50 }),
+  transporterName: varchar("transporter_name", { length: 255 }),
+  destination: varchar("destination", { length: 255 }),
+  customerName: varchar("customer_name", { length: 255 }),
+  invoiceNumber: varchar("invoice_number", { length: 100 }),
+  remarks: text("remarks"),
+  recordStatus: integer("record_status").default(1).notNull(),
+  issuedBy: varchar("issued_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertGatepassSchema = createInsertSchema(gatepasses, {
+  gatepassDate: z.union([z.string(), z.date()]).transform(val => {
+    if (!val) return new Date();
+    if (typeof val === 'string') {
+      if (val.trim() === '') return new Date();
+      const date = new Date(val);
+      return isNaN(date.getTime()) ? new Date() : date;
+    }
+    return val;
+  }),
+}).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertGatepass = z.infer<typeof insertGatepassSchema>;
+export type Gatepass = typeof gatepasses.$inferSelect;
