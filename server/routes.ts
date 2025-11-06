@@ -187,11 +187,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid role" });
       }
 
-      // Hash password
-      const hashedPassword = await hashPassword(password);
-
       // Generate username from email (part before @)
       const username = email.split('@')[0];
+
+      // Check if username already exists
+      const existingUsername = await storage.getUserByUsername(username);
+      if (existingUsername) {
+        return res.status(400).json({ 
+          message: `Username '${username}' is already taken. Please use a different email address.` 
+        });
+      }
+
+      // Hash password
+      const hashedPassword = await hashPassword(password);
 
       // Create user with hashed password and role
       const userData = {
