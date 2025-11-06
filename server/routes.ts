@@ -187,14 +187,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid role" });
       }
 
-      // Generate username from email (part before @)
-      const username = email.split('@')[0];
+      // Generate username from email (part before @) with random 2-digit suffix
+      const emailPrefix = email.split('@')[0];
+      const randomDigits = Math.floor(10 + Math.random() * 90); // Generates 10-99
+      const username = `${emailPrefix}${randomDigits}`;
 
-      // Check if username already exists
+      // Check if username already exists (very unlikely with random suffix)
       const existingUsername = await storage.getUserByUsername(username);
       if (existingUsername) {
+        // Extremely rare case - generate new random digits
+        const newRandomDigits = Math.floor(10 + Math.random() * 90);
+        const newUsername = `${emailPrefix}${newRandomDigits}`;
         return res.status(400).json({ 
-          message: `Username '${username}' is already taken. Please use a different email address.` 
+          message: `Username conflict detected. Please try creating the user again. Suggested username: ${newUsername}` 
         });
       }
 
