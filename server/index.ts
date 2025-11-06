@@ -1,6 +1,8 @@
 // --- Environment variables are automatically loaded in Replit ---
 import * as url from "url";
 import * as path from "path";
+import dotenv from "dotenv";
+dotenv.config();
 
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 
