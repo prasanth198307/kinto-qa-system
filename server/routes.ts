@@ -190,8 +190,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Hash password
       const hashedPassword = await hashPassword(password);
 
+      // Generate username from email (part before @)
+      const username = email.split('@')[0];
+
       // Create user with hashed password and role
       const userData = {
+        username,
         email,
         password: hashedPassword,
         firstName: firstName || null,
