@@ -1,19 +1,16 @@
-// --- Load environment variables early and correctly ---
+// --- Environment variables are automatically loaded in Replit ---
 import * as url from "url";
 import * as path from "path";
-import * as dotenv from "dotenv";
 
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
-dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
-console.log("✅ Loaded .env from:", path.resolve(__dirname, "../.env"));
-console.log("✅ DATABASE_URL:", process.env.DATABASE_URL);
+console.log("✅ Environment loaded");
+console.log("✅ DATABASE_URL:", process.env.DATABASE_URL ? "Set" : "Not set");
 
-// --- Dynamically import all other modules after .env is loaded ---
+// --- Dynamically import all other modules ---
 const expressModule = await import("express");
 const { registerRoutes } = await import("./routes");
 const { setupVite, serveStatic, log } = await import("./vite");
-import cors from "cors";                // ✅ ADD THIS
 
 const express = expressModule.default;
 const { Request, Response, NextFunction } = expressModule;
@@ -26,15 +23,7 @@ declare module "http" {
   }
 }
 
-// ✅ CORS middleware to allow cookies between frontend and backend
-app.use(
-  cors({
-    origin: "http://localhost:5173", // Your Vite React app
-    credentials: true,               // Allow sending session cookies
-  })
-);
-
-// ✅ Allow Express to trust proxy headers (needed for session cookies behind Vite)
+// ✅ Allow Express to trust proxy headers (needed for session cookies)
 app.set("trust proxy", 1);
 
 app.use(

@@ -42,6 +42,7 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 type Role = 'admin' | 'operator' | 'reviewer' | 'manager';
 
 function OperatorDashboard() {
+  const { logoutMutation } = useAuth();
   const [activeView, setActiveView] = useState<'dashboard' | 'checklist' | 'history'>('dashboard');
 
   const mockStats = [
@@ -67,7 +68,7 @@ function OperatorDashboard() {
     <div className="min-h-screen bg-background">
       <MobileHeader notificationCount={1} title="Operator Dashboard" onMenuClick={() => {
         if (confirm('Do you want to logout?')) {
-          window.location.href = '/api/logout';
+          logoutMutation.mutate();
         }
       }} />
       
@@ -149,6 +150,7 @@ function OperatorDashboard() {
 }
 
 function ReviewerDashboard() {
+  const { logoutMutation } = useAuth();
   const mockRecords = [
     { id: '1', machine: 'RFC Machine', date: 'Oct 31, 2025', shift: 'Morning', operator: 'Ramesh Kumar', status: 'pending' as const },
     { id: '2', machine: 'PET Blowing Machine', date: 'Oct 31, 2025', shift: 'Afternoon', operator: 'Priya Sharma', status: 'pending' as const },
@@ -158,7 +160,7 @@ function ReviewerDashboard() {
     <div className="min-h-screen bg-background">
       <MobileHeader notificationCount={2} title="Reviewer Dashboard" onMenuClick={() => {
         if (confirm('Do you want to logout?')) {
-          window.location.href = '/api/logout';
+          logoutMutation.mutate();
         }
       }} />
       
@@ -178,6 +180,7 @@ function ReviewerDashboard() {
 }
 
 function ManagerDashboard() {
+  const { logoutMutation } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const mockRecords = [
     { id: '1', machine: 'RFC Machine', date: 'Oct 31, 2025', shift: 'Morning', operator: 'Ramesh Kumar', status: 'in_review' as const },
@@ -187,7 +190,7 @@ function ManagerDashboard() {
     <div className="min-h-screen bg-background">
       <MobileHeader notificationCount={1} title="Manager Dashboard" onMenuClick={() => {
         if (confirm('Do you want to logout?')) {
-          window.location.href = '/api/logout';
+          logoutMutation.mutate();
         }
       }} />
       
@@ -240,6 +243,7 @@ function ManagerDashboard() {
 }
 
 function AdminDashboard() {
+  const { logoutMutation } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const [isPMDialogOpen, setIsPMDialogOpen] = useState(false);
   const [isExecutionDialogOpen, setIsExecutionDialogOpen] = useState(false);
@@ -277,7 +281,7 @@ function AdminDashboard() {
     <div className="min-h-screen bg-background">
       <MobileHeader notificationCount={0} title="Admin Dashboard" onMenuClick={() => {
         if (confirm('Do you want to logout?')) {
-          window.location.href = '/api/logout';
+          logoutMutation.mutate();
         }
       }} />
       
