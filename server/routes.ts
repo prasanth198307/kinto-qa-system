@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertUserSchema } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertGatepassSchema, insertUserSchema } from "@shared/schema";
 import { z } from "zod";
 import path from "path";
 import fs from "fs";
@@ -1289,6 +1289,212 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting finished good:", error);
       res.status(500).json({ message: "Failed to delete finished good" });
+    }
+  });
+
+  // Raw Material Issuance Routes
+  app.get('/api/raw-material-issuances', isAuthenticated, async (req: any, res) => {
+    try {
+      const issuances = await storage.getAllRawMaterialIssuances();
+      res.json(issuances);
+    } catch (error) {
+      console.error("Error fetching raw material issuances:", error);
+      res.status(500).json({ message: "Failed to fetch raw material issuances" });
+    }
+  });
+
+  app.post('/api/raw-material-issuances', requireRole('admin', 'manager', 'operator'), async (req: any, res) => {
+    try {
+      const validatedData = insertRawMaterialIssuanceSchema.parse(req.body);
+      const issuanceData = {
+        ...validatedData,
+        issuedBy: req.user?.id,
+      };
+      
+      // Create issuance record
+      const issuance = await storage.createRawMaterialIssuance(issuanceData);
+      
+      // Deduct from raw material inventory
+      const material = await storage.getRawMaterial(validatedData.materialId);
+      if (material) {
+        const newQuantity = (material.currentStock || 0) - validatedData.quantityIssued;
+        await storage.updateRawMaterial(validatedData.materialId, {
+          currentStock: newQuantity
+        });
+        
+        // Create transaction record for audit trail
+        await storage.createRawMaterialTransaction({
+          materialId: validatedData.materialId,
+          transactionType: 'issue',
+          quantity: -validatedData.quantityIssued,
+          reference: `Issuance ${issuance.id}`,
+          remarks: validatedData.remarks,
+          performedBy: req.user?.id,
+        });
+      }
+      
+      res.json(issuance);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error creating raw material issuance:", error);
+      res.status(500).json({ message: "Failed to create raw material issuance" });
+    }
+  });
+
+  app.get('/api/raw-material-issuances/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const issuance = await storage.getRawMaterialIssuance(id);
+      if (!issuance) {
+        return res.status(404).json({ message: "Raw material issuance not found" });
+      }
+      res.json(issuance);
+    } catch (error) {
+      console.error("Error fetching raw material issuance:", error);
+      res.status(500).json({ message: "Failed to fetch raw material issuance" });
+    }
+  });
+
+  app.patch('/api/raw-material-issuances/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertRawMaterialIssuanceSchema.partial().parse(req.body);
+      const issuance = await storage.updateRawMaterialIssuance(id, validatedData);
+      if (!issuance) {
+        return res.status(404).json({ message: "Raw material issuance not found" });
+      }
+      res.json(issuance);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error updating raw material issuance:", error);
+      res.status(500).json({ message: "Failed to update raw material issuance" });
+    }
+  });
+
+  app.delete('/api/raw-material-issuances/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteRawMaterialIssuance(id);
+      res.json({ message: "Raw material issuance deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting raw material issuance:", error);
+      res.status(500).json({ message: "Failed to delete raw material issuance" });
+    }
+  });
+
+  // Gatepass Routes
+  app.get('/api/gatepasses', isAuthenticated, async (req: any, res) => {
+    try {
+      const gatepasses = await storage.getAllGatepasses();
+      res.json(gatepasses);
+    } catch (error) {
+      console.error("Error fetching gatepasses:", error);
+      res.status(500).json({ message: "Failed to fetch gatepasses" });
+    }
+  });
+
+  app.post('/api/gatepasses', requireRole('admin', 'manager', 'operator'), async (req: any, res) => {
+    try {
+      const validatedData = insertGatepassSchema.parse(req.body);
+      const gatepassData = {
+        ...validatedData,
+        issuedBy: req.user?.id,
+      };
+      
+      // Check if gatepass number is unique
+      const existing = await storage.getGatepassByNumber(validatedData.gatepassNumber);
+      if (existing) {
+        return res.status(400).json({ message: "Gatepass number already exists" });
+      }
+      
+      // Create gatepass
+      const gatepass = await storage.createGatepass(gatepassData);
+      
+      // Deduct from finished goods inventory
+      const finishedGood = await storage.getFinishedGood(validatedData.finishedGoodId);
+      if (finishedGood) {
+        const newQuantity = finishedGood.quantity - validatedData.quantityDispatched;
+        if (newQuantity < 0) {
+          return res.status(400).json({ message: "Insufficient finished goods quantity" });
+        }
+        await storage.updateFinishedGood(validatedData.finishedGoodId, {
+          quantity: newQuantity
+        });
+      }
+      
+      res.json(gatepass);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error creating gatepass:", error);
+      res.status(500).json({ message: "Failed to create gatepass" });
+    }
+  });
+
+  app.get('/api/gatepasses/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const gatepass = await storage.getGatepass(id);
+      if (!gatepass) {
+        return res.status(404).json({ message: "Gatepass not found" });
+      }
+      res.json(gatepass);
+    } catch (error) {
+      console.error("Error fetching gatepass:", error);
+      res.status(500).json({ message: "Failed to fetch gatepass" });
+    }
+  });
+
+  app.patch('/api/gatepasses/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertGatepassSchema.partial().parse(req.body);
+      const gatepass = await storage.updateGatepass(id, validatedData);
+      if (!gatepass) {
+        return res.status(404).json({ message: "Gatepass not found" });
+      }
+      res.json(gatepass);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error updating gatepass:", error);
+      res.status(500).json({ message: "Failed to update gatepass" });
+    }
+  });
+
+  app.delete('/api/gatepasses/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteGatepass(id);
+      res.json({ message: "Gatepass deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting gatepass:", error);
+      res.status(500).json({ message: "Failed to delete gatepass" });
+    }
+  });
+
+  // Dashboard stats for today
+  app.get('/api/stats/today', isAuthenticated, async (req: any, res) => {
+    try {
+      const today = new Date();
+      const rawMaterialIssuances = await storage.getRawMaterialIssuancesByDate(today);
+      const gatepasses = await storage.getGatepassesByDate(today);
+      
+      res.json({
+        rawMaterialIssuancesCount: rawMaterialIssuances.length,
+        gatepassesCount: gatepasses.length,
+        rawMaterialIssuances,
+        gatepasses
+      });
+    } catch (error) {
+      console.error("Error fetching today's stats:", error);
+      res.status(500).json({ message: "Failed to fetch stats" });
     }
   });
 
