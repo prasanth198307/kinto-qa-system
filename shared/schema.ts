@@ -208,6 +208,7 @@ export const sparePartsCatalog = pgTable("spare_parts_catalog", {
   partName: varchar("part_name", { length: 255 }).notNull(),
   partNumber: varchar("part_number", { length: 100 }),
   category: varchar("category", { length: 100 }),
+  machineId: varchar("machine_id").references(() => machines.id),
   unitPrice: integer("unit_price"),
   reorderThreshold: integer("reorder_threshold"),
   currentStock: integer("current_stock").default(0),
@@ -575,7 +576,25 @@ export const finishedGoods = pgTable("finished_goods", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const insertFinishedGoodSchema = createInsertSchema(finishedGoods).omit({
+export const insertFinishedGoodSchema = createInsertSchema(finishedGoods, {
+  productionDate: z.union([z.string(), z.date()]).transform(val => {
+    if (!val) return new Date();
+    if (typeof val === 'string') {
+      if (val.trim() === '') return new Date();
+      const date = new Date(val);
+      return isNaN(date.getTime()) ? new Date() : date;
+    }
+    return val;
+  }),
+  inspectionDate: z.union([z.string(), z.date()]).transform(val => {
+    if (!val || (typeof val === 'string' && val.trim() === '')) return undefined;
+    if (typeof val === 'string') {
+      const date = new Date(val);
+      return isNaN(date.getTime()) ? undefined : date;
+    }
+    return val;
+  }).optional().nullable(),
+}).omit({
   id: true,
   recordStatus: true,
   createdAt: true,

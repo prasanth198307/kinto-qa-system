@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus, Edit, Trash2, Search, Link2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -24,6 +25,7 @@ export default function AdminSparePartsManagement() {
     partName: '',
     partNumber: '',
     category: '',
+    machineId: '',
     unitPrice: '',
     reorderThreshold: '',
     currentStock: ''
@@ -39,7 +41,7 @@ export default function AdminSparePartsManagement() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: { partName: string; partNumber?: string; category?: string; unitPrice?: number; reorderThreshold?: number; currentStock?: number }) => {
+    mutationFn: async (data: { partName: string; partNumber?: string; category?: string; machineId?: string; unitPrice?: number; reorderThreshold?: number; currentStock?: number }) => {
       return await apiRequest('POST', '/api/spare-parts', data);
     },
     onSuccess: () => {
@@ -61,7 +63,7 @@ export default function AdminSparePartsManagement() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<{ partName: string; partNumber?: string; category?: string; unitPrice?: number; reorderThreshold?: number; currentStock?: number }> }) => {
+    mutationFn: async ({ id, data }: { id: string; data: Partial<{ partName: string; partNumber?: string; category?: string; machineId?: string; unitPrice?: number; reorderThreshold?: number; currentStock?: number }> }) => {
       return await apiRequest('PATCH', `/api/spare-parts/${id}`, data);
     },
     onSuccess: () => {
@@ -140,27 +142,41 @@ export default function AdminSparePartsManagement() {
       partName: '',
       partNumber: '',
       category: '',
+      machineId: '',
       unitPrice: '',
       reorderThreshold: '',
       currentStock: ''
     });
   };
 
+  // Reset form when editing specific item
+  useEffect(() => {
+    if (isEditDialogOpen && editingSparePart) {
+      setFormData({
+        partName: editingSparePart.partName,
+        partNumber: editingSparePart.partNumber || '',
+        category: editingSparePart.category || '',
+        machineId: editingSparePart.machineId || '',
+        unitPrice: editingSparePart.unitPrice?.toString() || '',
+        reorderThreshold: editingSparePart.reorderThreshold?.toString() || '',
+        currentStock: editingSparePart.currentStock?.toString() || ''
+      });
+    }
+  }, [editingSparePart]);
+
+  // Reset form when opening add dialog
+  useEffect(() => {
+    if (isAddDialogOpen) {
+      resetForm();
+    }
+  }, [isAddDialogOpen]);
+
   const handleAddClick = () => {
-    resetForm();
     setIsAddDialogOpen(true);
   };
 
   const handleEditClick = (sparePart: SparePartCatalog) => {
     setEditingSparePart(sparePart);
-    setFormData({
-      partName: sparePart.partName,
-      partNumber: sparePart.partNumber || '',
-      category: sparePart.category || '',
-      unitPrice: sparePart.unitPrice?.toString() || '',
-      reorderThreshold: sparePart.reorderThreshold?.toString() || '',
-      currentStock: sparePart.currentStock?.toString() || ''
-    });
     setIsEditDialogOpen(true);
   };
 
@@ -170,6 +186,7 @@ export default function AdminSparePartsManagement() {
       partName: formData.partName.trim(),
       partNumber: formData.partNumber.trim() || undefined,
       category: formData.category.trim() || undefined,
+      machineId: formData.machineId.trim() || undefined,
       unitPrice: formData.unitPrice && formData.unitPrice.trim() ? parseInt(formData.unitPrice.trim(), 10) : undefined,
       reorderThreshold: formData.reorderThreshold && formData.reorderThreshold.trim() ? parseInt(formData.reorderThreshold.trim(), 10) : undefined,
       currentStock: formData.currentStock && formData.currentStock.trim() ? parseInt(formData.currentStock.trim(), 10) : undefined,
@@ -184,6 +201,7 @@ export default function AdminSparePartsManagement() {
         partName: formData.partName.trim(),
         partNumber: formData.partNumber.trim() || undefined,
         category: formData.category.trim() || undefined,
+        machineId: formData.machineId.trim() || undefined,
         unitPrice: formData.unitPrice && formData.unitPrice.trim() ? parseInt(formData.unitPrice.trim(), 10) : undefined,
         reorderThreshold: formData.reorderThreshold && formData.reorderThreshold.trim() ? parseInt(formData.reorderThreshold.trim(), 10) : undefined,
         currentStock: formData.currentStock && formData.currentStock.trim() ? parseInt(formData.currentStock.trim(), 10) : undefined,
@@ -386,6 +404,22 @@ export default function AdminSparePartsManagement() {
                   data-testid="input-category"
                 />
               </div>
+              <div>
+                <Label htmlFor="machineId">Machine (Optional)</Label>
+                <Select value={formData.machineId} onValueChange={(value) => setFormData({ ...formData, machineId: value })}>
+                  <SelectTrigger data-testid="select-machine">
+                    <SelectValue placeholder="Select machine" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">None</SelectItem>
+                    {machines.filter(m => m.status === 'active').map(machine => (
+                      <SelectItem key={machine.id} value={machine.id}>
+                        {machine.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="grid grid-cols-3 gap-2">
                 <div>
                   <Label htmlFor="unitPrice">Unit Price (₹)</Label>
@@ -474,6 +508,22 @@ export default function AdminSparePartsManagement() {
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                   data-testid="input-edit-category"
                 />
+              </div>
+              <div>
+                <Label htmlFor="edit-machineId">Machine (Optional)</Label>
+                <Select value={formData.machineId} onValueChange={(value) => setFormData({ ...formData, machineId: value })}>
+                  <SelectTrigger data-testid="select-edit-machine">
+                    <SelectValue placeholder="Select machine" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">None</SelectItem>
+                    {machines.filter(m => m.status === 'active').map(machine => (
+                      <SelectItem key={machine.id} value={machine.id}>
+                        {machine.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <div>

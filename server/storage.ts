@@ -94,10 +94,10 @@ export interface IStorage {
   getTemplateTasks(templateId: string): Promise<TemplateTask[]>;
   deleteChecklistTemplate(id: string): Promise<void>;
   
-  createSparePart(sparePart: { partName: string; partNumber?: string; category?: string; unitPrice?: number; reorderThreshold?: number; currentStock?: number }): Promise<SparePartCatalog>;
+  createSparePart(sparePart: { partName: string; partNumber?: string; category?: string; machineId?: string; unitPrice?: number; reorderThreshold?: number; currentStock?: number }): Promise<SparePartCatalog>;
   getAllSpareParts(): Promise<SparePartCatalog[]>;
   getSparePart(id: string): Promise<SparePartCatalog | undefined>;
-  updateSparePart(id: string, sparePart: Partial<{ partName: string; partNumber?: string; category?: string; unitPrice?: number; reorderThreshold?: number; currentStock?: number }>): Promise<SparePartCatalog | undefined>;
+  updateSparePart(id: string, sparePart: Partial<{ partName: string; partNumber?: string; category?: string; machineId?: string; unitPrice?: number; reorderThreshold?: number; currentStock?: number }>): Promise<SparePartCatalog | undefined>;
   deleteSparePart(id: string): Promise<void>;
   
   createMachineType(machineType: InsertMachineType): Promise<MachineType>;
@@ -434,7 +434,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(checklistTemplates.id, id));
   }
 
-  async createSparePart(sparePart: { partName: string; partNumber?: string; category?: string; unitPrice?: number; reorderThreshold?: number; currentStock?: number }): Promise<SparePartCatalog> {
+  async createSparePart(sparePart: { partName: string; partNumber?: string; category?: string; machineId?: string; unitPrice?: number; reorderThreshold?: number; currentStock?: number }): Promise<SparePartCatalog> {
     const [created] = await db.insert(sparePartsCatalog).values(sparePart).returning();
     return created;
   }
@@ -448,7 +448,7 @@ export class DatabaseStorage implements IStorage {
     return spare;
   }
 
-  async updateSparePart(id: string, sparePart: Partial<{ partName: string; partNumber?: string; category?: string; unitPrice?: number; reorderThreshold?: number; currentStock?: number }>): Promise<SparePartCatalog | undefined> {
+  async updateSparePart(id: string, sparePart: Partial<{ partName: string; partNumber?: string; category?: string; machineId?: string; unitPrice?: number; reorderThreshold?: number; currentStock?: number }>): Promise<SparePartCatalog | undefined> {
     const [updated] = await db
       .update(sparePartsCatalog)
       .set({ ...sparePart, updatedAt: new Date() })

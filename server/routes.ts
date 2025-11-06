@@ -497,6 +497,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...validatedData,
         partNumber: validatedData.partNumber ?? undefined,
         category: validatedData.category ?? undefined,
+        machineId: validatedData.machineId ?? undefined,
         unitPrice: validatedData.unitPrice ?? undefined,
         reorderThreshold: validatedData.reorderThreshold ?? undefined,
         currentStock: validatedData.currentStock ?? undefined
@@ -534,6 +535,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...validatedData,
         partNumber: validatedData.partNumber ?? undefined,
         category: validatedData.category ?? undefined,
+        machineId: validatedData.machineId ?? undefined,
         unitPrice: validatedData.unitPrice ?? undefined,
         reorderThreshold: validatedData.reorderThreshold ?? undefined,
         currentStock: validatedData.currentStock ?? undefined

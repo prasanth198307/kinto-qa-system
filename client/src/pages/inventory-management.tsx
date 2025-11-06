@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -322,16 +322,36 @@ function UOMDialog({
   const form = useForm<z.infer<typeof insertUomSchema>>({
     resolver: zodResolver(insertUomSchema),
     defaultValues: {
-      code: item?.code || '',
-      name: item?.name || '',
-      description: item?.description || '',
-      isActive: item?.isActive || 'true',
+      code: '',
+      name: '',
+      description: '',
+      isActive: 'true',
     },
   });
 
+  // Reset form when item changes or dialog opens
+  useEffect(() => {
+    if (open) {
+      if (item) {
+        form.reset({
+          code: item.code || '',
+          name: item.name || '',
+          description: item.description || '',
+          isActive: item.isActive || 'true',
+        });
+      } else {
+        form.reset({
+          code: '',
+          name: '',
+          description: '',
+          isActive: 'true',
+        });
+      }
+    }
+  }, [item, open, form]);
+
   const handleSubmit = (data: z.infer<typeof insertUomSchema>) => {
     onSubmit(data);
-    form.reset();
   };
 
   return (
@@ -667,19 +687,45 @@ function ProductDialog({
   const form = useForm<z.infer<typeof insertProductSchema>>({
     resolver: zodResolver(insertProductSchema),
     defaultValues: {
-      productCode: item?.productCode || '',
-      productName: item?.productName || '',
-      description: item?.description || '',
-      category: item?.category || '',
-      uomId: item?.uomId || undefined,
-      standardCost: item?.standardCost || undefined,
-      isActive: item?.isActive || 'true',
+      productCode: '',
+      productName: '',
+      description: '',
+      category: '',
+      uomId: undefined,
+      standardCost: undefined,
+      isActive: 'true',
     },
   });
 
+  // Reset form when item changes or dialog opens
+  useEffect(() => {
+    if (open) {
+      if (item) {
+        form.reset({
+          productCode: item.productCode || '',
+          productName: item.productName || '',
+          description: item.description || '',
+          category: item.category || '',
+          uomId: item.uomId || undefined,
+          standardCost: item.standardCost || undefined,
+          isActive: item.isActive || 'true',
+        });
+      } else {
+        form.reset({
+          productCode: '',
+          productName: '',
+          description: '',
+          category: '',
+          uomId: undefined,
+          standardCost: undefined,
+          isActive: 'true',
+        });
+      }
+    }
+  }, [item, open, form]);
+
   const handleSubmit = (data: z.infer<typeof insertProductSchema>) => {
     onSubmit(data);
-    form.reset();
   };
 
   return (
@@ -1078,24 +1124,60 @@ function RawMaterialDialog({
   const form = useForm<z.infer<typeof insertRawMaterialSchema>>({
     resolver: zodResolver(insertRawMaterialSchema),
     defaultValues: {
-      materialCode: item?.materialCode || '',
-      materialName: item?.materialName || '',
-      description: item?.description || '',
-      category: item?.category || '',
-      uomId: item?.uomId || undefined,
-      currentStock: item?.currentStock || 0,
-      reorderLevel: item?.reorderLevel || undefined,
-      maxStockLevel: item?.maxStockLevel || undefined,
-      unitCost: item?.unitCost || undefined,
-      location: item?.location || '',
-      supplier: item?.supplier || '',
-      isActive: item?.isActive || 'true',
+      materialCode: '',
+      materialName: '',
+      description: '',
+      category: '',
+      uomId: undefined,
+      currentStock: 0,
+      reorderLevel: undefined,
+      maxStockLevel: undefined,
+      unitCost: undefined,
+      location: '',
+      supplier: '',
+      isActive: 'true',
     },
   });
 
+  // Reset form when item changes or dialog opens
+  useEffect(() => {
+    if (open) {
+      if (item) {
+        form.reset({
+          materialCode: item.materialCode || '',
+          materialName: item.materialName || '',
+          description: item.description || '',
+          category: item.category || '',
+          uomId: item.uomId || undefined,
+          currentStock: item.currentStock || 0,
+          reorderLevel: item.reorderLevel || undefined,
+          maxStockLevel: item.maxStockLevel || undefined,
+          unitCost: item.unitCost || undefined,
+          location: item.location || '',
+          supplier: item.supplier || '',
+          isActive: item.isActive || 'true',
+        });
+      } else {
+        form.reset({
+          materialCode: '',
+          materialName: '',
+          description: '',
+          category: '',
+          uomId: undefined,
+          currentStock: 0,
+          reorderLevel: undefined,
+          maxStockLevel: undefined,
+          unitCost: undefined,
+          location: '',
+          supplier: '',
+          isActive: 'true',
+        });
+      }
+    }
+  }, [item, open, form]);
+
   const handleSubmit = (data: z.infer<typeof insertRawMaterialSchema>) => {
     onSubmit(data);
-    form.reset();
   };
 
   return (
@@ -1608,24 +1690,60 @@ function FinishedGoodDialog({
   const form = useForm<z.infer<typeof insertFinishedGoodSchema>>({
     resolver: zodResolver(insertFinishedGoodSchema),
     defaultValues: {
-      productId: item?.productId || '',
-      batchNumber: item?.batchNumber || '',
-      productionDate: item?.productionDate ? new Date(item.productionDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-      quantity: item?.quantity || 0,
-      uomId: item?.uomId || undefined,
-      qualityStatus: item?.qualityStatus || 'pending',
-      machineId: item?.machineId || undefined,
-      operatorId: item?.operatorId || undefined,
-      inspectedBy: item?.inspectedBy || undefined,
-      inspectionDate: item?.inspectionDate ? new Date(item.inspectionDate).toISOString().split('T')[0] : undefined,
-      storageLocation: item?.storageLocation || '',
-      remarks: item?.remarks || '',
+      productId: '',
+      batchNumber: '',
+      productionDate: new Date().toISOString().split('T')[0],
+      quantity: 0,
+      uomId: undefined,
+      qualityStatus: 'pending',
+      machineId: undefined,
+      operatorId: undefined,
+      inspectedBy: undefined,
+      inspectionDate: undefined,
+      storageLocation: '',
+      remarks: '',
     },
   });
 
+  // Reset form when item changes or dialog opens
+  useEffect(() => {
+    if (open) {
+      if (item) {
+        form.reset({
+          productId: item.productId || '',
+          batchNumber: item.batchNumber || '',
+          productionDate: item.productionDate ? new Date(item.productionDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          quantity: item.quantity || 0,
+          uomId: item.uomId || undefined,
+          qualityStatus: item.qualityStatus || 'pending',
+          machineId: item.machineId || undefined,
+          operatorId: item.operatorId || undefined,
+          inspectedBy: item.inspectedBy || undefined,
+          inspectionDate: item.inspectionDate ? new Date(item.inspectionDate).toISOString().split('T')[0] : undefined,
+          storageLocation: item.storageLocation || '',
+          remarks: item.remarks || '',
+        });
+      } else {
+        form.reset({
+          productId: '',
+          batchNumber: '',
+          productionDate: new Date().toISOString().split('T')[0],
+          quantity: 0,
+          uomId: undefined,
+          qualityStatus: 'pending',
+          machineId: undefined,
+          operatorId: undefined,
+          inspectedBy: undefined,
+          inspectionDate: undefined,
+          storageLocation: '',
+          remarks: '',
+        });
+      }
+    }
+  }, [item, open, form]);
+
   const handleSubmit = (data: z.infer<typeof insertFinishedGoodSchema>) => {
     onSubmit(data);
-    form.reset();
   };
 
   return (
