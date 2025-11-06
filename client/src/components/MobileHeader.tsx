@@ -1,15 +1,15 @@
-import { Bell, Menu } from "lucide-react";
+import { Bell, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 interface MobileHeaderProps {
-  onMenuClick?: () => void;
+  onLogoutClick?: () => void;
   notificationCount?: number;
   title?: string;
 }
 
 export default function MobileHeader({ 
-  onMenuClick, 
+  onLogoutClick, 
   notificationCount = 0,
   title = "KINTO QA"
 }: MobileHeaderProps) {
@@ -21,12 +21,13 @@ export default function MobileHeader({
           variant="ghost"
           className="text-gray-700"
           onClick={() => {
-            console.log('Menu clicked');
-            onMenuClick?.();
+            if (confirm('Are you sure you want to logout?')) {
+              onLogoutClick?.();
+            }
           }}
-          data-testid="button-menu"
+          data-testid="button-logout"
         >
-          <Menu className="h-5 w-5" />
+          <LogOut className="h-5 w-5" />
         </Button>
         
         <h1 className="text-base font-semibold text-gray-900" data-testid="text-app-title">{title}</h1>

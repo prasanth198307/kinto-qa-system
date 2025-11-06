@@ -68,10 +68,8 @@ function OperatorDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      <MobileHeader notificationCount={1} title="Operator Dashboard" onMenuClick={() => {
-        if (confirm('Do you want to logout?')) {
-          logoutMutation.mutate();
-        }
+      <MobileHeader notificationCount={1} title="Operator Dashboard" onLogoutClick={() => {
+        logoutMutation.mutate();
       }} />
       
       <div className="pt-14 pb-20">
@@ -172,10 +170,8 @@ function ReviewerDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      <MobileHeader notificationCount={2} title="Reviewer Dashboard" onMenuClick={() => {
-        if (confirm('Do you want to logout?')) {
-          logoutMutation.mutate();
-        }
+      <MobileHeader notificationCount={2} title="Reviewer Dashboard" onLogoutClick={() => {
+        logoutMutation.mutate();
       }} />
       
       <div className="pt-14 p-4 space-y-4">
@@ -202,10 +198,8 @@ function ManagerDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      <MobileHeader notificationCount={1} title="Manager Dashboard" onMenuClick={() => {
-        if (confirm('Do you want to logout?')) {
-          logoutMutation.mutate();
-        }
+      <MobileHeader notificationCount={1} title="Manager Dashboard" onLogoutClick={() => {
+        logoutMutation.mutate();
       }} />
       
       <div className="pt-14">
@@ -303,10 +297,8 @@ function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      <MobileHeader notificationCount={0} title="Admin Dashboard" onMenuClick={() => {
-        if (confirm('Do you want to logout?')) {
-          logoutMutation.mutate();
-        }
+      <MobileHeader notificationCount={0} title="Admin Dashboard" onLogoutClick={() => {
+        logoutMutation.mutate();
       }} />
       
       <div className="pt-14">
