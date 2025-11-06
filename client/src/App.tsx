@@ -204,8 +204,8 @@ function ManagerDashboard() {
       
       <div className="pt-14">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="border-b bg-card sticky top-14 z-40">
-            <TabsList className="w-full justify-start h-auto p-0 bg-transparent rounded-none">
+          <div className="border-b bg-card sticky top-14 z-40 overflow-x-auto">
+            <TabsList className="inline-flex justify-start h-auto p-0 bg-transparent rounded-none min-w-full w-max">
               <TabsTrigger value="overview" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-overview">
                 <LayoutDashboard className="h-4 w-4 mr-1" />
                 Overview
@@ -303,8 +303,8 @@ function AdminDashboard() {
       
       <div className="pt-14">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="border-b bg-card sticky top-14 z-40">
-            <TabsList className="w-full justify-start h-auto p-0 bg-transparent rounded-none">
+          <div className="border-b bg-card sticky top-14 z-40 overflow-x-auto">
+            <TabsList className="inline-flex justify-start h-auto p-0 bg-transparent rounded-none min-w-full w-max">
               <TabsTrigger value="overview" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-overview">
                 <LayoutDashboard className="h-4 w-4 mr-1" />
                 Overview
