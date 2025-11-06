@@ -29,10 +29,12 @@ import PurchaseOrderManagement from "@/components/PurchaseOrderManagement";
 import PMHistoryView from "@/components/PMHistoryView";
 import PMExecutionDialog from "@/components/PMExecutionDialog";
 import InventoryManagement from "@/pages/inventory-management";
+import ProductionManagement from "@/pages/production-management";
 import InventorySummaryDashboard from "@/components/InventorySummaryDashboard";
+import TodayProductionStats from "@/components/TodayProductionStats";
 import RolePermissionsView from "@/components/RolePermissionsView";
 import RoleManagement from "@/components/RoleManagement";
-import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield } from "lucide-react";
+import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -43,7 +45,7 @@ type Role = 'admin' | 'operator' | 'reviewer' | 'manager';
 
 function OperatorDashboard() {
   const { logoutMutation } = useAuth();
-  const [activeView, setActiveView] = useState<'dashboard' | 'checklist' | 'history'>('dashboard');
+  const [activeView, setActiveView] = useState<'dashboard' | 'checklist' | 'history' | 'production'>('dashboard');
 
   const mockStats = [
     { label: 'Pending', value: 3, icon: Clock, color: 'text-yellow-600', bgColor: 'bg-yellow-100' },
@@ -123,6 +125,10 @@ function OperatorDashboard() {
             <ChecklistHistoryTable records={mockRecords} />
           </div>
         )}
+
+        {activeView === 'production' && (
+          <ProductionManagement />
+        )}
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 bg-card border-t">
@@ -142,6 +148,14 @@ function OperatorDashboard() {
           >
             <FileText className="h-5 w-5" />
             <span className="text-xs">History</span>
+          </button>
+          <button
+            className={`flex-1 py-3 flex flex-col items-center gap-1 ${activeView === 'production' ? 'text-primary' : 'text-muted-foreground'}`}
+            onClick={() => setActiveView('production')}
+            data-testid="tab-production"
+          >
+            <Factory className="h-5 w-5" />
+            <span className="text-xs">Production</span>
           </button>
         </div>
       </div>
@@ -210,6 +224,10 @@ function ManagerDashboard() {
                 <ShoppingCart className="h-4 w-4 mr-1" />
                 Purchase Orders
               </TabsTrigger>
+              <TabsTrigger value="production" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-production">
+                <Factory className="h-4 w-4 mr-1" />
+                Production
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -219,6 +237,8 @@ function ManagerDashboard() {
                 <h3 className="text-lg font-semibold mb-2">Awaiting Final Approval</h3>
                 <p className="text-3xl font-bold text-primary">{mockRecords.length}</p>
               </Card>
+
+              <TodayProductionStats />
 
               <div>
                 <h3 className="text-base font-semibold mb-3">For Your Approval</h3>
@@ -235,6 +255,10 @@ function ManagerDashboard() {
 
           <TabsContent value="purchase-orders" className="p-4">
             <PurchaseOrderManagement />
+          </TabsContent>
+
+          <TabsContent value="production">
+            <ProductionManagement />
           </TabsContent>
         </Tabs>
       </div>
@@ -337,12 +361,17 @@ function AdminDashboard() {
                 <Archive className="h-4 w-4 mr-1" />
                 Inventory
               </TabsTrigger>
+              <TabsTrigger value="production" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-production">
+                <Factory className="h-4 w-4 mr-1" />
+                Production
+              </TabsTrigger>
             </TabsList>
           </div>
 
           <TabsContent value="overview">
-            <div className="p-4">
+            <div className="p-4 space-y-6">
               <AdminDashboardOverview onNavigateToTab={setActiveTab} />
+              <TodayProductionStats />
             </div>
             <InventorySummaryDashboard />
           </TabsContent>
@@ -398,6 +427,10 @@ function AdminDashboard() {
 
           <TabsContent value="inventory">
             <InventoryManagement />
+          </TabsContent>
+
+          <TabsContent value="production">
+            <ProductionManagement />
           </TabsContent>
         </Tabs>
         

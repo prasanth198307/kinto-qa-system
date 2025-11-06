@@ -172,8 +172,8 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
         <div>
           <Label htmlFor="uomId">Unit of Measure</Label>
           <Select
-            value={form.watch('uomId') || ''}
-            onValueChange={(value) => form.setValue('uomId', value || undefined)}
+            value={form.watch('uomId') ?? ''}
+            onValueChange={(value) => form.setValue('uomId', value ? value : undefined)}
           >
             <SelectTrigger data-testid="select-uom">
               <SelectValue placeholder="Select UOM" />
@@ -191,8 +191,8 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
         <div>
           <Label htmlFor="productId">Product (To Produce)</Label>
           <Select
-            value={form.watch('productId') || ''}
-            onValueChange={(value) => form.setValue('productId', value || undefined)}
+            value={form.watch('productId') ?? ''}
+            onValueChange={(value) => form.setValue('productId', value ? value : undefined)}
           >
             <SelectTrigger data-testid="select-product">
               <SelectValue placeholder="Select product" />

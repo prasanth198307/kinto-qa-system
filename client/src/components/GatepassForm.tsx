@@ -220,8 +220,8 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
           <div>
             <Label htmlFor="uomId">Unit of Measure</Label>
             <Select
-              value={form.watch('uomId') || ''}
-              onValueChange={(value) => form.setValue('uomId', value || undefined)}
+              value={form.watch('uomId') ?? ''}
+              onValueChange={(value) => form.setValue('uomId', value ? value : undefined)}
             >
               <SelectTrigger data-testid="select-uom">
                 <SelectValue placeholder="Select UOM" />
