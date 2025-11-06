@@ -230,6 +230,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch('/api/users/:id', requireRole('admin'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { firstName, lastName, email, password, role } = req.body;
+
+      const updateData: any = {};
+      
+      if (firstName !== undefined) updateData.firstName = firstName;
+      if (lastName !== undefined) updateData.lastName = lastName;
+      if (email !== undefined) updateData.email = email;
+      
+      // Hash password if provided
+      if (password) {
+        updateData.password = await hashPassword(password);
+      }
+
+      // Update role if provided
+      if (role) {
+        const validRole = await storage.getRoleByName(role);
+        if (!validRole) {
+          return res.status(400).json({ message: "Invalid role" });
+        }
+        await storage.updateUserRole(id, validRole.id);
+      }
+
+      // Update other fields
+      if (Object.keys(updateData).length > 0) {
+        await storage.updateUser(id, updateData);
+      }
+
+      // Audit log
+      console.log(`[AUDIT] Admin ${req.user.id} updated user ${id}`);
+
+      // Fetch updated user
+      const users = await storage.getAllUsers();
+      const updatedUser = users.find(u => u.id === id);
+      
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating user:", error);
+      res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
   app.patch('/api/users/:id/role', requireRole('admin'), async (req: any, res) => {
     try {
       const { id } = req.params;

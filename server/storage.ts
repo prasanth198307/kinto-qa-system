@@ -75,9 +75,10 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   upsertUser(user: UpsertUser): Promise<User>;
   updateUserRole(id: string, roleId: string): Promise<User | undefined>;
+  updateUser(id: string, data: { firstName?: string; lastName?: string; email?: string; password?: string }): Promise<User | undefined>;
   setPasswordResetToken(userId: string, token: string, expiry: Date): Promise<void>;
   resetPassword(userId: string, hashedPassword: string): Promise<void>;
-  getAllUsers(): Promise<User[]>;
+  getAllUsers(): Promise<any[]>;
   deleteUser(id: string): Promise<void>;
   sessionStore: session.Store;
   
@@ -276,8 +277,41 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async getAllUsers(): Promise<User[]> {
-    return await db.select().from(users).where(eq(users.recordStatus, 1));
+  async updateUser(id: string, data: { firstName?: string; lastName?: string; email?: string; password?: string }): Promise<User | undefined> {
+    const updateData: any = {
+      ...data,
+      updatedAt: new Date()
+    };
+    const [user] = await db
+      .update(users)
+      .set(updateData)
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
+  async getAllUsers(): Promise<any[]> {
+    const results = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+        roleId: users.roleId,
+        roleName: roles.name,
+        recordStatus: users.recordStatus,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+      })
+      .from(users)
+      .leftJoin(roles, eq(users.roleId, roles.id))
+      .where(eq(users.recordStatus, 1));
+    return results.map(r => ({
+      ...r,
+      role: r.roleName || 'operator'
+    }));
   }
 
   async deleteUser(id: string): Promise<void> {

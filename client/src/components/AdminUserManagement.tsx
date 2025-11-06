@@ -4,20 +4,36 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { Search, Plus, Trash2 } from "lucide-react";
+import { Search, Plus, Trash2, Edit } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { User } from "@shared/schema";
+
+interface UserWithRole {
+  id: string;
+  username: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  role: string;
+  roleId: string;
+  roleName: string;
+}
 
 export default function AdminUserManagement() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [selectedRole, setSelectedRole] = useState('');
+  const [editingUser, setEditingUser] = useState<UserWithRole | null>(null);
+  
+  // Edit user form state
+  const [editFirstName, setEditFirstName] = useState('');
+  const [editLastName, setEditLastName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editPassword, setEditPassword] = useState('');
+  const [editRole, setEditRole] = useState('');
   
   // Create user form state
   const [newUserEmail, setNewUserEmail] = useState('');
@@ -28,27 +44,27 @@ export default function AdminUserManagement() {
   
   const { toast } = useToast();
 
-  const { data: users = [], isLoading } = useQuery<User[]>({
+  const { data: users = [], isLoading } = useQuery<UserWithRole[]>({
     queryKey: ['/api/users'],
   });
 
-  const updateRoleMutation = useMutation({
-    mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
-      return await apiRequest('PATCH', `/api/users/${userId}/role`, { role });
+  const updateUserMutation = useMutation({
+    mutationFn: async ({ userId, data }: { userId: string; data: any }) => {
+      return await apiRequest('PATCH', `/api/users/${userId}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/users'] });
       setIsEditDialogOpen(false);
       setEditingUser(null);
       toast({
-        title: "Role updated",
-        description: "User role has been updated successfully.",
+        title: "User updated",
+        description: "User has been updated successfully.",
       });
     },
-    onError: () => {
+    onError: (error: any) => {
       toast({
         title: "Error",
-        description: "Failed to update user role. Please try again.",
+        description: error.message || "Failed to update user. Please try again.",
         variant: "destructive",
       });
     },
@@ -96,16 +112,32 @@ export default function AdminUserManagement() {
     },
   });
 
-  const handleEditRole = (user: User) => {
+  const handleEditUser = (user: UserWithRole) => {
     setEditingUser(user);
-    setSelectedRole(user.role || 'operator');
+    setEditFirstName(user.firstName || '');
+    setEditLastName(user.lastName || '');
+    setEditEmail(user.email || '');
+    setEditPassword(''); // Don't show existing password
+    setEditRole(user.role || 'operator');
     setIsEditDialogOpen(true);
   };
 
-  const handleSubmitRoleChange = () => {
-    if (editingUser) {
-      updateRoleMutation.mutate({ userId: editingUser.id, role: selectedRole });
+  const handleSubmitEdit = () => {
+    if (!editingUser) return;
+
+    const updateData: any = {
+      firstName: editFirstName,
+      lastName: editLastName,
+      email: editEmail,
+      role: editRole,
+    };
+
+    // Only include password if it's been changed
+    if (editPassword.trim()) {
+      updateData.password = editPassword;
     }
+
+    updateUserMutation.mutate({ userId: editingUser.id, data: updateData });
   };
 
   const resetCreateForm = () => {
@@ -150,6 +182,7 @@ export default function AdminUserManagement() {
 
   const filteredUsers = users.filter(user =>
     user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     user.firstName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     user.lastName?.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -192,7 +225,7 @@ export default function AdminUserManagement() {
       {filteredUsers.length === 0 ? (
         <Card className="p-8 text-center">
           <p className="text-muted-foreground">
-            {searchQuery ? 'No users found matching your search.' : 'No users yet. Users will appear here after they log in.'}
+            {searchQuery ? 'No users found matching your search.' : 'No users yet. Create your first user to get started.'}
           </p>
         </Card>
       ) : (
@@ -201,15 +234,24 @@ export default function AdminUserManagement() {
             <Card key={user.id} className="p-4" data-testid={`card-user-${index}`}>
               <div className="space-y-3">
                 <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h3 className="font-medium text-sm" data-testid={`text-user-name-${index}`}>
-                      {user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email}
-                    </h3>
-                    <p className="text-xs text-muted-foreground">{user.email}</p>
+                  <div className="flex-1 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-medium text-sm" data-testid={`text-user-name-${index}`}>
+                        {user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : 'No name'}
+                      </h3>
+                      <Badge className={roleColors[user.role as keyof typeof roleColors] || roleColors.operator} data-testid={`badge-role-${index}`}>
+                        {user.role || 'operator'}
+                      </Badge>
+                    </div>
+                    <div className="text-xs text-muted-foreground space-y-0.5">
+                      <div data-testid={`text-username-${index}`}>
+                        <span className="font-medium">Username:</span> {user.username}
+                      </div>
+                      <div data-testid={`text-email-${index}`}>
+                        <span className="font-medium">Email:</span> {user.email || 'No email'}
+                      </div>
+                    </div>
                   </div>
-                  <Badge className={roleColors[user.role as keyof typeof roleColors] || roleColors.operator} data-testid={`badge-role-${index}`}>
-                    {user.role || 'operator'}
-                  </Badge>
                 </div>
 
                 <div className="flex gap-2">
@@ -217,15 +259,16 @@ export default function AdminUserManagement() {
                     variant="outline"
                     size="sm"
                     className="flex-1"
-                    onClick={() => handleEditRole(user)}
+                    onClick={() => handleEditUser(user)}
                     data-testid={`button-edit-${index}`}
                   >
-                    Change Role
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit User
                   </Button>
                   <Button
                     variant="destructive"
                     size="sm"
-                    onClick={() => handleDeleteUser(user.id, user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email || 'this user')}
+                    onClick={() => handleDeleteUser(user.id, user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username || 'this user')}
                     data-testid={`button-delete-${index}`}
                   >
                     <Trash2 className="h-4 w-4" />
@@ -237,12 +280,13 @@ export default function AdminUserManagement() {
         </div>
       )}
 
+      {/* Create User Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent data-testid="dialog-create-user">
           <DialogHeader>
             <DialogTitle>Create New User</DialogTitle>
             <DialogDescription>
-              Add a new user to the system with assigned role
+              Add a new user to the system. Username will be auto-generated from email.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -316,34 +360,81 @@ export default function AdminUserManagement() {
         </DialogContent>
       </Dialog>
 
+      {/* Edit User Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent data-testid="dialog-edit-user">
           <DialogHeader>
-            <DialogTitle>Change User Role</DialogTitle>
+            <DialogTitle>Edit User</DialogTitle>
             <DialogDescription>
-              Update the role for {editingUser?.email}
+              Update user information. Username: {editingUser?.username}
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <Label htmlFor="role">Role</Label>
-            <Select value={selectedRole} onValueChange={setSelectedRole}>
-              <SelectTrigger className="mt-1" data-testid="select-role">
-                <SelectValue placeholder="Select role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="operator">Operator</SelectItem>
-                <SelectItem value="reviewer">Reviewer</SelectItem>
-                <SelectItem value="manager">Manager</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="editEmail">Email</Label>
+              <Input
+                id="editEmail"
+                type="email"
+                placeholder="user@example.com"
+                value={editEmail}
+                onChange={(e) => setEditEmail(e.target.value)}
+                data-testid="input-edit-email"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="editFirstName">First Name</Label>
+                <Input
+                  id="editFirstName"
+                  placeholder="John"
+                  value={editFirstName}
+                  onChange={(e) => setEditFirstName(e.target.value)}
+                  data-testid="input-edit-first-name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editLastName">Last Name</Label>
+                <Input
+                  id="editLastName"
+                  placeholder="Doe"
+                  value={editLastName}
+                  onChange={(e) => setEditLastName(e.target.value)}
+                  data-testid="input-edit-last-name"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="editPassword">New Password (leave blank to keep current)</Label>
+              <Input
+                id="editPassword"
+                type="password"
+                placeholder="Enter new password or leave blank"
+                value={editPassword}
+                onChange={(e) => setEditPassword(e.target.value)}
+                data-testid="input-edit-password"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="editRole">Role</Label>
+              <Select value={editRole} onValueChange={setEditRole}>
+                <SelectTrigger className="mt-1" data-testid="select-edit-role">
+                  <SelectValue placeholder="Select role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="operator">Operator</SelectItem>
+                  <SelectItem value="reviewer">Reviewer</SelectItem>
+                  <SelectItem value="manager">Manager</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSubmitRoleChange} disabled={updateRoleMutation.isPending} data-testid="button-submit-role">
-              {updateRoleMutation.isPending ? 'Updating...' : 'Update Role'}
+            <Button onClick={handleSubmitEdit} disabled={updateUserMutation.isPending} data-testid="button-submit-edit">
+              {updateUserMutation.isPending ? 'Updating...' : 'Update User'}
             </Button>
           </DialogFooter>
         </DialogContent>
