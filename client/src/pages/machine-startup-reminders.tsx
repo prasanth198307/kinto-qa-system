@@ -44,7 +44,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Bell, Plus, Clock, CheckCircle2, XCircle, Loader2, AlertCircle } from "lucide-react";
+import { Bell, Plus, Clock, CheckCircle2, XCircle, Loader2, AlertCircle, Users } from "lucide-react";
+import BulkMachineStartupAssignment from "@/components/BulkMachineStartupAssignment";
 
 const startupTaskSchema = z.object({
   machineId: z.string().min(1, "Machine is required"),
@@ -85,6 +86,7 @@ interface MachineStartupTask {
 export default function MachineStartupReminders() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
+  const [showBulkAssignment, setShowBulkAssignment] = useState(false);
   const [editingTask, setEditingTask] = useState<MachineStartupTask | null>(null);
 
   // Fetch startup tasks
@@ -120,11 +122,7 @@ export default function MachineStartupReminders() {
   // Create mutation
   const createMutation = useMutation({
     mutationFn: async (data: StartupTaskForm) => {
-      return await apiRequest('/api/machine-startup-tasks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
+      return await apiRequest('POST', '/api/machine-startup-tasks', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/machine-startup-tasks'] });
@@ -210,13 +208,24 @@ export default function MachineStartupReminders() {
                 Schedule reminders for operators to start machines before production
               </p>
             </div>
-            <Button
-              onClick={() => setShowForm(true)}
-              data-testid="button-create-reminder"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Create Reminder
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setShowBulkAssignment(true)}
+                variant="default"
+                data-testid="button-bulk-assignment"
+              >
+                <Users className="w-4 h-4 mr-2" />
+                Bulk Assignment
+              </Button>
+              <Button
+                onClick={() => setShowForm(true)}
+                variant="outline"
+                data-testid="button-create-reminder"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Single Task
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -539,6 +548,11 @@ export default function MachineStartupReminders() {
           </Form>
         </DialogContent>
       </Dialog>
+
+      <BulkMachineStartupAssignment 
+        open={showBulkAssignment} 
+        onOpenChange={setShowBulkAssignment} 
+      />
     </div>
   );
 }
