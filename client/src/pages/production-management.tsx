@@ -12,6 +12,7 @@ import GatepassForm from "@/components/GatepassForm";
 import InvoiceForm from "@/components/InvoiceForm";
 import PaymentForm from "@/components/PaymentForm";
 import PaymentHistory from "@/components/PaymentHistory";
+import FIFOPaymentAllocation from "@/components/FIFOPaymentAllocation";
 import RawMaterialIssuanceTable from "@/components/RawMaterialIssuanceTable";
 import GatepassTable from "@/components/GatepassTable";
 import InvoiceTable from "@/components/InvoiceTable";
@@ -27,6 +28,7 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
   const [showGatepassForm, setShowGatepassForm] = useState(false);
   const [showInvoiceForm, setShowInvoiceForm] = useState(false);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [showFIFODialog, setShowFIFODialog] = useState(false);
   const [editingIssuance, setEditingIssuance] = useState<RawMaterialIssuance | null>(null);
   const [editingGatepass, setEditingGatepass] = useState<Gatepass | null>(null);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
@@ -261,6 +263,15 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
           <Card className="p-4">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold">Sales Invoices</h2>
+              <Button 
+                onClick={() => setShowFIFODialog(true)} 
+                size="sm"
+                variant="outline"
+                data-testid="button-fifo-allocation"
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                FIFO Payment Allocation
+              </Button>
             </div>
 
             <InvoiceTable
@@ -344,6 +355,19 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
               </TabsContent>
             </Tabs>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* FIFO Payment Allocation Dialog */}
+      <Dialog open={showFIFODialog} onOpenChange={setShowFIFODialog}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>FIFO Payment Allocation</DialogTitle>
+          </DialogHeader>
+          <FIFOPaymentAllocation
+            onSuccess={() => setShowFIFODialog(false)}
+            onCancel={() => setShowFIFODialog(false)}
+          />
         </DialogContent>
       </Dialog>
     </div>

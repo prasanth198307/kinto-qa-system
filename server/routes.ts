@@ -1859,6 +1859,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // FIFO Payment Allocation - Allocate one payment across multiple outstanding invoices
+  app.post('/api/invoice-payments/allocate-fifo', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { vendorId, amount, paymentDate, paymentMethod, referenceNumber, bankName, remarks } = req.body;
+
+      if (!vendorId || !amount || amount <= 0) {
+        return res.status(400).json({ message: "Vendor ID and valid payment amount are required" });
+      }
+
+      // Get all outstanding invoices for this vendor, ordered by invoice date (FIFO)
+      const allInvoices = await storage.getAllInvoices();
+      const vendorInvoices = allInvoices.filter(inv => inv.buyerName === vendorId);
+
+      if (vendorInvoices.length === 0) {
+        return res.status(404).json({ message: "No invoices found for this vendor" });
+      }
+
+      // Calculate outstanding balance for each invoice
+      const invoicesWithBalance = await Promise.all(
+        vendorInvoices.map(async (invoice) => {
+          const payments = await storage.getPaymentsByInvoice(invoice.id);
+          const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+          const outstanding = invoice.totalAmount - totalPaid;
+          return { ...invoice, outstanding };
+        })
+      );
+
+      // Filter only invoices with outstanding balance and sort by invoice date (FIFO)
+      const outstandingInvoices = invoicesWithBalance
+        .filter(inv => inv.outstanding > 0)
+        .sort((a, b) => new Date(a.invoiceDate).getTime() - new Date(b.invoiceDate).getTime());
+
+      if (outstandingInvoices.length === 0) {
+        return res.status(400).json({ message: "No outstanding invoices for this vendor" });
+      }
+
+      // Allocate payment using FIFO logic
+      let remainingAmount = amount;
+      const allocations = [];
+
+      for (const invoice of outstandingInvoices) {
+        if (remainingAmount <= 0) break;
+
+        const allocationAmount = Math.min(remainingAmount, invoice.outstanding);
+        
+        // Create payment record for this invoice
+        const payment = await storage.createPayment({
+          invoiceId: invoice.id,
+          paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
+          amount: allocationAmount,
+          paymentMethod: paymentMethod || 'Cash',
+          referenceNumber,
+          paymentType: allocationAmount === invoice.outstanding ? 'Full' : 'Partial',
+          bankName,
+          remarks: remarks || `FIFO allocation from bulk payment`,
+          recordedBy: req.user?.id,
+        });
+
+        allocations.push({
+          invoiceId: invoice.id,
+          invoiceNumber: invoice.invoiceNumber,
+          invoiceDate: invoice.invoiceDate,
+          outstanding: invoice.outstanding,
+          allocated: allocationAmount,
+          paymentId: payment.id,
+        });
+
+        remainingAmount -= allocationAmount;
+
+        await logAudit(
+          req.user?.id, 
+          'CREATE', 
+          'invoice_payments', 
+          payment.id, 
+          `FIFO allocation: ₹${(allocationAmount / 100).toFixed(2)} to invoice ${invoice.invoiceNumber}`
+        );
+      }
+
+      res.json({
+        message: "Payment allocated successfully using FIFO",
+        totalAmount: amount,
+        allocated: amount - remainingAmount,
+        remaining: remainingAmount,
+        allocations,
+      });
+    } catch (error) {
+      console.error("Error allocating payment:", error);
+      res.status(500).json({ message: "Failed to allocate payment" });
+    }
+  });
+
   // Dashboard stats for today
   app.get('/api/stats/today', isAuthenticated, async (req: any, res) => {
     try {
