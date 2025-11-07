@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { insertGatepassSchema, insertGatepassItemSchema, type FinishedGood, type Product, type Uom, type Gatepass, type GatepassItem } from "@shared/schema";
+import { insertGatepassSchema, insertGatepassItemSchema, type FinishedGood, type Product, type Uom, type Gatepass, type GatepassItem, type Vendor } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
@@ -56,6 +56,10 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
     queryKey: ['/api/uom'],
   });
 
+  const { data: vendors = [] } = useQuery<Vendor[]>({
+    queryKey: ['/api/vendors'],
+  });
+
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -67,6 +71,7 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
         driverContact: "",
         transporterName: "",
         destination: "",
+        vendorId: "",
         customerName: "",
         invoiceNumber: "",
         remarks: "",
@@ -95,6 +100,7 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
           driverContact: gatepass.driverContact || "",
           transporterName: gatepass.transporterName || "",
           destination: gatepass.destination || "",
+          vendorId: gatepass.vendorId || "",
           customerName: gatepass.customerName || "",
           invoiceNumber: gatepass.invoiceNumber || "",
           remarks: gatepass.remarks || "",
@@ -283,12 +289,51 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
 
               <FormField
                 control={form.control}
+                name="header.vendorId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Customer/Vendor</FormLabel>
+                    <Select
+                      value={field.value || ""}
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        const selectedVendor = vendors.find(v => v.id === value);
+                        if (selectedVendor) {
+                          form.setValue("header.customerName", selectedVendor.vendorName);
+                        }
+                      }}
+                    >
+                      <FormControl>
+                        <SelectTrigger data-testid="select-vendor">
+                          <SelectValue placeholder="Select vendor" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {vendors.map((vendor) => (
+                          <SelectItem key={vendor.id} value={vendor.id}>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{vendor.vendorName}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {vendor.mobileNumber} • {vendor.gstNumber || vendor.aadhaarNumber || "No ID"}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
                 name="header.customerName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Customer Name (Optional)</FormLabel>
+                    <FormLabel>Customer Name</FormLabel>
                     <FormControl>
-                      <Input {...field} value={field.value || ""} data-testid="input-customer-name" />
+                      <Input {...field} value={field.value || ""} readOnly className="bg-muted" data-testid="input-customer-name" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
