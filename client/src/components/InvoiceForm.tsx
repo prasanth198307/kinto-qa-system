@@ -75,6 +75,10 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
     queryKey: ['/api/banks'],
   });
 
+  const { data: finishedGoodsInventory = [] } = useQuery<FinishedGood[]>({
+    queryKey: ['/api/finished-goods'],
+  });
+
   const { data: gatepassItems = [] } = useQuery<GatepassItem[]>({
     queryKey: gatepass ? [`/api/gatepass-items/${gatepass.id}`] : [],
     enabled: !!gatepass,
@@ -483,11 +487,29 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
                   <Select
                     value={form.watch(`items.${index}.productId`)}
                     onValueChange={(value) => {
+                      // Find finished goods for this product
+                      const availableFG = finishedGoodsInventory.filter(fg => fg.productId === value);
+                      const totalAvailable = availableFG.reduce((sum, fg) => sum + (fg.quantity || 0), 0);
+                      
+                      if (availableFG.length === 0 || totalAvailable === 0) {
+                        toast({
+                          title: "No Stock Available",
+                          description: "This product has no finished goods in inventory. Please produce this item first before creating an invoice.",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                      
                       form.setValue(`items.${index}.productId`, value);
                       const product = products.find(p => p.id === value);
                       if (product) {
                         form.setValue(`items.${index}.description`, product.productName);
-                        form.setValue(`items.${index}.hsnCode`, product.hsnCode || "");
+                        
+                        // Show available stock info
+                        toast({
+                          title: "Stock Available",
+                          description: `Available quantity: ${totalAvailable} units`,
+                        });
                       }
                     }}
                   >
@@ -495,11 +517,16 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
                       <SelectValue placeholder="Select product" />
                     </SelectTrigger>
                     <SelectContent>
-                      {products.map((product) => (
-                        <SelectItem key={product.id} value={product.id}>
-                          {product.productName}
-                        </SelectItem>
-                      ))}
+                      {products.map((product) => {
+                        const availableFG = finishedGoodsInventory.filter(fg => fg.productId === product.id);
+                        const totalAvailable = availableFG.reduce((sum, fg) => sum + (fg.quantity || 0), 0);
+                        
+                        return (
+                          <SelectItem key={product.id} value={product.id}>
+                            {product.productName} {totalAvailable > 0 ? `(Stock: ${totalAvailable})` : '(No Stock)'}
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                 </div>
@@ -522,7 +549,28 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
                   <Label>Quantity *</Label>
                   <Input
                     type="number"
-                    {...form.register(`items.${index}.quantity`, { valueAsNumber: true })}
+                    {...form.register(`items.${index}.quantity`, { 
+                      valueAsNumber: true,
+                      onChange: (e) => {
+                        const enteredQty = parseInt(e.target.value) || 0;
+                        const productId = form.watch(`items.${index}.productId`);
+                        
+                        if (productId && enteredQty > 0) {
+                          const availableFG = finishedGoodsInventory.filter(fg => fg.productId === productId);
+                          const totalAvailable = availableFG.reduce((sum, fg) => sum + (fg.quantity || 0), 0);
+                          
+                          if (enteredQty > totalAvailable) {
+                            toast({
+                              title: "Insufficient Stock",
+                              description: `Cannot add ${enteredQty} units. Only ${totalAvailable} units available in stock.`,
+                              variant: "destructive",
+                            });
+                            // Reset to available quantity
+                            form.setValue(`items.${index}.quantity`, totalAvailable);
+                          }
+                        }
+                      }
+                    })}
                     data-testid={`input-quantity-${index}`}
                   />
                 </div>
