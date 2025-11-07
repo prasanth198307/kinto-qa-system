@@ -65,6 +65,13 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
     queryKey: ['/api/invoices/available'],
   });
 
+  // Fetch invoice items when an invoice is selected
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string>("");
+  const { data: invoiceItems = [] } = useQuery<any[]>({
+    queryKey: ['/api/invoice-items', selectedInvoiceId],
+    enabled: !!selectedInvoiceId,
+  });
+
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -114,6 +121,44 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
       });
     }
   }, [gatepass, gatepassItems, form]);
+
+  // Auto-populate customer and items when invoice is selected
+  useEffect(() => {
+    if (selectedInvoiceId && availableInvoices.length > 0) {
+      const selectedInvoice = availableInvoices.find(inv => inv.id === selectedInvoiceId);
+      if (selectedInvoice) {
+        // Auto-fill customer details from invoice buyer
+        form.setValue("header.customerName", selectedInvoice.buyerName);
+        form.setValue("header.isCluster", selectedInvoice.isCluster || 0);
+        
+        // Find vendor by buyer name (if exists)
+        const matchingVendor = vendors.find(v => v.vendorName === selectedInvoice.buyerName);
+        if (matchingVendor) {
+          form.setValue("header.vendorId", matchingVendor.id);
+        }
+      }
+    }
+  }, [selectedInvoiceId, availableInvoices, vendors, form]);
+
+  // Auto-populate finished goods items from invoice items
+  useEffect(() => {
+    if (invoiceItems.length > 0 && selectedInvoiceId) {
+      const mappedItems = invoiceItems.map(invItem => {
+        // Find matching finished good by product
+        const matchingFG = finishedGoods.find(fg => fg.productId === invItem.productId);
+        return {
+          finishedGoodId: matchingFG?.id || "",
+          productId: invItem.productId,
+          quantityDispatched: invItem.quantity,
+          uomId: "",
+          remarks: invItem.description || "",
+        };
+      });
+      
+      setItems(mappedItems);
+      form.setValue("items", mappedItems);
+    }
+  }, [invoiceItems, selectedInvoiceId, finishedGoods, form]);
 
   const saveMutation = useMutation({
     mutationFn: async (data: FormData) => {
@@ -346,7 +391,13 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Select Invoice (Optional)</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ""}>
+                    <Select 
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        setSelectedInvoiceId(value);
+                      }} 
+                      value={field.value || ""}
+                    >
                       <FormControl>
                         <SelectTrigger data-testid="select-invoice">
                           <SelectValue placeholder="Select an invoice" />
