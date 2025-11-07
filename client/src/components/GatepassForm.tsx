@@ -566,7 +566,7 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                 name="header.invoiceId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Select Invoice (Optional)</FormLabel>
+                    <FormLabel>Select Invoice</FormLabel>
                     <Select 
                       onValueChange={(value) => {
                         field.onChange(value === "none" ? "" : value);
@@ -576,11 +576,11 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                     >
                       <FormControl>
                         <SelectTrigger data-testid="select-invoice">
-                          <SelectValue placeholder="Select an invoice" />
+                          <SelectValue placeholder="Select an invoice to add items" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
+                        <SelectItem value="none">None - No items can be added</SelectItem>
                         {availableInvoices.map((invoice) => (
                           <SelectItem key={invoice.id} value={invoice.id}>
                             {invoice.invoiceNumber} - {invoice.buyerName} - ₹{(invoice.totalAmount / 100).toFixed(2)}
@@ -588,6 +588,9 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                         ))}
                       </SelectContent>
                     </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Invoice must be selected to add items. Items will auto-populate from the selected invoice.
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}
