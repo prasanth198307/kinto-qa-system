@@ -251,6 +251,7 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <>
           <Card className="p-4 space-y-4">
             <h4 className="font-semibold text-sm">Gatepass Details</h4>
             
@@ -454,23 +455,16 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
             </div>
           </Card>
 
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <h4 className="font-semibold text-sm">
-                Finished Goods Items
-                {selectedInvoiceId && (
+          {selectedInvoiceId && (
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <h4 className="font-semibold text-sm">
+                  Finished Goods Items
                   <span className="ml-2 text-xs text-muted-foreground">(Auto-populated from Invoice)</span>
-                )}
-              </h4>
-              {!selectedInvoiceId && (
-                <Button type="button" variant="outline" size="sm" onClick={addItem} data-testid="button-add-item">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Item
-                </Button>
-              )}
-            </div>
+                </h4>
+              </div>
 
-            {items.map((_, index) => (
+              {items.map((_, index) => (
               <Card key={index} className="p-4">
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
@@ -605,7 +599,8 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                 </div>
               </Card>
             ))}
-          </div>
+            </div>
+          )}
 
           <div className="flex justify-end gap-3 pt-4">
             <Button type="button" variant="outline" onClick={handleClose} data-testid="button-cancel">
@@ -615,6 +610,7 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
               {saveMutation.isPending ? "Saving..." : (gatepass ? "Update Gatepass" : "Create Gatepass")}
             </Button>
           </div>
+          </>
         </form>
       </Form>
     </Card>
