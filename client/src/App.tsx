@@ -30,6 +30,7 @@ import PMHistoryView from "@/components/PMHistoryView";
 import PMExecutionDialog from "@/components/PMExecutionDialog";
 import InventoryManagement from "@/pages/inventory-management";
 import ProductionManagement from "@/pages/production-management";
+import MachineStartupReminders from "@/pages/machine-startup-reminders";
 import InventorySummaryDashboard from "@/components/InventorySummaryDashboard";
 import TodayProductionStats from "@/components/TodayProductionStats";
 import RolePermissionsView from "@/components/RolePermissionsView";
@@ -38,7 +39,7 @@ import { ManagerChecklistAssignment } from "@/components/ManagerChecklistAssignm
 import PendingPaymentsDashboard from "@/components/PendingPaymentsDashboard";
 import { OperatorAssignedChecklists } from "@/components/OperatorAssignedChecklists";
 import { VerticalNavSidebar, type NavSection } from "@/components/VerticalNavSidebar";
-import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp } from "lucide-react";
+import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell } from "lucide-react";
 import SalesDashboard from "@/components/SalesDashboard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -411,6 +412,7 @@ function AdminDashboard() {
             { id: "raw-material-issuance", label: "Raw Material Issuance", icon: Package },
             { id: "gatepasses", label: "Gatepasses", icon: FileText },
             { id: "invoices", label: "Sales Invoices", icon: Receipt },
+            { id: "machine-startup-reminders", label: "Machine Startup Reminders", icon: Bell },
           ],
         },
       ],
@@ -505,6 +507,8 @@ function AdminDashboard() {
       case 'gatepasses':
       case 'invoices':
         return <ProductionManagement activeTab={activeView} />;
+      case 'machine-startup-reminders':
+        return <MachineStartupReminders />;
       case 'sales-dashboard':
         return (
           <div className="p-4">
