@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Plus, Trash2, X } from "lucide-react";
+import { Plus, Trash2, X, Printer, FileText } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Gatepass, Product, Vendor, GatepassItem, FinishedGood, Bank, Invoice } from "@shared/schema";
 
@@ -62,6 +62,7 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
   const { toast } = useToast();
   const [isIntrastateSupply, setIsIntrastateSupply] = useState(true);
   const [selectedBankId, setSelectedBankId] = useState<string>("");
+  const [showPrintPreview, setShowPrintPreview] = useState(false);
 
   const { data: products = [] } = useQuery<Product[]>({
     queryKey: ['/api/products'],
@@ -371,6 +372,154 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
     createInvoiceMutation.mutate(data);
   };
 
+  const handlePrintPreview = () => {
+    setShowPrintPreview(true);
+    // Open print preview in new window
+    const formData = form.getValues();
+    const taxes = calculateTaxes();
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(generatePrintHTML(formData, taxes));
+      printWindow.document.close();
+    }
+  };
+
+  const generatePrintHTML = (data: InvoiceFormData, taxes: ReturnType<typeof calculateTaxes>) => {
+    const formatCurrency = (amountInPaise: number) => `₹${(amountInPaise / 100).toFixed(2)}`;
+    
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Invoice Preview</title>
+        <style>
+          @media print {
+            @page { margin: 0.5in; }
+            body { margin: 0; }
+            .no-print { display: none; }
+          }
+          body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+          .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
+          .header h1 { margin: 0; font-size: 24px; }
+          .invoice-info { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+          .section { border: 1px solid #ddd; padding: 10px; }
+          .section h3 { margin: 0 0 10px 0; font-size: 14px; background: #f5f5f5; padding: 5px; }
+          .section p { margin: 5px 0; font-size: 12px; }
+          table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 12px; }
+          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+          th { background: #f5f5f5; font-weight: bold; }
+          .text-right { text-align: right; }
+          .totals { margin-top: 20px; float: right; width: 300px; }
+          .totals table { margin: 0; }
+          .total-row { font-weight: bold; font-size: 14px; }
+          .print-btn { margin: 20px 0; padding: 10px 20px; background: #007bff; color: white; border: none; cursor: pointer; font-size: 16px; }
+          .print-btn:hover { background: #0056b3; }
+        </style>
+      </head>
+      <body>
+        <button onclick="window.print()" class="print-btn no-print">Print Invoice</button>
+        
+        <div class="header">
+          <h1>GST INVOICE</h1>
+          <p>Date: ${new Date(data.invoiceDate).toLocaleDateString()}</p>
+        </div>
+
+        <div class="invoice-info">
+          <div class="section">
+            <h3>Seller Details</h3>
+            <p><strong>${data.sellerName || 'N/A'}</strong></p>
+            <p>${data.sellerAddress || 'N/A'}</p>
+            <p>${data.sellerState || 'N/A'} - ${data.sellerStateCode || 'N/A'}</p>
+            <p>GSTIN: ${data.sellerGstin || 'N/A'}</p>
+          </div>
+          
+          <div class="section">
+            <h3>Buyer Details</h3>
+            <p><strong>${data.buyerName}</strong></p>
+            <p>${data.buyerAddress || 'N/A'}</p>
+            <p>${data.buyerState || 'N/A'} - ${data.buyerStateCode || 'N/A'}</p>
+            <p>GSTIN: ${data.buyerGstin || 'N/A'}</p>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Product</th>
+              <th>HSN</th>
+              <th class="text-right">Qty</th>
+              <th class="text-right">Rate</th>
+              <th class="text-right">GST %</th>
+              <th class="text-right">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${data.items.map((item, index) => `
+              <tr>
+                <td>${index + 1}</td>
+                <td>${item.description}</td>
+                <td>${item.hsnCode || '-'}</td>
+                <td class="text-right">${item.quantity}</td>
+                <td class="text-right">₹${item.unitPrice.toFixed(2)}</td>
+                <td class="text-right">${item.gstRate}%</td>
+                <td class="text-right">₹${(item.quantity * item.unitPrice).toFixed(2)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+
+        <div class="totals">
+          <table>
+            <tr>
+              <td>Subtotal:</td>
+              <td class="text-right">${formatCurrency(taxes.subtotal)}</td>
+            </tr>
+            ${isIntrastateSupply ? `
+              <tr>
+                <td>CGST:</td>
+                <td class="text-right">${formatCurrency(taxes.cgstAmount)}</td>
+              </tr>
+              <tr>
+                <td>SGST:</td>
+                <td class="text-right">${formatCurrency(taxes.sgstAmount)}</td>
+              </tr>
+            ` : `
+              <tr>
+                <td>IGST:</td>
+                <td class="text-right">${formatCurrency(taxes.igstAmount)}</td>
+              </tr>
+            `}
+            <tr class="total-row">
+              <td>Total Amount:</td>
+              <td class="text-right">${formatCurrency(taxes.totalAmount)}</td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="clear: both; margin-top: 40px;">
+          ${data.bankName ? `
+            <div class="section">
+              <h3>Payment Details</h3>
+              <p>Bank: ${data.bankName}</p>
+              <p>Account: ${data.bankAccountNumber || 'N/A'}</p>
+              <p>IFSC: ${data.bankIfscCode || 'N/A'}</p>
+              ${data.upiId ? `<p>UPI: ${data.upiId}</p>` : ''}
+            </div>
+          ` : ''}
+        </div>
+
+        <div style="margin-top: 60px; text-align: right;">
+          <p>For ${data.sellerName || 'KINTO Manufacturing'}</p>
+          <br><br>
+          <p>_______________________</p>
+          <p>Authorized Signatory</p>
+        </div>
+      </body>
+      </html>
+    `;
+  };
+
   const taxes = calculateTaxes();
   const formatCurrency = (amountInPaise: number) => `₹${(amountInPaise / 100).toFixed(2)}`;
 
@@ -378,9 +527,21 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
     <Card className="p-6 max-h-[90vh] overflow-y-auto">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-semibold">Generate GST Invoice</h2>
-        <Button variant="ghost" size="icon" onClick={onClose} data-testid="button-close-invoice-form">
-          <X className="w-4 h-4" />
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handlePrintPreview} 
+            type="button"
+            data-testid="button-print-preview"
+          >
+            <Printer className="w-4 h-4 mr-1" />
+            Preview
+          </Button>
+          <Button variant="ghost" size="icon" onClick={onClose} data-testid="button-close-invoice-form">
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -396,6 +557,56 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
           {form.formState.errors.invoiceDate && (
             <p className="text-sm text-destructive mt-1">{form.formState.errors.invoiceDate.message}</p>
           )}
+        </div>
+
+        {/* Seller Details */}
+        <div className="space-y-4">
+          <h3 className="font-semibold text-lg">Seller Details</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="sellerName">Seller Name</Label>
+              <Input
+                id="sellerName"
+                {...form.register("sellerName")}
+                data-testid="input-seller-name"
+              />
+            </div>
+            <div>
+              <Label htmlFor="sellerGstin">Seller GSTIN</Label>
+              <Input
+                id="sellerGstin"
+                {...form.register("sellerGstin")}
+                placeholder="29AAAAA0000A1Z5"
+                data-testid="input-seller-gstin"
+              />
+            </div>
+            <div className="col-span-2">
+              <Label htmlFor="sellerAddress">Seller Address</Label>
+              <Input
+                id="sellerAddress"
+                {...form.register("sellerAddress")}
+                data-testid="input-seller-address"
+              />
+            </div>
+            <div>
+              <Label htmlFor="sellerState">Seller State</Label>
+              <Input
+                id="sellerState"
+                {...form.register("sellerState")}
+                data-testid="input-seller-state"
+              />
+            </div>
+            <div>
+              <Label htmlFor="sellerStateCode">State Code</Label>
+              <Input
+                id="sellerStateCode"
+                {...form.register("sellerStateCode")}
+                placeholder="29"
+                maxLength={2}
+                data-testid="input-seller-state-code"
+              />
+            </div>
+          </div>
         </div>
 
         {/* Buyer Details */}
@@ -451,7 +662,7 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
           </div>
         </div>
 
-        {/* Items */}
+        {/* Items - Single Line Layout */}
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <h3 className="font-semibold text-lg">Invoice Items</h3>
@@ -466,143 +677,164 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
             </Button>
           </div>
 
-          {fields.map((field, index) => (
-            <Card key={field.id} className="p-4 relative">
-              {fields.length > 1 && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="absolute top-2 right-2"
-                  onClick={() => remove(index)}
-                  data-testid={`button-remove-item-${index}`}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              )}
+          {/* Table Header */}
+          <div className="grid grid-cols-12 gap-2 text-xs font-semibold text-muted-foreground px-2">
+            <div className="col-span-3">Product *</div>
+            <div className="col-span-1">HSN</div>
+            <div className="col-span-3">Description *</div>
+            <div className="col-span-1">Qty *</div>
+            <div className="col-span-2">Price (₹) *</div>
+            <div className="col-span-1">GST % *</div>
+            <div className="col-span-1"></div>
+          </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Product *</Label>
-                  <Select
-                    value={form.watch(`items.${index}.productId`)}
-                    onValueChange={(value) => {
-                      // Find finished goods for this product
-                      const availableFG = finishedGoodsInventory.filter(fg => fg.productId === value);
+          {/* Items */}
+          {fields.map((field, index) => (
+            <div key={field.id} className="grid grid-cols-12 gap-2 items-start p-2 border rounded-md hover-elevate">
+              {/* Product */}
+              <div className="col-span-3">
+                <Select
+                  value={form.watch(`items.${index}.productId`)}
+                  onValueChange={(value) => {
+                    const availableFG = finishedGoodsInventory.filter(fg => fg.productId === value);
+                    const totalAvailable = availableFG.reduce((sum, fg) => sum + (fg.quantity || 0), 0);
+                    
+                    if (availableFG.length === 0 || totalAvailable === 0) {
+                      toast({
+                        title: "No Stock Available",
+                        description: "This product has no finished goods in inventory.",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+                    
+                    form.setValue(`items.${index}.productId`, value);
+                    const product = products.find(p => p.id === value);
+                    if (product) {
+                      form.setValue(`items.${index}.description`, product.productName);
+                      form.setValue(`items.${index}.hsnCode`, product.hsnCode || "");
+                      toast({
+                        title: "Stock Available",
+                        description: `Available: ${totalAvailable} units`,
+                      });
+                    }
+                  }}
+                >
+                  <SelectTrigger data-testid={`select-product-${index}`} className="h-9">
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {products.map((product) => {
+                      const availableFG = finishedGoodsInventory.filter(fg => fg.productId === product.id);
                       const totalAvailable = availableFG.reduce((sum, fg) => sum + (fg.quantity || 0), 0);
                       
-                      if (availableFG.length === 0 || totalAvailable === 0) {
-                        toast({
-                          title: "No Stock Available",
-                          description: "This product has no finished goods in inventory. Please produce this item first before creating an invoice.",
-                          variant: "destructive",
-                        });
-                        return;
-                      }
+                      return (
+                        <SelectItem key={product.id} value={product.id}>
+                          {product.productName} {totalAvailable > 0 ? `(${totalAvailable})` : '(0)'}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* HSN Code */}
+              <div className="col-span-1">
+                <Input
+                  {...form.register(`items.${index}.hsnCode`)}
+                  placeholder="8471"
+                  className="h-9 text-sm"
+                  data-testid={`input-hsn-${index}`}
+                />
+              </div>
+
+              {/* Description */}
+              <div className="col-span-3">
+                <Input
+                  {...form.register(`items.${index}.description`)}
+                  placeholder="Description"
+                  className="h-9 text-sm"
+                  data-testid={`input-description-${index}`}
+                />
+              </div>
+
+              {/* Quantity */}
+              <div className="col-span-1">
+                <Input
+                  type="number"
+                  {...form.register(`items.${index}.quantity`, { 
+                    valueAsNumber: true,
+                    onChange: (e) => {
+                      const enteredQty = parseInt(e.target.value) || 0;
+                      const productId = form.watch(`items.${index}.productId`);
                       
-                      form.setValue(`items.${index}.productId`, value);
-                      const product = products.find(p => p.id === value);
-                      if (product) {
-                        form.setValue(`items.${index}.description`, product.productName);
-                        
-                        // Show available stock info
-                        toast({
-                          title: "Stock Available",
-                          description: `Available quantity: ${totalAvailable} units`,
-                        });
-                      }
-                    }}
-                  >
-                    <SelectTrigger data-testid={`select-product-${index}`}>
-                      <SelectValue placeholder="Select product" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {products.map((product) => {
-                        const availableFG = finishedGoodsInventory.filter(fg => fg.productId === product.id);
+                      if (productId && enteredQty > 0) {
+                        const availableFG = finishedGoodsInventory.filter(fg => fg.productId === productId);
                         const totalAvailable = availableFG.reduce((sum, fg) => sum + (fg.quantity || 0), 0);
                         
-                        return (
-                          <SelectItem key={product.id} value={product.id}>
-                            {product.productName} {totalAvailable > 0 ? `(Stock: ${totalAvailable})` : '(No Stock)'}
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>HSN Code</Label>
-                  <Input
-                    {...form.register(`items.${index}.hsnCode`)}
-                    placeholder="8471"
-                    data-testid={`input-hsn-${index}`}
-                  />
-                </div>
-                <div className="col-span-2">
-                  <Label>Description *</Label>
-                  <Input
-                    {...form.register(`items.${index}.description`)}
-                    data-testid={`input-description-${index}`}
-                  />
-                </div>
-                <div>
-                  <Label>Quantity *</Label>
-                  <Input
-                    type="number"
-                    {...form.register(`items.${index}.quantity`, { 
-                      valueAsNumber: true,
-                      onChange: (e) => {
-                        const enteredQty = parseInt(e.target.value) || 0;
-                        const productId = form.watch(`items.${index}.productId`);
-                        
-                        if (productId && enteredQty > 0) {
-                          const availableFG = finishedGoodsInventory.filter(fg => fg.productId === productId);
-                          const totalAvailable = availableFG.reduce((sum, fg) => sum + (fg.quantity || 0), 0);
-                          
-                          if (enteredQty > totalAvailable) {
-                            toast({
-                              title: "Insufficient Stock",
-                              description: `Cannot add ${enteredQty} units. Only ${totalAvailable} units available in stock.`,
-                              variant: "destructive",
-                            });
-                            // Reset to available quantity
-                            form.setValue(`items.${index}.quantity`, totalAvailable);
-                          }
+                        if (enteredQty > totalAvailable) {
+                          toast({
+                            title: "Insufficient Stock",
+                            description: `Only ${totalAvailable} units available`,
+                            variant: "destructive",
+                          });
+                          form.setValue(`items.${index}.quantity`, totalAvailable);
                         }
                       }
-                    })}
-                    data-testid={`input-quantity-${index}`}
-                  />
-                </div>
-                <div>
-                  <Label>Unit Price (₹) *</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    {...form.register(`items.${index}.unitPrice`, { valueAsNumber: true })}
-                    data-testid={`input-unit-price-${index}`}
-                  />
-                </div>
-                <div>
-                  <Label>GST Rate (%) *</Label>
-                  <Select
-                    value={form.watch(`items.${index}.gstRate`)?.toString()}
-                    onValueChange={(value) => form.setValue(`items.${index}.gstRate`, parseFloat(value))}
-                  >
-                    <SelectTrigger data-testid={`select-gst-rate-${index}`}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="0">0%</SelectItem>
-                      <SelectItem value="5">5%</SelectItem>
-                      <SelectItem value="12">12%</SelectItem>
-                      <SelectItem value="18">18%</SelectItem>
-                      <SelectItem value="28">28%</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                    }
+                  })}
+                  className="h-9 text-sm"
+                  data-testid={`input-quantity-${index}`}
+                />
               </div>
-            </Card>
+
+              {/* Unit Price */}
+              <div className="col-span-2">
+                <Input
+                  type="number"
+                  step="0.01"
+                  {...form.register(`items.${index}.unitPrice`, { valueAsNumber: true })}
+                  placeholder="0.00"
+                  className="h-9 text-sm"
+                  data-testid={`input-unit-price-${index}`}
+                />
+              </div>
+
+              {/* GST Rate */}
+              <div className="col-span-1">
+                <Select
+                  value={form.watch(`items.${index}.gstRate`)?.toString()}
+                  onValueChange={(value) => form.setValue(`items.${index}.gstRate`, parseFloat(value))}
+                >
+                  <SelectTrigger data-testid={`select-gst-rate-${index}`} className="h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">0%</SelectItem>
+                    <SelectItem value="5">5%</SelectItem>
+                    <SelectItem value="12">12%</SelectItem>
+                    <SelectItem value="18">18%</SelectItem>
+                    <SelectItem value="28">28%</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Remove Button */}
+              <div className="col-span-1 flex justify-center">
+                {fields.length > 1 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9"
+                    onClick={() => remove(index)}
+                    data-testid={`button-remove-item-${index}`}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
           ))}
         </div>
 
@@ -673,37 +905,19 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
             {selectedBankId && (
               <>
                 <div>
-                  <Label>Bank Name</Label>
-                  <Input
-                    value={form.watch("bankName")}
-                    disabled
-                    className="bg-muted"
-                  />
-                </div>
-                <div>
-                  <Label>Account Number</Label>
-                  <Input
-                    value={form.watch("bankAccountNumber")}
-                    disabled
-                    className="bg-muted"
-                  />
+                  <Label>Bank Account Number</Label>
+                  <Input value={form.watch("bankAccountNumber")} disabled />
                 </div>
                 <div>
                   <Label>IFSC Code</Label>
-                  <Input
-                    value={form.watch("bankIfscCode")}
-                    disabled
-                    className="bg-muted"
-                  />
+                  <Input value={form.watch("bankIfscCode")} disabled />
                 </div>
-                <div>
-                  <Label>UPI ID</Label>
-                  <Input
-                    value={form.watch("upiId")}
-                    disabled
-                    className="bg-muted"
-                  />
-                </div>
+                {form.watch("upiId") && (
+                  <div className="col-span-2">
+                    <Label>UPI ID</Label>
+                    <Input value={form.watch("upiId")} disabled />
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -715,21 +929,18 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
           <Input
             id="remarks"
             {...form.register("remarks")}
-            placeholder="Additional notes"
+            placeholder="Optional notes..."
             data-testid="input-remarks"
           />
         </div>
 
-        {/* Actions */}
-        <div className="flex justify-end gap-2">
+        {/* Form Actions */}
+        <div className="flex justify-end gap-3 pt-4">
           <Button type="button" variant="outline" onClick={onClose} data-testid="button-cancel">
             Cancel
           </Button>
-          <Button type="submit" disabled={createInvoiceMutation.isPending} data-testid="button-generate-invoice">
-            {createInvoiceMutation.isPending 
-              ? (invoice ? "Updating..." : "Generating...") 
-              : (invoice ? "Update Invoice" : "Generate Invoice")
-            }
+          <Button type="submit" disabled={createInvoiceMutation.isPending} data-testid="button-submit-invoice">
+            {createInvoiceMutation.isPending ? "Saving..." : (invoice ? "Update Invoice" : "Create Invoice")}
           </Button>
         </div>
       </form>
