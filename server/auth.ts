@@ -4,6 +4,7 @@ import { Express } from "express";
 import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
+import bcrypt from "bcryptjs"; // ✅ Added for backward compatibility
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
 
@@ -13,40 +14,64 @@ declare global {
   }
 }
 
-// --- Password helpers using scrypt (Node.js built-in) ---
+// --- Password helpers ---
 const scryptAsync = promisify(scrypt);
 const SALT_LENGTH = 16;
 const KEY_LENGTH = 64;
 
+/**
+ * Hash password using scrypt
+ */
 async function hashPassword(password: string) {
   const salt = randomBytes(SALT_LENGTH).toString("hex");
   const derivedKey = (await scryptAsync(password, salt, KEY_LENGTH)) as Buffer;
   return `${salt}:${derivedKey.toString("hex")}`;
 }
 
+/**
+ * Compare password with stored hash (supports both scrypt and bcrypt)
+ */
 async function comparePasswords(supplied: string, stored: string) {
-  const [salt, storedHash] = stored.split(":");
-  const derivedKey = (await scryptAsync(supplied, salt, KEY_LENGTH)) as Buffer;
-  const storedBuffer = Buffer.from(storedHash, "hex");
-  return timingSafeEqual(derivedKey, storedBuffer);
+  try {
+    if (!supplied || !stored) {
+      throw new Error("Missing password or stored hash");
+    }
+
+    // 🔹 Detect bcrypt hashes (start with "$2")
+    if (stored.startsWith("$2")) {
+      return await bcrypt.compare(supplied, stored);
+    }
+
+    // 🔹 Otherwise assume scrypt format
+    const [salt, storedHash] = stored.split(":");
+    if (!salt || !storedHash) {
+      throw new Error("Invalid stored password format");
+    }
+
+    const derivedKey = (await scryptAsync(supplied, salt, KEY_LENGTH)) as Buffer;
+    const storedBuffer = Buffer.from(storedHash, "hex");
+    return timingSafeEqual(derivedKey, storedBuffer);
+  } catch (err) {
+    console.error("❌ comparePasswords error:", err);
+    return false;
+  }
 }
 
 // --- Main authentication setup ---
 export function setupAuth(app: Express) {
-  const isProd = process.env.NODE_ENV === "production";
   const useHttps = process.env.USE_HTTPS === "true";
 
   // --- Session configuration ---
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET!,
+    secret: process.env.SESSION_SECRET || "insecure_dev_secret",
     resave: false,
     saveUninitialized: false,
     store: storage.sessionStore,
     cookie: {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       httpOnly: true,
-      secure: useHttps, // ✅ Secure cookies only if HTTPS enabled
-      sameSite: useHttps ? "none" : "lax", // ✅ Supports both HTTP and HTTPS
+      secure: useHttps,
+      sameSite: useHttps ? "none" : "lax",
     },
   };
 
@@ -54,22 +79,35 @@ export function setupAuth(app: Express) {
     `🔧 Session configured — Secure Cookies: ${useHttps}, SameSite: ${useHttps ? "None" : "Lax"}`
   );
 
-  // Required when behind proxy or in HTTPS setups
   app.set("trust proxy", 1);
   app.use(session(sessionSettings));
   app.use(passport.initialize());
   app.use(passport.session());
 
-  // --- Passport Local Strategy (username/password login) ---
+  // --- Passport Local Strategy ---
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       try {
+<<<<<<< HEAD
         const user = await storage.getUserByUsername(username);
+=======
+        console.log("🔍 Login attempt for user:", username);
+
+        const user = await storage.getUserByUsername(username);
+        console.log("🔍 User found:", !!user);
+        console.log("🔍 User password exists:", !!(user?.password));
+        console.log("🔍 User object keys:", user ? Object.keys(user) : "null");
+
+>>>>>>> c11efba (Fix auth backward compatibility and update dependencies)
         if (!user || !user.password) return done(null, false);
 
         const valid = await comparePasswords(password, user.password);
-        if (!valid) return done(null, false);
+        if (!valid) {
+          console.warn(`🚫 Invalid password for user: ${username}`);
+          return done(null, false);
+        }
 
+        console.log(`✅ Login successful for ${username}`);
         return done(null, user);
       } catch (err) {
         return done(err);
@@ -105,8 +143,7 @@ export function setupAuth(app: Express) {
   app.get("/api/user", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const user = req.user as any;
-    
-    // Fetch role name if roleId exists
+
     if (user.roleId) {
       const roleData = await storage.getRole(user.roleId);
       res.json({ ...user, role: roleData?.name });
@@ -123,13 +160,11 @@ export function setupAuth(app: Express) {
 
       const user = await storage.getUserByEmail(email);
       if (!user) {
-        // Don't reveal whether user exists
         return res.status(200).json({ message: "If the email exists, a reset link will be sent" });
       }
 
       const resetToken = randomBytes(32).toString("hex");
       const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour
-
       await storage.setPasswordResetToken(user.id, resetToken, resetTokenExpiry);
 
       console.log(`🔐 Password reset token for ${email}: ${resetToken}`);
