@@ -638,16 +638,13 @@ export const insertFinishedGoodSchema = createInsertSchema(finishedGoods, {
 export type InsertFinishedGood = z.infer<typeof insertFinishedGoodSchema>;
 export type FinishedGood = typeof finishedGoods.$inferSelect;
 
-// Raw Material Issuance for Production
+// Raw Material Issuance for Production (Header)
 export const rawMaterialIssuance = pgTable("raw_material_issuance", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  issuanceNumber: varchar("issuance_number", { length: 100 }).notNull().unique(),
   issuanceDate: timestamp("issuance_date").notNull(),
-  materialId: varchar("material_id").references(() => rawMaterials.id).notNull(),
-  quantityIssued: integer("quantity_issued").notNull(),
-  uomId: varchar("uom_id").references(() => uom.id),
-  productId: varchar("product_id").references(() => products.id),
-  batchNumber: varchar("batch_number", { length: 100 }),
   issuedTo: varchar("issued_to", { length: 255 }),
+  productId: varchar("product_id").references(() => products.id), // Product being manufactured
   remarks: text("remarks"),
   recordStatus: integer("record_status").default(1).notNull(),
   issuedBy: varchar("issued_by").references(() => users.id),
@@ -675,15 +672,35 @@ export const insertRawMaterialIssuanceSchema = createInsertSchema(rawMaterialIss
 export type InsertRawMaterialIssuance = z.infer<typeof insertRawMaterialIssuanceSchema>;
 export type RawMaterialIssuance = typeof rawMaterialIssuance.$inferSelect;
 
-// Gatepasses for Finished Goods Dispatch
+// Raw Material Issuance Items (Detail/Line Items)
+export const rawMaterialIssuanceItems = pgTable("raw_material_issuance_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  issuanceId: varchar("issuance_id").references(() => rawMaterialIssuance.id).notNull(),
+  materialId: varchar("material_id").references(() => rawMaterials.id).notNull(),
+  quantityIssued: integer("quantity_issued").notNull(),
+  uomId: varchar("uom_id").references(() => uom.id),
+  batchNumber: varchar("batch_number", { length: 100 }),
+  remarks: text("remarks"),
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertRawMaterialIssuanceItemSchema = createInsertSchema(rawMaterialIssuanceItems).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertRawMaterialIssuanceItem = z.infer<typeof insertRawMaterialIssuanceItemSchema>;
+export type RawMaterialIssuanceItem = typeof rawMaterialIssuanceItems.$inferSelect;
+
+// Gatepasses for Finished Goods Dispatch (Header)
 export const gatepasses = pgTable("gatepasses", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   gatepassNumber: varchar("gatepass_number", { length: 100 }).notNull().unique(),
   gatepassDate: timestamp("gatepass_date").notNull(),
-  finishedGoodId: varchar("finished_good_id").references(() => finishedGoods.id).notNull(),
-  productId: varchar("product_id").references(() => products.id).notNull(),
-  quantityDispatched: integer("quantity_dispatched").notNull(),
-  uomId: varchar("uom_id").references(() => uom.id),
   vehicleNumber: varchar("vehicle_number", { length: 50 }).notNull(),
   driverName: varchar("driver_name", { length: 255 }).notNull(),
   driverContact: varchar("driver_contact", { length: 50 }),
@@ -717,3 +734,27 @@ export const insertGatepassSchema = createInsertSchema(gatepasses, {
 
 export type InsertGatepass = z.infer<typeof insertGatepassSchema>;
 export type Gatepass = typeof gatepasses.$inferSelect;
+
+// Gatepass Items (Detail/Line Items)
+export const gatepassItems = pgTable("gatepass_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  gatepassId: varchar("gatepass_id").references(() => gatepasses.id).notNull(),
+  finishedGoodId: varchar("finished_good_id").references(() => finishedGoods.id).notNull(),
+  productId: varchar("product_id").references(() => products.id).notNull(),
+  quantityDispatched: integer("quantity_dispatched").notNull(),
+  uomId: varchar("uom_id").references(() => uom.id),
+  remarks: text("remarks"),
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertGatepassItemSchema = createInsertSchema(gatepassItems).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertGatepassItem = z.infer<typeof insertGatepassItemSchema>;
+export type GatepassItem = typeof gatepassItems.$inferSelect;
