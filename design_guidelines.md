@@ -96,12 +96,32 @@
 - Text: gray-900
 - Icons: 24px, gray-600
 
-**Desktop Tabs (Admin Dashboard):**
-- Horizontal tab list below header
-- Background: white with border-bottom
-- Active tab: border-b-2 border-blue-600 text-blue-600
-- Inactive tab: text-gray-600 hover:text-gray-900
-- Tab padding: px-4 py-3
+**Vertical Sidebar Navigation (Admin/Manager Dashboards):**
+- **Layout:**
+  - Fixed left sidebar: `w-64` (256px) on desktop, collapsible on mobile
+  - Background: `bg-card` with subtle border-right
+  - Full height: `min-h-screen`
+  - Padding: `p-4` for spacing
+- **Navigation Buttons:**
+  - Button style: `w-full justify-start text-left px-4 py-2.5 rounded-lg`
+  - Font: `text-sm font-medium`
+  - Height: `min-h-11` (44px minimum for touch)
+  - Icon + text layout: icon 20px, mr-3 gap
+  - Inactive: `text-muted-foreground hover-elevate`
+  - Active: `bg-primary text-primary-foreground` (filled blue)
+  - Spacing: `space-y-1` between buttons
+- **Configuration Section:**
+  - Collapsible group containing all master data
+  - Header button: Uses ChevronDown icon that rotates when expanded
+  - Indented children: `pl-7` for nested items
+  - Master data includes: Users, Role Permissions, Machines, Machine Types, Checklists, Spare Parts, PM Templates, Unit of Measurement, Products, Raw Materials, Finished Goods, Vendors
+- **Section Groups:**
+  - Optional labels: `text-xs font-semibold text-muted-foreground uppercase mb-2 px-2`
+  - Dividers: `border-t border-border my-4` between logical groups
+- **Mobile Behavior:**
+  - Sidebar hidden by default, opens as drawer/overlay
+  - Hamburger icon in header toggles sidebar
+  - Full-width overlay with backdrop when open
 
 ### Dashboard Cards
 
