@@ -2518,6 +2518,158 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Machine Startup Tasks Routes
+  app.post('/api/machine-startup-tasks', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const taskData = {
+        ...req.body,
+        createdBy: req.user.id
+      };
+      
+      const task = await storage.createMachineStartupTask(taskData);
+      console.log(`[AUDIT] ${req.user.username} created machine startup task ${task.id} for machine ${task.machineId}`);
+      res.status(201).json(task);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error creating machine startup task:", error);
+      res.status(500).json({ message: "Failed to create startup task" });
+    }
+  });
+
+  app.get('/api/machine-startup-tasks', isAuthenticated, async (req: any, res) => {
+    try {
+      const { date, userId, status } = req.query;
+      
+      let tasks;
+      if (date) {
+        tasks = await storage.getStartupTasksByDate(date as string);
+      } else if (userId) {
+        tasks = await storage.getStartupTasksByUser(userId as string);
+      } else {
+        tasks = await storage.getAllMachineStartupTasks();
+      }
+
+      // If user is operator, filter to only their tasks
+      const user = await storage.getUser(req.user.id);
+      const userRole = user?.role || 'operator';
+      
+      if (userRole === 'operator') {
+        tasks = tasks.filter(t => t.assignedUserId === req.user.id);
+      }
+
+      res.json(tasks);
+    } catch (error) {
+      console.error("Error fetching machine startup tasks:", error);
+      res.status(500).json({ message: "Failed to fetch startup tasks" });
+    }
+  });
+
+  app.get('/api/machine-startup-tasks/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const task = await storage.getMachineStartupTask(id);
+      
+      if (!task) {
+        return res.status(404).json({ message: "Startup task not found" });
+      }
+
+      // If user is operator, only allow viewing their own tasks
+      const user = await storage.getUser(req.user.id);
+      const userRole = user?.role || 'operator';
+      
+      if (userRole === 'operator' && task.assignedUserId !== req.user.id) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      res.json(task);
+    } catch (error) {
+      console.error("Error fetching machine startup task:", error);
+      res.status(500).json({ message: "Failed to fetch startup task" });
+    }
+  });
+
+  app.patch('/api/machine-startup-tasks/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const task = await storage.getMachineStartupTask(id);
+      
+      if (!task) {
+        return res.status(404).json({ message: "Startup task not found" });
+      }
+
+      // Operators can only mark their own tasks as completed
+      const user = await storage.getUser(req.user.id);
+      const userRole = user?.role || 'operator';
+      
+      if (userRole === 'operator') {
+        if (task.assignedUserId !== req.user.id) {
+          return res.status(403).json({ message: "Access denied" });
+        }
+        // Operators can only update status and machineStartedAt
+        const { status, machineStartedAt } = req.body;
+        const updateData: any = {};
+        if (status) updateData.status = status;
+        if (machineStartedAt) updateData.machineStartedAt = new Date(machineStartedAt);
+        
+        const updated = await storage.updateMachineStartupTask(id, updateData);
+        console.log(`[AUDIT] Operator ${req.user.username} updated startup task ${id} status to ${status}`);
+        return res.json(updated);
+      }
+
+      // Managers and admins can update any field
+      const updated = await storage.updateMachineStartupTask(id, req.body);
+      console.log(`[AUDIT] ${userRole} ${req.user.username} updated startup task ${id}`);
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error updating machine startup task:", error);
+      res.status(500).json({ message: "Failed to update startup task" });
+    }
+  });
+
+  app.delete('/api/machine-startup-tasks/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteMachineStartupTask(id);
+      console.log(`[AUDIT] ${req.user.username} deleted startup task ${id}`);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting machine startup task:", error);
+      res.status(500).json({ message: "Failed to delete startup task" });
+    }
+  });
+
+  // Mark machine as started (operator quick action)
+  app.post('/api/machine-startup-tasks/:id/complete', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const task = await storage.getMachineStartupTask(id);
+      
+      if (!task) {
+        return res.status(404).json({ message: "Startup task not found" });
+      }
+
+      if (task.assignedUserId !== req.user.id) {
+        return res.status(403).json({ message: "This task is not assigned to you" });
+      }
+
+      const updated = await storage.updateMachineStartupTask(id, {
+        status: 'completed',
+        machineStartedAt: new Date()
+      });
+
+      console.log(`[AUDIT] Operator ${req.user.username} completed startup task ${id}`);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error completing machine startup task:", error);
+      res.status(500).json({ message: "Failed to complete startup task" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

@@ -13,6 +13,7 @@ console.log("✅ DATABASE_URL:", process.env.DATABASE_URL ? "Set" : "Not set");
 const expressModule = await import("express");
 const { registerRoutes } = await import("./routes");
 const { setupVite, serveStatic, log } = await import("./vite");
+const { notificationService } = await import("./notificationService");
 
 const express = expressModule.default;
 const { Request, Response, NextFunction } = expressModule;
@@ -88,5 +89,17 @@ app.use((req, res, next) => {
   const port = parseInt(process.env.PORT || "5000", 10);
   server.listen(port, "0.0.0.0", () => {
     log(`🚀 Server running on port ${port}`);
+    
+    // Start machine startup reminder checking system
+    // Checks every minute for pending reminders
+    setInterval(async () => {
+      try {
+        await notificationService.checkAndSendReminders();
+      } catch (error) {
+        console.error('[REMINDER SYSTEM ERROR]', error);
+      }
+    }, 60000); // Check every 60 seconds
+    
+    log('✅ Machine startup reminder system initialized');
   });
 })();
