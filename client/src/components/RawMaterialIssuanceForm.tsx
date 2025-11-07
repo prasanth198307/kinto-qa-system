@@ -1,33 +1,45 @@
-import { useEffect } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, type RawMaterial, type Product, type Uom } from "@shared/schema";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { Card } from "@/components/ui/card";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Card } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
-import { queryClient, apiRequest } from "@/lib/queryClient";
-import { insertRawMaterialIssuanceSchema, type RawMaterialIssuance, type RawMaterial, type Product, type Uom } from "@shared/schema";
-import { format } from "date-fns";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Plus, Trash2 } from "lucide-react";
+
+const headerSchema = insertRawMaterialIssuanceSchema.omit({ issuanceNumber: true });
+const itemSchema = insertRawMaterialIssuanceItemSchema.omit({ issuanceId: true });
+
+const formSchema = z.object({
+  header: headerSchema,
+  items: z.array(itemSchema).min(1, "At least one item is required"),
+});
+
+type FormData = z.infer<typeof formSchema>;
 
 interface RawMaterialIssuanceFormProps {
-  issuance: RawMaterialIssuance | null;
+  issuance: any;
   onClose: () => void;
 }
 
-export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMaterialIssuanceFormProps) {
+export default function RawMaterialIssuanceForm({ onClose }: RawMaterialIssuanceFormProps) {
   const { toast } = useToast();
+  const [items, setItems] = useState([{ 
+    rawMaterialId: "", 
+    productId: "", 
+    quantityIssued: 0, 
+    uomId: "", 
+    remarks: "" 
+  }]);
 
-  const { data: materials = [] } = useQuery<RawMaterial[]>({
+  const { data: rawMaterials = [] } = useQuery<RawMaterial[]>({
     queryKey: ['/api/raw-materials'],
   });
 
@@ -39,212 +51,300 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
     queryKey: ['/api/uom'],
   });
 
-  const form = useForm({
-    resolver: zodResolver(insertRawMaterialIssuanceSchema.extend({
-      issuanceDate: insertRawMaterialIssuanceSchema.shape.issuanceDate.optional(),
-      materialId: insertRawMaterialIssuanceSchema.shape.materialId,
-      quantityIssued: insertRawMaterialIssuanceSchema.shape.quantityIssued,
-    })),
+  const form = useForm<FormData>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
-      issuanceDate: format(new Date(), 'yyyy-MM-dd'),
-      materialId: '',
-      quantityIssued: 0,
-      uomId: '',
-      productId: '',
-      batchNumber: '',
-      issuedTo: '',
-      remarks: '',
+      header: {
+        issuanceDate: new Date(),
+        batchNumber: "",
+        issuedTo: "",
+        remarks: "",
+      },
+      items: items,
     },
   });
 
-  useEffect(() => {
-    if (issuance) {
-      form.reset({
-        issuanceDate: issuance.issuanceDate ? format(new Date(issuance.issuanceDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
-        materialId: issuance.materialId || '',
-        quantityIssued: issuance.quantityIssued || 0,
-        uomId: issuance.uomId || '',
-        productId: issuance.productId || '',
-        batchNumber: issuance.batchNumber || '',
-        issuedTo: issuance.issuedTo || '',
-        remarks: issuance.remarks || '',
-      });
-    } else {
-      form.reset({
-        issuanceDate: format(new Date(), 'yyyy-MM-dd'),
-        materialId: '',
-        quantityIssued: 0,
-        uomId: '',
-        productId: '',
-        batchNumber: '',
-        issuedTo: '',
-        remarks: '',
-      });
-    }
-  }, [issuance, form]);
-
-  const mutation = useMutation({
-    mutationFn: async (data: any) => {
-      if (issuance) {
-        return apiRequest('PATCH', `/api/raw-material-issuances/${issuance.id}`, data);
-      } else {
-        return apiRequest('POST', '/api/raw-material-issuances', data);
-      }
+  const createMutation = useMutation({
+    mutationFn: async (data: FormData) => {
+      return await apiRequest('POST', '/api/raw-material-issuances', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/raw-material-issuances'] });
       queryClient.invalidateQueries({ queryKey: ['/api/raw-materials'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/raw-material-transactions'] });
       toast({
         title: "Success",
-        description: issuance ? "Issuance updated successfully" : "Material issued successfully and inventory deducted",
+        description: "Raw material issuance created successfully",
       });
-      onClose();
+      handleClose();
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to save issuance",
+        description: error.message || "Failed to create issuance",
         variant: "destructive",
       });
     },
   });
 
-  const onSubmit = form.handleSubmit((data) => {
-    mutation.mutate(data);
-  });
+  const addItem = () => {
+    const newItems = [...items, { 
+      rawMaterialId: "", 
+      productId: "", 
+      quantityIssued: 0, 
+      uomId: "", 
+      remarks: "" 
+    }];
+    setItems(newItems);
+    form.setValue('items', newItems);
+  };
+
+  const removeItem = (index: number) => {
+    if (items.length > 1) {
+      const newItems = items.filter((_, i) => i !== index);
+      setItems(newItems);
+      form.setValue('items', newItems);
+    }
+  };
+
+  const handleClose = () => {
+    form.reset();
+    setItems([{ rawMaterialId: "", productId: "", quantityIssued: 0, uomId: "", remarks: "" }]);
+    onClose();
+  };
+
+  const onSubmit = (data: FormData) => {
+    createMutation.mutate(data);
+  };
 
   return (
     <Card className="p-4 mb-4">
-      <h3 className="text-lg font-semibold mb-4">
-        {issuance ? 'Edit Raw Material Issuance' : 'Issue Raw Material for Production'}
-      </h3>
-      
-      <form onSubmit={onSubmit} className="space-y-4">
-        <div>
-          <Label htmlFor="issuanceDate">Issuance Date *</Label>
-          <Input
-            id="issuanceDate"
-            type="date"
-            {...form.register('issuanceDate')}
-            data-testid="input-issuance-date"
-          />
-          {form.formState.errors.issuanceDate && (
-            <p className="text-sm text-destructive mt-1">{form.formState.errors.issuanceDate.message}</p>
-          )}
-        </div>
+      <div className="mb-4">
+        <h3 className="text-lg font-semibold">Create Raw Material Issuance</h3>
+        <p className="text-sm text-muted-foreground mt-1">
+          Issue multiple raw materials in one transaction
+        </p>
+      </div>
 
-        <div>
-          <Label htmlFor="materialId">Raw Material *</Label>
-          <Select
-            value={form.watch('materialId')}
-            onValueChange={(value) => form.setValue('materialId', value)}
-          >
-            <SelectTrigger data-testid="select-material">
-              <SelectValue placeholder="Select raw material" />
-            </SelectTrigger>
-            <SelectContent>
-              {materials.map((material) => (
-                <SelectItem key={material.id} value={material.id}>
-                  {material.materialName} (Stock: {material.currentStock || 0})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {form.formState.errors.materialId && (
-            <p className="text-sm text-destructive mt-1">{form.formState.errors.materialId.message}</p>
-          )}
-        </div>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <Card className="p-4 space-y-4">
+            <h4 className="font-semibold text-sm">Issuance Details</h4>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="header.issuanceDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Issuance Date</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="date"
+                        value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : ''}
+                        onChange={(e) => field.onChange(new Date(e.target.value))}
+                        data-testid="input-issuance-date"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-        <div>
-          <Label htmlFor="quantityIssued">Quantity Issued *</Label>
-          <Input
-            id="quantityIssued"
-            type="number"
-            {...form.register('quantityIssued', { valueAsNumber: true })}
-            data-testid="input-quantity-issued"
-          />
-          {form.formState.errors.quantityIssued && (
-            <p className="text-sm text-destructive mt-1">{form.formState.errors.quantityIssued.message}</p>
-          )}
-        </div>
+              <FormField
+                control={form.control}
+                name="header.batchNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Batch Number</FormLabel>
+                    <FormControl>
+                      <Input {...field} value={field.value || ""} data-testid="input-batch-number" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-        <div>
-          <Label htmlFor="uomId">Unit of Measure</Label>
-          <Select
-            value={form.watch('uomId') ?? ''}
-            onValueChange={(value) => form.setValue('uomId', value ? value : undefined)}
-          >
-            <SelectTrigger data-testid="select-uom">
-              <SelectValue placeholder="Select UOM" />
-            </SelectTrigger>
-            <SelectContent>
-              {uoms.map((uom) => (
-                <SelectItem key={uom.id} value={uom.id}>
-                  {uom.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+              <FormField
+                control={form.control}
+                name="header.issuedTo"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Issued To</FormLabel>
+                    <FormControl>
+                      <Input {...field} value={field.value || ""} placeholder="Department/Person" data-testid="input-issued-to" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-        <div>
-          <Label htmlFor="productId">Product (To Produce)</Label>
-          <Select
-            value={form.watch('productId') ?? ''}
-            onValueChange={(value) => form.setValue('productId', value ? value : undefined)}
-          >
-            <SelectTrigger data-testid="select-product">
-              <SelectValue placeholder="Select product" />
-            </SelectTrigger>
-            <SelectContent>
-              {products.map((product) => (
-                <SelectItem key={product.id} value={product.id}>
-                  {product.productName}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+              <FormField
+                control={form.control}
+                name="header.remarks"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Remarks (Optional)</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} value={field.value || ""} data-testid="input-header-remarks" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </Card>
 
-        <div>
-          <Label htmlFor="batchNumber">Batch Number</Label>
-          <Input
-            id="batchNumber"
-            {...form.register('batchNumber')}
-            data-testid="input-batch-number"
-          />
-        </div>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <h4 className="font-semibold text-sm">Material Items</h4>
+              <Button type="button" variant="outline" size="sm" onClick={addItem} data-testid="button-add-item">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Item
+              </Button>
+            </div>
 
-        <div>
-          <Label htmlFor="issuedTo">Issued To (Person/Department)</Label>
-          <Input
-            id="issuedTo"
-            {...form.register('issuedTo')}
-            placeholder="e.g., Production Line 1, John Doe"
-            data-testid="input-issued-to"
-          />
-        </div>
+            {items.map((_, index) => (
+              <Card key={index} className="p-4">
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <h5 className="text-sm font-medium">Item {index + 1}</h5>
+                    {items.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeItem(index)}
+                        data-testid={`button-remove-item-${index}`}
+                      >
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    )}
+                  </div>
 
-        <div>
-          <Label htmlFor="remarks">Remarks</Label>
-          <Textarea
-            id="remarks"
-            {...form.register('remarks')}
-            placeholder="Additional notes"
-            data-testid="input-remarks"
-          />
-        </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.rawMaterialId`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Raw Material</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid={`select-raw-material-${index}`}>
+                                <SelectValue placeholder="Select material" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {rawMaterials.map((material) => (
+                                <SelectItem key={material.id} value={material.id}>
+                                  {material.materialName} (Stock: {material.currentStock || 0})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-        <div className="flex gap-2">
-          <Button type="submit" disabled={mutation.isPending} data-testid="button-submit-issuance">
-            {mutation.isPending ? 'Saving...' : issuance ? 'Update' : 'Issue Material'}
-          </Button>
-          <Button type="button" variant="outline" onClick={onClose} data-testid="button-cancel">
-            Cancel
-          </Button>
-        </div>
-      </form>
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.productId`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Product</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid={`select-product-${index}`}>
+                                <SelectValue placeholder="Select product" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {products.map((product) => (
+                                <SelectItem key={product.id} value={product.id}>
+                                  {product.productName}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.quantityIssued`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Quantity Issued</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              {...field}
+                              onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                              data-testid={`input-quantity-${index}`}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.uomId`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Unit of Measure</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value || ""}>
+                            <FormControl>
+                              <SelectTrigger data-testid={`select-uom-${index}`}>
+                                <SelectValue placeholder="Select UOM" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {uoms.map((uom) => (
+                                <SelectItem key={uom.id} value={uom.id}>
+                                  {uom.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.remarks`}
+                      render={({ field }) => (
+                        <FormItem className="md:col-span-2">
+                          <FormLabel>Item Remarks (Optional)</FormLabel>
+                          <FormControl>
+                            <Input {...field} value={field.value || ""} data-testid={`input-item-remarks-${index}`} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4">
+            <Button type="button" variant="outline" onClick={handleClose} data-testid="button-cancel">
+              Cancel
+            </Button>
+            <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit">
+              {createMutation.isPending ? "Creating..." : "Create Issuance"}
+            </Button>
+          </div>
+        </form>
+      </Form>
     </Card>
   );
 }

@@ -1,31 +1,43 @@
-import { useEffect } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { insertGatepassSchema, insertGatepassItemSchema, type FinishedGood, type Product, type Uom } from "@shared/schema";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { Card } from "@/components/ui/card";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Card } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
-import { queryClient, apiRequest } from "@/lib/queryClient";
-import { insertGatepassSchema, type Gatepass, type FinishedGood, type Product, type Uom } from "@shared/schema";
-import { format } from "date-fns";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Plus, Trash2 } from "lucide-react";
+
+const headerSchema = insertGatepassSchema;
+const itemSchema = insertGatepassItemSchema.omit({ gatepassId: true });
+
+const formSchema = z.object({
+  header: headerSchema,
+  items: z.array(itemSchema).min(1, "At least one item is required"),
+});
+
+type FormData = z.infer<typeof formSchema>;
 
 interface GatepassFormProps {
-  gatepass: Gatepass | null;
+  gatepass: any;
   onClose: () => void;
 }
 
-export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
+export default function GatepassForm({ onClose }: GatepassFormProps) {
   const { toast } = useToast();
+  const [items, setItems] = useState([{ 
+    finishedGoodId: "", 
+    productId: "", 
+    quantityDispatched: 0, 
+    uomId: "", 
+    remarks: "" 
+  }]);
 
   const { data: finishedGoods = [] } = useQuery<FinishedGood[]>({
     queryKey: ['/api/finished-goods'],
@@ -39,300 +51,393 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
     queryKey: ['/api/uom'],
   });
 
-  const form = useForm({
-    resolver: zodResolver(insertGatepassSchema),
+  const form = useForm<FormData>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
-      gatepassNumber: '',
-      gatepassDate: format(new Date(), 'yyyy-MM-dd'),
-      finishedGoodId: '',
-      productId: '',
-      quantityDispatched: 0,
-      uomId: '',
-      vehicleNumber: '',
-      driverName: '',
-      driverContact: '',
-      transporterName: '',
-      destination: '',
-      customerName: '',
-      invoiceNumber: '',
-      remarks: '',
+      header: {
+        gatepassNumber: "",
+        gatepassDate: new Date(),
+        vehicleNumber: "",
+        driverName: "",
+        driverContact: "",
+        transporterName: "",
+        destination: "",
+        customerName: "",
+        invoiceNumber: "",
+        remarks: "",
+      },
+      items: items,
     },
   });
 
-  useEffect(() => {
-    if (gatepass) {
-      form.reset({
-        gatepassNumber: gatepass.gatepassNumber || '',
-        gatepassDate: gatepass.gatepassDate ? format(new Date(gatepass.gatepassDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
-        finishedGoodId: gatepass.finishedGoodId || '',
-        productId: gatepass.productId || '',
-        quantityDispatched: gatepass.quantityDispatched || 0,
-        uomId: gatepass.uomId || '',
-        vehicleNumber: gatepass.vehicleNumber || '',
-        driverName: gatepass.driverName || '',
-        driverContact: gatepass.driverContact || '',
-        transporterName: gatepass.transporterName || '',
-        destination: gatepass.destination || '',
-        customerName: gatepass.customerName || '',
-        invoiceNumber: gatepass.invoiceNumber || '',
-        remarks: gatepass.remarks || '',
-      });
-    } else {
-      form.reset({
-        gatepassNumber: '',
-        gatepassDate: format(new Date(), 'yyyy-MM-dd'),
-        finishedGoodId: '',
-        productId: '',
-        quantityDispatched: 0,
-        uomId: '',
-        vehicleNumber: '',
-        driverName: '',
-        driverContact: '',
-        transporterName: '',
-        destination: '',
-        customerName: '',
-        invoiceNumber: '',
-        remarks: '',
-      });
-    }
-  }, [gatepass, form]);
-
-  const mutation = useMutation({
-    mutationFn: async (data: any) => {
-      if (gatepass) {
-        return apiRequest('PATCH', `/api/gatepasses/${gatepass.id}`, data);
-      } else {
-        return apiRequest('POST', '/api/gatepasses', data);
-      }
+  const createMutation = useMutation({
+    mutationFn: async (data: FormData) => {
+      return await apiRequest('POST', '/api/gatepasses', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/gatepasses'] });
       queryClient.invalidateQueries({ queryKey: ['/api/finished-goods'] });
       toast({
         title: "Success",
-        description: gatepass ? "Gatepass updated successfully" : "Gatepass issued successfully and inventory deducted",
+        description: "Gatepass created successfully",
       });
-      onClose();
+      handleClose();
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to save gatepass",
+        description: error.message || "Failed to create gatepass",
         variant: "destructive",
       });
     },
   });
 
-  const onSubmit = form.handleSubmit((data) => {
-    mutation.mutate(data);
-  });
+  const addItem = () => {
+    const newItems = [...items, { 
+      finishedGoodId: "", 
+      productId: "", 
+      quantityDispatched: 0, 
+      uomId: "", 
+      remarks: "" 
+    }];
+    setItems(newItems);
+    form.setValue('items', newItems);
+  };
 
-  const selectedFinishedGood = finishedGoods.find(fg => fg.id === form.watch('finishedGoodId'));
-
-  useEffect(() => {
-    if (selectedFinishedGood) {
-      form.setValue('productId', selectedFinishedGood.productId);
-      if (selectedFinishedGood.uomId) {
-        form.setValue('uomId', selectedFinishedGood.uomId);
-      }
+  const removeItem = (index: number) => {
+    if (items.length > 1) {
+      const newItems = items.filter((_, i) => i !== index);
+      setItems(newItems);
+      form.setValue('items', newItems);
     }
-  }, [selectedFinishedGood, form]);
+  };
+
+  const handleClose = () => {
+    form.reset();
+    setItems([{ finishedGoodId: "", productId: "", quantityDispatched: 0, uomId: "", remarks: "" }]);
+    onClose();
+  };
+
+  const onSubmit = (data: FormData) => {
+    createMutation.mutate(data);
+  };
 
   return (
     <Card className="p-4 mb-4">
-      <h3 className="text-lg font-semibold mb-4">
-        {gatepass ? 'Edit Gatepass' : 'Issue Gatepass for Finished Goods Dispatch'}
-      </h3>
-      
-      <form onSubmit={onSubmit} className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="gatepassNumber">Gatepass Number *</Label>
-            <Input
-              id="gatepassNumber"
-              {...form.register('gatepassNumber')}
-              placeholder="e.g., GP-2024-001"
-              data-testid="input-gatepass-number"
-            />
-            {form.formState.errors.gatepassNumber && (
-              <p className="text-sm text-destructive mt-1">{form.formState.errors.gatepassNumber.message}</p>
-            )}
+      <div className="mb-4">
+        <h3 className="text-lg font-semibold">Create Gatepass</h3>
+        <p className="text-sm text-muted-foreground mt-1">
+          Dispatch multiple finished goods in one gatepass
+        </p>
+      </div>
+
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <Card className="p-4 space-y-4">
+            <h4 className="font-semibold text-sm">Gatepass Details</h4>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="header.gatepassNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Gatepass Number</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="GP-2024-001" data-testid="input-gatepass-number" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="header.gatepassDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Gatepass Date</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="date"
+                        value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : ''}
+                        onChange={(e) => field.onChange(new Date(e.target.value))}
+                        data-testid="input-gatepass-date"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="header.vehicleNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Vehicle Number</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="MH-12-AB-1234" data-testid="input-vehicle-number" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="header.driverName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Driver Name</FormLabel>
+                    <FormControl>
+                      <Input {...field} data-testid="input-driver-name" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="header.driverContact"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Driver Contact (Optional)</FormLabel>
+                    <FormControl>
+                      <Input {...field} value={field.value || ""} data-testid="input-driver-contact" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="header.transporterName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Transporter Name (Optional)</FormLabel>
+                    <FormControl>
+                      <Input {...field} value={field.value || ""} data-testid="input-transporter-name" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="header.destination"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Destination (Optional)</FormLabel>
+                    <FormControl>
+                      <Input {...field} value={field.value || ""} data-testid="input-destination" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="header.customerName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Customer Name (Optional)</FormLabel>
+                    <FormControl>
+                      <Input {...field} value={field.value || ""} data-testid="input-customer-name" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="header.invoiceNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Invoice Number (Optional)</FormLabel>
+                    <FormControl>
+                      <Input {...field} value={field.value || ""} data-testid="input-invoice-number" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="header.remarks"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Remarks (Optional)</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} value={field.value || ""} data-testid="input-header-remarks" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </Card>
+
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <h4 className="font-semibold text-sm">Finished Goods Items</h4>
+              <Button type="button" variant="outline" size="sm" onClick={addItem} data-testid="button-add-item">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Item
+              </Button>
+            </div>
+
+            {items.map((_, index) => (
+              <Card key={index} className="p-4">
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <h5 className="text-sm font-medium">Item {index + 1}</h5>
+                    {items.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeItem(index)}
+                        data-testid={`button-remove-item-${index}`}
+                      >
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.finishedGoodId`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Finished Good</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid={`select-finished-good-${index}`}>
+                                <SelectValue placeholder="Select finished good" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {finishedGoods.map((fg) => {
+                                const product = products.find(p => p.id === fg.productId);
+                                return (
+                                  <SelectItem key={fg.id} value={fg.id}>
+                                    {product?.productName || 'Unknown'} - Batch: {fg.batchNumber} (Qty: {fg.quantity})
+                                  </SelectItem>
+                                );
+                              })}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.productId`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Product</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid={`select-product-${index}`}>
+                                <SelectValue placeholder="Select product" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {products.map((product) => (
+                                <SelectItem key={product.id} value={product.id}>
+                                  {product.productName}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.quantityDispatched`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Quantity Dispatched</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              {...field}
+                              onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                              data-testid={`input-quantity-${index}`}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.uomId`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Unit of Measure</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value || ""}>
+                            <FormControl>
+                              <SelectTrigger data-testid={`select-uom-${index}`}>
+                                <SelectValue placeholder="Select UOM" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {uoms.map((uom) => (
+                                <SelectItem key={uom.id} value={uom.id}>
+                                  {uom.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.remarks`}
+                      render={({ field }) => (
+                        <FormItem className="md:col-span-2">
+                          <FormLabel>Item Remarks (Optional)</FormLabel>
+                          <FormControl>
+                            <Input {...field} value={field.value || ""} data-testid={`input-item-remarks-${index}`} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+              </Card>
+            ))}
           </div>
 
-          <div>
-            <Label htmlFor="gatepassDate">Gatepass Date *</Label>
-            <Input
-              id="gatepassDate"
-              type="date"
-              {...form.register('gatepassDate')}
-              data-testid="input-gatepass-date"
-            />
-            {form.formState.errors.gatepassDate && (
-              <p className="text-sm text-destructive mt-1">{form.formState.errors.gatepassDate.message}</p>
-            )}
+          <div className="flex justify-end gap-3 pt-4">
+            <Button type="button" variant="outline" onClick={handleClose} data-testid="button-cancel">
+              Cancel
+            </Button>
+            <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit">
+              {createMutation.isPending ? "Creating..." : "Create Gatepass"}
+            </Button>
           </div>
-        </div>
-
-        <div>
-          <Label htmlFor="finishedGoodId">Finished Good *</Label>
-          <Select
-            value={form.watch('finishedGoodId')}
-            onValueChange={(value) => form.setValue('finishedGoodId', value)}
-          >
-            <SelectTrigger data-testid="select-finished-good">
-              <SelectValue placeholder="Select finished good" />
-            </SelectTrigger>
-            <SelectContent>
-              {finishedGoods.map((fg) => {
-                const product = products.find(p => p.id === fg.productId);
-                return (
-                  <SelectItem key={fg.id} value={fg.id}>
-                    {product?.productName || 'Unknown'} - Batch: {fg.batchNumber} (Qty: {fg.quantity})
-                  </SelectItem>
-                );
-              })}
-            </SelectContent>
-          </Select>
-          {form.formState.errors.finishedGoodId && (
-            <p className="text-sm text-destructive mt-1">{form.formState.errors.finishedGoodId.message}</p>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="quantityDispatched">Quantity Dispatched *</Label>
-            <Input
-              id="quantityDispatched"
-              type="number"
-              {...form.register('quantityDispatched', { valueAsNumber: true })}
-              data-testid="input-quantity-dispatched"
-            />
-            {selectedFinishedGood && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Available: {selectedFinishedGood.quantity}
-              </p>
-            )}
-            {form.formState.errors.quantityDispatched && (
-              <p className="text-sm text-destructive mt-1">{form.formState.errors.quantityDispatched.message}</p>
-            )}
-          </div>
-
-          <div>
-            <Label htmlFor="uomId">Unit of Measure</Label>
-            <Select
-              value={form.watch('uomId') ?? ''}
-              onValueChange={(value) => form.setValue('uomId', value ? value : undefined)}
-            >
-              <SelectTrigger data-testid="select-uom">
-                <SelectValue placeholder="Select UOM" />
-              </SelectTrigger>
-              <SelectContent>
-                {uoms.map((uom) => (
-                  <SelectItem key={uom.id} value={uom.id}>
-                    {uom.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="vehicleNumber">Vehicle Number *</Label>
-            <Input
-              id="vehicleNumber"
-              {...form.register('vehicleNumber')}
-              placeholder="e.g., MH-12-AB-1234"
-              data-testid="input-vehicle-number"
-            />
-            {form.formState.errors.vehicleNumber && (
-              <p className="text-sm text-destructive mt-1">{form.formState.errors.vehicleNumber.message}</p>
-            )}
-          </div>
-
-          <div>
-            <Label htmlFor="driverName">Driver Name *</Label>
-            <Input
-              id="driverName"
-              {...form.register('driverName')}
-              data-testid="input-driver-name"
-            />
-            {form.formState.errors.driverName && (
-              <p className="text-sm text-destructive mt-1">{form.formState.errors.driverName.message}</p>
-            )}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="driverContact">Driver Contact</Label>
-            <Input
-              id="driverContact"
-              {...form.register('driverContact')}
-              placeholder="Phone number"
-              data-testid="input-driver-contact"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="transporterName">Transporter Name</Label>
-            <Input
-              id="transporterName"
-              {...form.register('transporterName')}
-              data-testid="input-transporter-name"
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="destination">Destination</Label>
-            <Input
-              id="destination"
-              {...form.register('destination')}
-              data-testid="input-destination"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="customerName">Customer Name</Label>
-            <Input
-              id="customerName"
-              {...form.register('customerName')}
-              data-testid="input-customer-name"
-            />
-          </div>
-        </div>
-
-        <div>
-          <Label htmlFor="invoiceNumber">Invoice Number</Label>
-          <Input
-            id="invoiceNumber"
-            {...form.register('invoiceNumber')}
-            data-testid="input-invoice-number"
-          />
-        </div>
-
-        <div>
-          <Label htmlFor="remarks">Remarks</Label>
-          <Textarea
-            id="remarks"
-            {...form.register('remarks')}
-            placeholder="Additional notes"
-            data-testid="input-remarks"
-          />
-        </div>
-
-        <div className="flex gap-2">
-          <Button type="submit" disabled={mutation.isPending} data-testid="button-submit-gatepass">
-            {mutation.isPending ? 'Saving...' : gatepass ? 'Update' : 'Issue Gatepass'}
-          </Button>
-          <Button type="button" variant="outline" onClick={onClose} data-testid="button-cancel">
-            Cancel
-          </Button>
-        </div>
-      </form>
+        </form>
+      </Form>
     </Card>
   );
 }
