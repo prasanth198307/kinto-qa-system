@@ -65,11 +65,6 @@ export function setupAuth(app: Express) {
     new LocalStrategy(async (username, password, done) => {
       try {
         const user = await storage.getUserByUsername(username);
-        console.log("🔍 Login attempt for user:", username);
-        console.log("🔍 User found:", !!user);
-        console.log("🔍 User password exists:", !!(user?.password));
-        console.log("🔍 User object keys:", user ? Object.keys(user) : "null");
-        
         if (!user || !user.password) return done(null, false);
 
         const valid = await comparePasswords(password, user.password);
@@ -77,7 +72,6 @@ export function setupAuth(app: Express) {
 
         return done(null, user);
       } catch (err) {
-        console.error("🔥 Login error:", err);
         return done(err);
       }
     })
