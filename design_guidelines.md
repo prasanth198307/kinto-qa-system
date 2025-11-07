@@ -147,6 +147,36 @@
 - Pass: green accent when selected
 - Fail: red accent when selected
 
+**Dropdowns/Select Components (Modern Button Style):**
+- **Trigger Button:**
+  - Height: `min-h-11` (44px minimum for mobile touch)
+  - Border: `border border-input rounded-lg`
+  - Padding: `px-4 py-2.5`
+  - Font: `text-sm font-medium`
+  - Shadow: `shadow-sm` with hover elevation
+  - Icon: ChevronDown 20px, rotates 180° when open
+  - Interactive: Uses `hover-elevate` and `active-elevate-2` for modern feel
+  - Transition: Smooth animations on all interactions
+- **Dropdown Content:**
+  - Max height: `max-h-96` (384px) with scroll
+  - Min width: `min-w-[12rem]` (192px)
+  - Border: `rounded-lg shadow-lg`
+  - Padding: `p-1.5`
+  - Animation: Smooth fade and zoom in/out
+- **Dropdown Items:**
+  - Height: `py-2.5` (40px+) for easy touch
+  - Font: `text-sm font-medium`
+  - Padding: `pl-9 pr-3` (space for check icon)
+  - Border radius: `rounded-md`
+  - Hover: Uses `hover-elevate` for subtle elevation
+  - Selected: Check icon (16px) on left, bold
+  - Interactive: `cursor-pointer` with smooth transitions
+- **Mobile/iPad Optimization:**
+  - Large touch targets throughout
+  - Button-like appearance familiar to mobile users
+  - Smooth animations matching native app feel
+  - Adequate spacing between items for fat-finger taps
+
 ### Tables & Lists
 
 **Data Tables:**
