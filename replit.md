@@ -6,6 +6,30 @@ KINTO QA Management System is a mobile-first Quality Assurance and Preventive Ma
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes (November 2025)
+
+### GST-Compliant Invoice Generation Feature (COMPLETED)
+A complete invoice generation system integrated with gatepasses:
+
+**Components:**
+- **InvoiceForm**: Comprehensive invoice entry with automatic GST calculation
+  - Auto-populates buyer details (name, GSTIN, address, state, stateCode) from vendor master when vendor data loads asynchronously
+  - Pre-fills invoice items from gatepass line items through finished goods/product mapping
+  - Automatic tax calculation: CGST+SGST (intrastate) or IGST (interstate) based on seller/buyer state comparison
+  - Currency storage in paise (×100), tax rates in basis points (×100 for percentages)
+  
+- **PrintableInvoice**: Vyapaar-style PDF generator
+  - Three copies: Original for Buyer, Duplicate for Transporter, Triplicate for Seller
+  - Complete GST tax breakup with CGST/SGST/IGST/Cess
+  - Seller/buyer details, bank account, UPI ID, QR code placeholder
+  - Browser-based print via HTML template (no external PDF library)
+  
+- **Integration**: "Generate Invoice" button in GatepassTable pre-fills InvoiceForm with gatepass data
+
+**Workflow**: Gatepass → Generate Invoice → Auto-filled buyer & items → User enters unit prices → Save → Print PDF with 3 copies
+
+**Production Status**: ✅ Architect-verified as production-ready. Next: QA regression testing with varied vendor states, verify state/stateCode data completeness, capture PDF sample for stakeholder approval.
+
 ## System Architecture
 
 ### Frontend Architecture
