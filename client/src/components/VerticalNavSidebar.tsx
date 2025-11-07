@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, Menu, X } from "lucide-react";
+import { ChevronDown, Menu, X, LogOut } from "lucide-react";
 import { type LucideIcon } from "lucide-react";
 
 export interface NavSection {
@@ -123,7 +123,7 @@ export function VerticalNavSidebar({
             onClick={onLogout}
             data-testid="nav-logout"
           >
-            <X className="w-5 h-5 mr-3" />
+            <LogOut className="w-5 h-5 mr-3" />
             Logout
           </Button>
         </div>
