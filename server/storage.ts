@@ -26,8 +26,10 @@ import {
   gatepassItems,
   invoices,
   invoiceItems,
+  invoicePayments,
   banks,
   checklistAssignments,
+  machineStartupTasks,
   type User,
   type UpsertUser,
   type InsertUser,
@@ -76,6 +78,8 @@ import {
   type InsertInvoice,
   type InvoiceItem,
   type InsertInvoiceItem,
+  type InvoicePayment,
+  type InsertInvoicePayment,
   type Bank,
   type InsertBank,
   type Role,
@@ -84,6 +88,8 @@ import {
   type InsertRolePermission,
   type ChecklistAssignment,
   type InsertChecklistAssignment,
+  type MachineStartupTask,
+  type InsertMachineStartupTask,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
@@ -1351,6 +1357,67 @@ export class DatabaseStorage implements IStorage {
       .update(checklistAssignments)
       .set({ recordStatus: 0, updatedAt: new Date() })
       .where(eq(checklistAssignments.id, id));
+  }
+
+  // Machine Startup Tasks
+  async createMachineStartupTask(task: InsertMachineStartupTask): Promise<MachineStartupTask> {
+    const [created] = await db.insert(machineStartupTasks).values(task).returning();
+    return created;
+  }
+
+  async getAllMachineStartupTasks(): Promise<MachineStartupTask[]> {
+    return await db.select().from(machineStartupTasks).where(eq(machineStartupTasks.recordStatus, 1));
+  }
+
+  async getMachineStartupTask(id: string): Promise<MachineStartupTask | undefined> {
+    const [task] = await db.select().from(machineStartupTasks).where(and(eq(machineStartupTasks.id, id), eq(machineStartupTasks.recordStatus, 1)));
+    return task;
+  }
+
+  async getPendingStartupTasks(): Promise<MachineStartupTask[]> {
+    return await db.select().from(machineStartupTasks)
+      .where(and(
+        eq(machineStartupTasks.status, 'pending'),
+        eq(machineStartupTasks.recordStatus, 1)
+      ));
+  }
+
+  async getStartupTasksByDate(date: string): Promise<MachineStartupTask[]> {
+    return await db.select().from(machineStartupTasks)
+      .where(and(
+        eq(machineStartupTasks.productionDate, date),
+        eq(machineStartupTasks.recordStatus, 1)
+      ));
+  }
+
+  async getStartupTasksByUser(userId: string): Promise<MachineStartupTask[]> {
+    return await db.select().from(machineStartupTasks)
+      .where(and(
+        eq(machineStartupTasks.assignedUserId, userId),
+        eq(machineStartupTasks.recordStatus, 1)
+      ));
+  }
+
+  async updateMachineStartupTask(id: string, updates: Partial<InsertMachineStartupTask> & { 
+    status?: string; 
+    notificationSentAt?: Date; 
+    machineStartedAt?: Date;
+    whatsappSent?: number;
+    emailSent?: number;
+  }): Promise<MachineStartupTask | undefined> {
+    const [updated] = await db
+      .update(machineStartupTasks)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(machineStartupTasks.id, id), eq(machineStartupTasks.recordStatus, 1)))
+      .returning();
+    return updated;
+  }
+
+  async deleteMachineStartupTask(id: string): Promise<void> {
+    await db
+      .update(machineStartupTasks)
+      .set({ recordStatus: 0, updatedAt: new Date() })
+      .where(eq(machineStartupTasks.id, id));
   }
 }
 

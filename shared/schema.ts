@@ -970,3 +970,39 @@ export const insertBankSchema = createInsertSchema(banks).omit({
 
 export type InsertBank = z.infer<typeof insertBankSchema>;
 export type Bank = typeof banks.$inferSelect;
+
+// Machine Startup Reminders - for notifying users to turn on machines before production
+export const machineStartupTasks = pgTable("machine_startup_tasks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  machineId: varchar("machine_id").references(() => machines.id).notNull(),
+  assignedUserId: varchar("assigned_user_id").references(() => users.id).notNull(),
+  scheduledStartTime: timestamp("scheduled_start_time").notNull(), // When machine should be started
+  reminderBeforeMinutes: integer("reminder_before_minutes").default(30).notNull(), // How many minutes before to send reminder
+  status: varchar("status", { length: 50 }).default('pending').notNull(), // pending, notified, completed, cancelled
+  notificationSentAt: timestamp("notification_sent_at"),
+  machineStartedAt: timestamp("machine_started_at"), // When user marked machine as started
+  whatsappEnabled: integer("whatsapp_enabled").default(1).notNull(), // 1 = enabled, 0 = disabled
+  emailEnabled: integer("email_enabled").default(1).notNull(), // 1 = enabled, 0 = disabled
+  whatsappSent: integer("whatsapp_sent").default(0).notNull(), // 0 = not sent, 1 = sent
+  emailSent: integer("email_sent").default(0).notNull(), // 0 = not sent, 1 = sent
+  productionDate: date("production_date").notNull(), // Date of production
+  shift: varchar("shift", { length: 50 }), // Morning, Evening, Night
+  notes: text("notes"),
+  createdBy: varchar("created_by").references(() => users.id),
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertMachineStartupTaskSchema = createInsertSchema(machineStartupTasks, {
+  productionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format"),
+  scheduledStartTime: z.string().datetime(),
+}).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertMachineStartupTask = z.infer<typeof insertMachineStartupTaskSchema>;
+export type MachineStartupTask = typeof machineStartupTasks.$inferSelect;
