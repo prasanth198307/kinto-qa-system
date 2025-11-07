@@ -36,7 +36,8 @@ import RolePermissionsView from "@/components/RolePermissionsView";
 import RoleManagement from "@/components/RoleManagement";
 import { ManagerChecklistAssignment } from "@/components/ManagerChecklistAssignment";
 import { OperatorAssignedChecklists } from "@/components/OperatorAssignedChecklists";
-import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory } from "lucide-react";
+import { VerticalNavSidebar, type NavSection } from "@/components/VerticalNavSidebar";
+import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -274,7 +275,7 @@ function ManagerDashboard() {
 
 function AdminDashboard() {
   const { logoutMutation } = useAuth();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeView, setActiveView] = useState('overview');
   const [isPMDialogOpen, setIsPMDialogOpen] = useState(false);
   const [isExecutionDialogOpen, setIsExecutionDialogOpen] = useState(false);
   const [selectedPlanForExecution, setSelectedPlanForExecution] = useState<any>(null);
@@ -307,136 +308,165 @@ function AdminDashboard() {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-background">
-      <MobileHeader notificationCount={0} title="Admin Dashboard" onLogoutClick={() => {
-        logoutMutation.mutate();
-      }} />
-      
-      <div className="pt-14">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="border-b bg-card sticky top-14 z-40 overflow-x-auto">
-            <TabsList className="inline-flex justify-start h-auto p-0 bg-transparent rounded-none min-w-full w-max">
-              <TabsTrigger value="overview" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-overview">
-                <LayoutDashboard className="h-4 w-4 mr-1" />
-                Overview
-              </TabsTrigger>
-              <TabsTrigger value="users" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-users">
-                <Users className="h-4 w-4 mr-1" />
-                Users
-              </TabsTrigger>
-              <TabsTrigger value="role-permissions" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-role-permissions">
-                <Shield className="h-4 w-4 mr-1" />
-                Role Permissions
-              </TabsTrigger>
-              <TabsTrigger value="machines" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-machines">
-                <Settings className="h-4 w-4 mr-1" />
-                Machines
-              </TabsTrigger>
-              <TabsTrigger value="checklists" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-checklists">
-                <FileText className="h-4 w-4 mr-1" />
-                Checklists
-              </TabsTrigger>
-              <TabsTrigger value="spare-parts" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-spare-parts">
-                <Package className="h-4 w-4 mr-1" />
-                Spare Parts
-              </TabsTrigger>
-              <TabsTrigger value="machine-types" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-machine-types">
-                <Layers className="h-4 w-4 mr-1" />
-                Machine Types
-              </TabsTrigger>
-              <TabsTrigger value="pm-templates" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-pm-templates">
-                <ListChecks className="h-4 w-4 mr-1" />
-                PM Templates
-              </TabsTrigger>
-              <TabsTrigger value="maintenance" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-maintenance">
-                <Wrench className="h-4 w-4 mr-1" />
-                Maintenance
-              </TabsTrigger>
-              <TabsTrigger value="pm-history" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-pm-history">
-                <History className="h-4 w-4 mr-1" />
-                PM History
-              </TabsTrigger>
-              <TabsTrigger value="purchase-orders" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-purchase-orders">
-                <ShoppingCart className="h-4 w-4 mr-1" />
-                Purchase Orders
-              </TabsTrigger>
-              <TabsTrigger value="inventory" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-inventory">
-                <Archive className="h-4 w-4 mr-1" />
-                Inventory
-              </TabsTrigger>
-              <TabsTrigger value="production" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-production">
-                <Factory className="h-4 w-4 mr-1" />
-                Production
-              </TabsTrigger>
-            </TabsList>
-          </div>
+  const navSections: NavSection[] = [
+    {
+      id: "main",
+      items: [
+        {
+          id: "overview",
+          label: "Overview",
+          icon: LayoutDashboard,
+        },
+      ],
+    },
+    {
+      id: "config-section",
+      label: "Configuration",
+      items: [
+        {
+          id: "configuration",
+          label: "Configuration",
+          icon: Settings,
+          children: [
+            { id: "users", label: "Users", icon: Users },
+            { id: "role-permissions", label: "Role Permissions", icon: Shield },
+            { id: "machines", label: "Machines", icon: Settings },
+            { id: "machine-types", label: "Machine Types", icon: Layers },
+            { id: "checklists", label: "Checklists", icon: FileText },
+            { id: "spare-parts", label: "Spare Parts", icon: Package },
+            { id: "pm-templates", label: "PM Templates", icon: ListChecks },
+            { id: "uom", label: "Unit of Measurement", icon: Layers },
+            { id: "products", label: "Product Master", icon: Package },
+            { id: "raw-materials", label: "Raw Materials", icon: Box },
+            { id: "finished-goods", label: "Finished Goods", icon: CheckCircle2 },
+            { id: "vendors", label: "Vendor Master", icon: Building2 },
+          ],
+        },
+      ],
+    },
+    {
+      id: "operations",
+      label: "Operations",
+      items: [
+        { id: "maintenance", label: "Maintenance", icon: Wrench },
+        { id: "pm-history", label: "PM History", icon: History },
+        { id: "purchase-orders", label: "Purchase Orders", icon: ShoppingCart },
+        { id: "inventory", label: "Inventory", icon: Archive },
+        { id: "production", label: "Production", icon: Factory },
+      ],
+    },
+  ];
 
-          <TabsContent value="overview">
-            <div className="p-4 space-y-6">
-              <AdminDashboardOverview onNavigateToTab={setActiveTab} />
-              <TodayProductionStats />
-            </div>
+  const renderContent = () => {
+    switch (activeView) {
+      case 'overview':
+        return (
+          <div className="p-4 space-y-6">
+            <AdminDashboardOverview onNavigateToTab={setActiveView} />
+            <TodayProductionStats />
             <InventorySummaryDashboard />
-          </TabsContent>
-
-          <TabsContent value="users" className="p-4">
+          </div>
+        );
+      case 'users':
+        return (
+          <div className="p-4">
             <AdminUserManagement />
-          </TabsContent>
-
-          <TabsContent value="role-permissions" className="p-4">
+          </div>
+        );
+      case 'role-permissions':
+        return (
+          <div className="p-4">
             <RoleManagement />
-          </TabsContent>
-
-          <TabsContent value="machines" className="p-4">
+          </div>
+        );
+      case 'machines':
+        return (
+          <div className="p-4">
             <AdminMachineConfig />
-          </TabsContent>
-
-          <TabsContent value="checklists" className="p-4">
+          </div>
+        );
+      case 'checklists':
+        return (
+          <div className="p-4">
             <AdminChecklistBuilder />
-          </TabsContent>
-
-          <TabsContent value="spare-parts" className="p-4">
+          </div>
+        );
+      case 'spare-parts':
+        return (
+          <div className="p-4">
             <AdminSparePartsManagement />
-          </TabsContent>
-
-          <TabsContent value="machine-types" className="p-4">
+          </div>
+        );
+      case 'machine-types':
+        return (
+          <div className="p-4">
             <AdminMachineTypeConfig />
-          </TabsContent>
-
-          <TabsContent value="pm-templates" className="p-4">
+          </div>
+        );
+      case 'pm-templates':
+        return (
+          <div className="p-4">
             <AdminPMTaskListTemplates />
-          </TabsContent>
-
-          <TabsContent value="maintenance" className="p-4">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold">Preventive Maintenance</h2>
-                <Button onClick={() => setIsPMDialogOpen(true)} data-testid="button-add-maintenance">
-                  <Plus className="h-4 w-4 mr-1" />
-                  Schedule PM
-                </Button>
-              </div>
-              <MaintenanceSchedule tasks={mockMaintenanceTasks} onComplete={handleCompletePM} />
+          </div>
+        );
+      case 'maintenance':
+        return (
+          <div className="p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold">Preventive Maintenance</h2>
+              <Button onClick={() => setIsPMDialogOpen(true)} data-testid="button-add-maintenance">
+                <Plus className="h-4 w-4 mr-1" />
+                Schedule PM
+              </Button>
             </div>
-          </TabsContent>
-
-          <TabsContent value="pm-history" className="p-4">
+            <MaintenanceSchedule tasks={mockMaintenanceTasks} onComplete={handleCompletePM} />
+          </div>
+        );
+      case 'pm-history':
+        return (
+          <div className="p-4">
             <PMHistoryView />
-          </TabsContent>
-
-          <TabsContent value="purchase-orders" className="p-4">
+          </div>
+        );
+      case 'purchase-orders':
+        return (
+          <div className="p-4">
             <PurchaseOrderManagement />
-          </TabsContent>
+          </div>
+        );
+      case 'inventory':
+        return <InventoryManagement />;
+      case 'production':
+        return <ProductionManagement />;
+      case 'uom':
+      case 'products':
+      case 'raw-materials':
+      case 'finished-goods':
+      case 'vendors':
+        return <InventoryManagement activeTab={activeView} />;
+      default:
+        return (
+          <div className="p-4 space-y-6">
+            <AdminDashboardOverview onNavigateToTab={setActiveView} />
+            <TodayProductionStats />
+            <InventorySummaryDashboard />
+          </div>
+        );
+    }
+  };
 
-          <TabsContent value="inventory">
-            <InventoryManagement />
-          </TabsContent>
-
-          <TabsContent value="production">
-            <ProductionManagement />
-          </TabsContent>
-        </Tabs>
+  return (
+    <div className="flex min-h-screen bg-background">
+      <VerticalNavSidebar
+        sections={navSections}
+        activeItem={activeView}
+        onItemClick={setActiveView}
+        onLogout={() => logoutMutation.mutate()}
+        title="Admin Dashboard"
+      />
+      
+      <div className="flex-1 lg:ml-0 pt-14 lg:pt-0">
+        {renderContent()}
         
         <SchedulePMDialog open={isPMDialogOpen} onOpenChange={setIsPMDialogOpen} />
         <PMExecutionDialog 
