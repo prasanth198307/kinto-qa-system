@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Printer } from "lucide-react";
 
 const headerSchema = insertGatepassSchema.extend({
   vehicleNumber: z.string().min(1, "Vehicle number is required"),
@@ -238,15 +238,169 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
     saveMutation.mutate(data);
   };
 
+  const handlePrintPreview = () => {
+    const formData = form.getValues();
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(generatePrintHTML(formData));
+      printWindow.document.close();
+    }
+  };
+
+  const generatePrintHTML = (data: FormData) => {
+    const vendor = vendors.find(v => v.id === data.header.vendorId);
+    
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Gatepass - ${gatepass?.gatepassNumber || 'New'}</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: Arial, sans-serif; padding: 20px; }
+          .no-print { display: block; margin-bottom: 20px; }
+          @media print { .no-print { display: none; } }
+          .print-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+          }
+          .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #000; padding-bottom: 15px; }
+          .company-name { font-size: 24px; font-weight: bold; margin-bottom: 5px; }
+          .gatepass-number { font-size: 18px; font-weight: bold; margin: 10px 0; }
+          .details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0; }
+          .detail-item { padding: 8px 0; border-bottom: 1px solid #ddd; }
+          .detail-label { font-weight: bold; margin-right: 10px; }
+          table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+          th, td { padding: 10px; text-align: left; border: 1px solid #ddd; }
+          th { background: #f0f0f0; font-weight: bold; }
+          .signature-section { margin-top: 60px; display: flex; justify-content: space-between; }
+          .signature-box { text-align: center; }
+          .signature-line { border-top: 1px solid #000; margin-top: 50px; padding-top: 5px; }
+        </style>
+      </head>
+      <body>
+        <button onclick="window.print()" class="print-btn no-print">Print Gatepass</button>
+        
+        <div class="header">
+          <div class="company-name">KINTO MANUFACTURING</div>
+          <div>DELIVERY GATEPASS</div>
+          <div class="gatepass-number">GP No: ${gatepass?.gatepassNumber || 'NEW'}</div>
+        </div>
+
+        <div class="details-grid">
+          <div class="detail-item">
+            <span class="detail-label">Date:</span>
+            <span>${new Date(data.header.gatepassDate).toLocaleDateString()}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Customer:</span>
+            <span>${data.header.customerName}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Vehicle Number:</span>
+            <span>${data.header.vehicleNumber}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Driver Name:</span>
+            <span>${data.header.driverName}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Driver Contact:</span>
+            <span>${data.header.driverContact}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Transporter:</span>
+            <span>${data.header.transporterName}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Destination:</span>
+            <span>${data.header.destination}</span>
+          </div>
+          ${vendor ? `
+          <div class="detail-item">
+            <span class="detail-label">Vendor:</span>
+            <span>${vendor.vendorName}</span>
+          </div>
+          ` : ''}
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Product</th>
+              <th>Quantity</th>
+              <th>UOM</th>
+              <th>Remarks</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${data.items.map((item, index) => {
+              const product = products.find(p => p.id === item.productId);
+              const uom = uoms.find(u => u.id === item.uomId);
+              return `
+              <tr>
+                <td>${index + 1}</td>
+                <td>${product?.productName || 'N/A'}</td>
+                <td>${item.quantityDispatched}</td>
+                <td>${uom?.name || 'N/A'}</td>
+                <td>${item.remarks || '-'}</td>
+              </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+
+        ${data.header.remarks ? `
+        <div style="margin: 20px 0;">
+          <strong>Remarks:</strong> ${data.header.remarks}
+        </div>
+        ` : ''}
+
+        <div class="signature-section">
+          <div class="signature-box">
+            <div class="signature-line">Prepared By</div>
+          </div>
+          <div class="signature-box">
+            <div class="signature-line">Checked By</div>
+          </div>
+          <div class="signature-box">
+            <div class="signature-line">Authorized Signatory</div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  };
+
   return (
     <Card className="p-4 mb-4">
-      <div className="mb-4">
-        <h3 className="text-lg font-semibold">
-          {gatepass ? 'Edit Gatepass' : 'Create Gatepass'}
-        </h3>
-        <p className="text-sm text-muted-foreground mt-1">
-          {gatepass ? 'Update gatepass details and line items' : 'Dispatch multiple finished goods in one gatepass'}
-        </p>
+      <div className="mb-4 flex justify-between items-start">
+        <div>
+          <h3 className="text-lg font-semibold">
+            {gatepass ? 'Edit Gatepass' : 'Create Gatepass'}
+          </h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            {gatepass ? 'Update gatepass details and line items' : 'Dispatch multiple finished goods in one gatepass'}
+          </p>
+        </div>
+        {gatepass && (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handlePrintPreview} 
+            type="button"
+            data-testid="button-print-preview-gatepass"
+          >
+            <Printer className="w-4 h-4 mr-1" />
+            Print Preview
+          </Button>
+        )}
       </div>
 
       <Form {...form}>

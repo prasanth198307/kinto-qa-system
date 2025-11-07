@@ -44,7 +44,7 @@ export default function VendorManagement() {
 
   const createMutation = useMutation({
     mutationFn: async (data: Partial<Vendor>) => {
-      return apiRequest("/api/vendors", "POST", data);
+      return apiRequest("POST", "/api/vendors", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/vendors"] });
@@ -62,7 +62,7 @@ export default function VendorManagement() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<Vendor> }) => {
-      return apiRequest(`/api/vendors/${id}`, "PATCH", data);
+      return apiRequest("PATCH", `/api/vendors/${id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/vendors"] });
@@ -81,7 +81,7 @@ export default function VendorManagement() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      return apiRequest(`/api/vendors/${id}`, "DELETE");
+      return apiRequest("DELETE", `/api/vendors/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/vendors"] });
