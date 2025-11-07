@@ -118,6 +118,12 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
       }));
       
       setItems(mappedItems);
+      
+      // Initialize selectedInvoiceId if gatepass has an invoice
+      if (gatepass.invoiceId) {
+        setSelectedInvoiceId(gatepass.invoiceId);
+      }
+      
       form.reset({
         header: {
           gatepassDate: gatepass.gatepassDate ? new Date(gatepass.gatepassDate) : new Date(),
@@ -165,7 +171,7 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
           finishedGoodId: matchingFG?.id || "",
           productId: invItem.productId,
           quantityDispatched: invItem.quantity,
-          uomId: "",
+          uomId: invItem.uomId || "",
           remarks: invItem.description || "",
         };
       });
@@ -309,7 +315,7 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                 name="header.driverContact"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Driver Contact (Optional)</FormLabel>
+                    <FormLabel>Driver Contact</FormLabel>
                     <FormControl>
                       <Input {...field} value={field.value || ""} data-testid="input-driver-contact" />
                     </FormControl>
@@ -323,7 +329,7 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                 name="header.transporterName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Transporter Name (Optional)</FormLabel>
+                    <FormLabel>Transporter Name</FormLabel>
                     <FormControl>
                       <Input {...field} value={field.value || ""} data-testid="input-transporter-name" />
                     </FormControl>
@@ -337,7 +343,7 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                 name="header.destination"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Destination (Optional)</FormLabel>
+                    <FormLabel>Destination</FormLabel>
                     <FormControl>
                       <Input {...field} value={field.value || ""} data-testid="input-destination" />
                     </FormControl>
@@ -450,11 +456,18 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
 
           <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <h4 className="font-semibold text-sm">Finished Goods Items</h4>
-              <Button type="button" variant="outline" size="sm" onClick={addItem} data-testid="button-add-item">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Item
-              </Button>
+              <h4 className="font-semibold text-sm">
+                Finished Goods Items
+                {selectedInvoiceId && (
+                  <span className="ml-2 text-xs text-muted-foreground">(Auto-populated from Invoice)</span>
+                )}
+              </h4>
+              {!selectedInvoiceId && (
+                <Button type="button" variant="outline" size="sm" onClick={addItem} data-testid="button-add-item">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Item
+                </Button>
+              )}
             </div>
 
             {items.map((_, index) => (
@@ -462,7 +475,7 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <h5 className="text-sm font-medium">Item {index + 1}</h5>
-                    {items.length > 1 && (
+                    {items.length > 1 && !selectedInvoiceId && (
                       <Button
                         type="button"
                         variant="ghost"
@@ -482,7 +495,7 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Finished Good</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value} disabled={!!selectedInvoiceId}>
                             <FormControl>
                               <SelectTrigger data-testid={`select-finished-good-${index}`}>
                                 <SelectValue placeholder="Select finished good" />
@@ -510,7 +523,7 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Product</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value} disabled={!!selectedInvoiceId}>
                             <FormControl>
                               <SelectTrigger data-testid={`select-product-${index}`}>
                                 <SelectValue placeholder="Select product" />
@@ -540,6 +553,8 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                               type="number"
                               {...field}
                               onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                              readOnly={!!selectedInvoiceId}
+                              className={selectedInvoiceId ? "bg-muted" : ""}
                               data-testid={`input-quantity-${index}`}
                             />
                           </FormControl>
@@ -554,7 +569,7 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Unit of Measure</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value || ""}>
+                          <Select onValueChange={field.onChange} value={field.value || ""} disabled={!!selectedInvoiceId}>
                             <FormControl>
                               <SelectTrigger data-testid={`select-uom-${index}`}>
                                 <SelectValue placeholder="Select UOM" />
