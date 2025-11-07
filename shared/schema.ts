@@ -538,6 +538,41 @@ export const insertProductSchema = createInsertSchema(products).omit({
 export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type Product = typeof products.$inferSelect;
 
+// Vendors/Customers Master
+export const vendors = pgTable("vendors", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  vendorCode: varchar("vendor_code", { length: 100 }).notNull().unique(),
+  vendorName: varchar("vendor_name", { length: 255 }).notNull(),
+  address: text("address"),
+  city: varchar("city", { length: 100 }),
+  state: varchar("state", { length: 100 }),
+  pincode: varchar("pincode", { length: 20 }),
+  gstNumber: varchar("gst_number", { length: 20 }),
+  aadhaarNumber: varchar("aadhaar_number", { length: 20 }),
+  mobileNumber: varchar("mobile_number", { length: 20 }).notNull(),
+  email: varchar("email", { length: 255 }),
+  contactPerson: varchar("contact_person", { length: 255 }),
+  vendorType: varchar("vendor_type", { length: 50 }),
+  isActive: varchar("is_active").default('true'),
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertVendorSchema = createInsertSchema(vendors, {
+  gstNumber: z.string().optional().nullable(),
+  aadhaarNumber: z.string().optional().nullable(),
+}).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertVendor = z.infer<typeof insertVendorSchema>;
+export type Vendor = typeof vendors.$inferSelect;
+
 // Raw Materials/Inventory
 export const rawMaterials = pgTable("raw_materials", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -706,6 +741,7 @@ export const gatepasses = pgTable("gatepasses", {
   driverContact: varchar("driver_contact", { length: 50 }),
   transporterName: varchar("transporter_name", { length: 255 }),
   destination: varchar("destination", { length: 255 }),
+  vendorId: varchar("vendor_id").references(() => vendors.id),
   customerName: varchar("customer_name", { length: 255 }),
   invoiceNumber: varchar("invoice_number", { length: 100 }),
   remarks: text("remarks"),
