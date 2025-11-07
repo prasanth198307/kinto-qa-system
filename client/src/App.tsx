@@ -205,6 +205,10 @@ function ManagerDashboard() {
     { id: '1', machine: 'RFC Machine', date: 'Oct 31, 2025', shift: 'Morning', operator: 'Ramesh Kumar', status: 'in_review' as const },
   ];
 
+  const handleLogout = () => {
+    logoutMutation.mutate();
+  };
+
   const navSections: NavSection[] = [
     {
       id: "main",
@@ -317,7 +321,7 @@ function ManagerDashboard() {
         sections={navSections}
         activeItem={activeView}
         onItemClick={setActiveView}
-        onLogout={() => logoutMutation.mutate()}
+        onLogout={handleLogout}
         title="Manager Dashboard"
       />
       
@@ -361,6 +365,10 @@ function AdminDashboard() {
       setSelectedPlanForExecution(task.planData);
       setIsExecutionDialogOpen(true);
     }
+  };
+
+  const handleLogout = () => {
+    logoutMutation.mutate();
   };
 
   const navSections: NavSection[] = [
@@ -548,7 +556,7 @@ function AdminDashboard() {
         sections={navSections}
         activeItem={activeView}
         onItemClick={setActiveView}
-        onLogout={() => logoutMutation.mutate()}
+        onLogout={handleLogout}
         title="Admin Dashboard"
       />
       

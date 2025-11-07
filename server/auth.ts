@@ -102,9 +102,17 @@ export function setupAuth(app: Express) {
   });
 
   // --- Current user endpoint ---
-  app.get("/api/user", (req, res) => {
+  app.get("/api/user", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    res.json(req.user);
+    const user = req.user as any;
+    
+    // Fetch role name if roleId exists
+    if (user.roleId) {
+      const roleData = await storage.getRole(user.roleId);
+      res.json({ ...user, role: roleData?.name });
+    } else {
+      res.json(user);
+    }
   });
 
   // --- Forgot password endpoint ---
