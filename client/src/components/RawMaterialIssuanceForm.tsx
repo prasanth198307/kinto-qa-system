@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, type RawMaterial, type Product, type Uom } from "@shared/schema";
+import { insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, type RawMaterial, type Product, type Uom, type RawMaterialIssuance, type RawMaterialIssuanceItem } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
@@ -25,11 +25,11 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 interface RawMaterialIssuanceFormProps {
-  issuance: any;
+  issuance: RawMaterialIssuance | null;
   onClose: () => void;
 }
 
-export default function RawMaterialIssuanceForm({ onClose }: RawMaterialIssuanceFormProps) {
+export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMaterialIssuanceFormProps) {
   const { toast } = useToast();
   const [items, setItems] = useState([{ 
     rawMaterialId: "", 
@@ -38,6 +38,11 @@ export default function RawMaterialIssuanceForm({ onClose }: RawMaterialIssuance
     uomId: "", 
     remarks: "" 
   }]);
+
+  const { data: issuanceItems = [] } = useQuery<RawMaterialIssuanceItem[]>({
+    queryKey: ['/api/raw-material-issuance-items', issuance?.id],
+    enabled: !!issuance?.id,
+  });
 
   const { data: rawMaterials = [] } = useQuery<RawMaterial[]>({
     queryKey: ['/api/raw-materials'],
@@ -64,23 +69,51 @@ export default function RawMaterialIssuanceForm({ onClose }: RawMaterialIssuance
     },
   });
 
-  const createMutation = useMutation({
+  useEffect(() => {
+    if (issuance && issuanceItems.length > 0) {
+      const mappedItems = issuanceItems.map(item => ({
+        rawMaterialId: item.rawMaterialId,
+        productId: item.productId,
+        quantityIssued: item.quantityIssued,
+        uomId: item.uomId || "",
+        remarks: item.remarks || "",
+      }));
+      
+      setItems(mappedItems);
+      form.reset({
+        header: {
+          issuanceDate: issuance.issuanceDate ? new Date(issuance.issuanceDate) : new Date(),
+          batchNumber: issuance.batchNumber || "",
+          issuedTo: issuance.issuedTo || "",
+          remarks: issuance.remarks || "",
+        },
+        items: mappedItems,
+      });
+    }
+  }, [issuance, issuanceItems, form]);
+
+  const saveMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      return await apiRequest('POST', '/api/raw-material-issuances', data);
+      if (issuance) {
+        return await apiRequest('PATCH', `/api/raw-material-issuances/${issuance.id}`, data);
+      } else {
+        return await apiRequest('POST', '/api/raw-material-issuances', data);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/raw-material-issuances'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/raw-material-issuance-items'] });
       queryClient.invalidateQueries({ queryKey: ['/api/raw-materials'] });
       toast({
         title: "Success",
-        description: "Raw material issuance created successfully",
+        description: issuance ? "Issuance updated successfully" : "Raw material issuance created successfully",
       });
       handleClose();
     },
     onError: (error: Error) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to create issuance",
+        description: error.message || (issuance ? "Failed to update issuance" : "Failed to create issuance"),
         variant: "destructive",
       });
     },
@@ -113,15 +146,17 @@ export default function RawMaterialIssuanceForm({ onClose }: RawMaterialIssuance
   };
 
   const onSubmit = (data: FormData) => {
-    createMutation.mutate(data);
+    saveMutation.mutate(data);
   };
 
   return (
     <Card className="p-4 mb-4">
       <div className="mb-4">
-        <h3 className="text-lg font-semibold">Create Raw Material Issuance</h3>
+        <h3 className="text-lg font-semibold">
+          {issuance ? 'Edit Raw Material Issuance' : 'Create Raw Material Issuance'}
+        </h3>
         <p className="text-sm text-muted-foreground mt-1">
-          Issue multiple raw materials in one transaction
+          {issuance ? 'Update issuance details and line items' : 'Issue multiple raw materials in one transaction'}
         </p>
       </div>
 
@@ -339,8 +374,8 @@ export default function RawMaterialIssuanceForm({ onClose }: RawMaterialIssuance
             <Button type="button" variant="outline" onClick={handleClose} data-testid="button-cancel">
               Cancel
             </Button>
-            <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit">
-              {createMutation.isPending ? "Creating..." : "Create Issuance"}
+            <Button type="submit" disabled={saveMutation.isPending} data-testid="button-submit">
+              {saveMutation.isPending ? "Saving..." : (issuance ? "Update Issuance" : "Create Issuance")}
             </Button>
           </div>
         </form>

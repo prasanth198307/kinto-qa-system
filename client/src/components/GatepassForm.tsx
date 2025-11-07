@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { insertGatepassSchema, insertGatepassItemSchema, type FinishedGood, type Product, type Uom } from "@shared/schema";
+import { insertGatepassSchema, insertGatepassItemSchema, type FinishedGood, type Product, type Uom, type Gatepass, type GatepassItem } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
@@ -25,11 +25,11 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 interface GatepassFormProps {
-  gatepass: any;
+  gatepass: Gatepass | null;
   onClose: () => void;
 }
 
-export default function GatepassForm({ onClose }: GatepassFormProps) {
+export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
   const { toast } = useToast();
   const [items, setItems] = useState([{ 
     finishedGoodId: "", 
@@ -38,6 +38,11 @@ export default function GatepassForm({ onClose }: GatepassFormProps) {
     uomId: "", 
     remarks: "" 
   }]);
+
+  const { data: gatepassItems = [] } = useQuery<GatepassItem[]>({
+    queryKey: ['/api/gatepass-items', gatepass?.id],
+    enabled: !!gatepass?.id,
+  });
 
   const { data: finishedGoods = [] } = useQuery<FinishedGood[]>({
     queryKey: ['/api/finished-goods'],
@@ -70,23 +75,57 @@ export default function GatepassForm({ onClose }: GatepassFormProps) {
     },
   });
 
-  const createMutation = useMutation({
+  useEffect(() => {
+    if (gatepass && gatepassItems.length > 0) {
+      const mappedItems = gatepassItems.map(item => ({
+        finishedGoodId: item.finishedGoodId,
+        productId: item.productId,
+        quantityDispatched: item.quantityDispatched,
+        uomId: item.uomId || "",
+        remarks: item.remarks || "",
+      }));
+      
+      setItems(mappedItems);
+      form.reset({
+        header: {
+          gatepassNumber: gatepass.gatepassNumber,
+          gatepassDate: gatepass.gatepassDate ? new Date(gatepass.gatepassDate) : new Date(),
+          vehicleNumber: gatepass.vehicleNumber,
+          driverName: gatepass.driverName,
+          driverContact: gatepass.driverContact || "",
+          transporterName: gatepass.transporterName || "",
+          destination: gatepass.destination || "",
+          customerName: gatepass.customerName || "",
+          invoiceNumber: gatepass.invoiceNumber || "",
+          remarks: gatepass.remarks || "",
+        },
+        items: mappedItems,
+      });
+    }
+  }, [gatepass, gatepassItems, form]);
+
+  const saveMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      return await apiRequest('POST', '/api/gatepasses', data);
+      if (gatepass) {
+        return await apiRequest('PATCH', `/api/gatepasses/${gatepass.id}`, data);
+      } else {
+        return await apiRequest('POST', '/api/gatepasses', data);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/gatepasses'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/gatepass-items'] });
       queryClient.invalidateQueries({ queryKey: ['/api/finished-goods'] });
       toast({
         title: "Success",
-        description: "Gatepass created successfully",
+        description: gatepass ? "Gatepass updated successfully" : "Gatepass created successfully",
       });
       handleClose();
     },
     onError: (error: Error) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to create gatepass",
+        description: error.message || (gatepass ? "Failed to update gatepass" : "Failed to create gatepass"),
         variant: "destructive",
       });
     },
@@ -119,15 +158,17 @@ export default function GatepassForm({ onClose }: GatepassFormProps) {
   };
 
   const onSubmit = (data: FormData) => {
-    createMutation.mutate(data);
+    saveMutation.mutate(data);
   };
 
   return (
     <Card className="p-4 mb-4">
       <div className="mb-4">
-        <h3 className="text-lg font-semibold">Create Gatepass</h3>
+        <h3 className="text-lg font-semibold">
+          {gatepass ? 'Edit Gatepass' : 'Create Gatepass'}
+        </h3>
         <p className="text-sm text-muted-foreground mt-1">
-          Dispatch multiple finished goods in one gatepass
+          {gatepass ? 'Update gatepass details and line items' : 'Dispatch multiple finished goods in one gatepass'}
         </p>
       </div>
 
@@ -432,8 +473,8 @@ export default function GatepassForm({ onClose }: GatepassFormProps) {
             <Button type="button" variant="outline" onClick={handleClose} data-testid="button-cancel">
               Cancel
             </Button>
-            <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit">
-              {createMutation.isPending ? "Creating..." : "Create Gatepass"}
+            <Button type="submit" disabled={saveMutation.isPending} data-testid="button-submit">
+              {saveMutation.isPending ? "Saving..." : (gatepass ? "Update Gatepass" : "Create Gatepass")}
             </Button>
           </div>
         </form>
