@@ -18,6 +18,8 @@ The frontend uses React 18 with TypeScript, Vite, and Wouter for routing. UI com
 ### Backend Architecture
 The backend is an Express.js application with TypeScript and Node.js. It features Email/Password Authentication with `scrypt` and `Passport.js`, and a Dynamic Role-Based Access Control (RBAC) system for `admin`, `manager`, `operator`, and `reviewer` roles with granular, screen-level permissions. Neon Serverless PostgreSQL is the database, accessed via Drizzle ORM. The schema includes core tables for users, machines, checklists, inventory, transactions, and GST-compliant invoices. It supports multi-item issuance, a Header-Detail pattern for transactional integrity, automatic inventory management, a comprehensive Vendor Master System, and a Role Management System.
 
+**Authentication Implementation (Fixed Nov 2025):** The `getUserByUsername()` function now queries by both username AND email using Drizzle's `or()` operator. This allows users to log in with either their username or email address. Admin credentials: username=`admin` OR email=`admin@kinto.com`, password=`admin123`.
+
 ### API Design
 The RESTful API under `/api` uses JSON, provides structured error handling, implements comprehensive audit logging, and features multi-layer authorization (`isAuthenticated`, `requireRole`) with fresh database lookups for role validation.
 

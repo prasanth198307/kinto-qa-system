@@ -393,10 +393,10 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                     <FormLabel>Select Invoice (Optional)</FormLabel>
                     <Select 
                       onValueChange={(value) => {
-                        field.onChange(value);
-                        setSelectedInvoiceId(value);
+                        field.onChange(value === "none" ? "" : value);
+                        setSelectedInvoiceId(value === "none" ? "" : value);
                       }} 
-                      value={field.value || ""}
+                      value={field.value || "none"}
                     >
                       <FormControl>
                         <SelectTrigger data-testid="select-invoice">
@@ -404,7 +404,7 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">None</SelectItem>
+                        <SelectItem value="none">None</SelectItem>
                         {availableInvoices.map((invoice) => (
                           <SelectItem key={invoice.id} value={invoice.id}>
                             {invoice.invoiceNumber} - {invoice.buyerName} - ₹{(invoice.totalAmount / 100).toFixed(2)}

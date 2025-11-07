@@ -95,7 +95,7 @@ import {
   type InsertNotificationConfig,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, isNotNull, notInArray } from "drizzle-orm";
+import { eq, and, or, isNotNull, notInArray } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 
@@ -357,7 +357,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(users)
       .leftJoin(roles, eq(users.roleId, roles.id))
-      .where(and(eq(users.username, username), eq(users.recordStatus, 1)));
+      .where(and(or(eq(users.username, username), eq(users.email, username)), eq(users.recordStatus, 1)));
     
     return result as any;
   }
