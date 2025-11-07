@@ -195,6 +195,29 @@
 - Approved: `bg-green-100 text-green-800`
 - Rejected: `bg-red-100 text-red-800`
 
+**Overdue Checklist Indicators:**
+- **Visual Styling:**
+  - Card background: `bg-red-50` for overdue pending checklists
+  - Border: `border-red-500` for clear visual distinction
+  - Text colors: `text-red-900` for titles, `text-red-700` for secondary text, `text-red-600` for labels
+  - Icon: AlertCircle from lucide-react (16px) in red-600
+- **Overdue Logic:**
+  - A checklist is overdue when: status is 'pending' AND assignedDate is before today (start of day)
+  - Utility function: `isOverdue(assignedDate, status)` uses date-fns for reliable date comparison
+- **Operator View:**
+  - Separate sections: "Today's Assignments" and "Overdue Assignments" for clarity
+  - Overdue checklists shown prominently at top with red styling and AlertTriangle icon
+  - Overdue count displayed in section header
+- **Manager View:**
+  - Overdue assignments displayed in-line with all assignments
+  - Red card styling with AlertCircle icon next to checklist name
+  - Overdue count displayed below "Checklist Assignments" header
+  - Status badge shows "OVERDUE" in red (bg-red-100, text-red-800, border-red-300)
+- **Consistency:**
+  - All overdue indicators use consistent red color palette (red-50 to red-900)
+  - Icons are always 16px (w-4 h-4) for visual consistency
+  - Badge styling uses same red-100/red-800 combination across all views
+
 ### Dialogs & Modals
 
 **Modal Container:**
