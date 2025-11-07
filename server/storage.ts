@@ -16,6 +16,7 @@ import {
   pmExecutionTasks,
   uom,
   products,
+  vendors,
   rawMaterials,
   rawMaterialTransactions,
   finishedGoods,
@@ -52,6 +53,8 @@ import {
   type InsertUom,
   type Product,
   type InsertProduct,
+  type Vendor,
+  type InsertVendor,
   type RawMaterial,
   type InsertRawMaterial,
   type RawMaterialTransaction,
@@ -165,6 +168,13 @@ export interface IStorage {
   getProduct(id: string): Promise<Product | undefined>;
   updateProduct(id: string, product: Partial<InsertProduct>): Promise<Product | undefined>;
   deleteProduct(id: string): Promise<void>;
+  
+  // Vendor Master
+  createVendor(vendor: InsertVendor): Promise<Vendor>;
+  getAllVendors(): Promise<Vendor[]>;
+  getVendor(id: string): Promise<Vendor | undefined>;
+  updateVendor(id: string, vendor: Partial<InsertVendor>): Promise<Vendor | undefined>;
+  deleteVendor(id: string): Promise<void>;
   
   // Raw Materials/Inventory
   createRawMaterial(material: InsertRawMaterial): Promise<RawMaterial>;
@@ -786,6 +796,37 @@ export class DatabaseStorage implements IStorage {
       .update(products)
       .set({ recordStatus: 0, updatedAt: new Date() })
       .where(eq(products.id, id));
+  }
+
+  // Vendor Master
+  async createVendor(vendor: InsertVendor): Promise<Vendor> {
+    const [created] = await db.insert(vendors).values(vendor).returning();
+    return created;
+  }
+
+  async getAllVendors(): Promise<Vendor[]> {
+    return await db.select().from(vendors).where(eq(vendors.recordStatus, 1));
+  }
+
+  async getVendor(id: string): Promise<Vendor | undefined> {
+    const [vendor] = await db.select().from(vendors).where(and(eq(vendors.id, id), eq(vendors.recordStatus, 1)));
+    return vendor;
+  }
+
+  async updateVendor(id: string, vendorData: Partial<InsertVendor>): Promise<Vendor | undefined> {
+    const [updated] = await db
+      .update(vendors)
+      .set({ ...vendorData, updatedAt: new Date() })
+      .where(and(eq(vendors.id, id), eq(vendors.recordStatus, 1)))
+      .returning();
+    return updated;
+  }
+
+  async deleteVendor(id: string): Promise<void> {
+    await db
+      .update(vendors)
+      .set({ recordStatus: 0, updatedAt: new Date() })
+      .where(eq(vendors.id, id));
   }
 
   // Raw Materials/Inventory
