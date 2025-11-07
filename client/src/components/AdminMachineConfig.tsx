@@ -19,6 +19,7 @@ export default function AdminMachineConfig() {
     name: '',
     type: '',
     location: '',
+    warmupTimeMinutes: 0,
     status: 'active' as const
   });
   const { toast } = useToast();
@@ -101,6 +102,7 @@ export default function AdminMachineConfig() {
       name: '',
       type: '',
       location: '',
+      warmupTimeMinutes: 0,
       status: 'active'
     });
   };
@@ -116,6 +118,7 @@ export default function AdminMachineConfig() {
       name: machine.name,
       type: machine.type,
       location: machine.location || '',
+      warmupTimeMinutes: machine.warmupTimeMinutes || 0,
       status: (machine.status || 'active') as 'active'
     });
     setIsEditDialogOpen(true);
@@ -170,6 +173,10 @@ export default function AdminMachineConfig() {
                   <h3 className="font-medium text-sm" data-testid={`text-machine-name-${index}`}>{machine.name}</h3>
                   <p className="text-xs text-muted-foreground mt-1">Type: {machine.type}</p>
                   {machine.location && <p className="text-xs text-muted-foreground">Location: {machine.location}</p>}
+                  <p className="text-xs text-muted-foreground">
+                    Warmup Time: {machine.warmupTimeMinutes || 0} minutes
+                    {(machine.warmupTimeMinutes || 0) === 0 && <span className="text-green-600 ml-1">(Ready instantly)</span>}
+                  </p>
                 </div>
 
                 <div className="flex gap-2">
@@ -242,6 +249,21 @@ export default function AdminMachineConfig() {
                   data-testid="input-machine-location"
                 />
               </div>
+              <div>
+                <Label htmlFor="warmup">Warmup Time Before Production (Minutes)</Label>
+                <Input
+                  id="warmup"
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  value={formData.warmupTimeMinutes}
+                  onChange={(e) => setFormData({ ...formData, warmupTimeMinutes: parseInt(e.target.value) || 0 })}
+                  data-testid="input-warmup-time"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  How long before production should this machine be started? (0 = can start directly)
+                </p>
+              </div>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>
@@ -298,6 +320,21 @@ export default function AdminMachineConfig() {
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                   data-testid="input-edit-machine-location"
                 />
+              </div>
+              <div>
+                <Label htmlFor="edit-warmup">Warmup Time Before Production (Minutes)</Label>
+                <Input
+                  id="edit-warmup"
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  value={formData.warmupTimeMinutes}
+                  onChange={(e) => setFormData({ ...formData, warmupTimeMinutes: parseInt(e.target.value) || 0 })}
+                  data-testid="input-edit-warmup-time"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  How long before production should this machine be started? (0 = can start directly)
+                </p>
               </div>
             </div>
             <DialogFooter>

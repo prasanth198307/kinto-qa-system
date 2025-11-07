@@ -109,6 +109,7 @@ export const machines = pgTable("machines", {
   type: varchar("type", { length: 255 }).notNull(),
   location: varchar("location", { length: 255 }),
   status: varchar("status", { length: 50 }).default('active'),
+  warmupTimeMinutes: integer("warmup_time_minutes").default(0),
   installationDate: timestamp("installation_date"),
   lastMaintenance: timestamp("last_maintenance"),
   nextPmDue: timestamp("next_pm_due"),
