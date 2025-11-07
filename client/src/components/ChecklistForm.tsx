@@ -5,8 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Plus, X, Camera } from "lucide-react";
+import { Plus, X, Camera, Image as ImageIcon } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { PhotoCapture } from "@/components/PhotoCapture";
 
 interface Task {
   id: string;
@@ -14,6 +16,7 @@ interface Task {
   verificationCriteria: string;
   result: 'pass' | 'fail' | null;
   remarks: string;
+  photoUrl?: string;
 }
 
 interface SparePart {
@@ -37,6 +40,8 @@ export default function ChecklistForm({ machineName, tasks: initialTasks, onSubm
   const [spareParts, setSpareParts] = useState<SparePart[]>([]);
   const [generalRemarks, setGeneralRemarks] = useState('');
   const [signature, setSignature] = useState('');
+  const [photoDialogOpen, setPhotoDialogOpen] = useState(false);
+  const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
 
   const addSparePart = () => {
     setSpareParts([...spareParts, {
@@ -61,6 +66,23 @@ export default function ChecklistForm({ machineName, tasks: initialTasks, onSubm
     setSpareParts(spareParts.map(sp =>
       sp.id === id ? { ...sp, [field]: value } : sp
     ));
+  };
+
+  const handlePhotoCapture = (taskId: string) => {
+    setCurrentTaskId(taskId);
+    setPhotoDialogOpen(true);
+  };
+
+  const handlePhotoSave = (photoBase64: string) => {
+    if (currentTaskId) {
+      updateTask(currentTaskId, 'photoUrl', photoBase64);
+      setPhotoDialogOpen(false);
+      setCurrentTaskId(null);
+    }
+  };
+
+  const handlePhotoRemove = (taskId: string) => {
+    updateTask(taskId, 'photoUrl', undefined);
   };
 
   const urgencyColors = {
@@ -150,14 +172,34 @@ export default function ChecklistForm({ machineName, tasks: initialTasks, onSubm
                     Fail
                   </Button>
                   <Button
-                    variant="ghost"
+                    variant={task.photoUrl ? 'default' : 'ghost'}
                     size="icon"
-                    onClick={() => console.log('Add photo')}
+                    onClick={() => handlePhotoCapture(task.id)}
                     data-testid={`button-photo-${index}`}
                   >
-                    <Camera className="h-4 w-4" />
+                    {task.photoUrl ? <ImageIcon className="h-4 w-4" /> : <Camera className="h-4 w-4" />}
                   </Button>
                 </div>
+
+                {task.photoUrl && (
+                  <div className="relative mt-2">
+                    <img
+                      src={task.photoUrl}
+                      alt={`Photo for ${task.name}`}
+                      className="w-full h-32 object-cover rounded-md border"
+                      data-testid={`image-task-photo-${index}`}
+                    />
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-1 right-1 h-6 w-6"
+                      onClick={() => handlePhotoRemove(task.id)}
+                      data-testid={`button-remove-photo-${index}`}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
 
                 <Textarea
                   placeholder="Remarks (optional)"
@@ -299,6 +341,17 @@ export default function ChecklistForm({ machineName, tasks: initialTasks, onSubm
           Submit for Review
         </Button>
       </div>
+
+      <Dialog open={photoDialogOpen} onOpenChange={setPhotoDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Capture Task Photo</DialogTitle>
+          </DialogHeader>
+          <PhotoCapture
+            onPhotoCapture={handlePhotoSave}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
