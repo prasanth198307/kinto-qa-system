@@ -82,7 +82,7 @@ export class NotificationService {
       timeZone: 'Asia/Kolkata'
     });
 
-    const message = `🔔 KINTO Machine Startup Reminder
+    const message = `KINTO Machine Startup Reminder
 
 Hello ${userName},
 
@@ -96,7 +96,7 @@ Ensure the machine is properly warmed up before production begins.
 
     // Console logging (like password reset system)
     console.log('\n' + '='.repeat(60));
-    console.log('📱 [WHATSAPP NOTIFICATION]');
+    console.log('[WHATSAPP NOTIFICATION]');
     console.log('='.repeat(60));
     console.log(`To: ${mobile}`);
     console.log(`Message:\n${message}`);
@@ -131,7 +131,7 @@ Ensure the machine is properly warmed up before production begins.
       timeZone: 'Asia/Kolkata'
     });
 
-    const subject = `🔔 Machine Startup Reminder - ${machineName}`;
+    const subject = `Machine Startup Reminder - ${machineName}`;
     const htmlBody = `
 <!DOCTYPE html>
 <html>
@@ -148,7 +148,7 @@ Ensure the machine is properly warmed up before production begins.
 <body>
   <div class="container">
     <div class="header">
-      <h1>🔔 Machine Startup Reminder</h1>
+      <h1>Machine Startup Reminder</h1>
     </div>
     <div class="content">
       <p>Hello <strong>${userName}</strong>,</p>
@@ -170,7 +170,7 @@ Ensure the machine is properly warmed up before production begins.
 
     // Console logging (like password reset system)
     console.log('\n' + '='.repeat(60));
-    console.log('📧 [EMAIL NOTIFICATION]');
+    console.log('[EMAIL NOTIFICATION]');
     console.log('='.repeat(60));
     console.log(`To: ${email}`);
     console.log(`Subject: ${subject}`);

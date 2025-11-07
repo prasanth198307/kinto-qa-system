@@ -91,14 +91,14 @@ app.use((req, res, next) => {
     log(`🚀 Server running on port ${port}`);
     
     // Start machine startup reminder checking system
-    // Checks every minute for pending reminders
+    // Checks every 5 minutes for pending reminders
     setInterval(async () => {
       try {
         await notificationService.checkAndSendReminders();
       } catch (error) {
         console.error('[REMINDER SYSTEM ERROR]', error);
       }
-    }, 60000); // Check every 60 seconds
+    }, 300000); // Check every 5 minutes (300 seconds)
     
     log('✅ Machine startup reminder system initialized');
   });
