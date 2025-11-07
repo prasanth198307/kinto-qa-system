@@ -22,6 +22,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -444,6 +454,8 @@ function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSea
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Product | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const itemsPerPage = 10;
 
   const { data: products = [], isLoading } = useQuery<Product[]>({
@@ -515,8 +527,15 @@ function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSea
   };
 
   const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this product?')) {
-      deleteMutation.mutate(id);
+    setItemToDelete(id);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (itemToDelete) {
+      deleteMutation.mutate(itemToDelete);
+      setDeleteConfirmOpen(false);
+      setItemToDelete(null);
     }
   };
 
@@ -661,6 +680,27 @@ function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSea
         }}
         isLoading={createMutation.isPending || updateMutation.isPending}
       />
+
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Product</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this product? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete-product">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete-product"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -875,6 +915,8 @@ function RawMaterialsTab({ searchTerm, onSearchChange }: { searchTerm: string; o
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<RawMaterial | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const itemsPerPage = 10;
 
   const { data: materials = [], isLoading } = useQuery<RawMaterial[]>({
@@ -946,8 +988,15 @@ function RawMaterialsTab({ searchTerm, onSearchChange }: { searchTerm: string; o
   };
 
   const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this raw material?')) {
-      deleteMutation.mutate(id);
+    setItemToDelete(id);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (itemToDelete) {
+      deleteMutation.mutate(itemToDelete);
+      setDeleteConfirmOpen(false);
+      setItemToDelete(null);
     }
   };
 
@@ -1401,6 +1450,8 @@ function FinishedGoodsTab({ searchTerm, onSearchChange }: { searchTerm: string; 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<FinishedGood | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const itemsPerPage = 10;
 
   const { data: goods = [], isLoading } = useQuery<FinishedGood[]>({
@@ -1483,8 +1534,15 @@ function FinishedGoodsTab({ searchTerm, onSearchChange }: { searchTerm: string; 
   };
 
   const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this finished good?')) {
-      deleteMutation.mutate(id);
+    setItemToDelete(id);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (itemToDelete) {
+      deleteMutation.mutate(itemToDelete);
+      setDeleteConfirmOpen(false);
+      setItemToDelete(null);
     }
   };
 
