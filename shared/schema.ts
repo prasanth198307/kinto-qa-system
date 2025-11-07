@@ -1007,3 +1007,30 @@ export const insertMachineStartupTaskSchema = createInsertSchema(machineStartupT
 
 export type InsertMachineStartupTask = z.infer<typeof insertMachineStartupTaskSchema>;
 export type MachineStartupTask = typeof machineStartupTasks.$inferSelect;
+
+// Notification Configuration - for SendGrid and Twilio settings
+export const notificationConfig = pgTable("notification_config", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  // Email Settings (SendGrid)
+  emailEnabled: integer("email_enabled").default(0).notNull(), // 1 = enabled, 0 = disabled
+  senderEmail: varchar("sender_email", { length: 255 }), // Verified sender email in SendGrid
+  senderName: varchar("sender_name", { length: 255 }), // Sender name for emails
+  // WhatsApp Settings (Twilio)
+  whatsappEnabled: integer("whatsapp_enabled").default(0).notNull(), // 1 = enabled, 0 = disabled
+  twilioPhoneNumber: varchar("twilio_phone_number", { length: 50 }), // Twilio WhatsApp number (e.g., whatsapp:+14155238886)
+  // General Settings
+  testMode: integer("test_mode").default(1).notNull(), // 1 = console logging only, 0 = real sending
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertNotificationConfigSchema = createInsertSchema(notificationConfig).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertNotificationConfig = z.infer<typeof insertNotificationConfigSchema>;
+export type NotificationConfig = typeof notificationConfig.$inferSelect;

@@ -30,6 +30,7 @@ import {
   banks,
   checklistAssignments,
   machineStartupTasks,
+  notificationConfig,
   type User,
   type UpsertUser,
   type InsertUser,
@@ -90,6 +91,8 @@ import {
   type InsertChecklistAssignment,
   type MachineStartupTask,
   type InsertMachineStartupTask,
+  type NotificationConfig,
+  type InsertNotificationConfig,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
@@ -1418,6 +1421,27 @@ export class DatabaseStorage implements IStorage {
       .update(machineStartupTasks)
       .set({ recordStatus: 0, updatedAt: new Date() })
       .where(eq(machineStartupTasks.id, id));
+  }
+
+  // Notification Configuration Methods
+  async getNotificationConfig(): Promise<NotificationConfig | undefined> {
+    // Return the first (and should be only) active config
+    const [config] = await db.select().from(notificationConfig).where(eq(notificationConfig.recordStatus, 1)).limit(1);
+    return config;
+  }
+
+  async createNotificationConfig(configData: InsertNotificationConfig): Promise<NotificationConfig> {
+    const [created] = await db.insert(notificationConfig).values(configData).returning();
+    return created;
+  }
+
+  async updateNotificationConfig(id: string, updates: Partial<InsertNotificationConfig>): Promise<NotificationConfig | undefined> {
+    const [updated] = await db
+      .update(notificationConfig)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(notificationConfig.id, id), eq(notificationConfig.recordStatus, 1)))
+      .returning();
+    return updated;
   }
 }
 

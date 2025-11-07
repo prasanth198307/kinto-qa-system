@@ -1,0 +1,306 @@
+import { useState, useEffect } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { useToast } from "@/hooks/use-toast";
+import { Bell, Mail, MessageSquare, Save, AlertCircle, Check } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
+interface NotificationConfig {
+  id: string;
+  emailEnabled: number;
+  senderEmail: string | null;
+  senderName: string | null;
+  whatsappEnabled: number;
+  twilioPhoneNumber: string | null;
+  testMode: number;
+}
+
+export default function NotificationSettings() {
+  const { toast } = useToast();
+  
+  // Fetch current configuration
+  const { data: config, isLoading } = useQuery<NotificationConfig>({
+    queryKey: ['/api/notification-config'],
+  });
+
+  const [formData, setFormData] = useState({
+    emailEnabled: false,
+    senderEmail: "",
+    senderName: "",
+    whatsappEnabled: false,
+    twilioPhoneNumber: "",
+    testMode: true,
+  });
+
+  useEffect(() => {
+    if (config) {
+      setFormData({
+        emailEnabled: config.emailEnabled === 1,
+        senderEmail: config.senderEmail || "",
+        senderName: config.senderName || "",
+        whatsappEnabled: config.whatsappEnabled === 1,
+        twilioPhoneNumber: config.twilioPhoneNumber || "",
+        testMode: config.testMode === 1,
+      });
+    }
+  }, [config]);
+
+  const saveMutation = useMutation({
+    mutationFn: async (data: typeof formData) => {
+      const payload = {
+        emailEnabled: data.emailEnabled ? 1 : 0,
+        senderEmail: data.senderEmail || null,
+        senderName: data.senderName || null,
+        whatsappEnabled: data.whatsappEnabled ? 1 : 0,
+        twilioPhoneNumber: data.twilioPhoneNumber || null,
+        testMode: data.testMode ? 1 : 0,
+      };
+      
+      if (config) {
+        return await apiRequest('PATCH', `/api/notification-config/${config.id}`, payload);
+      } else {
+        return await apiRequest('POST', '/api/notification-config', payload);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/notification-config'] });
+      toast({
+        title: "Settings saved",
+        description: "Notification settings have been updated successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to save notification settings",
+      });
+    },
+  });
+
+  const handleSave = () => {
+    saveMutation.mutate(formData);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="flex justify-center items-center py-12">
+          <div className="text-muted-foreground">Loading configuration...</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6 space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold flex items-center gap-2">
+          <Bell className="w-6 h-6" />
+          Notification Settings
+        </h2>
+        <p className="text-sm text-muted-foreground mt-2">
+          Configure email and WhatsApp notifications for machine startup reminders
+        </p>
+      </div>
+
+      <Alert>
+        <AlertCircle className="w-4 h-4" />
+        <AlertTitle>On-Premise Deployment Setup</AlertTitle>
+        <AlertDescription>
+          <div className="space-y-2 mt-2">
+            <p>For production use, set these environment variables on your server:</p>
+            <ul className="list-disc list-inside space-y-1 text-sm">
+              <li><code className="bg-muted px-1 rounded">SENDGRID_API_KEY</code> - Your SendGrid API key</li>
+              <li><code className="bg-muted px-1 rounded">TWILIO_ACCOUNT_SID</code> - Your Twilio Account SID</li>
+              <li><code className="bg-muted px-1 rounded">TWILIO_AUTH_TOKEN</code> - Your Twilio Auth Token</li>
+            </ul>
+            <p className="text-sm mt-2">
+              Install required packages: <code className="bg-muted px-1 rounded">npm install @sendgrid/mail twilio</code>
+            </p>
+          </div>
+        </AlertDescription>
+      </Alert>
+
+      <div className="grid gap-6">
+        {/* Email Configuration */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Mail className="w-5 h-5" />
+                <div>
+                  <CardTitle>Email Notifications (SendGrid)</CardTitle>
+                  <CardDescription>Configure email notifications via SendGrid</CardDescription>
+                </div>
+              </div>
+              <Switch
+                checked={formData.emailEnabled}
+                onCheckedChange={(checked) => setFormData({ ...formData, emailEnabled: checked })}
+                data-testid="switch-email-enabled"
+              />
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="senderEmail">Sender Email Address</Label>
+              <Input
+                id="senderEmail"
+                type="email"
+                placeholder="noreply@yourcompany.com"
+                value={formData.senderEmail}
+                onChange={(e) => setFormData({ ...formData, senderEmail: e.target.value })}
+                disabled={!formData.emailEnabled}
+                data-testid="input-sender-email"
+              />
+              <p className="text-sm text-muted-foreground">
+                This email must be verified in your SendGrid account
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="senderName">Sender Name</Label>
+              <Input
+                id="senderName"
+                type="text"
+                placeholder="KINTO QA System"
+                value={formData.senderName}
+                onChange={(e) => setFormData({ ...formData, senderName: e.target.value })}
+                disabled={!formData.emailEnabled}
+                data-testid="input-sender-name"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* WhatsApp Configuration */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="w-5 h-5" />
+                <div>
+                  <CardTitle>WhatsApp Notifications (Twilio)</CardTitle>
+                  <CardDescription>Configure WhatsApp notifications via Twilio</CardDescription>
+                </div>
+              </div>
+              <Switch
+                checked={formData.whatsappEnabled}
+                onCheckedChange={(checked) => setFormData({ ...formData, whatsappEnabled: checked })}
+                data-testid="switch-whatsapp-enabled"
+              />
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="twilioPhone">Twilio WhatsApp Number</Label>
+              <Input
+                id="twilioPhone"
+                type="text"
+                placeholder="whatsapp:+14155238886"
+                value={formData.twilioPhoneNumber}
+                onChange={(e) => setFormData({ ...formData, twilioPhoneNumber: e.target.value })}
+                disabled={!formData.whatsappEnabled}
+                data-testid="input-twilio-phone"
+              />
+              <p className="text-sm text-muted-foreground">
+                Use format: whatsapp:+[country code][phone number] (e.g., whatsapp:+14155238886 for Twilio sandbox)
+              </p>
+            </div>
+
+            <Alert>
+              <AlertCircle className="w-4 h-4" />
+              <AlertDescription className="text-sm">
+                <strong>Production Setup:</strong> Register a dedicated WhatsApp Business number through Twilio.
+                The sandbox number is for testing only.
+              </AlertDescription>
+            </Alert>
+          </CardContent>
+        </Card>
+
+        {/* Test Mode */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Test Mode</CardTitle>
+                <CardDescription>
+                  When enabled, notifications will only be logged to console (no real emails/WhatsApp sent)
+                </CardDescription>
+              </div>
+              <Switch
+                checked={formData.testMode}
+                onCheckedChange={(checked) => setFormData({ ...formData, testMode: checked })}
+                data-testid="switch-test-mode"
+              />
+            </div>
+          </CardHeader>
+        </Card>
+
+        {/* Save Button */}
+        <div className="flex justify-end gap-2">
+          <Button
+            onClick={handleSave}
+            disabled={saveMutation.isPending}
+            data-testid="button-save-settings"
+          >
+            {saveMutation.isPending ? (
+              <>Saving...</>
+            ) : (
+              <>
+                <Save className="w-4 h-4 mr-2" />
+                Save Settings
+              </>
+            )}
+          </Button>
+        </div>
+
+        {/* Status Indicators */}
+        {config && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Current Status</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="flex items-center gap-2">
+                {formData.emailEnabled ? (
+                  <Check className="w-4 h-4 text-green-600" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 text-muted-foreground" />
+                )}
+                <span className="text-sm">
+                  Email notifications: {formData.emailEnabled ? "Enabled" : "Disabled"}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {formData.whatsappEnabled ? (
+                  <Check className="w-4 h-4 text-green-600" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 text-muted-foreground" />
+                )}
+                <span className="text-sm">
+                  WhatsApp notifications: {formData.whatsappEnabled ? "Enabled" : "Disabled"}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {formData.testMode ? (
+                  <AlertCircle className="w-4 h-4 text-yellow-600" />
+                ) : (
+                  <Check className="w-4 h-4 text-green-600" />
+                )}
+                <span className="text-sm">
+                  Mode: {formData.testMode ? "Test (Console logging)" : "Production (Real sending)"}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </div>
+  );
+}

@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments } from "@shared/schema";
 import { z } from "zod";
 import path from "path";
 import fs from "fs";
@@ -2667,6 +2667,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error completing machine startup task:", error);
       res.status(500).json({ message: "Failed to complete startup task" });
+    }
+  });
+
+  // Notification Configuration Routes
+  app.get('/api/notification-config', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const config = await storage.getNotificationConfig();
+      res.json(config);
+    } catch (error) {
+      console.error("Error fetching notification config:", error);
+      res.status(500).json({ message: "Failed to fetch notification config" });
+    }
+  });
+
+  app.post('/api/notification-config', requireRole('admin'), async (req: any, res) => {
+    try {
+      const configData = req.body;
+      const newConfig = await storage.createNotificationConfig(configData);
+      console.log(`[AUDIT] ${req.user.username} created notification config`);
+      res.json(newConfig);
+    } catch (error) {
+      console.error("Error creating notification config:", error);
+      res.status(500).json({ message: "Failed to create notification config" });
+    }
+  });
+
+  app.patch('/api/notification-config/:id', requireRole('admin'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      const updated = await storage.updateNotificationConfig(id, updates);
+      console.log(`[AUDIT] ${req.user.username} updated notification config ${id}`);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating notification config:", error);
+      res.status(500).json({ message: "Failed to update notification config" });
     }
   });
 
