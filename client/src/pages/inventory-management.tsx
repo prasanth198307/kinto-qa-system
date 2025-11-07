@@ -30,7 +30,8 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Pencil, Trash2, Search, Package, Layers, Box, CheckCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Package, Layers, Box, CheckCircle, Users } from "lucide-react";
+import VendorManagement from "@/components/VendorManagement";
 
 export default function InventoryManagement() {
   const { user } = useAuth();
@@ -76,6 +77,10 @@ export default function InventoryManagement() {
               <CheckCircle className="h-4 w-4 mr-2" />
               Finished Goods
             </TabsTrigger>
+            <TabsTrigger value="vendors" className="data-[state=active]:bg-background" data-testid="tab-vendors">
+              <Users className="h-4 w-4 mr-2" />
+              Vendor Master
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="uom">
@@ -92,6 +97,10 @@ export default function InventoryManagement() {
 
           <TabsContent value="finished-goods">
             <FinishedGoodsTab searchTerm={searchTerm} onSearchChange={setSearchTerm} />
+          </TabsContent>
+
+          <TabsContent value="vendors">
+            <VendorManagement />
           </TabsContent>
         </Tabs>
       </div>
