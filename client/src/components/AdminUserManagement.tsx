@@ -37,6 +37,7 @@ export default function AdminUserManagement() {
   
   // Create user form state
   const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserMobileNumber, setNewUserMobileNumber] = useState('');
   const [newUserPassword, setNewUserPassword] = useState('');
   const [newUserFirstName, setNewUserFirstName] = useState('');
   const [newUserLastName, setNewUserLastName] = useState('');
@@ -71,7 +72,7 @@ export default function AdminUserManagement() {
   });
 
   const createUserMutation = useMutation({
-    mutationFn: async (userData: { email: string; password: string; firstName: string; lastName: string; role: string }) => {
+    mutationFn: async (userData: { email: string; mobileNumber: string; password: string; firstName: string; lastName: string; role: string }) => {
       return await apiRequest('POST', '/api/users', userData);
     },
     onSuccess: () => {
@@ -142,6 +143,7 @@ export default function AdminUserManagement() {
 
   const resetCreateForm = () => {
     setNewUserEmail('');
+    setNewUserMobileNumber('');
     setNewUserPassword('');
     setNewUserFirstName('');
     setNewUserLastName('');
@@ -149,10 +151,20 @@ export default function AdminUserManagement() {
   };
 
   const handleCreateUser = () => {
-    if (!newUserEmail || !newUserPassword) {
+    if (!newUserEmail || !newUserPassword || !newUserMobileNumber) {
       toast({
         title: "Validation Error",
-        description: "Email and password are required.",
+        description: "Email, password, and mobile number are required.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Validate mobile number format
+    if (!/^[0-9]{10}$/.test(newUserMobileNumber)) {
+      toast({
+        title: "Validation Error",
+        description: "Mobile number must be exactly 10 digits.",
         variant: "destructive",
       });
       return;
@@ -160,6 +172,7 @@ export default function AdminUserManagement() {
 
     createUserMutation.mutate({
       email: newUserEmail,
+      mobileNumber: newUserMobileNumber,
       password: newUserPassword,
       firstName: newUserFirstName,
       lastName: newUserLastName,
@@ -300,6 +313,22 @@ export default function AdminUserManagement() {
                 onChange={(e) => setNewUserEmail(e.target.value)}
                 data-testid="input-email"
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="mobileNumber">Mobile Number *</Label>
+              <Input
+                id="mobileNumber"
+                type="tel"
+                placeholder="9876543210"
+                maxLength={10}
+                value={newUserMobileNumber}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/[^0-9]/g, '');
+                  setNewUserMobileNumber(value);
+                }}
+                data-testid="input-mobile-number"
+              />
+              <p className="text-xs text-muted-foreground">Enter 10-digit mobile number</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password *</Label>

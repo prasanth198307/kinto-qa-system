@@ -182,30 +182,65 @@ export default function AdminSparePartsManagement() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Parse numeric fields safely
+    const parseNumber = (val: string) => {
+      if (!val || val.trim() === '') return undefined;
+      const num = parseInt(val.trim(), 10);
+      return isNaN(num) ? undefined : num;
+    };
+    
     const data = {
       partName: formData.partName.trim(),
-      partNumber: formData.partNumber.trim() || undefined,
-      category: formData.category.trim() || undefined,
-      machineId: formData.machineId.trim() || undefined,
-      unitPrice: formData.unitPrice && formData.unitPrice.trim() ? parseInt(formData.unitPrice.trim(), 10) : undefined,
-      reorderThreshold: formData.reorderThreshold && formData.reorderThreshold.trim() ? parseInt(formData.reorderThreshold.trim(), 10) : undefined,
-      currentStock: formData.currentStock && formData.currentStock.trim() ? parseInt(formData.currentStock.trim(), 10) : undefined,
+      partNumber: formData.partNumber?.trim() || undefined,
+      category: formData.category?.trim() || undefined,
+      machineId: formData.machineId?.trim() || undefined,
+      unitPrice: parseNumber(formData.unitPrice),
+      reorderThreshold: parseNumber(formData.reorderThreshold),
+      currentStock: parseNumber(formData.currentStock),
     };
+    
+    if (!data.partName) {
+      toast({
+        title: "Validation Error",
+        description: "Part name is required.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     createMutation.mutate(data);
   };
 
   const handleUpdate = (e: React.FormEvent) => {
     e.preventDefault();
     if (editingSparePart) {
+      // Parse numeric fields safely
+      const parseNumber = (val: string) => {
+        if (!val || val.trim() === '') return undefined;
+        const num = parseInt(val.trim(), 10);
+        return isNaN(num) ? undefined : num;
+      };
+      
       const data = {
         partName: formData.partName.trim(),
-        partNumber: formData.partNumber.trim() || undefined,
-        category: formData.category.trim() || undefined,
-        machineId: formData.machineId.trim() || undefined,
-        unitPrice: formData.unitPrice && formData.unitPrice.trim() ? parseInt(formData.unitPrice.trim(), 10) : undefined,
-        reorderThreshold: formData.reorderThreshold && formData.reorderThreshold.trim() ? parseInt(formData.reorderThreshold.trim(), 10) : undefined,
-        currentStock: formData.currentStock && formData.currentStock.trim() ? parseInt(formData.currentStock.trim(), 10) : undefined,
+        partNumber: formData.partNumber?.trim() || undefined,
+        category: formData.category?.trim() || undefined,
+        machineId: formData.machineId?.trim() || undefined,
+        unitPrice: parseNumber(formData.unitPrice),
+        reorderThreshold: parseNumber(formData.reorderThreshold),
+        currentStock: parseNumber(formData.currentStock),
       };
+      
+      if (!data.partName) {
+        toast({
+          title: "Validation Error",
+          description: "Part name is required.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       updateMutation.mutate({ id: editingSparePart.id, data });
     }
   };

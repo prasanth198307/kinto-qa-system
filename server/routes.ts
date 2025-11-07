@@ -163,11 +163,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/users', requireRole('admin'), async (req: any, res) => {
     try {
-      const { email, password, firstName, lastName, role } = req.body;
+      const { email, password, firstName, lastName, role, mobileNumber } = req.body;
 
       // Validate required fields
-      if (!email || !password) {
-        return res.status(400).json({ message: "Email and password are required" });
+      if (!email || !password || !mobileNumber) {
+        return res.status(400).json({ message: "Email, password, and mobile number are required" });
+      }
+      
+      // Validate mobile number format
+      if (!/^[0-9]{10}$/.test(mobileNumber)) {
+        return res.status(400).json({ message: "Mobile number must be 10 digits" });
       }
 
       // Validate role
@@ -211,6 +216,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         username,
         email,
         password: hashedPassword,
+        mobileNumber,
         firstName: firstName || null,
         lastName: lastName || null,
         roleId: validRole.id,

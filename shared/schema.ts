@@ -73,6 +73,7 @@ export const users = pgTable("users", {
   username: varchar("username", { length: 255 }).unique().notNull(),
   password: text("password").notNull(),
   email: varchar("email").unique(),
+  mobileNumber: varchar("mobile_number", { length: 15 }).notNull(),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
@@ -87,6 +88,7 @@ export const users = pgTable("users", {
 export const insertUserSchema = createInsertSchema(users, {
   username: z.string().min(3, "Username must be at least 3 characters"),
   password: z.string().min(6, "Password must be at least 6 characters"),
+  mobileNumber: z.string().regex(/^[0-9]{10}$/, "Mobile number must be 10 digits"),
   email: z.string().email("Invalid email address").optional(),
 }).omit({
   id: true,
