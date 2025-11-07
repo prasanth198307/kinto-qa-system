@@ -24,6 +24,8 @@ import {
   rawMaterialIssuanceItems,
   gatepasses,
   gatepassItems,
+  invoices,
+  invoiceItems,
   checklistAssignments,
   type User,
   type UpsertUser,
@@ -69,6 +71,10 @@ import {
   type InsertGatepass,
   type GatepassItem,
   type InsertGatepassItem,
+  type Invoice,
+  type InsertInvoice,
+  type InvoiceItem,
+  type InsertInvoiceItem,
   type Role,
   type InsertRole,
   type RolePermission,
@@ -223,6 +229,22 @@ export interface IStorage {
   getGatepassItems(gatepassId: string): Promise<GatepassItem[]>;
   updateGatepassItem(id: string, updates: Partial<InsertGatepassItem>): Promise<GatepassItem | undefined>;
   deleteGatepassItem(id: string): Promise<void>;
+  
+  // Invoices
+  createInvoice(invoice: InsertInvoice): Promise<Invoice>;
+  getAllInvoices(): Promise<Invoice[]>;
+  getInvoice(id: string): Promise<Invoice | undefined>;
+  updateInvoice(id: string, updates: Partial<InsertInvoice>): Promise<Invoice | undefined>;
+  deleteInvoice(id: string): Promise<void>;
+  getInvoicesByDate(date: Date): Promise<Invoice[]>;
+  getInvoiceByNumber(invoiceNumber: string): Promise<Invoice | undefined>;
+  getInvoicesByGatepass(gatepassId: string): Promise<Invoice[]>;
+  
+  // Invoice Items
+  createInvoiceItem(item: InsertInvoiceItem): Promise<InvoiceItem>;
+  getInvoiceItems(invoiceId: string): Promise<InvoiceItem[]>;
+  updateInvoiceItem(id: string, updates: Partial<InsertInvoiceItem>): Promise<InvoiceItem | undefined>;
+  deleteInvoiceItem(id: string): Promise<void>;
   
   // Checklist Assignments
   createChecklistAssignment(assignment: InsertChecklistAssignment): Promise<ChecklistAssignment>;

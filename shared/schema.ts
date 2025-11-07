@@ -795,3 +795,125 @@ export const insertGatepassItemSchema = createInsertSchema(gatepassItems).omit({
 
 export type InsertGatepassItem = z.infer<typeof insertGatepassItemSchema>;
 export type GatepassItem = typeof gatepassItems.$inferSelect;
+
+// Invoices for Sales (GST-Compliant)
+export const invoices = pgTable("invoices", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  invoiceNumber: varchar("invoice_number", { length: 100 }).notNull().unique(),
+  invoiceDate: timestamp("invoice_date").notNull(),
+  gatepassId: varchar("gatepass_id").references(() => gatepasses.id),
+  
+  // Seller Details
+  sellerGstin: varchar("seller_gstin", { length: 15 }),
+  sellerName: varchar("seller_name", { length: 255 }),
+  sellerAddress: text("seller_address"),
+  sellerState: varchar("seller_state", { length: 100 }),
+  sellerStateCode: varchar("seller_state_code", { length: 2 }),
+  
+  // Buyer Details
+  buyerGstin: varchar("buyer_gstin", { length: 15 }),
+  buyerName: varchar("buyer_name", { length: 255 }).notNull(),
+  buyerAddress: text("buyer_address"),
+  buyerState: varchar("buyer_state", { length: 100 }),
+  buyerStateCode: varchar("buyer_state_code", { length: 2 }),
+  buyerContact: varchar("buyer_contact", { length: 50 }),
+  
+  // Amounts
+  subtotal: integer("subtotal").notNull(), // Amount before tax (in paise)
+  cgstAmount: integer("cgst_amount").default(0).notNull(), // Central GST (in paise)
+  sgstAmount: integer("sgst_amount").default(0).notNull(), // State GST (in paise)
+  igstAmount: integer("igst_amount").default(0).notNull(), // Integrated GST (in paise)
+  cessAmount: integer("cess_amount").default(0).notNull(), // Cess if any (in paise)
+  roundOff: integer("round_off").default(0).notNull(), // Round off adjustment (in paise)
+  totalAmount: integer("total_amount").notNull(), // Final total (in paise)
+  
+  // Payment Details
+  paymentTerms: varchar("payment_terms", { length: 255 }),
+  bankName: varchar("bank_name", { length: 255 }),
+  bankAccountNumber: varchar("bank_account_number", { length: 50 }),
+  bankIfscCode: varchar("bank_ifsc_code", { length: 11 }),
+  upiId: varchar("upi_id", { length: 100 }),
+  
+  // Other Details
+  placeOfSupply: varchar("place_of_supply", { length: 100 }),
+  reverseCharge: integer("reverse_charge").default(0).notNull(),
+  transportMode: varchar("transport_mode", { length: 50 }),
+  vehicleNumber: varchar("vehicle_number", { length: 50 }),
+  dateOfSupply: timestamp("date_of_supply"),
+  
+  remarks: text("remarks"),
+  recordStatus: integer("record_status").default(1).notNull(),
+  generatedBy: varchar("generated_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertInvoiceSchema = createInsertSchema(invoices, {
+  invoiceDate: z.union([z.string(), z.date()]).transform(val => {
+    if (!val) return new Date();
+    if (typeof val === 'string') {
+      if (val.trim() === '') return new Date();
+      const date = new Date(val);
+      return isNaN(date.getTime()) ? new Date() : date;
+    }
+    return val;
+  }),
+  dateOfSupply: z.union([z.string(), z.date(), z.null(), z.undefined()]).transform(val => {
+    if (!val || val === '') return null;
+    if (typeof val === 'string') {
+      const date = new Date(val);
+      return isNaN(date.getTime()) ? null : date;
+    }
+    return val;
+  }).optional(),
+}).omit({
+  id: true,
+  invoiceNumber: true, // Auto-generated on backend
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
+export type Invoice = typeof invoices.$inferSelect;
+
+// Invoice Items (Line Items with GST Details)
+export const invoiceItems = pgTable("invoice_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  invoiceId: varchar("invoice_id").references(() => invoices.id).notNull(),
+  productId: varchar("product_id").references(() => products.id).notNull(),
+  hsnCode: varchar("hsn_code", { length: 8 }),
+  sacCode: varchar("sac_code", { length: 6 }),
+  description: text("description").notNull(),
+  quantity: integer("quantity").notNull(),
+  uomId: varchar("uom_id").references(() => uom.id),
+  unitPrice: integer("unit_price").notNull(), // Price per unit (in paise)
+  discount: integer("discount").default(0).notNull(), // Discount amount (in paise)
+  taxableAmount: integer("taxable_amount").notNull(), // Amount after discount (in paise)
+  
+  // Tax Breakup
+  cgstRate: integer("cgst_rate").default(0).notNull(), // CGST rate in basis points (e.g., 900 = 9%)
+  cgstAmount: integer("cgst_amount").default(0).notNull(), // CGST amount (in paise)
+  sgstRate: integer("sgst_rate").default(0).notNull(), // SGST rate in basis points
+  sgstAmount: integer("sgst_amount").default(0).notNull(), // SGST amount (in paise)
+  igstRate: integer("igst_rate").default(0).notNull(), // IGST rate in basis points
+  igstAmount: integer("igst_amount").default(0).notNull(), // IGST amount (in paise)
+  cessRate: integer("cess_rate").default(0).notNull(), // Cess rate in basis points
+  cessAmount: integer("cess_amount").default(0).notNull(), // Cess amount (in paise)
+  
+  totalAmount: integer("total_amount").notNull(), // Total for this line item (in paise)
+  remarks: text("remarks"),
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertInvoiceItemSchema = createInsertSchema(invoiceItems).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertInvoiceItem = z.infer<typeof insertInvoiceItemSchema>;
+export type InvoiceItem = typeof invoiceItems.$inferSelect;
