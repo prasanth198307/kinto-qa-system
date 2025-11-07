@@ -35,6 +35,7 @@ import TodayProductionStats from "@/components/TodayProductionStats";
 import RolePermissionsView from "@/components/RolePermissionsView";
 import RoleManagement from "@/components/RoleManagement";
 import { ManagerChecklistAssignment } from "@/components/ManagerChecklistAssignment";
+import { OperatorAssignedChecklists } from "@/components/OperatorAssignedChecklists";
 import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -77,6 +78,8 @@ function OperatorDashboard() {
         {activeView === 'dashboard' && (
           <div className="p-4 space-y-6">
             <DashboardStats stats={mockStats} />
+            
+            <OperatorAssignedChecklists />
             
             <div>
               <h3 className="text-lg font-semibold mb-3">Assigned Machines</h3>
