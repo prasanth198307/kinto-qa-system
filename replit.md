@@ -39,6 +39,73 @@ A complete invoice generation system integrated with gatepasses:
 
 **Production Status**: ✅ Feature complete with Bank Master integration and invoice editing. Pending: End-to-end testing with authenticated user session.
 
+### Payment Tracking System (COMPLETED)
+A complete payment tracking system for invoices with support for partial payments, advances, and full payment reconciliation:
+
+**Database Schema:**
+- **invoice_payments Table**: Tracks all payments against invoices
+  - Payment amount (stored in paise ×100)
+  - Payment date, method (cash, cheque, NEFT, RTGS, UPI, other)
+  - Payment type (advance, partial, full)
+  - Bank selection for payment association
+  - Reference number for transaction tracking
+  - Remarks for additional notes
+  - Soft delete support via recordStatus flag
+
+**Components:**
+- **PaymentForm**: Payment recording interface with comprehensive validation
+  - Date picker for payment date
+  - Amount input with automatic conversion to paise
+  - Payment method dropdown
+  - Payment type selection (advance/partial/full)
+  - Bank selection dropdown (linked to bank master)
+  - Reference number and remarks fields
+  - Form validation via react-hook-form and zod
+  
+- **PaymentHistory**: Complete payment history viewer
+  - Displays all payments for an invoice in chronological order
+  - Shows running balance after each payment
+  - Delete functionality for payment corrections
+  - Real-time balance updates via TanStack Query
+  
+- **InvoiceTable**: Updated with payment tracking
+  - Outstanding Balance column showing (invoice total - sum of payments)
+  - "Record Payment" button to open payment dialog
+  - Payment dialog shows PaymentForm and PaymentHistory side-by-side
+  
+**Backend Implementation:**
+- **API Routes**: RESTful endpoints for payment CRUD operations
+  - `GET /api/invoices/:id/payments` - Get all payments for an invoice
+  - `GET /api/payments` - Get all payments (admin/manager only)
+  - `POST /api/invoices/:id/payments` - Record a new payment
+  - `DELETE /api/payments/:id` - Soft delete a payment
+  - Role-based access control via requireRole middleware
+  - Comprehensive audit logging for all payment transactions
+  
+- **Storage Layer**: Payment methods in IStorage interface
+  - `createPayment()` - Insert new payment record
+  - `getAllPayments()` - Retrieve all payments
+  - `getPayment()` - Get single payment by ID
+  - `getPaymentsByInvoice()` - Get payments for specific invoice
+  - `deletePayment()` - Soft delete payment record
+
+**Workflow:**
+1. User views invoice list with outstanding balances
+2. Clicks "Record Payment" button
+3. Payment dialog opens showing PaymentForm and PaymentHistory
+4. User enters payment details and submits
+5. Payment is recorded and invoice table updates with new outstanding balance
+6. Payment history shows all payments with running balance
+
+**Technical Details:**
+- Outstanding balance calculation: `total - sum(payments where recordStatus = 1)`
+- Payment amounts stored in paise (multiply by 100) for precision
+- Automatic currency conversion in forms (paise ↔ rupees)
+- Soft delete pattern allows payment history audit trail
+- Real-time updates via TanStack Query cache invalidation
+
+**Production Status**: ✅ Feature complete. Backend routes, storage methods, and UI components fully implemented. Pending: End-to-end testing with authenticated user session.
+
 ## System Architecture
 
 ### Frontend Architecture
