@@ -235,6 +235,16 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
   };
 
   const onSubmit = (data: FormData) => {
+    // Alert if no invoice selected
+    if (!selectedInvoiceId) {
+      toast({
+        title: "Invoice Required",
+        description: "Please select an invoice to add items before creating the gatepass.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     saveMutation.mutate(data);
   };
 
@@ -569,6 +579,14 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                     <FormLabel>Select Invoice</FormLabel>
                     <Select 
                       onValueChange={(value) => {
+                        // Alert when selecting "None"
+                        if (value === "none" && selectedInvoiceId) {
+                          toast({
+                            title: "Warning",
+                            description: "Selecting 'None' will remove all items. You won't be able to add items without an invoice.",
+                            variant: "default",
+                          });
+                        }
                         field.onChange(value === "none" ? "" : value);
                         setSelectedInvoiceId(value === "none" ? "" : value);
                       }} 
