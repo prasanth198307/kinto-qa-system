@@ -1,0 +1,22 @@
+5:22:09 PM [express] GET /api/user 401 in 1ms
+5:22:15 PM [express] POST /api/login 500 in 55ms :: {"message":"The first argument must be of type s…
+TypeError [ERR_INVALID_ARG_TYPE]: The first argument must be of type string or an instance of Buffer, ArrayBuffer, or Array or an Array-like Object. Received undefined
+    at Function.from (node:buffer:325:9)
+    at comparePasswords (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:1827:31)
+    at async Strategy._verify (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:1860:23)
+5:22:19 PM [express] POST /api/login 500 in 61ms :: {"message":"The first argument must be of type s…
+TypeError [ERR_INVALID_ARG_TYPE]: The first argument must be of type string or an instance of Buffer, ArrayBuffer, or Array or an Array-like Object. Received undefined
+    at Function.from (node:buffer:325:9)
+    at comparePasswords (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:1827:31)
+    at async Strategy._verify (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:1860:23)
+5:22:26 PM [express] POST /api/login 500 in 61ms :: {"message":"The first argument must be of type s…
+TypeError [ERR_INVALID_ARG_TYPE]: The first argument must be of type string or an instance of Buffer, ArrayBuffer, or Array or an Array-like Object. Received undefined
+    at Function.from (node:buffer:325:9)
+    at comparePasswords (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:1827:31)
+    at async Strategy._verify (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:1860:23)
+5:22:36 PM [express] POST /api/login 500 in 65ms :: {"message":"The first argument must be of type s…
+TypeError [ERR_INVALID_ARG_TYPE]: The first argument must be of type string or an instance of Buffer, ArrayBuffer, or Array or an Array-like Object. Received undefined
+    at Function.from (node:buffer:325:9)
+    at comparePasswords (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:1827:31)
+    at async Strategy._verify (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:1860:23)
+
