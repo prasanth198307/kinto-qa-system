@@ -2706,6 +2706,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test endpoint to manually trigger missed checklist notifications (for testing purposes)
+  app.post('/api/cron/missed-checklists', async (req: any, res) => {
+    try {
+      console.log('[TEST ENDPOINT] Manually triggering missed checklist notification check...');
+      const { notificationService } = await import("./notificationService");
+      await notificationService.checkAndSendMissedChecklistNotifications();
+      console.log('[TEST ENDPOINT] Missed checklist notification check completed');
+      res.json({ success: true, message: 'Missed checklist notification check completed' });
+    } catch (error) {
+      console.error('[TEST ENDPOINT ERROR]', error);
+      res.status(500).json({ message: "Failed to check missed checklists", error: String(error) });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
