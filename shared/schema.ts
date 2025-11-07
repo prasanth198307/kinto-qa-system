@@ -918,6 +918,33 @@ export const insertInvoiceItemSchema = createInsertSchema(invoiceItems).omit({
 export type InsertInvoiceItem = z.infer<typeof insertInvoiceItemSchema>;
 export type InvoiceItem = typeof invoiceItems.$inferSelect;
 
+// Invoice Payments for tracking partial payments and advances
+export const invoicePayments = pgTable("invoice_payments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  invoiceId: varchar("invoice_id").references(() => invoices.id).notNull(),
+  paymentDate: timestamp("payment_date").notNull(),
+  amount: integer("amount").notNull(), // Payment amount (in paise)
+  paymentMethod: varchar("payment_method", { length: 50 }).notNull(), // Cash, Cheque, NEFT, UPI, etc.
+  referenceNumber: varchar("reference_number", { length: 100 }), // Transaction ID, Cheque number, etc.
+  paymentType: varchar("payment_type", { length: 50 }).notNull(), // Advance, Partial, Full
+  bankName: varchar("bank_name", { length: 255 }), // Bank name for cheque/transfer
+  remarks: text("remarks"),
+  recordedBy: varchar("recorded_by").references(() => users.id),
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertInvoicePaymentSchema = createInsertSchema(invoicePayments).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertInvoicePayment = z.infer<typeof insertInvoicePaymentSchema>;
+export type InvoicePayment = typeof invoicePayments.$inferSelect;
+
 // Bank Master for managing multiple bank accounts
 export const banks = pgTable("banks", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
