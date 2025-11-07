@@ -20,7 +20,9 @@ import {
   rawMaterialTransactions,
   finishedGoods,
   rawMaterialIssuance,
+  rawMaterialIssuanceItems,
   gatepasses,
+  gatepassItems,
   checklistAssignments,
   type User,
   type UpsertUser,
@@ -58,8 +60,12 @@ import {
   type InsertFinishedGood,
   type RawMaterialIssuance,
   type InsertRawMaterialIssuance,
+  type RawMaterialIssuanceItem,
+  type InsertRawMaterialIssuanceItem,
   type Gatepass,
   type InsertGatepass,
+  type GatepassItem,
+  type InsertGatepassItem,
   type Role,
   type InsertRole,
   type RolePermission,
@@ -187,6 +193,12 @@ export interface IStorage {
   deleteRawMaterialIssuance(id: string): Promise<void>;
   getRawMaterialIssuancesByDate(date: Date): Promise<RawMaterialIssuance[]>;
   
+  // Raw Material Issuance Items
+  createRawMaterialIssuanceItem(item: InsertRawMaterialIssuanceItem): Promise<RawMaterialIssuanceItem>;
+  getIssuanceItems(issuanceId: string): Promise<RawMaterialIssuanceItem[]>;
+  updateRawMaterialIssuanceItem(id: string, updates: Partial<InsertRawMaterialIssuanceItem>): Promise<RawMaterialIssuanceItem | undefined>;
+  deleteRawMaterialIssuanceItem(id: string): Promise<void>;
+  
   // Gatepasses
   createGatepass(gatepass: InsertGatepass): Promise<Gatepass>;
   getAllGatepasses(): Promise<Gatepass[]>;
@@ -195,6 +207,12 @@ export interface IStorage {
   deleteGatepass(id: string): Promise<void>;
   getGatepassesByDate(date: Date): Promise<Gatepass[]>;
   getGatepassByNumber(gatepassNumber: string): Promise<Gatepass | undefined>;
+  
+  // Gatepass Items
+  createGatepassItem(item: InsertGatepassItem): Promise<GatepassItem>;
+  getGatepassItems(gatepassId: string): Promise<GatepassItem[]>;
+  updateGatepassItem(id: string, updates: Partial<InsertGatepassItem>): Promise<GatepassItem | undefined>;
+  deleteGatepassItem(id: string): Promise<void>;
   
   // Checklist Assignments
   createChecklistAssignment(assignment: InsertChecklistAssignment): Promise<ChecklistAssignment>;
@@ -926,6 +944,62 @@ export class DatabaseStorage implements IStorage {
   async getGatepassByNumber(gatepassNumber: string): Promise<Gatepass | undefined> {
     const [result] = await db.select().from(gatepasses).where(and(eq(gatepasses.gatepassNumber, gatepassNumber), eq(gatepasses.recordStatus, 1)));
     return result;
+  }
+
+  // Raw Material Issuance Items
+  async createRawMaterialIssuanceItem(item: InsertRawMaterialIssuanceItem): Promise<RawMaterialIssuanceItem> {
+    const [created] = await db.insert(rawMaterialIssuanceItems).values(item).returning();
+    return created;
+  }
+
+  async getIssuanceItems(issuanceId: string): Promise<RawMaterialIssuanceItem[]> {
+    return await db.select().from(rawMaterialIssuanceItems).where(
+      and(
+        eq(rawMaterialIssuanceItems.issuanceId, issuanceId),
+        eq(rawMaterialIssuanceItems.recordStatus, 1)
+      )
+    );
+  }
+
+  async updateRawMaterialIssuanceItem(id: string, updates: Partial<InsertRawMaterialIssuanceItem>): Promise<RawMaterialIssuanceItem | undefined> {
+    const [updated] = await db
+      .update(rawMaterialIssuanceItems)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(rawMaterialIssuanceItems.id, id), eq(rawMaterialIssuanceItems.recordStatus, 1)))
+      .returning();
+    return updated;
+  }
+
+  async deleteRawMaterialIssuanceItem(id: string): Promise<void> {
+    await db.update(rawMaterialIssuanceItems).set({ recordStatus: 0, updatedAt: new Date() }).where(eq(rawMaterialIssuanceItems.id, id));
+  }
+
+  // Gatepass Items
+  async createGatepassItem(item: InsertGatepassItem): Promise<GatepassItem> {
+    const [created] = await db.insert(gatepassItems).values(item).returning();
+    return created;
+  }
+
+  async getGatepassItems(gatepassId: string): Promise<GatepassItem[]> {
+    return await db.select().from(gatepassItems).where(
+      and(
+        eq(gatepassItems.gatepassId, gatepassId),
+        eq(gatepassItems.recordStatus, 1)
+      )
+    );
+  }
+
+  async updateGatepassItem(id: string, updates: Partial<InsertGatepassItem>): Promise<GatepassItem | undefined> {
+    const [updated] = await db
+      .update(gatepassItems)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(gatepassItems.id, id), eq(gatepassItems.recordStatus, 1)))
+      .returning();
+    return updated;
+  }
+
+  async deleteGatepassItem(id: string): Promise<void> {
+    await db.update(gatepassItems).set({ recordStatus: 0, updatedAt: new Date() }).where(eq(gatepassItems.id, id));
   }
 
   // Role Management
