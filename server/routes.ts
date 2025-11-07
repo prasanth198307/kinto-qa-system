@@ -1523,15 +1523,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "At least one gatepass item is required" });
       }
       
-      // Check if gatepass number is unique
-      const existing = await storage.getGatepassByNumber(validatedHeader.gatepassNumber);
-      if (existing) {
-        return res.status(400).json({ message: "Gatepass number already exists" });
-      }
-      
-      // Create gatepass header data
+      // Create gatepass header with auto-generated gatepass number
+      const gatepassNumber = `GP-${Date.now()}`;
       const gatepassData = {
         ...validatedHeader,
+        gatepassNumber,
         issuedBy: req.user?.id,
       };
       

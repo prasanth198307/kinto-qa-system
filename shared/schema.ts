@@ -763,6 +763,7 @@ export const insertGatepassSchema = createInsertSchema(gatepasses, {
   }),
 }).omit({
   id: true,
+  gatepassNumber: true, // Auto-generated on backend
   recordStatus: true,
   createdAt: true,
   updatedAt: true,

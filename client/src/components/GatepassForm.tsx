@@ -64,7 +64,6 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
     resolver: zodResolver(formSchema),
     defaultValues: {
       header: {
-        gatepassNumber: "",
         gatepassDate: new Date(),
         vehicleNumber: "",
         driverName: "",
@@ -93,7 +92,6 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
       setItems(mappedItems);
       form.reset({
         header: {
-          gatepassNumber: gatepass.gatepassNumber,
           gatepassDate: gatepass.gatepassDate ? new Date(gatepass.gatepassDate) : new Date(),
           vehicleNumber: gatepass.vehicleNumber,
           driverName: gatepass.driverName,
@@ -183,21 +181,15 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
           <Card className="p-4 space-y-4">
             <h4 className="font-semibold text-sm">Gatepass Details</h4>
             
+            {gatepass && (
+              <div className="mb-4 p-3 bg-muted rounded-md">
+                <p className="text-sm">
+                  <span className="font-medium">Gatepass Number:</span> <span className="text-primary">{gatepass.gatepassNumber}</span>
+                </p>
+              </div>
+            )}
+            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="header.gatepassNumber"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Gatepass Number</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="GP-2024-001" data-testid="input-gatepass-number" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
               <FormField
                 control={form.control}
                 name="header.gatepassDate"
