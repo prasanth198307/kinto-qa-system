@@ -63,6 +63,8 @@ import {
   type InsertRole,
   type RolePermission,
   type InsertRolePermission,
+  type ChecklistAssignment,
+  type InsertChecklistAssignment,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
@@ -192,6 +194,15 @@ export interface IStorage {
   deleteGatepass(id: string): Promise<void>;
   getGatepassesByDate(date: Date): Promise<Gatepass[]>;
   getGatepassByNumber(gatepassNumber: string): Promise<Gatepass | undefined>;
+  
+  // Checklist Assignments
+  createChecklistAssignment(assignment: InsertChecklistAssignment): Promise<ChecklistAssignment>;
+  getAllChecklistAssignments(): Promise<ChecklistAssignment[]>;
+  getChecklistAssignment(id: string): Promise<ChecklistAssignment | undefined>;
+  getChecklistAssignmentsByOperator(operatorId: string): Promise<ChecklistAssignment[]>;
+  getChecklistAssignmentsByDate(date: string): Promise<ChecklistAssignment[]>;
+  updateChecklistAssignment(id: string, updates: Partial<InsertChecklistAssignment>): Promise<ChecklistAssignment | undefined>;
+  deleteChecklistAssignment(id: string): Promise<void>;
   
   // Role Management
   createRole(role: InsertRole): Promise<Role>;
