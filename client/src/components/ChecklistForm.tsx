@@ -73,12 +73,10 @@ export default function ChecklistForm({ machineName, tasks: initialTasks, onSubm
     setPhotoDialogOpen(true);
   };
 
-  const handlePhotoSave = (photoBase64: string) => {
-    if (currentTaskId) {
-      updateTask(currentTaskId, 'photoUrl', photoBase64);
-      setPhotoDialogOpen(false);
-      setCurrentTaskId(null);
-    }
+  const handlePhotoSave = (taskId: string, photoUrl: string) => {
+    updateTask(taskId, 'photoUrl', photoUrl);
+    setPhotoDialogOpen(false);
+    setCurrentTaskId(null);
   };
 
   const handlePhotoRemove = (taskId: string) => {
@@ -347,9 +345,12 @@ export default function ChecklistForm({ machineName, tasks: initialTasks, onSubm
           <DialogHeader>
             <DialogTitle>Capture Task Photo</DialogTitle>
           </DialogHeader>
-          <PhotoCapture
-            onPhotoCapture={handlePhotoSave}
-          />
+          {currentTaskId && (
+            <PhotoCapture
+              taskId={currentTaskId}
+              onPhotoCapture={handlePhotoSave}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>
