@@ -20,6 +20,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -111,6 +112,7 @@ export default function VendorManagement() {
       email: formData.get("email") as string || null,
       contactPerson: formData.get("contactPerson") as string || null,
       vendorType: formData.get("vendorType") as string || null,
+      isCluster: formData.get("isCluster") === "on" ? 1 : 0,
       isActive: formData.get("isActive") as string || 'true',
     };
 
@@ -294,20 +296,34 @@ export default function VendorManagement() {
                 </div>
               </div>
 
-              <div>
-                <Label htmlFor="isActive">Status</Label>
-                <Select
-                  name="isActive"
-                  defaultValue={editingVendor?.isActive || 'true'}
-                >
-                  <SelectTrigger data-testid="select-is-active">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="true">Active</SelectItem>
-                    <SelectItem value="false">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="isActive">Status</Label>
+                  <Select
+                    name="isActive"
+                    defaultValue={editingVendor?.isActive || 'true'}
+                  >
+                    <SelectTrigger data-testid="select-is-active">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="true">Active</SelectItem>
+                      <SelectItem value="false">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="flex items-center gap-2 pt-6">
+                  <Checkbox
+                    id="isCluster"
+                    name="isCluster"
+                    defaultChecked={editingVendor?.isCluster === 1}
+                    data-testid="checkbox-is-cluster"
+                  />
+                  <Label htmlFor="isCluster" className="cursor-pointer">
+                    Is Cluster
+                  </Label>
+                </div>
               </div>
 
               <div className="flex justify-end gap-2">

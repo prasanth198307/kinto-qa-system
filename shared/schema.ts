@@ -557,6 +557,7 @@ export const vendors = pgTable("vendors", {
   email: varchar("email", { length: 255 }),
   contactPerson: varchar("contact_person", { length: 255 }),
   vendorType: varchar("vendor_type", { length: 50 }),
+  isCluster: integer("is_cluster").default(0).notNull(), // 0 = No, 1 = Yes
   isActive: varchar("is_active").default('true'),
   recordStatus: integer("record_status").default(1).notNull(),
   createdBy: varchar("created_by").references(() => users.id),
