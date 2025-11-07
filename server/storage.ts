@@ -26,6 +26,7 @@ import {
   gatepassItems,
   invoices,
   invoiceItems,
+  banks,
   checklistAssignments,
   type User,
   type UpsertUser,
@@ -75,6 +76,8 @@ import {
   type InsertInvoice,
   type InvoiceItem,
   type InsertInvoiceItem,
+  type Bank,
+  type InsertBank,
   type Role,
   type InsertRole,
   type RolePermission,
@@ -245,6 +248,15 @@ export interface IStorage {
   getInvoiceItems(invoiceId: string): Promise<InvoiceItem[]>;
   updateInvoiceItem(id: string, updates: Partial<InsertInvoiceItem>): Promise<InvoiceItem | undefined>;
   deleteInvoiceItem(id: string): Promise<void>;
+  
+  // Bank Master
+  createBank(bank: InsertBank): Promise<Bank>;
+  getAllBanks(): Promise<Bank[]>;
+  getBank(id: string): Promise<Bank | undefined>;
+  updateBank(id: string, updates: Partial<InsertBank>): Promise<Bank | undefined>;
+  deleteBank(id: string): Promise<void>;
+  getDefaultBank(): Promise<Bank | undefined>;
+  setDefaultBank(id: string): Promise<void>;
   
   // Checklist Assignments
   createChecklistAssignment(assignment: InsertChecklistAssignment): Promise<ChecklistAssignment>;
@@ -1131,6 +1143,42 @@ export class DatabaseStorage implements IStorage {
 
   async deleteInvoiceItem(id: string): Promise<void> {
     await db.update(invoiceItems).set({ recordStatus: 0, updatedAt: new Date() }).where(eq(invoiceItems.id, id));
+  }
+
+  // Bank Master
+  async createBank(bank: InsertBank): Promise<Bank> {
+    const [newBank] = await db.insert(banks).values(bank).returning();
+    return newBank;
+  }
+
+  async getAllBanks(): Promise<Bank[]> {
+    return await db.select().from(banks).where(eq(banks.recordStatus, 1));
+  }
+
+  async getBank(id: string): Promise<Bank | undefined> {
+    const [bank] = await db.select().from(banks).where(and(eq(banks.id, id), eq(banks.recordStatus, 1)));
+    return bank;
+  }
+
+  async updateBank(id: string, updates: Partial<InsertBank>): Promise<Bank | undefined> {
+    const [updated] = await db.update(banks).set({ ...updates, updatedAt: new Date() }).where(eq(banks.id, id)).returning();
+    return updated;
+  }
+
+  async deleteBank(id: string): Promise<void> {
+    await db.update(banks).set({ recordStatus: 0, updatedAt: new Date() }).where(eq(banks.id, id));
+  }
+
+  async getDefaultBank(): Promise<Bank | undefined> {
+    const [bank] = await db.select().from(banks).where(and(eq(banks.isDefault, 1), eq(banks.recordStatus, 1)));
+    return bank;
+  }
+
+  async setDefaultBank(id: string): Promise<void> {
+    // Reset all banks to non-default
+    await db.update(banks).set({ isDefault: 0, updatedAt: new Date() }).where(eq(banks.recordStatus, 1));
+    // Set the selected bank as default
+    await db.update(banks).set({ isDefault: 1, updatedAt: new Date() }).where(eq(banks.id, id));
   }
 
   // Role Management

@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertUserSchema, insertChecklistAssignmentSchema, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems } from "@shared/schema";
 import { z } from "zod";
 import path from "path";
 import fs from "fs";
@@ -1802,6 +1802,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching finished goods by product:", error);
       res.status(500).json({ message: "Failed to fetch finished goods by product" });
+    }
+  });
+
+  // Bank Master API
+  app.get('/api/banks', isAuthenticated, async (req: any, res) => {
+    try {
+      const allBanks = await storage.getAllBanks();
+      res.json(allBanks);
+    } catch (error) {
+      console.error("Error fetching banks:", error);
+      res.status(500).json({ message: "Failed to fetch banks" });
+    }
+  });
+
+  app.post('/api/banks', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const validatedData = insertBankSchema.parse(req.body);
+      const bank = await storage.createBank(validatedData);
+      await logAudit(req.user?.id, 'CREATE', 'banks', bank.id, 'Created bank');
+      res.json(bank);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error creating bank:", error);
+      res.status(500).json({ message: "Failed to create bank" });
+    }
+  });
+
+  app.get('/api/banks/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const bank = await storage.getBank(id);
+      if (!bank) {
+        return res.status(404).json({ message: "Bank not found" });
+      }
+      res.json(bank);
+    } catch (error) {
+      console.error("Error fetching bank:", error);
+      res.status(500).json({ message: "Failed to fetch bank" });
+    }
+  });
+
+  app.patch('/api/banks/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertBankSchema.partial().parse(req.body);
+      const bank = await storage.updateBank(id, validatedData);
+      if (!bank) {
+        return res.status(404).json({ message: "Bank not found" });
+      }
+      await logAudit(req.user?.id, 'UPDATE', 'banks', id, 'Updated bank');
+      res.json(bank);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error updating bank:", error);
+      res.status(500).json({ message: "Failed to update bank" });
+    }
+  });
+
+  app.delete('/api/banks/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteBank(id);
+      await logAudit(req.user?.id, 'DELETE', 'banks', id, 'Deleted bank');
+      res.json({ message: "Bank deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting bank:", error);
+      res.status(500).json({ message: "Failed to delete bank" });
+    }
+  });
+
+  app.get('/api/banks/default/get', isAuthenticated, async (req: any, res) => {
+    try {
+      const defaultBank = await storage.getDefaultBank();
+      if (!defaultBank) {
+        return res.status(404).json({ message: "No default bank found" });
+      }
+      res.json(defaultBank);
+    } catch (error) {
+      console.error("Error fetching default bank:", error);
+      res.status(500).json({ message: "Failed to fetch default bank" });
+    }
+  });
+
+  app.post('/api/banks/:id/set-default', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.setDefaultBank(id);
+      await logAudit(req.user?.id, 'UPDATE', 'banks', id, 'Set as default bank');
+      res.json({ message: "Default bank set successfully" });
+    } catch (error) {
+      console.error("Error setting default bank:", error);
+      res.status(500).json({ message: "Failed to set default bank" });
     }
   });
 

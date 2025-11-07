@@ -917,3 +917,29 @@ export const insertInvoiceItemSchema = createInsertSchema(invoiceItems).omit({
 
 export type InsertInvoiceItem = z.infer<typeof insertInvoiceItemSchema>;
 export type InvoiceItem = typeof invoiceItems.$inferSelect;
+
+// Bank Master for managing multiple bank accounts
+export const banks = pgTable("banks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  bankName: varchar("bank_name", { length: 255 }).notNull(),
+  accountHolderName: varchar("account_holder_name", { length: 255 }).notNull(),
+  accountNumber: varchar("account_number", { length: 50 }).notNull().unique(),
+  ifscCode: varchar("ifsc_code", { length: 11 }).notNull(),
+  branchName: varchar("branch_name", { length: 255 }),
+  accountType: varchar("account_type", { length: 50 }), // Savings, Current, etc.
+  upiId: varchar("upi_id", { length: 100 }),
+  isDefault: integer("is_default").default(0).notNull(), // 1 if default account
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertBankSchema = createInsertSchema(banks).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertBank = z.infer<typeof insertBankSchema>;
+export type Bank = typeof banks.$inferSelect;

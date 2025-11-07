@@ -31,6 +31,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Plus, Pencil, Trash2, Search, Package, Layers, Box, CheckCircle, Users } from "lucide-react";
 import VendorManagement from "@/components/VendorManagement";
+import BankManagement from "@/components/BankManagement";
 
 interface InventoryManagementProps {
   activeTab?: string;
@@ -71,6 +72,8 @@ export default function InventoryManagement({ activeTab: externalActiveTab }: In
         return <FinishedGoodsTab searchTerm={searchTerm} onSearchChange={setSearchTerm} />;
       case 'vendors':
         return <VendorManagement />;
+      case 'banks':
+        return <BankManagement />;
       default:
         return <UOMTab searchTerm={searchTerm} onSearchChange={setSearchTerm} />;
     }
