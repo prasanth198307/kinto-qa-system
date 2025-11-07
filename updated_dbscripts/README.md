@@ -5,6 +5,27 @@ This folder contains incremental migration scripts for updating existing KINTO Q
 
 ## Migration Files
 
+### 20251107_invoicing_and_payments.sql
+**Date:** November 7, 2025  
+**Purpose:** Adds GST-compliant invoicing, payment tracking, bank management, and checklist assignments
+
+**Tables Added:**
+1. `invoices` - GST-compliant sales invoices with comprehensive tax details
+2. `invoice_items` - Invoice line items with detailed tax breakup (CGST, SGST, IGST, Cess)
+3. `invoice_payments` - Payment tracking with FIFO allocation for partial payments
+4. `banks` - Bank account master for managing multiple company accounts
+5. `checklist_assignments` - Manager assigns checklists to operators
+
+**Features:**
+- GST-compliant invoice generation with tax breakup
+- Payment tracking with multiple methods (Cash, Cheque, NEFT, UPI)
+- FIFO payment allocation across invoices
+- Pending payments dashboard
+- Bank account management with default selection
+- Manager-to-operator checklist assignment workflow
+- Printable invoice formats (Vyapaar-style)
+- Sales analytics support
+
 ### 20251107_vendor_and_transactions.sql
 **Date:** November 7, 2025  
 **Purpose:** Adds vendor master, raw material issuance, and gatepass functionality
@@ -23,19 +44,45 @@ This folder contains incremental migration scripts for updating existing KINTO Q
 - Comprehensive indexes for performance
 - Full audit trail support
 
-## How to Apply Migration
+### 20251107_040000_add_mobile_number.sql
+**Date:** November 7, 2025  
+**Purpose:** Adds mandatory mobile number field to users table
+
+**Changes:**
+- Adds `mobile_number` column to `users` table
+- Updates existing users with placeholder numbers
+- Sets column to NOT NULL
+
+**Features:**
+- Mobile number validation (10 digits)
+- Support for WhatsApp and SMS notifications
+- User contact management
+
+### 20251106_163500_production_management.sql
+**Date:** November 6, 2025  
+**Purpose:** Raw material issuance and gatepass management (legacy - superseded by 20251107_vendor_and_transactions.sql)
+
+**Note:** This is an older version. Use `20251107_vendor_and_transactions.sql` instead for the latest schema.
+
+## How to Apply Migrations
 
 ### For Existing Databases
 
-If you already have a KINTO QA database running, apply this migration:
+If you already have a KINTO QA database running, apply migrations in order:
 
 ```bash
-# Using psql
+# Using psql with DATABASE_URL
+psql $DATABASE_URL -f updated_dbscripts/20251107_040000_add_mobile_number.sql
 psql $DATABASE_URL -f updated_dbscripts/20251107_vendor_and_transactions.sql
+psql $DATABASE_URL -f updated_dbscripts/20251107_invoicing_and_payments.sql
 
 # Or with explicit connection
+psql -U postgres -d kinto_qa -f updated_dbscripts/20251107_040000_add_mobile_number.sql
 psql -U postgres -d kinto_qa -f updated_dbscripts/20251107_vendor_and_transactions.sql
+psql -U postgres -d kinto_qa -f updated_dbscripts/20251107_invoicing_and_payments.sql
 ```
+
+**Important:** Apply migrations in chronological order to ensure dependencies are met.
 
 ### Fresh Installation
 
@@ -71,16 +118,35 @@ DROP TABLE IF EXISTS vendors;
 
 ## Verification
 
-After applying the migration, verify tables were created:
+After applying all migrations, verify all tables were created:
 
 ```sql
--- Check if tables exist
+-- Check if all core tables exist
 SELECT table_name 
 FROM information_schema.tables 
 WHERE table_schema = 'public' 
-  AND table_name IN ('vendors', 'raw_material_issuance', 'raw_material_issuance_items', 'gatepasses', 'gatepass_items');
+  AND table_name IN (
+    'vendors', 
+    'raw_material_issuance', 
+    'raw_material_issuance_items', 
+    'gatepasses', 
+    'gatepass_items',
+    'invoices',
+    'invoice_items',
+    'invoice_payments',
+    'banks',
+    'checklist_assignments'
+  )
+ORDER BY table_name;
 
--- Should return 5 rows
+-- Should return 10 rows
+
+-- Count total tables in the database
+SELECT COUNT(*) as total_tables
+FROM information_schema.tables 
+WHERE table_schema = 'public';
+
+-- Should return 37 tables for complete KINTO QA system
 ```
 
 ## Using Drizzle Kit (Recommended for Development)
