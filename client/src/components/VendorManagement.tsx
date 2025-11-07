@@ -10,6 +10,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Table,
   TableBody,
   TableCell,
@@ -37,6 +47,8 @@ export default function VendorManagement() {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [vendorToDelete, setVendorToDelete] = useState<string | null>(null);
 
   const { data: vendors = [], isLoading } = useQuery<Vendor[]>({
     queryKey: ["/api/vendors"],
@@ -129,8 +141,15 @@ export default function VendorManagement() {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this vendor?")) {
-      deleteMutation.mutate(id);
+    setVendorToDelete(id);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (vendorToDelete) {
+      deleteMutation.mutate(vendorToDelete);
+      setDeleteConfirmOpen(false);
+      setVendorToDelete(null);
     }
   };
 
@@ -140,6 +159,7 @@ export default function VendorManagement() {
   };
 
   return (
+    <>
     <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-2">
         <CardTitle>Vendor Master</CardTitle>
@@ -431,5 +451,27 @@ export default function VendorManagement() {
         )}
       </CardContent>
     </Card>
+
+    <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete Vendor</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to delete this vendor? This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={confirmDelete}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            data-testid="button-confirm-delete"
+          >
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
