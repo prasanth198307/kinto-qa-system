@@ -100,6 +100,17 @@ app.use((req, res, next) => {
       }
     }, 300000); // Check every 5 minutes (300 seconds)
     
+    // Start missed checklist checking system
+    // Checks every 5 minutes for missed checklists
+    setInterval(async () => {
+      try {
+        await notificationService.checkAndSendMissedChecklistNotifications();
+      } catch (error) {
+        console.error('[MISSED CHECKLIST SYSTEM ERROR]', error);
+      }
+    }, 300000); // Check every 5 minutes (300 seconds)
+    
     log('✅ Machine startup reminder system initialized');
+    log('✅ Missed checklist notification system initialized');
   });
 })();

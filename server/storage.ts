@@ -1362,6 +1362,31 @@ export class DatabaseStorage implements IStorage {
       .where(eq(checklistAssignments.id, id));
   }
 
+  async getMissedChecklistAssignments(): Promise<ChecklistAssignment[]> {
+    const now = new Date();
+    const assignments = await db.select().from(checklistAssignments)
+      .where(and(
+        eq(checklistAssignments.status, 'pending'),
+        eq(checklistAssignments.missedNotificationSent, 0),
+        eq(checklistAssignments.recordStatus, 1)
+      ));
+    
+    // Filter assignments where dueDateTime is in the past
+    return assignments.filter(a => a.dueDateTime && new Date(a.dueDateTime) < now);
+  }
+
+  async getUsersByRole(roleName: string): Promise<User[]> {
+    const role = await db.select().from(roles).where(eq(roles.name, roleName)).limit(1);
+    if (!role || role.length === 0) {
+      return [];
+    }
+    const roleId = role[0].id;
+    return await db.select().from(users).where(and(
+      eq(users.roleId, roleId),
+      eq(users.recordStatus, 1)
+    ));
+  }
+
   // Machine Startup Tasks
   async createMachineStartupTask(task: InsertMachineStartupTask): Promise<MachineStartupTask> {
     const [created] = await db.insert(machineStartupTasks).values(task).returning();

@@ -230,6 +230,201 @@ Ensure the machine is properly warmed up before production begins.
   }
 
   /**
+   * Send WhatsApp notification for missed checklist
+   */
+  private async sendMissedChecklistWhatsApp(
+    mobile: string,
+    recipientName: string,
+    operatorName: string,
+    machineName: string,
+    checklistName: string,
+    dueDateTime: Date,
+    config: any
+  ): Promise<void> {
+    const formattedDueTime = dueDateTime.toLocaleString('en-IN', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+      timeZone: 'Asia/Kolkata'
+    });
+
+    const message = `KINTO Missed Checklist Alert
+
+Checklist Not Completed:
+Operator: ${operatorName}
+Machine: ${machineName}
+Checklist: ${checklistName}
+Due Time: ${formattedDueTime}
+
+This checklist was not completed on time. Please take immediate action.
+
+- KINTO QA System`;
+
+    // Test mode OR missing environment variables - log to console
+    if (config.testMode === 1 || !process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN) {
+      console.log('\n' + '='.repeat(60));
+      console.log('[MISSED CHECKLIST WHATSAPP - TEST MODE]');
+      console.log('='.repeat(60));
+      console.log(`To: ${recipientName} (${mobile})`);
+      console.log(`Message:\n${message}`);
+      console.log('='.repeat(60) + '\n');
+      return;
+    }
+
+    // Production mode with environment variables configured
+    try {
+      const twilio = await import('twilio');
+      const client = twilio.default(
+        process.env.TWILIO_ACCOUNT_SID,
+        process.env.TWILIO_AUTH_TOKEN
+      );
+
+      const fromNumber = config.twilioPhoneNumber || 'whatsapp:+14155238886';
+      const toNumber = mobile.startsWith('whatsapp:') ? mobile : `whatsapp:+91${mobile}`;
+
+      await client.messages.create({
+        from: fromNumber,
+        to: toNumber,
+        body: message
+      });
+
+      console.log(`[MISSED CHECKLIST WHATSAPP SENT] To: ${recipientName} (${mobile})`);
+    } catch (error) {
+      console.error(`[WHATSAPP ERROR] Failed to send to ${recipientName}:`, error);
+      // Don't throw - continue sending to other recipients
+    }
+  }
+
+  /**
+   * Send missed checklist notifications to multiple recipients
+   */
+  async sendMissedChecklistNotifications(
+    assignmentId: string,
+    operatorName: string,
+    operatorMobile: string,
+    reviewerName: string | null,
+    reviewerMobile: string | null,
+    managerName: string,
+    managerMobile: string,
+    machineName: string,
+    checklistName: string,
+    dueDateTime: Date
+  ): Promise<void> {
+    // Fetch notification configuration
+    const config = await storage.getNotificationConfig();
+    
+    // Check if WhatsApp notifications are enabled
+    if (!config || config.whatsappEnabled !== 1) {
+      console.log(`[MISSED CHECKLIST] Notifications disabled, skipping for assignment ${assignmentId}`);
+      return;
+    }
+
+    // Get all admins
+    const admins = await storage.getUsersByRole('admin');
+
+    const recipients = [
+      { name: operatorName, mobile: operatorMobile, role: 'Operator' },
+      ...(reviewerName && reviewerMobile ? [{ name: reviewerName, mobile: reviewerMobile, role: 'Reviewer' }] : []),
+      { name: managerName, mobile: managerMobile, role: 'Manager' },
+      ...admins.map(admin => ({ 
+        name: `${admin.firstName} ${admin.lastName}`, 
+        mobile: admin.mobileNumber, 
+        role: 'Admin' 
+      }))
+    ];
+
+    console.log(`[MISSED CHECKLIST] Sending notifications to ${recipients.length} recipients for assignment ${assignmentId}`);
+
+    // Send to all recipients
+    for (const recipient of recipients) {
+      try {
+        await this.sendMissedChecklistWhatsApp(
+          recipient.mobile,
+          recipient.name,
+          operatorName,
+          machineName,
+          checklistName,
+          dueDateTime,
+          config
+        );
+      } catch (error) {
+        console.error(`[MISSED CHECKLIST ERROR] Failed to notify ${recipient.name} (${recipient.role}):`, error);
+      }
+    }
+
+    console.log(`[MISSED CHECKLIST] Notifications sent for assignment ${assignmentId}`);
+  }
+
+  /**
+   * Check for missed checklists and send notifications
+   * This should be called periodically (e.g., every 5 minutes via setInterval)
+   */
+  async checkAndSendMissedChecklistNotifications(): Promise<void> {
+    try {
+      const missedAssignments = await storage.getMissedChecklistAssignments();
+      
+      for (const assignment of missedAssignments) {
+        // Fetch operator
+        const operator = await storage.getUser(assignment.operatorId);
+        if (!operator) {
+          console.error(`[MISSED CHECKLIST ERROR] Operator not found for assignment ${assignment.id}`);
+          continue;
+        }
+
+        // Fetch reviewer (optional)
+        let reviewer = null;
+        if (assignment.reviewerId) {
+          reviewer = await storage.getUser(assignment.reviewerId);
+        }
+
+        // Fetch manager (assigned by)
+        const manager = await storage.getUser(assignment.assignedBy);
+        if (!manager) {
+          console.error(`[MISSED CHECKLIST ERROR] Manager not found for assignment ${assignment.id}`);
+          continue;
+        }
+
+        // Fetch machine
+        const machine = await storage.getMachine(assignment.machineId);
+        if (!machine) {
+          console.error(`[MISSED CHECKLIST ERROR] Machine not found for assignment ${assignment.id}`);
+          continue;
+        }
+
+        // Fetch checklist template
+        const template = await storage.getChecklistTemplate(assignment.templateId);
+        if (!template) {
+          console.error(`[MISSED CHECKLIST ERROR] Template not found for assignment ${assignment.id}`);
+          continue;
+        }
+
+        // Send notifications to all recipients
+        await this.sendMissedChecklistNotifications(
+          assignment.id,
+          `${operator.firstName} ${operator.lastName}`,
+          operator.mobileNumber,
+          reviewer ? `${reviewer.firstName} ${reviewer.lastName}` : null,
+          reviewer ? reviewer.mobileNumber : null,
+          `${manager.firstName} ${manager.lastName}`,
+          manager.mobileNumber,
+          machine.name,
+          template.name,
+          assignment.dueDateTime!
+        );
+
+        // Mark as notified
+        await storage.updateChecklistAssignment(assignment.id, {
+          missedNotificationSent: 1,
+          missedNotificationSentAt: new Date()
+        } as any);
+
+        console.log(`[MISSED CHECKLIST] Notification complete for assignment ${assignment.id}`);
+      }
+    } catch (error) {
+      console.error('[MISSED CHECKLIST CHECK ERROR]', error);
+    }
+  }
+
+  /**
    * Check for pending reminders and send notifications
    * This should be called periodically (e.g., every 5 minutes via setInterval)
    */
