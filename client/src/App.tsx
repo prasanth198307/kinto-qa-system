@@ -222,13 +222,19 @@ function ManagerDashboard() {
       ],
     },
     {
+      id: "production-section",
+      label: "Production",
+      items: [
+        { id: "products", label: "Product Master", icon: Package },
+        { id: "raw-materials", label: "Raw Materials", icon: Box },
+        { id: "finished-goods", label: "Finished Goods", icon: CheckCircle2 },
+      ],
+    },
+    {
       id: "inventory-section",
       label: "Inventory",
       items: [
         { id: "uom", label: "Unit of Measurement", icon: Layers },
-        { id: "products", label: "Product Master", icon: Package },
-        { id: "raw-materials", label: "Raw Materials", icon: Box },
-        { id: "finished-goods", label: "Finished Goods", icon: CheckCircle2 },
         { id: "vendors", label: "Vendor Master", icon: Building2 },
       ],
     },
@@ -374,25 +380,31 @@ function AdminDashboard() {
       ],
     },
     {
+      id: "production-section",
+      label: "Production",
+      items: [
+        { id: "products", label: "Product Master", icon: Package },
+        { id: "checklists", label: "Checklist Builder", icon: FileText },
+        { id: "raw-materials", label: "Raw Materials", icon: Box },
+        { id: "finished-goods", label: "Finished Goods", icon: CheckCircle2 },
+      ],
+    },
+    {
       id: "config-section",
       label: "Configuration",
       items: [
         {
           id: "configuration",
-          label: "Configuration",
+          label: "System Config",
           icon: Settings,
           children: [
             { id: "users", label: "Users", icon: Users },
             { id: "role-permissions", label: "Role Permissions", icon: Shield },
             { id: "machines", label: "Machines", icon: Settings },
             { id: "machine-types", label: "Machine Types", icon: Layers },
-            { id: "checklists", label: "Checklists", icon: FileText },
             { id: "spare-parts", label: "Spare Parts", icon: Package },
             { id: "pm-templates", label: "PM Templates", icon: ListChecks },
             { id: "uom", label: "Unit of Measurement", icon: Layers },
-            { id: "products", label: "Product Master", icon: Package },
-            { id: "raw-materials", label: "Raw Materials", icon: Box },
-            { id: "finished-goods", label: "Finished Goods", icon: CheckCircle2 },
             { id: "vendors", label: "Vendor Master", icon: Building2 },
             { id: "notification-settings", label: "Notification Settings", icon: Bell },
           ],
@@ -407,8 +419,8 @@ function AdminDashboard() {
         { id: "pm-history", label: "PM History", icon: History },
         { id: "purchase-orders", label: "Purchase Orders", icon: ShoppingCart },
         { 
-          id: "production-group",
-          label: "Production",
+          id: "production-operations",
+          label: "Production Operations",
           icon: Factory,
           children: [
             { id: "raw-material-issuance", label: "Raw Material Issuance", icon: Package },
