@@ -1431,34 +1431,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/gatepasses', requireRole('admin', 'manager', 'operator'), async (req: any, res) => {
     try {
-      const validatedData = insertGatepassSchema.parse(req.body);
-      const gatepassData = {
-        ...validatedData,
-        issuedBy: req.user?.id,
-      };
+      const { header, items } = req.body;
+      
+      // Validate header
+      const validatedHeader = insertGatepassSchema.parse(header);
+      
+      // Validate items array
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ message: "At least one gatepass item is required" });
+      }
       
       // Check if gatepass number is unique
-      const existing = await storage.getGatepassByNumber(validatedData.gatepassNumber);
+      const existing = await storage.getGatepassByNumber(validatedHeader.gatepassNumber);
       if (existing) {
         return res.status(400).json({ message: "Gatepass number already exists" });
       }
       
-      // Create gatepass
+      // Create gatepass header
+      const gatepassData = {
+        ...validatedHeader,
+        issuedBy: req.user?.id,
+      };
+      
       const gatepass = await storage.createGatepass(gatepassData);
       
-      // Deduct from finished goods inventory
-      const finishedGood = await storage.getFinishedGood(validatedData.finishedGoodId);
-      if (finishedGood) {
-        const newQuantity = finishedGood.quantity - validatedData.quantityDispatched;
-        if (newQuantity < 0) {
-          return res.status(400).json({ message: "Insufficient finished goods quantity" });
-        }
-        await storage.updateFinishedGood(validatedData.finishedGoodId, {
-          quantity: newQuantity
+      // Create items and deduct inventory for each
+      for (const item of items) {
+        const validatedItem = insertGatepassItemSchema.parse({
+          ...item,
+          gatepassId: gatepass.id
         });
+        
+        // Create gatepass item
+        await storage.createGatepassItem(validatedItem);
+        
+        // Deduct from finished goods inventory
+        const finishedGood = await storage.getFinishedGood(validatedItem.finishedGoodId);
+        if (finishedGood) {
+          const newQuantity = finishedGood.quantity - validatedItem.quantityDispatched;
+          if (newQuantity < 0) {
+            return res.status(400).json({ message: `Insufficient finished goods quantity for item ${validatedItem.finishedGoodId}` });
+          }
+          await storage.updateFinishedGood(validatedItem.finishedGoodId, {
+            quantity: newQuantity
+          });
+        }
       }
       
-      res.json(gatepass);
+      res.json({ gatepass, message: "Gatepass created successfully with items" });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
@@ -1475,7 +1495,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!gatepass) {
         return res.status(404).json({ message: "Gatepass not found" });
       }
-      res.json(gatepass);
+      
+      // Fetch items for this gatepass
+      const items = await storage.getGatepassItems(id);
+      
+      res.json({ ...gatepass, items });
     } catch (error) {
       console.error("Error fetching gatepass:", error);
       res.status(500).json({ message: "Failed to fetch gatepass" });
