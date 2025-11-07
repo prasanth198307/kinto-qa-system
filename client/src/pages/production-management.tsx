@@ -1,25 +1,34 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Package, FileText, Plus } from "lucide-react";
+import { Plus, Package, FileText } from "lucide-react";
 import RawMaterialIssuanceForm from "@/components/RawMaterialIssuanceForm";
 import GatepassForm from "@/components/GatepassForm";
 import RawMaterialIssuanceTable from "@/components/RawMaterialIssuanceTable";
 import GatepassTable from "@/components/GatepassTable";
 import type { RawMaterialIssuance, Gatepass } from "@shared/schema";
-import MobileHeader from "@/components/MobileHeader";
 
-export default function ProductionManagement() {
-  const [activeTab, setActiveTab] = useState("raw-material-issuance");
+interface ProductionManagementProps {
+  activeTab?: string;
+}
+
+export default function ProductionManagement({ activeTab: externalActiveTab }: ProductionManagementProps = {}) {
+  const [activeTab, setActiveTab] = useState(externalActiveTab || "raw-material-issuance");
   const [showIssuanceForm, setShowIssuanceForm] = useState(false);
   const [showGatepassForm, setShowGatepassForm] = useState(false);
   const [editingIssuance, setEditingIssuance] = useState<RawMaterialIssuance | null>(null);
   const [editingGatepass, setEditingGatepass] = useState<Gatepass | null>(null);
   const { toast } = useToast();
+
+  // Update activeTab when externalActiveTab changes
+  useEffect(() => {
+    if (externalActiveTab) {
+      setActiveTab(externalActiveTab);
+    }
+  }, [externalActiveTab]);
 
   const { data: issuances = [], isLoading: isLoadingIssuances } = useQuery<RawMaterialIssuance[]>({
     queryKey: ['/api/raw-material-issuances'],
@@ -103,87 +112,118 @@ export default function ProductionManagement() {
     setEditingGatepass(null);
   };
 
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'raw-material-issuance':
+        return (
+          <Card className="p-4">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold">Raw Material Issuance</h2>
+              <Button 
+                onClick={() => setShowIssuanceForm(true)} 
+                size="sm"
+                data-testid="button-add-issuance"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Issue Material
+              </Button>
+            </div>
+
+            {showIssuanceForm && (
+              <div className="mb-4">
+                <RawMaterialIssuanceForm
+                  issuance={editingIssuance}
+                  onClose={handleIssuanceFormClose}
+                />
+              </div>
+            )}
+
+            <RawMaterialIssuanceTable
+              issuances={issuances}
+              isLoading={isLoadingIssuances}
+              onEdit={handleEditIssuance}
+              onDelete={handleDeleteIssuance}
+            />
+          </Card>
+        );
+      case 'gatepasses':
+        return (
+          <Card className="p-4">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold">Gatepasses</h2>
+              <Button 
+                onClick={() => setShowGatepassForm(true)} 
+                size="sm"
+                data-testid="button-add-gatepass"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Issue Gatepass
+              </Button>
+            </div>
+
+            {showGatepassForm && (
+              <div className="mb-4">
+                <GatepassForm
+                  gatepass={editingGatepass}
+                  onClose={handleGatepassFormClose}
+                />
+              </div>
+            )}
+
+            <GatepassTable
+              gatepasses={gatepasses}
+              isLoading={isLoadingGatepasses}
+              onEdit={handleEditGatepass}
+              onDelete={handleDeleteGatepass}
+            />
+          </Card>
+        );
+      default:
+        return (
+          <Card className="p-4">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold">Raw Material Issuance</h2>
+              <Button 
+                onClick={() => setShowIssuanceForm(true)} 
+                size="sm"
+                data-testid="button-add-issuance"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Issue Material
+              </Button>
+            </div>
+
+            {showIssuanceForm && (
+              <div className="mb-4">
+                <RawMaterialIssuanceForm
+                  issuance={editingIssuance}
+                  onClose={handleIssuanceFormClose}
+                />
+              </div>
+            )}
+
+            <RawMaterialIssuanceTable
+              issuances={issuances}
+              isLoading={isLoadingIssuances}
+              onEdit={handleEditIssuance}
+              onDelete={handleDeleteIssuance}
+            />
+          </Card>
+        );
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-background">
-      <MobileHeader title="Production Management" />
-      
+    <div className="bg-background">
+      <div className="border-b bg-card">
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <h1 className="text-2xl font-bold text-foreground">Production Management</h1>
+          <p className="text-sm text-muted-foreground mt-1">Manage raw material issuance and gatepasses</p>
+        </div>
+      </div>
+
       <div className="p-4 pb-20">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2 mb-4">
-            <TabsTrigger value="raw-material-issuance" className="gap-2" data-testid="tab-raw-material-issuance">
-              <Package className="w-4 h-4" />
-              Raw Material Issuance
-            </TabsTrigger>
-            <TabsTrigger value="gatepasses" className="gap-2" data-testid="tab-gatepasses">
-              <FileText className="w-4 h-4" />
-              Gatepasses
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="raw-material-issuance">
-            <Card className="p-4">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold">Raw Material Issuance</h2>
-                <Button 
-                  onClick={() => setShowIssuanceForm(true)} 
-                  size="sm"
-                  data-testid="button-add-issuance"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Issue Material
-                </Button>
-              </div>
-
-              {showIssuanceForm && (
-                <div className="mb-4">
-                  <RawMaterialIssuanceForm
-                    issuance={editingIssuance}
-                    onClose={handleIssuanceFormClose}
-                  />
-                </div>
-              )}
-
-              <RawMaterialIssuanceTable
-                issuances={issuances}
-                isLoading={isLoadingIssuances}
-                onEdit={handleEditIssuance}
-                onDelete={handleDeleteIssuance}
-              />
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="gatepasses">
-            <Card className="p-4">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold">Gatepasses</h2>
-                <Button 
-                  onClick={() => setShowGatepassForm(true)} 
-                  size="sm"
-                  data-testid="button-add-gatepass"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Issue Gatepass
-                </Button>
-              </div>
-
-              {showGatepassForm && (
-                <div className="mb-4">
-                  <GatepassForm
-                    gatepass={editingGatepass}
-                    onClose={handleGatepassFormClose}
-                  />
-                </div>
-              )}
-
-              <GatepassTable
-                gatepasses={gatepasses}
-                isLoading={isLoadingGatepasses}
-                onEdit={handleEditGatepass}
-                onDelete={handleDeleteGatepass}
-              />
-            </Card>
-          </TabsContent>
-        </Tabs>
+        {renderContent()}
       </div>
     </div>
   );

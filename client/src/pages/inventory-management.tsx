@@ -18,7 +18,6 @@ import {
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -33,10 +32,21 @@ import { Switch } from "@/components/ui/switch";
 import { Plus, Pencil, Trash2, Search, Package, Layers, Box, CheckCircle, Users } from "lucide-react";
 import VendorManagement from "@/components/VendorManagement";
 
-export default function InventoryManagement() {
+interface InventoryManagementProps {
+  activeTab?: string;
+}
+
+export default function InventoryManagement({ activeTab: externalActiveTab }: InventoryManagementProps = {}) {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState("uom");
+  const [activeTab, setActiveTab] = useState(externalActiveTab || "uom");
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Update activeTab when externalActiveTab changes
+  useEffect(() => {
+    if (externalActiveTab) {
+      setActiveTab(externalActiveTab);
+    }
+  }, [externalActiveTab]);
 
   if (!user || !['admin', 'manager'].includes(user.role || '')) {
     return (
@@ -49,8 +59,25 @@ export default function InventoryManagement() {
     );
   }
 
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'uom':
+        return <UOMTab searchTerm={searchTerm} onSearchChange={setSearchTerm} />;
+      case 'products':
+        return <ProductsTab searchTerm={searchTerm} onSearchChange={setSearchTerm} />;
+      case 'raw-materials':
+        return <RawMaterialsTab searchTerm={searchTerm} onSearchChange={setSearchTerm} />;
+      case 'finished-goods':
+        return <FinishedGoodsTab searchTerm={searchTerm} onSearchChange={setSearchTerm} />;
+      case 'vendors':
+        return <VendorManagement />;
+      default:
+        return <UOMTab searchTerm={searchTerm} onSearchChange={setSearchTerm} />;
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="bg-background">
       <div className="border-b bg-card">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <h1 className="text-2xl font-bold text-foreground">Inventory Management</h1>
@@ -59,50 +86,7 @@ export default function InventoryManagement() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="w-full justify-start h-auto p-1 bg-muted rounded-lg mb-6">
-            <TabsTrigger value="uom" className="data-[state=active]:bg-background" data-testid="tab-uom">
-              <Layers className="h-4 w-4 mr-2" />
-              Unit of Measurement
-            </TabsTrigger>
-            <TabsTrigger value="products" className="data-[state=active]:bg-background" data-testid="tab-products">
-              <Package className="h-4 w-4 mr-2" />
-              Product Master
-            </TabsTrigger>
-            <TabsTrigger value="raw-materials" className="data-[state=active]:bg-background" data-testid="tab-raw-materials">
-              <Box className="h-4 w-4 mr-2" />
-              Raw Materials
-            </TabsTrigger>
-            <TabsTrigger value="finished-goods" className="data-[state=active]:bg-background" data-testid="tab-finished-goods">
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Finished Goods
-            </TabsTrigger>
-            <TabsTrigger value="vendors" className="data-[state=active]:bg-background" data-testid="tab-vendors">
-              <Users className="h-4 w-4 mr-2" />
-              Vendor Master
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="uom">
-            <UOMTab searchTerm={searchTerm} onSearchChange={setSearchTerm} />
-          </TabsContent>
-
-          <TabsContent value="products">
-            <ProductsTab searchTerm={searchTerm} onSearchChange={setSearchTerm} />
-          </TabsContent>
-
-          <TabsContent value="raw-materials">
-            <RawMaterialsTab searchTerm={searchTerm} onSearchChange={setSearchTerm} />
-          </TabsContent>
-
-          <TabsContent value="finished-goods">
-            <FinishedGoodsTab searchTerm={searchTerm} onSearchChange={setSearchTerm} />
-          </TabsContent>
-
-          <TabsContent value="vendors">
-            <VendorManagement />
-          </TabsContent>
-        </Tabs>
+        {renderContent()}
       </div>
     </div>
   );

@@ -196,45 +196,54 @@ function ReviewerDashboard() {
 
 function ManagerDashboard() {
   const { logoutMutation } = useAuth();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeView, setActiveView] = useState('overview');
   const mockRecords = [
     { id: '1', machine: 'RFC Machine', date: 'Oct 31, 2025', shift: 'Morning', operator: 'Ramesh Kumar', status: 'in_review' as const },
   ];
 
-  return (
-    <div className="min-h-screen bg-background">
-      <MobileHeader notificationCount={1} title="Manager Dashboard" onLogoutClick={() => {
-        logoutMutation.mutate();
-      }} />
-      
-      <div className="pt-14">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="border-b bg-card sticky top-14 z-40 overflow-x-auto">
-            <TabsList className="inline-flex justify-start h-auto p-0 bg-transparent rounded-none min-w-full w-max">
-              <TabsTrigger value="overview" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-overview">
-                <LayoutDashboard className="h-4 w-4 mr-1" />
-                Overview
-              </TabsTrigger>
-              <TabsTrigger value="inventory" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-inventory">
-                <Archive className="h-4 w-4 mr-1" />
-                Inventory
-              </TabsTrigger>
-              <TabsTrigger value="purchase-orders" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-purchase-orders">
-                <ShoppingCart className="h-4 w-4 mr-1" />
-                Purchase Orders
-              </TabsTrigger>
-              <TabsTrigger value="production" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-production">
-                <Factory className="h-4 w-4 mr-1" />
-                Production
-              </TabsTrigger>
-              <TabsTrigger value="assignments" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-assignments">
-                <ClipboardCheck className="h-4 w-4 mr-1" />
-                Assignments
-              </TabsTrigger>
-            </TabsList>
-          </div>
+  const navSections: NavSection[] = [
+    {
+      id: "main",
+      items: [
+        {
+          id: "overview",
+          label: "Overview",
+          icon: LayoutDashboard,
+        },
+        {
+          id: "assignments",
+          label: "Assignments",
+          icon: ClipboardCheck,
+        },
+      ],
+    },
+    {
+      id: "inventory-section",
+      label: "Inventory",
+      items: [
+        { id: "uom", label: "Unit of Measurement", icon: Layers },
+        { id: "products", label: "Product Master", icon: Package },
+        { id: "raw-materials", label: "Raw Materials", icon: Box },
+        { id: "finished-goods", label: "Finished Goods", icon: CheckCircle2 },
+        { id: "vendors", label: "Vendor Master", icon: Building2 },
+      ],
+    },
+    {
+      id: "operations",
+      label: "Operations",
+      items: [
+        { id: "purchase-orders", label: "Purchase Orders", icon: ShoppingCart },
+        { id: "raw-material-issuance", label: "Raw Material Issuance", icon: Package },
+        { id: "gatepasses", label: "Gatepasses", icon: FileText },
+      ],
+    },
+  ];
 
-          <TabsContent value="overview" className="space-y-4">
+  const renderContent = () => {
+    switch (activeView) {
+      case 'overview':
+        return (
+          <div className="space-y-4">
             <div className="p-4 space-y-4">
               <Card className="p-6">
                 <h3 className="text-lg font-semibold mb-2">Awaiting Final Approval</h3>
@@ -248,26 +257,58 @@ function ManagerDashboard() {
                 <ChecklistHistoryTable records={mockRecords} />
               </div>
             </div>
-
             <InventorySummaryDashboard />
-          </TabsContent>
-
-          <TabsContent value="inventory">
-            <InventoryManagement />
-          </TabsContent>
-
-          <TabsContent value="purchase-orders" className="p-4">
-            <PurchaseOrderManagement />
-          </TabsContent>
-
-          <TabsContent value="production">
-            <ProductionManagement />
-          </TabsContent>
-
-          <TabsContent value="assignments" className="p-4">
+          </div>
+        );
+      case 'assignments':
+        return (
+          <div className="p-4">
             <ManagerChecklistAssignment />
-          </TabsContent>
-        </Tabs>
+          </div>
+        );
+      case 'uom':
+      case 'products':
+      case 'raw-materials':
+      case 'finished-goods':
+      case 'vendors':
+        return <InventoryManagement activeTab={activeView} />;
+      case 'purchase-orders':
+        return (
+          <div className="p-4">
+            <PurchaseOrderManagement />
+          </div>
+        );
+      case 'raw-material-issuance':
+      case 'gatepasses':
+        return <ProductionManagement activeTab={activeView} />;
+      default:
+        return (
+          <div className="space-y-4">
+            <div className="p-4 space-y-4">
+              <Card className="p-6">
+                <h3 className="text-lg font-semibold mb-2">Awaiting Final Approval</h3>
+                <p className="text-3xl font-bold text-primary">{mockRecords.length}</p>
+              </Card>
+              <TodayProductionStats />
+            </div>
+            <InventorySummaryDashboard />
+          </div>
+        );
+    }
+  };
+
+  return (
+    <div className="flex min-h-screen bg-background">
+      <VerticalNavSidebar
+        sections={navSections}
+        activeItem={activeView}
+        onItemClick={setActiveView}
+        onLogout={() => logoutMutation.mutate()}
+        title="Manager Dashboard"
+      />
+      
+      <div className="flex-1 lg:ml-0 pt-14 lg:pt-0">
+        {renderContent()}
       </div>
     </div>
   );
@@ -351,8 +392,15 @@ function AdminDashboard() {
         { id: "maintenance", label: "Maintenance", icon: Wrench },
         { id: "pm-history", label: "PM History", icon: History },
         { id: "purchase-orders", label: "Purchase Orders", icon: ShoppingCart },
-        { id: "inventory", label: "Inventory", icon: Archive },
-        { id: "production", label: "Production", icon: Factory },
+        { 
+          id: "production-group",
+          label: "Production",
+          icon: Factory,
+          children: [
+            { id: "raw-material-issuance", label: "Raw Material Issuance", icon: Package },
+            { id: "gatepasses", label: "Gatepasses", icon: FileText },
+          ],
+        },
       ],
     },
   ];
@@ -434,16 +482,15 @@ function AdminDashboard() {
             <PurchaseOrderManagement />
           </div>
         );
-      case 'inventory':
-        return <InventoryManagement />;
-      case 'production':
-        return <ProductionManagement />;
       case 'uom':
       case 'products':
       case 'raw-materials':
       case 'finished-goods':
       case 'vendors':
         return <InventoryManagement activeTab={activeView} />;
+      case 'raw-material-issuance':
+      case 'gatepasses':
+        return <ProductionManagement activeTab={activeView} />;
       default:
         return (
           <div className="p-4 space-y-6">
