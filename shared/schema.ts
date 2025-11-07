@@ -676,10 +676,10 @@ export type RawMaterialIssuance = typeof rawMaterialIssuance.$inferSelect;
 export const rawMaterialIssuanceItems = pgTable("raw_material_issuance_items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   issuanceId: varchar("issuance_id").references(() => rawMaterialIssuance.id).notNull(),
-  materialId: varchar("material_id").references(() => rawMaterials.id).notNull(),
+  rawMaterialId: varchar("raw_material_id").references(() => rawMaterials.id).notNull(),
+  productId: varchar("product_id").references(() => products.id).notNull(),
   quantityIssued: integer("quantity_issued").notNull(),
   uomId: varchar("uom_id").references(() => uom.id),
-  batchNumber: varchar("batch_number", { length: 100 }),
   remarks: text("remarks"),
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at").defaultNow(),

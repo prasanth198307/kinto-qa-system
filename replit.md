@@ -105,6 +105,20 @@ Core tables include:
 - `rawMaterials` - Raw material inventory with UOM and product relationships
 - `rawMaterialTransactions` - Transaction log for raw material usage/receipt
 - `finishedGoods` - Finished goods production records
+- `rawMaterialIssuance` - Header records for raw material issuances (multi-item support)
+- `rawMaterialIssuanceItems` - Line items for each issuance (multiple materials per issuance)
+- `gatepasses` - Header records for finished goods dispatch (multi-item support)
+- `gatepassItems` - Line items for each gatepass (multiple finished goods per gatepass)
+
+**Multi-Item Issuance & Gatepass Architecture**
+- **Header-Detail Pattern**: Separate tables for transaction headers (metadata) and line items (multiple materials/goods per transaction)
+- **Transactional Integrity**: All operations wrapped in database transactions using Drizzle's `db.transaction()` for atomicity
+- **Race Condition Protection**: Row-level locking with `.for('update')` on inventory lookups prevents concurrent overselling
+- **Inventory Management**: Automatic stock deduction with validation (insufficient stock errors before commit)
+- **Audit Trail**: Comprehensive transaction logging for all inventory movements
+- **API Payload Structure**: `{header: {...}, items: [{...}, {...}]}` with validation at both levels
+- **Error Handling**: Descriptive error messages for missing items, insufficient stock, and validation failures
+- **Auto-Generated Numbers**: Issuance numbers auto-generated server-side (`ISS-{timestamp}`)
 
 **API Design**
 - RESTful API endpoints under `/api` prefix

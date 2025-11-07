@@ -2,10 +2,12 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertUserSchema, insertChecklistAssignmentSchema } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertUserSchema, insertChecklistAssignmentSchema, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems } from "@shared/schema";
 import { z } from "zod";
 import path from "path";
 import fs from "fs";
+import { db } from "./db";
+import { eq, and } from "drizzle-orm";
 
 // Authentication middleware
 function isAuthenticated(req: Request, res: Response, next: NextFunction) {
@@ -1329,28 +1331,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         issuedBy: req.user?.id,
       };
       
-      const issuance = await storage.createRawMaterialIssuance(issuanceData);
-      
-      // Create items and deduct inventory for each
-      for (const item of items) {
-        const validatedItem = insertRawMaterialIssuanceItemSchema.parse({
-          ...item,
-          issuanceId: issuance.id
-        });
+      // Wrap everything in a transaction for atomicity
+      const result = await db.transaction(async (tx) => {
+        // Create issuance header
+        const [issuance] = await tx.insert(rawMaterialIssuance).values(issuanceData).returning();
         
-        // Create issuance item
-        await storage.createRawMaterialIssuanceItem(validatedItem);
-        
-        // Deduct from raw material inventory
-        const material = await storage.getRawMaterial(validatedItem.rawMaterialId);
-        if (material) {
-          const newQuantity = (material.currentStock || 0) - validatedItem.quantityIssued;
-          await storage.updateRawMaterial(validatedItem.rawMaterialId, {
-            currentStock: newQuantity
+        // Create items and deduct inventory for each
+        for (const item of items) {
+          // Validate item with issuanceId included
+          const validatedItem = insertRawMaterialIssuanceItemSchema.parse({
+            ...item,
+            issuanceId: issuance.id
           });
           
+          // Get current material stock with row lock to prevent race conditions
+          const [material] = await tx.select().from(rawMaterials)
+            .where(and(eq(rawMaterials.id, validatedItem.rawMaterialId), eq(rawMaterials.recordStatus, 1)))
+            .for('update');
+          
+          if (!material) {
+            throw new Error(`Raw material ${validatedItem.rawMaterialId} not found`);
+          }
+          
+          const newQuantity = (material.currentStock || 0) - validatedItem.quantityIssued;
+          if (newQuantity < 0) {
+            throw new Error(`Insufficient stock for material ${material.materialName}. Available: ${material.currentStock}, Required: ${validatedItem.quantityIssued}`);
+          }
+          
+          // Create issuance item
+          await tx.insert(rawMaterialIssuanceItems).values(validatedItem);
+          
+          // Deduct from inventory
+          await tx.update(rawMaterials)
+            .set({ currentStock: newQuantity, updatedAt: new Date() })
+            .where(eq(rawMaterials.id, validatedItem.rawMaterialId));
+          
           // Create transaction record for audit trail
-          await storage.createRawMaterialTransaction({
+          await tx.insert(rawMaterialTransactions).values({
             materialId: validatedItem.rawMaterialId,
             transactionType: 'issue',
             quantity: -validatedItem.quantityIssued,
@@ -1359,15 +1376,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             performedBy: req.user?.id,
           });
         }
-      }
+        
+        return issuance;
+      });
       
-      res.json({ issuance, message: "Issuance created successfully with items" });
+      res.json({ issuance: result, message: "Issuance created successfully with items" });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
       }
       console.error("Error creating raw material issuance:", error);
-      res.status(500).json({ message: "Failed to create raw material issuance" });
+      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to create raw material issuance" });
     }
   });
 
@@ -1447,44 +1466,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Gatepass number already exists" });
       }
       
-      // Create gatepass header
+      // Create gatepass header data
       const gatepassData = {
         ...validatedHeader,
         issuedBy: req.user?.id,
       };
       
-      const gatepass = await storage.createGatepass(gatepassData);
-      
-      // Create items and deduct inventory for each
-      for (const item of items) {
-        const validatedItem = insertGatepassItemSchema.parse({
-          ...item,
-          gatepassId: gatepass.id
-        });
+      // Wrap everything in a transaction for atomicity
+      const result = await db.transaction(async (tx) => {
+        // Create gatepass header
+        const [gatepass] = await tx.insert(gatepasses).values(gatepassData).returning();
         
-        // Create gatepass item
-        await storage.createGatepassItem(validatedItem);
-        
-        // Deduct from finished goods inventory
-        const finishedGood = await storage.getFinishedGood(validatedItem.finishedGoodId);
-        if (finishedGood) {
+        // Create items and deduct inventory for each
+        for (const item of items) {
+          // Validate item with gatepassId included
+          const validatedItem = insertGatepassItemSchema.parse({
+            ...item,
+            gatepassId: gatepass.id
+          });
+          
+          // Get current finished good stock with row lock to prevent race conditions
+          const [finishedGood] = await tx.select().from(finishedGoods)
+            .where(and(eq(finishedGoods.id, validatedItem.finishedGoodId), eq(finishedGoods.recordStatus, 1)))
+            .for('update');
+          
+          if (!finishedGood) {
+            throw new Error(`Finished good ${validatedItem.finishedGoodId} not found`);
+          }
+          
           const newQuantity = finishedGood.quantity - validatedItem.quantityDispatched;
           if (newQuantity < 0) {
-            return res.status(400).json({ message: `Insufficient finished goods quantity for item ${validatedItem.finishedGoodId}` });
+            throw new Error(`Insufficient finished goods quantity. Available: ${finishedGood.quantity}, Required: ${validatedItem.quantityDispatched}`);
           }
-          await storage.updateFinishedGood(validatedItem.finishedGoodId, {
-            quantity: newQuantity
-          });
+          
+          // Create gatepass item
+          await tx.insert(gatepassItems).values(validatedItem);
+          
+          // Deduct from inventory
+          await tx.update(finishedGoods)
+            .set({ quantity: newQuantity, updatedAt: new Date() })
+            .where(eq(finishedGoods.id, validatedItem.finishedGoodId));
         }
-      }
+        
+        return gatepass;
+      });
       
-      res.json({ gatepass, message: "Gatepass created successfully with items" });
+      res.json({ gatepass: result, message: "Gatepass created successfully with items" });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
       }
       console.error("Error creating gatepass:", error);
-      res.status(500).json({ message: "Failed to create gatepass" });
+      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to create gatepass" });
     }
   });
 
