@@ -2,11 +2,16 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments } from "@shared/schema";
 import { z } from "zod";
 import path from "path";
 import fs from "fs";
 import { db } from "./db";
+
+// Simple audit logging function
+async function logAudit(userId: string | undefined, action: string, table: string, recordId: string, description: string) {
+  console.log(`[AUDIT] User: ${userId}, Action: ${action}, Table: ${table}, Record: ${recordId}, Description: ${description}`);
+}
 import { eq, and } from "drizzle-orm";
 
 // Authentication middleware
@@ -1772,6 +1777,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching invoices by gatepass:", error);
       res.status(500).json({ message: "Failed to fetch invoices" });
+    }
+  });
+
+  // Invoice Payment Tracking API
+  // Get all payments (optionally filtered by invoice)
+  app.get('/api/invoice-payments', isAuthenticated, async (req: any, res) => {
+    try {
+      const { invoiceId } = req.query;
+      if (invoiceId) {
+        const payments = await storage.getPaymentsByInvoice(invoiceId as string);
+        res.json(payments);
+      } else {
+        const allPayments = await storage.getAllPayments();
+        res.json(allPayments);
+      }
+    } catch (error) {
+      console.error("Error fetching payments:", error);
+      res.status(500).json({ message: "Failed to fetch payments" });
+    }
+  });
+
+  // Get payments for a specific invoice
+  app.get('/api/invoice-payments/:invoiceId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { invoiceId } = req.params;
+      const payments = await storage.getPaymentsByInvoice(invoiceId);
+      res.json(payments);
+    } catch (error) {
+      console.error("Error fetching invoice payments:", error);
+      res.status(500).json({ message: "Failed to fetch invoice payments" });
+    }
+  });
+
+  // Record a payment
+  app.post('/api/invoice-payments', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const validatedData = insertInvoicePaymentSchema.parse({
+        ...req.body,
+        recordedBy: req.user?.id,
+      });
+      const payment = await storage.createPayment(validatedData);
+      await logAudit(req.user?.id, 'CREATE', 'invoice_payments', payment.id, `Recorded payment for invoice ${payment.invoiceId}`);
+      res.json({ payment, message: "Payment recorded successfully" });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error recording payment:", error);
+      res.status(500).json({ message: "Failed to record payment" });
+    }
+  });
+
+  // Delete a payment
+  app.delete('/api/invoice-payments/:id', requireRole('admin'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deletePayment(id);
+      await logAudit(req.user?.id, 'DELETE', 'invoice_payments', id, 'Deleted payment record');
+      res.json({ message: "Payment deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting payment:", error);
+      res.status(500).json({ message: "Failed to delete payment" });
     }
   });
 

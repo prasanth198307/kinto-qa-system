@@ -5,9 +5,13 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Plus, Package, FileText } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import RawMaterialIssuanceForm from "@/components/RawMaterialIssuanceForm";
 import GatepassForm from "@/components/GatepassForm";
 import InvoiceForm from "@/components/InvoiceForm";
+import PaymentForm from "@/components/PaymentForm";
+import PaymentHistory from "@/components/PaymentHistory";
 import RawMaterialIssuanceTable from "@/components/RawMaterialIssuanceTable";
 import GatepassTable from "@/components/GatepassTable";
 import InvoiceTable from "@/components/InvoiceTable";
@@ -22,10 +26,12 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
   const [showIssuanceForm, setShowIssuanceForm] = useState(false);
   const [showGatepassForm, setShowGatepassForm] = useState(false);
   const [showInvoiceForm, setShowInvoiceForm] = useState(false);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [editingIssuance, setEditingIssuance] = useState<RawMaterialIssuance | null>(null);
   const [editingGatepass, setEditingGatepass] = useState<Gatepass | null>(null);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [selectedGatepassForInvoice, setSelectedGatepassForInvoice] = useState<Gatepass | null>(null);
+  const [selectedInvoiceForPayment, setSelectedInvoiceForPayment] = useState<Invoice | null>(null);
   const { toast } = useToast();
 
   // Update activeTab when externalActiveTab changes
@@ -163,6 +169,16 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
     setShowInvoiceForm(true);
   };
 
+  const handlePayment = (invoice: Invoice) => {
+    setSelectedInvoiceForPayment(invoice);
+    setShowPaymentDialog(true);
+  };
+
+  const handlePaymentDialogClose = () => {
+    setShowPaymentDialog(false);
+    setSelectedInvoiceForPayment(null);
+  };
+
   const renderContent = () => {
     switch (activeTab) {
       case 'raw-material-issuance':
@@ -252,6 +268,7 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
               isLoading={isLoadingInvoices}
               onEdit={handleEditInvoice}
               onDelete={handleDeleteInvoice}
+              onPayment={handlePayment}
             />
           </Card>
         );
@@ -302,6 +319,33 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
       <div className="p-4 pb-20">
         {renderContent()}
       </div>
+
+      {/* Payment Dialog */}
+      <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Payment Tracking - {selectedInvoiceForPayment?.invoiceNumber}</DialogTitle>
+          </DialogHeader>
+          {selectedInvoiceForPayment && (
+            <Tabs defaultValue="record" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="record">Record Payment</TabsTrigger>
+                <TabsTrigger value="history">Payment History</TabsTrigger>
+              </TabsList>
+              <TabsContent value="record" className="mt-4">
+                <PaymentForm
+                  invoice={selectedInvoiceForPayment}
+                  onSuccess={handlePaymentDialogClose}
+                  onCancel={handlePaymentDialogClose}
+                />
+              </TabsContent>
+              <TabsContent value="history" className="mt-4">
+                <PaymentHistory invoice={selectedInvoiceForPayment} />
+              </TabsContent>
+            </Tabs>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

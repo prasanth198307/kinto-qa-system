@@ -258,6 +258,13 @@ export interface IStorage {
   getDefaultBank(): Promise<Bank | undefined>;
   setDefaultBank(id: string): Promise<void>;
   
+  // Invoice Payments
+  createPayment(payment: InsertInvoicePayment): Promise<InvoicePayment>;
+  getAllPayments(): Promise<InvoicePayment[]>;
+  getPayment(id: string): Promise<InvoicePayment | undefined>;
+  getPaymentsByInvoice(invoiceId: string): Promise<InvoicePayment[]>;
+  deletePayment(id: string): Promise<void>;
+  
   // Checklist Assignments
   createChecklistAssignment(assignment: InsertChecklistAssignment): Promise<ChecklistAssignment>;
   getAllChecklistAssignments(): Promise<ChecklistAssignment[]>;
@@ -1179,6 +1186,29 @@ export class DatabaseStorage implements IStorage {
     await db.update(banks).set({ isDefault: 0, updatedAt: new Date() }).where(eq(banks.recordStatus, 1));
     // Set the selected bank as default
     await db.update(banks).set({ isDefault: 1, updatedAt: new Date() }).where(eq(banks.id, id));
+  }
+
+  // Invoice Payments
+  async createPayment(payment: InsertInvoicePayment): Promise<InvoicePayment> {
+    const [newPayment] = await db.insert(invoicePayments).values(payment).returning();
+    return newPayment;
+  }
+
+  async getAllPayments(): Promise<InvoicePayment[]> {
+    return await db.select().from(invoicePayments).where(eq(invoicePayments.recordStatus, 1));
+  }
+
+  async getPayment(id: string): Promise<InvoicePayment | undefined> {
+    const [payment] = await db.select().from(invoicePayments).where(and(eq(invoicePayments.id, id), eq(invoicePayments.recordStatus, 1)));
+    return payment;
+  }
+
+  async getPaymentsByInvoice(invoiceId: string): Promise<InvoicePayment[]> {
+    return await db.select().from(invoicePayments).where(and(eq(invoicePayments.invoiceId, invoiceId), eq(invoicePayments.recordStatus, 1)));
+  }
+
+  async deletePayment(id: string): Promise<void> {
+    await db.update(invoicePayments).set({ recordStatus: 0, updatedAt: new Date() }).where(eq(invoicePayments.id, id));
   }
 
   // Role Management
