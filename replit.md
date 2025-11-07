@@ -12,23 +12,32 @@ Preferred communication style: Simple, everyday language.
 A complete invoice generation system integrated with gatepasses:
 
 **Components:**
-- **InvoiceForm**: Comprehensive invoice entry with automatic GST calculation
-  - Auto-populates buyer details (name, GSTIN, address, state, stateCode) from vendor master when vendor data loads asynchronously
-  - Pre-fills invoice items from gatepass line items through finished goods/product mapping
+- **InvoiceForm**: Comprehensive invoice entry with automatic GST calculation and edit capability
+  - **Create Mode**: Auto-populates buyer details from vendor master, pre-fills items from gatepass
+  - **Edit Mode**: Loads existing invoice data with proper unit conversion (paise→rupees, basis points→percentages)
+  - **Bank Master Integration**: Dynamic dropdown for bank selection with auto-population of default bank
+  - Bank details (name, account number, IFSC code, UPI ID) displayed as read-only fields after selection
   - Automatic tax calculation: CGST+SGST (intrastate) or IGST (interstate) based on seller/buyer state comparison
   - Currency storage in paise (×100), tax rates in basis points (×100 for percentages)
+  - Supports both POST (create) and PATCH (update) operations
   
 - **PrintableInvoice**: Vyapaar-style PDF generator
   - Three copies: Original for Buyer, Duplicate for Transporter, Triplicate for Seller
   - Complete GST tax breakup with CGST/SGST/IGST/Cess
-  - Seller/buyer details, bank account, UPI ID, QR code placeholder
+  - Seller/buyer details, bank account info, UPI ID, QR code placeholder
   - Browser-based print via HTML template (no external PDF library)
+  
+- **InvoiceTable**: Invoice list with Edit and Delete actions
+  - Edit button opens InvoiceForm in edit mode with pre-populated data
+  - Print button generates printable invoice PDF
   
 - **Integration**: "Generate Invoice" button in GatepassTable pre-fills InvoiceForm with gatepass data
 
-**Workflow**: Gatepass → Generate Invoice → Auto-filled buyer & items → User enters unit prices → Save → Print PDF with 3 copies
+**Workflow**: 
+- Create: Gatepass → Generate Invoice → Auto-filled buyer & items → User enters unit prices → Select bank → Save → Print PDF
+- Edit: Invoice List → Edit → Modify prices/details → Update → Print PDF
 
-**Production Status**: ✅ Architect-verified as production-ready. Next: QA regression testing with varied vendor states, verify state/stateCode data completeness, capture PDF sample for stakeholder approval.
+**Production Status**: ✅ Feature complete with Bank Master integration and invoice editing. Pending: End-to-end testing with authenticated user session.
 
 ## System Architecture
 
