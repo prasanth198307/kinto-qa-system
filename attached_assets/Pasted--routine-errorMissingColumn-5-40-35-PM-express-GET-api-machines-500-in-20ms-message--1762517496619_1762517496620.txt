@@ -1,0 +1,64 @@
+  routine: 'errorMissingColumn'
+}
+5:40:35 PM [express] GET /api/machines 500 in 20ms :: {"message":"Failed to fetch machines"}
+🔹 Session ID: kMsUbTfVpRGuKJ8U9U3LofImR4VNO6d0
+🔹 Authenticated: true
+5:40:41 PM [express] GET /api/vendors 304 in 12ms :: []
+🔹 Session ID: kMsUbTfVpRGuKJ8U9U3LofImR4VNO6d0
+🔹 Authenticated: true
+Error fetching raw material issuances: error: column "issued_to" does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllRawMaterialIssuances (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:1445:16)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:3527:25 {
+  length: 187,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: 'Perhaps you meant to reference the column "raw_material_issuance.issued_by".',
+  position: '50',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+5:40:51 PM [express] GET /api/raw-material-issuances 500 in 19ms :: {"message":"Failed to fetch raw …
+🔹 Session ID: kMsUbTfVpRGuKJ8U9U3LofImR4VNO6d0
+🔹 Authenticated: true
+Error fetching gatepasses: error: column "driver_contact" does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllGatepasses (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:1473:16)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:3627:27 {
+  length: 114,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '83',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+5:40:51 PM [express] GET /api/gatepasses 500 in 22ms :: {"message":"Failed to fetch gatepasses"}
+🔹 Session ID: kMsUbTfVpRGuKJ8U9U3LofImR4VNO6d0
+🔹 Authenticated: true
+5:40:53 PM [express] GET /api/invoices/available 200 in 15ms :: []
+
