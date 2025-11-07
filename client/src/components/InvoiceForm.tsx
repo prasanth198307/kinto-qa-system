@@ -30,6 +30,7 @@ const invoiceFormSchema = z.object({
   buyerAddress: z.string().optional(),
   buyerState: z.string().optional(),
   buyerStateCode: z.string().optional(),
+  isCluster: z.number().optional(),
   
   // Payment details
   bankName: z.string().optional(),
@@ -104,6 +105,7 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
       buyerAddress: invoice.buyerAddress || "",
       buyerState: invoice.buyerState || "Karnataka",
       buyerStateCode: invoice.buyerStateCode || "29",
+      isCluster: invoice.isCluster || 0,
       items: [{
         productId: "",
         description: "",
@@ -129,6 +131,7 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
       buyerAddress: "",
       buyerState: "Karnataka",
       buyerStateCode: "29",
+      isCluster: 0,
       items: [{
         productId: "",
         description: "",
@@ -168,8 +171,10 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
         form.setValue("buyerAddress", vendor.address || "");
         form.setValue("buyerState", vendor.state || "Karnataka");
         form.setValue("buyerStateCode", vendor.stateCode || "29");
+        form.setValue("isCluster", vendor.isCluster || 0);
       } else if (gatepass.customerName) {
         form.setValue("buyerName", gatepass.customerName);
+        form.setValue("isCluster", gatepass.isCluster || 0);
       }
     }
   }, [gatepass, vendors, form]);
@@ -272,6 +277,7 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
         buyerAddress: data.buyerAddress || null,
         buyerState: data.buyerState || null,
         buyerStateCode: data.buyerStateCode || null,
+        isCluster: data.isCluster || 0,
         subtotal: taxes.subtotal,
         cgstAmount: taxes.cgstAmount,
         sgstAmount: taxes.sgstAmount,

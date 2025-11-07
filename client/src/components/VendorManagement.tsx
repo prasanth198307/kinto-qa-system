@@ -365,6 +365,7 @@ export default function VendorManagement() {
                   <TableHead>GST/Aadhaar</TableHead>
                   <TableHead>City</TableHead>
                   <TableHead>Type</TableHead>
+                  <TableHead>Cluster</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -380,6 +381,17 @@ export default function VendorManagement() {
                     </TableCell>
                     <TableCell>{vendor.city || "-"}</TableCell>
                     <TableCell>{vendor.vendorType || "-"}</TableCell>
+                    <TableCell>
+                      {vendor.isCluster === 1 ? (
+                        <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-700">
+                          Yes
+                        </span>
+                      ) : (
+                        <span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-600">
+                          No
+                        </span>
+                      )}
+                    </TableCell>
                     <TableCell>
                       <span
                         className={`text-xs px-2 py-1 rounded ${

@@ -77,6 +77,7 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
         destination: "",
         vendorId: "",
         customerName: "",
+        isCluster: 0,
         invoiceId: "",
         remarks: "",
       },
@@ -105,6 +106,7 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
           destination: gatepass.destination || "",
           vendorId: gatepass.vendorId || "",
           customerName: gatepass.customerName || "",
+          isCluster: gatepass.isCluster || 0,
           invoiceId: gatepass.invoiceId || "",
           remarks: gatepass.remarks || "",
         },
@@ -297,6 +299,7 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                         const selectedVendor = vendors.find(v => v.id === value);
                         if (selectedVendor) {
                           form.setValue("header.customerName", selectedVendor.vendorName);
+                          form.setValue("header.isCluster", selectedVendor.isCluster || 0);
                         }
                       }}
                     >

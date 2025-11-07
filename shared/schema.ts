@@ -748,6 +748,7 @@ export const gatepasses = pgTable("gatepasses", {
   destination: varchar("destination", { length: 255 }),
   vendorId: varchar("vendor_id").references(() => vendors.id),
   customerName: varchar("customer_name", { length: 255 }),
+  isCluster: integer("is_cluster").default(0).notNull(), // 0 = No, 1 = Yes (copied from vendor)
   invoiceId: varchar("invoice_id").references(() => invoices.id).unique(), // One-to-one: one gatepass per invoice
   remarks: text("remarks"),
   recordStatus: integer("record_status").default(1).notNull(),
@@ -821,6 +822,7 @@ export const invoices = pgTable("invoices", {
   buyerState: varchar("buyer_state", { length: 100 }),
   buyerStateCode: varchar("buyer_state_code", { length: 2 }),
   buyerContact: varchar("buyer_contact", { length: 50 }),
+  isCluster: integer("is_cluster").default(0).notNull(), // 0 = No, 1 = Yes (for mobile app integration)
   
   // Amounts
   subtotal: integer("subtotal").notNull(), // Amount before tax (in paise)
