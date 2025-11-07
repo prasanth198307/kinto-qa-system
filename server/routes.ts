@@ -1817,8 +1817,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...req.body,
         recordedBy: req.user?.id,
       });
+
+      // Check outstanding balance to prevent overpayments
+      const invoice = await storage.getInvoice(validatedData.invoiceId);
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+
+      const existingPayments = await storage.getPaymentsByInvoice(validatedData.invoiceId);
+      const totalPaid = existingPayments.reduce((sum, p) => sum + p.amount, 0);
+      const outstandingBalance = invoice.totalAmount - totalPaid;
+
+      if (validatedData.amount > outstandingBalance) {
+        return res.status(400).json({ 
+          message: `Payment amount (₹${(validatedData.amount / 100).toFixed(2)}) exceeds outstanding balance (₹${(outstandingBalance / 100).toFixed(2)})` 
+        });
+      }
+
       const payment = await storage.createPayment(validatedData);
-      await logAudit(req.user?.id, 'CREATE', 'invoice_payments', payment.id, `Recorded payment for invoice ${payment.invoiceId}`);
+      await logAudit(req.user?.id, 'CREATE', 'invoice_payments', payment.id, `Recorded payment of ₹${(payment.amount / 100).toFixed(2)} for invoice ${payment.invoiceId}`);
       res.json({ payment, message: "Payment recorded successfully" });
     } catch (error) {
       if (error instanceof z.ZodError) {

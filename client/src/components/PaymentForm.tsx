@@ -52,8 +52,22 @@ export default function PaymentForm({ invoice, onSuccess, onCancel }: PaymentFor
   const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
   const outstandingBalance = invoice.totalAmount - totalPaid;
 
+  // Create a custom schema with outstanding balance validation
+  const dynamicPaymentFormSchema = paymentFormSchema.extend({
+    amount: z.string().min(1, "Amount is required")
+      .refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
+        message: "Amount must be greater than 0",
+      })
+      .refine((val) => {
+        const amountInPaise = Math.round(parseFloat(val) * 100);
+        return amountInPaise <= outstandingBalance;
+      }, {
+        message: `Amount cannot exceed outstanding balance of ₹${(outstandingBalance / 100).toFixed(2)}`,
+      }),
+  });
+
   const form = useForm<PaymentFormData>({
-    resolver: zodResolver(paymentFormSchema),
+    resolver: zodResolver(dynamicPaymentFormSchema),
     defaultValues: {
       invoiceId: invoice.id,
       paymentDate: format(new Date(), "yyyy-MM-dd"),
