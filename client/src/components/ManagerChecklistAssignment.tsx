@@ -7,13 +7,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { insertChecklistAssignmentSchema, type ChecklistAssignment, type User, type ChecklistTemplate, type Machine } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Calendar } from "lucide-react";
-import { format } from "date-fns";
+import { Plus, Trash2, Calendar, AlertCircle } from "lucide-react";
+import { format, isPast, parseISO, startOfDay } from "date-fns";
 
 const formSchema = insertChecklistAssignmentSchema.omit({ assignedBy: true }).extend({
   assignedDate: z.string().min(1, "Date is required"),
@@ -106,6 +107,17 @@ export function ManagerChecklistAssignment() {
     return machine?.name || "Unknown";
   };
 
+  // Utility function to check if a checklist is overdue
+  const isOverdue = (assignedDate: string, status: string): boolean => {
+    if (status !== 'pending') return false;
+    const assignedDay = startOfDay(parseISO(assignedDate));
+    const today = startOfDay(new Date());
+    return isPast(assignedDay) && assignedDay.getTime() < today.getTime();
+  };
+
+  // Calculate overdue assignments count
+  const overdueCount = assignments.filter(a => isOverdue(a.assignedDate, a.status)).length;
+
   if (assignmentsLoading) {
     return <div className="p-4">Loading assignments...</div>;
   }
@@ -113,7 +125,14 @@ export function ManagerChecklistAssignment() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">Checklist Assignments</h2>
+        <div>
+          <h2 className="text-xl font-semibold">Checklist Assignments</h2>
+          {overdueCount > 0 && (
+            <p className="text-sm text-red-600 mt-1">
+              {overdueCount} overdue assignment{overdueCount > 1 ? 's' : ''}
+            </p>
+          )}
+        </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button data-testid="button-create-assignment">
@@ -291,60 +310,84 @@ export function ManagerChecklistAssignment() {
             </CardContent>
           </Card>
         ) : (
-          assignments.map((assignment) => (
-            <Card key={assignment.id} data-testid={`card-assignment-${assignment.id}`}>
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="space-y-1">
-                    <CardTitle className="text-base">{getTemplateName(assignment.templateId)}</CardTitle>
-                    <div className="text-sm text-muted-foreground">
-                      Machine: {getMachineName(assignment.machineId)}
+          assignments.map((assignment) => {
+            const assignmentIsOverdue = isOverdue(assignment.assignedDate, assignment.status);
+            return (
+              <Card 
+                key={assignment.id} 
+                className={`${assignmentIsOverdue ? 'border-red-500 bg-red-50' : ''}`}
+                data-testid={`card-assignment-${assignment.id}`}
+              >
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-1 flex-1">
+                      <div className="flex items-center gap-2">
+                        <CardTitle className={`text-base ${assignmentIsOverdue ? 'text-red-900' : ''}`}>
+                          {getTemplateName(assignment.templateId)}
+                        </CardTitle>
+                        {assignmentIsOverdue && (
+                          <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" data-testid={`icon-overdue-${assignment.id}`} />
+                        )}
+                      </div>
+                      <div className={`text-sm ${assignmentIsOverdue ? 'text-red-700' : 'text-muted-foreground'}`}>
+                        Machine: {getMachineName(assignment.machineId)}
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => deleteMutation.mutate(assignment.id)}
+                      disabled={deleteMutation.isPending}
+                      data-testid={`button-delete-${assignment.id}`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className={assignmentIsOverdue ? 'text-red-600' : 'text-muted-foreground'}>Operator:</span>
+                      <div className={`font-medium ${assignmentIsOverdue ? 'text-red-900' : ''}`} data-testid={`text-operator-${assignment.id}`}>
+                        {getUserName(assignment.operatorId)}
+                      </div>
+                    </div>
+                    <div>
+                      <span className={assignmentIsOverdue ? 'text-red-600' : 'text-muted-foreground'}>Reviewer:</span>
+                      <div className={`font-medium ${assignmentIsOverdue ? 'text-red-900' : ''}`} data-testid={`text-reviewer-${assignment.id}`}>
+                        {getUserName(assignment.reviewerId)}
+                      </div>
+                    </div>
+                    <div>
+                      <span className={assignmentIsOverdue ? 'text-red-600' : 'text-muted-foreground'}>Date:</span>
+                      <div className={`font-medium flex items-center gap-1 ${assignmentIsOverdue ? 'text-red-900' : ''}`}>
+                        <Calendar className="w-3 h-3" />
+                        {assignment.assignedDate}
+                      </div>
+                    </div>
+                    <div>
+                      <span className={assignmentIsOverdue ? 'text-red-600' : 'text-muted-foreground'}>Shift:</span>
+                      <div className={`font-medium ${assignmentIsOverdue ? 'text-red-900' : ''}`}>{assignment.shift}</div>
+                    </div>
+                    <div className="col-span-2">
+                      <span className={assignmentIsOverdue ? 'text-red-600' : 'text-muted-foreground'}>Status:</span>
+                      <div className="flex items-center gap-2 mt-1">
+                        {assignmentIsOverdue ? (
+                          <Badge className="bg-red-100 text-red-800 border-red-300" data-testid={`badge-overdue-${assignment.id}`}>
+                            OVERDUE
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="capitalize">
+                            {assignment.status}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => deleteMutation.mutate(assignment.id)}
-                    disabled={deleteMutation.isPending}
-                    data-testid={`button-delete-${assignment.id}`}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Operator:</span>
-                    <div className="font-medium" data-testid={`text-operator-${assignment.id}`}>
-                      {getUserName(assignment.operatorId)}
-                    </div>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Reviewer:</span>
-                    <div className="font-medium" data-testid={`text-reviewer-${assignment.id}`}>
-                      {getUserName(assignment.reviewerId)}
-                    </div>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Date:</span>
-                    <div className="font-medium flex items-center gap-1">
-                      <Calendar className="w-3 h-3" />
-                      {assignment.assignedDate}
-                    </div>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Shift:</span>
-                    <div className="font-medium">{assignment.shift}</div>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Status:</span>
-                    <div className="font-medium capitalize">{assignment.status}</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))
+                </CardContent>
+              </Card>
+            );
+          })
         )}
       </div>
     </div>
