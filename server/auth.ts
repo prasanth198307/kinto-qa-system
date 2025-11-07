@@ -2,8 +2,8 @@ import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import { Express } from "express";
 import session from "express-session";
-import bcrypt from "bcrypt";
-import { randomBytes } from "crypto";
+import { scrypt, randomBytes, timingSafeEqual } from "crypto";
+import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
 
@@ -13,15 +13,22 @@ declare global {
   }
 }
 
-// --- Password helpers using bcrypt ---
-const SALT_ROUNDS = 10;
+// --- Password helpers using scrypt (Node.js built-in) ---
+const scryptAsync = promisify(scrypt);
+const SALT_LENGTH = 16;
+const KEY_LENGTH = 64;
 
 async function hashPassword(password: string) {
-  return await bcrypt.hash(password, SALT_ROUNDS);
+  const salt = randomBytes(SALT_LENGTH).toString("hex");
+  const derivedKey = (await scryptAsync(password, salt, KEY_LENGTH)) as Buffer;
+  return `${salt}:${derivedKey.toString("hex")}`;
 }
 
 async function comparePasswords(supplied: string, stored: string) {
-  return await bcrypt.compare(supplied, stored);
+  const [salt, storedHash] = stored.split(":");
+  const derivedKey = (await scryptAsync(supplied, salt, KEY_LENGTH)) as Buffer;
+  const storedBuffer = Buffer.from(storedHash, "hex");
+  return timingSafeEqual(derivedKey, storedBuffer);
 }
 
 // --- Main authentication setup ---

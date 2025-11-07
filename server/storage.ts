@@ -1067,6 +1067,72 @@ export class DatabaseStorage implements IStorage {
     await db.update(gatepassItems).set({ recordStatus: 0, updatedAt: new Date() }).where(eq(gatepassItems.id, id));
   }
 
+  // Invoices
+  async createInvoice(invoice: InsertInvoice): Promise<Invoice> {
+    const [newInvoice] = await db.insert(invoices).values(invoice).returning();
+    return newInvoice;
+  }
+
+  async getAllInvoices(): Promise<Invoice[]> {
+    return await db.select().from(invoices).where(eq(invoices.recordStatus, 1));
+  }
+
+  async getInvoice(id: string): Promise<Invoice | undefined> {
+    const [invoice] = await db.select().from(invoices).where(and(eq(invoices.id, id), eq(invoices.recordStatus, 1)));
+    return invoice;
+  }
+
+  async updateInvoice(id: string, updates: Partial<InsertInvoice>): Promise<Invoice | undefined> {
+    const [updated] = await db.update(invoices).set({ ...updates, updatedAt: new Date() }).where(eq(invoices.id, id)).returning();
+    return updated;
+  }
+
+  async deleteInvoice(id: string): Promise<void> {
+    await db.update(invoices).set({ recordStatus: 0, updatedAt: new Date() }).where(eq(invoices.id, id));
+  }
+
+  async getInvoicesByDate(date: Date): Promise<Invoice[]> {
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+    
+    return await db.select().from(invoices).where(
+      and(
+        eq(invoices.recordStatus, 1),
+        eq(invoices.invoiceDate, date)
+      )
+    );
+  }
+
+  async getInvoiceByNumber(invoiceNumber: string): Promise<Invoice | undefined> {
+    const [invoice] = await db.select().from(invoices).where(and(eq(invoices.invoiceNumber, invoiceNumber), eq(invoices.recordStatus, 1)));
+    return invoice;
+  }
+
+  async getInvoicesByGatepass(gatepassId: string): Promise<Invoice[]> {
+    return await db.select().from(invoices).where(and(eq(invoices.gatepassId, gatepassId), eq(invoices.recordStatus, 1)));
+  }
+
+  // Invoice Items
+  async createInvoiceItem(item: InsertInvoiceItem): Promise<InvoiceItem> {
+    const [newItem] = await db.insert(invoiceItems).values(item).returning();
+    return newItem;
+  }
+
+  async getInvoiceItems(invoiceId: string): Promise<InvoiceItem[]> {
+    return await db.select().from(invoiceItems).where(and(eq(invoiceItems.invoiceId, invoiceId), eq(invoiceItems.recordStatus, 1)));
+  }
+
+  async updateInvoiceItem(id: string, updates: Partial<InsertInvoiceItem>): Promise<InvoiceItem | undefined> {
+    const [updated] = await db.update(invoiceItems).set({ ...updates, updatedAt: new Date() }).where(eq(invoiceItems.id, id)).returning();
+    return updated;
+  }
+
+  async deleteInvoiceItem(id: string): Promise<void> {
+    await db.update(invoiceItems).set({ recordStatus: 0, updatedAt: new Date() }).where(eq(invoiceItems.id, id));
+  }
+
   // Role Management
   async createRole(roleData: InsertRole): Promise<Role> {
     const [created] = await db.insert(roles).values(roleData).returning();

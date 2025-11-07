@@ -9,7 +9,8 @@ import RawMaterialIssuanceForm from "@/components/RawMaterialIssuanceForm";
 import GatepassForm from "@/components/GatepassForm";
 import RawMaterialIssuanceTable from "@/components/RawMaterialIssuanceTable";
 import GatepassTable from "@/components/GatepassTable";
-import type { RawMaterialIssuance, Gatepass } from "@shared/schema";
+import InvoiceTable from "@/components/InvoiceTable";
+import type { RawMaterialIssuance, Gatepass, Invoice } from "@shared/schema";
 
 interface ProductionManagementProps {
   activeTab?: string;
@@ -36,6 +37,10 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
 
   const { data: gatepasses = [], isLoading: isLoadingGatepasses } = useQuery<Gatepass[]>({
     queryKey: ['/api/gatepasses'],
+  });
+
+  const { data: invoices = [], isLoading: isLoadingInvoices } = useQuery<Invoice[]>({
+    queryKey: ['/api/invoices'],
   });
 
   const deleteIssuanceMutation = useMutation({
@@ -80,6 +85,26 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
     },
   });
 
+  const deleteInvoiceMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest('DELETE', `/api/invoices/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
+      toast({
+        title: "Success",
+        description: "Invoice deleted successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to delete invoice",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleEditIssuance = (issuance: RawMaterialIssuance) => {
     setEditingIssuance(issuance);
     setShowIssuanceForm(true);
@@ -100,6 +125,19 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
     if (confirm("Are you sure you want to delete this gatepass?")) {
       deleteGatepassMutation.mutate(id);
     }
+  };
+
+  const handleDeleteInvoice = (invoice: Invoice) => {
+    if (confirm("Are you sure you want to delete this invoice?")) {
+      deleteInvoiceMutation.mutate(invoice.id);
+    }
+  };
+
+  const handleViewInvoice = (invoice: Invoice) => {
+    toast({
+      title: "Invoice Details",
+      description: `Invoice ${invoice.invoiceNumber} - ${invoice.buyerName}`,
+    });
   };
 
   const handleIssuanceFormClose = () => {
@@ -175,6 +213,21 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
               isLoading={isLoadingGatepasses}
               onEdit={handleEditGatepass}
               onDelete={handleDeleteGatepass}
+            />
+          </Card>
+        );
+      case 'invoices':
+        return (
+          <Card className="p-4">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold">Sales Invoices</h2>
+            </div>
+
+            <InvoiceTable
+              invoices={invoices}
+              isLoading={isLoadingInvoices}
+              onDelete={handleDeleteInvoice}
+              onView={handleViewInvoice}
             />
           </Card>
         );

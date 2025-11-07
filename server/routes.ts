@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertUserSchema, insertChecklistAssignmentSchema, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertUserSchema, insertChecklistAssignmentSchema, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems } from "@shared/schema";
 import { z } from "zod";
 import path from "path";
 import fs from "fs";
@@ -1636,6 +1636,142 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching gatepass items:", error);
       res.status(500).json({ message: "Failed to fetch gatepass items" });
+    }
+  });
+
+  // ==================== INVOICE MANAGEMENT ====================
+  
+  // Get all invoices
+  app.get('/api/invoices', isAuthenticated, async (req: any, res) => {
+    try {
+      const allInvoices = await storage.getAllInvoices();
+      res.json(allInvoices);
+    } catch (error) {
+      console.error("Error fetching invoices:", error);
+      res.status(500).json({ message: "Failed to fetch invoices" });
+    }
+  });
+
+  // Create invoice with items
+  app.post('/api/invoices', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { header, items } = req.body;
+      
+      // Validate header
+      const validatedHeader = insertInvoiceSchema.parse(header);
+      
+      // Validate items array
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ message: "At least one invoice item is required" });
+      }
+      
+      // Generate invoice number
+      const invoiceNumber = `INV-${Date.now()}`;
+      const invoiceData = {
+        ...validatedHeader,
+        invoiceNumber,
+        generatedBy: req.user?.id,
+      };
+      
+      // Wrap in transaction
+      const result = await db.transaction(async (tx) => {
+        // Create invoice header
+        const [invoice] = await tx.insert(invoices).values(invoiceData).returning();
+        
+        // Create invoice items
+        for (const item of items) {
+          const validatedItem = insertInvoiceItemSchema.parse({
+            ...item,
+            invoiceId: invoice.id
+          });
+          
+          await tx.insert(invoiceItems).values(validatedItem);
+        }
+        
+        return invoice;
+      });
+      
+      res.json({ invoice: result, message: "Invoice created successfully with items" });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error creating invoice:", error);
+      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to create invoice" });
+    }
+  });
+
+  // Get single invoice with items
+  app.get('/api/invoices/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const invoice = await storage.getInvoice(id);
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      
+      // Fetch items for this invoice
+      const items = await storage.getInvoiceItems(id);
+      
+      res.json({ ...invoice, items });
+    } catch (error) {
+      console.error("Error fetching invoice:", error);
+      res.status(500).json({ message: "Failed to fetch invoice" });
+    }
+  });
+
+  // Update invoice
+  app.patch('/api/invoices/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertInvoiceSchema.partial().parse(req.body);
+      const invoice = await storage.updateInvoice(id, validatedData);
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      res.json(invoice);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error updating invoice:", error);
+      res.status(500).json({ message: "Failed to update invoice" });
+    }
+  });
+
+  // Delete invoice
+  app.delete('/api/invoices/:id', requireRole('admin'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteInvoice(id);
+      res.json({ message: "Invoice deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting invoice:", error);
+      res.status(500).json({ message: "Failed to delete invoice" });
+    }
+  });
+
+  // Get invoice items
+  app.get('/api/invoice-items/:invoiceId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { invoiceId } = req.params;
+      const items = await storage.getInvoiceItems(invoiceId);
+      res.json(items);
+    } catch (error) {
+      console.error("Error fetching invoice items:", error);
+      res.status(500).json({ message: "Failed to fetch invoice items" });
+    }
+  });
+
+  // Get invoices by gatepass
+  app.get('/api/invoices/gatepass/:gatepassId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { gatepassId } = req.params;
+      const gatepassInvoices = await storage.getInvoicesByGatepass(gatepassId);
+      res.json(gatepassInvoices);
+    } catch (error) {
+      console.error("Error fetching invoices by gatepass:", error);
+      res.status(500).json({ message: "Failed to fetch invoices" });
     }
   });
 
