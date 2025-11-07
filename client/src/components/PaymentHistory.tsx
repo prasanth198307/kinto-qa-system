@@ -58,6 +58,23 @@ export default function PaymentHistory({ invoice }: PaymentHistoryProps) {
     },
   });
 
+  // Sort payments chronologically (oldest first) by paymentDate, then createdAt
+  const sortedPayments = [...payments].sort((a, b) => {
+    const dateCompare = new Date(a.paymentDate).getTime() - new Date(b.paymentDate).getTime();
+    if (dateCompare !== 0) return dateCompare;
+    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+  });
+
+  // Calculate running balance for each payment
+  let runningTotal = 0;
+  const paymentsWithBalance = sortedPayments.map((payment) => {
+    runningTotal += payment.amount;
+    return {
+      ...payment,
+      runningBalance: invoice.totalAmount - runningTotal,
+    };
+  });
+
   const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
   const outstandingBalance = invoice.totalAmount - totalPaid;
 
@@ -117,12 +134,13 @@ export default function PaymentHistory({ invoice }: PaymentHistoryProps) {
                   <TableHead>Type</TableHead>
                   <TableHead>Method</TableHead>
                   <TableHead>Reference</TableHead>
+                  <TableHead>Running Balance</TableHead>
                   <TableHead>Remarks</TableHead>
                   <TableHead className="w-[80px]">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {payments.map((payment) => (
+                {paymentsWithBalance.map((payment) => (
                   <TableRow key={payment.id} data-testid={`row-payment-${payment.id}`}>
                     <TableCell data-testid={`text-payment-date-${payment.id}`}>
                       {format(new Date(payment.paymentDate), "dd-MMM-yyyy")}
@@ -141,7 +159,12 @@ export default function PaymentHistory({ invoice }: PaymentHistoryProps) {
                     <TableCell data-testid={`text-payment-reference-${payment.id}`}>
                       {payment.referenceNumber || "-"}
                     </TableCell>
-                    <TableCell className="max-w-[200px] truncate" data-testid={`text-payment-remarks-${payment.id}`}>
+                    <TableCell className="font-medium" data-testid={`text-running-balance-${payment.id}`}>
+                      <span className={payment.runningBalance > 0 ? "text-destructive" : "text-green-600"}>
+                        ₹{(payment.runningBalance / 100).toFixed(2)}
+                      </span>
+                    </TableCell>
+                    <TableCell className="max-w-[150px] truncate" data-testid={`text-payment-remarks-${payment.id}`}>
                       {payment.remarks || "-"}
                     </TableCell>
                     <TableCell>
