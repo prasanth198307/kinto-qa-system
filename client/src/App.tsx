@@ -34,6 +34,7 @@ import InventorySummaryDashboard from "@/components/InventorySummaryDashboard";
 import TodayProductionStats from "@/components/TodayProductionStats";
 import RolePermissionsView from "@/components/RolePermissionsView";
 import RoleManagement from "@/components/RoleManagement";
+import { ManagerChecklistAssignment } from "@/components/ManagerChecklistAssignment";
 import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -222,6 +223,10 @@ function ManagerDashboard() {
                 <Factory className="h-4 w-4 mr-1" />
                 Production
               </TabsTrigger>
+              <TabsTrigger value="assignments" className="rounded-none border-b-2 data-[state=active]:border-primary" data-testid="tab-assignments">
+                <ClipboardCheck className="h-4 w-4 mr-1" />
+                Assignments
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -253,6 +258,10 @@ function ManagerDashboard() {
 
           <TabsContent value="production">
             <ProductionManagement />
+          </TabsContent>
+
+          <TabsContent value="assignments" className="p-4">
+            <ManagerChecklistAssignment />
           </TabsContent>
         </Tabs>
       </div>

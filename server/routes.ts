@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertGatepassSchema, insertUserSchema } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertGatepassSchema, insertUserSchema, insertChecklistAssignmentSchema } from "@shared/schema";
 import { z } from "zod";
 import path from "path";
 import fs from "fs";
@@ -1766,6 +1766,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error batch updating role permissions:", error);
       res.status(500).json({ message: "Failed to batch update role permissions" });
+    }
+  });
+
+  // Checklist Assignment Routes
+  app.post('/api/checklist-assignments', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      // Validate request body with Zod schema
+      const validationResult = insertChecklistAssignmentSchema.safeParse(req.body);
+      
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid assignment data", 
+          errors: validationResult.error.issues 
+        });
+      }
+
+      // SECURITY: Override assignedBy with authenticated user ID (prevent forgery)
+      const assignmentData = {
+        ...validationResult.data,
+        assignedBy: req.user.id, // Server-side override for audit integrity
+      };
+
+      const assignment = await storage.createChecklistAssignment(assignmentData);
+      console.log(`[AUDIT] Manager ${req.user.id} (${req.user.username}) created checklist assignment ${assignment.id} for operator ${assignment.operatorId}`);
+      res.json(assignment);
+    } catch (error) {
+      console.error("Error creating checklist assignment:", error);
+      res.status(500).json({ message: "Failed to create checklist assignment" });
+    }
+  });
+
+  app.get('/api/checklist-assignments', isAuthenticated, async (req: any, res) => {
+    try {
+      const assignments = await storage.getAllChecklistAssignments();
+      res.json(assignments);
+    } catch (error) {
+      console.error("Error fetching checklist assignments:", error);
+      res.status(500).json({ message: "Failed to fetch checklist assignments" });
+    }
+  });
+
+  app.get('/api/checklist-assignments/operator/:operatorId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { operatorId } = req.params;
+      const assignments = await storage.getChecklistAssignmentsByOperator(operatorId);
+      res.json(assignments);
+    } catch (error) {
+      console.error("Error fetching operator assignments:", error);
+      res.status(500).json({ message: "Failed to fetch operator assignments" });
+    }
+  });
+
+  app.get('/api/checklist-assignments/date/:date', isAuthenticated, async (req: any, res) => {
+    try {
+      const { date } = req.params;
+      const assignments = await storage.getChecklistAssignmentsByDate(date);
+      res.json(assignments);
+    } catch (error) {
+      console.error("Error fetching assignments by date:", error);
+      res.status(500).json({ message: "Failed to fetch assignments by date" });
+    }
+  });
+
+  app.patch('/api/checklist-assignments/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Validate partial update data
+      const validationResult = insertChecklistAssignmentSchema.partial().safeParse(req.body);
+      
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid update data", 
+          errors: validationResult.error.issues 
+        });
+      }
+
+      // SECURITY: Remove assignedBy from updates to prevent modification
+      const { assignedBy, ...updateData } = validationResult.data;
+      
+      const updated = await storage.updateChecklistAssignment(id, updateData);
+      console.log(`[AUDIT] Manager ${req.user.id} (${req.user.username}) updated checklist assignment ${id}`);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating checklist assignment:", error);
+      res.status(500).json({ message: "Failed to update checklist assignment" });
+    }
+  });
+
+  app.delete('/api/checklist-assignments/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteChecklistAssignment(id);
+      console.log(`[AUDIT] User ${req.user.id} deleted checklist assignment ${id}`);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting checklist assignment:", error);
+      res.status(500).json({ message: "Failed to delete checklist assignment" });
     }
   });
 

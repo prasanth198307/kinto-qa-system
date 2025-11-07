@@ -21,6 +21,7 @@ import {
   finishedGoods,
   rawMaterialIssuance,
   gatepasses,
+  checklistAssignments,
   type User,
   type UpsertUser,
   type InsertUser,
@@ -999,6 +1000,47 @@ export class DatabaseStorage implements IStorage {
     if (permissions.length > 0) {
       await db.insert(rolePermissions).values(permissions.map(p => ({ ...p, roleId })));
     }
+  }
+
+  // Checklist Assignments
+  async createChecklistAssignment(assignmentData: InsertChecklistAssignment): Promise<ChecklistAssignment> {
+    const [created] = await db.insert(checklistAssignments).values(assignmentData).returning();
+    return created;
+  }
+
+  async getAllChecklistAssignments(): Promise<ChecklistAssignment[]> {
+    return await db.select().from(checklistAssignments).where(eq(checklistAssignments.recordStatus, 1));
+  }
+
+  async getChecklistAssignment(id: string): Promise<ChecklistAssignment | undefined> {
+    const [assignment] = await db.select().from(checklistAssignments).where(and(eq(checklistAssignments.id, id), eq(checklistAssignments.recordStatus, 1)));
+    return assignment;
+  }
+
+  async getChecklistAssignmentsByOperator(operatorId: string): Promise<ChecklistAssignment[]> {
+    return await db.select().from(checklistAssignments)
+      .where(and(eq(checklistAssignments.operatorId, operatorId), eq(checklistAssignments.recordStatus, 1)));
+  }
+
+  async getChecklistAssignmentsByDate(date: string): Promise<ChecklistAssignment[]> {
+    return await db.select().from(checklistAssignments)
+      .where(and(eq(checklistAssignments.assignedDate, date), eq(checklistAssignments.recordStatus, 1)));
+  }
+
+  async updateChecklistAssignment(id: string, updates: Partial<InsertChecklistAssignment>): Promise<ChecklistAssignment | undefined> {
+    const [updated] = await db
+      .update(checklistAssignments)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(checklistAssignments.id, id), eq(checklistAssignments.recordStatus, 1)))
+      .returning();
+    return updated;
+  }
+
+  async deleteChecklistAssignment(id: string): Promise<void> {
+    await db
+      .update(checklistAssignments)
+      .set({ recordStatus: 0, updatedAt: new Date() })
+      .where(eq(checklistAssignments.id, id));
   }
 }
 
