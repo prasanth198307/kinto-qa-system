@@ -1631,6 +1631,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get gatepass items for a specific gatepass
+  app.get('/api/gatepass-items/:gatepassId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { gatepassId } = req.params;
+      const items = await storage.getGatepassItems(gatepassId);
+      res.json(items);
+    } catch (error) {
+      console.error("Error fetching gatepass items:", error);
+      res.status(500).json({ message: "Failed to fetch gatepass items" });
+    }
+  });
+
   // Dashboard stats for today
   app.get('/api/stats/today', isAuthenticated, async (req: any, res) => {
     try {
