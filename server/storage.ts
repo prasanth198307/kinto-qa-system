@@ -358,6 +358,11 @@ export class DatabaseStorage implements IStorage {
       .from(users)
       .leftJoin(roles, eq(users.roleId, roles.id))
       .where(and(eq(users.username, username), eq(users.recordStatus, 1)));
+    
+    console.log("🔍 DB Query result for username:", username);
+    console.log("🔍 Result keys:", result ? Object.keys(result) : "null");
+    console.log("🔍 Password field from DB:", result ? (result as any).password : "no result");
+    
     return result as any;
   }
 
