@@ -33,6 +33,36 @@ This folder contains incremental migration scripts for updating existing KINTO Q
 - Empty UOM table → Cannot create raw materials, finished goods, or any transactions
 - Without UOM: Inventory, issuance, gatepasses, invoices ALL fail
 
+### 20251107_020000_notification_config.sql ⚠️ **IMPORTANT - RUN THIRD**
+**Date:** November 7, 2025  
+**Purpose:** Creates centralized notification configuration for SendGrid (Email) and Twilio (WhatsApp)
+
+**Tables Added:**
+1. `notification_config` - Centralized settings for email and WhatsApp notifications
+
+**Features:**
+- Email notifications via SendGrid
+- WhatsApp notifications via Twilio
+- Test mode for safe development (console logging only)
+- Production mode for real notifications
+- Enable/disable channels independently
+
+**Default Configuration:**
+- Test mode: Enabled (safe for testing)
+- Email: Enabled
+- WhatsApp: Enabled
+- Sender: qa@kinto.com / KINTO QA
+
+**Environment Variables Required (Production):**
+- `SENDGRID_API_KEY` - For email notifications
+- `TWILIO_ACCOUNT_SID` - For WhatsApp
+- `TWILIO_AUTH_TOKEN` - For WhatsApp
+
+**Why Important:**
+- Required for Machine Startup Reminders
+- Required for Missed Checklist Notifications
+- Without this table: Notification features will fail
+
 ### 20251107_invoicing_and_payments.sql
 **Date:** November 7, 2025  
 **Purpose:** Adds GST-compliant invoicing, payment tracking, bank management, and checklist assignments
@@ -86,6 +116,45 @@ This folder contains incremental migration scripts for updating existing KINTO Q
 - Support for WhatsApp and SMS notifications
 - User contact management
 
+### 20251107_machine_startup_reminders.sql
+**Date:** November 7, 2025  
+**Purpose:** Machine startup reminder system with WhatsApp/Email notifications
+
+**Tables Added:**
+1. `machine_startup_tasks` - Tracks machine startup assignments and reminders
+
+**Features:**
+- Managers assign machine startup tasks to operators
+- Configurable warmup times per machine
+- WhatsApp and Email reminders before scheduled production
+- Bulk assignment support
+- Task status tracking (pending → notified → completed → cancelled)
+- Automated multi-channel notifications via Twilio/SendGrid
+
+**Dependencies:**
+- Requires `notification_config` table (run 20251107_020000_notification_config.sql first)
+
+### 20251107_missed_checklist_notifications.sql
+**Date:** November 7, 2025  
+**Purpose:** Automatic notifications when checklists pass due date
+
+**Changes to Existing Tables:**
+1. Adds columns to `checklist_assignments`:
+   - `due_date_time` - Deadline for checklist completion
+   - `missed_notification_sent` - Flag to prevent duplicate notifications
+   - `missed_notification_sent_at` - Timestamp of notification
+
+**Features:**
+- Automatic detection of missed checklists (runs every 5 minutes)
+- Multi-recipient notifications (operator, reviewer, manager, all admins)
+- WhatsApp alerts via Twilio
+- Test mode for safe development
+- Manual trigger endpoint for testing: `/api/cron/missed-checklists`
+
+**Dependencies:**
+- Requires `notification_config` table (run 20251107_020000_notification_config.sql first)
+- Requires `checklist_assignments` table from invoicing script
+
 ### 20251106_163500_production_management.sql
 **Date:** November 6, 2025  
 **Purpose:** Raw material issuance and gatepass management (legacy - superseded by 20251107_vendor_and_transactions.sql)
@@ -105,24 +174,38 @@ psql $DATABASE_URL -f updated_dbscripts/20251107_fix_schema_issues.sql
 # Step 2: Seed critical master data (REQUIRED SECOND)
 psql $DATABASE_URL -f updated_dbscripts/20251107_critical_seed_data.sql
 
-# Step 3: Add transaction tables
+# Step 3: Add notification configuration (REQUIRED BEFORE STEPS 6 & 7)
+psql $DATABASE_URL -f updated_dbscripts/20251107_020000_notification_config.sql
+
+# Step 4: Add transaction tables
 psql $DATABASE_URL -f updated_dbscripts/20251107_vendor_and_transactions.sql
 
-# Step 4: Add invoicing and payment tables
+# Step 5: Add invoicing and payment tables
 psql $DATABASE_URL -f updated_dbscripts/20251107_invoicing_and_payments.sql
+
+# Step 6: Add machine startup reminders (optional - requires Step 3)
+psql $DATABASE_URL -f updated_dbscripts/20251107_machine_startup_reminders.sql
+
+# Step 7: Add missed checklist notifications (optional - requires Steps 3 & 5)
+psql $DATABASE_URL -f updated_dbscripts/20251107_missed_checklist_notifications.sql
 ```
 
 **Or with explicit connection:**
 ```bash
 psql -U postgres -d kinto_qa -f updated_dbscripts/20251107_fix_schema_issues.sql
 psql -U postgres -d kinto_qa -f updated_dbscripts/20251107_critical_seed_data.sql
+psql -U postgres -d kinto_qa -f updated_dbscripts/20251107_020000_notification_config.sql
 psql -U postgres -d kinto_qa -f updated_dbscripts/20251107_vendor_and_transactions.sql
 psql -U postgres -d kinto_qa -f updated_dbscripts/20251107_invoicing_and_payments.sql
+psql -U postgres -d kinto_qa -f updated_dbscripts/20251107_machine_startup_reminders.sql
+psql -U postgres -d kinto_qa -f updated_dbscripts/20251107_missed_checklist_notifications.sql
 ```
 
 **⚠️ IMPORTANT:** 
 - Apply in chronological order to ensure dependencies are met
-- Steps 1 & 2 are CRITICAL - app will not function without them
+- Steps 1, 2, and 3 are CRITICAL for core functionality
+- Steps 4 & 5 required for inventory, invoicing, and payment features
+- Steps 6 & 7 are OPTIONAL - only needed if using notification features
 - After Step 2, edit the bank details in the script before running if needed
 
 ### Fresh Installation
@@ -176,18 +259,20 @@ WHERE table_schema = 'public'
     'invoice_items',
     'invoice_payments',
     'banks',
-    'checklist_assignments'
+    'checklist_assignments',
+    'notification_config',
+    'machine_startup_tasks'
   )
 ORDER BY table_name;
 
--- Should return 10 rows
+-- Should return 12 rows
 
 -- Count total tables in the database
 SELECT COUNT(*) as total_tables
 FROM information_schema.tables 
 WHERE table_schema = 'public';
 
--- Should return 37 tables for complete KINTO QA system
+-- Should return 39 tables for complete KINTO QA system (with all optional features)
 ```
 
 ## Using Drizzle Kit (Recommended for Development)
