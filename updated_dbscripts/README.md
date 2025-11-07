@@ -5,6 +5,34 @@ This folder contains incremental migration scripts for updating existing KINTO Q
 
 ## Migration Files
 
+### 20251107_fix_schema_issues.sql ⚠️ **CRITICAL - RUN FIRST**
+**Date:** November 7, 2025  
+**Purpose:** Fixes critical schema inconsistencies between code and database
+
+**Changes:**
+1. Adds `mobile_number` column to `users` table (REQUIRED for notifications)
+2. Fixes `banks` table schema:
+   - Adds missing columns: `account_holder_name`, `branch_name`, `account_type`, `updated_at`
+   - Renames `recordstatus` to `record_status` (standardization)
+
+**Why Critical:**
+- Without mobile_number: User creation fails, notifications broken
+- Without banks fix: Payment features will crash at runtime
+- Must run BEFORE using inventory or payment features
+
+### 20251107_critical_seed_data.sql ⚠️ **CRITICAL - RUN SECOND**
+**Date:** November 7, 2025  
+**Purpose:** Seeds essential master data required for application to function
+
+**Data Inserted:**
+1. **UOM (Unit of Measurement)** - 20 standard units (PCS, KG, LTR, MTR, etc.)
+   - **BLOCKS ALL INVENTORY if missing**
+2. **Default Bank Account** (optional, commented out - customize with real data)
+
+**Why Critical:**
+- Empty UOM table → Cannot create raw materials, finished goods, or any transactions
+- Without UOM: Inventory, issuance, gatepasses, invoices ALL fail
+
 ### 20251107_invoicing_and_payments.sql
 **Date:** November 7, 2025  
 **Purpose:** Adds GST-compliant invoicing, payment tracking, bank management, and checklist assignments
@@ -68,21 +96,34 @@ This folder contains incremental migration scripts for updating existing KINTO Q
 
 ### For Existing Databases
 
-If you already have a KINTO QA database running, apply migrations in order:
+⚠️ **CRITICAL:** Apply migrations in this EXACT order:
 
 ```bash
-# Using psql with DATABASE_URL
-psql $DATABASE_URL -f updated_dbscripts/20251107_040000_add_mobile_number.sql
-psql $DATABASE_URL -f updated_dbscripts/20251107_vendor_and_transactions.sql
-psql $DATABASE_URL -f updated_dbscripts/20251107_invoicing_and_payments.sql
+# Step 1: Fix schema issues (REQUIRED FIRST)
+psql $DATABASE_URL -f updated_dbscripts/20251107_fix_schema_issues.sql
 
-# Or with explicit connection
-psql -U postgres -d kinto_qa -f updated_dbscripts/20251107_040000_add_mobile_number.sql
+# Step 2: Seed critical master data (REQUIRED SECOND)
+psql $DATABASE_URL -f updated_dbscripts/20251107_critical_seed_data.sql
+
+# Step 3: Add transaction tables
+psql $DATABASE_URL -f updated_dbscripts/20251107_vendor_and_transactions.sql
+
+# Step 4: Add invoicing and payment tables
+psql $DATABASE_URL -f updated_dbscripts/20251107_invoicing_and_payments.sql
+```
+
+**Or with explicit connection:**
+```bash
+psql -U postgres -d kinto_qa -f updated_dbscripts/20251107_fix_schema_issues.sql
+psql -U postgres -d kinto_qa -f updated_dbscripts/20251107_critical_seed_data.sql
 psql -U postgres -d kinto_qa -f updated_dbscripts/20251107_vendor_and_transactions.sql
 psql -U postgres -d kinto_qa -f updated_dbscripts/20251107_invoicing_and_payments.sql
 ```
 
-**Important:** Apply migrations in chronological order to ensure dependencies are met.
+**⚠️ IMPORTANT:** 
+- Apply in chronological order to ensure dependencies are met
+- Steps 1 & 2 are CRITICAL - app will not function without them
+- After Step 2, edit the bank details in the script before running if needed
 
 ### Fresh Installation
 
