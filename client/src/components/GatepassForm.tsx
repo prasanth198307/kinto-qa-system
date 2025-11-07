@@ -14,8 +14,23 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2 } from "lucide-react";
 
-const headerSchema = insertGatepassSchema;
-const itemSchema = insertGatepassItemSchema.omit({ gatepassId: true });
+const headerSchema = insertGatepassSchema.extend({
+  vehicleNumber: z.string().min(1, "Vehicle number is required"),
+  driverName: z.string().min(1, "Driver name is required"),
+  driverContact: z.string().min(1, "Driver contact is required"),
+  transporterName: z.string().min(1, "Transporter name is required"),
+  destination: z.string().min(1, "Destination is required"),
+  customerName: z.string().min(1, "Customer name is required"),
+  remarks: z.string().optional(), // Remarks is optional
+});
+
+const itemSchema = insertGatepassItemSchema.omit({ gatepassId: true }).extend({
+  finishedGoodId: z.string().min(1, "Finished good is required"),
+  productId: z.string().min(1, "Product is required"),
+  quantityDispatched: z.number().min(1, "Quantity must be at least 1"),
+  uomId: z.string().min(1, "Unit of measurement is required"),
+  remarks: z.string().optional(), // Item remarks is optional
+});
 
 const formSchema = z.object({
   header: headerSchema,
