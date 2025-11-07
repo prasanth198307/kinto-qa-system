@@ -176,10 +176,14 @@ A comprehensive sales analytics dashboard providing insights into revenue, goods
 **Production Status**: ✅ Feature complete and operational. Sales dashboard available to Admin and Manager roles with proper authorization.
 
 ### Machine Startup Reminder System (COMPLETED - November 2025)
-A comprehensive notification system that enables managers to assign machine startup tasks to operators with automated reminders sent before scheduled production time.
+A comprehensive notification system that enables managers to assign machine startup tasks to operators with automated reminders sent before scheduled production time. Supports warmup time tracking per machine and bulk assignment of all machines to a single operator.
 
 **Features:**
 - **Task Assignment**: Managers can assign machines to specific operators for startup
+- **Warmup Time Tracking**: Each machine has configurable warmup time (stored in `machines.warmup_time_minutes`)
+- **Auto-Calculated Reminders**: Reminder time automatically calculated by subtracting warmup time from production start time
+- **Bulk Assignment**: Assign all 20 machines to one operator for next day with single form submission
+- **Multi-Select Machine Picker**: Select multiple machines at once for bulk assignment
 - **Scheduled Reminders**: Automated notifications sent before scheduled start time
 - **Multi-Channel Notifications**: Support for WhatsApp and Email (console-based, upgradeable)
 - **Task Status Tracking**: pending → notified → completed → cancelled workflow
@@ -189,15 +193,17 @@ A comprehensive notification system that enables managers to assign machine star
 - **Reminder Configuration**: Customizable reminder time (default: 30 minutes before start)
 
 **Technical Implementation:**
-- **Database Schema**: `machine_startup_tasks` table with comprehensive fields
-  - Machine assignment with FK to machines table
-  - User assignment with FK to users table  
-  - Scheduled start time and reminder offset
-  - Status tracking (pending/notified/completed/cancelled)
-  - Notification sent timestamps
-  - WhatsApp/Email enable/disable flags
-  - Production date, shift, and notes
-  - Soft delete support via recordStatus field
+- **Database Schema**: 
+  - `machines` table enhanced with `warmup_time_minutes` field (nullable integer)
+  - `machine_startup_tasks` table with comprehensive fields
+    - Machine assignment with FK to machines table
+    - User assignment with FK to users table  
+    - Scheduled start time and reminder offset
+    - Status tracking (pending/notified/completed/cancelled)
+    - Notification sent timestamps
+    - WhatsApp/Email enable/disable flags
+    - Production date, shift, and notes
+    - Soft delete support via recordStatus field
 - **Backend Services**:
   - Notification service module (`server/notificationService.ts`)
   - Automated reminder checker (runs every 5 minutes via setInterval)
@@ -206,8 +212,14 @@ A comprehensive notification system that enables managers to assign machine star
   - Role-based access control (admin/manager for creation)
 - **Frontend UI**: 
   - Machine Startup Reminders page (`client/src/pages/machine-startup-reminders.tsx`)
+  - BulkMachineStartupAssignment component (`client/src/components/BulkMachineStartupAssignment.tsx`)
+    - Multi-select machine picker
+    - Single operator selection
+    - Auto-calculated reminder times based on warmup requirements
+    - Bulk task creation with single API call per machine
+  - AdminMachineConfig component enhanced with warmup time input field
   - Task creation dialog with date/time pickers
-  - Task list table with status badges
+  - Task list table with status badges showing warmup info
   - Complete/Cancel action buttons
   - Integrated into Admin Dashboard navigation under Production section
 
@@ -215,7 +227,8 @@ A comprehensive notification system that enables managers to assign machine star
 - Current: Console-based logging for both WhatsApp and Email
 - Upgradeable: Ready for Twilio (WhatsApp) and SendGrid/Resend (Email) integration
 - Configuration: Set API credentials via environment secrets when ready
-- Template: "🔔 REMINDER: Machine '[Machine Name]' is scheduled to start at [Time]. Please ensure it's ready for production."
+- Template: "REMINDER: Machine '[Machine Name]' is scheduled to start at [Time]. Please ensure it's ready for production."
+- Note: Emoji-free notification templates per project guidelines
 
 **Access Control:**
 - Admin/Manager: Create, edit, delete, view all tasks
@@ -234,15 +247,26 @@ A comprehensive notification system that enables managers to assign machine star
 - Uses existing user and machine master data
 - Audit trail via created_by field
 
+**Bulk Assignment Workflow:**
+1. Manager selects "Bulk Assignment" button
+2. Selects multiple machines from dropdown (supports search/filter)
+3. Selects operator to assign all machines to
+4. Sets production date and scheduled start time
+5. System automatically calculates reminder time for each machine based on its warmup requirement
+6. Optionally sets shift and notes (applied to all tasks)
+7. Enables WhatsApp/Email notifications (applied to all tasks)
+8. Submits once - creates individual tasks for each selected machine
+
 **Future Enhancements:**
 - Real WhatsApp integration via Twilio API
 - Real Email integration via SendGrid/Resend
 - SMS notification support
 - Operator mobile app for task acknowledgment
-- Recurring task templates
+- Recurring task templates (daily/weekly bulk assignments)
 - Task completion verification with photos
 - Machine startup checklist integration
 - Delay notification if machine not started on time
 - Dashboard widget showing today's startup schedule
+- Historical warmup time analytics per machine
 
-**Production Status**: ✅ Feature complete and operational. Sales dashboard available to Admin and Manager roles with proper authorization.
+**Production Status**: ✅ Feature complete and operational. Warmup time tracking and bulk assignment system ready for production use with 20+ machines. All 20 machines can be assigned to one operator in seconds.

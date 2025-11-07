@@ -142,9 +142,7 @@ export default function MachineStartupReminders() {
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await apiRequest(`/api/machine-startup-tasks/${id}`, {
-        method: 'DELETE',
-      });
+      return await apiRequest('DELETE', `/api/machine-startup-tasks/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/machine-startup-tasks'] });
