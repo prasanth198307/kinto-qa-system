@@ -1859,6 +1859,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Sales Analytics - Get aggregated sales data by time period
+  app.get('/api/sales-analytics', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { period = 'monthly', year } = req.query;
+      const currentYear = year ? parseInt(year as string) : new Date().getFullYear();
+
+      // Fetch all invoices and invoice items for the specified year
+      const allInvoices = await storage.getAllInvoices();
+      const yearInvoices = allInvoices.filter(inv => {
+        const invYear = new Date(inv.invoiceDate).getFullYear();
+        return invYear === currentYear && inv.recordStatus === 1;
+      });
+
+      // Fetch all invoice items in bulk to avoid N+1 queries
+      const invoiceIds = new Set(yearInvoices.map(inv => inv.id));
+      const allItems = await db.select().from(invoiceItems).where(eq(invoiceItems.recordStatus, 1));
+      const allInvoiceItems = allItems.filter(item => invoiceIds.has(item.invoiceId));
+
+      // Helper function to get period key and index from date
+      const getPeriodInfo = (date: Date, periodType: string) => {
+        const month = date.getMonth() + 1; // 1-12
+        if (periodType === 'monthly') {
+          return { key: `${currentYear}-${month.toString().padStart(2, '0')}`, index: month };
+        } else if (periodType === 'quarterly') {
+          const quarter = Math.ceil(month / 3);
+          return { key: `Q${quarter} ${currentYear}`, index: quarter };
+        } else if (periodType === 'half-yearly') {
+          const half = month <= 6 ? 1 : 2;
+          return { key: `${half === 1 ? 'H1' : 'H2'} ${currentYear}`, index: half };
+        } else { // yearly
+          return { key: `${currentYear}`, index: 1 };
+        }
+      };
+
+      // Aggregate data by period with numeric index for proper sorting
+      const periodData: Record<string, { revenue: number; quantity: number; invoiceCount: number; index: number }> = {};
+
+      yearInvoices.forEach(invoice => {
+        const periodInfo = getPeriodInfo(new Date(invoice.invoiceDate), period as string);
+        
+        if (!periodData[periodInfo.key]) {
+          periodData[periodInfo.key] = { revenue: 0, quantity: 0, invoiceCount: 0, index: periodInfo.index };
+        }
+
+        periodData[periodInfo.key].revenue += invoice.totalAmount;
+        periodData[periodInfo.key].invoiceCount += 1;
+      });
+
+      // Add quantities from invoice items
+      allInvoiceItems.forEach(item => {
+        const invoice = yearInvoices.find(inv => inv.id === item.invoiceId);
+        if (invoice) {
+          const periodInfo = getPeriodInfo(new Date(invoice.invoiceDate), period as string);
+          if (periodData[periodInfo.key]) {
+            periodData[periodInfo.key].quantity += item.quantity;
+          }
+        }
+      });
+
+      // Convert to array and sort by numeric index
+      const analytics = Object.entries(periodData).map(([period, data]) => ({
+        period,
+        revenue: data.revenue,
+        quantity: data.quantity,
+        invoiceCount: data.invoiceCount,
+        avgOrderValue: data.invoiceCount > 0 ? data.revenue / data.invoiceCount : 0,
+        periodIndex: data.index,
+      })).sort((a, b) => a.periodIndex - b.periodIndex);
+
+      // Calculate totals
+      const totals = {
+        totalRevenue: analytics.reduce((sum, p) => sum + p.revenue, 0),
+        totalQuantity: analytics.reduce((sum, p) => sum + p.quantity, 0),
+        totalInvoices: analytics.reduce((sum, p) => sum + p.invoiceCount, 0),
+        avgOrderValue: analytics.length > 0 ? analytics.reduce((sum, p) => sum + p.revenue, 0) / analytics.reduce((sum, p) => sum + p.invoiceCount, 0) : 0,
+      };
+
+      res.json({ analytics, totals, year: currentYear, period });
+    } catch (error) {
+      console.error("Error fetching sales analytics:", error);
+      res.status(500).json({ message: "Failed to fetch sales analytics" });
+    }
+  });
+
   // FIFO Payment Allocation - Allocate one payment across multiple outstanding invoices
   app.post('/api/invoice-payments/allocate-fifo', requireRole('admin', 'manager'), async (req: any, res) => {
     try {

@@ -127,3 +127,50 @@ A complete reporting and printing solution for all major operational documents:
 - Vendor payment statements
 
 **Production Status**: ✅ Feature complete and operational. Print functionality integrated across all three new report types. Ready for production use in manufacturing environment.
+
+### Sales Dashboard (COMPLETED - November 2025)
+A comprehensive sales analytics dashboard providing insights into revenue, goods sold, and turnover with flexible time period views.
+
+**Features:**
+- **Time Period Filters**: Monthly, Quarterly, Half-Yearly, and Yearly views
+- **Year Selection**: Current year plus past 5 years
+- **Summary Metrics**:
+  - Total Revenue (Turnover in ₹)
+  - Goods Sold (Total quantity of items sold)
+  - Total Orders (Invoice count)
+  - Average Order Value (Revenue per invoice)
+- **Period-wise Breakdown Table**: Detailed metrics for each period with totals
+- **Empty States**: Graceful handling when no sales data exists
+
+**Technical Implementation:**
+- Backend API: `/api/sales-analytics` with query parameters for period and year
+- Role-based access: Admin and Manager roles only
+- Bulk data fetching to avoid N+1 queries
+- Numeric period indexing for proper chronological sorting
+- Data aggregation from invoices and invoice items tables
+- Currency formatting in Indian Rupees (₹) with proper locale support
+
+**Data Sources:**
+- Invoice headers: Total revenue from `invoices.totalAmount` (stored in paise)
+- Invoice items: Quantity sold from `invoiceItems.quantity`
+- Aggregation by invoice date for period grouping
+
+**Access Control:**
+- Admin Dashboard: "Sales Dashboard" navigation item
+- Manager Dashboard: Should also have access (to be added)
+
+**Performance Optimizations:**
+- Single bulk query for all invoice items (not per-invoice)
+- Client-side period filtering by year
+- Cached queries via TanStack Query
+
+**Future Enhancements:**
+- Charts/visualizations (bar charts, line graphs, trend analysis)
+- Product-wise sales breakdown
+- Customer/vendor-wise analytics
+- Export to Excel/PDF functionality
+- Sales target tracking and comparison
+- Top selling products report
+- Payment collection analytics
+
+**Production Status**: ✅ Feature complete and operational. Sales dashboard available to Admin and Manager roles with proper authorization.

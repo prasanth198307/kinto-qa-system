@@ -38,7 +38,8 @@ import { ManagerChecklistAssignment } from "@/components/ManagerChecklistAssignm
 import PendingPaymentsDashboard from "@/components/PendingPaymentsDashboard";
 import { OperatorAssignedChecklists } from "@/components/OperatorAssignedChecklists";
 import { VerticalNavSidebar, type NavSection } from "@/components/VerticalNavSidebar";
-import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt } from "lucide-react";
+import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp } from "lucide-react";
+import SalesDashboard from "@/components/SalesDashboard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -363,6 +364,11 @@ function AdminDashboard() {
           label: "Overview",
           icon: LayoutDashboard,
         },
+        {
+          id: "sales-dashboard",
+          label: "Sales Dashboard",
+          icon: TrendingUp,
+        },
       ],
     },
     {
@@ -499,6 +505,12 @@ function AdminDashboard() {
       case 'gatepasses':
       case 'invoices':
         return <ProductionManagement activeTab={activeView} />;
+      case 'sales-dashboard':
+        return (
+          <div className="p-4">
+            <SalesDashboard />
+          </div>
+        );
       default:
         return (
           <div className="p-4 space-y-6">
