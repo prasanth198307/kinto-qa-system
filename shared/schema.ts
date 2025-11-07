@@ -4,6 +4,7 @@ import {
   jsonb,
   pgTable,
   timestamp,
+  date,
   varchar,
   text,
   integer,
@@ -166,6 +167,37 @@ export const insertTemplateTaskSchema = createInsertSchema(templateTasks).omit({
 
 export type InsertTemplateTask = z.infer<typeof insertTemplateTaskSchema>;
 export type TemplateTask = typeof templateTasks.$inferSelect;
+
+// Checklist assignments (Manager assigns to Operator)
+export const checklistAssignments = pgTable("checklist_assignments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  templateId: varchar("template_id").references(() => checklistTemplates.id).notNull(),
+  machineId: varchar("machine_id").references(() => machines.id).notNull(),
+  operatorId: varchar("operator_id").references(() => users.id).notNull(),
+  reviewerId: varchar("reviewer_id").references(() => users.id),
+  assignedDate: date("assigned_date").notNull(),
+  shift: varchar("shift", { length: 50 }),
+  status: varchar("status", { length: 50 }).default('pending'),
+  submissionId: varchar("submission_id").references(() => checklistSubmissions.id),
+  assignedBy: varchar("assigned_by").references(() => users.id).notNull(),
+  notes: text("notes"),
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertChecklistAssignmentSchema = createInsertSchema(checklistAssignments, {
+  assignedDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format"),
+}).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+  submissionId: true,
+});
+
+export type InsertChecklistAssignment = z.infer<typeof insertChecklistAssignmentSchema>;
+export type ChecklistAssignment = typeof checklistAssignments.$inferSelect;
 
 // Checklist submissions
 export const checklistSubmissions = pgTable("checklist_submissions", {
