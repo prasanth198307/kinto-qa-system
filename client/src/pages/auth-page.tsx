@@ -56,8 +56,8 @@ export default function AuthPage() {
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-background">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-primary">KINTO QA System</h1>
-            <p className="text-muted-foreground mt-2">Manufacturing Quality Assurance Management</p>
+            <h1 className="text-3xl font-bold text-primary">KINTO Operations & QA</h1>
+            <p className="text-muted-foreground mt-2">Manufacturing Operations & Quality Management</p>
           </div>
 
           <Card>
@@ -175,10 +175,10 @@ export default function AuthPage() {
       {/* Right side - Hero */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary to-blue-700 items-center justify-center p-12 text-white">
         <div className="max-w-lg">
-          <h2 className="text-4xl font-bold mb-6">Quality Assurance Made Simple</h2>
+          <h2 className="text-4xl font-bold mb-6">Complete Manufacturing Operations</h2>
           <p className="text-lg mb-8 text-blue-100">
-            Streamline your manufacturing quality control with our comprehensive QA management
-            system. Track inspections, manage preventive maintenance, and ensure product excellence.
+            Manage your entire manufacturing operations from inventory to quality assurance. Handle
+            production, materials, invoicing, gatepasses, and ensure product excellence - all in one system.
           </p>
           <div className="space-y-4">
             <div className="flex items-start gap-3">
@@ -193,9 +193,9 @@ export default function AuthPage() {
                 </svg>
               </div>
               <div>
-                <h3 className="font-semibold">Dynamic Checklists</h3>
+                <h3 className="font-semibold">Operations Management</h3>
                 <p className="text-sm text-blue-100">
-                  Create and manage quality inspection checklists for all your machines
+                  Handle production, inventory, purchase orders, invoicing, and gatepasses seamlessly
                 </p>
               </div>
             </div>
@@ -212,9 +212,9 @@ export default function AuthPage() {
                 </svg>
               </div>
               <div>
-                <h3 className="font-semibold">Preventive Maintenance</h3>
+                <h3 className="font-semibold">Quality Assurance</h3>
                 <p className="text-sm text-blue-100">
-                  Schedule and track maintenance tasks to keep equipment running smoothly
+                  Create checklists, track inspections, and manage preventive maintenance tasks
                 </p>
               </div>
             </div>
@@ -231,9 +231,9 @@ export default function AuthPage() {
                 </svg>
               </div>
               <div>
-                <h3 className="font-semibold">Spare Parts Management</h3>
+                <h3 className="font-semibold">Comprehensive Reporting</h3>
                 <p className="text-sm text-blue-100">
-                  Monitor inventory levels and generate purchase orders automatically
+                  Generate printable reports for invoices, gatepasses, materials, and quality data
                 </p>
               </div>
             </div>
