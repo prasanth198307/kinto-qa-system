@@ -1,11 +1,11 @@
 /**
  * Notification Service for Machine Startup Reminders
  * 
- * Currently logs notifications to console (like password reset system).
- * Can be upgraded to send real WhatsApp/Email notifications by:
- * 1. Adding Twilio integration for WhatsApp
- * 2. Adding SendGrid/Resend integration for Email
- * 3. Storing API credentials in environment secrets
+ * Supports both console logging (test mode) and real notification sending:
+ * - SendGrid for Email
+ * - Twilio for WhatsApp
+ * 
+ * Configuration stored in database, sensitive credentials in environment variables.
  */
 
 import { storage } from './storage';
@@ -36,10 +36,19 @@ export class NotificationService {
       emailSent: false
     };
 
+    // Fetch notification configuration from database
+    const config = await storage.getNotificationConfig();
+
     // Send WhatsApp notification if enabled
-    if (whatsappEnabled) {
+    if (whatsappEnabled && config?.whatsappEnabled === 1) {
       try {
-        await this.sendWhatsAppMessage(userMobile, userName, machineName, scheduledTime);
+        await this.sendWhatsAppMessage(
+          userMobile,
+          userName,
+          machineName,
+          scheduledTime,
+          config
+        );
         result.whatsappSent = true;
       } catch (error) {
         result.whatsappError = error instanceof Error ? error.message : 'WhatsApp send failed';
@@ -48,9 +57,15 @@ export class NotificationService {
     }
 
     // Send Email notification if enabled
-    if (emailEnabled) {
+    if (emailEnabled && config?.emailEnabled === 1) {
       try {
-        await this.sendEmailMessage(userEmail, userName, machineName, scheduledTime);
+        await this.sendEmailMessage(
+          userEmail,
+          userName,
+          machineName,
+          scheduledTime,
+          config
+        );
         result.emailSent = true;
       } catch (error) {
         result.emailError = error instanceof Error ? error.message : 'Email send failed';
@@ -62,19 +77,14 @@ export class NotificationService {
   }
 
   /**
-   * Send WhatsApp message (Currently logs to console)
-   * 
-   * TO UPGRADE: Replace with Twilio WhatsApp API
-   * - Install: npm install twilio
-   * - Add env: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_NUMBER
-   * - Create approved message template in Twilio console
-   * - Replace console.log with actual Twilio API call
+   * Send WhatsApp message via Twilio (or console in test mode)
    */
   private async sendWhatsAppMessage(
     mobile: string,
     userName: string,
     machineName: string,
-    scheduledTime: Date
+    scheduledTime: Date,
+    config: any
   ): Promise<void> {
     const formattedTime = scheduledTime.toLocaleString('en-IN', {
       dateStyle: 'medium',
@@ -94,36 +104,50 @@ Ensure the machine is properly warmed up before production begins.
 
 - KINTO QA System`;
 
-    // Console logging (like password reset system)
-    console.log('\n' + '='.repeat(60));
-    console.log('[WHATSAPP NOTIFICATION]');
-    console.log('='.repeat(60));
-    console.log(`To: ${mobile}`);
-    console.log(`Message:\n${message}`);
-    console.log('='.repeat(60) + '\n');
+    // Test mode OR missing environment variables - log to console
+    if (config.testMode === 1 || !process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN) {
+      console.log('\n' + '='.repeat(60));
+      console.log('[WHATSAPP NOTIFICATION - TEST MODE]');
+      console.log('='.repeat(60));
+      console.log(`To: ${mobile}`);
+      console.log(`Message:\n${message}`);
+      console.log('='.repeat(60) + '\n');
+      return;
+    }
 
-    // TODO: Replace with actual Twilio API call when ready
-    // const client = new Twilio(accountSid, authToken);
-    // await client.messages.create({
-    //   from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
-    //   to: `whatsapp:${mobile}`,
-    //   body: message
-    // });
+    // Production mode with environment variables configured
+    try {
+      const twilio = await import('twilio');
+      const client = twilio.default(
+        process.env.TWILIO_ACCOUNT_SID,
+        process.env.TWILIO_AUTH_TOKEN
+      );
+
+      const fromNumber = config.twilioPhoneNumber || 'whatsapp:+14155238886';
+      const toNumber = mobile.startsWith('whatsapp:') ? mobile : `whatsapp:+91${mobile}`;
+
+      await client.messages.create({
+        from: fromNumber,
+        to: toNumber,
+        body: message
+      });
+
+      console.log(`[WHATSAPP SENT] To: ${mobile}, Machine: ${machineName}`);
+    } catch (error) {
+      console.error('[WHATSAPP ERROR]', error);
+      throw error;
+    }
   }
 
   /**
-   * Send Email message (Currently logs to console)
-   * 
-   * TO UPGRADE: Replace with SendGrid/Resend API
-   * - Install: npm install @sendgrid/mail OR npm install resend
-   * - Add env: SENDGRID_API_KEY OR RESEND_API_KEY
-   * - Replace console.log with actual email API call
+   * Send Email message via SendGrid (or console in test mode)
    */
   private async sendEmailMessage(
     email: string,
     userName: string,
     machineName: string,
-    scheduledTime: Date
+    scheduledTime: Date,
+    config: any
   ): Promise<void> {
     const formattedTime = scheduledTime.toLocaleString('en-IN', {
       dateStyle: 'full',
@@ -168,39 +192,46 @@ Ensure the machine is properly warmed up before production begins.
 </html>
     `;
 
-    // Console logging (like password reset system)
-    console.log('\n' + '='.repeat(60));
-    console.log('[EMAIL NOTIFICATION]');
-    console.log('='.repeat(60));
-    console.log(`To: ${email}`);
-    console.log(`Subject: ${subject}`);
-    console.log(`Body (HTML): ${htmlBody}`);
-    console.log('='.repeat(60) + '\n');
+    // Test mode OR missing environment variable - log to console
+    if (config.testMode === 1 || !process.env.SENDGRID_API_KEY) {
+      console.log('\n' + '='.repeat(60));
+      console.log('[EMAIL NOTIFICATION - TEST MODE]');
+      console.log('='.repeat(60));
+      console.log(`To: ${email}`);
+      console.log(`Subject: ${subject}`);
+      console.log(`Body (HTML): ${htmlBody}`);
+      console.log('='.repeat(60) + '\n');
+      return;
+    }
 
-    // TODO: Replace with actual SendGrid/Resend API call when ready
-    // Using SendGrid:
-    // const sgMail = require('@sendgrid/mail');
-    // sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
-    // await sgMail.send({
-    //   to: email,
-    //   from: 'noreply@kinto.com',
-    //   subject,
-    //   html: htmlBody
-    // });
+    // Production mode with SendGrid API key configured
+    try {
+      const sgMail = await import('@sendgrid/mail');
+      sgMail.default.setApiKey(process.env.SENDGRID_API_KEY);
 
-    // Using Resend:
-    // const resend = new Resend(process.env.RESEND_API_KEY);
-    // await resend.emails.send({
-    //   from: 'KINTO QA <noreply@kinto.com>',
-    //   to: email,
-    //   subject,
-    //   html: htmlBody
-    // });
+      const from = config.senderEmail || 'noreply@kinto.com';
+      const fromName = config.senderName || 'KINTO QA System';
+
+      await sgMail.default.send({
+        to: email,
+        from: {
+          email: from,
+          name: fromName
+        },
+        subject,
+        html: htmlBody
+      });
+
+      console.log(`[EMAIL SENT] To: ${email}, Machine: ${machineName}`);
+    } catch (error) {
+      console.error('[EMAIL ERROR]', error);
+      throw error;
+    }
   }
 
   /**
    * Check for pending reminders and send notifications
-   * This should be called periodically (e.g., every minute via setInterval)
+   * This should be called periodically (e.g., every 5 minutes via setInterval)
    */
   async checkAndSendReminders(): Promise<void> {
     try {

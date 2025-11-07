@@ -31,6 +31,7 @@ import PMExecutionDialog from "@/components/PMExecutionDialog";
 import InventoryManagement from "@/pages/inventory-management";
 import ProductionManagement from "@/pages/production-management";
 import MachineStartupReminders from "@/pages/machine-startup-reminders";
+import NotificationSettings from "@/pages/notification-settings";
 import InventorySummaryDashboard from "@/components/InventorySummaryDashboard";
 import TodayProductionStats from "@/components/TodayProductionStats";
 import RolePermissionsView from "@/components/RolePermissionsView";
@@ -393,6 +394,7 @@ function AdminDashboard() {
             { id: "raw-materials", label: "Raw Materials", icon: Box },
             { id: "finished-goods", label: "Finished Goods", icon: CheckCircle2 },
             { id: "vendors", label: "Vendor Master", icon: Building2 },
+            { id: "notification-settings", label: "Notification Settings", icon: Bell },
           ],
         },
       ],
@@ -509,6 +511,8 @@ function AdminDashboard() {
         return <ProductionManagement activeTab={activeView} />;
       case 'machine-startup-reminders':
         return <MachineStartupReminders />;
+      case 'notification-settings':
+        return <NotificationSettings />;
       case 'sales-dashboard':
         return (
           <div className="p-4">
