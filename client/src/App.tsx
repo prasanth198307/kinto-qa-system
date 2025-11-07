@@ -35,6 +35,7 @@ import TodayProductionStats from "@/components/TodayProductionStats";
 import RolePermissionsView from "@/components/RolePermissionsView";
 import RoleManagement from "@/components/RoleManagement";
 import { ManagerChecklistAssignment } from "@/components/ManagerChecklistAssignment";
+import PendingPaymentsDashboard from "@/components/PendingPaymentsDashboard";
 import { OperatorAssignedChecklists } from "@/components/OperatorAssignedChecklists";
 import { VerticalNavSidebar, type NavSection } from "@/components/VerticalNavSidebar";
 import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt } from "lucide-react";
@@ -235,6 +236,7 @@ function ManagerDashboard() {
         { id: "purchase-orders", label: "Purchase Orders", icon: ShoppingCart },
         { id: "raw-material-issuance", label: "Raw Material Issuance", icon: Package },
         { id: "gatepasses", label: "Gatepasses", icon: FileText },
+        { id: "invoices", label: "Invoices", icon: FileText },
       ],
     },
   ];
@@ -251,6 +253,8 @@ function ManagerDashboard() {
               </Card>
 
               <TodayProductionStats />
+
+              <PendingPaymentsDashboard />
 
               <div>
                 <h3 className="text-base font-semibold mb-3">For Your Approval</h3>
@@ -414,6 +418,7 @@ function AdminDashboard() {
           <div className="p-4 space-y-6">
             <AdminDashboardOverview onNavigateToTab={setActiveView} />
             <TodayProductionStats />
+            <PendingPaymentsDashboard />
             <InventorySummaryDashboard />
           </div>
         );

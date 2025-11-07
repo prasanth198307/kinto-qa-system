@@ -52,6 +52,37 @@ A complete bulk payment allocation system for distributing payments across multi
 
 **Production Status**: ✅ Feature complete and architect-approved. Ready for production use. Pending: Manual testing with varied invoice scenarios.
 
+### Pending Payments Dashboard Widget (COMPLETED - November 2025)
+A dashboard widget displaying invoice-wise outstanding payment balances:
+
+**Components:**
+- **PendingPaymentsDashboard**: Dashboard widget showing invoices with outstanding payments
+  - Displays top 20 oldest invoices with pending payments (FIFO order)
+  - Shows invoice number, date, customer, total amount, paid amount, and outstanding balance
+  - Total outstanding amount prominently displayed
+  - Payment status badges (percentage paid)
+  - Pagination indicator when more than 20 pending invoices exist
+  - Empty state when all invoices are fully paid
+  - Proper loading states to prevent data flicker
+
+**Integration**: Displayed on both Admin and Manager Dashboard overview pages
+
+**Technical Details:**
+- Outstanding balance calculation: `max(0, totalAmount - sum(activePayments))` - clamped to prevent negative values
+- Limits display to 20 oldest invoices for performance
+- Sorts by invoice date ascending (oldest first)
+- Handles partial loading states (invoices vs payments)
+- Currency conversion: paise to rupees (÷100)
+- Test IDs for total outstanding amount
+
+**Future Improvements:**
+- Integrate with shared schema types for consistent monetary handling
+- Add overpayment indicator for invoices with excess payments
+- Implement clickthrough to full invoice list with all pending items
+- Add FIFO allocation awareness to match payment allocation logic
+
+**Production Status**: ✅ Feature complete and functional. Ready for dashboard use. Note: Currently uses ad-hoc types; future refactor should align with shared/schema.ts for consistency.
+
 ### GST-Compliant Invoice Generation Feature (COMPLETED)
 A complete invoice generation system integrated with gatepasses:
 
