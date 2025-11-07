@@ -37,7 +37,7 @@ import RoleManagement from "@/components/RoleManagement";
 import { ManagerChecklistAssignment } from "@/components/ManagerChecklistAssignment";
 import { OperatorAssignedChecklists } from "@/components/OperatorAssignedChecklists";
 import { VerticalNavSidebar, type NavSection } from "@/components/VerticalNavSidebar";
-import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2 } from "lucide-react";
+import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -280,6 +280,7 @@ function ManagerDashboard() {
         );
       case 'raw-material-issuance':
       case 'gatepasses':
+      case 'invoices':
         return <ProductionManagement activeTab={activeView} />;
       default:
         return (
@@ -399,6 +400,7 @@ function AdminDashboard() {
           children: [
             { id: "raw-material-issuance", label: "Raw Material Issuance", icon: Package },
             { id: "gatepasses", label: "Gatepasses", icon: FileText },
+            { id: "invoices", label: "Sales Invoices", icon: Receipt },
           ],
         },
       ],
@@ -490,6 +492,7 @@ function AdminDashboard() {
         return <InventoryManagement activeTab={activeView} />;
       case 'raw-material-issuance':
       case 'gatepasses':
+      case 'invoices':
         return <ProductionManagement activeTab={activeView} />;
       default:
         return (
