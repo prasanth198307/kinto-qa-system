@@ -7,6 +7,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Plus, Package, FileText } from "lucide-react";
 import RawMaterialIssuanceForm from "@/components/RawMaterialIssuanceForm";
 import GatepassForm from "@/components/GatepassForm";
+import InvoiceForm from "@/components/InvoiceForm";
 import RawMaterialIssuanceTable from "@/components/RawMaterialIssuanceTable";
 import GatepassTable from "@/components/GatepassTable";
 import InvoiceTable from "@/components/InvoiceTable";
@@ -20,8 +21,10 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
   const [activeTab, setActiveTab] = useState(externalActiveTab || "raw-material-issuance");
   const [showIssuanceForm, setShowIssuanceForm] = useState(false);
   const [showGatepassForm, setShowGatepassForm] = useState(false);
+  const [showInvoiceForm, setShowInvoiceForm] = useState(false);
   const [editingIssuance, setEditingIssuance] = useState<RawMaterialIssuance | null>(null);
   const [editingGatepass, setEditingGatepass] = useState<Gatepass | null>(null);
+  const [selectedGatepassForInvoice, setSelectedGatepassForInvoice] = useState<Gatepass | null>(null);
   const { toast } = useToast();
 
   // Update activeTab when externalActiveTab changes
@@ -133,13 +136,6 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
     }
   };
 
-  const handleViewInvoice = (invoice: Invoice) => {
-    toast({
-      title: "Invoice Details",
-      description: `Invoice ${invoice.invoiceNumber} - ${invoice.buyerName}`,
-    });
-  };
-
   const handleIssuanceFormClose = () => {
     setShowIssuanceForm(false);
     setEditingIssuance(null);
@@ -148,6 +144,16 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
   const handleGatepassFormClose = () => {
     setShowGatepassForm(false);
     setEditingGatepass(null);
+  };
+
+  const handleGenerateInvoice = (gatepass: Gatepass) => {
+    setSelectedGatepassForInvoice(gatepass);
+    setShowInvoiceForm(true);
+  };
+
+  const handleInvoiceFormClose = () => {
+    setShowInvoiceForm(false);
+    setSelectedGatepassForInvoice(null);
   };
 
   const renderContent = () => {
@@ -208,11 +214,21 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
               </div>
             )}
 
+            {showInvoiceForm && (
+              <div className="mb-4">
+                <InvoiceForm
+                  gatepass={selectedGatepassForInvoice || undefined}
+                  onClose={handleInvoiceFormClose}
+                />
+              </div>
+            )}
+
             <GatepassTable
               gatepasses={gatepasses}
               isLoading={isLoadingGatepasses}
               onEdit={handleEditGatepass}
               onDelete={handleDeleteGatepass}
+              onGenerateInvoice={handleGenerateInvoice}
             />
           </Card>
         );
@@ -227,7 +243,6 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
               invoices={invoices}
               isLoading={isLoadingInvoices}
               onDelete={handleDeleteInvoice}
-              onView={handleViewInvoice}
             />
           </Card>
         );

@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Edit, Trash2 } from "lucide-react";
+import { Edit, Trash2, FileText } from "lucide-react";
 import { format } from "date-fns";
 import type { Gatepass, GatepassItem, FinishedGood, Product, User, Vendor } from "@shared/schema";
 import PrintableGatepass from "./PrintableGatepass";
@@ -19,6 +19,7 @@ interface GatepassTableProps {
   isLoading: boolean;
   onEdit: (gatepass: Gatepass) => void;
   onDelete: (id: string) => void;
+  onGenerateInvoice?: (gatepass: Gatepass) => void;
 }
 
 function GatepassItems({ gatepassId, products, finishedGoods }: { gatepassId: string; products: Product[]; finishedGoods: FinishedGood[] }) {
@@ -55,7 +56,7 @@ function GatepassItems({ gatepassId, products, finishedGoods }: { gatepassId: st
   );
 }
 
-export default function GatepassTable({ gatepasses, isLoading, onEdit, onDelete }: GatepassTableProps) {
+export default function GatepassTable({ gatepasses, isLoading, onEdit, onDelete, onGenerateInvoice }: GatepassTableProps) {
   const { data: products = [] } = useQuery<Product[]>({
     queryKey: ['/api/products'],
   });
@@ -160,6 +161,17 @@ export default function GatepassTable({ gatepasses, isLoading, onEdit, onDelete 
               <TableCell>
                 <div className="flex gap-2">
                   <PrintableGatepass gatepass={gatepass} />
+                  {onGenerateInvoice && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onGenerateInvoice(gatepass)}
+                      data-testid={`button-generate-invoice-${gatepass.id}`}
+                      title="Generate Invoice"
+                    >
+                      <FileText className="w-4 h-4 text-primary" />
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="sm"

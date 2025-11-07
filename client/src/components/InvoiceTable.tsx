@@ -1,17 +1,17 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Trash2, FileText } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import type { Invoice } from "@shared/schema";
 import { format } from "date-fns";
+import PrintableInvoice from "./PrintableInvoice";
 
 interface InvoiceTableProps {
   invoices: Invoice[];
   isLoading: boolean;
   onDelete?: (invoice: Invoice) => void;
-  onView?: (invoice: Invoice) => void;
 }
 
-export default function InvoiceTable({ invoices, isLoading, onDelete, onView }: InvoiceTableProps) {
+export default function InvoiceTable({ invoices, isLoading, onDelete }: InvoiceTableProps) {
   if (isLoading) {
     return <div className="text-center py-8" data-testid="loading-invoices">Loading invoices...</div>;
   }
@@ -60,26 +60,16 @@ export default function InvoiceTable({ invoices, isLoading, onDelete, onView }: 
                 </TableCell>
                 <TableCell data-testid={`actions-${invoice.id}`}>
                   <div className="flex gap-2">
-                    {onView && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onView(invoice)}
-                        data-testid={`button-view-${invoice.id}`}
-                        title="View Invoice"
-                      >
-                        <FileText className="w-4 h-4" />
-                      </Button>
-                    )}
+                    <PrintableInvoice invoice={invoice} />
                     {onDelete && (
                       <Button
                         variant="ghost"
-                        size="icon"
+                        size="sm"
                         onClick={() => onDelete(invoice)}
                         data-testid={`button-delete-${invoice.id}`}
                         title="Delete Invoice"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-4 h-4 text-destructive" />
                       </Button>
                     )}
                   </div>
