@@ -1868,9 +1868,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Vendor ID and valid payment amount are required" });
       }
 
+      // Get the vendor to verify it exists and get the vendor name
+      const vendor = await storage.getVendor(vendorId);
+      if (!vendor) {
+        return res.status(404).json({ message: "Vendor not found" });
+      }
+
       // Get all outstanding invoices for this vendor, ordered by invoice date (FIFO)
       const allInvoices = await storage.getAllInvoices();
-      const vendorInvoices = allInvoices.filter(inv => inv.buyerName === vendorId);
+      const vendorInvoices = allInvoices.filter(inv => inv.buyerName === vendor.vendorName);
 
       if (vendorInvoices.length === 0) {
         return res.status(404).json({ message: "No invoices found for this vendor" });

@@ -8,6 +8,50 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (November 2025)
 
+### FIFO Payment Allocation Feature (COMPLETED - November 2025)
+A complete bulk payment allocation system for distributing payments across multiple outstanding invoices:
+
+**Components:**
+- **FIFOPaymentAllocation**: Comprehensive form for entering bulk payment details with real-time allocation preview
+  - Vendor selection dropdown linked to vendor master
+  - Payment amount input with automatic paise conversion (×100)
+  - Payment date, method, reference number, bank selection, and remarks fields
+  - Allocation preview table showing which invoices received payments
+  - "Close and Return" button to return to invoice list after viewing allocation
+  
+- **Backend API**: POST `/api/invoice-payments/allocate-fifo`
+  - Requires admin or manager role authorization
+  - Validates vendor existence by ID lookup
+  - Retrieves all invoices for the vendor
+  - Calculates outstanding balance for each invoice (total - sum of payments)
+  - Sorts invoices by invoice date ascending (FIFO - oldest first)
+  - Allocates payment to invoices in order until exhausted
+  - Creates individual payment records for each allocation
+  - Comprehensive audit logging for each payment created
+  - Returns allocation summary with detailed breakdown
+
+**Integration**: Located in Production Management → Invoices Tab → "FIFO Payment Allocation" button
+
+**Workflow**: 
+1. User clicks "FIFO Payment Allocation" button in Invoices tab
+2. Dialog opens with payment entry form
+3. User selects vendor, enters payment amount and details
+4. Clicks "Allocate Payment (FIFO)" to submit
+5. System allocates to oldest outstanding invoices first
+6. Allocation preview displays showing which invoices were paid
+7. User reviews allocation and clicks "Close and Return"
+
+**Technical Details:**
+- Payment amounts stored in paise (multiply by 100) for precision
+- Vendor lookup by ID, invoice filtering by vendor name
+- FIFO ordering: `sort((a, b) => new Date(a.invoiceDate).getTime() - new Date(b.invoiceDate).getTime())`
+- Partial allocations when payment doesn't cover all outstanding invoices
+- Each allocation creates separate payment record with proper invoice linkage
+- Form disabled after submission to prevent duplicate allocations
+- Full error handling for missing vendor, no invoices, no outstanding balance
+
+**Production Status**: ✅ Feature complete and architect-approved. Ready for production use. Pending: Manual testing with varied invoice scenarios.
+
 ### GST-Compliant Invoice Generation Feature (COMPLETED)
 A complete invoice generation system integrated with gatepasses:
 

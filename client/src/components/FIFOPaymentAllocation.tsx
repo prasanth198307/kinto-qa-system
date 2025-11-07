@@ -101,7 +101,7 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
         title: "Success",
         description: `Payment allocated to ${data.allocations.length} invoice(s)`,
       });
-      if (onSuccess) onSuccess();
+      // Don't close dialog immediately - let user see the allocation preview
     },
     onError: (error: Error) => {
       toast({
@@ -143,7 +143,7 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                         </FormControl>
                         <SelectContent>
                           {vendors.map((vendor: any) => (
-                            <SelectItem key={vendor.id} value={vendor.vendorName}>
+                            <SelectItem key={vendor.id} value={vendor.id}>
                               {vendor.vendorName}
                             </SelectItem>
                           ))}
@@ -281,12 +281,28 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                 )}
                 <Button
                   type="submit"
-                  disabled={allocateMutation.isPending}
+                  disabled={allocateMutation.isPending || allocationPreview !== null}
                   data-testid="button-allocate"
                 >
                   {allocateMutation.isPending ? "Allocating..." : "Allocate Payment (FIFO)"}
                 </Button>
               </div>
+              {allocationPreview && (
+                <div className="mt-4">
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setAllocationPreview(null);
+                      form.reset();
+                      if (onSuccess) onSuccess();
+                    }}
+                    className="w-full"
+                    data-testid="button-close-preview"
+                  >
+                    Close and Return
+                  </Button>
+                </div>
+              )}
             </form>
           </Form>
         </CardContent>
