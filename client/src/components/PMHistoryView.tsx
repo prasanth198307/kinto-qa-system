@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
 import { CheckCircle2, XCircle, Calendar, User, FileText, Image as ImageIcon, ChevronRight } from "lucide-react";
 import type { PMExecution, PMExecutionTask, PMTemplateTask, PMTaskListTemplate, MaintenancePlan, User as UserType, Machine } from "@shared/schema";
+import PrintablePMExecution from "@/components/PrintablePMExecution";
 
 interface PMExecutionWithDetails extends PMExecution {
   tasks?: PMExecutionTask[];
@@ -157,10 +158,15 @@ export function PMHistoryView() {
       <Dialog open={!!selectedExecution} onOpenChange={() => setSelectedExecution(null)}>
         <DialogContent className="max-w-4xl max-h-[90vh]" data-testid="dialog-execution-details">
           <DialogHeader>
-            <DialogTitle>PM Execution Details</DialogTitle>
-            <DialogDescription>
-              Completed on {selectedExecution?.completedAt ? format(new Date(selectedExecution.completedAt), 'MMMM dd, yyyy') : 'Unknown date'}
-            </DialogDescription>
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <DialogTitle>PM Execution Details</DialogTitle>
+                <DialogDescription>
+                  Completed on {selectedExecution?.completedAt ? format(new Date(selectedExecution.completedAt), 'MMMM dd, yyyy') : 'Unknown date'}
+                </DialogDescription>
+              </div>
+              {selectedExecution && <PrintablePMExecution execution={selectedExecution} />}
+            </div>
           </DialogHeader>
 
           <ScrollArea className="max-h-[70vh]">

@@ -53,3 +53,77 @@ Development uses `npm run dev` for a Vite dev server with an `tsx`-powered Expre
 
 ### Styling
 - **Google Fonts**
+
+## Key Features
+
+### Comprehensive Reporting System (COMPLETED - November 2025)
+A complete reporting and printing solution for all major operational documents:
+
+**Implemented Reports:**
+
+1. **Raw Material Issuance Report (PrintableRawMaterialIssuance)**
+   - Company header with KINTO branding
+   - Issuance number, date, and issued-to details
+   - Product-for-manufacturing information
+   - Multi-item table with raw material details, quantities, and UOM
+   - Signature blocks (Issued By, Received By, Authorized Signatory)
+   - Browser print dialog integration
+   - Integrated into RawMaterialIssuanceTable with print button for each issuance
+
+2. **Purchase Order Report (PrintablePurchaseOrder)**
+   - Professional PO format with company header
+   - Supplier details section
+   - Order details: status, urgency, delivery dates
+   - Items table with part details, quantities, and pricing
+   - Total amount calculation with rupee formatting
+   - Terms & conditions section (payment, delivery, inspection, warranty)
+   - Signature blocks (Prepared By, Approved By, Authorized Signatory)
+   - Integrated into PurchaseOrderManagement with print button for each PO
+
+3. **PM Execution Report (PrintablePMExecution)**
+   - Maintenance execution documentation
+   - Machine details (name, type, location)
+   - Execution details (date, status, result, downtime hours)
+   - Spare parts used section
+   - Detailed tasks table with results (Pass/Fail/N/A)
+   - Execution summary with task statistics
+   - Color-coded results (green=pass, red=fail, gray=N/A)
+   - Signature blocks (Completed By, Verified By, Authorized Signatory)
+   - Integrated into PMHistoryView dialog with print button
+
+**Technical Implementation:**
+- All reports use print-optimized HTML/CSS with A4 page sizing (210mm x 297mm)
+- Auto-print on window load with auto-close after printing
+- Consistent styling across all reports (company branding, fonts, layout)
+- Data fetching via TanStack Query for related entities
+- Print preview via hidden div with full report rendering
+- Mobile-responsive print buttons in management UIs
+
+**Print Features:**
+- Browser native print dialog
+- Print-optimized CSS with proper page breaks
+- Company branding on all documents
+- Professional formatting suitable for business records
+- Signature blocks for authorization tracking
+- Computer-generated document disclaimers
+
+**Integration Points:**
+- Raw Material Issuance: Production Management > Raw Material Issuance tab
+- Purchase Orders: Operations > Purchase Orders page
+- PM Executions: Operations > PM History page
+
+**Existing Reports (Previously Implemented):**
+- Gatepass (3-copy format with PrintableGatepass component)
+- GST-Compliant Invoice (PrintableInvoice component)
+
+**Future Enhancements:**
+- PDF generation and download (server-side)
+- Email report functionality
+- Batch printing of multiple documents
+- Export to Excel/CSV for data analysis reports
+- Custom report templates/branding configuration
+- Inventory stock reports
+- Sales summary reports
+- Vendor payment statements
+
+**Production Status**: ✅ Feature complete and operational. Print functionality integrated across all three new report types. Ready for production use in manufacturing environment.

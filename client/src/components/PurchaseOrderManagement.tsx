@@ -11,6 +11,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { PurchaseOrder, SparePartCatalog } from "@shared/schema";
 import { Package, AlertTriangle, CheckCircle, Clock, Plus, Trash2 } from "lucide-react";
+import PrintablePurchaseOrder from "@/components/PrintablePurchaseOrder";
 
 export default function PurchaseOrderManagement() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -227,14 +228,17 @@ export default function PurchaseOrderManagement() {
                         {po.expectedDeliveryDate && <p>Expected Delivery: {new Date(po.expectedDeliveryDate).toLocaleDateString()}</p>}
                       </div>
                     </div>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleDeletePO(po.id)}
-                      data-testid={`button-delete-po-${po.id}`}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex gap-2">
+                      <PrintablePurchaseOrder po={po} />
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDeletePO(po.id)}
+                        data-testid={`button-delete-po-${po.id}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </Card>
               );
