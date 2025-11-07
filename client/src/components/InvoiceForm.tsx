@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Plus, Trash2, X } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { Gatepass, Product, Vendor, GatepassItem, FinishedGood } from "@shared/schema";
+import type { Gatepass, Product, Vendor, GatepassItem, FinishedGood, Bank, Invoice } from "@shared/schema";
 
 const invoiceFormSchema = z.object({
   gatepassId: z.string().optional(),
@@ -53,12 +53,14 @@ type InvoiceFormData = z.infer<typeof invoiceFormSchema>;
 
 interface InvoiceFormProps {
   gatepass?: Gatepass;
+  invoice?: Invoice;
   onClose: () => void;
 }
 
-export default function InvoiceForm({ gatepass, onClose }: InvoiceFormProps) {
+export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormProps) {
   const { toast } = useToast();
   const [isIntrastateSupply, setIsIntrastateSupply] = useState(true);
+  const [selectedBankId, setSelectedBankId] = useState<string>("");
 
   const { data: products = [] } = useQuery<Product[]>({
     queryKey: ['/api/products'],
@@ -66,6 +68,10 @@ export default function InvoiceForm({ gatepass, onClose }: InvoiceFormProps) {
 
   const { data: vendors = [] } = useQuery<Vendor[]>({
     queryKey: ['/api/vendors'],
+  });
+
+  const { data: banks = [] } = useQuery<Bank[]>({
+    queryKey: ['/api/banks'],
   });
 
   const { data: gatepassItems = [] } = useQuery<GatepassItem[]>({
@@ -78,9 +84,39 @@ export default function InvoiceForm({ gatepass, onClose }: InvoiceFormProps) {
     enabled: !!gatepass,
   });
 
+  const { data: invoiceItems = [] } = useQuery<any[]>({
+    queryKey: invoice ? [`/api/invoice-items/${invoice.id}`] : [],
+    enabled: !!invoice,
+  });
+
   const form = useForm<InvoiceFormData>({
     resolver: zodResolver(invoiceFormSchema),
-    defaultValues: {
+    defaultValues: invoice ? {
+      gatepassId: invoice.gatepassId || "",
+      invoiceDate: new Date(invoice.invoiceDate).toISOString().split('T')[0],
+      sellerName: invoice.sellerName || "KINTO Manufacturing",
+      sellerAddress: invoice.sellerAddress || "Industrial Area, Phase 1",
+      sellerState: invoice.sellerState || "Karnataka",
+      sellerStateCode: invoice.sellerStateCode || "29",
+      sellerGstin: invoice.sellerGstin || "29AAAAA0000A1Z5",
+      buyerName: invoice.buyerName || "",
+      buyerGstin: invoice.buyerGstin || "",
+      buyerAddress: invoice.buyerAddress || "",
+      buyerState: invoice.buyerState || "Karnataka",
+      buyerStateCode: invoice.buyerStateCode || "29",
+      items: [{
+        productId: "",
+        description: "",
+        hsnCode: "",
+        quantity: 1,
+        unitPrice: 0,
+        gstRate: 18,
+      }],
+      bankName: invoice.bankName || "",
+      bankAccountNumber: invoice.bankAccountNumber || "",
+      bankIfscCode: invoice.bankIfscCode || "",
+      upiId: invoice.upiId || "",
+    } : {
       gatepassId: gatepass?.id || "",
       invoiceDate: new Date().toISOString().split('T')[0],
       sellerName: "KINTO Manufacturing",
@@ -101,12 +137,26 @@ export default function InvoiceForm({ gatepass, onClose }: InvoiceFormProps) {
         unitPrice: 0,
         gstRate: 18,
       }],
-      bankName: "State Bank of India",
-      bankAccountNumber: "12345678901234",
-      bankIfscCode: "SBIN0001234",
-      upiId: "kinto@sbi",
+      bankName: "",
+      bankAccountNumber: "",
+      bankIfscCode: "",
+      upiId: "",
     },
   });
+
+  // Auto-select default bank on load
+  useEffect(() => {
+    if (banks.length > 0 && !invoice) {
+      const defaultBank = banks.find(b => b.isDefault === 1) || banks[0];
+      if (defaultBank) {
+        setSelectedBankId(defaultBank.id);
+        form.setValue("bankName", defaultBank.bankName);
+        form.setValue("bankAccountNumber", defaultBank.accountNumber);
+        form.setValue("bankIfscCode", defaultBank.ifscCode);
+        form.setValue("upiId", defaultBank.upiId || "");
+      }
+    }
+  }, [banks, invoice, form]);
 
   // Pre-populate buyer details from vendor/customer when data loads
   useEffect(() => {
@@ -124,10 +174,24 @@ export default function InvoiceForm({ gatepass, onClose }: InvoiceFormProps) {
     }
   }, [gatepass, vendors, form]);
 
-  // Pre-populate invoice items from gatepass items
+  // Pre-populate invoice items from gatepass items or existing invoice
   useEffect(() => {
-    if (gatepassItems.length > 0 && products.length > 0) {
-      const invoiceItems = gatepassItems.map(item => {
+    if (invoice && invoiceItems.length > 0) {
+      // Edit mode - populate from existing invoice items
+      const formItems = invoiceItems.map(item => ({
+        productId: item.productId || "",
+        description: item.description || "",
+        hsnCode: item.hsnCode || "",
+        quantity: item.quantity || 1,
+        unitPrice: (item.unitPrice || 0) / 100, // Convert from paise
+        gstRate: isIntrastateSupply 
+          ? ((item.cgstRate || 0) / 50) // Convert from basis points, cgst+sgst = full rate
+          : ((item.igstRate || 0) / 100), // Convert from basis points
+      }));
+      form.setValue("items", formItems);
+    } else if (gatepassItems.length > 0 && products.length > 0) {
+      // Create mode - populate from gatepass items
+      const formItems = gatepassItems.map(item => {
         const fg = finishedGoods.find(f => f.id === item.finishedGoodId);
         const product = fg 
           ? products.find(p => p.id === fg.productId)
@@ -143,9 +207,9 @@ export default function InvoiceForm({ gatepass, onClose }: InvoiceFormProps) {
         };
       });
       
-      form.setValue("items", invoiceItems);
+      form.setValue("items", formItems);
     }
-  }, [gatepassItems, products, finishedGoods, form]);
+  }, [invoice, invoiceItems, gatepassItems, products, finishedGoods, form, isIntrastateSupply]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -265,16 +329,22 @@ export default function InvoiceForm({ gatepass, onClose }: InvoiceFormProps) {
         };
       });
 
-      return await apiRequest('POST', '/api/invoices', {
-        header: invoiceHeader,
-        items: invoiceItems,
-      });
+      if (invoice) {
+        // Edit mode - update existing invoice
+        return await apiRequest('PATCH', `/api/invoices/${invoice.id}`, invoiceHeader);
+      } else {
+        // Create mode
+        return await apiRequest('POST', '/api/invoices', {
+          header: invoiceHeader,
+          items: invoiceItems,
+        });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
       toast({
         title: "Success",
-        description: "Invoice created successfully",
+        description: invoice ? "Invoice updated successfully" : "Invoice created successfully",
       });
       onClose();
     },
@@ -514,6 +584,77 @@ export default function InvoiceForm({ gatepass, onClose }: InvoiceFormProps) {
           </div>
         </Card>
 
+        {/* Payment Details */}
+        <div className="space-y-4">
+          <h3 className="font-semibold text-lg">Payment Details</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <Label>Select Bank Account</Label>
+              <Select
+                value={selectedBankId}
+                onValueChange={(value) => {
+                  setSelectedBankId(value);
+                  const bank = banks.find(b => b.id === value);
+                  if (bank) {
+                    form.setValue("bankName", bank.bankName);
+                    form.setValue("bankAccountNumber", bank.accountNumber);
+                    form.setValue("bankIfscCode", bank.ifscCode);
+                    form.setValue("upiId", bank.upiId || "");
+                  }
+                }}
+              >
+                <SelectTrigger data-testid="select-bank">
+                  <SelectValue placeholder="Select bank account" />
+                </SelectTrigger>
+                <SelectContent>
+                  {banks.map((bank) => (
+                    <SelectItem key={bank.id} value={bank.id}>
+                      {bank.bankName} - {bank.accountNumber}
+                      {bank.isDefault === 1 && " (Default)"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {selectedBankId && (
+              <>
+                <div>
+                  <Label>Bank Name</Label>
+                  <Input
+                    value={form.watch("bankName")}
+                    disabled
+                    className="bg-muted"
+                  />
+                </div>
+                <div>
+                  <Label>Account Number</Label>
+                  <Input
+                    value={form.watch("bankAccountNumber")}
+                    disabled
+                    className="bg-muted"
+                  />
+                </div>
+                <div>
+                  <Label>IFSC Code</Label>
+                  <Input
+                    value={form.watch("bankIfscCode")}
+                    disabled
+                    className="bg-muted"
+                  />
+                </div>
+                <div>
+                  <Label>UPI ID</Label>
+                  <Input
+                    value={form.watch("upiId")}
+                    disabled
+                    className="bg-muted"
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
         {/* Remarks */}
         <div>
           <Label htmlFor="remarks">Remarks</Label>
@@ -531,7 +672,10 @@ export default function InvoiceForm({ gatepass, onClose }: InvoiceFormProps) {
             Cancel
           </Button>
           <Button type="submit" disabled={createInvoiceMutation.isPending} data-testid="button-generate-invoice">
-            {createInvoiceMutation.isPending ? "Generating..." : "Generate Invoice"}
+            {createInvoiceMutation.isPending 
+              ? (invoice ? "Updating..." : "Generating...") 
+              : (invoice ? "Update Invoice" : "Generate Invoice")
+            }
           </Button>
         </div>
       </form>

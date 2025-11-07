@@ -1,6 +1,6 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Trash2 } from "lucide-react";
+import { Trash2, Edit } from "lucide-react";
 import type { Invoice } from "@shared/schema";
 import { format } from "date-fns";
 import PrintableInvoice from "./PrintableInvoice";
@@ -8,10 +8,11 @@ import PrintableInvoice from "./PrintableInvoice";
 interface InvoiceTableProps {
   invoices: Invoice[];
   isLoading: boolean;
+  onEdit?: (invoice: Invoice) => void;
   onDelete?: (invoice: Invoice) => void;
 }
 
-export default function InvoiceTable({ invoices, isLoading, onDelete }: InvoiceTableProps) {
+export default function InvoiceTable({ invoices, isLoading, onEdit, onDelete }: InvoiceTableProps) {
   if (isLoading) {
     return <div className="text-center py-8" data-testid="loading-invoices">Loading invoices...</div>;
   }
@@ -60,6 +61,17 @@ export default function InvoiceTable({ invoices, isLoading, onDelete }: InvoiceT
                 </TableCell>
                 <TableCell data-testid={`actions-${invoice.id}`}>
                   <div className="flex gap-2">
+                    {onEdit && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onEdit(invoice)}
+                        data-testid={`button-edit-${invoice.id}`}
+                        title="Edit Invoice"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                    )}
                     <PrintableInvoice invoice={invoice} />
                     {onDelete && (
                       <Button

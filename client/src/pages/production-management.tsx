@@ -24,6 +24,7 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
   const [showInvoiceForm, setShowInvoiceForm] = useState(false);
   const [editingIssuance, setEditingIssuance] = useState<RawMaterialIssuance | null>(null);
   const [editingGatepass, setEditingGatepass] = useState<Gatepass | null>(null);
+  const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [selectedGatepassForInvoice, setSelectedGatepassForInvoice] = useState<Gatepass | null>(null);
   const { toast } = useToast();
 
@@ -130,6 +131,11 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
     }
   };
 
+  const handleEditInvoice = (invoice: Invoice) => {
+    setEditingInvoice(invoice);
+    setShowInvoiceForm(true);
+  };
+
   const handleDeleteInvoice = (invoice: Invoice) => {
     if (confirm("Are you sure you want to delete this invoice?")) {
       deleteInvoiceMutation.mutate(invoice.id);
@@ -146,14 +152,15 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
     setEditingGatepass(null);
   };
 
+  const handleInvoiceFormClose = () => {
+    setShowInvoiceForm(false);
+    setEditingInvoice(null);
+    setSelectedGatepassForInvoice(null);
+  };
+
   const handleGenerateInvoice = (gatepass: Gatepass) => {
     setSelectedGatepassForInvoice(gatepass);
     setShowInvoiceForm(true);
-  };
-
-  const handleInvoiceFormClose = () => {
-    setShowInvoiceForm(false);
-    setSelectedGatepassForInvoice(null);
   };
 
   const renderContent = () => {
@@ -218,6 +225,7 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
               <div className="mb-4">
                 <InvoiceForm
                   gatepass={selectedGatepassForInvoice || undefined}
+                  invoice={editingInvoice || undefined}
                   onClose={handleInvoiceFormClose}
                 />
               </div>
@@ -242,6 +250,7 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
             <InvoiceTable
               invoices={invoices}
               isLoading={isLoadingInvoices}
+              onEdit={handleEditInvoice}
               onDelete={handleDeleteInvoice}
             />
           </Card>
