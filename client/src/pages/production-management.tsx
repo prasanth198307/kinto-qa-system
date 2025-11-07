@@ -263,16 +263,36 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
           <Card className="p-4">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold">Sales Invoices</h2>
-              <Button 
-                onClick={() => setShowFIFODialog(true)} 
-                size="sm"
-                variant="outline"
-                data-testid="button-fifo-allocation"
-              >
-                <FileText className="w-4 h-4 mr-2" />
-                FIFO Payment Allocation
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={() => setShowInvoiceForm(true)} 
+                  size="sm"
+                  data-testid="button-create-invoice"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Sales Invoice
+                </Button>
+                <Button 
+                  onClick={() => setShowFIFODialog(true)} 
+                  size="sm"
+                  variant="outline"
+                  data-testid="button-fifo-allocation"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  FIFO Payment Allocation
+                </Button>
+              </div>
             </div>
+
+            {showInvoiceForm && (
+              <div className="mb-4">
+                <InvoiceForm
+                  gatepass={selectedGatepassForInvoice || undefined}
+                  invoice={editingInvoice || undefined}
+                  onClose={handleInvoiceFormClose}
+                />
+              </div>
+            )}
 
             <InvoiceTable
               invoices={invoices}

@@ -11,6 +11,10 @@ Preferred communication style: Simple, everyday language.
 ### Frontend Architecture
 The frontend uses React 18 with TypeScript, Vite, and Wouter for routing. UI components are built with shadcn/ui (Radix UI) and styled using Tailwind CSS, following a "New York" theme with Material Design principles. TanStack Query manages server state. The design is mobile-first, featuring a custom color palette, typography, spacing, and elevation. Navigation uses a Vertical Sidebar system with role-based dashboards, reusable UI elements, and admin configuration tools. Form validation uses `react-hook-form` and `zod`.
 
+**Navigation Structure (Nov 2025):**
+- Manager Dashboard: Production (Product Master, Raw Materials, Finished Goods), Inventory (UOM, Vendor Master), Operations (Purchase Orders, Issuance, Gatepasses, Invoices)
+- Admin Dashboard: Production (Product Master, Checklist Builder, Raw Materials, Finished Goods), System Config (Users, Roles, Machines, etc.), Operations → Production Operations (Issuance, Gatepasses, Invoices, Machine Startup Reminders)
+
 ### Backend Architecture
 The backend is an Express.js application with TypeScript and Node.js. It features Email/Password Authentication with `scrypt` and `Passport.js`, and a Dynamic Role-Based Access Control (RBAC) system for `admin`, `manager`, `operator`, and `reviewer` roles with granular, screen-level permissions. Neon Serverless PostgreSQL is the database, accessed via Drizzle ORM. The schema includes core tables for users, machines, checklists, inventory, transactions, and GST-compliant invoices. It supports multi-item issuance, a Header-Detail pattern for transactional integrity, automatic inventory management, a comprehensive Vendor Master System, and a Role Management System.
 
