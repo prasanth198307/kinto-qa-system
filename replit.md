@@ -174,3 +174,75 @@ A comprehensive sales analytics dashboard providing insights into revenue, goods
 - Payment collection analytics
 
 **Production Status**: ✅ Feature complete and operational. Sales dashboard available to Admin and Manager roles with proper authorization.
+
+### Machine Startup Reminder System (COMPLETED - November 2025)
+A comprehensive notification system that enables managers to assign machine startup tasks to operators with automated reminders sent before scheduled production time.
+
+**Features:**
+- **Task Assignment**: Managers can assign machines to specific operators for startup
+- **Scheduled Reminders**: Automated notifications sent before scheduled start time
+- **Multi-Channel Notifications**: Support for WhatsApp and Email (console-based, upgradeable)
+- **Task Status Tracking**: pending → notified → completed → cancelled workflow
+- **Production Planning**: Assign tasks by date, shift, and time
+- **Notification Preferences**: Toggle WhatsApp/Email per task
+- **Task Management**: Full CRUD operations with soft delete support
+- **Reminder Configuration**: Customizable reminder time (default: 30 minutes before start)
+
+**Technical Implementation:**
+- **Database Schema**: `machine_startup_tasks` table with comprehensive fields
+  - Machine assignment with FK to machines table
+  - User assignment with FK to users table  
+  - Scheduled start time and reminder offset
+  - Status tracking (pending/notified/completed/cancelled)
+  - Notification sent timestamps
+  - WhatsApp/Email enable/disable flags
+  - Production date, shift, and notes
+  - Soft delete support via recordStatus field
+- **Backend Services**:
+  - Notification service module (`server/notificationService.ts`)
+  - Automated reminder checker (runs every 5 minutes via setInterval)
+  - Console-based logging (upgradeable to real WhatsApp/Email)
+  - RESTful API routes for task CRUD operations
+  - Role-based access control (admin/manager for creation)
+- **Frontend UI**: 
+  - Machine Startup Reminders page (`client/src/pages/machine-startup-reminders.tsx`)
+  - Task creation dialog with date/time pickers
+  - Task list table with status badges
+  - Complete/Cancel action buttons
+  - Integrated into Admin Dashboard navigation under Production section
+
+**Notification System:**
+- Current: Console-based logging for both WhatsApp and Email
+- Upgradeable: Ready for Twilio (WhatsApp) and SendGrid/Resend (Email) integration
+- Configuration: Set API credentials via environment secrets when ready
+- Template: "🔔 REMINDER: Machine '[Machine Name]' is scheduled to start at [Time]. Please ensure it's ready for production."
+
+**Access Control:**
+- Admin/Manager: Create, edit, delete, view all tasks
+- Operators: View assigned tasks (future enhancement)
+- Navigation: Admin Dashboard > Production > Machine Startup Reminders
+
+**Database Indexes:**
+- machine_id, assigned_user_id for efficient lookups
+- production_date for date-based filtering
+- status for status-based queries
+- record_status for soft delete filtering
+
+**Integration Points:**
+- Runs alongside existing workflow system
+- No conflicts with other notification systems
+- Uses existing user and machine master data
+- Audit trail via created_by field
+
+**Future Enhancements:**
+- Real WhatsApp integration via Twilio API
+- Real Email integration via SendGrid/Resend
+- SMS notification support
+- Operator mobile app for task acknowledgment
+- Recurring task templates
+- Task completion verification with photos
+- Machine startup checklist integration
+- Delay notification if machine not started on time
+- Dashboard widget showing today's startup schedule
+
+**Production Status**: ✅ Feature complete and operational. Sales dashboard available to Admin and Manager roles with proper authorization.
