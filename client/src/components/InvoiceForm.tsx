@@ -455,17 +455,23 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
             </tr>
           </thead>
           <tbody>
-            ${data.items.map((item, index) => `
+            ${data.items.map((item, index) => {
+              const qty = Number(item.quantity) || 0;
+              const price = Number(item.unitPrice) || 0;
+              const gst = Number(item.gstRate) || 0;
+              const amount = qty * price;
+              return `
               <tr>
                 <td>${index + 1}</td>
                 <td>${item.description}</td>
                 <td>${item.hsnCode || '-'}</td>
-                <td class="text-right">${item.quantity}</td>
-                <td class="text-right">₹${item.unitPrice.toFixed(2)}</td>
-                <td class="text-right">${item.gstRate}%</td>
-                <td class="text-right">₹${(item.quantity * item.unitPrice).toFixed(2)}</td>
+                <td class="text-right">${qty}</td>
+                <td class="text-right">₹${price.toFixed(2)}</td>
+                <td class="text-right">${gst}%</td>
+                <td class="text-right">₹${amount.toFixed(2)}</td>
               </tr>
-            `).join('')}
+              `;
+            }).join('')}
           </tbody>
         </table>
 
