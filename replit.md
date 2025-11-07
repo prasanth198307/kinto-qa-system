@@ -1,233 +1,55 @@
 # KINTO QA Management System
 
 ## Overview
-KINTO QA Management System is a mobile-first Quality Assurance and Preventive Maintenance application for manufacturing. It enables operators to complete checklists, reviewers to verify submissions, managers to approve, and administrators to configure the entire system, including machines, users, checklist templates, and spare parts. Built as a full-stack TypeScript solution with a React frontend and Express backend, it's designed for industrial QA workflows, focusing on speed, clarity, and error prevention.
+KINTO QA Management System is a mobile-first Quality Assurance and Preventive Maintenance application for manufacturing. It enables operators to complete checklists, reviewers to verify submissions, managers to approve, and administrators to configure the entire system, including machines, users, checklist templates, and spare parts. Built as a full-stack TypeScript solution with a React frontend and Express backend, it's designed for industrial QA workflows, focusing on speed, clarity, and error prevention. The system includes a comprehensive FIFO payment allocation system, a dashboard widget for pending payments, GST-compliant invoice generation, and a robust payment tracking system with support for partial payments and advances.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
-## Recent Changes (November 2025)
-
-### FIFO Payment Allocation Feature (COMPLETED - November 2025)
-A complete bulk payment allocation system for distributing payments across multiple outstanding invoices:
-
-**Components:**
-- **FIFOPaymentAllocation**: Comprehensive form for entering bulk payment details with real-time allocation preview
-  - Vendor selection dropdown linked to vendor master
-  - Payment amount input with automatic paise conversion (×100)
-  - Payment date, method, reference number, bank selection, and remarks fields
-  - Allocation preview table showing which invoices received payments
-  - "Close and Return" button to return to invoice list after viewing allocation
-  
-- **Backend API**: POST `/api/invoice-payments/allocate-fifo`
-  - Requires admin or manager role authorization
-  - Validates vendor existence by ID lookup
-  - Retrieves all invoices for the vendor
-  - Calculates outstanding balance for each invoice (total - sum of payments)
-  - Sorts invoices by invoice date ascending (FIFO - oldest first)
-  - Allocates payment to invoices in order until exhausted
-  - Creates individual payment records for each allocation
-  - Comprehensive audit logging for each payment created
-  - Returns allocation summary with detailed breakdown
-
-**Integration**: Located in Production Management → Invoices Tab → "FIFO Payment Allocation" button
-
-**Workflow**: 
-1. User clicks "FIFO Payment Allocation" button in Invoices tab
-2. Dialog opens with payment entry form
-3. User selects vendor, enters payment amount and details
-4. Clicks "Allocate Payment (FIFO)" to submit
-5. System allocates to oldest outstanding invoices first
-6. Allocation preview displays showing which invoices were paid
-7. User reviews allocation and clicks "Close and Return"
-
-**Technical Details:**
-- Payment amounts stored in paise (multiply by 100) for precision
-- Vendor lookup by ID, invoice filtering by vendor name
-- FIFO ordering: `sort((a, b) => new Date(a.invoiceDate).getTime() - new Date(b.invoiceDate).getTime())`
-- Partial allocations when payment doesn't cover all outstanding invoices
-- Each allocation creates separate payment record with proper invoice linkage
-- Form disabled after submission to prevent duplicate allocations
-- Full error handling for missing vendor, no invoices, no outstanding balance
-
-**Production Status**: ✅ Feature complete and architect-approved. Ready for production use. Pending: Manual testing with varied invoice scenarios.
-
-### Pending Payments Dashboard Widget (COMPLETED - November 2025)
-A dashboard widget displaying invoice-wise outstanding payment balances:
-
-**Components:**
-- **PendingPaymentsDashboard**: Dashboard widget showing invoices with outstanding payments
-  - Displays top 20 oldest invoices with pending payments (FIFO order)
-  - Shows invoice number, date, customer, total amount, paid amount, and outstanding balance
-  - Total outstanding amount prominently displayed
-  - Payment status badges (percentage paid)
-  - Pagination indicator when more than 20 pending invoices exist
-  - Empty state when all invoices are fully paid
-  - Proper loading states to prevent data flicker
-
-**Integration**: Displayed on both Admin and Manager Dashboard overview pages
-
-**Technical Details:**
-- Outstanding balance calculation: `max(0, totalAmount - sum(activePayments))` - clamped to prevent negative values
-- Limits display to 20 oldest invoices for performance
-- Sorts by invoice date ascending (oldest first)
-- Handles partial loading states (invoices vs payments)
-- Currency conversion: paise to rupees (÷100)
-- Test IDs for total outstanding amount
-
-**Future Improvements:**
-- Integrate with shared schema types for consistent monetary handling
-- Add overpayment indicator for invoices with excess payments
-- Implement clickthrough to full invoice list with all pending items
-- Add FIFO allocation awareness to match payment allocation logic
-
-**Production Status**: ✅ Feature complete and functional. Ready for dashboard use. Note: Currently uses ad-hoc types; future refactor should align with shared/schema.ts for consistency.
-
-### GST-Compliant Invoice Generation Feature (COMPLETED)
-A complete invoice generation system integrated with gatepasses:
-
-**Components:**
-- **InvoiceForm**: Comprehensive invoice entry with automatic GST calculation and edit capability
-  - **Create Mode**: Auto-populates buyer details from vendor master, pre-fills items from gatepass
-  - **Edit Mode**: Loads existing invoice data with proper unit conversion (paise→rupees, basis points→percentages)
-  - **Bank Master Integration**: Dynamic dropdown for bank selection with auto-population of default bank
-  - Bank details (name, account number, IFSC code, UPI ID) displayed as read-only fields after selection
-  - Automatic tax calculation: CGST+SGST (intrastate) or IGST (interstate) based on seller/buyer state comparison
-  - Currency storage in paise (×100), tax rates in basis points (×100 for percentages)
-  - Supports both POST (create) and PATCH (update) operations
-  
-- **PrintableInvoice**: Vyapaar-style PDF generator
-  - Three copies: Original for Buyer, Duplicate for Transporter, Triplicate for Seller
-  - Complete GST tax breakup with CGST/SGST/IGST/Cess
-  - Seller/buyer details, bank account info, UPI ID, QR code placeholder
-  - Browser-based print via HTML template (no external PDF library)
-  
-- **InvoiceTable**: Invoice list with Edit and Delete actions
-  - Edit button opens InvoiceForm in edit mode with pre-populated data
-  - Print button generates printable invoice PDF
-  
-- **Integration**: "Generate Invoice" button in GatepassTable pre-fills InvoiceForm with gatepass data
-
-**Workflow**: 
-- Create: Gatepass → Generate Invoice → Auto-filled buyer & items → User enters unit prices → Select bank → Save → Print PDF
-- Edit: Invoice List → Edit → Modify prices/details → Update → Print PDF
-
-**Production Status**: ✅ Feature complete with Bank Master integration and invoice editing. Pending: End-to-end testing with authenticated user session.
-
-### Payment Tracking System (COMPLETED)
-A complete payment tracking system for invoices with support for partial payments, advances, and full payment reconciliation:
-
-**Database Schema:**
-- **invoice_payments Table**: Tracks all payments against invoices
-  - Payment amount (stored in paise ×100)
-  - Payment date, method (cash, cheque, NEFT, RTGS, UPI, other)
-  - Payment type (advance, partial, full)
-  - Bank selection for payment association
-  - Reference number for transaction tracking
-  - Remarks for additional notes
-  - Soft delete support via recordStatus flag
-
-**Components:**
-- **PaymentForm**: Payment recording interface with comprehensive validation
-  - Date picker for payment date
-  - Amount input with automatic conversion to paise
-  - Payment method dropdown
-  - Payment type selection (advance/partial/full)
-  - Bank selection dropdown (linked to bank master)
-  - Reference number and remarks fields
-  - Form validation via react-hook-form and zod
-  
-- **PaymentHistory**: Complete payment history viewer
-  - Displays all payments for an invoice in chronological order
-  - Shows running balance after each payment
-  - Delete functionality for payment corrections
-  - Real-time balance updates via TanStack Query
-  
-- **InvoiceTable**: Updated with payment tracking
-  - Outstanding Balance column showing (invoice total - sum of payments)
-  - "Record Payment" button to open payment dialog
-  - Payment dialog shows PaymentForm and PaymentHistory side-by-side
-  
-**Backend Implementation:**
-- **API Routes**: RESTful endpoints for payment CRUD operations
-  - `GET /api/invoices/:id/payments` - Get all payments for an invoice
-  - `GET /api/payments` - Get all payments (admin/manager only)
-  - `POST /api/invoices/:id/payments` - Record a new payment
-  - `DELETE /api/payments/:id` - Soft delete a payment
-  - Role-based access control via requireRole middleware
-  - Comprehensive audit logging for all payment transactions
-  
-- **Storage Layer**: Payment methods in IStorage interface
-  - `createPayment()` - Insert new payment record
-  - `getAllPayments()` - Retrieve all payments
-  - `getPayment()` - Get single payment by ID
-  - `getPaymentsByInvoice()` - Get payments for specific invoice
-  - `deletePayment()` - Soft delete payment record
-
-**Workflow:**
-1. User views invoice list with outstanding balances
-2. Clicks "Record Payment" button
-3. Payment dialog opens showing PaymentForm and PaymentHistory
-4. User enters payment details and submits
-5. Payment is recorded and invoice table updates with new outstanding balance
-6. Payment history shows all payments with running balance
-
-**Technical Details:**
-- Outstanding balance calculation: `total - sum(payments where recordStatus = 1)`
-- Payment amounts stored in paise (multiply by 100) for precision
-- Automatic currency conversion in forms (paise ↔ rupees)
-- Soft delete pattern allows payment history audit trail
-- Real-time updates via TanStack Query cache invalidation
-
-**Production Status**: ✅ Feature complete. Backend routes, storage methods, and UI components fully implemented. Pending: End-to-end testing with authenticated user session.
-
 ## System Architecture
 
 ### Frontend Architecture
-The frontend uses **React 18** with **TypeScript**, **Vite** for building, and **Wouter** for routing. UI components are built with **shadcn/ui** (based on Radix UI) and styled using **Tailwind CSS** following a "New York" theme with Material Design principles. **TanStack Query** manages server state and API calls. The design system is mobile-first, featuring a custom color palette, typography, spacing, and elevation. 
-
-**Navigation**: The application uses a **Vertical Sidebar Navigation** system with button-style navigation items, collapsible sections, and mobile-responsive design (240px width on desktop, collapsible on mobile). All dashboards (Admin, Manager) utilize a single VerticalNavSidebar component that controls all navigation, including sub-sections for inventory (UOM, Products, Raw Materials, Finished Goods, Vendors) and production (Raw Material Issuance, Gatepasses). InventoryManagement and ProductionManagement are embeddable content panels that accept activeTab props from their parent dashboards, eliminating nested sidebars.
-
-Components include role-based dashboards, reusable UI elements, and admin configuration tools, with form validation via `react-hook-form` and `zod`.
+The frontend uses **React 18** with **TypeScript**, **Vite** for building, and **Wouter** for routing. UI components are built with **shadcn/ui** (based on Radix UI) and styled using **Tailwind CSS** following a "New York" theme with Material Design principles. **TanStack Query** manages server state and API calls. The design system is mobile-first, featuring a custom color palette, typography, spacing, and elevation. Navigation uses a **Vertical Sidebar Navigation** system with role-based dashboards, reusable UI elements, and admin configuration tools. Form validation is handled via `react-hook-form` and `zod`.
 
 ### Backend Architecture
-The backend is an **Express.js** application with **TypeScript** and **Node.js**. It features robust **Email/Password Authentication** with `scrypt` hashing (Node.js built-in) and `Passport.js`. A **Dynamic Role-Based Access Control (RBAC)** system supports `admin`, `manager`, `operator`, and `reviewer` roles with granular, screen-level permissions (`canView`, `canCreate`, `canEdit`, `canDelete`) managed via `roles` and `role_permissions` tables. Role assignments are secure, with admin/manager roles restricted to existing admins, and comprehensive audit logging. Route-level authorization uses `requireRole` middleware, validating against fresh database data. **Neon Serverless PostgreSQL** is the database, accessed via **Drizzle ORM** for type-safe queries. The database schema includes core tables for users, machines, checklists, inventory (spare parts, UOM, products, raw materials, finished goods), transactions (raw material issuance, gatepasses), and **GST-compliant invoices**. Multi-item issuance and gatepass architecture utilizes a Header-Detail pattern with transactional integrity, race condition protection, and automatic inventory management. A comprehensive **Vendor Master System** allows admin/manager users to maintain vendor/customer data, which integrates with gatepasses. A dedicated **Role Management System** empowers administrators with full CRUD capabilities for custom roles and screen-level permission configuration, while protecting default system roles. The **Invoice Management System** provides GST-compliant invoice generation with comprehensive tax breakup (CGST, SGST, IGST, Cess), seller/buyer details, payment information (bank account, UPI ID), and linkage to gatepasses for sales transactions.
+The backend is an **Express.js** application with **TypeScript** and **Node.js**. It features robust **Email/Password Authentication** with `scrypt` hashing and `Passport.js`. A **Dynamic Role-Based Access Control (RBAC)** system supports `admin`, `manager`, `operator`, and `reviewer` roles with granular, screen-level permissions. **Neon Serverless PostgreSQL** is the database, accessed via **Drizzle ORM**. The database schema includes core tables for users, machines, checklists, inventory, transactions, and **GST-compliant invoices**. Multi-item issuance and gatepass architecture utilizes a Header-Detail pattern with transactional integrity and automatic inventory management. A comprehensive **Vendor Master System** and **Role Management System** are also included. The **Invoice Management System** provides GST-compliant invoice generation with tax breakup and payment information.
 
 ### API Design
 The RESTful API under `/api` features multi-layer authorization (`isAuthenticated`, `requireRole`) with fresh database lookups for role validation. It uses JSON for requests/responses, provides structured error handling, and implements comprehensive audit logging for security events and all mutations.
 
 ### Build & Deployment
-Development uses `npm run dev` for a Vite dev server with an `tsx`-powered Express backend, featuring HMR. Production builds (`npm run build`) bundle the frontend with Vite and the backend with `esbuild`. Database schema management (`npm run db:push`) uses Drizzle Kit.
+Development uses `npm run dev` for a Vite dev server with an `tsx`-powered Express backend. Production builds (`npm run build`) bundle the frontend with Vite and the backend with `esbuild`. Database schema management uses Drizzle Kit.
 
 ## External Dependencies
 
 ### Database
-- **Neon Serverless PostgreSQL**: Cloud-native database.
+- **Neon Serverless PostgreSQL**
 
 ### Authentication
-- **Replit Auth**: Via OpenID Connect.
-- `openid-client`, `passport`: For authentication flows.
+- **Replit Auth** (via OpenID Connect)
+- `openid-client`
+- `passport`
 
 ### UI Libraries
-- **Radix UI**: Headless component primitives.
-- **Lucide React**: Icon library.
-- **date-fns**: Date manipulation.
-- **cmdk**: Command menu.
-- **vaul**: Drawer component.
+- **Radix UI**
+- **Lucide React**
+- **date-fns**
+- **cmdk**
+- **vaul**
 
 ### Form Management
-- **react-hook-form**: Form state management.
-- **@hookform/resolvers**: Validation resolver.
-- **zod**: Schema validation.
-- **drizzle-zod**: Drizzle to Zod schema conversion.
+- **react-hook-form**
+- **@hookform/resolvers**
+- **zod**
+- **drizzle-zod**
 
 ### Development Tools
-- **TypeScript**: For type safety.
-- **Vite**: Frontend build tool.
-- **esbuild**: Backend bundling.
-- **Tailwind CSS**: Utility-first CSS framework.
-- **class-variance-authority**: Type-safe variant management.
-- **tailwind-merge**: Intelligent Tailwind class merging.
+- **TypeScript**
+- **Vite**
+- **esbuild**
+- **Tailwind CSS**
+- **class-variance-authority**
+- **tailwind-merge**
 
 ### Styling
-- **Google Fonts**: Inter font family.
+- **Google Fonts**
