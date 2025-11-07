@@ -570,6 +570,8 @@ export class DatabaseStorage implements IStorage {
         unitPrice: sparePartsCatalog.unitPrice,
         reorderThreshold: sparePartsCatalog.reorderThreshold,
         currentStock: sparePartsCatalog.currentStock,
+        recordStatus: sparePartsCatalog.recordStatus,
+        machineId: sparePartsCatalog.machineId,
         createdAt: sparePartsCatalog.createdAt,
         updatedAt: sparePartsCatalog.updatedAt,
       })

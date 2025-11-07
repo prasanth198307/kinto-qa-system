@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertGatepassSchema, insertUserSchema, insertChecklistAssignmentSchema } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertUserSchema, insertChecklistAssignmentSchema } from "@shared/schema";
 import { z } from "zod";
 import path from "path";
 import fs from "fs";
@@ -1311,35 +1311,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/raw-material-issuances', requireRole('admin', 'manager', 'operator'), async (req: any, res) => {
     try {
-      const validatedData = insertRawMaterialIssuanceSchema.parse(req.body);
+      const { header, items } = req.body;
+      
+      // Validate header
+      const validatedHeader = insertRawMaterialIssuanceSchema.parse(header);
+      
+      // Validate items array
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ message: "At least one issuance item is required" });
+      }
+      
+      // Create issuance header with auto-generated issuance number
+      const issuanceNumber = `ISS-${Date.now()}`;
       const issuanceData = {
-        ...validatedData,
+        ...validatedHeader,
+        issuanceNumber,
         issuedBy: req.user?.id,
       };
       
-      // Create issuance record
       const issuance = await storage.createRawMaterialIssuance(issuanceData);
       
-      // Deduct from raw material inventory
-      const material = await storage.getRawMaterial(validatedData.materialId);
-      if (material) {
-        const newQuantity = (material.currentStock || 0) - validatedData.quantityIssued;
-        await storage.updateRawMaterial(validatedData.materialId, {
-          currentStock: newQuantity
+      // Create items and deduct inventory for each
+      for (const item of items) {
+        const validatedItem = insertRawMaterialIssuanceItemSchema.parse({
+          ...item,
+          issuanceId: issuance.id
         });
         
-        // Create transaction record for audit trail
-        await storage.createRawMaterialTransaction({
-          materialId: validatedData.materialId,
-          transactionType: 'issue',
-          quantity: -validatedData.quantityIssued,
-          reference: `Issuance ${issuance.id}`,
-          remarks: validatedData.remarks,
-          performedBy: req.user?.id,
-        });
+        // Create issuance item
+        await storage.createRawMaterialIssuanceItem(validatedItem);
+        
+        // Deduct from raw material inventory
+        const material = await storage.getRawMaterial(validatedItem.rawMaterialId);
+        if (material) {
+          const newQuantity = (material.currentStock || 0) - validatedItem.quantityIssued;
+          await storage.updateRawMaterial(validatedItem.rawMaterialId, {
+            currentStock: newQuantity
+          });
+          
+          // Create transaction record for audit trail
+          await storage.createRawMaterialTransaction({
+            materialId: validatedItem.rawMaterialId,
+            transactionType: 'issue',
+            quantity: -validatedItem.quantityIssued,
+            reference: `Issuance ${issuanceNumber}`,
+            remarks: validatedItem.remarks,
+            performedBy: req.user?.id,
+          });
+        }
       }
       
-      res.json(issuance);
+      res.json({ issuance, message: "Issuance created successfully with items" });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
@@ -1356,7 +1378,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!issuance) {
         return res.status(404).json({ message: "Raw material issuance not found" });
       }
-      res.json(issuance);
+      
+      // Fetch items for this issuance
+      const items = await storage.getIssuanceItems(id);
+      
+      res.json({ ...issuance, items });
     } catch (error) {
       console.error("Error fetching raw material issuance:", error);
       res.status(500).json({ message: "Failed to fetch raw material issuance" });
