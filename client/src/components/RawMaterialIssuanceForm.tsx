@@ -61,7 +61,6 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
     defaultValues: {
       header: {
         issuanceDate: new Date(),
-        batchNumber: "",
         issuedTo: "",
         remarks: "",
       },
@@ -83,7 +82,6 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
       form.reset({
         header: {
           issuanceDate: issuance.issuanceDate ? new Date(issuance.issuanceDate) : new Date(),
-          batchNumber: issuance.batchNumber || "",
           issuedTo: issuance.issuedTo || "",
           remarks: issuance.remarks || "",
         },
@@ -179,20 +177,6 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
                         onChange={(e) => field.onChange(new Date(e.target.value))}
                         data-testid="input-issuance-date"
                       />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="header.batchNumber"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Batch Number</FormLabel>
-                    <FormControl>
-                      <Input {...field} value={field.value || ""} data-testid="input-batch-number" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
