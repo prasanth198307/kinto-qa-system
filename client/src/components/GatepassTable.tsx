@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Edit, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import type { Gatepass, GatepassItem, FinishedGood, Product, User, Vendor } from "@shared/schema";
+import PrintableGatepass from "./PrintableGatepass";
 
 interface GatepassTableProps {
   gatepasses: Gatepass[];
@@ -158,6 +159,7 @@ export default function GatepassTable({ gatepasses, isLoading, onEdit, onDelete 
               <TableCell>{getUserName(gatepass.issuedBy)}</TableCell>
               <TableCell>
                 <div className="flex gap-2">
+                  <PrintableGatepass gatepass={gatepass} />
                   <Button
                     variant="ghost"
                     size="sm"
