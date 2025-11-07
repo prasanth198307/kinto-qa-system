@@ -135,6 +135,7 @@ export default function PaymentHistory({ invoice }: PaymentHistoryProps) {
                   <TableHead>Method</TableHead>
                   <TableHead>Reference</TableHead>
                   <TableHead>Running Balance</TableHead>
+                  <TableHead>Recorded By</TableHead>
                   <TableHead>Remarks</TableHead>
                   <TableHead className="w-[80px]">Action</TableHead>
                 </TableRow>
@@ -164,7 +165,10 @@ export default function PaymentHistory({ invoice }: PaymentHistoryProps) {
                         ₹{(payment.runningBalance / 100).toFixed(2)}
                       </span>
                     </TableCell>
-                    <TableCell className="max-w-[150px] truncate" data-testid={`text-payment-remarks-${payment.id}`}>
+                    <TableCell className="text-xs text-muted-foreground" data-testid={`text-recorded-by-${payment.id}`}>
+                      {(payment as any).recordedByFullName || 'System'}
+                    </TableCell>
+                    <TableCell className="max-w-[120px] truncate" data-testid={`text-payment-remarks-${payment.id}`}>
                       {payment.remarks || "-"}
                     </TableCell>
                     <TableCell>

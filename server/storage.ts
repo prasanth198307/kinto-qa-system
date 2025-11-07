@@ -1203,8 +1203,35 @@ export class DatabaseStorage implements IStorage {
     return payment;
   }
 
-  async getPaymentsByInvoice(invoiceId: string): Promise<InvoicePayment[]> {
-    return await db.select().from(invoicePayments).where(and(eq(invoicePayments.invoiceId, invoiceId), eq(invoicePayments.recordStatus, 1)));
+  async getPaymentsByInvoice(invoiceId: string): Promise<any[]> {
+    const results = await db
+      .select({
+        id: invoicePayments.id,
+        invoiceId: invoicePayments.invoiceId,
+        paymentDate: invoicePayments.paymentDate,
+        amount: invoicePayments.amount,
+        paymentMethod: invoicePayments.paymentMethod,
+        referenceNumber: invoicePayments.referenceNumber,
+        paymentType: invoicePayments.paymentType,
+        bankName: invoicePayments.bankName,
+        remarks: invoicePayments.remarks,
+        recordedBy: invoicePayments.recordedBy,
+        recordedByName: users.firstName,
+        recordedByLastName: users.lastName,
+        recordStatus: invoicePayments.recordStatus,
+        createdAt: invoicePayments.createdAt,
+        updatedAt: invoicePayments.updatedAt,
+      })
+      .from(invoicePayments)
+      .leftJoin(users, eq(invoicePayments.recordedBy, users.id))
+      .where(and(eq(invoicePayments.invoiceId, invoiceId), eq(invoicePayments.recordStatus, 1)));
+    
+    return results.map(r => ({
+      ...r,
+      recordedByFullName: r.recordedByName && r.recordedByLastName 
+        ? `${r.recordedByName} ${r.recordedByLastName}`
+        : 'System',
+    }));
   }
 
   async deletePayment(id: string): Promise<void> {
