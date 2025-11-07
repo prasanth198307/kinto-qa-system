@@ -11,7 +11,7 @@ import { ProtectedRoute } from "@/lib/protected-route";
 import AuthPage from "@/pages/auth-page";
 import Landing from "@/components/Landing";
 import RoleSelector from "@/components/RoleSelector";
-import MobileHeader from "@/components/MobileHeader";
+import { TopRightHeader } from "@/components/TopRightHeader";
 import DashboardStats from "@/components/DashboardStats";
 import ChecklistForm from "@/components/ChecklistForm";
 import MachineCard from "@/components/MachineCard";
@@ -75,9 +75,10 @@ function OperatorDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      <MobileHeader notificationCount={1} title="Operator Dashboard" onLogoutClick={() => {
-        logoutMutation.mutate();
-      }} />
+      <TopRightHeader 
+        notificationCount={1} 
+        onLogoutClick={() => logoutMutation.mutate()} 
+      />
       
       <div className="pt-14 pb-20">
         {activeView === 'dashboard' && (
@@ -179,9 +180,10 @@ function ReviewerDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      <MobileHeader notificationCount={2} title="Reviewer Dashboard" onLogoutClick={() => {
-        logoutMutation.mutate();
-      }} />
+      <TopRightHeader 
+        notificationCount={2} 
+        onLogoutClick={() => logoutMutation.mutate()} 
+      />
       
       <div className="pt-14 p-4 space-y-4">
         <Card className="p-6">
@@ -317,11 +319,15 @@ function ManagerDashboard() {
 
   return (
     <div className="flex min-h-screen bg-background">
+      <TopRightHeader 
+        notificationCount={0} 
+        onLogoutClick={handleLogout} 
+      />
+      
       <VerticalNavSidebar
         sections={navSections}
         activeItem={activeView}
         onItemClick={setActiveView}
-        onLogout={handleLogout}
         title="Manager Dashboard"
       />
       
@@ -552,11 +558,15 @@ function AdminDashboard() {
 
   return (
     <div className="flex min-h-screen bg-background">
+      <TopRightHeader 
+        notificationCount={0} 
+        onLogoutClick={handleLogout} 
+      />
+      
       <VerticalNavSidebar
         sections={navSections}
         activeItem={activeView}
         onItemClick={setActiveView}
-        onLogout={handleLogout}
         title="Admin Dashboard"
       />
       

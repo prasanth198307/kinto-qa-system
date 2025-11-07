@@ -115,19 +115,6 @@ export function VerticalNavSidebar({
           ))}
         </div>
       </div>
-      {onLogout && (
-        <div className="border-t border-border pt-4">
-          <Button
-            variant="ghost"
-            className="w-full justify-start text-left min-h-11 text-muted-foreground hover-elevate"
-            onClick={onLogout}
-            data-testid="nav-logout"
-          >
-            <LogOut className="w-5 h-5 mr-3" />
-            Logout
-          </Button>
-        </div>
-      )}
     </div>
   );
 
