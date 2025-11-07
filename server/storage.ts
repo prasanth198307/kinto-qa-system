@@ -95,7 +95,7 @@ import {
   type InsertNotificationConfig,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNotNull, notInArray } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 
@@ -245,12 +245,12 @@ export interface IStorage {
   // Invoices
   createInvoice(invoice: InsertInvoice): Promise<Invoice>;
   getAllInvoices(): Promise<Invoice[]>;
+  getAvailableInvoices(): Promise<Invoice[]>;
   getInvoice(id: string): Promise<Invoice | undefined>;
   updateInvoice(id: string, updates: Partial<InsertInvoice>): Promise<Invoice | undefined>;
   deleteInvoice(id: string): Promise<void>;
   getInvoicesByDate(date: Date): Promise<Invoice[]>;
   getInvoiceByNumber(invoiceNumber: string): Promise<Invoice | undefined>;
-  getInvoicesByGatepass(gatepassId: string): Promise<Invoice[]>;
   
   // Invoice Items
   createInvoiceItem(item: InsertInvoiceItem): Promise<InvoiceItem>;
@@ -1105,6 +1105,35 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(invoices).where(eq(invoices.recordStatus, 1));
   }
 
+  async getAvailableInvoices(): Promise<Invoice[]> {
+    // Get invoices that are not yet linked to any gatepass
+    const usedInvoiceIds = await db
+      .select({ invoiceId: gatepasses.invoiceId })
+      .from(gatepasses)
+      .where(
+        and(
+          eq(gatepasses.recordStatus, 1),
+          isNotNull(gatepasses.invoiceId)
+        )
+      );
+    
+    const usedIds = usedInvoiceIds.map(row => row.invoiceId).filter((id): id is string => id !== null);
+    
+    if (usedIds.length === 0) {
+      return await db.select().from(invoices).where(eq(invoices.recordStatus, 1));
+    }
+    
+    return await db
+      .select()
+      .from(invoices)
+      .where(
+        and(
+          eq(invoices.recordStatus, 1),
+          notInArray(invoices.id, usedIds)
+        )
+      );
+  }
+
   async getInvoice(id: string): Promise<Invoice | undefined> {
     const [invoice] = await db.select().from(invoices).where(and(eq(invoices.id, id), eq(invoices.recordStatus, 1)));
     return invoice;
@@ -1138,9 +1167,6 @@ export class DatabaseStorage implements IStorage {
     return invoice;
   }
 
-  async getInvoicesByGatepass(gatepassId: string): Promise<Invoice[]> {
-    return await db.select().from(invoices).where(and(eq(invoices.gatepassId, gatepassId), eq(invoices.recordStatus, 1)));
-  }
 
   // Invoice Items
   async createInvoiceItem(item: InsertInvoiceItem): Promise<InvoiceItem> {

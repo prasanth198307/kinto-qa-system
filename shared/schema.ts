@@ -747,7 +747,7 @@ export const gatepasses = pgTable("gatepasses", {
   destination: varchar("destination", { length: 255 }),
   vendorId: varchar("vendor_id").references(() => vendors.id),
   customerName: varchar("customer_name", { length: 255 }),
-  invoiceNumber: varchar("invoice_number", { length: 100 }),
+  invoiceId: varchar("invoice_id").references(() => invoices.id).unique(), // One-to-one: one gatepass per invoice
   remarks: text("remarks"),
   recordStatus: integer("record_status").default(1).notNull(),
   issuedBy: varchar("issued_by").references(() => users.id),
@@ -805,7 +805,6 @@ export const invoices = pgTable("invoices", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   invoiceNumber: varchar("invoice_number", { length: 100 }).notNull().unique(),
   invoiceDate: timestamp("invoice_date").notNull(),
-  gatepassId: varchar("gatepass_id").references(() => gatepasses.id),
   
   // Seller Details
   sellerGstin: varchar("seller_gstin", { length: 15 }),

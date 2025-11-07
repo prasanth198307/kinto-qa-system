@@ -12,7 +12,7 @@ import { db } from "./db";
 async function logAudit(userId: string | undefined, action: string, table: string, recordId: string, description: string) {
   console.log(`[AUDIT] User: ${userId}, Action: ${action}, Table: ${table}, Record: ${recordId}, Description: ${description}`);
 }
-import { eq, and } from "drizzle-orm";
+import { eq, and, ne } from "drizzle-orm";
 
 // Authentication middleware
 function isAuthenticated(req: Request, res: Response, next: NextFunction) {
@@ -1523,6 +1523,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate header
       const validatedHeader = insertGatepassSchema.parse(header);
       
+      // Check if invoice is already linked to another gatepass
+      if (validatedHeader.invoiceId) {
+        const existingGatepass = await db
+          .select()
+          .from(gatepasses)
+          .where(
+            and(
+              eq(gatepasses.invoiceId, validatedHeader.invoiceId),
+              eq(gatepasses.recordStatus, 1)
+            )
+          )
+          .limit(1);
+        
+        if (existingGatepass.length > 0) {
+          return res.status(400).json({ 
+            message: "This invoice is already linked to another gatepass and cannot be reused" 
+          });
+        }
+      }
+      
       // Validate items array
       if (!items || !Array.isArray(items) || items.length === 0) {
         return res.status(400).json({ message: "At least one gatepass item is required" });
@@ -1607,6 +1627,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const validatedData = insertGatepassSchema.partial().parse(req.body);
+      
+      // Check if invoice is already linked to another gatepass (not this one)
+      if (validatedData.invoiceId) {
+        const existingGatepass = await db
+          .select()
+          .from(gatepasses)
+          .where(
+            and(
+              eq(gatepasses.invoiceId, validatedData.invoiceId),
+              eq(gatepasses.recordStatus, 1),
+              ne(gatepasses.id, id) // Exclude the current gatepass being edited
+            )
+          )
+          .limit(1);
+        
+        if (existingGatepass.length > 0) {
+          return res.status(400).json({ 
+            message: "This invoice is already linked to another gatepass and cannot be reused" 
+          });
+        }
+      }
+      
       const gatepass = await storage.updateGatepass(id, validatedData);
       if (!gatepass) {
         return res.status(404).json({ message: "Gatepass not found" });
@@ -1654,6 +1696,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching invoices:", error);
       res.status(500).json({ message: "Failed to fetch invoices" });
+    }
+  });
+
+  // Get available invoices (not yet linked to any gatepass)
+  app.get('/api/invoices/available', isAuthenticated, async (req: any, res) => {
+    try {
+      const availableInvoices = await storage.getAvailableInvoices();
+      res.json(availableInvoices);
+    } catch (error) {
+      console.error("Error fetching available invoices:", error);
+      res.status(500).json({ message: "Failed to fetch available invoices" });
     }
   });
 
@@ -1768,17 +1821,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get invoices by gatepass
-  app.get('/api/invoices/gatepass/:gatepassId', isAuthenticated, async (req: any, res) => {
-    try {
-      const { gatepassId } = req.params;
-      const gatepassInvoices = await storage.getInvoicesByGatepass(gatepassId);
-      res.json(gatepassInvoices);
-    } catch (error) {
-      console.error("Error fetching invoices by gatepass:", error);
-      res.status(500).json({ message: "Failed to fetch invoices" });
-    }
-  });
 
   // Invoice Payment Tracking API
   // Get all payments (optionally filtered by invoice)

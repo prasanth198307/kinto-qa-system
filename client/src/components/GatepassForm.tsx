@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { insertGatepassSchema, insertGatepassItemSchema, type FinishedGood, type Product, type Uom, type Gatepass, type GatepassItem, type Vendor } from "@shared/schema";
+import { insertGatepassSchema, insertGatepassItemSchema, type FinishedGood, type Product, type Uom, type Gatepass, type GatepassItem, type Vendor, type Invoice } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
@@ -60,6 +60,11 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
     queryKey: ['/api/vendors'],
   });
 
+  // Fetch available invoices (not yet linked to any gatepass)
+  const { data: availableInvoices = [] } = useQuery<Invoice[]>({
+    queryKey: ['/api/invoices/available'],
+  });
+
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -72,7 +77,7 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
         destination: "",
         vendorId: "",
         customerName: "",
-        invoiceNumber: "",
+        invoiceId: "",
         remarks: "",
       },
       items: items,
@@ -100,7 +105,7 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
           destination: gatepass.destination || "",
           vendorId: gatepass.vendorId || "",
           customerName: gatepass.customerName || "",
-          invoiceNumber: gatepass.invoiceNumber || "",
+          invoiceId: gatepass.invoiceId || "",
           remarks: gatepass.remarks || "",
         },
         items: mappedItems,
@@ -334,13 +339,25 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
 
               <FormField
                 control={form.control}
-                name="header.invoiceNumber"
+                name="header.invoiceId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Invoice Number (Optional)</FormLabel>
-                    <FormControl>
-                      <Input {...field} value={field.value || ""} data-testid="input-invoice-number" />
-                    </FormControl>
+                    <FormLabel>Select Invoice (Optional)</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || ""}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-invoice">
+                          <SelectValue placeholder="Select an invoice" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="">None</SelectItem>
+                        {availableInvoices.map((invoice) => (
+                          <SelectItem key={invoice.id} value={invoice.id}>
+                            {invoice.invoiceNumber} - {invoice.buyerName} - ₹{(invoice.totalAmount / 100).toFixed(2)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
