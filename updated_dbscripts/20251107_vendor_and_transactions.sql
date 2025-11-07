@@ -2,6 +2,7 @@
 -- PostgreSQL 13+
 -- Date: 2025-11-07
 -- Description: Adds vendor master, raw material issuance, and gatepass functionality
+-- Safe for existing databases - uses ALTER TABLE for new columns
 
 -- ===========================================
 -- VENDOR MASTER TABLE
@@ -38,7 +39,6 @@ COMMENT ON COLUMN vendors.record_status IS '1=active, 0=deleted (soft delete)';
 
 CREATE TABLE IF NOT EXISTS raw_material_issuance (
     id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
-    issuance_number VARCHAR(100) NOT NULL UNIQUE,
     issuance_date TIMESTAMP NOT NULL,
     issued_to VARCHAR(255),
     product_id VARCHAR REFERENCES products(id),
@@ -48,6 +48,26 @@ CREATE TABLE IF NOT EXISTS raw_material_issuance (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Add new columns if they don't exist (safe for existing tables)
+ALTER TABLE raw_material_issuance 
+ADD COLUMN IF NOT EXISTS issuance_number VARCHAR(100) UNIQUE;
+
+-- Update existing rows to have unique issuance numbers
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM raw_material_issuance WHERE issuance_number IS NULL
+    ) THEN
+        UPDATE raw_material_issuance 
+        SET issuance_number = 'ISS-' || LPAD(id::text, 6, '0')
+        WHERE issuance_number IS NULL;
+    END IF;
+END $$;
+
+-- Make issuance_number NOT NULL after populating
+ALTER TABLE raw_material_issuance 
+ALTER COLUMN issuance_number SET NOT NULL;
 
 COMMENT ON TABLE raw_material_issuance IS 'Raw material issuance header - multi-item transactions';
 COMMENT ON COLUMN raw_material_issuance.product_id IS 'Product being manufactured (optional context)';
@@ -77,14 +97,11 @@ COMMENT ON TABLE raw_material_issuance_items IS 'Line items for raw material iss
 
 CREATE TABLE IF NOT EXISTS gatepasses (
     id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
-    gatepass_number VARCHAR(100) NOT NULL UNIQUE,
-    gatepass_date TIMESTAMP NOT NULL,
     vehicle_number VARCHAR(50) NOT NULL,
     driver_name VARCHAR(255) NOT NULL,
     driver_contact VARCHAR(50),
     transporter_name VARCHAR(255),
     destination VARCHAR(255),
-    vendor_id VARCHAR REFERENCES vendors(id),
     customer_name VARCHAR(255),
     invoice_number VARCHAR(100),
     remarks TEXT,
@@ -93,6 +110,43 @@ CREATE TABLE IF NOT EXISTS gatepasses (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Add new columns if they don't exist (safe for existing tables)
+ALTER TABLE gatepasses 
+ADD COLUMN IF NOT EXISTS gatepass_number VARCHAR(100) UNIQUE;
+
+ALTER TABLE gatepasses 
+ADD COLUMN IF NOT EXISTS gatepass_date TIMESTAMP;
+
+ALTER TABLE gatepasses 
+ADD COLUMN IF NOT EXISTS vendor_id VARCHAR REFERENCES vendors(id);
+
+-- Update existing rows to have unique gatepass numbers and dates
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM gatepasses WHERE gatepass_number IS NULL
+    ) THEN
+        UPDATE gatepasses 
+        SET gatepass_number = 'GP-' || LPAD(id::text, 6, '0')
+        WHERE gatepass_number IS NULL;
+    END IF;
+    
+    IF EXISTS (
+        SELECT 1 FROM gatepasses WHERE gatepass_date IS NULL
+    ) THEN
+        UPDATE gatepasses 
+        SET gatepass_date = COALESCE(created_at, CURRENT_TIMESTAMP)
+        WHERE gatepass_date IS NULL;
+    END IF;
+END $$;
+
+-- Make required columns NOT NULL after populating
+ALTER TABLE gatepasses 
+ALTER COLUMN gatepass_number SET NOT NULL;
+
+ALTER TABLE gatepasses 
+ALTER COLUMN gatepass_date SET NOT NULL;
 
 COMMENT ON TABLE gatepasses IS 'Gatepass header for finished goods dispatch - multi-item transactions';
 COMMENT ON COLUMN gatepasses.vendor_id IS 'References vendor master (preferred)';
@@ -123,23 +177,23 @@ COMMENT ON TABLE gatepass_items IS 'Line items for gatepasses (header-detail pat
 
 CREATE INDEX IF NOT EXISTS idx_vendors_vendor_code ON vendors(vendor_code);
 CREATE INDEX IF NOT EXISTS idx_vendors_vendor_name ON vendors(vendor_name);
-CREATE INDEX IF NOT EXISTS idx_vendors_mobile_number ON vendors(mobile_number);
-CREATE INDEX IF NOT EXISTS idx_vendors_record_status ON vendors(record_status);
+CREATE INDEX IF NOT EXISTS idx_vendors_mobile ON vendors(mobile_number);
+CREATE INDEX IF NOT EXISTS idx_vendors_gst ON vendors(gst_number);
+CREATE INDEX IF NOT EXISTS idx_vendors_type ON vendors(vendor_type);
 
+-- Raw Material Issuance indexes
 CREATE INDEX IF NOT EXISTS idx_raw_material_issuance_number ON raw_material_issuance(issuance_number);
 CREATE INDEX IF NOT EXISTS idx_raw_material_issuance_date ON raw_material_issuance(issuance_date);
-CREATE INDEX IF NOT EXISTS idx_raw_material_issuance_product_id ON raw_material_issuance(product_id);
+CREATE INDEX IF NOT EXISTS idx_raw_material_issuance_product ON raw_material_issuance(product_id);
+CREATE INDEX IF NOT EXISTS idx_raw_material_issuance_items_issuance ON raw_material_issuance_items(issuance_id);
+CREATE INDEX IF NOT EXISTS idx_raw_material_issuance_items_raw_material ON raw_material_issuance_items(raw_material_id);
+CREATE INDEX IF NOT EXISTS idx_raw_material_issuance_items_product ON raw_material_issuance_items(product_id);
 
-CREATE INDEX IF NOT EXISTS idx_raw_material_issuance_items_issuance_id ON raw_material_issuance_items(issuance_id);
-CREATE INDEX IF NOT EXISTS idx_raw_material_issuance_items_raw_material_id ON raw_material_issuance_items(raw_material_id);
-CREATE INDEX IF NOT EXISTS idx_raw_material_issuance_items_product_id ON raw_material_issuance_items(product_id);
-
+-- Gatepass indexes
 CREATE INDEX IF NOT EXISTS idx_gatepasses_gatepass_number ON gatepasses(gatepass_number);
-CREATE INDEX IF NOT EXISTS idx_gatepasses_gatepass_date ON gatepasses(gatepass_date);
-CREATE INDEX IF NOT EXISTS idx_gatepasses_vendor_id ON gatepasses(vendor_id);
-
-CREATE INDEX IF NOT EXISTS idx_gatepass_items_gatepass_id ON gatepass_items(gatepass_id);
-CREATE INDEX IF NOT EXISTS idx_gatepass_items_finished_good_id ON gatepass_items(finished_good_id);
-CREATE INDEX IF NOT EXISTS idx_gatepass_items_product_id ON gatepass_items(product_id);
-
--- End of vendor and transaction tables migration
+CREATE INDEX IF NOT EXISTS idx_gatepasses_date ON gatepasses(gatepass_date);
+CREATE INDEX IF NOT EXISTS idx_gatepasses_vendor ON gatepasses(vendor_id);
+CREATE INDEX IF NOT EXISTS idx_gatepasses_vehicle ON gatepasses(vehicle_number);
+CREATE INDEX IF NOT EXISTS idx_gatepass_items_gatepass ON gatepass_items(gatepass_id);
+CREATE INDEX IF NOT EXISTS idx_gatepass_items_finished_good ON gatepass_items(finished_good_id);
+CREATE INDEX IF NOT EXISTS idx_gatepass_items_product ON gatepass_items(product_id);
