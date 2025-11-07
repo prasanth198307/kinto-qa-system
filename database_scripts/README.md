@@ -12,9 +12,16 @@ This folder contains all necessary SQL scripts for on-premise deployment of the 
 
 Execute the scripts in the following order:
 
-1. **01_schema.sql** - Creates all database tables and schema
+1. **01_schema.sql** - Creates all database tables and schema (includes vendor master, raw material issuance, and gatepasses)
 2. **02_seed_data.sql** - Inserts default roles and admin user
 3. **03_indexes.sql** - Creates performance indexes (optional but recommended)
+
+## Latest Updates (v1.1.0 - Nov 2025)
+
+The schema now includes:
+- **Vendor Master** - Complete vendor/customer management with address, GST, Aadhaar, mobile
+- **Raw Material Issuance** - Multi-item transaction system (header-detail pattern)
+- **Gatepasses** - Finished goods dispatch with vendor integration (header-detail pattern)
 
 ## Execution Instructions
 
