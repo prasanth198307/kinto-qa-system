@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -118,6 +118,19 @@ export default function MachineStartupReminders() {
       emailEnabled: true,
     },
   });
+
+  // Auto-calculate reminder time when machine is selected
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (name === 'machineId' && value.machineId) {
+        const selectedMachine = machines.find(m => m.id === value.machineId);
+        if (selectedMachine && selectedMachine.warmupTimeMinutes) {
+          form.setValue('reminderBeforeMinutes', selectedMachine.warmupTimeMinutes);
+        }
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [machines, form]);
 
   // Create mutation
   const createMutation = useMutation({
@@ -427,7 +440,7 @@ export default function MachineStartupReminders() {
                         />
                       </FormControl>
                       <FormDescription>
-                        Send reminder 5-480 minutes before start time
+                        Auto-calculated from machine warmup time (editable)
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
