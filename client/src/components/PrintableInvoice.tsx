@@ -21,7 +21,7 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
     queryKey: ['/api/products'],
   });
 
-  const { data: template } = useQuery<any>({
+  const { data: template, isLoading: isLoadingTemplate } = useQuery<any>({
     queryKey: ['/api/invoice-templates', invoice.templateId],
     queryFn: async () => {
       if (!invoice.templateId) return null;
@@ -59,6 +59,12 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
   const handlePrint = () => {
     const printContent = printRef.current;
     if (!printContent) return;
+
+    // Wait for template to load if templateId exists
+    if (invoice.templateId && isLoadingTemplate) {
+      console.log('Template still loading, please wait...');
+      return;
+    }
 
     const printWindow = window.open('', '', 'width=800,height=600');
     if (!printWindow) return;
@@ -505,14 +511,15 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
         variant="default"
         size="sm"
         onClick={handlePrint}
+        disabled={isLoadingTemplate || items.length === 0}
         data-testid={`button-print-invoice-${invoice.id}`}
         className="gap-2"
       >
         <Printer className="w-4 h-4" />
-        Print / Download PDF
+        {isLoadingTemplate ? 'Loading...' : 'Print / Download PDF'}
       </Button>
       <span className="text-xs text-muted-foreground">
-        (Click to print or save as PDF)
+        {isLoadingTemplate ? 'Preparing invoice...' : '(Click to print or save as PDF)'}
       </span>
     </div>
   );
