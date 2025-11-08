@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Printer } from "lucide-react";
 import { format } from "date-fns";
 import { amountToWords } from "@/lib/number-to-words";
+import { useToast } from "@/hooks/use-toast";
 
 interface PrintableInvoiceProps {
   invoice: Invoice;
@@ -12,6 +13,7 @@ interface PrintableInvoiceProps {
 
 export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
   const printRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   const { data: items = [] } = useQuery<InvoiceItem[]>({
     queryKey: ['/api/invoice-items', invoice.id],
@@ -62,12 +64,24 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
 
     // Wait for template to load if templateId exists
     if (invoice.templateId && isLoadingTemplate) {
-      console.log('Template still loading, please wait...');
+      toast({
+        title: "Please wait",
+        description: "Template is still loading...",
+        variant: "default",
+      });
       return;
     }
 
     const printWindow = window.open('', '', 'width=800,height=600');
-    if (!printWindow) return;
+    if (!printWindow) {
+      toast({
+        title: "Popup Blocked",
+        description: "Please allow popups for this site to print invoices. Check your browser's address bar for a popup blocker icon.",
+        variant: "destructive",
+      });
+      console.error('Popup window was blocked by the browser. Please allow popups for this site.');
+      return;
+    }
 
     const generateInvoiceHTML = (copyType: string) => `
       <div class="page">
@@ -500,8 +514,19 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
     printWindow.focus();
     
     setTimeout(() => {
-      printWindow.print();
-      printWindow.close();
+      try {
+        printWindow.print();
+        // Don't auto-close - let user close after printing
+        // printWindow.close();
+      } catch (error) {
+        console.error('Error during print:', error);
+        toast({
+          title: "Print Error",
+          description: "There was an error opening the print dialog. Please try again.",
+          variant: "destructive",
+        });
+        printWindow.close();
+      }
     }, 250);
   };
 
