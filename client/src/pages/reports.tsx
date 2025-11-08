@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +43,7 @@ import {
 } from "@/lib/gst-reports";
 
 export default function Reports() {
+  const { toast } = useToast();
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [selectedCustomer, setSelectedCustomer] = useState<string>("all");
@@ -665,10 +667,10 @@ export default function Reports() {
                       
                       if (gstReportType === 'GSTR1') {
                         const report = generateGSTR1(invoicesFromReport, period, companyGSTIN, reportData.hsnSummary);
-                        exportGSTR1AsExcel(report, period);
+                        await exportGSTR1AsExcel(report, period);
                       } else if (gstReportType === 'GSTR3B') {
                         const report = generateGSTR3B(invoicesFromReport, [], period, companyGSTIN);
-                        exportGSTR3BAsExcel(report, period);
+                        await exportGSTR3BAsExcel(report, period);
                       }
                     } catch (error) {
                       console.error('Failed to generate GST report:', error);

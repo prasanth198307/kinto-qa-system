@@ -1,4 +1,3 @@
-import * as XLSX from 'xlsx';
 import type { Invoice, InvoiceWithItems } from '@shared/schema';
 
 // GST Report Types
@@ -393,7 +392,8 @@ export function exportGSTReportAsJSON(
 /**
  * Export GSTR-1 as Excel
  */
-export function exportGSTR1AsExcel(report: GSTR1Report, period: string): void {
+export async function exportGSTR1AsExcel(report: GSTR1Report, period: string): Promise<void> {
+  const XLSX = await import('xlsx');
   const workbook = XLSX.utils.book_new();
 
   // B2B Sheet
@@ -496,7 +496,8 @@ export function exportGSTR1AsExcel(report: GSTR1Report, period: string): void {
 /**
  * Export GSTR-3B as Excel
  */
-export function exportGSTR3BAsExcel(report: GSTR3BReport, period: string): void {
+export async function exportGSTR3BAsExcel(report: GSTR3BReport, period: string): Promise<void> {
+  const XLSX = await import('xlsx');
   const workbook = XLSX.utils.book_new();
 
   const summaryData = [
