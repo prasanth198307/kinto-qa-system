@@ -4,7 +4,7 @@ import { Express } from "express";
 import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
-import bcrypt from "bcryptjs"; // ✅ Added for backward compatibility
+import bcrypt from "bcryptjs"; // ✅ for backward compatibility
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
 
@@ -33,20 +33,16 @@ async function hashPassword(password: string) {
  */
 async function comparePasswords(supplied: string, stored: string) {
   try {
-    if (!supplied || !stored) {
-      throw new Error("Missing password or stored hash");
-    }
+    if (!supplied || !stored) throw new Error("Missing password or stored hash");
 
-    // 🔹 Detect bcrypt hashes (start with "$2")
+    // Detect bcrypt hashes (start with "$2")
     if (stored.startsWith("$2")) {
       return await bcrypt.compare(supplied, stored);
     }
 
-    // 🔹 Otherwise assume scrypt format
+    // Otherwise assume scrypt format
     const [salt, storedHash] = stored.split(":");
-    if (!salt || !storedHash) {
-      throw new Error("Invalid stored password format");
-    }
+    if (!salt || !storedHash) throw new Error("Invalid stored password format");
 
     const derivedKey = (await scryptAsync(supplied, salt, KEY_LENGTH)) as Buffer;
     const storedBuffer = Buffer.from(storedHash, "hex");
@@ -76,7 +72,9 @@ export function setupAuth(app: Express) {
   };
 
   console.log(
-    `🔧 Session configured — Secure Cookies: ${useHttps}, SameSite: ${useHttps ? "None" : "Lax"}`
+    `🔧 Session configured — Secure Cookies: ${useHttps}, SameSite: ${
+      useHttps ? "None" : "Lax"
+    }`
   );
 
   app.set("trust proxy", 1);
@@ -88,9 +86,6 @@ export function setupAuth(app: Express) {
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       try {
-<<<<<<< HEAD
-        const user = await storage.getUserByUsername(username);
-=======
         console.log("🔍 Login attempt for user:", username);
 
         const user = await storage.getUserByUsername(username);
@@ -98,7 +93,6 @@ export function setupAuth(app: Express) {
         console.log("🔍 User password exists:", !!(user?.password));
         console.log("🔍 User object keys:", user ? Object.keys(user) : "null");
 
->>>>>>> c11efba (Fix auth backward compatibility and update dependencies)
         if (!user || !user.password) return done(null, false);
 
         const valid = await comparePasswords(password, user.password);
@@ -110,6 +104,7 @@ export function setupAuth(app: Express) {
         console.log(`✅ Login successful for ${username}`);
         return done(null, user);
       } catch (err) {
+        console.error("🔥 Login error:", err);
         return done(err);
       }
     })
@@ -160,7 +155,9 @@ export function setupAuth(app: Express) {
 
       const user = await storage.getUserByEmail(email);
       if (!user) {
-        return res.status(200).json({ message: "If the email exists, a reset link will be sent" });
+        return res
+          .status(200)
+          .json({ message: "If the email exists, a reset link will be sent" });
       }
 
       const resetToken = randomBytes(32).toString("hex");
@@ -174,7 +171,9 @@ export function setupAuth(app: Express) {
         }/auth/reset-password?token=${resetToken}`
       );
 
-      res.status(200).json({ message: "If the email exists, a reset link will be sent" });
+      res
+        .status(200)
+        .json({ message: "If the email exists, a reset link will be sent" });
     } catch (error) {
       console.error("Forgot password error:", error);
       res.status(500).json({ message: "Failed to process request" });
@@ -186,7 +185,9 @@ export function setupAuth(app: Express) {
     try {
       const { token, newPassword } = req.body;
       if (!token || !newPassword)
-        return res.status(400).json({ message: "Token and new password are required" });
+        return res
+          .status(400)
+          .json({ message: "Token and new password are required" });
 
       const user = await storage.getUserByResetToken(token);
       if (!user || !user.resetTokenExpiry || new Date() > user.resetTokenExpiry)
