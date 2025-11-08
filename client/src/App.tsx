@@ -32,6 +32,7 @@ import InventoryManagement from "@/pages/inventory-management";
 import ProductionManagement from "@/pages/production-management";
 import MachineStartupReminders from "@/pages/machine-startup-reminders";
 import NotificationSettings from "@/pages/notification-settings";
+import Reports from "@/pages/reports";
 import InventorySummaryDashboard from "@/components/InventorySummaryDashboard";
 import TodayProductionStats from "@/components/TodayProductionStats";
 import RolePermissionsView from "@/components/RolePermissionsView";
@@ -225,6 +226,11 @@ function ManagerDashboard() {
           label: "Assignments",
           icon: ClipboardCheck,
         },
+        {
+          id: "reports",
+          label: "Reports",
+          icon: FileText,
+        },
       ],
     },
     {
@@ -361,6 +367,8 @@ function ManagerDashboard() {
       case 'gatepasses':
       case 'invoices':
         return <ProductionManagement activeTab={activeView} />;
+      case 'reports':
+        return <Reports />;
       default:
         return (
           <div className="space-y-4">
@@ -450,6 +458,11 @@ function AdminDashboard() {
           id: "sales-dashboard",
           label: "Sales Dashboard",
           icon: TrendingUp,
+        },
+        {
+          id: "reports",
+          label: "Reports",
+          icon: FileText,
         },
       ],
     },
@@ -677,6 +690,8 @@ function AdminDashboard() {
             <SalesDashboard />
           </div>
         );
+      case 'reports':
+        return <Reports />;
       default:
         return (
           <div className="p-4 space-y-6">
