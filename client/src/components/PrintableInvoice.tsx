@@ -1,9 +1,10 @@
 import { useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { type Invoice, type InvoiceItem, type Product } from "@shared/schema";
+import { type Invoice, type InvoiceItem, type Product, type TermsConditions } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Printer } from "lucide-react";
 import { format } from "date-fns";
+import { amountToWords } from "@/lib/number-to-words";
 
 interface PrintableInvoiceProps {
   invoice: Invoice;
@@ -18,6 +19,11 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
 
   const { data: products = [] } = useQuery<Product[]>({
     queryKey: ['/api/products'],
+  });
+
+  const { data: termsConditions } = useQuery<TermsConditions | null>({
+    queryKey: ['/api/terms-conditions', invoice.termsConditionsId],
+    enabled: !!invoice.termsConditionsId,
   });
 
   const getProductName = (productId: string): string => {
@@ -61,6 +67,8 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
             <div class="detail-row">${invoice.sellerAddress || ''}</div>
             <div class="detail-row">State: ${invoice.sellerState || ''} (${invoice.sellerStateCode || ''})</div>
             ${invoice.sellerGstin ? `<div class="detail-row">GSTIN: <strong>${invoice.sellerGstin}</strong></div>` : ''}
+            ${invoice.sellerPhone ? `<div class="detail-row">Phone: ${invoice.sellerPhone}</div>` : ''}
+            ${invoice.sellerEmail ? `<div class="detail-row">Email: ${invoice.sellerEmail}</div>` : ''}
           </div>
 
           <div class="buyer-section">
@@ -71,6 +79,17 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
             ${invoice.buyerGstin ? `<div class="detail-row">GSTIN: <strong>${invoice.buyerGstin}</strong></div>` : ''}
           </div>
         </div>
+
+        <!-- Ship-To Address (if different from buyer) -->
+        ${invoice.shipToName || invoice.shipToAddress ? `
+          <div class="ship-to-details">
+            <div class="section-title">Ship-To Address</div>
+            ${invoice.shipToName ? `<div class="detail-row"><strong>${invoice.shipToName}</strong></div>` : ''}
+            ${invoice.shipToAddress ? `<div class="detail-row">${invoice.shipToAddress}</div>` : ''}
+            ${invoice.shipToCity || invoice.shipToState ? `<div class="detail-row">${invoice.shipToCity || ''}${invoice.shipToCity && invoice.shipToState ? ', ' : ''}${invoice.shipToState || ''}</div>` : ''}
+            ${invoice.shipToPincode ? `<div class="detail-row">Pincode: ${invoice.shipToPincode}</div>` : ''}
+          </div>
+        ` : ''}
 
         <!-- Invoice Info -->
         <div class="invoice-info">
@@ -165,14 +184,21 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
           </div>
         </div>
 
+        <!-- Amount in Words -->
+        <div class="amount-in-words">
+          <strong>Amount in Words:</strong> ${amountToWords(invoice.totalAmount)}
+        </div>
+
         <!-- Bank Details -->
         ${invoice.bankName || invoice.upiId ? `
           <div class="bank-details">
             <div class="section-title">Bank Details for Payment</div>
             ${invoice.bankName ? `
               <div class="detail-row">Bank: ${invoice.bankName}</div>
+              ${invoice.accountHolderName ? `<div class="detail-row">Account Holder: ${invoice.accountHolderName}</div>` : ''}
               ${invoice.bankAccountNumber ? `<div class="detail-row">A/C No: ${invoice.bankAccountNumber}</div>` : ''}
               ${invoice.bankIfscCode ? `<div class="detail-row">IFSC: ${invoice.bankIfscCode}</div>` : ''}
+              ${invoice.branchName ? `<div class="detail-row">Branch: ${invoice.branchName}</div>` : ''}
             ` : ''}
             ${invoice.upiId ? `
               <div class="detail-row">UPI ID: ${invoice.upiId}</div>
@@ -181,6 +207,16 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
                 <small>Scan to pay</small>
               </div>
             ` : ''}
+          </div>
+        ` : ''}
+
+        <!-- Terms & Conditions -->
+        ${termsConditions && termsConditions.terms ? `
+          <div class="terms-conditions">
+            <div class="section-title">Terms & Conditions</div>
+            <ol class="terms-list">
+              ${termsConditions.terms.map(term => `<li>${term}</li>`).join('')}
+            </ol>
           </div>
         ` : ''}
 
@@ -338,6 +374,20 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
               font-size: 12px;
             }
 
+            .ship-to-details {
+              border: 1px solid #000;
+              padding: 10px;
+              margin-bottom: 10px;
+            }
+
+            .amount-in-words {
+              padding: 10px;
+              margin: 10px 0;
+              background: #f9f9f9;
+              border: 1px solid #ddd;
+              font-size: 11px;
+            }
+
             .bank-details {
               border: 1px solid #000;
               padding: 10px;
@@ -355,6 +405,23 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
               margin-top: 8px;
               font-size: 10px;
               text-align: center;
+            }
+
+            .terms-conditions {
+              border: 1px solid #000;
+              padding: 10px;
+              margin-bottom: 15px;
+            }
+
+            .terms-list {
+              margin: 5px 0 0 15px;
+              padding: 0;
+            }
+
+            .terms-list li {
+              margin-bottom: 5px;
+              font-size: 10px;
+              line-height: 1.4;
             }
 
             .footer {

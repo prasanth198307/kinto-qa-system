@@ -11,11 +11,12 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Plus, Trash2, X, Printer, FileText } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { Gatepass, Product, Vendor, GatepassItem, FinishedGood, Bank, Invoice } from "@shared/schema";
+import type { Gatepass, Product, Vendor, GatepassItem, FinishedGood, Bank, Invoice, InvoiceTemplate } from "@shared/schema";
 
 const invoiceFormSchema = z.object({
   gatepassId: z.string().optional(),
   invoiceDate: z.string(),
+  invoiceTemplateId: z.string().optional(),
   
   // Seller details
   sellerGstin: z.string().optional(),
@@ -23,6 +24,15 @@ const invoiceFormSchema = z.object({
   sellerAddress: z.string().optional(),
   sellerState: z.string().optional(),
   sellerStateCode: z.string().optional(),
+  sellerPhone: z.string().optional(),
+  sellerEmail: z.string().optional(),
+  
+  // Ship-to address
+  shipToName: z.string().optional(),
+  shipToAddress: z.string().optional(),
+  shipToCity: z.string().optional(),
+  shipToState: z.string().optional(),
+  shipToPincode: z.string().optional(),
   
   // Buyer details
   buyerGstin: z.string().optional(),
@@ -36,6 +46,8 @@ const invoiceFormSchema = z.object({
   bankName: z.string().optional(),
   bankAccountNumber: z.string().optional(),
   bankIfscCode: z.string().optional(),
+  accountHolderName: z.string().optional(),
+  branchName: z.string().optional(),
   upiId: z.string().optional(),
   
   items: z.array(z.object({
@@ -63,6 +75,7 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
   const [isIntrastateSupply, setIsIntrastateSupply] = useState(true);
   const [selectedBankId, setSelectedBankId] = useState<string>("");
   const [showPrintPreview, setShowPrintPreview] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(invoice?.templateId || "");
 
   const { data: products = [] } = useQuery<Product[]>({
     queryKey: ['/api/products'],
@@ -74,6 +87,10 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
 
   const { data: banks = [] } = useQuery<Bank[]>({
     queryKey: ['/api/banks'],
+  });
+
+  const { data: templates = [] } = useQuery<InvoiceTemplate[]>({
+    queryKey: ['/api/invoice-templates/active'],
   });
 
   const { data: finishedGoodsInventory = [] } = useQuery<FinishedGood[]>({
@@ -98,13 +115,21 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
   const form = useForm<InvoiceFormData>({
     resolver: zodResolver(invoiceFormSchema),
     defaultValues: invoice ? {
-      gatepassId: invoice.gatepassId || "",
+      gatepassId: gatepass?.id || "",
       invoiceDate: new Date(invoice.invoiceDate).toISOString().split('T')[0],
+      invoiceTemplateId: invoice.templateId || "",
       sellerName: invoice.sellerName || "KINTO Manufacturing",
       sellerAddress: invoice.sellerAddress || "Industrial Area, Phase 1",
       sellerState: invoice.sellerState || "Karnataka",
       sellerStateCode: invoice.sellerStateCode || "29",
       sellerGstin: invoice.sellerGstin || "29AAAAA0000A1Z5",
+      sellerPhone: invoice.sellerPhone || "",
+      sellerEmail: invoice.sellerEmail || "",
+      shipToName: invoice.shipToName || "",
+      shipToAddress: invoice.shipToAddress || "",
+      shipToCity: invoice.shipToCity || "",
+      shipToState: invoice.shipToState || "",
+      shipToPincode: invoice.shipToPincode || "",
       buyerName: invoice.buyerName || "",
       buyerGstin: invoice.buyerGstin || "",
       buyerAddress: invoice.buyerAddress || "",
@@ -122,15 +147,25 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
       bankName: invoice.bankName || "",
       bankAccountNumber: invoice.bankAccountNumber || "",
       bankIfscCode: invoice.bankIfscCode || "",
+      accountHolderName: invoice.accountHolderName || "",
+      branchName: invoice.branchName || "",
       upiId: invoice.upiId || "",
     } : {
       gatepassId: gatepass?.id || "",
       invoiceDate: new Date().toISOString().split('T')[0],
+      invoiceTemplateId: "",
       sellerName: "KINTO Manufacturing",
       sellerAddress: "Industrial Area, Phase 1",
       sellerState: "Karnataka",
       sellerStateCode: "29",
       sellerGstin: "29AAAAA0000A1Z5",
+      sellerPhone: "",
+      sellerEmail: "",
+      shipToName: "",
+      shipToAddress: "",
+      shipToCity: "",
+      shipToState: "",
+      shipToPincode: "",
       buyerName: "",
       buyerGstin: "",
       buyerAddress: "",
@@ -148,9 +183,22 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
       bankName: "",
       bankAccountNumber: "",
       bankIfscCode: "",
+      accountHolderName: "",
+      branchName: "",
       upiId: "",
     },
   });
+
+  // Auto-select default template on load
+  useEffect(() => {
+    if (templates.length > 0 && !invoice) {
+      const defaultTemplate = templates.find(t => t.isDefault === 1);
+      if (defaultTemplate) {
+        setSelectedTemplateId(defaultTemplate.id);
+        applyTemplate(defaultTemplate);
+      }
+    }
+  }, [templates, invoice]);
 
   // Auto-select default bank on load
   useEffect(() => {
@@ -161,10 +209,37 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
         form.setValue("bankName", defaultBank.bankName);
         form.setValue("bankAccountNumber", defaultBank.accountNumber);
         form.setValue("bankIfscCode", defaultBank.ifscCode);
+        form.setValue("accountHolderName", defaultBank.accountHolderName);
+        form.setValue("branchName", defaultBank.branchName || "");
         form.setValue("upiId", defaultBank.upiId || "");
       }
     }
   }, [banks, invoice, form]);
+
+  // Apply template to form
+  const applyTemplate = (template: InvoiceTemplate) => {
+    if (template.defaultSellerName) form.setValue("sellerName", template.defaultSellerName);
+    if (template.defaultSellerGstin) form.setValue("sellerGstin", template.defaultSellerGstin);
+    if (template.defaultSellerAddress) form.setValue("sellerAddress", template.defaultSellerAddress);
+    if (template.defaultSellerState) form.setValue("sellerState", template.defaultSellerState);
+    if (template.defaultSellerStateCode) form.setValue("sellerStateCode", template.defaultSellerStateCode);
+    if (template.defaultSellerPhone) form.setValue("sellerPhone", template.defaultSellerPhone);
+    if (template.defaultSellerEmail) form.setValue("sellerEmail", template.defaultSellerEmail);
+    if (template.defaultBankName) form.setValue("bankName", template.defaultBankName);
+    if (template.defaultBankAccountNumber) form.setValue("bankAccountNumber", template.defaultBankAccountNumber);
+    if (template.defaultBankIfscCode) form.setValue("bankIfscCode", template.defaultBankIfscCode);
+    if (template.defaultAccountHolderName) form.setValue("accountHolderName", template.defaultAccountHolderName);
+    if (template.defaultBranchName) form.setValue("branchName", template.defaultBranchName);
+  };
+
+  // Handle template selection change
+  const handleTemplateChange = (templateId: string) => {
+    setSelectedTemplateId(templateId);
+    const selected = templates.find(t => t.id === templateId);
+    if (selected) {
+      applyTemplate(selected);
+    }
+  };
 
   // Pre-populate buyer details from vendor/customer when data loads
   useEffect(() => {
@@ -369,7 +444,14 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
   });
 
   const onSubmit = (data: InvoiceFormData) => {
-    createInvoiceMutation.mutate(data);
+    // When editing an invoice, don't send gatepassId (relationship already exists in gatepass table)
+    // When creating, gatepassId is used to link the new invoice to the gatepass
+    const submitData = invoice ? {
+      ...data,
+      gatepassId: undefined, // Don't update gatepass relationship when editing
+    } : data;
+    
+    createInvoiceMutation.mutate(submitData);
   };
 
   const handlePrintPreview = () => {
@@ -551,6 +633,29 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
       </div>
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        {/* Invoice Template Selection */}
+        <div>
+          <Label htmlFor="invoiceTemplateId">Invoice Template</Label>
+          <Select 
+            value={selectedTemplateId} 
+            onValueChange={handleTemplateChange}
+          >
+            <SelectTrigger data-testid="select-invoice-template">
+              <SelectValue placeholder="Select a template (optional)" />
+            </SelectTrigger>
+            <SelectContent>
+              {templates.map((template) => (
+                <SelectItem key={template.id} value={template.id} data-testid={`template-option-${template.id}`}>
+                  {template.templateName}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground mt-1">
+            Select a template to auto-fill seller and bank details
+          </p>
+        </div>
+
         {/* Invoice Date */}
         <div>
           <Label htmlFor="invoiceDate">Invoice Date *</Label>
@@ -610,6 +715,74 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
                 placeholder="29"
                 maxLength={2}
                 data-testid="input-seller-state-code"
+              />
+            </div>
+            <div>
+              <Label htmlFor="sellerPhone">Seller Phone</Label>
+              <Input
+                id="sellerPhone"
+                {...form.register("sellerPhone")}
+                placeholder="+91 1234567890"
+                data-testid="input-seller-phone"
+              />
+            </div>
+            <div>
+              <Label htmlFor="sellerEmail">Seller Email</Label>
+              <Input
+                id="sellerEmail"
+                type="email"
+                {...form.register("sellerEmail")}
+                placeholder="sales@company.com"
+                data-testid="input-seller-email"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Ship-To Address */}
+        <div className="space-y-4">
+          <h3 className="font-semibold text-lg">Ship-To Address (if different from buyer)</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="shipToName">Ship-To Name</Label>
+              <Input
+                id="shipToName"
+                {...form.register("shipToName")}
+                data-testid="input-ship-to-name"
+              />
+            </div>
+            <div>
+              <Label htmlFor="shipToCity">Ship-To City</Label>
+              <Input
+                id="shipToCity"
+                {...form.register("shipToCity")}
+                data-testid="input-ship-to-city"
+              />
+            </div>
+            <div className="col-span-2">
+              <Label htmlFor="shipToAddress">Ship-To Address</Label>
+              <Input
+                id="shipToAddress"
+                {...form.register("shipToAddress")}
+                data-testid="input-ship-to-address"
+              />
+            </div>
+            <div>
+              <Label htmlFor="shipToState">Ship-To State</Label>
+              <Input
+                id="shipToState"
+                {...form.register("shipToState")}
+                data-testid="input-ship-to-state"
+              />
+            </div>
+            <div>
+              <Label htmlFor="shipToPincode">Ship-To Pincode</Label>
+              <Input
+                id="shipToPincode"
+                {...form.register("shipToPincode")}
+                placeholder="560001"
+                maxLength={6}
+                data-testid="input-ship-to-pincode"
               />
             </div>
           </div>
@@ -891,6 +1064,8 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
                     form.setValue("bankName", bank.bankName);
                     form.setValue("bankAccountNumber", bank.accountNumber);
                     form.setValue("bankIfscCode", bank.ifscCode);
+                    form.setValue("accountHolderName", bank.accountHolderName);
+                    form.setValue("branchName", bank.branchName || "");
                     form.setValue("upiId", bank.upiId || "");
                   }
                 }}
@@ -911,17 +1086,25 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
             {selectedBankId && (
               <>
                 <div>
+                  <Label>Account Holder Name</Label>
+                  <Input value={form.watch("accountHolderName")} disabled data-testid="input-account-holder-name" />
+                </div>
+                <div>
                   <Label>Bank Account Number</Label>
-                  <Input value={form.watch("bankAccountNumber")} disabled />
+                  <Input value={form.watch("bankAccountNumber")} disabled data-testid="input-bank-account-number" />
                 </div>
                 <div>
                   <Label>IFSC Code</Label>
-                  <Input value={form.watch("bankIfscCode")} disabled />
+                  <Input value={form.watch("bankIfscCode")} disabled data-testid="input-bank-ifsc-code" />
+                </div>
+                <div>
+                  <Label>Branch Name</Label>
+                  <Input value={form.watch("branchName")} disabled data-testid="input-bank-branch-name" />
                 </div>
                 {form.watch("upiId") && (
                   <div className="col-span-2">
                     <Label>UPI ID</Label>
-                    <Input value={form.watch("upiId")} disabled />
+                    <Input value={form.watch("upiId")} disabled data-testid="input-upi-id" />
                   </div>
                 )}
               </>

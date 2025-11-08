@@ -31,7 +31,7 @@ export default function TemplateManagement({ activeTab: externalActiveTab }: Tem
     }
   }, [externalActiveTab]);
 
-  if (!user || user.role !== 'admin') {
+  if (!user || (user as any).role !== 'admin') {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <Card className="p-8 max-w-md text-center space-y-4">
