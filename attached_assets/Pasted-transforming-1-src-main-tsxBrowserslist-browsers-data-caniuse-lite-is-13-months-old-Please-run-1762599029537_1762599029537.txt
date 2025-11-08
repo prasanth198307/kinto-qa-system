@@ -1,0 +1,22 @@
+transforming (1) src/main.tsxBrowserslist: browsers data (caniuse-lite) is 13 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+transforming (4) src/App.tsx
+A PostCSS plugin did not pass the `from` option to `postcss.parse`. This may cause imported assets to be incorrectly transformed. If you've recently added a PostCSS plugin that raised this warning, please contact the package author to fix the issue.
+✓ 2077 modules transformed.
+✗ Build failed in 1.29s
+error during build:
+[vite]: Rollup failed to resolve import "xlsx" from "/Users/prasanthdusi/kinto-qa-system/kinto-qa-system/client/src/lib/gst-reports.ts".
+This is most likely unintended because it can break your application at runtime.
+If you do want to externalize this module explicitly add it to
+`build.rollupOptions.external`
+    at viteLog (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/vite/dist/node/chunks/config.js:34247:57)
+    at file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/vite/dist/node/chunks/config.js:34281:73
+    at onwarn (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/@vitejs/plugin-react/dist/index.js:90:7)
+    at file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/vite/dist/node/chunks/config.js:34281:28
+    at onRollupLog (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/vite/dist/node/chunks/config.js:34276:63)
+    at onLog (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/vite/dist/node/chunks/config.js:34079:4)
+    at file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/rollup/dist/es/shared/node-entry.js:20937:32
+    at Object.logger [as onLog] (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/rollup/dist/es/shared/node-entry.js:22823:9)
+    at ModuleLoader.handleInvalidResolvedId (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/rollup/dist/es/shared/node-entry.js:21567:26)
+    at file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/rollup/dist/es/shared/node-entry.js:21525:26
