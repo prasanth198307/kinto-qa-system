@@ -14,7 +14,7 @@ export default function MobileHeader({
   title = "KINTO QA"
 }: MobileHeaderProps) {
   return (
-    <header className="fixed top-0 left-0 right-0 h-14 bg-white border-b border-gray-200 shadow-sm z-50">
+    <header className="fixed top-0 left-0 right-0 h-14 bg-white border-b border-gray-200 shadow-sm z-[100]">
       <div className="flex items-center justify-between h-full px-4">
         <Button
           size="icon"
