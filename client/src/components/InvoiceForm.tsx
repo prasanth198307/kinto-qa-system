@@ -77,6 +77,8 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
   const [selectedBankId, setSelectedBankId] = useState<string>("");
   const [showPrintPreview, setShowPrintPreview] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(invoice?.templateId || "");
+  const [selectedVendorId, setSelectedVendorId] = useState<string>("");
+  const [shipToDifferentAddress, setShipToDifferentAddress] = useState(false);
 
   const { data: products = [] } = useQuery<Product[]>({
     queryKey: ['/api/products'],
@@ -267,18 +269,32 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
     if (gatepass && vendors.length > 0) {
       const vendor = vendors.find(v => v.id === gatepass.vendorId);
       if (vendor) {
-        form.setValue("buyerName", vendor.vendorName || "");
-        form.setValue("buyerGstin", vendor.gstNumber || "");
-        form.setValue("buyerAddress", vendor.address || "");
-        form.setValue("buyerState", vendor.state || "Karnataka");
-        form.setValue("buyerStateCode", vendor.stateCode || "29");
-        form.setValue("isCluster", vendor.isCluster || 0);
+        setSelectedVendorId(vendor.id);
+        populateBuyerFromVendor(vendor);
       } else if (gatepass.customerName) {
         form.setValue("buyerName", gatepass.customerName);
         form.setValue("isCluster", gatepass.isCluster || 0);
       }
     }
   }, [gatepass, vendors, form]);
+
+  // Populate buyer details from selected vendor
+  const populateBuyerFromVendor = (vendor: Vendor) => {
+    form.setValue("buyerName", vendor.vendorName || "");
+    form.setValue("buyerGstin", vendor.gstNumber || "");
+    form.setValue("buyerAddress", vendor.address || "");
+    form.setValue("buyerState", vendor.state || "Karnataka");
+    form.setValue("buyerStateCode", "29"); // Default state code
+    form.setValue("isCluster", vendor.isCluster || 0);
+  };
+
+  const handleVendorChange = (vendorId: string) => {
+    setSelectedVendorId(vendorId);
+    const vendor = vendors.find(v => v.id === vendorId);
+    if (vendor) {
+      populateBuyerFromVendor(vendor);
+    }
+  };
 
   // Pre-populate invoice items from gatepass items or existing invoice
   useEffect(() => {
@@ -680,6 +696,148 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
           )}
         </div>
 
+        {/* Vendor/Customer Selection */}
+        <div>
+          <Label htmlFor="vendorSelect">Select Customer/Vendor</Label>
+          <Select 
+            value={selectedVendorId} 
+            onValueChange={handleVendorChange}
+          >
+            <SelectTrigger data-testid="select-vendor">
+              <SelectValue placeholder="Select a customer/vendor" />
+            </SelectTrigger>
+            <SelectContent>
+              {vendors.map((vendor) => (
+                <SelectItem key={vendor.id} value={vendor.id} data-testid={`vendor-option-${vendor.id}`}>
+                  {vendor.vendorName} {vendor.gstNumber && `(${vendor.gstNumber})`}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground mt-1">
+            Auto-fills buyer details from selected vendor
+          </p>
+        </div>
+
+        {/* Buyer Details (Bill To) */}
+        <div className="space-y-4">
+          <h3 className="font-semibold text-lg">Buyer Details (Bill To)</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="buyerName">Buyer Name *</Label>
+              <Input
+                id="buyerName"
+                {...form.register("buyerName")}
+                data-testid="input-buyer-name"
+              />
+              {form.formState.errors.buyerName && (
+                <p className="text-sm text-destructive mt-1">{form.formState.errors.buyerName.message}</p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="buyerGstin">Buyer GSTIN</Label>
+              <Input
+                id="buyerGstin"
+                {...form.register("buyerGstin")}
+                placeholder="29AAAAA0000A1Z5"
+                data-testid="input-buyer-gstin"
+              />
+            </div>
+            <div className="col-span-2">
+              <Label htmlFor="buyerAddress">Buyer Address</Label>
+              <Input
+                id="buyerAddress"
+                {...form.register("buyerAddress")}
+                data-testid="input-buyer-address"
+              />
+            </div>
+            <div>
+              <Label htmlFor="buyerState">Buyer State</Label>
+              <Input
+                id="buyerState"
+                {...form.register("buyerState")}
+                data-testid="input-buyer-state"
+              />
+            </div>
+            <div>
+              <Label htmlFor="buyerStateCode">State Code</Label>
+              <Input
+                id="buyerStateCode"
+                {...form.register("buyerStateCode")}
+                placeholder="29"
+                maxLength={2}
+                data-testid="input-buyer-state-code"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Ship to Different Address Checkbox */}
+        <div className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            id="shipToDifferent"
+            checked={shipToDifferentAddress}
+            onChange={(e) => setShipToDifferentAddress(e.target.checked)}
+            className="rounded border-gray-300"
+            data-testid="checkbox-ship-to-different"
+          />
+          <Label htmlFor="shipToDifferent" className="cursor-pointer">
+            Ship to different address?
+          </Label>
+        </div>
+
+        {/* Ship-To Address (Conditional) */}
+        {shipToDifferentAddress && (
+          <div className="space-y-4">
+            <h3 className="font-semibold text-lg">Ship-To Address</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="shipToName">Ship-To Name</Label>
+                <Input
+                  id="shipToName"
+                  {...form.register("shipToName")}
+                  data-testid="input-ship-to-name"
+                />
+              </div>
+              <div>
+                <Label htmlFor="shipToCity">Ship-To City</Label>
+                <Input
+                  id="shipToCity"
+                  {...form.register("shipToCity")}
+                  data-testid="input-ship-to-city"
+                />
+              </div>
+              <div className="col-span-2">
+                <Label htmlFor="shipToAddress">Ship-To Address</Label>
+                <Input
+                  id="shipToAddress"
+                  {...form.register("shipToAddress")}
+                  data-testid="input-ship-to-address"
+                />
+              </div>
+              <div>
+                <Label htmlFor="shipToState">Ship-To State</Label>
+                <Input
+                  id="shipToState"
+                  {...form.register("shipToState")}
+                  data-testid="input-ship-to-state"
+                />
+              </div>
+              <div>
+                <Label htmlFor="shipToPincode">Ship-To Pincode</Label>
+                <Input
+                  id="shipToPincode"
+                  {...form.register("shipToPincode")}
+                  placeholder="560001"
+                  maxLength={6}
+                  data-testid="input-ship-to-pincode"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Seller Details */}
         <div className="space-y-4">
           <h3 className="font-semibold text-lg">Seller Details</h3>
@@ -744,108 +902,6 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
                 {...form.register("sellerEmail")}
                 placeholder="sales@company.com"
                 data-testid="input-seller-email"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Ship-To Address */}
-        <div className="space-y-4">
-          <h3 className="font-semibold text-lg">Ship-To Address (if different from buyer)</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="shipToName">Ship-To Name</Label>
-              <Input
-                id="shipToName"
-                {...form.register("shipToName")}
-                data-testid="input-ship-to-name"
-              />
-            </div>
-            <div>
-              <Label htmlFor="shipToCity">Ship-To City</Label>
-              <Input
-                id="shipToCity"
-                {...form.register("shipToCity")}
-                data-testid="input-ship-to-city"
-              />
-            </div>
-            <div className="col-span-2">
-              <Label htmlFor="shipToAddress">Ship-To Address</Label>
-              <Input
-                id="shipToAddress"
-                {...form.register("shipToAddress")}
-                data-testid="input-ship-to-address"
-              />
-            </div>
-            <div>
-              <Label htmlFor="shipToState">Ship-To State</Label>
-              <Input
-                id="shipToState"
-                {...form.register("shipToState")}
-                data-testid="input-ship-to-state"
-              />
-            </div>
-            <div>
-              <Label htmlFor="shipToPincode">Ship-To Pincode</Label>
-              <Input
-                id="shipToPincode"
-                {...form.register("shipToPincode")}
-                placeholder="560001"
-                maxLength={6}
-                data-testid="input-ship-to-pincode"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Buyer Details */}
-        <div className="space-y-4">
-          <h3 className="font-semibold text-lg">Buyer Details</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="buyerName">Buyer Name *</Label>
-              <Input
-                id="buyerName"
-                {...form.register("buyerName")}
-                data-testid="input-buyer-name"
-              />
-              {form.formState.errors.buyerName && (
-                <p className="text-sm text-destructive mt-1">{form.formState.errors.buyerName.message}</p>
-              )}
-            </div>
-            <div>
-              <Label htmlFor="buyerGstin">Buyer GSTIN</Label>
-              <Input
-                id="buyerGstin"
-                {...form.register("buyerGstin")}
-                placeholder="29AAAAA0000A1Z5"
-                data-testid="input-buyer-gstin"
-              />
-            </div>
-            <div className="col-span-2">
-              <Label htmlFor="buyerAddress">Buyer Address</Label>
-              <Input
-                id="buyerAddress"
-                {...form.register("buyerAddress")}
-                data-testid="input-buyer-address"
-              />
-            </div>
-            <div>
-              <Label htmlFor="buyerState">Buyer State</Label>
-              <Input
-                id="buyerState"
-                {...form.register("buyerState")}
-                data-testid="input-buyer-state"
-              />
-            </div>
-            <div>
-              <Label htmlFor="buyerStateCode">State Code</Label>
-              <Input
-                id="buyerStateCode"
-                {...form.register("buyerStateCode")}
-                placeholder="29"
-                maxLength={2}
-                data-testid="input-buyer-state-code"
               />
             </div>
           </div>
