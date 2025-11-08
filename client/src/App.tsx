@@ -42,7 +42,7 @@ import { ManagerChecklistAssignment } from "@/components/ManagerChecklistAssignm
 import PendingPaymentsDashboard from "@/components/PendingPaymentsDashboard";
 import { OperatorAssignedChecklists } from "@/components/OperatorAssignedChecklists";
 import { VerticalNavSidebar, type NavSection } from "@/components/VerticalNavSidebar";
-import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack } from "lucide-react";
+import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck } from "lucide-react";
 import SalesDashboard from "@/components/SalesDashboard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -295,6 +295,7 @@ function ManagerDashboard() {
         { id: "raw-material-issuance", label: "Raw Material Issuance", icon: Package },
         { id: "gatepasses", label: "Gatepasses", icon: FileText },
         { id: "invoices", label: "Invoices", icon: FileText },
+        { id: "dispatch-tracking", label: "Dispatch Tracking", icon: Truck },
       ],
       quickActions: [
         {
@@ -370,6 +371,8 @@ function ManagerDashboard() {
       case 'gatepasses':
       case 'invoices':
         return <ProductionManagement activeTab={activeView} />;
+      case 'dispatch-tracking':
+        return <DispatchTracking />;
       case 'reports':
         return <Reports />;
       default:
@@ -571,6 +574,7 @@ function AdminDashboard() {
         { id: "raw-material-issuance", label: "Raw Material Issuance", icon: Package },
         { id: "gatepasses", label: "Gatepasses", icon: FileText },
         { id: "invoices", label: "Sales Invoices", icon: Receipt },
+        { id: "dispatch-tracking", label: "Dispatch Tracking", icon: Truck },
         { id: "machine-startup-reminders", label: "Machine Startup Reminders", icon: Bell },
       ],
       quickActions: [
@@ -690,6 +694,8 @@ function AdminDashboard() {
       case 'gatepasses':
       case 'invoices':
         return <ProductionManagement activeTab={activeView} />;
+      case 'dispatch-tracking':
+        return <DispatchTracking />;
       case 'machine-startup-reminders':
         return <MachineStartupReminders />;
       case 'notification-settings':
