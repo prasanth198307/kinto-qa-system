@@ -677,13 +677,10 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
                 padding: 10mm;
                 width: 100%;
                 page-break-inside: avoid;
-                page-break-after: auto;
               }
               
               .page + .page {
                 page-break-before: always;
-                margin-top: 0 !important;
-                padding-top: 10mm !important;
               }
             }
           </style>
