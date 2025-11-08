@@ -370,14 +370,11 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
               padding: 10mm;
               margin: 0 auto;
               background: white;
+              page-break-inside: avoid;
             }
 
-            .page:not(:first-child) {
-              break-before: page;
-            }
-            
-            .page {
-              break-inside: avoid;
+            .page + .page {
+              page-break-before: always;
             }
 
             /* Title Section */
@@ -665,24 +662,28 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
 
             @media print {
               @page {
-                size: A4;
+                size: A4 portrait;
                 margin: 0;
               }
               
-              body {
+              html, body {
                 margin: 0;
+                padding: 0;
+                height: auto;
               }
               
               .page {
                 margin: 0;
-                border: none;
-                box-shadow: none;
                 padding: 10mm;
                 width: 100%;
+                page-break-inside: avoid;
+                page-break-after: auto;
               }
               
-              .page:not(:first-child) {
-                break-before: page;
+              .page + .page {
+                page-break-before: always;
+                margin-top: 0 !important;
+                padding-top: 10mm !important;
               }
             }
           </style>
