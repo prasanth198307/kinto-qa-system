@@ -219,6 +219,9 @@ psql $DATABASE_URL -f updated_dbscripts/20251107_missed_checklist_notifications.
 
 # Step 8: Enable base64 image support across all tables (recommended - if using image uploads)
 psql $DATABASE_URL -f updated_dbscripts/20251108_093500_image_columns_to_text.sql
+
+# Step 9: Add missing tables for complete schema sync (IMPORTANT - adds 9 missing tables)
+psql $DATABASE_URL -f updated_dbscripts/20251108_094000_complete_schema_sync.sql
 ```
 
 **Or with explicit connection:**
@@ -231,6 +234,7 @@ psql -U postgres -d kinto_qa -f updated_dbscripts/20251107_invoicing_and_payment
 psql -U postgres -d kinto_qa -f updated_dbscripts/20251107_machine_startup_reminders.sql
 psql -U postgres -d kinto_qa -f updated_dbscripts/20251107_missed_checklist_notifications.sql
 psql -U postgres -d kinto_qa -f updated_dbscripts/20251108_093500_image_columns_to_text.sql
+psql -U postgres -d kinto_qa -f updated_dbscripts/20251108_094000_complete_schema_sync.sql
 ```
 
 **⚠️ IMPORTANT:** 
