@@ -1,12 +1,26 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Plus } from "lucide-react";
 import { type LucideIcon } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+export interface QuickAction {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  onClick: () => void;
+}
 
 export interface NavSection {
   id: string;
   label?: string;
   items: NavItem[];
+  quickActions?: QuickAction[];
 }
 
 export interface NavItem {
@@ -68,8 +82,39 @@ export function VerticalNavSidebar({
           {sections.map((section, index) => (
             <div key={section.id}>
               {section.label && (
-                <div className="text-xs font-semibold text-muted-foreground uppercase mb-2 px-2">
-                  {section.label}
+                <div className="flex items-center justify-between mb-2 px-2">
+                  <div className="text-xs font-semibold text-muted-foreground uppercase">
+                    {section.label}
+                  </div>
+                  {section.quickActions && section.quickActions.length > 0 && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 hover-elevate"
+                          data-testid={`button-quick-action-${section.id}`}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56">
+                        {section.quickActions.map((action) => {
+                          const ActionIcon = action.icon;
+                          return (
+                            <DropdownMenuItem
+                              key={action.id}
+                              onClick={action.onClick}
+                              data-testid={`quick-action-${action.id}`}
+                            >
+                              <ActionIcon className="h-4 w-4 mr-2" />
+                              {action.label}
+                            </DropdownMenuItem>
+                          );
+                        })}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </div>
               )}
               <div className="space-y-1">
