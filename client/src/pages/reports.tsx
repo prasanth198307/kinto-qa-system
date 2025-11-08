@@ -178,7 +178,7 @@ export default function Reports() {
                   <SelectContent>
                     <SelectItem value="all">All Customers</SelectItem>
                     {uniqueCustomers.map((customer) => (
-                      <SelectItem key={customer} value={customer}>
+                      <SelectItem key={customer} value={customer || ''}>
                         {customer}
                       </SelectItem>
                     ))}
