@@ -235,6 +235,26 @@ function ManagerDashboard() {
         { id: "raw-materials", label: "Raw Materials", icon: Box },
         { id: "finished-goods", label: "Finished Goods", icon: CheckCircle2 },
       ],
+      quickActions: [
+        {
+          id: "add-product",
+          label: "Add Product",
+          icon: Package,
+          onClick: () => setActiveView("products"),
+        },
+        {
+          id: "add-raw-material",
+          label: "Add Raw Material",
+          icon: Box,
+          onClick: () => setActiveView("raw-materials"),
+        },
+        {
+          id: "add-finished-good",
+          label: "Add Finished Good",
+          icon: CheckCircle2,
+          onClick: () => setActiveView("finished-goods"),
+        },
+      ],
     },
     {
       id: "inventory-section",
@@ -242,6 +262,20 @@ function ManagerDashboard() {
       items: [
         { id: "uom", label: "Unit of Measurement", icon: Layers },
         { id: "vendors", label: "Vendor Master", icon: Building2 },
+      ],
+      quickActions: [
+        {
+          id: "add-uom",
+          label: "Add UOM",
+          icon: Layers,
+          onClick: () => setActiveView("uom"),
+        },
+        {
+          id: "add-vendor",
+          label: "Add Vendor",
+          icon: Building2,
+          onClick: () => setActiveView("vendors"),
+        },
       ],
     },
     {
@@ -252,6 +286,32 @@ function ManagerDashboard() {
         { id: "raw-material-issuance", label: "Raw Material Issuance", icon: Package },
         { id: "gatepasses", label: "Gatepasses", icon: FileText },
         { id: "invoices", label: "Invoices", icon: FileText },
+      ],
+      quickActions: [
+        {
+          id: "add-purchase-order",
+          label: "Add Purchase Order",
+          icon: ShoppingCart,
+          onClick: () => setActiveView("purchase-orders"),
+        },
+        {
+          id: "create-issuance",
+          label: "Create Issuance",
+          icon: Package,
+          onClick: () => setActiveView("raw-material-issuance"),
+        },
+        {
+          id: "create-gatepass",
+          label: "Create Gatepass",
+          icon: FileText,
+          onClick: () => setActiveView("gatepasses"),
+        },
+        {
+          id: "create-invoice",
+          label: "Create Invoice",
+          icon: FileText,
+          onClick: () => setActiveView("invoices"),
+        },
       ],
     },
   ];
