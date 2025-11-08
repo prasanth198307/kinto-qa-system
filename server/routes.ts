@@ -1686,6 +1686,218 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== INVOICE TEMPLATE MANAGEMENT ====================
+  
+  // Get all invoice templates
+  app.get('/api/invoice-templates', requireRole('admin'), async (req: any, res) => {
+    try {
+      const templates = await storage.getAllInvoiceTemplates();
+      res.json(templates);
+    } catch (error) {
+      console.error("Error fetching invoice templates:", error);
+      res.status(500).json({ message: "Failed to fetch invoice templates" });
+    }
+  });
+
+  // Get active invoice templates
+  app.get('/api/invoice-templates/active', isAuthenticated, async (req: any, res) => {
+    try {
+      const templates = await storage.getActiveInvoiceTemplates();
+      res.json(templates);
+    } catch (error) {
+      console.error("Error fetching active invoice templates:", error);
+      res.status(500).json({ message: "Failed to fetch active invoice templates" });
+    }
+  });
+
+  // Get default invoice template
+  app.get('/api/invoice-templates/default', isAuthenticated, async (req: any, res) => {
+    try {
+      const template = await storage.getDefaultInvoiceTemplate();
+      res.json(template);
+    } catch (error) {
+      console.error("Error fetching default invoice template:", error);
+      res.status(500).json({ message: "Failed to fetch default invoice template" });
+    }
+  });
+
+  // Get single invoice template
+  app.get('/api/invoice-templates/:id', requireRole('admin'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const template = await storage.getInvoiceTemplate(id);
+      if (!template) {
+        return res.status(404).json({ message: "Invoice template not found" });
+      }
+      res.json(template);
+    } catch (error) {
+      console.error("Error fetching invoice template:", error);
+      res.status(500).json({ message: "Failed to fetch invoice template" });
+    }
+  });
+
+  // Create invoice template
+  app.post('/api/invoice-templates', requireRole('admin'), async (req: any, res) => {
+    try {
+      const template = await storage.createInvoiceTemplate(req.body);
+      res.json({ template, message: "Invoice template created successfully" });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error creating invoice template:", error);
+      res.status(500).json({ message: "Failed to create invoice template" });
+    }
+  });
+
+  // Update invoice template
+  app.patch('/api/invoice-templates/:id', requireRole('admin'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const updated = await storage.updateInvoiceTemplate(id, req.body);
+      if (!updated) {
+        return res.status(404).json({ message: "Invoice template not found" });
+      }
+      res.json({ template: updated, message: "Invoice template updated successfully" });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error updating invoice template:", error);
+      res.status(500).json({ message: "Failed to update invoice template" });
+    }
+  });
+
+  // Delete invoice template
+  app.delete('/api/invoice-templates/:id', requireRole('admin'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteInvoiceTemplate(id);
+      res.json({ message: "Invoice template deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting invoice template:", error);
+      res.status(500).json({ message: "Failed to delete invoice template" });
+    }
+  });
+
+  // Set default invoice template
+  app.post('/api/invoice-templates/:id/set-default', requireRole('admin'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.setDefaultInvoiceTemplate(id);
+      res.json({ message: "Default invoice template set successfully" });
+    } catch (error) {
+      console.error("Error setting default invoice template:", error);
+      res.status(500).json({ message: "Failed to set default invoice template" });
+    }
+  });
+
+  // ==================== TERMS & CONDITIONS MANAGEMENT ====================
+  
+  // Get all terms & conditions
+  app.get('/api/terms-conditions', requireRole('admin'), async (req: any, res) => {
+    try {
+      const tcs = await storage.getAllTermsConditions();
+      res.json(tcs);
+    } catch (error) {
+      console.error("Error fetching terms & conditions:", error);
+      res.status(500).json({ message: "Failed to fetch terms & conditions" });
+    }
+  });
+
+  // Get active terms & conditions
+  app.get('/api/terms-conditions/active', isAuthenticated, async (req: any, res) => {
+    try {
+      const tcs = await storage.getActiveTermsConditions();
+      res.json(tcs);
+    } catch (error) {
+      console.error("Error fetching active terms & conditions:", error);
+      res.status(500).json({ message: "Failed to fetch active terms & conditions" });
+    }
+  });
+
+  // Get default terms & conditions
+  app.get('/api/terms-conditions/default', isAuthenticated, async (req: any, res) => {
+    try {
+      const tc = await storage.getDefaultTermsConditions();
+      res.json(tc);
+    } catch (error) {
+      console.error("Error fetching default terms & conditions:", error);
+      res.status(500).json({ message: "Failed to fetch default terms & conditions" });
+    }
+  });
+
+  // Get single terms & conditions
+  app.get('/api/terms-conditions/:id', requireRole('admin'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const tc = await storage.getTermsConditions(id);
+      if (!tc) {
+        return res.status(404).json({ message: "Terms & conditions not found" });
+      }
+      res.json(tc);
+    } catch (error) {
+      console.error("Error fetching terms & conditions:", error);
+      res.status(500).json({ message: "Failed to fetch terms & conditions" });
+    }
+  });
+
+  // Create terms & conditions
+  app.post('/api/terms-conditions', requireRole('admin'), async (req: any, res) => {
+    try {
+      const tc = await storage.createTermsConditions(req.body);
+      res.json({ tc, message: "Terms & conditions created successfully" });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error creating terms & conditions:", error);
+      res.status(500).json({ message: "Failed to create terms & conditions" });
+    }
+  });
+
+  // Update terms & conditions
+  app.patch('/api/terms-conditions/:id', requireRole('admin'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const updated = await storage.updateTermsConditions(id, req.body);
+      if (!updated) {
+        return res.status(404).json({ message: "Terms & conditions not found" });
+      }
+      res.json({ tc: updated, message: "Terms & conditions updated successfully" });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error updating terms & conditions:", error);
+      res.status(500).json({ message: "Failed to update terms & conditions" });
+    }
+  });
+
+  // Delete terms & conditions
+  app.delete('/api/terms-conditions/:id', requireRole('admin'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteTermsConditions(id);
+      res.json({ message: "Terms & conditions deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting terms & conditions:", error);
+      res.status(500).json({ message: "Failed to delete terms & conditions" });
+    }
+  });
+
+  // Set default terms & conditions
+  app.post('/api/terms-conditions/:id/set-default', requireRole('admin'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.setDefaultTermsConditions(id);
+      res.json({ message: "Default terms & conditions set successfully" });
+    } catch (error) {
+      console.error("Error setting default terms & conditions:", error);
+      res.status(500).json({ message: "Failed to set default terms & conditions" });
+    }
+  });
+
   // ==================== INVOICE MANAGEMENT ====================
   
   // Get all invoices
