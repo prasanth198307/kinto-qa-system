@@ -33,6 +33,24 @@ This folder contains incremental migration scripts for updating existing KINTO Q
 - Empty UOM table → Cannot create raw materials, finished goods, or any transactions
 - Without UOM: Inventory, issuance, gatepasses, invoices ALL fail
 
+### 20251108_093400_logo_url_to_text.sql
+**Date:** November 8, 2025  
+**Purpose:** Supports base64-encoded company logos in invoice templates
+
+**Changes:**
+1. Alters `invoice_templates.logo_url` column from `varchar(500)` to `text`
+
+**Why Needed:**
+- Base64 encoded images are typically 13,000+ characters
+- varchar(500) was too small, causing insert/update failures
+- text type supports unlimited length, perfect for base64 data
+
+**Safety:**
+- Non-breaking change (varchar → text is always safe)
+- No data loss occurs during conversion
+- Existing data is preserved
+- Compatible with all PostgreSQL versions
+
 ### 20251107_020000_notification_config.sql ⚠️ **IMPORTANT - RUN THIRD**
 **Date:** November 7, 2025  
 **Purpose:** Creates centralized notification configuration for SendGrid (Email) and Twilio (WhatsApp)
@@ -188,6 +206,9 @@ psql $DATABASE_URL -f updated_dbscripts/20251107_machine_startup_reminders.sql
 
 # Step 7: Add missed checklist notifications (optional - requires Steps 3 & 5)
 psql $DATABASE_URL -f updated_dbscripts/20251107_missed_checklist_notifications.sql
+
+# Step 8: Enable base64 logo support in invoice templates (optional - if using logo upload)
+psql $DATABASE_URL -f updated_dbscripts/20251108_093400_logo_url_to_text.sql
 ```
 
 **Or with explicit connection:**
@@ -199,6 +220,7 @@ psql -U postgres -d kinto_qa -f updated_dbscripts/20251107_vendor_and_transactio
 psql -U postgres -d kinto_qa -f updated_dbscripts/20251107_invoicing_and_payments.sql
 psql -U postgres -d kinto_qa -f updated_dbscripts/20251107_machine_startup_reminders.sql
 psql -U postgres -d kinto_qa -f updated_dbscripts/20251107_missed_checklist_notifications.sql
+psql -U postgres -d kinto_qa -f updated_dbscripts/20251108_093400_logo_url_to_text.sql
 ```
 
 **⚠️ IMPORTANT:** 
