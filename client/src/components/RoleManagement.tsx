@@ -32,6 +32,7 @@ interface RolePermission {
 // Available screens in the system
 const AVAILABLE_SCREENS = [
   { key: 'dashboard', label: 'Dashboard' },
+  { key: 'sales_dashboard', label: 'Sales Dashboard' },
   { key: 'users', label: 'User Management' },
   { key: 'roles', label: 'Role Management' },
   { key: 'machines', label: 'Machines' },
@@ -43,11 +44,18 @@ const AVAILABLE_SCREENS = [
   { key: 'maintenance_plans', label: 'Maintenance Plans' },
   { key: 'pm_templates', label: 'PM Task Templates' },
   { key: 'pm_execution', label: 'PM Execution' },
+  { key: 'pm_history', label: 'PM History' },
   { key: 'inventory', label: 'Inventory Management' },
   { key: 'uom', label: 'Units of Measure' },
   { key: 'products', label: 'Products' },
   { key: 'raw_materials', label: 'Raw Materials' },
   { key: 'finished_goods', label: 'Finished Goods' },
+  { key: 'invoices', label: 'Sales Invoices' },
+  { key: 'dispatch_tracking', label: 'Dispatch Tracking' },
+  { key: 'gatepasses', label: 'Gatepasses' },
+  { key: 'vendors', label: 'Vendor Master' },
+  { key: 'invoice_templates', label: 'Invoice Templates' },
+  { key: 'notification_settings', label: 'Notification Settings' },
   { key: 'reports', label: 'Reports' },
 ];
 

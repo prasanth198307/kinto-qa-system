@@ -46,6 +46,8 @@ The backend is an Express.js application with TypeScript and Node.js. It include
   - Multi-layer signature validation: format check, minimum length (100 chars), base64 content verification (50+ chars)
   - Prevents workflow bypass, status regression, and empty signature submissions
   - Tracks vehicle exit/entry times, security verification, cases count, seal numbers, and delivery confirmation
+- **Comprehensive Role Permissions Management:** Updated role permissions screen now includes all 26 system screens for granular access control: Dashboard, Sales Dashboard, User Management, Role Management, Machines, Machine Types, Checklist Templates, Checklists, Spare Parts, Purchase Orders, Maintenance Plans, PM Templates, PM Execution, PM History, Inventory Management, UOM, Products, Raw Materials, Finished Goods, Sales Invoices, Dispatch Tracking, Gatepasses, Vendor Master, Invoice Templates, Notification Settings, and Reports. Each screen supports View, Create, Edit, and Delete permissions for all roles.
+- **Fixed Header Overlap Issue:** Resolved z-index and layout overlap where TopRightHeader buttons were covering dropdown selectors in Sales Dashboard and other screens. Applied `pr-24 lg:pr-0` padding to prevent physical overlap on mobile/tablet while maintaining desktop layout.
 
 ### System Design Choices
 - **Authentication:** Users can log in with either username or email.
