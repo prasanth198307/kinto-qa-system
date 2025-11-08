@@ -27,6 +27,8 @@ import {
   invoices,
   invoiceItems,
   invoicePayments,
+  invoiceTemplates,
+  termsConditions,
   banks,
   checklistAssignments,
   machineStartupTasks,
@@ -81,6 +83,10 @@ import {
   type InsertInvoiceItem,
   type InvoicePayment,
   type InsertInvoicePayment,
+  type InvoiceTemplate,
+  type InsertInvoiceTemplate,
+  type TermsConditions,
+  type InsertTermsConditions,
   type Bank,
   type InsertBank,
   type Role,
@@ -242,6 +248,26 @@ export interface IStorage {
   getGatepassItems(gatepassId: string): Promise<GatepassItem[]>;
   updateGatepassItem(id: string, updates: Partial<InsertGatepassItem>): Promise<GatepassItem | undefined>;
   deleteGatepassItem(id: string): Promise<void>;
+  
+  // Invoice Templates
+  createInvoiceTemplate(template: InsertInvoiceTemplate): Promise<InvoiceTemplate>;
+  getAllInvoiceTemplates(): Promise<InvoiceTemplate[]>;
+  getActiveInvoiceTemplates(): Promise<InvoiceTemplate[]>;
+  getDefaultInvoiceTemplate(): Promise<InvoiceTemplate | undefined>;
+  getInvoiceTemplate(id: string): Promise<InvoiceTemplate | undefined>;
+  updateInvoiceTemplate(id: string, updates: Partial<InsertInvoiceTemplate>): Promise<InvoiceTemplate | undefined>;
+  deleteInvoiceTemplate(id: string): Promise<void>;
+  setDefaultInvoiceTemplate(id: string): Promise<void>;
+  
+  // Terms & Conditions
+  createTermsConditions(tc: InsertTermsConditions): Promise<TermsConditions>;
+  getAllTermsConditions(): Promise<TermsConditions[]>;
+  getActiveTermsConditions(): Promise<TermsConditions[]>;
+  getDefaultTermsConditions(): Promise<TermsConditions | undefined>;
+  getTermsConditions(id: string): Promise<TermsConditions | undefined>;
+  updateTermsConditions(id: string, updates: Partial<InsertTermsConditions>): Promise<TermsConditions | undefined>;
+  deleteTermsConditions(id: string): Promise<void>;
+  setDefaultTermsConditions(id: string): Promise<void>;
   
   // Invoices
   createInvoice(invoice: InsertInvoice): Promise<Invoice>;
@@ -1098,6 +1124,106 @@ export class DatabaseStorage implements IStorage {
 
   async deleteGatepassItem(id: string): Promise<void> {
     await db.update(gatepassItems).set({ recordStatus: 0, updatedAt: new Date() }).where(eq(gatepassItems.id, id));
+  }
+
+  // Invoice Templates
+  async createInvoiceTemplate(template: InsertInvoiceTemplate): Promise<InvoiceTemplate> {
+    const [newTemplate] = await db.insert(invoiceTemplates).values(template).returning();
+    return newTemplate;
+  }
+
+  async getAllInvoiceTemplates(): Promise<InvoiceTemplate[]> {
+    return await db.select().from(invoiceTemplates).where(eq(invoiceTemplates.recordStatus, 1));
+  }
+
+  async getActiveInvoiceTemplates(): Promise<InvoiceTemplate[]> {
+    return await db.select().from(invoiceTemplates).where(
+      and(eq(invoiceTemplates.recordStatus, 1), eq(invoiceTemplates.isActive, 1))
+    );
+  }
+
+  async getDefaultInvoiceTemplate(): Promise<InvoiceTemplate | undefined> {
+    const [template] = await db.select().from(invoiceTemplates).where(
+      and(
+        eq(invoiceTemplates.recordStatus, 1),
+        eq(invoiceTemplates.isDefault, 1),
+        eq(invoiceTemplates.isActive, 1)
+      )
+    );
+    return template;
+  }
+
+  async getInvoiceTemplate(id: string): Promise<InvoiceTemplate | undefined> {
+    const [template] = await db.select().from(invoiceTemplates).where(
+      and(eq(invoiceTemplates.id, id), eq(invoiceTemplates.recordStatus, 1))
+    );
+    return template;
+  }
+
+  async updateInvoiceTemplate(id: string, updates: Partial<InsertInvoiceTemplate>): Promise<InvoiceTemplate | undefined> {
+    const [updated] = await db.update(invoiceTemplates).set({ ...updates, updatedAt: new Date() }).where(eq(invoiceTemplates.id, id)).returning();
+    return updated;
+  }
+
+  async deleteInvoiceTemplate(id: string): Promise<void> {
+    await db.update(invoiceTemplates).set({ recordStatus: 0, updatedAt: new Date() }).where(eq(invoiceTemplates.id, id));
+  }
+
+  async setDefaultInvoiceTemplate(id: string): Promise<void> {
+    // First, unset all defaults
+    await db.update(invoiceTemplates).set({ isDefault: 0, updatedAt: new Date() });
+    // Then set the new default
+    await db.update(invoiceTemplates).set({ isDefault: 1, updatedAt: new Date() }).where(eq(invoiceTemplates.id, id));
+  }
+
+  // Terms & Conditions
+  async createTermsConditions(tc: InsertTermsConditions): Promise<TermsConditions> {
+    const [newTC] = await db.insert(termsConditions).values(tc).returning();
+    return newTC;
+  }
+
+  async getAllTermsConditions(): Promise<TermsConditions[]> {
+    return await db.select().from(termsConditions).where(eq(termsConditions.recordStatus, 1));
+  }
+
+  async getActiveTermsConditions(): Promise<TermsConditions[]> {
+    return await db.select().from(termsConditions).where(
+      and(eq(termsConditions.recordStatus, 1), eq(termsConditions.isActive, 1))
+    );
+  }
+
+  async getDefaultTermsConditions(): Promise<TermsConditions | undefined> {
+    const [tc] = await db.select().from(termsConditions).where(
+      and(
+        eq(termsConditions.recordStatus, 1),
+        eq(termsConditions.isDefault, 1),
+        eq(termsConditions.isActive, 1)
+      )
+    );
+    return tc;
+  }
+
+  async getTermsConditions(id: string): Promise<TermsConditions | undefined> {
+    const [tc] = await db.select().from(termsConditions).where(
+      and(eq(termsConditions.id, id), eq(termsConditions.recordStatus, 1))
+    );
+    return tc;
+  }
+
+  async updateTermsConditions(id: string, updates: Partial<InsertTermsConditions>): Promise<TermsConditions | undefined> {
+    const [updated] = await db.update(termsConditions).set({ ...updates, updatedAt: new Date() }).where(eq(termsConditions.id, id)).returning();
+    return updated;
+  }
+
+  async deleteTermsConditions(id: string): Promise<void> {
+    await db.update(termsConditions).set({ recordStatus: 0, updatedAt: new Date() }).where(eq(termsConditions.id, id));
+  }
+
+  async setDefaultTermsConditions(id: string): Promise<void> {
+    // First, unset all defaults
+    await db.update(termsConditions).set({ isDefault: 0, updatedAt: new Date() });
+    // Then set the new default
+    await db.update(termsConditions).set({ isDefault: 1, updatedAt: new Date() }).where(eq(termsConditions.id, id));
   }
 
   // Invoices
