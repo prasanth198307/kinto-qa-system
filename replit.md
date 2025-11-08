@@ -27,12 +27,25 @@ The backend is an Express.js application with TypeScript and Node.js. It include
 - **GST Reports for Filing:** Supports GSTR-1 and GSTR-3B with auto-classification of invoices, HSN summary, and accurate tax calculations for monthly, quarterly, or annual filing.
 - **Professional Delete Confirmations:** Implements `shadcn AlertDialog` for all delete operations for consistent UX.
 - **Updated Branding:** Login page and hero content updated to reflect the system's comprehensive "KINTO Operations & QA" capabilities.
-- **Complete Dispatch Tracking Workflow:** 5-stage flow: Invoice Creation (Ready for Gate Pass) → Gate Pass Generation (Generated) → Vehicle Exit Recording (Vehicle Out) → Invoice Update (Dispatched) → Proof of Delivery (Delivered). Includes status tracking, vehicle exit/entry times, security verification, and digital POD capture with signature support.
+- **Complete Dispatch Tracking Workflow:** Bulletproof 5-stage flow with strict status validation:
+  1. **Invoice Creation** (status: draft)
+  2. **Gate Pass Generation** (invoice→ready_for_gatepass, gatepass→generated)
+  3. **Vehicle Exit Recording** (gatepass→vehicle_out, invoice→dispatched) - requires generated status
+  4. **Proof of Delivery** (gatepass→delivered, invoice→delivered) - requires vehicle_out status + digital signature
+  - Enforces workflow ordering through backend status preconditions (400 errors for invalid transitions)
+  - Mobile-ready signature capture using HTML5 canvas with touch/mouse support
+  - Multi-layer signature validation: format check, minimum length (100 chars), base64 content verification (50+ chars)
+  - Prevents workflow bypass, status regression, and empty signature submissions
+  - Tracks vehicle exit/entry times, security verification, cases count, seal numbers, and delivery confirmation
 
 ### System Design Choices
 - **Authentication:** Users can log in with either username or email.
 - **Database Schema:** Includes a `is_cluster` flag in `vendors`, `gatepasses`, and `invoices` tables for mobile integration efficiency. Status tracking fields in both `invoices` (draft→ready_for_gatepass→dispatched→delivered) and `gatepasses` (generated→vehicle_out→delivered→completed) enable complete dispatch workflow tracking.
-- **Dispatch Workflow:** Invoice-first approach where invoices are created first, then linked to gatepasses. Status transitions ensure data integrity throughout the dispatch lifecycle (Invoice→Gatepass→Vehicle Exit→POD).
+- **Dispatch Workflow:** Invoice-first approach with tamper-proof state machine. Backend validates status preconditions before each transition:
+  - `PATCH /api/gatepasses/:id/vehicle-exit` requires status="generated", updates to "vehicle_out" + invoice to "dispatched"
+  - `PATCH /api/gatepasses/:id/pod` requires status="vehicle_out", validates non-empty signature, updates to "delivered" + invoice to "delivered"
+  - Prevents skipping stages, status regression, and workflow violations through strict 400 error responses
+  - Digital signature required for POD: validates base64 image format, minimum content length, and actual signature data
 - **Build & Deployment:** Development uses Vite dev server with `tsx`-powered Express; production builds use Vite for frontend and `esbuild` for backend. Drizzle Kit manages database schema.
 
 ## External Dependencies
