@@ -116,7 +116,7 @@ export function ManagerChecklistAssignment() {
   };
 
   // Calculate overdue assignments count
-  const overdueCount = assignments.filter(a => isOverdue(a.assignedDate, a.status)).length;
+  const overdueCount = assignments.filter(a => a.assignedDate && isOverdue(a.assignedDate, a.status)).length;
 
   if (assignmentsLoading) {
     return <div className="p-4">Loading assignments...</div>;
@@ -152,7 +152,17 @@ export function ManagerChecklistAssignment() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Checklist Template</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value || ""}>
+                      <Select 
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          // Auto-populate machine when template is selected
+                          const selectedTemplate = templates.find(t => t.id === value);
+                          if (selectedTemplate?.machineId) {
+                            form.setValue('machineId', selectedTemplate.machineId);
+                          }
+                        }} 
+                        value={field.value || ""}
+                      >
                         <FormControl>
                           <SelectTrigger data-testid="select-template">
                             <SelectValue placeholder="Select template" />
@@ -311,7 +321,7 @@ export function ManagerChecklistAssignment() {
           </Card>
         ) : (
           assignments.map((assignment) => {
-            const assignmentIsOverdue = isOverdue(assignment.assignedDate, assignment.status);
+            const assignmentIsOverdue = assignment.assignedDate ? isOverdue(assignment.assignedDate, assignment.status) : false;
             return (
               <Card 
                 key={assignment.id} 
