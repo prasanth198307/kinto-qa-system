@@ -287,13 +287,26 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
           </div>
         </div>
 
-        <!-- Received and Balance -->
-        <div class="payment-summary">
-          <div class="payment-grid">
-            <div>Received:</div>
-            <div style="text-align:right;">${formatCurrency(amountReceived)}</div>
-            <div><strong>Balance:</strong></div>
-            <div style="text-align:right;"><strong>${formatCurrency(balanceDue)}</strong></div>
+        <!-- Terms & Conditions (Left) and Received/Balance (Right) -->
+        <div class="terms-payment-grid">
+          <!-- Terms & Conditions (Left Column) -->
+          <div class="terms-section">
+            ${termsConditions && termsConditions.terms && termsConditions.terms.length > 0 ? `
+              <div class="terms-title">Terms & Conditions:</div>
+              <ol>
+                ${termsConditions.terms.map(term => `<li>${term}</li>`).join('')}
+              </ol>
+            ` : ''}
+          </div>
+          
+          <!-- Received and Balance (Right Column) -->
+          <div class="payment-summary">
+            <div class="payment-grid">
+              <div>Received:</div>
+              <div style="text-align:right;">${formatCurrency(amountReceived)}</div>
+              <div><strong>Balance:</strong></div>
+              <div style="text-align:right;"><strong>${formatCurrency(balanceDue)}</strong></div>
+            </div>
           </div>
         </div>
 
@@ -312,16 +325,6 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
             ${invoice.bankIfscCode ? `<div>IFSC Code: ${invoice.bankIfscCode}</div>` : ''}
             ${invoice.branchName ? `<div>Branch: ${invoice.branchName}</div>` : ''}
             ${invoice.upiId ? `<div>UPI ID: ${invoice.upiId}</div>` : ''}
-          </div>
-        ` : ''}
-
-        <!-- Terms & Conditions -->
-        ${termsConditions && termsConditions.terms && termsConditions.terms.length > 0 ? `
-          <div class="terms-section">
-            <div class="terms-title">Terms & Conditions:</div>
-            <ol>
-              ${termsConditions.terms.map(term => `<li>${term}</li>`).join('')}
-            </ol>
           </div>
         ` : ''}
 
@@ -556,13 +559,18 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
               background: #f5f5f5;
             }
 
+            /* Terms & Payment Grid (Two Columns) */
+            .terms-payment-grid {
+              display: grid;
+              grid-template-columns: 1fr 200px;
+              gap: 10px;
+              margin-bottom: 10px;
+            }
+
             /* Payment Summary */
             .payment-summary {
-              width: 200px;
-              margin-left: auto;
               border: 1px solid #000;
               padding: 8px;
-              margin-bottom: 10px;
             }
 
             .payment-grid {
@@ -602,7 +610,6 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
             .terms-section {
               border: 1px solid #000;
               padding: 8px;
-              margin-bottom: 10px;
             }
 
             .terms-title {
