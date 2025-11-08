@@ -1,87 +1,37 @@
 # KINTO Operations & QA Management System
 
 ## Overview
-KINTO Operations & QA is a comprehensive manufacturing operations and quality management system. It handles complete production operations including inventory management, purchase orders, invoicing, gatepasses, quality assurance, and preventive maintenance. The system enables operators to complete checklists, reviewers to verify submissions, managers to approve, and administrators to configure the entire system. It supports managing machines, users, checklist templates, spare parts, and includes features like FIFO payment allocation, GST-compliant invoice generation, robust payment tracking, and comprehensive reporting. The system is built as a full-stack TypeScript solution with a React frontend and Express backend, focusing on speed, clarity, and error prevention for industrial workflows.
+KINTO Operations & QA is a comprehensive manufacturing operations and quality management system. It manages production, inventory, purchase orders, invoicing, gatepasses, quality assurance, and preventive maintenance. The system enables operators, reviewers, managers, and administrators to perform their respective tasks, including checklist completion, verification, approval, and system configuration. Key features include FIFO payment allocation, GST-compliant invoice generation, robust payment tracking, and comprehensive reporting. Built with a full-stack TypeScript solution using React and Express, it prioritizes speed and error prevention for industrial workflows.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
 ## System Architecture
 
-### Frontend Architecture
-The frontend uses React 18 with TypeScript, Vite, and Wouter for routing. UI components are built with shadcn/ui (Radix UI) and styled using Tailwind CSS, following a "New York" theme with Material Design principles. TanStack Query manages server state. The design is mobile-first, featuring a custom color palette, typography, spacing, and elevation. Navigation uses a Vertical Sidebar system with role-based dashboards, reusable UI elements, and admin configuration tools. Form validation uses `react-hook-form` and `zod`.
+### UI/UX Decisions
+The frontend uses React 18 with TypeScript, Vite, and Wouter, featuring `shadcn/ui` (Radix UI) and Tailwind CSS with a "New York" theme and Material Design principles. It is mobile-first, using a custom color palette, typography, spacing, and elevation. Navigation is via a Vertical Sidebar with role-based dashboards and reusable UI components. Form validation uses `react-hook-form` and `zod`.
 
-**Navigation Structure (Nov 2025):**
-- Manager Dashboard: Production (Product Master, Raw Materials, Finished Goods), Inventory (UOM, Vendor Master), Operations (Purchase Orders, Issuance, Gatepasses, Invoices)
-- Admin Dashboard (Flat Navigation - No Dropdowns): 
-  1. Overview Dashboard
-  2. Sales Dashboard
-  3. Configuration (Users, Role Permissions, Machines, Machine Types, Spare Parts, PM Templates, UOM, Vendor Master, Notification Settings)
-  4. Production (Product Master, Checklist Builder, Raw Materials, Finished Goods)
-  5. Operations (Maintenance, PM History, Purchase Orders)
-  6. Production Operations (Raw Material Issuance, Gatepasses, Sales Invoices, Machine Startup Reminders)
+### Technical Implementations
+The backend is an Express.js application with TypeScript and Node.js. It includes Email/Password Authentication with `scrypt` and `Passport.js`, and a Dynamic Role-Based Access Control (RBAC) system for `admin`, `manager`, `operator`, and `reviewer` roles with granular, screen-level permissions. Neon Serverless PostgreSQL is the database, accessed via Drizzle ORM. The schema supports users, machines, checklists, inventory, transactions, and GST-compliant invoices. It features multi-item issuance, a Header-Detail pattern for transactional integrity, automatic inventory management, and comprehensive vendor and role management systems. API is RESTful JSON with structured error handling, audit logging, and multi-layer authorization.
 
-### Backend Architecture
-The backend is an Express.js application with TypeScript and Node.js. It features Email/Password Authentication with `scrypt` and `Passport.js`, and a Dynamic Role-Based Access Control (RBAC) system for `admin`, `manager`, `operator`, and `reviewer` roles with granular, screen-level permissions. Neon Serverless PostgreSQL is the database, accessed via Drizzle ORM. The schema includes core tables for users, machines, checklists, inventory, transactions, and GST-compliant invoices. It supports multi-item issuance, a Header-Detail pattern for transactional integrity, automatic inventory management, a comprehensive Vendor Master System, and a Role Management System.
+### Feature Specifications
+- **Comprehensive Reporting System:** Generates printable reports for various operations (Raw Material Issuance, Purchase Orders, PM Execution, Gatepass, GST-Compliant Invoices) optimized for A4 printing with company branding.
+- **Sales Dashboard:** Provides analytics on revenue, goods sold, total orders, and average order value with flexible time filters.
+- **Machine Startup Reminder System:** Manages and tracks machine startup tasks, sending multi-channel reminders (WhatsApp, Email) before scheduled production.
+- **Missed Checklist Notification System:** Automatically alerts relevant personnel (operator, reviewer, manager, admin) via WhatsApp for overdue checklist assignments.
+- **Invoice-First Gatepass Flow:** Ensures gatepasses are created only after an invoice, auto-populating items from the invoice to maintain data consistency.
+- **Invoice Template Management System:** Allows admin to create and manage professional invoice templates with customizable seller details, bank information, terms & conditions, and company logo support.
+- **Enhanced Invoice Form:** Features a compact single-line item layout, template selection, ship-to address section, complete bank account details, and a print preview.
+- **Gatepass Print Functionality:** Provides a print preview for gatepasses, including company branding, details, itemized list, and signature blocks.
+- **Centralized Reports Module:** A unified page for various operational and GST reports with a tabbed interface, print preview, smart filtering, and export options (JSON, Excel).
+- **GST Reports for Filing:** Supports GSTR-1 and GSTR-3B with auto-classification of invoices, HSN summary, and accurate tax calculations for monthly, quarterly, or annual filing.
+- **Professional Delete Confirmations:** Implements `shadcn AlertDialog` for all delete operations for consistent UX.
+- **Updated Branding:** Login page and hero content updated to reflect the system's comprehensive "KINTO Operations & QA" capabilities.
 
-**Authentication Implementation (Fixed Nov 2025):** The `getUserByUsername()` function now queries by both username AND email using Drizzle's `or()` operator. This allows users to log in with either their username or email address. Admin credentials: username=`admin` OR email=`admin@kinto.com`, password=`admin123`.
-
-### API Design
-The RESTful API under `/api` uses JSON, provides structured error handling, implements comprehensive audit logging, and features multi-layer authorization (`isAuthenticated`, `requireRole`) with fresh database lookups for role validation.
-
-### Build & Deployment
-Development uses a Vite dev server with an `tsx`-powered Express backend. Production builds bundle the frontend with Vite and the backend with `esbuild`. Database schema management uses Drizzle Kit.
-
-### Key Features
-- **Comprehensive Reporting System:** Printable reports for Raw Material Issuance, Purchase Orders, PM Execution, Gatepass (3-copy), and GST-Compliant Invoices. Reports are print-optimized HTML/CSS for A4, with company branding and signature blocks.
-- **Sales Dashboard:** Provides sales analytics including revenue, goods sold, total orders, and average order value, with flexible time period filters (Monthly, Quarterly, Half-Yearly, Yearly) and year selection. Accessible by Admin and Manager roles.
-- **Machine Startup Reminder System:** Allows managers to assign machine startup tasks to operators, tracks configurable warmup times per machine, and sends automated multi-channel (WhatsApp, Email via Twilio/SendGrid) reminders before scheduled production. Supports bulk assignment, task status tracking (pending → notified → completed → cancelled), and full CRUD operations. Configuration for notifications is available via Admin settings and environment variables.
-- **Missed Checklist Notification System:** Automatically detects checklist assignments that pass their due date without completion and sends WhatsApp alerts to multiple recipients (operator, reviewer, manager, and all admins). The system runs periodic checks every 5 minutes, tracks notification status to prevent duplicates, and supports both test mode (console logging) and production mode (Twilio API integration). Manual triggering is available via `/api/cron/missed-checklists` endpoint for testing purposes.
-- **Invoice-First Gatepass Flow:** Gatepasses require an invoice to be created first. The workflow is:
-  1. Create an invoice (Operations → Invoices)
-  2. Create a gatepass and select the invoice
-  3. Items auto-populate from the invoice (read-only - cannot manually add/remove/edit)
-  
-  **Key Points:**
-  - The items section **only displays when an invoice is selected**
-  - If no invoice is selected, items section is hidden and gatepass cannot be created
-  - This ensures complete data consistency between invoices and gatepasses
-  - Once an invoice is linked to an active gatepass, it cannot be reused
-  - When a gatepass is deleted (soft deleted), the linked invoice becomes available for reuse
-- **Cluster Flag for Mobile Integration:** Added `is_cluster` column to vendors, gatepasses, and invoices tables. This flag (0=Individual, 1=Cluster) is automatically copied from vendor to gatepass/invoice during creation, eliminating the need for table joins in mobile app queries. The flag is displayed in the Vendor Master table and managed via a checkbox in the vendor form.
-- **Invoice Template Management System (Nov 2025):** Professional template-based invoice generation with customizable seller details, bank information, and terms & conditions.
-  - **Template Management**: Admin can create and manage multiple invoice templates with default seller details (name, GSTIN, address, state, state code, phone, email) and bank information (bank name, account number, IFSC, account holder name, branch name). Templates support default/active flags for quick selection.
-  - **Terms & Conditions Library**: Centralized T&C management with reusable templates. Each T&C template contains a name and multiple terms (stored as array), can be marked as default, and linked to invoice templates.
-  - **Enhanced Invoice Fields**: Invoices now capture seller phone/email, ship-to address (name, address, city, state, pincode), and complete bank details (account holder, branch name) for professional GST-compliant invoices.
-  - **Auto-Population**: Selecting a template auto-fills seller and bank details in the invoice form. Default template is auto-selected on new invoice creation.
-  - **Professional Print Format**: Updated PrintableInvoice component displays all new fields including:
-    - Seller contact information (phone/email)
-    - Ship-to address section (when different from buyer)
-    - Amount in words (using Indian numbering system: Crores, Lakhs, Thousands)
-    - Complete bank details (account holder, branch name)
-    - Terms & conditions section (when linked to invoice)
-  - **Database Schema**: Added `invoice_templates` and `terms_conditions` tables with full CRUD operations via `/api/invoice-templates` and `/api/terms-conditions` endpoints
-  - **Admin UI**: Template Management page (accessible from Admin dashboard) features dual tabs for managing Invoice Templates and Terms & Conditions with create/edit/delete/set-default operations
-  - **Number-to-Words Utility**: `client/src/lib/number-to-words.ts` converts amounts to Indian English words for GST compliance (e.g., "Rupees Five Thousand Two Hundred Fifty and Twenty Paise Only")
-- **Enhanced Invoice Form (Nov 2025):** The invoice form features a compact single-line item layout (Product, HSN, Description, Qty, Price, GST, Remove in one row) for better UX and reduced scrolling. Template selection dropdown allows choosing pre-configured seller/bank details. Added Ship-To Address section for delivery address when different from buyer. Complete bank account fields (account holder, branch) displayed when bank is selected. Includes Print Preview button that opens a formatted, print-ready invoice with all fields properly displayed.
-- **Gatepass Print Functionality (Nov 2025):** Added Print Preview button to the gatepass form (available after saving). When clicked, opens a formatted, print-ready gatepass in a new window featuring company branding, gatepass details (number, date, vehicle, driver, customer, destination), itemized product list with quantities and UOM, remarks section, and signature blocks for Prepared By, Checked By, and Authorized Signatory. Includes a Print button for direct printing.
-- **Centralized Reports Module (Nov 2025):** Implemented a comprehensive Reports page (client/src/pages/reports.tsx) accessible from both Admin and Manager dashboards. Features include:
-  - **Tabbed Interface**: Six report types (Gatepasses, Invoices, Raw Material Issuances, Purchase Orders, PM Execution, GST Reports) with icons and filtered record counts
-  - **Print Preview**: Each operational tab includes print preview buttons that open formatted, print-ready reports in new windows using existing printable components (PrintableGatepass, PrintableInvoice, PrintableRawMaterialIssuance, PrintablePurchaseOrder, PrintablePMExecution)
-  - **Smart Filtering**: Date range filters (From/To) apply to all report types using appropriate date fields; Customer filter populated with unique customers from gatepasses and invoices, applies only to relevant tabs (Gatepasses and Invoices)
-  - **GST Reports for Filing (Nov 2025)**: Complete GST reporting functionality for upload to GST portal with real HSN data from invoice line items
-    - **Report Types**: GSTR-1 (Outward Supplies), GSTR-3B (Summary Return). **Note**: GSTR-2/2A/2B excluded (require vendor invoice data not yet in system), GSTR-9 excluded (complex annual return for future implementation)
-    - **Filing Periods**: Monthly, Quarterly, Annual with year and period selection
-    - **Export Formats**: JSON (for direct portal upload) and Excel (for review/validation)
-    - **Classifications**: Auto-classification of B2B, B2CL (Large), B2CS (Small), Export invoices based on buyer GSTIN and amount
-    - **HSN Summary**: **Fully implemented** with real data from invoice_items table. Server-side aggregation by HSN code, UOM, and tax rate via dedicated `/api/gst-reports` POST endpoint
-    - **Tax Calculations**: Automatic CGST/SGST (intra-state) and IGST (inter-state) calculation based on seller and buyer states, with accurate tax rate computation
-    - **API Endpoint**: `/api/gst-reports` (POST) - Accepts periodType, month, year; returns invoices with items and aggregated HSN summary
-    - **Frontend Utilities**: `client/src/lib/gst-reports.ts` - includes `fetchGSTReportData()`, `generateGSTR1()`, `generateGSTR3B()`, JSON/Excel export functions
-  - **Navigation**: Added to main sections of both Admin and Manager dashboards for easy access to all operational and compliance reports
-  - **Data Sources**: Uses TanStack Query to fetch from /api/gatepasses, /api/invoices, /api/raw-material-issuances, /api/purchase-orders, /api/pm-executions
-- **Professional Delete Confirmations (Nov 2025):** Implemented shadcn AlertDialog confirmation dialogs for all delete operations across the application. Replaces browser confirm() with professional, accessible UI components featuring destructive styling, proper test IDs, and consistent UX. Applied to Vendors, Products, Raw Materials, and Finished Goods in inventory management.
-- **Updated Branding (Nov 2025):** Login page updated from "KINTO QA System" to "KINTO Operations & QA" to reflect the comprehensive operations and quality management capabilities of the system. Hero content updated to showcase complete manufacturing operations including inventory, production, invoicing, gatepasses, quality assurance, and comprehensive reporting.
+### System Design Choices
+- **Authentication:** Users can log in with either username or email.
+- **Database Schema:** Includes a `is_cluster` flag in `vendors`, `gatepasses`, and `invoices` tables for mobile integration efficiency.
+- **Build & Deployment:** Development uses Vite dev server with `tsx`-powered Express; production builds use Vite for frontend and `esbuild` for backend. Drizzle Kit manages database schema.
 
 ## External Dependencies
 
@@ -89,7 +39,7 @@ Development uses a Vite dev server with an `tsx`-powered Express backend. Produc
 - Neon Serverless PostgreSQL
 
 ### Authentication
-- Replit Auth (via OpenID Connect)
+- Replit Auth (OpenID Connect)
 - `openid-client`
 - `passport`
 
