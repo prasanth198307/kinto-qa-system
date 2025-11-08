@@ -33,6 +33,7 @@ export default function Reports() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [selectedCustomer, setSelectedCustomer] = useState<string>("all");
+  const [activeTab, setActiveTab] = useState("gatepasses");
 
   const { data: gatepasses = [] } = useQuery<Gatepass[]>({
     queryKey: ['/api/gatepasses'],
@@ -140,10 +141,13 @@ export default function Reports() {
             <Filter className="w-5 h-5" />
             Filters
           </CardTitle>
-          <CardDescription>Filter reports by date range and customer</CardDescription>
+          <CardDescription>
+            Filter reports by date range
+            {(activeTab === 'gatepasses' || activeTab === 'invoices') && ' and customer'}
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className={`grid grid-cols-1 gap-4 ${(activeTab === 'gatepasses' || activeTab === 'invoices') ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
             <div>
               <Label htmlFor="date-from">From Date</Label>
               <Input
@@ -164,22 +168,24 @@ export default function Reports() {
                 data-testid="input-date-to"
               />
             </div>
-            <div>
-              <Label htmlFor="customer">Customer</Label>
-              <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
-                <SelectTrigger id="customer" data-testid="select-customer">
-                  <SelectValue placeholder="All Customers" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Customers</SelectItem>
-                  {uniqueCustomers.map((customer) => (
-                    <SelectItem key={customer} value={customer}>
-                      {customer}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {(activeTab === 'gatepasses' || activeTab === 'invoices') && (
+              <div>
+                <Label htmlFor="customer">Customer</Label>
+                <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
+                  <SelectTrigger id="customer" data-testid="select-customer">
+                    <SelectValue placeholder="All Customers" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Customers</SelectItem>
+                    {uniqueCustomers.map((customer) => (
+                      <SelectItem key={customer} value={customer}>
+                        {customer}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
           <div className="mt-4 flex justify-end">
             <Button
@@ -194,7 +200,7 @@ export default function Reports() {
       </Card>
 
       {/* Reports Tabs */}
-      <Tabs defaultValue="gatepasses" className="w-full">
+      <Tabs defaultValue="gatepasses" className="w-full" onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="gatepasses" data-testid="tab-gatepasses">
             <FileText className="w-4 h-4 mr-2" />
