@@ -1821,6 +1821,117 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GST Reports - Get invoices with items and HSN summary for a period
+  app.post('/api/gst-reports', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { periodType, month, year } = req.body;
+      
+      // Validate input
+      if (!periodType || !month || !year) {
+        return res.status(400).json({ message: "periodType, month, and year are required" });
+      }
+      
+      if (!['monthly', 'quarterly', 'annual'].includes(periodType)) {
+        return res.status(400).json({ message: "periodType must be monthly, quarterly, or annual" });
+      }
+      
+      // Calculate date range based on period type
+      let startDate: Date;
+      let endDate: Date;
+      
+      if (periodType === 'monthly') {
+        startDate = new Date(year, month - 1, 1); // month is 1-indexed
+        endDate = new Date(year, month, 0, 23, 59, 59, 999); // Last day of month
+      } else if (periodType === 'quarterly') {
+        // month represents end of quarter (3, 6, 9, 12)
+        const quarterStartMonth = month - 2;
+        startDate = new Date(year, quarterStartMonth, 1);
+        endDate = new Date(year, month, 0, 23, 59, 59, 999);
+      } else {
+        // Annual
+        startDate = new Date(year, 0, 1); // Jan 1
+        endDate = new Date(year, 11, 31, 23, 59, 59, 999); // Dec 31
+      }
+      
+      // Fetch invoices with items
+      const invoicesWithItems = await storage.getInvoicesWithItemsByPeriod(startDate, endDate);
+      
+      // Aggregate HSN summary
+      const hsnMap = new Map<string, any>();
+      let totalTaxableValue = 0;
+      let totalTax = 0;
+      
+      for (const { invoice, items } of invoicesWithItems) {
+        for (const item of items) {
+          const hsnCode = item.hsnCode || 'UNCLASSIFIED';
+          const qty = item.quantity || 0;
+          const taxableAmt = (item.taxableAmount || 0) / 100; // Convert paise to rupees
+          const cgst = (item.cgstAmount || 0) / 100;
+          const sgst = (item.sgstAmount || 0) / 100;
+          const igst = (item.igstAmount || 0) / 100;
+          const cess = (item.cessAmount || 0) / 100;
+          
+          // Get UOM (you may need to fetch this from the UOM table if uomId is present)
+          const uom = 'NOS'; // Default, could be fetched from database if needed
+          
+          if (!hsnMap.has(hsnCode)) {
+            hsnMap.set(hsnCode, {
+              hsnCode,
+              description: item.description || '',
+              uom,
+              quantity: 0,
+              taxableValue: 0,
+              cgstAmount: 0,
+              sgstAmount: 0,
+              igstAmount: 0,
+              cessAmount: 0,
+              taxRate: 0,
+            });
+          }
+          
+          const hsnEntry = hsnMap.get(hsnCode);
+          hsnEntry.quantity += qty;
+          hsnEntry.taxableValue += taxableAmt;
+          hsnEntry.cgstAmount += cgst;
+          hsnEntry.sgstAmount += sgst;
+          hsnEntry.igstAmount += igst;
+          hsnEntry.cessAmount += cess;
+          
+          totalTaxableValue += taxableAmt;
+          totalTax += cgst + sgst + igst + cess;
+        }
+      }
+      
+      // Calculate average tax rate for each HSN
+      const hsnSummary = Array.from(hsnMap.values()).map(hsn => {
+        const totalHsnTax = hsn.cgstAmount + hsn.sgstAmount + hsn.igstAmount;
+        hsn.taxRate = hsn.taxableValue > 0 
+          ? Number(((totalHsnTax / hsn.taxableValue) * 100).toFixed(2))
+          : 0;
+        return hsn;
+      });
+      
+      // Build response
+      const response = {
+        invoices: invoicesWithItems,
+        hsnSummary,
+        metadata: {
+          period: `${month.toString().padStart(2, '0')}${year}`,
+          periodType,
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+          totalInvoices: invoicesWithItems.length,
+          totalTaxableValue: Number(totalTaxableValue.toFixed(2)),
+          totalTax: Number(totalTax.toFixed(2)),
+        },
+      };
+      
+      res.json(response);
+    } catch (error) {
+      console.error("Error generating GST report:", error);
+      res.status(500).json({ message: "Failed to generate GST report" });
+    }
+  });
 
   // Invoice Payment Tracking API
   // Get all payments (optionally filtered by invoice)
