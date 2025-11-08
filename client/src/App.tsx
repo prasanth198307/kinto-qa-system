@@ -33,6 +33,7 @@ import ProductionManagement from "@/pages/production-management";
 import MachineStartupReminders from "@/pages/machine-startup-reminders";
 import NotificationSettings from "@/pages/notification-settings";
 import Reports from "@/pages/reports";
+import TemplateManagement from "@/pages/template-management";
 import InventorySummaryDashboard from "@/components/InventorySummaryDashboard";
 import TodayProductionStats from "@/components/TodayProductionStats";
 import RolePermissionsView from "@/components/RolePermissionsView";
@@ -41,7 +42,7 @@ import { ManagerChecklistAssignment } from "@/components/ManagerChecklistAssignm
 import PendingPaymentsDashboard from "@/components/PendingPaymentsDashboard";
 import { OperatorAssignedChecklists } from "@/components/OperatorAssignedChecklists";
 import { VerticalNavSidebar, type NavSection } from "@/components/VerticalNavSidebar";
-import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell } from "lucide-react";
+import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack } from "lucide-react";
 import SalesDashboard from "@/components/SalesDashboard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -476,6 +477,7 @@ function AdminDashboard() {
         { id: "machine-types", label: "Machine Types", icon: Layers },
         { id: "spare-parts", label: "Spare Parts", icon: Package },
         { id: "pm-templates", label: "PM Templates", icon: ListChecks },
+        { id: "template-management", label: "Invoice Templates", icon: FileStack },
         { id: "uom", label: "Unit of Measurement", icon: Layers },
         { id: "vendors", label: "Vendor Master", icon: Building2 },
         { id: "notification-settings", label: "Notification Settings", icon: Bell },
@@ -643,6 +645,12 @@ function AdminDashboard() {
         return (
           <div className="p-4">
             <AdminPMTaskListTemplates />
+          </div>
+        );
+      case 'template-management':
+        return (
+          <div className="p-4">
+            <TemplateManagement />
           </div>
         );
       case 'maintenance':
