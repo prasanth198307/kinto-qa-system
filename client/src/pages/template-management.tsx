@@ -325,6 +325,7 @@ function TemplateDialog({
 }) {
   const [formData, setFormData] = useState({
     templateName: '',
+    logoUrl: '',
     defaultSellerName: '',
     defaultSellerGstin: '',
     defaultSellerAddress: '',
@@ -344,6 +345,7 @@ function TemplateDialog({
     if (editingItem) {
       setFormData({
         templateName: editingItem.templateName,
+        logoUrl: editingItem.logoUrl || '',
         defaultSellerName: editingItem.defaultSellerName || '',
         defaultSellerGstin: editingItem.defaultSellerGstin || '',
         defaultSellerAddress: editingItem.defaultSellerAddress || '',
@@ -361,6 +363,7 @@ function TemplateDialog({
     } else {
       setFormData({
         templateName: '',
+        logoUrl: '',
         defaultSellerName: '',
         defaultSellerGstin: '',
         defaultSellerAddress: '',
@@ -405,6 +408,21 @@ function TemplateDialog({
                 required
                 data-testid="input-template-name"
               />
+            </div>
+
+            <div>
+              <Label htmlFor="logoUrl">Company Logo URL</Label>
+              <Input
+                id="logoUrl"
+                type="url"
+                placeholder="https://example.com/logo.png or /path/to/logo.png"
+                value={formData.logoUrl}
+                onChange={(e) => setFormData({ ...formData, logoUrl: e.target.value })}
+                data-testid="input-logo-url"
+              />
+              <p className="text-sm text-muted-foreground mt-1">
+                Enter the URL of your company logo (PNG, JPG, or SVG). Leave empty if no logo needed.
+              </p>
             </div>
 
             <div className="flex items-center gap-4">
