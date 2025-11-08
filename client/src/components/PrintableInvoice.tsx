@@ -59,11 +59,17 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
   const isIntrastate = invoice.sellerStateCode === invoice.buyerStateCode;
 
   const handlePrint = () => {
+    console.log('🖨️ Print button clicked!', { invoiceId: invoice.id, hasTemplate: !!invoice.templateId, isLoading: isLoadingTemplate });
+    
     const printContent = printRef.current;
-    if (!printContent) return;
+    if (!printContent) {
+      console.log('❌ No printContent ref found');
+      return;
+    }
 
     // Wait for template to load if templateId exists
     if (invoice.templateId && isLoadingTemplate) {
+      console.log('⏳ Template still loading...');
       toast({
         title: "Please wait",
         description: "Template is still loading...",
@@ -71,6 +77,8 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
       });
       return;
     }
+    
+    console.log('✅ Template loaded, generating HTML...', { template });
 
     const generateInvoiceHTML = (copyType: string) => `
       <div class="page">
@@ -499,14 +507,21 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
       </html>
     `;
 
+    console.log('📝 HTML content generated, length:', htmlContent.length);
+
     // Create blob URL to avoid popup blockers
     const blob = new Blob([htmlContent], { type: 'text/html' });
     const blobUrl = URL.createObjectURL(blob);
     
+    console.log('🔗 Blob URL created:', blobUrl);
+    
     // Open in new tab/window (blob URLs are not blocked)
     const printWindow = window.open(blobUrl, '_blank');
     
+    console.log('🪟 Window.open result:', printWindow);
+    
     if (!printWindow) {
+      console.log('❌ Failed to open window - popup blocked');
       toast({
         title: "Unable to Open Print Preview",
         description: "Please check your browser settings and allow popups for this site.",
@@ -516,8 +531,11 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
       return;
     }
 
+    console.log('✅ Print window opened successfully!');
+
     // Clean up blob URL after window loads
     setTimeout(() => {
+      console.log('🧹 Cleaning up blob URL');
       URL.revokeObjectURL(blobUrl);
     }, 1000);
   };
