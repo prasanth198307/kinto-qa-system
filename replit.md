@@ -9,7 +9,7 @@ Preferred communication style: Simple, everyday language.
 ## System Architecture
 
 ### UI/UX Decisions
-The frontend uses React 18 with TypeScript, Vite, and Wouter, featuring `shadcn/ui` (Radix UI) and Tailwind CSS with a "New York" theme and Material Design principles. It is mobile-first, using a custom color palette, typography, spacing, and elevation. Navigation is via a Vertical Sidebar with role-based dashboards and reusable UI components. Form validation uses `react-hook-form` and `zod`.
+The frontend uses React 18 with TypeScript, Vite, and Wouter, featuring `shadcn/ui` (Radix UI) and Tailwind CSS with a "New York" theme and Material Design principles. It is mobile-first, using a custom color palette, typography, spacing, and elevation. Navigation is via a Vertical Sidebar with role-based dashboards and reusable UI components. Dedicated detail pages for invoices (at `/invoice/:id`) and dispatch tracking (at `/dispatch-tracking`) provide comprehensive views with context-specific actions. Form validation uses `react-hook-form` and `zod`.
 
 ### Technical Implementations
 The backend is an Express.js application with TypeScript and Node.js. It includes Email/Password Authentication with `scrypt` and `Passport.js`, and a Dynamic Role-Based Access Control (RBAC) system for `admin`, `manager`, `operator`, and `reviewer` roles with granular, screen-level permissions. Neon Serverless PostgreSQL is the database, accessed via Drizzle ORM. The schema supports users, machines, checklists, inventory, transactions, and GST-compliant invoices. It features multi-item issuance, a Header-Detail pattern for transactional integrity, automatic inventory management, and comprehensive vendor and role management systems. API is RESTful JSON with structured error handling, audit logging, and multi-layer authorization.
@@ -22,7 +22,13 @@ The backend is an Express.js application with TypeScript and Node.js. It include
 - **Invoice-First Gatepass Flow:** Strictly enforces gatepasses can ONLY be created from existing invoices. Backend returns 400 error if invoiceId is missing, preventing manual bypass. Auto-populates items from the invoice to maintain data consistency.
 - **Invoice Template Management System:** Allows admin to create and manage professional invoice templates with customizable seller details, bank information, terms & conditions, and company logo support.
 - **Enhanced Invoice Form:** Features a compact single-line item layout, template selection, ship-to address section, complete bank account details, and a print preview.
+- **Invoice Detail Page:** Dedicated view page at `/invoice/:id` with comprehensive details, actions (Edit, Print, Email, Generate Gatepass), buyer/seller information, itemized list, tax breakdown, and linked gatepass information. Accessible via clickable invoice numbers in tables or Eye icon button in actions column.
 - **Gatepass Print Functionality:** Provides a print preview for gatepasses, including company branding, details, itemized list, and signature blocks.
+- **Multi-Screen Invoice Printing:** Print buttons available across multiple screens:
+  1. Invoice Detail Page - Primary print location with full context
+  2. Invoice Table - Quick print from list view
+  3. Gatepass Table - Print linked invoice from dispatch screen
+  4. Dispatch Tracking Dashboard - Print from invoice and gatepass tabs
 - **Centralized Reports Module:** A unified page for various operational and GST reports with a tabbed interface, print preview, smart filtering, and export options (JSON, Excel).
 - **GST Reports for Filing:** Supports GSTR-1 and GSTR-3B with auto-classification of invoices, HSN summary, and accurate tax calculations for monthly, quarterly, or annual filing.
 - **Professional Delete Confirmations:** Implements `shadcn AlertDialog` for all delete operations for consistent UX.

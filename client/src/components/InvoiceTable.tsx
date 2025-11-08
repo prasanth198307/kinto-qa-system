@@ -1,10 +1,11 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Edit, DollarSign, FileText, Package, Truck, CheckCircle } from "lucide-react";
+import { Trash2, Edit, DollarSign, FileText, Package, Truck, CheckCircle, Eye } from "lucide-react";
 import type { Invoice, InvoicePayment } from "@shared/schema";
 import { format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
 import PrintableInvoice from "./PrintableInvoice";
 
 interface InvoiceTableProps {
@@ -84,7 +85,13 @@ export default function InvoiceTable({ invoices, isLoading, onEdit, onDelete, on
             
             return (
               <TableRow key={invoice.id} data-testid={`invoice-row-${invoice.id}`}>
-                <TableCell data-testid={`invoice-number-${invoice.id}`}>{invoice.invoiceNumber}</TableCell>
+                <TableCell data-testid={`invoice-number-${invoice.id}`}>
+                  <Link href={`/invoice/${invoice.id}`}>
+                    <span className="text-primary hover:underline cursor-pointer font-medium">
+                      {invoice.invoiceNumber}
+                    </span>
+                  </Link>
+                </TableCell>
                 <TableCell data-testid={`invoice-date-${invoice.id}`}>
                   {format(new Date(invoice.invoiceDate), 'dd MMM yyyy')}
                 </TableCell>
@@ -105,6 +112,16 @@ export default function InvoiceTable({ invoices, isLoading, onEdit, onDelete, on
                 </TableCell>
                 <TableCell data-testid={`actions-${invoice.id}`}>
                   <div className="flex gap-1">
+                    <Link href={`/invoice/${invoice.id}`}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        data-testid={`button-view-${invoice.id}`}
+                        title="View Invoice Details"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                    </Link>
                     {onPayment && !isPaid && (
                       <Button
                         variant="ghost"

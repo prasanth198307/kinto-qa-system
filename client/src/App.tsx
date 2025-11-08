@@ -49,6 +49,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import InvoiceDetail from "@/pages/invoice-detail";
+import DispatchTracking from "@/pages/dispatch-tracking";
 
 type Role = 'admin' | 'operator' | 'reviewer' | 'manager';
 
@@ -816,6 +818,8 @@ function Router() {
   return (
     <Switch>
       <Route path="/auth" component={AuthPage} />
+      <ProtectedRoute path="/invoice/:id" component={InvoiceDetail} />
+      <ProtectedRoute path="/dispatch-tracking" component={DispatchTracking} />
       <ProtectedRoute path="/" component={AuthenticatedApp} />
       <Route component={NotFound} />
     </Switch>
