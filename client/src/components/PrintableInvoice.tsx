@@ -1,4 +1,3 @@
-import { useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { type Invoice, type InvoiceItem, type Product, type TermsConditions } from "@shared/schema";
 import { Button } from "@/components/ui/button";
@@ -12,7 +11,6 @@ interface PrintableInvoiceProps {
 }
 
 export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
-  const printRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   const { data: items = [] } = useQuery<InvoiceItem[]>({
@@ -60,12 +58,6 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
 
   const handlePrint = () => {
     console.log('🖨️ Print button clicked!', { invoiceId: invoice.id, hasTemplate: !!invoice.templateId, isLoading: isLoadingTemplate });
-    
-    const printContent = printRef.current;
-    if (!printContent) {
-      console.log('❌ No printContent ref found');
-      return;
-    }
 
     // Wait for template to load if templateId exists
     if (invoice.templateId && isLoadingTemplate) {
