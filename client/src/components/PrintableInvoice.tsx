@@ -21,6 +21,11 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
     queryKey: ['/api/products'],
   });
 
+  const { data: template } = useQuery<any>({
+    queryKey: ['/api/invoice-templates', invoice.templateId],
+    enabled: !!invoice.templateId,
+  });
+
   const { data: termsConditions } = useQuery<TermsConditions | null>({
     queryKey: ['/api/terms-conditions', invoice.termsConditionsId],
     enabled: !!invoice.termsConditionsId,
@@ -55,6 +60,7 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
     const generateInvoiceHTML = (copyType: string) => `
       <div class="page">
         <div class="header">
+          ${template?.logoUrl ? `<div class="logo-container"><img src="${template.logoUrl}" alt="Company Logo" class="company-logo" /></div>` : ''}
           <div class="company-name">TAX INVOICE</div>
           <div class="copy-type">${copyType} FOR ${copyType === 'ORIGINAL' ? 'BUYER' : copyType === 'DUPLICATE' ? 'TRANSPORTER' : 'SELLER'}</div>
         </div>
@@ -267,6 +273,18 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
               margin-bottom: 15px;
               border-bottom: 2px solid #000;
               padding-bottom: 10px;
+            }
+
+            .logo-container {
+              margin-bottom: 10px;
+            }
+
+            .company-logo {
+              max-height: 60px;
+              max-width: 200px;
+              height: auto;
+              width: auto;
+              object-fit: contain;
             }
 
             .company-name {
