@@ -21,6 +21,10 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
     queryKey: ['/api/products'],
   });
 
+  const { data: uoms = [] } = useQuery<any[]>({
+    queryKey: ['/api/uom'],
+  });
+
   const { data: template, isLoading: isLoadingTemplate } = useQuery<any>({
     queryKey: ['/api/invoice-templates', invoice.templateId],
     queryFn: async () => {
@@ -112,17 +116,24 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
 
         <!-- Company Header -->
         <div class="company-header">
-          <div class="company-name">${invoice.sellerName || 'KINTO Manufacturing Pvt Ltd'}</div>
-          <div>${invoice.sellerAddress || ''}</div>
-          <div class="company-contact">
-            ${invoice.sellerPhone ? `Phone: ${invoice.sellerPhone}` : ''}
-            ${invoice.sellerPhone && invoice.sellerEmail ? ' | ' : ''}
-            ${invoice.sellerEmail ? `Email: ${invoice.sellerEmail}` : ''}
-          </div>
-          <div class="company-gst">
-            ${invoice.sellerGstin ? `GSTIN: ${invoice.sellerGstin}` : ''}
-            ${invoice.sellerGstin && invoice.sellerState ? ' | ' : ''}
-            ${invoice.sellerState ? `State: ${invoice.sellerStateCode}-${invoice.sellerState}` : ''}
+          ${template?.logoUrl ? `
+            <div class="company-logo">
+              <img src="${template.logoUrl}" alt="Company Logo" />
+            </div>
+          ` : ''}
+          <div class="company-info">
+            <div class="company-name">${invoice.sellerName || 'KINTO Manufacturing Pvt Ltd'}</div>
+            <div>${invoice.sellerAddress || ''}</div>
+            <div class="company-contact">
+              ${invoice.sellerPhone ? `Phone: ${invoice.sellerPhone}` : ''}
+              ${invoice.sellerPhone && invoice.sellerEmail ? ' | ' : ''}
+              ${invoice.sellerEmail ? `Email: ${invoice.sellerEmail}` : ''}
+            </div>
+            <div class="company-gst">
+              ${invoice.sellerGstin ? `GSTIN: ${invoice.sellerGstin}` : ''}
+              ${invoice.sellerGstin && invoice.sellerState ? ' | ' : ''}
+              ${invoice.sellerState ? `State: ${invoice.sellerStateCode}-${invoice.sellerState}` : ''}
+            </div>
           </div>
         </div>
 
@@ -176,8 +187,8 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
               const totalGst = item.cgstAmount + item.sgstAmount + item.igstAmount;
               const gstPercent = (item.cgstRate + item.sgstRate + item.igstRate) / 100;
               const productName = getProductName(item.productId);
-              const product = products.find(p => p.id === item.productId);
-              const unit = product?.unit || 'Nos';
+              const uom = uoms.find(u => u.id === item.uomId);
+              const unit = uom?.name || 'Nos';
               return `
               <tr>
                 <td>${idx + 1}</td>
@@ -388,10 +399,28 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
 
             /* Company Header */
             .company-header {
-              text-align: center;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 15px;
               border: 1px solid #000;
               padding: 8px;
               margin-bottom: 10px;
+            }
+
+            .company-logo {
+              flex-shrink: 0;
+            }
+
+            .company-logo img {
+              max-width: 150px;
+              max-height: 60px;
+              object-fit: contain;
+            }
+
+            .company-info {
+              text-align: center;
+              flex-grow: 1;
             }
 
             .company-name {
