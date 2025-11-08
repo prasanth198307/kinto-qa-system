@@ -93,6 +93,7 @@ export function VerticalNavSidebar({
                           variant="ghost"
                           size="icon"
                           className="h-6 w-6 hover-elevate"
+                          aria-label={`Add ${section.label?.toLowerCase()} item`}
                           data-testid={`button-quick-action-${section.id}`}
                         >
                           <Plus className="h-4 w-4" />
