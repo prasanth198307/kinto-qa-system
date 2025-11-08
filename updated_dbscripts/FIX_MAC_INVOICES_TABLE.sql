@@ -57,6 +57,13 @@ ALTER TABLE invoices ADD COLUMN IF NOT EXISTS transport_mode VARCHAR(50);
 ALTER TABLE invoices ADD COLUMN IF NOT EXISTS vehicle_number VARCHAR(50);
 ALTER TABLE invoices ADD COLUMN IF NOT EXISTS date_of_supply TIMESTAMP;
 
+-- *** CRITICAL: Status Tracking & Dispatch Workflow Columns ***
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'draft' NOT NULL;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS dispatch_date TIMESTAMP;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS delivery_date TIMESTAMP;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS received_by VARCHAR(255);
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS pod_remarks TEXT;
+
 -- Make sure old column names still exist (if your old schema used these)
 -- Uncomment if needed:
 -- ALTER TABLE invoices ADD COLUMN IF NOT EXISTS buyer_name VARCHAR(255);
@@ -67,7 +74,8 @@ ALTER TABLE invoices ADD COLUMN IF NOT EXISTS date_of_supply TIMESTAMP;
 COMMIT;
 
 -- Verify the columns were added
-SELECT column_name, data_type 
+SELECT column_name, data_type, column_default
 FROM information_schema.columns 
 WHERE table_name = 'invoices' 
+  AND column_name IN ('status', 'dispatch_date', 'delivery_date', 'received_by', 'pod_remarks', 'subtotal', 'cgst_amount', 'sgst_amount', 'igst_amount')
 ORDER BY column_name;
