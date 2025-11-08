@@ -335,6 +335,7 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
     const htmlContent = `
       <html>
         <head>
+          <meta charset="UTF-8">
           <title>Invoice - ${invoice.invoiceNumber}</title>
           <style>
             * {
