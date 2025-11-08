@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Edit, Trash2, FileText } from "lucide-react";
+import { Edit, Trash2, FileText, Package, Truck, CheckCircle } from "lucide-react";
 import { format } from "date-fns";
 import type { Gatepass, GatepassItem, FinishedGood, Product, User, Vendor } from "@shared/schema";
 import PrintableGatepass from "./PrintableGatepass";
@@ -96,6 +96,25 @@ export default function GatepassTable({ gatepasses, isLoading, onEdit, onDelete,
     return vendors.find(v => v.id === vendorId);
   };
 
+  const getStatusBadge = (status: string) => {
+    const statusConfig: Record<string, { label: string; variant: any; icon: any }> = {
+      generated: { label: "Generated", variant: "default", icon: Package },
+      vehicle_out: { label: "Vehicle Out", variant: "destructive", icon: Truck },
+      delivered: { label: "Delivered", variant: "default", icon: CheckCircle },
+      completed: { label: "Completed", variant: "secondary", icon: CheckCircle },
+    };
+
+    const config = statusConfig[status] || { label: status, variant: "outline", icon: Package };
+    const Icon = config.icon;
+
+    return (
+      <Badge variant={config.variant} data-testid={`status-${status}`}>
+        <Icon className="w-3 h-3 mr-1" />
+        {config.label}
+      </Badge>
+    );
+  };
+
   if (isLoading) {
     return <div className="text-center py-8">Loading gatepasses...</div>;
   }
@@ -115,6 +134,7 @@ export default function GatepassTable({ gatepasses, isLoading, onEdit, onDelete,
           <TableRow>
             <TableHead>GP Number</TableHead>
             <TableHead>Date</TableHead>
+            <TableHead>Status</TableHead>
             <TableHead>Items</TableHead>
             <TableHead>Customer/Vendor</TableHead>
             <TableHead>Vehicle</TableHead>
@@ -130,6 +150,7 @@ export default function GatepassTable({ gatepasses, isLoading, onEdit, onDelete,
             <TableRow key={gatepass.id} data-testid={`row-gatepass-${gatepass.id}`}>
               <TableCell className="font-medium">{gatepass.gatepassNumber}</TableCell>
               <TableCell>{format(new Date(gatepass.gatepassDate), 'MMM dd, yyyy')}</TableCell>
+              <TableCell>{getStatusBadge(gatepass.status || 'generated')}</TableCell>
               <TableCell>
                 <GatepassItems gatepassId={gatepass.id} products={products} finishedGoods={finishedGoods} />
               </TableCell>

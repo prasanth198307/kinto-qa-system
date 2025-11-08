@@ -751,6 +751,23 @@ export const gatepasses = pgTable("gatepasses", {
   isCluster: integer("is_cluster").default(0).notNull(), // 0 = No, 1 = Yes (copied from vendor)
   invoiceId: varchar("invoice_id").references(() => invoices.id).unique(), // One-to-one: one gatepass per invoice
   remarks: text("remarks"),
+  
+  // Additional Dispatch Fields
+  casesCount: integer("cases_count"), // Number of cases/boxes
+  securitySealNo: varchar("security_seal_no", { length: 100 }), // Security seal number
+  
+  // Status Tracking & Vehicle Exit/Entry
+  status: varchar("status", { length: 50 }).default("generated").notNull(), // generated, vehicle_out, delivered, completed
+  outTime: timestamp("out_time"), // When vehicle left the plant
+  inTime: timestamp("in_time"), // When vehicle/empty crates returned
+  verifiedBy: varchar("verified_by", { length: 255 }), // Security person who verified exit
+  
+  // Proof of Delivery (POD)
+  podReceivedBy: varchar("pod_received_by", { length: 255 }), // Customer name/signature
+  podDate: timestamp("pod_date"), // Actual delivery date/time
+  podRemarks: text("pod_remarks"), // Delivery issues (breakage, short delivery, etc.)
+  podSignature: text("pod_signature"), // Base64 encoded signature image
+  
   recordStatus: integer("record_status").default(1).notNull(),
   issuedBy: varchar("issued_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
@@ -937,6 +954,14 @@ export const invoices = pgTable("invoices", {
   dateOfSupply: timestamp("date_of_supply"),
   
   remarks: text("remarks"),
+  
+  // Status Tracking (Invoice→Gate Pass→Dispatch→POD Flow)
+  status: varchar("status", { length: 50 }).default("draft").notNull(), // draft, ready_for_gatepass, dispatched, delivered
+  dispatchDate: timestamp("dispatch_date"),
+  deliveryDate: timestamp("delivery_date"),
+  receivedBy: varchar("received_by", { length: 255 }), // POD: Who received the goods
+  podRemarks: text("pod_remarks"), // POD: Delivery remarks (breakage, short delivery, etc.)
+  
   recordStatus: integer("record_status").default(1).notNull(),
   generatedBy: varchar("generated_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),

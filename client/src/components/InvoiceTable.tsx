@@ -1,6 +1,7 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Trash2, Edit, DollarSign } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Trash2, Edit, DollarSign, FileText, Package, Truck, CheckCircle } from "lucide-react";
 import type { Invoice, InvoicePayment } from "@shared/schema";
 import { format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
@@ -41,6 +42,25 @@ export default function InvoiceTable({ invoices, isLoading, onEdit, onDelete, on
     return `₹${(amountInPaise / 100).toFixed(2)}`;
   };
 
+  const getStatusBadge = (status: string) => {
+    const statusConfig: Record<string, { label: string; variant: any; icon: any }> = {
+      draft: { label: "Draft", variant: "secondary", icon: FileText },
+      ready_for_gatepass: { label: "Ready for GP", variant: "default", icon: Package },
+      dispatched: { label: "Dispatched", variant: "destructive", icon: Truck },
+      delivered: { label: "Delivered", variant: "default", icon: CheckCircle },
+    };
+
+    const config = statusConfig[status] || { label: status, variant: "outline", icon: FileText };
+    const Icon = config.icon;
+
+    return (
+      <Badge variant={config.variant} data-testid={`status-${status}`}>
+        <Icon className="w-3 h-3 mr-1" />
+        {config.label}
+      </Badge>
+    );
+  };
+
   return (
     <div className="border rounded-md">
       <Table>
@@ -49,6 +69,7 @@ export default function InvoiceTable({ invoices, isLoading, onEdit, onDelete, on
             <TableHead data-testid="header-invoice-number">Invoice #</TableHead>
             <TableHead data-testid="header-date">Date</TableHead>
             <TableHead data-testid="header-buyer">Buyer Name</TableHead>
+            <TableHead data-testid="header-status">Status</TableHead>
             <TableHead data-testid="header-total">Total</TableHead>
             <TableHead data-testid="header-paid">Paid</TableHead>
             <TableHead data-testid="header-outstanding">Outstanding</TableHead>
@@ -68,6 +89,9 @@ export default function InvoiceTable({ invoices, isLoading, onEdit, onDelete, on
                   {format(new Date(invoice.invoiceDate), 'dd MMM yyyy')}
                 </TableCell>
                 <TableCell data-testid={`buyer-name-${invoice.id}`}>{invoice.buyerName}</TableCell>
+                <TableCell data-testid={`status-${invoice.id}`}>
+                  {getStatusBadge(invoice.status || 'draft')}
+                </TableCell>
                 <TableCell data-testid={`total-${invoice.id}`} className="font-semibold">
                   {formatCurrency(invoice.totalAmount)}
                 </TableCell>

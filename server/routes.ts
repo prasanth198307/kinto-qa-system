@@ -1561,6 +1561,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Create gatepass header
         const [gatepass] = await tx.insert(gatepasses).values(gatepassData).returning();
         
+        // If gatepass is linked to an invoice, update invoice status to "ready_for_gatepass"
+        if (gatepass.invoiceId) {
+          await tx.update(invoices)
+            .set({ status: 'ready_for_gatepass' })
+            .where(eq(invoices.id, gatepass.invoiceId));
+        }
+        
         // Create items and deduct inventory for each
         for (const item of items) {
           // Validate item with gatepassId included
@@ -1671,6 +1678,134 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting gatepass:", error);
       res.status(500).json({ message: "Failed to delete gatepass" });
+    }
+  });
+
+  // Record vehicle exit (Security gate operation)
+  app.patch('/api/gatepasses/:id/vehicle-exit', requireRole('admin', 'manager', 'operator'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { outTime, verifiedBy } = req.body;
+      
+      if (!outTime || !verifiedBy) {
+        return res.status(400).json({ message: "outTime and verifiedBy are required" });
+      }
+      
+      // Verify gatepass is in "generated" status
+      const [existing] = await db.select().from(gatepasses).where(eq(gatepasses.id, id));
+      if (!existing) {
+        return res.status(404).json({ message: "Gatepass not found" });
+      }
+      
+      if (existing.status !== 'generated') {
+        return res.status(400).json({ 
+          message: `Cannot record vehicle exit. Gatepass status must be 'generated' but is '${existing.status}'` 
+        });
+      }
+      
+      // Update gatepass with vehicle exit details
+      const [updated] = await db.update(gatepasses)
+        .set({
+          outTime: new Date(outTime),
+          verifiedBy,
+          status: 'vehicle_out'
+        })
+        .where(eq(gatepasses.id, id))
+        .returning();
+      
+      if (!updated) {
+        return res.status(404).json({ message: "Gatepass not found" });
+      }
+      
+      // If gatepass has an linked invoice, update invoice status to "dispatched"
+      if (updated.invoiceId) {
+        await db.update(invoices)
+          .set({
+            status: 'dispatched',
+            dispatchDate: new Date(outTime),
+            vehicleNumber: updated.vehicleNumber,
+            transportMode: 'Road'
+          })
+          .where(eq(invoices.id, updated.invoiceId));
+      }
+      
+      res.json({ gatepass: updated, message: "Vehicle exit recorded successfully" });
+    } catch (error) {
+      console.error("Error recording vehicle exit:", error);
+      res.status(500).json({ message: "Failed to record vehicle exit" });
+    }
+  });
+
+  // Capture Proof of Delivery (POD)
+  app.patch('/api/gatepasses/:id/pod', requireRole('admin', 'manager', 'operator'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { podReceivedBy, podDate, podRemarks, podSignature } = req.body;
+      
+      if (!podReceivedBy || !podDate) {
+        return res.status(400).json({ message: "podReceivedBy and podDate are required" });
+      }
+      
+      if (!podSignature || typeof podSignature !== 'string' || !podSignature.startsWith('data:image/')) {
+        return res.status(400).json({ message: "podSignature is required and must be a valid base64 image" });
+      }
+      
+      // Ensure signature has actual content (not just header)
+      // A valid signature should be at least 100 characters (header + base64 data)
+      if (podSignature.length < 100) {
+        return res.status(400).json({ message: "podSignature must contain actual signature data" });
+      }
+      
+      // Verify base64 portion exists and is not empty
+      const base64Match = podSignature.match(/^data:image\/[a-z]+;base64,(.+)$/i);
+      if (!base64Match || !base64Match[1] || base64Match[1].length < 50) {
+        return res.status(400).json({ message: "podSignature must contain valid base64 encoded signature data" });
+      }
+      
+      // Verify gatepass is in "vehicle_out" status
+      const [existing] = await db.select().from(gatepasses).where(eq(gatepasses.id, id));
+      if (!existing) {
+        return res.status(404).json({ message: "Gatepass not found" });
+      }
+      
+      if (existing.status !== 'vehicle_out') {
+        return res.status(400).json({ 
+          message: `Cannot capture POD. Gatepass status must be 'vehicle_out' but is '${existing.status}'` 
+        });
+      }
+      
+      // Update gatepass with POD details
+      const [updated] = await db.update(gatepasses)
+        .set({
+          podReceivedBy,
+          podDate: new Date(podDate),
+          podRemarks: podRemarks || null,
+          podSignature: podSignature || null,
+          status: 'delivered'
+        })
+        .where(eq(gatepasses.id, id))
+        .returning();
+      
+      if (!updated) {
+        return res.status(404).json({ message: "Gatepass not found" });
+      }
+      
+      // If gatepass has a linked invoice, update invoice status to "delivered"
+      if (updated.invoiceId) {
+        await db.update(invoices)
+          .set({
+            status: 'delivered',
+            deliveryDate: new Date(podDate),
+            receivedBy: podReceivedBy,
+            podRemarks: podRemarks || null
+          })
+          .where(eq(invoices.id, updated.invoiceId));
+      }
+      
+      res.json({ gatepass: updated, message: "Proof of delivery captured successfully" });
+    } catch (error) {
+      console.error("Error capturing POD:", error);
+      res.status(500).json({ message: "Failed to capture proof of delivery" });
     }
   });
 
@@ -2018,6 +2153,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting invoice:", error);
       res.status(500).json({ message: "Failed to delete invoice" });
+    }
+  });
+
+  // Update invoice status (for dispatch workflow)
+  app.patch('/api/invoices/:id/status', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { status, dispatchDate, deliveryDate, receivedBy, podRemarks } = req.body;
+      
+      // Validate status
+      const validStatuses = ['draft', 'ready_for_gatepass', 'dispatched', 'delivered'];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({ 
+          message: `Invalid status. Must be one of: ${validStatuses.join(', ')}` 
+        });
+      }
+      
+      // Prepare update data
+      const updateData: any = { status };
+      if (dispatchDate) updateData.dispatchDate = new Date(dispatchDate);
+      if (deliveryDate) updateData.deliveryDate = new Date(deliveryDate);
+      if (receivedBy) updateData.receivedBy = receivedBy;
+      if (podRemarks) updateData.podRemarks = podRemarks;
+      
+      // Update invoice
+      const [updated] = await db.update(invoices)
+        .set(updateData)
+        .where(eq(invoices.id, id))
+        .returning();
+      
+      if (!updated) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      
+      res.json({ invoice: updated, message: `Invoice status updated to ${status}` });
+    } catch (error) {
+      console.error("Error updating invoice status:", error);
+      res.status(500).json({ message: "Failed to update invoice status" });
     }
   });
 

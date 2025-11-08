@@ -27,10 +27,12 @@ The backend is an Express.js application with TypeScript and Node.js. It include
 - **GST Reports for Filing:** Supports GSTR-1 and GSTR-3B with auto-classification of invoices, HSN summary, and accurate tax calculations for monthly, quarterly, or annual filing.
 - **Professional Delete Confirmations:** Implements `shadcn AlertDialog` for all delete operations for consistent UX.
 - **Updated Branding:** Login page and hero content updated to reflect the system's comprehensive "KINTO Operations & QA" capabilities.
+- **Complete Dispatch Tracking Workflow:** 5-stage flow: Invoice Creation (Ready for Gate Pass) → Gate Pass Generation (Generated) → Vehicle Exit Recording (Vehicle Out) → Invoice Update (Dispatched) → Proof of Delivery (Delivered). Includes status tracking, vehicle exit/entry times, security verification, and digital POD capture with signature support.
 
 ### System Design Choices
 - **Authentication:** Users can log in with either username or email.
-- **Database Schema:** Includes a `is_cluster` flag in `vendors`, `gatepasses`, and `invoices` tables for mobile integration efficiency.
+- **Database Schema:** Includes a `is_cluster` flag in `vendors`, `gatepasses`, and `invoices` tables for mobile integration efficiency. Status tracking fields in both `invoices` (draft→ready_for_gatepass→dispatched→delivered) and `gatepasses` (generated→vehicle_out→delivered→completed) enable complete dispatch workflow tracking.
+- **Dispatch Workflow:** Invoice-first approach where invoices are created first, then linked to gatepasses. Status transitions ensure data integrity throughout the dispatch lifecycle (Invoice→Gatepass→Vehicle Exit→POD).
 - **Build & Deployment:** Development uses Vite dev server with `tsx`-powered Express; production builds use Vite for frontend and `esbuild` for backend. Drizzle Kit manages database schema.
 
 ## External Dependencies

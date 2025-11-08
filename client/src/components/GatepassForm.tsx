@@ -21,6 +21,8 @@ const headerSchema = insertGatepassSchema.extend({
   transporterName: z.string().min(1, "Transporter name is required"),
   destination: z.string().min(1, "Destination is required"),
   customerName: z.string().min(1, "Customer name is required"),
+  casesCount: z.number().optional(), // Number of cases/boxes
+  securitySealNo: z.string().optional(), // Security seal number
   remarks: z.string().optional(), // Remarks is optional
 });
 
@@ -101,6 +103,8 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
         customerName: "",
         isCluster: 0,
         invoiceId: "",
+        casesCount: undefined,
+        securitySealNo: "",
         remarks: "",
       },
       items: items,
@@ -511,6 +515,46 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                     <FormLabel>Destination</FormLabel>
                     <FormControl>
                       <Input {...field} value={field.value || ""} data-testid="input-destination" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="header.casesCount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Number of Cases/Boxes (Optional)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        {...field} 
+                        value={field.value || ""} 
+                        onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                        placeholder="e.g., 10" 
+                        data-testid="input-cases-count" 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="header.securitySealNo"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Security Seal Number (Optional)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        {...field} 
+                        value={field.value || ""} 
+                        placeholder="e.g., SEAL-12345" 
+                        data-testid="input-security-seal-no" 
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
