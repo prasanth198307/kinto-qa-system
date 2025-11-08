@@ -918,6 +918,7 @@ export const invoices = pgTable("invoices", {
   cessAmount: integer("cess_amount").default(0).notNull(), // Cess if any (in paise)
   roundOff: integer("round_off").default(0).notNull(), // Round off adjustment (in paise)
   totalAmount: integer("total_amount").notNull(), // Final total (in paise)
+  amountReceived: integer("amount_received").default(0).notNull(), // Amount paid/received (in paise)
   
   // Payment Details
   paymentTerms: varchar("payment_terms", { length: 255 }),
