@@ -4,28 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, Package, Truck, CheckCircle, Clock } from "lucide-react";
 import { format } from "date-fns";
-
-interface Invoice {
-  id: string;
-  invoiceNumber: string;
-  invoiceDate: string;
-  buyerName: string;
-  totalAmount: number;
-  status: string;
-  dispatchDate: string | null;
-  deliveryDate: string | null;
-}
-
-interface Gatepass {
-  id: string;
-  gatepassNumber: string;
-  gatepassDate: string;
-  vehicleNumber: string;
-  driverName: string;
-  status: string;
-  outTime: string | null;
-  podDate: string | null;
-}
+import type { Invoice, Gatepass } from "@shared/schema";
+import PrintableInvoice from "@/components/PrintableInvoice";
+import PrintableGatepass from "@/components/PrintableGatepass";
 
 const statusConfig = {
   // Invoice statuses
@@ -164,12 +145,13 @@ export default function DispatchTracking() {
                       <th className="text-left p-3 font-semibold">Invoice Date</th>
                       <th className="text-left p-3 font-semibold">Status</th>
                       <th className="text-left p-3 font-semibold">Progress</th>
+                      <th className="text-left p-3 font-semibold">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {invoices.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="text-center p-6 text-muted-foreground">
+                        <td colSpan={7} className="text-center p-6 text-muted-foreground">
                           No invoices found
                         </td>
                       </tr>
@@ -193,6 +175,9 @@ export default function DispatchTracking() {
                                 {Math.round(getStageProgress(invoice.status, 'invoice'))}%
                               </span>
                             </div>
+                          </td>
+                          <td className="p-3">
+                            <PrintableInvoice invoice={invoice} />
                           </td>
                         </tr>
                       ))
@@ -221,12 +206,13 @@ export default function DispatchTracking() {
                       <th className="text-left p-3 font-semibold">GP Date</th>
                       <th className="text-left p-3 font-semibold">Status</th>
                       <th className="text-left p-3 font-semibold">Progress</th>
+                      <th className="text-left p-3 font-semibold">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {gatepasses.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="text-center p-6 text-muted-foreground">
+                        <td colSpan={7} className="text-center p-6 text-muted-foreground">
                           No gate passes found
                         </td>
                       </tr>
@@ -250,6 +236,9 @@ export default function DispatchTracking() {
                                 {Math.round(getStageProgress(gatepass.status, 'gatepass'))}%
                               </span>
                             </div>
+                          </td>
+                          <td className="p-3">
+                            <PrintableGatepass gatepass={gatepass} />
                           </td>
                         </tr>
                       ))

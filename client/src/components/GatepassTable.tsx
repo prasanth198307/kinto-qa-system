@@ -11,8 +11,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Edit, Trash2, FileText, Package, Truck, CheckCircle } from "lucide-react";
 import { format } from "date-fns";
-import type { Gatepass, GatepassItem, FinishedGood, Product, User, Vendor } from "@shared/schema";
+import type { Gatepass, GatepassItem, FinishedGood, Product, User, Vendor, Invoice } from "@shared/schema";
 import PrintableGatepass from "./PrintableGatepass";
+import PrintableInvoice from "./PrintableInvoice";
+import PrintableInvoiceGatepass from "./PrintableInvoiceGatepass";
 
 interface GatepassTableProps {
   gatepasses: Gatepass[];
@@ -71,6 +73,13 @@ export default function GatepassTable({ gatepasses, isLoading, onEdit, onDelete,
 
   const { data: finishedGoods = [] } = useQuery<FinishedGood[]>({
     queryKey: ['/api/finished-goods'],
+  });
+
+  // Only fetch invoices if there are gatepasses with invoice IDs
+  const hasInvoices = gatepasses.some(gp => gp.invoiceId);
+  const { data: invoices = [] } = useQuery<Invoice[]>({
+    queryKey: ['/api/invoices'],
+    enabled: hasInvoices,
   });
 
   const getProductName = (productId: string | null) => {
@@ -146,6 +155,7 @@ export default function GatepassTable({ gatepasses, isLoading, onEdit, onDelete,
         <TableBody>
           {gatepasses.map((gatepass) => {
             const vendor = getVendor(gatepass.vendorId);
+            const linkedInvoice = invoices.find(inv => inv.id === gatepass.invoiceId);
             return (
             <TableRow key={gatepass.id} data-testid={`row-gatepass-${gatepass.id}`}>
               <TableCell className="font-medium">{gatepass.gatepassNumber}</TableCell>
@@ -182,6 +192,8 @@ export default function GatepassTable({ gatepasses, isLoading, onEdit, onDelete,
               <TableCell>
                 <div className="flex gap-2">
                   <PrintableGatepass gatepass={gatepass} />
+                  {linkedInvoice && <PrintableInvoice invoice={linkedInvoice} />}
+                  {linkedInvoice && <PrintableInvoiceGatepass invoice={linkedInvoice} gatepass={gatepass} />}
                   {onGenerateInvoice && (
                     <Button
                       variant="ghost"
