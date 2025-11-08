@@ -76,57 +76,55 @@ export function VerticalNavSidebar({
   };
 
   const sidebarContent = (
-    <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto">
-        <div className="space-y-6">
-          {sections.map((section, index) => (
-            <div key={section.id}>
-              {section.label && (
-                <div className="flex items-center justify-between mb-2 px-2">
-                  <div className="text-xs font-semibold text-muted-foreground uppercase">
-                    {section.label}
-                  </div>
-                  {section.quickActions && section.quickActions.length > 0 && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 hover-elevate"
-                          aria-label={`Add ${section.label?.toLowerCase()} item`}
-                          data-testid={`button-quick-action-${section.id}`}
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-56">
-                        {section.quickActions.map((action) => {
-                          const ActionIcon = action.icon;
-                          return (
-                            <DropdownMenuItem
-                              key={action.id}
-                              onClick={action.onClick}
-                              data-testid={`quick-action-${action.id}`}
-                            >
-                              <ActionIcon className="h-4 w-4 mr-2" />
-                              {action.label}
-                            </DropdownMenuItem>
-                          );
-                        })}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
+    <div className="flex-1 overflow-y-auto">
+      <div className="space-y-6">
+        {sections.map((section, index) => (
+          <div key={section.id}>
+            {section.label && (
+              <div className="flex items-center justify-between mb-2 px-2">
+                <div className="text-xs font-semibold text-muted-foreground uppercase">
+                  {section.label}
                 </div>
-              )}
-              <div className="space-y-1">
-                {section.items.map((item) => renderNavItem(item))}
+                {section.quickActions && section.quickActions.length > 0 && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 hover-elevate"
+                        aria-label={`Add ${section.label?.toLowerCase()} item`}
+                        data-testid={`button-quick-action-${section.id}`}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      {section.quickActions.map((action) => {
+                        const ActionIcon = action.icon;
+                        return (
+                          <DropdownMenuItem
+                            key={action.id}
+                            onClick={action.onClick}
+                            data-testid={`quick-action-${action.id}`}
+                          >
+                            <ActionIcon className="h-4 w-4 mr-2" />
+                            {action.label}
+                          </DropdownMenuItem>
+                        );
+                      })}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </div>
-              {index < sections.length - 1 && (
-                <div className="border-t border-border my-4" />
-              )}
+            )}
+            <div className="space-y-1">
+              {section.items.map((item) => renderNavItem(item))}
             </div>
-          ))}
-        </div>
+            {index < sections.length - 1 && (
+              <div className="border-t border-border my-4" />
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -164,6 +162,7 @@ export function VerticalNavSidebar({
         className={`
           fixed top-0 left-0 bottom-0 w-72 bg-card border-r border-border z-40 p-4
           transition-transform duration-300 ease-in-out
+          flex flex-col
           ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
           lg:translate-x-0
         `}
