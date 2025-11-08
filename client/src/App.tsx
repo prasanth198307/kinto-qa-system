@@ -407,6 +407,32 @@ function AdminDashboard() {
         { id: "vendors", label: "Vendor Master", icon: Building2 },
         { id: "notification-settings", label: "Notification Settings", icon: Bell },
       ],
+      quickActions: [
+        {
+          id: "add-user",
+          label: "Add User",
+          icon: Users,
+          onClick: () => setActiveView("users"),
+        },
+        {
+          id: "add-machine",
+          label: "Add Machine",
+          icon: Settings,
+          onClick: () => setActiveView("machines"),
+        },
+        {
+          id: "add-spare-part",
+          label: "Add Spare Part",
+          icon: Package,
+          onClick: () => setActiveView("spare-parts"),
+        },
+        {
+          id: "add-vendor",
+          label: "Add Vendor",
+          icon: Building2,
+          onClick: () => setActiveView("vendors"),
+        },
+      ],
     },
     {
       id: "production-section",
@@ -417,6 +443,26 @@ function AdminDashboard() {
         { id: "raw-materials", label: "Raw Materials", icon: Box },
         { id: "finished-goods", label: "Finished Goods", icon: CheckCircle2 },
       ],
+      quickActions: [
+        {
+          id: "add-product",
+          label: "Add Product",
+          icon: Package,
+          onClick: () => setActiveView("products"),
+        },
+        {
+          id: "add-raw-material",
+          label: "Add Raw Material",
+          icon: Box,
+          onClick: () => setActiveView("raw-materials"),
+        },
+        {
+          id: "add-finished-good",
+          label: "Add Finished Good",
+          icon: CheckCircle2,
+          onClick: () => setActiveView("finished-goods"),
+        },
+      ],
     },
     {
       id: "operations",
@@ -425,6 +471,20 @@ function AdminDashboard() {
         { id: "maintenance", label: "Maintenance", icon: Wrench },
         { id: "pm-history", label: "PM History", icon: History },
         { id: "purchase-orders", label: "Purchase Orders", icon: ShoppingCart },
+      ],
+      quickActions: [
+        {
+          id: "schedule-maintenance",
+          label: "Schedule Maintenance",
+          icon: Wrench,
+          onClick: () => setActiveView("maintenance"),
+        },
+        {
+          id: "add-purchase-order",
+          label: "Add Purchase Order",
+          icon: ShoppingCart,
+          onClick: () => setActiveView("purchase-orders"),
+        },
       ],
     },
     {
@@ -435,6 +495,26 @@ function AdminDashboard() {
         { id: "gatepasses", label: "Gatepasses", icon: FileText },
         { id: "invoices", label: "Sales Invoices", icon: Receipt },
         { id: "machine-startup-reminders", label: "Machine Startup Reminders", icon: Bell },
+      ],
+      quickActions: [
+        {
+          id: "create-issuance",
+          label: "Create Issuance",
+          icon: Package,
+          onClick: () => setActiveView("raw-material-issuance"),
+        },
+        {
+          id: "create-gatepass",
+          label: "Create Gatepass",
+          icon: FileText,
+          onClick: () => setActiveView("gatepasses"),
+        },
+        {
+          id: "create-invoice",
+          label: "Create Invoice",
+          icon: Receipt,
+          onClick: () => setActiveView("invoices"),
+        },
       ],
     },
   ];
