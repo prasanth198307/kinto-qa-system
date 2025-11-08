@@ -55,14 +55,15 @@ Development uses a Vite dev server with an `tsx`-powered Express backend. Produc
   - **Tabbed Interface**: Six report types (Gatepasses, Invoices, Raw Material Issuances, Purchase Orders, PM Execution, GST Reports) with icons and filtered record counts
   - **Print Preview**: Each operational tab includes print preview buttons that open formatted, print-ready reports in new windows using existing printable components (PrintableGatepass, PrintableInvoice, PrintableRawMaterialIssuance, PrintablePurchaseOrder, PrintablePMExecution)
   - **Smart Filtering**: Date range filters (From/To) apply to all report types using appropriate date fields; Customer filter populated with unique customers from gatepasses and invoices, applies only to relevant tabs (Gatepasses and Invoices)
-  - **GST Reports for Filing**: Complete GST reporting functionality for upload to GST portal
-    - Report Types: GSTR-1 (Outward Supplies), GSTR-3B (Summary Return), GSTR-2A/2B (Inward Supplies), GSTR-9 (Annual Return)
-    - Filing Periods: Monthly, Quarterly, Annual with year and period selection
-    - Export Formats: JSON (for direct portal upload) and Excel (for review/validation)
-    - Classifications: Auto-classification of B2B, B2CL (Large), B2CS (Small), Export invoices based on buyer GSTIN and amount
-    - HSN Summary: Automatic HSN-wise summary generation with quantity, taxable value, and tax breakup
-    - Tax Calculations: Automatic CGST/SGST (intra-state) and IGST (inter-state) calculation based on seller and buyer states
-    - Utilities location: client/src/lib/gst-reports.ts
+  - **GST Reports for Filing (Nov 2025)**: Complete GST reporting functionality for upload to GST portal with real HSN data from invoice line items
+    - **Report Types**: GSTR-1 (Outward Supplies), GSTR-3B (Summary Return). **Note**: GSTR-2/2A/2B excluded (require vendor invoice data not yet in system), GSTR-9 excluded (complex annual return for future implementation)
+    - **Filing Periods**: Monthly, Quarterly, Annual with year and period selection
+    - **Export Formats**: JSON (for direct portal upload) and Excel (for review/validation)
+    - **Classifications**: Auto-classification of B2B, B2CL (Large), B2CS (Small), Export invoices based on buyer GSTIN and amount
+    - **HSN Summary**: **Fully implemented** with real data from invoice_items table. Server-side aggregation by HSN code, UOM, and tax rate via dedicated `/api/gst-reports` POST endpoint
+    - **Tax Calculations**: Automatic CGST/SGST (intra-state) and IGST (inter-state) calculation based on seller and buyer states, with accurate tax rate computation
+    - **API Endpoint**: `/api/gst-reports` (POST) - Accepts periodType, month, year; returns invoices with items and aggregated HSN summary
+    - **Frontend Utilities**: `client/src/lib/gst-reports.ts` - includes `fetchGSTReportData()`, `generateGSTR1()`, `generateGSTR3B()`, JSON/Excel export functions
   - **Navigation**: Added to main sections of both Admin and Manager dashboards for easy access to all operational and compliance reports
   - **Data Sources**: Uses TanStack Query to fetch from /api/gatepasses, /api/invoices, /api/raw-material-issuances, /api/purchase-orders, /api/pm-executions
 - **Professional Delete Confirmations (Nov 2025):** Implemented shadcn AlertDialog confirmation dialogs for all delete operations across the application. Replaces browser confirm() with professional, accessible UI components featuring destructive styling, proper test IDs, and consistent UX. Applied to Vendors, Products, Raw Materials, and Finished Goods in inventory management.
