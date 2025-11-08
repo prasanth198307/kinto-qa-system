@@ -23,6 +23,12 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
 
   const { data: template } = useQuery<any>({
     queryKey: ['/api/invoice-templates', invoice.templateId],
+    queryFn: async () => {
+      if (!invoice.templateId) return null;
+      const response = await fetch(`/api/invoice-templates/${invoice.templateId}`);
+      if (!response.ok) throw new Error('Failed to fetch template');
+      return response.json();
+    },
     enabled: !!invoice.templateId,
   });
 
