@@ -11,12 +11,13 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Plus, Trash2, X, Printer, FileText } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { Gatepass, Product, Vendor, GatepassItem, FinishedGood, Bank, Invoice, InvoiceTemplate } from "@shared/schema";
+import type { Gatepass, Product, Vendor, GatepassItem, FinishedGood, Bank, Invoice, InvoiceTemplate, TermsConditions } from "@shared/schema";
 
 const invoiceFormSchema = z.object({
   gatepassId: z.string().optional(),
   invoiceDate: z.string(),
   invoiceTemplateId: z.string().optional(),
+  termsConditionsId: z.string().optional(),
   
   // Seller details
   sellerGstin: z.string().optional(),
@@ -93,6 +94,10 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
     queryKey: ['/api/invoice-templates/active'],
   });
 
+  const { data: termsConditionsList = [] } = useQuery<TermsConditions[]>({
+    queryKey: ['/api/terms-conditions'],
+  });
+
   const { data: finishedGoodsInventory = [] } = useQuery<FinishedGood[]>({
     queryKey: ['/api/finished-goods'],
   });
@@ -118,6 +123,7 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
       gatepassId: gatepass?.id || "",
       invoiceDate: new Date(invoice.invoiceDate).toISOString().split('T')[0],
       invoiceTemplateId: invoice.templateId || "",
+      termsConditionsId: invoice.termsConditionsId || "",
       sellerName: invoice.sellerName || "KINTO Manufacturing",
       sellerAddress: invoice.sellerAddress || "Industrial Area, Phase 1",
       sellerState: invoice.sellerState || "Karnataka",
@@ -154,6 +160,7 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
       gatepassId: gatepass?.id || "",
       invoiceDate: new Date().toISOString().split('T')[0],
       invoiceTemplateId: "",
+      termsConditionsId: "",
       sellerName: "KINTO Manufacturing",
       sellerAddress: "Industrial Area, Phase 1",
       sellerState: "Karnataka",
@@ -653,6 +660,29 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
           </Select>
           <p className="text-xs text-muted-foreground mt-1">
             Select a template to auto-fill seller and bank details
+          </p>
+        </div>
+
+        {/* Terms & Conditions Selection */}
+        <div>
+          <Label htmlFor="termsConditionsId">Terms & Conditions</Label>
+          <Select 
+            value={form.watch("termsConditionsId") || ""} 
+            onValueChange={(value) => form.setValue("termsConditionsId", value)}
+          >
+            <SelectTrigger data-testid="select-terms-conditions">
+              <SelectValue placeholder="Select terms & conditions (optional)" />
+            </SelectTrigger>
+            <SelectContent>
+              {termsConditionsList.map((tc) => (
+                <SelectItem key={tc.id} value={tc.id} data-testid={`tc-option-${tc.id}`}>
+                  {tc.tcName}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground mt-1">
+            Select terms & conditions to display on the invoice
           </p>
         </div>
 
