@@ -17,6 +17,7 @@ The backend is an Express.js application with TypeScript and Node.js. It include
 ### Feature Specifications
 - **Comprehensive Reporting System:** Generates printable reports for various operations (Raw Material Issuance, Purchase Orders, PM Execution, Gatepass, GST-Compliant Invoices) optimized for A4 printing with company branding.
 - **Sales Dashboard:** Provides analytics on revenue, goods sold, total orders, and average order value with flexible time filters.
+- **Enhanced Overview Dashboard:** Displays 4-card summary showing today's raw material issuances, gatepasses, invoices created, and real-time current stock levels. Stock updates when gatepasses are created (physical dispatch), not when invoices are created (sales document).
 - **Machine Startup Reminder System:** Manages and tracks machine startup tasks, sending multi-channel reminders (WhatsApp, Email) before scheduled production.
 - **Missed Checklist Notification System:** Automatically alerts relevant personnel (operator, reviewer, manager, admin) via WhatsApp for overdue checklist assignments.
 - **Invoice-First Gatepass Flow:** Strictly enforces gatepasses can ONLY be created from existing invoices. Backend returns 400 error if invoiceId is missing, preventing manual bypass. Auto-populates items from the invoice to maintain data consistency.
@@ -55,6 +56,7 @@ The backend is an Express.js application with TypeScript and Node.js. It include
   - `PATCH /api/gatepasses/:id/pod` requires status="vehicle_out", validates non-empty signature, updates to "delivered" + invoice to "delivered"
   - Prevents skipping stages, status regression, manual gatepass creation, and workflow violations through strict 400 error responses
   - Digital signature required for POD: validates base64 image format, minimum content length, and actual signature data
+- **Inventory Management Logic:** Inventory deduction occurs ONLY when gatepasses are created (physical dispatch), not when invoices are created. This maintains proper business workflow: Invoice = Sales Document (no physical movement), Gatepass = Warehouse Dispatch (inventory deducted).
 - **Build & Deployment:** Development uses Vite dev server with `tsx`-powered Express; production builds use Vite for frontend and `esbuild` for backend. Drizzle Kit manages database schema.
 
 ## External Dependencies
