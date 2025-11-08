@@ -36,6 +36,7 @@ import {
   exportGSTR3BAsExcel,
   filterInvoicesByPeriod,
   getPeriodString,
+  fetchGSTReportData,
   type GSTReportType,
   type PeriodType,
 } from "@/lib/gst-reports";
@@ -605,19 +606,18 @@ export default function Reports() {
                 </div>
               </div>
 
-              {/* Limitation Notice for GSTR-1 */}
+              {/* Success Notice for GSTR-1 */}
               {gstReportType === 'GSTR1' && (
-                <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+                <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-4">
                   <div className="flex items-start gap-3">
-                    <svg className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <svg className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <div className="space-y-1">
-                      <h5 className="font-semibold text-yellow-900 dark:text-yellow-100">Note: HSN Summary Not Included</h5>
-                      <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                        This version provides B2B, B2CL, B2CS, and Export classifications with aggregate tax data. 
-                        Complete HSN-wise summaries require integration with invoice line items (invoice_items table) 
-                        which contain product-level HSN codes, quantities, and UOM details.
+                      <h5 className="font-semibold text-green-900 dark:text-green-100">Complete HSN Summary Included</h5>
+                      <p className="text-sm text-green-700 dark:text-green-300">
+                        This report includes complete HSN-wise summaries with product-level details from invoice line items.
+                        All HSN codes, quantities, UOM, taxable values, and tax breakdowns are aggregated from the invoice_items table.
                       </p>
                     </div>
                   </div>
@@ -627,16 +627,26 @@ export default function Reports() {
               {/* Download Buttons */}
               <div className="flex gap-4">
                 <Button
-                  onClick={() => {
-                    const filteredInvs = filterInvoicesByPeriod(invoices, selectedMonth, selectedYear, periodType);
-                    const period = getPeriodString(selectedMonth, selectedYear);
-                    
-                    if (gstReportType === 'GSTR1') {
-                      const report = generateGSTR1(filteredInvs, period, companyGSTIN);
-                      exportGSTReportAsJSON(report, 'GSTR1', period);
-                    } else if (gstReportType === 'GSTR3B') {
-                      const report = generateGSTR3B(filteredInvs, [], period, companyGSTIN);
-                      exportGSTReportAsJSON(report, 'GSTR3B', period);
+                  onClick={async () => {
+                    try {
+                      const period = getPeriodString(selectedMonth, selectedYear);
+                      const reportData = await fetchGSTReportData(periodType, selectedMonth, selectedYear);
+                      const invoicesFromReport = reportData.invoices.map(item => item.invoice);
+                      
+                      if (gstReportType === 'GSTR1') {
+                        const report = generateGSTR1(invoicesFromReport, period, companyGSTIN, reportData.hsnSummary);
+                        exportGSTReportAsJSON(report, 'GSTR1', period);
+                      } else if (gstReportType === 'GSTR3B') {
+                        const report = generateGSTR3B(invoicesFromReport, [], period, companyGSTIN);
+                        exportGSTReportAsJSON(report, 'GSTR3B', period);
+                      }
+                    } catch (error) {
+                      console.error('Failed to generate GST report:', error);
+                      toast({
+                        title: "Error",
+                        description: "Failed to generate GST report. Please try again.",
+                        variant: "destructive",
+                      });
                     }
                   }}
                   className="flex items-center gap-2"
@@ -647,16 +657,26 @@ export default function Reports() {
                 </Button>
 
                 <Button
-                  onClick={() => {
-                    const filteredInvs = filterInvoicesByPeriod(invoices, selectedMonth, selectedYear, periodType);
-                    const period = getPeriodString(selectedMonth, selectedYear);
-                    
-                    if (gstReportType === 'GSTR1') {
-                      const report = generateGSTR1(filteredInvs, period, companyGSTIN);
-                      exportGSTR1AsExcel(report, period);
-                    } else if (gstReportType === 'GSTR3B') {
-                      const report = generateGSTR3B(filteredInvs, [], period, companyGSTIN);
-                      exportGSTR3BAsExcel(report, period);
+                  onClick={async () => {
+                    try {
+                      const period = getPeriodString(selectedMonth, selectedYear);
+                      const reportData = await fetchGSTReportData(periodType, selectedMonth, selectedYear);
+                      const invoicesFromReport = reportData.invoices.map(item => item.invoice);
+                      
+                      if (gstReportType === 'GSTR1') {
+                        const report = generateGSTR1(invoicesFromReport, period, companyGSTIN, reportData.hsnSummary);
+                        exportGSTR1AsExcel(report, period);
+                      } else if (gstReportType === 'GSTR3B') {
+                        const report = generateGSTR3B(invoicesFromReport, [], period, companyGSTIN);
+                        exportGSTR3BAsExcel(report, period);
+                      }
+                    } catch (error) {
+                      console.error('Failed to generate GST report:', error);
+                      toast({
+                        title: "Error",
+                        description: "Failed to generate GST report. Please try again.",
+                        variant: "destructive",
+                      });
                     }
                   }}
                   variant="outline"
@@ -702,7 +722,7 @@ export default function Reports() {
                     <li>✓ B2CL - B2C Large (above ₹2.5L)</li>
                     <li>✓ B2CS - B2C Small (below ₹2.5L)</li>
                     <li>✓ EXP - Export Invoices</li>
-                    <li className="text-yellow-600">⚠ HSN Summary (requires line item data)</li>
+                    <li className="text-green-600">✓ HSN Summary (with line item details)</li>
                   </ul>
                 </div>
                 <div className="space-y-2">
@@ -712,6 +732,7 @@ export default function Reports() {
                     <li>✓ IGST (Inter-state)</li>
                     <li>✓ Taxable Value computation</li>
                     <li>✓ Auto-classification by state</li>
+                    <li className="text-green-600">✓ HSN-wise aggregation with UOM</li>
                   </ul>
                 </div>
               </div>

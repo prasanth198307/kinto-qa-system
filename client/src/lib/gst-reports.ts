@@ -1,9 +1,38 @@
 import * as XLSX from 'xlsx';
-import type { Invoice } from '@shared/schema';
+import type { Invoice, InvoiceWithItems } from '@shared/schema';
 
 // GST Report Types
-export type GSTReportType = 'GSTR1' | 'GSTR3B' | 'GSTR2' | 'GSTR9';
+export type GSTReportType = 'GSTR1' | 'GSTR3B';
 export type PeriodType = 'monthly' | 'quarterly' | 'annual';
+
+// API Response Type
+export interface GSTReportAPIResponse {
+  invoices: Array<{
+    invoice: Invoice;
+    items: any[];
+  }>;
+  hsnSummary: Array<{
+    hsnCode: string;
+    description: string;
+    uom: string;
+    quantity: number;
+    taxableValue: number;
+    cgstAmount: number;
+    sgstAmount: number;
+    igstAmount: number;
+    cessAmount: number;
+    taxRate: number;
+  }>;
+  metadata: {
+    period: string;
+    periodType: string;
+    startDate: string;
+    endDate: string;
+    totalInvoices: number;
+    totalTaxableValue: number;
+    totalTax: number;
+  };
+}
 
 // GSTR-1 Report Structure (Outward Supplies)
 export interface GSTR1Report {
@@ -100,6 +129,31 @@ export interface GSTR3BReport {
 }
 
 /**
+ * Fetch GST report data with HSN summary from API
+ */
+export async function fetchGSTReportData(
+  periodType: PeriodType,
+  month: number,
+  year: number
+): Promise<GSTReportAPIResponse> {
+  const response = await fetch('/api/gst-reports', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ periodType, month, year }),
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: 'Failed to fetch GST report data' }));
+    throw new Error(error.message || 'Failed to fetch GST report data');
+  }
+
+  return response.json();
+}
+
+/**
  * Convert paise to rupees
  */
 function paiseToRupees(paise: number): number {
@@ -115,14 +169,13 @@ function calculateTaxRate(taxableValue: number, taxAmount: number): number {
 }
 
 /**
- * Generate GSTR-1 Report from invoices
- * Note: This is a simplified version using aggregate invoice data.
- * For complete item-level reporting with HSN codes from invoice_items table, additional data fetching would be needed.
+ * Generate GSTR-1 Report from invoices with real HSN data from API
  */
 export function generateGSTR1(
   invoices: Invoice[],
   period: string,
-  companyGSTIN: string
+  companyGSTIN: string,
+  hsnSummary?: GSTReportAPIResponse['hsnSummary']
 ): GSTR1Report {
   const b2bInvoices: B2BInvoice[] = [];
   const b2clInvoices: B2CLInvoice[] = [];
@@ -217,10 +270,21 @@ export function generateGSTR1(
       b2csInvoices.push(b2csInv);
     }
     
-    // NOTE: HSN Summary requires invoice_items table data with actual HSN codes, quantities, and UOM
-    // This simplified version does not include HSN summaries
-    // To enable HSN summaries, the /api/invoices endpoint would need to be extended to join invoice_items
   });
+
+  // Transform HSN summary from API response to report format
+  const hsnData: HSNSummary[] = (hsnSummary || []).map(hsn => ({
+    hsn_sc: hsn.hsnCode,
+    desc: hsn.description,
+    uqc: hsn.uom,
+    qty: hsn.quantity,
+    txval: hsn.taxableValue,
+    rt: hsn.taxRate,
+    csamt: hsn.cessAmount,
+    camt: hsn.cgstAmount,
+    samt: hsn.sgstAmount,
+    iamt: hsn.igstAmount,
+  }));
 
   return {
     gstin: companyGSTIN,
@@ -229,7 +293,7 @@ export function generateGSTR1(
     b2cl: b2clInvoices,
     b2cs: b2csInvoices,
     exp: expInvoices,
-    hsn: [], // Empty - requires invoice_items data integration
+    hsn: hsnData,
   };
 }
 
