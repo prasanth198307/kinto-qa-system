@@ -13,7 +13,13 @@ The frontend uses React 18 with TypeScript, Vite, and Wouter for routing. UI com
 
 **Navigation Structure (Nov 2025):**
 - Manager Dashboard: Production (Product Master, Raw Materials, Finished Goods), Inventory (UOM, Vendor Master), Operations (Purchase Orders, Issuance, Gatepasses, Invoices)
-- Admin Dashboard: Production (Product Master, Checklist Builder, Raw Materials, Finished Goods), System Config (Users, Roles, Machines, etc.), Operations → Production Operations (Issuance, Gatepasses, Invoices, Machine Startup Reminders)
+- Admin Dashboard (Flat Navigation - No Dropdowns): 
+  1. Overview Dashboard
+  2. Sales Dashboard
+  3. Configuration (Users, Role Permissions, Machines, Machine Types, Spare Parts, PM Templates, UOM, Vendor Master, Notification Settings)
+  4. Production (Product Master, Checklist Builder, Raw Materials, Finished Goods)
+  5. Operations (Maintenance, PM History, Purchase Orders)
+  6. Production Operations (Raw Material Issuance, Gatepasses, Sales Invoices, Machine Startup Reminders)
 
 ### Backend Architecture
 The backend is an Express.js application with TypeScript and Node.js. It features Email/Password Authentication with `scrypt` and `Passport.js`, and a Dynamic Role-Based Access Control (RBAC) system for `admin`, `manager`, `operator`, and `reviewer` roles with granular, screen-level permissions. Neon Serverless PostgreSQL is the database, accessed via Drizzle ORM. The schema includes core tables for users, machines, checklists, inventory, transactions, and GST-compliant invoices. It supports multi-item issuance, a Header-Detail pattern for transactional integrity, automatic inventory management, a comprehensive Vendor Master System, and a Role Management System.
