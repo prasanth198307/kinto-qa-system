@@ -202,8 +202,7 @@ export function generateGSTR1(
     const hasBuyerGSTIN = invoice.buyerGstin && invoice.buyerGstin.length === 15;
     const isExport = !hasBuyerGSTIN && invoice.placeOfSupply && 
                      (invoice.placeOfSupply.toLowerCase().includes('export') || 
-                      invoice.buyerState === 'EXPORT' ||
-                      invoice.buyerCountry !== 'India');
+                      invoice.buyerState === 'EXPORT');
     
     if (isExport) {
       // Export Invoice
