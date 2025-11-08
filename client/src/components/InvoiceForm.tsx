@@ -98,6 +98,10 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
     queryKey: ['/api/terms-conditions'],
   });
 
+  // Find default template and terms & conditions
+  const defaultTemplate = templates.find(t => t.isDefault === 1);
+  const defaultTermsConditions = termsConditionsList.find(tc => tc.isDefault === 1);
+
   const { data: finishedGoodsInventory = [] } = useQuery<FinishedGood[]>({
     queryKey: ['/api/finished-goods'],
   });
@@ -196,16 +200,26 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
     },
   });
 
-  // Auto-select default template on load
+  // Auto-select default template and terms & conditions on load
   useEffect(() => {
     if (templates.length > 0 && !invoice) {
       const defaultTemplate = templates.find(t => t.isDefault === 1);
       if (defaultTemplate) {
         setSelectedTemplateId(defaultTemplate.id);
+        form.setValue("invoiceTemplateId", defaultTemplate.id);
         applyTemplate(defaultTemplate);
       }
     }
-  }, [templates, invoice]);
+  }, [templates, invoice, form]);
+
+  useEffect(() => {
+    if (termsConditionsList.length > 0 && !invoice) {
+      const defaultTC = termsConditionsList.find(tc => tc.isDefault === 1);
+      if (defaultTC) {
+        form.setValue("termsConditionsId", defaultTC.id);
+      }
+    }
+  }, [termsConditionsList, invoice, form]);
 
   // Auto-select default bank on load
   useEffect(() => {
@@ -640,51 +654,17 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
       </div>
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        {/* Invoice Template Selection */}
-        <div>
-          <Label htmlFor="invoiceTemplateId">Invoice Template</Label>
-          <Select 
-            value={selectedTemplateId} 
-            onValueChange={handleTemplateChange}
-          >
-            <SelectTrigger data-testid="select-invoice-template">
-              <SelectValue placeholder="Select a template (optional)" />
-            </SelectTrigger>
-            <SelectContent>
-              {templates.map((template) => (
-                <SelectItem key={template.id} value={template.id} data-testid={`template-option-${template.id}`}>
-                  {template.templateName}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground mt-1">
-            Select a template to auto-fill seller and bank details
-          </p>
-        </div>
-
-        {/* Terms & Conditions Selection */}
-        <div>
-          <Label htmlFor="termsConditionsId">Terms & Conditions</Label>
-          <Select 
-            value={form.watch("termsConditionsId") || ""} 
-            onValueChange={(value) => form.setValue("termsConditionsId", value)}
-          >
-            <SelectTrigger data-testid="select-terms-conditions">
-              <SelectValue placeholder="Select terms & conditions (optional)" />
-            </SelectTrigger>
-            <SelectContent>
-              {termsConditionsList.map((tc) => (
-                <SelectItem key={tc.id} value={tc.id} data-testid={`tc-option-${tc.id}`}>
-                  {tc.tcName}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground mt-1">
-            Select terms & conditions to display on the invoice
-          </p>
-        </div>
+        {/* System automatically uses default template and terms & conditions */}
+        {/* Hidden info display */}
+        {defaultTemplate && (
+          <div className="bg-muted/50 p-3 rounded-md text-sm">
+            <p className="font-medium">Invoice Configuration:</p>
+            <p className="text-muted-foreground">Template: {defaultTemplate.templateName}</p>
+            {defaultTermsConditions && (
+              <p className="text-muted-foreground">Terms & Conditions: {defaultTermsConditions.tcName}</p>
+            )}
+          </div>
+        )}
 
         {/* Invoice Date */}
         <div>
