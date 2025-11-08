@@ -72,17 +72,6 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
       return;
     }
 
-    const printWindow = window.open('', '', 'width=800,height=600');
-    if (!printWindow) {
-      toast({
-        title: "Popup Blocked",
-        description: "Please allow popups for this site to print invoices. Check your browser's address bar for a popup blocker icon.",
-        variant: "destructive",
-      });
-      console.error('Popup window was blocked by the browser. Please allow popups for this site.');
-      return;
-    }
-
     const generateInvoiceHTML = (copyType: string) => `
       <div class="page">
         <div class="header">
@@ -264,7 +253,7 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
       </div>
     `;
 
-    printWindow.document.write(`
+    const htmlContent = `
       <html>
         <head>
           <title>Invoice - ${invoice.invoiceNumber}</title>
@@ -508,26 +497,29 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
           ${generateInvoiceHTML('TRIPLICATE')}
         </body>
       </html>
-    `);
+    `;
 
-    printWindow.document.close();
-    printWindow.focus();
+    // Create blob URL to avoid popup blockers
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const blobUrl = URL.createObjectURL(blob);
     
+    // Open in new tab/window (blob URLs are not blocked)
+    const printWindow = window.open(blobUrl, '_blank');
+    
+    if (!printWindow) {
+      toast({
+        title: "Unable to Open Print Preview",
+        description: "Please check your browser settings and allow popups for this site.",
+        variant: "destructive",
+      });
+      URL.revokeObjectURL(blobUrl);
+      return;
+    }
+
+    // Clean up blob URL after window loads
     setTimeout(() => {
-      try {
-        printWindow.print();
-        // Don't auto-close - let user close after printing
-        // printWindow.close();
-      } catch (error) {
-        console.error('Error during print:', error);
-        toast({
-          title: "Print Error",
-          description: "There was an error opening the print dialog. Please try again.",
-          variant: "destructive",
-        });
-        printWindow.close();
-      }
-    }, 250);
+      URL.revokeObjectURL(blobUrl);
+    }, 1000);
   };
 
   return (
