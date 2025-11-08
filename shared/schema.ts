@@ -802,11 +802,87 @@ export const insertGatepassItemSchema = createInsertSchema(gatepassItems).omit({
 export type InsertGatepassItem = z.infer<typeof insertGatepassItemSchema>;
 export type GatepassItem = typeof gatepassItems.$inferSelect;
 
+// Invoice Templates Master
+export const invoiceTemplates = pgTable("invoice_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  templateName: varchar("template_name", { length: 255 }).notNull().unique(),
+  description: text("description"),
+  
+  // Default Seller Details for this template
+  defaultSellerName: varchar("default_seller_name", { length: 255 }),
+  defaultSellerGstin: varchar("default_seller_gstin", { length: 15 }),
+  defaultSellerAddress: text("default_seller_address"),
+  defaultSellerState: varchar("default_seller_state", { length: 100 }),
+  defaultSellerStateCode: varchar("default_seller_state_code", { length: 2 }),
+  defaultSellerPhone: varchar("default_seller_phone", { length: 50 }),
+  defaultSellerEmail: varchar("default_seller_email", { length: 255 }),
+  
+  // Default Bank Details
+  defaultBankName: varchar("default_bank_name", { length: 255 }),
+  defaultBankAccountNumber: varchar("default_bank_account_number", { length: 50 }),
+  defaultBankIfscCode: varchar("default_bank_ifsc_code", { length: 11 }),
+  defaultAccountHolderName: varchar("default_account_holder_name", { length: 255 }),
+  defaultBranchName: varchar("default_branch_name", { length: 255 }),
+  defaultUpiId: varchar("default_upi_id", { length: 100 }),
+  
+  // Template Settings
+  isDefault: integer("is_default").default(0).notNull(), // 1 template can be marked as default
+  isActive: integer("is_active").default(1).notNull(),
+  
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertInvoiceTemplateSchema = createInsertSchema(invoiceTemplates).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertInvoiceTemplate = z.infer<typeof insertInvoiceTemplateSchema>;
+export type InvoiceTemplate = typeof invoiceTemplates.$inferSelect;
+
+// Terms & Conditions Master
+export const termsConditions = pgTable("terms_conditions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tcName: varchar("tc_name", { length: 255 }).notNull().unique(),
+  description: text("description"),
+  
+  // Terms & Conditions (Array of strings)
+  terms: text("terms").array().notNull(), // Array of T&C points
+  
+  // Settings
+  isDefault: integer("is_default").default(0).notNull(),
+  isActive: integer("is_active").default(1).notNull(),
+  
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertTermsConditionsSchema = createInsertSchema(termsConditions).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertTermsConditions = z.infer<typeof insertTermsConditionsSchema>;
+export type TermsConditions = typeof termsConditions.$inferSelect;
+
 // Invoices for Sales (GST-Compliant)
 export const invoices = pgTable("invoices", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   invoiceNumber: varchar("invoice_number", { length: 100 }).notNull().unique(),
   invoiceDate: timestamp("invoice_date").notNull(),
+  
+  // Template and T&C References
+  templateId: varchar("template_id").references(() => invoiceTemplates.id),
+  termsConditionsId: varchar("terms_conditions_id").references(() => termsConditions.id),
   
   // Seller Details
   sellerGstin: varchar("seller_gstin", { length: 15 }),
@@ -814,8 +890,10 @@ export const invoices = pgTable("invoices", {
   sellerAddress: text("seller_address"),
   sellerState: varchar("seller_state", { length: 100 }),
   sellerStateCode: varchar("seller_state_code", { length: 2 }),
+  sellerPhone: varchar("seller_phone", { length: 50 }),
+  sellerEmail: varchar("seller_email", { length: 255 }),
   
-  // Buyer Details
+  // Buyer Details (Bill To)
   buyerGstin: varchar("buyer_gstin", { length: 15 }),
   buyerName: varchar("buyer_name", { length: 255 }).notNull(),
   buyerAddress: text("buyer_address"),
@@ -823,6 +901,13 @@ export const invoices = pgTable("invoices", {
   buyerStateCode: varchar("buyer_state_code", { length: 2 }),
   buyerContact: varchar("buyer_contact", { length: 50 }),
   isCluster: integer("is_cluster").default(0).notNull(), // 0 = No, 1 = Yes (for mobile app integration)
+  
+  // Ship To Details (if different from buyer)
+  shipToName: varchar("ship_to_name", { length: 255 }),
+  shipToAddress: text("ship_to_address"),
+  shipToCity: varchar("ship_to_city", { length: 100 }),
+  shipToState: varchar("ship_to_state", { length: 100 }),
+  shipToPincode: varchar("ship_to_pincode", { length: 10 }),
   
   // Amounts
   subtotal: integer("subtotal").notNull(), // Amount before tax (in paise)
@@ -838,6 +923,8 @@ export const invoices = pgTable("invoices", {
   bankName: varchar("bank_name", { length: 255 }),
   bankAccountNumber: varchar("bank_account_number", { length: 50 }),
   bankIfscCode: varchar("bank_ifsc_code", { length: 11 }),
+  accountHolderName: varchar("account_holder_name", { length: 255 }),
+  branchName: varchar("branch_name", { length: 255 }),
   upiId: varchar("upi_id", { length: 100 }),
   
   // Other Details
