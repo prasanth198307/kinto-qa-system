@@ -494,14 +494,20 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
   };
 
   return (
-    <Button
-      variant="ghost"
-      size="sm"
-      onClick={handlePrint}
-      data-testid={`button-print-invoice-${invoice.id}`}
-      title="Print Invoice"
-    >
-      <Printer className="w-4 h-4" />
-    </Button>
+    <div className="flex items-center gap-2">
+      <Button
+        variant="default"
+        size="sm"
+        onClick={handlePrint}
+        data-testid={`button-print-invoice-${invoice.id}`}
+        className="gap-2"
+      >
+        <Printer className="w-4 h-4" />
+        Print / Download PDF
+      </Button>
+      <span className="text-xs text-muted-foreground">
+        (Click to print or save as PDF)
+      </span>
+    </div>
   );
 }
