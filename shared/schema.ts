@@ -807,7 +807,7 @@ export const invoiceTemplates = pgTable("invoice_templates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   templateName: varchar("template_name", { length: 255 }).notNull().unique(),
   description: text("description"),
-  logoUrl: varchar("logo_url", { length: 500 }),
+  logoUrl: text("logo_url"),
   
   // Default Seller Details for this template
   defaultSellerName: varchar("default_seller_name", { length: 255 }),

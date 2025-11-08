@@ -341,6 +341,30 @@ function TemplateDialog({
     isDefault: false,
   });
 
+  const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert('Please upload an image file (PNG, JPG, or SVG)');
+        return;
+      }
+      
+      // Validate file size (max 2MB)
+      if (file.size > 2 * 1024 * 1024) {
+        alert('Image size should be less than 2MB');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const logoDataUrl = reader.result as string;
+        setFormData({ ...formData, logoUrl: logoDataUrl });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   useEffect(() => {
     if (editingItem) {
       setFormData({
@@ -411,18 +435,46 @@ function TemplateDialog({
             </div>
 
             <div>
-              <Label htmlFor="logoUrl">Company Logo URL</Label>
-              <Input
-                id="logoUrl"
-                type="url"
-                placeholder="https://example.com/logo.png or /path/to/logo.png"
-                value={formData.logoUrl}
-                onChange={(e) => setFormData({ ...formData, logoUrl: e.target.value })}
-                data-testid="input-logo-url"
-              />
+              <Label htmlFor="logoUrl">Company Logo</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="logoUrl"
+                  type="url"
+                  placeholder="https://example.com/logo.png or /path/to/logo.png"
+                  value={formData.logoUrl}
+                  onChange={(e) => setFormData({ ...formData, logoUrl: e.target.value })}
+                  data-testid="input-logo-url"
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => document.getElementById('logo-upload')?.click()}
+                  data-testid="button-upload-logo"
+                >
+                  Upload Image
+                </Button>
+                <input
+                  id="logo-upload"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoUpload}
+                  className="hidden"
+                />
+              </div>
               <p className="text-sm text-muted-foreground mt-1">
-                Enter the URL of your company logo (PNG, JPG, or SVG). Leave empty if no logo needed.
+                Enter a URL or click "Upload Image" to upload your company logo (PNG, JPG, or SVG, max 2MB)
               </p>
+              {formData.logoUrl && (
+                <div className="mt-3 p-3 border rounded-md bg-muted/50">
+                  <p className="text-sm font-medium mb-2">Logo Preview:</p>
+                  <img 
+                    src={formData.logoUrl} 
+                    alt="Logo preview" 
+                    className="max-w-[200px] max-h-[80px] object-contain border bg-white p-2 rounded"
+                  />
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-4">
