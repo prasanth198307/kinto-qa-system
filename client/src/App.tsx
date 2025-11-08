@@ -383,7 +383,7 @@ function AdminDashboard() {
       items: [
         {
           id: "overview",
-          label: "Overview",
+          label: "Overview Dashboard",
           icon: LayoutDashboard,
         },
         {
@@ -391,6 +391,21 @@ function AdminDashboard() {
           label: "Sales Dashboard",
           icon: TrendingUp,
         },
+      ],
+    },
+    {
+      id: "config-section",
+      label: "Configuration",
+      items: [
+        { id: "users", label: "Users", icon: Users },
+        { id: "role-permissions", label: "Role Permissions", icon: Shield },
+        { id: "machines", label: "Machines", icon: Settings },
+        { id: "machine-types", label: "Machine Types", icon: Layers },
+        { id: "spare-parts", label: "Spare Parts", icon: Package },
+        { id: "pm-templates", label: "PM Templates", icon: ListChecks },
+        { id: "uom", label: "Unit of Measurement", icon: Layers },
+        { id: "vendors", label: "Vendor Master", icon: Building2 },
+        { id: "notification-settings", label: "Notification Settings", icon: Bell },
       ],
     },
     {
@@ -404,45 +419,22 @@ function AdminDashboard() {
       ],
     },
     {
-      id: "config-section",
-      label: "Configuration",
-      items: [
-        {
-          id: "configuration",
-          label: "System Config",
-          icon: Settings,
-          children: [
-            { id: "users", label: "Users", icon: Users },
-            { id: "role-permissions", label: "Role Permissions", icon: Shield },
-            { id: "machines", label: "Machines", icon: Settings },
-            { id: "machine-types", label: "Machine Types", icon: Layers },
-            { id: "spare-parts", label: "Spare Parts", icon: Package },
-            { id: "pm-templates", label: "PM Templates", icon: ListChecks },
-            { id: "uom", label: "Unit of Measurement", icon: Layers },
-            { id: "vendors", label: "Vendor Master", icon: Building2 },
-            { id: "notification-settings", label: "Notification Settings", icon: Bell },
-          ],
-        },
-      ],
-    },
-    {
       id: "operations",
       label: "Operations",
       items: [
         { id: "maintenance", label: "Maintenance", icon: Wrench },
         { id: "pm-history", label: "PM History", icon: History },
         { id: "purchase-orders", label: "Purchase Orders", icon: ShoppingCart },
-        { 
-          id: "production-operations",
-          label: "Production Operations",
-          icon: Factory,
-          children: [
-            { id: "raw-material-issuance", label: "Raw Material Issuance", icon: Package },
-            { id: "gatepasses", label: "Gatepasses", icon: FileText },
-            { id: "invoices", label: "Sales Invoices", icon: Receipt },
-            { id: "machine-startup-reminders", label: "Machine Startup Reminders", icon: Bell },
-          ],
-        },
+      ],
+    },
+    {
+      id: "production-operations",
+      label: "Production Operations",
+      items: [
+        { id: "raw-material-issuance", label: "Raw Material Issuance", icon: Package },
+        { id: "gatepasses", label: "Gatepasses", icon: FileText },
+        { id: "invoices", label: "Sales Invoices", icon: Receipt },
+        { id: "machine-startup-reminders", label: "Machine Startup Reminders", icon: Bell },
       ],
     },
   ];

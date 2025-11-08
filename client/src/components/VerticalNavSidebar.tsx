@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, Menu, X, LogOut } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { type LucideIcon } from "lucide-react";
 
 export interface NavSection {
@@ -14,7 +14,6 @@ export interface NavItem {
   label: string;
   icon: LucideIcon;
   onClick?: () => void;
-  children?: NavItem[];
 }
 
 interface VerticalNavSidebarProps {
@@ -33,64 +32,32 @@ export function VerticalNavSidebar({
   title = "Dashboard",
 }: VerticalNavSidebarProps) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(
-    new Set(["configuration"])
-  );
-
-  const toggleSection = (sectionId: string) => {
-    const newExpanded = new Set(expandedSections);
-    if (newExpanded.has(sectionId)) {
-      newExpanded.delete(sectionId);
-    } else {
-      newExpanded.add(sectionId);
-    }
-    setExpandedSections(newExpanded);
-  };
 
   const handleItemClick = (item: NavItem) => {
-    if (item.children) {
-      toggleSection(item.id);
-    } else {
-      onItemClick(item.id);
-      if (item.onClick) {
-        item.onClick();
-      }
-      setIsMobileOpen(false);
+    onItemClick(item.id);
+    if (item.onClick) {
+      item.onClick();
     }
+    setIsMobileOpen(false);
   };
 
-  const renderNavItem = (item: NavItem, isChild = false) => {
+  const renderNavItem = (item: NavItem) => {
     const Icon = item.icon;
     const isActive = activeItem === item.id;
-    const isExpanded = expandedSections.has(item.id);
-    const hasChildren = item.children && item.children.length > 0;
 
     return (
-      <div key={item.id}>
-        <Button
-          variant={isActive ? "default" : "ghost"}
-          className={`w-full justify-start text-left min-h-11 h-auto py-2.5 ${
-            isChild ? "pl-8" : ""
-          } ${isActive ? "bg-primary text-primary-foreground" : "text-muted-foreground hover-elevate"}`}
-          onClick={() => handleItemClick(item)}
-          data-testid={`nav-${item.id}`}
-        >
-          <Icon className="w-5 h-5 mr-3 flex-shrink-0" />
-          <span className="flex-1 text-sm leading-tight break-words">{item.label}</span>
-          {hasChildren && (
-            <ChevronDown
-              className={`w-4 h-4 flex-shrink-0 ml-2 transition-transform ${
-                isExpanded ? "rotate-180" : ""
-              }`}
-            />
-          )}
-        </Button>
-        {hasChildren && isExpanded && (
-          <div className="mt-1 space-y-1">
-            {item.children?.map((child) => renderNavItem(child, true))}
-          </div>
-        )}
-      </div>
+      <Button
+        key={item.id}
+        variant={isActive ? "default" : "ghost"}
+        className={`w-full justify-start text-left min-h-11 h-auto py-2.5 ${
+          isActive ? "bg-primary text-primary-foreground" : "text-muted-foreground hover-elevate"
+        }`}
+        onClick={() => handleItemClick(item)}
+        data-testid={`nav-${item.id}`}
+      >
+        <Icon className="w-5 h-5 mr-3 flex-shrink-0" />
+        <span className="flex-1 text-sm leading-tight break-words">{item.label}</span>
+      </Button>
     );
   };
 
