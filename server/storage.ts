@@ -93,9 +93,10 @@ import {
   type InsertMachineStartupTask,
   type NotificationConfig,
   type InsertNotificationConfig,
+  type InvoiceWithItems,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, or, isNotNull, notInArray } from "drizzle-orm";
+import { eq, and, or, isNotNull, notInArray, gte, lte } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 
@@ -257,6 +258,9 @@ export interface IStorage {
   getInvoiceItems(invoiceId: string): Promise<InvoiceItem[]>;
   updateInvoiceItem(id: string, updates: Partial<InsertInvoiceItem>): Promise<InvoiceItem | undefined>;
   deleteInvoiceItem(id: string): Promise<void>;
+  
+  // GST Reports
+  getInvoicesWithItemsByPeriod(startDate: Date, endDate: Date): Promise<InvoiceWithItems[]>;
   
   // Bank Master
   createBank(bank: InsertBank): Promise<Bank>;
@@ -1188,6 +1192,30 @@ export class DatabaseStorage implements IStorage {
 
   async deleteInvoiceItem(id: string): Promise<void> {
     await db.update(invoiceItems).set({ recordStatus: 0, updatedAt: new Date() }).where(eq(invoiceItems.id, id));
+  }
+
+  // GST Reports
+  async getInvoicesWithItemsByPeriod(startDate: Date, endDate: Date): Promise<InvoiceWithItems[]> {
+    // Fetch all active invoices in the period
+    const invoicesInPeriod = await db.select().from(invoices).where(
+      and(
+        eq(invoices.recordStatus, 1),
+        gte(invoices.invoiceDate, startDate),
+        lte(invoices.invoiceDate, endDate)
+      )
+    );
+    
+    // Fetch items for each invoice
+    const invoicesWithItems: InvoiceWithItems[] = [];
+    for (const invoice of invoicesInPeriod) {
+      const items = await this.getInvoiceItems(invoice.id);
+      invoicesWithItems.push({
+        invoice,
+        items,
+      });
+    }
+    
+    return invoicesWithItems;
   }
 
   // Bank Master

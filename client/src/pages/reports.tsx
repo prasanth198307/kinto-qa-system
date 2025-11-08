@@ -20,7 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Package, Receipt, ShoppingCart, Wrench, Filter } from "lucide-react";
+import { FileText, Package, Receipt, ShoppingCart, Wrench, Filter, FileCheck2, Download } from "lucide-react";
 import { format } from "date-fns";
 import type { Gatepass, Invoice, RawMaterialIssuance, PurchaseOrder, PMExecution } from "@shared/schema";
 import PrintableGatepass from "@/components/PrintableGatepass";
@@ -28,12 +28,30 @@ import PrintableInvoice from "@/components/PrintableInvoice";
 import PrintableRawMaterialIssuance from "@/components/PrintableRawMaterialIssuance";
 import PrintablePurchaseOrder from "@/components/PrintablePurchaseOrder";
 import PrintablePMExecution from "@/components/PrintablePMExecution";
+import {
+  generateGSTR1,
+  generateGSTR3B,
+  exportGSTReportAsJSON,
+  exportGSTR1AsExcel,
+  exportGSTR3BAsExcel,
+  filterInvoicesByPeriod,
+  getPeriodString,
+  type GSTReportType,
+  type PeriodType,
+} from "@/lib/gst-reports";
 
 export default function Reports() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [selectedCustomer, setSelectedCustomer] = useState<string>("all");
   const [activeTab, setActiveTab] = useState("gatepasses");
+  
+  // GST Report States
+  const [gstReportType, setGstReportType] = useState<GSTReportType>("GSTR1");
+  const [periodType, setPeriodType] = useState<PeriodType>("monthly");
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const companyGSTIN = "29AABCU9603R1ZV"; // Default KINTO GSTIN
 
   const { data: gatepasses = [] } = useQuery<Gatepass[]>({
     queryKey: ['/api/gatepasses'],
@@ -201,7 +219,7 @@ export default function Reports() {
 
       {/* Reports Tabs */}
       <Tabs defaultValue="gatepasses" className="w-full" onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="gatepasses" data-testid="tab-gatepasses">
             <FileText className="w-4 h-4 mr-2" />
             Gatepasses
@@ -221,6 +239,10 @@ export default function Reports() {
           <TabsTrigger value="maintenance" data-testid="tab-maintenance">
             <Wrench className="w-4 h-4 mr-2" />
             Maintenance
+          </TabsTrigger>
+          <TabsTrigger value="gst-reports" data-testid="tab-gst-reports">
+            <FileCheck2 className="w-4 h-4 mr-2" />
+            GST Reports
           </TabsTrigger>
         </TabsList>
 
@@ -466,6 +488,233 @@ export default function Reports() {
                   </Table>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* GST Reports Tab */}
+        <TabsContent value="gst-reports">
+          <Card>
+            <CardHeader>
+              <CardTitle>GST Reports for Filing</CardTitle>
+              <CardDescription>
+                Generate GST-compliant reports in JSON and Excel formats for upload to GST portal
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Report Type Selection */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                  <Label htmlFor="gst-report-type">Report Type</Label>
+                  <Select value={gstReportType} onValueChange={(value) => setGstReportType(value as GSTReportType)}>
+                    <SelectTrigger id="gst-report-type" data-testid="select-gst-report-type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="GSTR1">GSTR-1 (Outward Supplies)</SelectItem>
+                      <SelectItem value="GSTR3B">GSTR-3B (Summary Return)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="period-type">Filing Period</Label>
+                  <Select value={periodType} onValueChange={(value) => setPeriodType(value as PeriodType)}>
+                    <SelectTrigger id="period-type" data-testid="select-period-type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="quarterly">Quarterly</SelectItem>
+                      <SelectItem value="annual">Annual</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="gst-month">Month/Quarter</Label>
+                  <Select 
+                    value={selectedMonth.toString()} 
+                    onValueChange={(value) => setSelectedMonth(parseInt(value))}
+                    disabled={periodType === 'annual'}
+                  >
+                    <SelectTrigger id="gst-month" data-testid="select-gst-month">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {periodType === 'monthly' ? (
+                        <>
+                          <SelectItem value="1">January</SelectItem>
+                          <SelectItem value="2">February</SelectItem>
+                          <SelectItem value="3">March</SelectItem>
+                          <SelectItem value="4">April</SelectItem>
+                          <SelectItem value="5">May</SelectItem>
+                          <SelectItem value="6">June</SelectItem>
+                          <SelectItem value="7">July</SelectItem>
+                          <SelectItem value="8">August</SelectItem>
+                          <SelectItem value="9">September</SelectItem>
+                          <SelectItem value="10">October</SelectItem>
+                          <SelectItem value="11">November</SelectItem>
+                          <SelectItem value="12">December</SelectItem>
+                        </>
+                      ) : periodType === 'quarterly' ? (
+                        <>
+                          <SelectItem value="3">Q1 (Apr-Jun)</SelectItem>
+                          <SelectItem value="6">Q2 (Jul-Sep)</SelectItem>
+                          <SelectItem value="9">Q3 (Oct-Dec)</SelectItem>
+                          <SelectItem value="12">Q4 (Jan-Mar)</SelectItem>
+                        </>
+                      ) : (
+                        <SelectItem value="12">Full Year</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="gst-year">Financial Year</Label>
+                  <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
+                    <SelectTrigger id="gst-year" data-testid="select-gst-year">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map((year) => (
+                        <SelectItem key={year} value={year.toString()}>
+                          {year}-{(year + 1).toString().slice(-2)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Report Information */}
+              <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <FileCheck2 className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+                  <div className="space-y-1">
+                    <h4 className="font-semibold text-blue-900 dark:text-blue-100">
+                      {gstReportType === 'GSTR1' && 'GSTR-1: Outward Supplies'}
+                      {gstReportType === 'GSTR3B' && 'GSTR-3B: Summary Return'}
+                    </h4>
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      {gstReportType === 'GSTR1' && 'Details of all outward supplies (sales), including B2B, B2CL (Large), B2CS (Small), and Exports classifications'}
+                      {gstReportType === 'GSTR3B' && 'Monthly/Quarterly summary of outward taxable supplies with tax liability breakdown (CGST, SGST, IGST, Cess)'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Limitation Notice for GSTR-1 */}
+              {gstReportType === 'GSTR1' && (
+                <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <svg className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div className="space-y-1">
+                      <h5 className="font-semibold text-yellow-900 dark:text-yellow-100">Note: HSN Summary Not Included</h5>
+                      <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                        This version provides B2B, B2CL, B2CS, and Export classifications with aggregate tax data. 
+                        Complete HSN-wise summaries require integration with invoice line items (invoice_items table) 
+                        which contain product-level HSN codes, quantities, and UOM details.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Download Buttons */}
+              <div className="flex gap-4">
+                <Button
+                  onClick={() => {
+                    const filteredInvs = filterInvoicesByPeriod(invoices, selectedMonth, selectedYear, periodType);
+                    const period = getPeriodString(selectedMonth, selectedYear);
+                    
+                    if (gstReportType === 'GSTR1') {
+                      const report = generateGSTR1(filteredInvs, period, companyGSTIN);
+                      exportGSTReportAsJSON(report, 'GSTR1', period);
+                    } else if (gstReportType === 'GSTR3B') {
+                      const report = generateGSTR3B(filteredInvs, [], period, companyGSTIN);
+                      exportGSTReportAsJSON(report, 'GSTR3B', period);
+                    }
+                  }}
+                  className="flex items-center gap-2"
+                  data-testid="button-download-json"
+                >
+                  <Download className="w-4 h-4" />
+                  Download JSON
+                </Button>
+
+                <Button
+                  onClick={() => {
+                    const filteredInvs = filterInvoicesByPeriod(invoices, selectedMonth, selectedYear, periodType);
+                    const period = getPeriodString(selectedMonth, selectedYear);
+                    
+                    if (gstReportType === 'GSTR1') {
+                      const report = generateGSTR1(filteredInvs, period, companyGSTIN);
+                      exportGSTR1AsExcel(report, period);
+                    } else if (gstReportType === 'GSTR3B') {
+                      const report = generateGSTR3B(filteredInvs, [], period, companyGSTIN);
+                      exportGSTR3BAsExcel(report, period);
+                    }
+                  }}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                  data-testid="button-download-excel"
+                >
+                  <Download className="w-4 h-4" />
+                  Download Excel
+                </Button>
+              </div>
+
+              {/* Report Preview */}
+              <div className="border rounded-lg p-4 bg-muted/50">
+                <h4 className="font-semibold mb-3">Report Details</h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">GSTIN:</span>
+                    <span className="ml-2 font-mono">{companyGSTIN}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Period:</span>
+                    <span className="ml-2">{getPeriodString(selectedMonth, selectedYear)}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Invoices in Period:</span>
+                    <span className="ml-2 font-semibold">
+                      {filterInvoicesByPeriod(invoices, selectedMonth, selectedYear, periodType).length}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Filing Period:</span>
+                    <span className="ml-2 capitalize">{periodType}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Features List */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div className="space-y-2">
+                  <h5 className="font-semibold">Included in Reports:</h5>
+                  <ul className="space-y-1 text-muted-foreground">
+                    <li>✓ B2B Invoices (with GSTIN)</li>
+                    <li>✓ B2CL - B2C Large (above ₹2.5L)</li>
+                    <li>✓ B2CS - B2C Small (below ₹2.5L)</li>
+                    <li>✓ EXP - Export Invoices</li>
+                    <li className="text-yellow-600">⚠ HSN Summary (requires line item data)</li>
+                  </ul>
+                </div>
+                <div className="space-y-2">
+                  <h5 className="font-semibold">Tax Calculations:</h5>
+                  <ul className="space-y-1 text-muted-foreground">
+                    <li>✓ CGST + SGST (Intra-state)</li>
+                    <li>✓ IGST (Inter-state)</li>
+                    <li>✓ Taxable Value computation</li>
+                    <li>✓ Auto-classification by state</li>
+                  </ul>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

@@ -924,6 +924,47 @@ export const insertInvoiceItemSchema = createInsertSchema(invoiceItems).omit({
 export type InsertInvoiceItem = z.infer<typeof insertInvoiceItemSchema>;
 export type InvoiceItem = typeof invoiceItems.$inferSelect;
 
+// GST Report Types
+export interface InvoiceWithItems {
+  invoice: Invoice;
+  items: InvoiceItem[];
+}
+
+export interface HSNSummaryRow {
+  hsnCode: string;
+  description: string;
+  uom: string;
+  quantity: number;
+  taxableValue: number; // in rupees
+  cgstAmount: number; // in rupees
+  sgstAmount: number; // in rupees
+  igstAmount: number; // in rupees
+  cessAmount: number; // in rupees
+  taxRate: number; // calculated average rate
+}
+
+export interface GSTReportData {
+  invoices: InvoiceWithItems[];
+  hsnSummary: HSNSummaryRow[];
+  metadata: {
+    period: string;
+    periodType: string;
+    startDate: string;
+    endDate: string;
+    totalInvoices: number;
+    totalTaxableValue: number;
+    totalTax: number;
+  };
+}
+
+export const gstReportRequestSchema = z.object({
+  periodType: z.enum(['monthly', 'quarterly', 'annual']),
+  month: z.number().min(1).max(12),
+  year: z.number().min(2000).max(2100),
+});
+
+export type GSTReportRequest = z.infer<typeof gstReportRequestSchema>;
+
 // Invoice Payments for tracking partial payments and advances
 export const invoicePayments = pgTable("invoice_payments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
