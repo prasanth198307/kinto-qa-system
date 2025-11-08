@@ -405,7 +405,7 @@ function ManagerDashboard() {
         title="Manager Dashboard"
       />
       
-      <div className="flex-1 lg:ml-0 pt-14 lg:pt-0">
+      <div className="flex-1 lg:ml-0 pt-14 pr-24 lg:pt-0 lg:pr-0">
         {renderContent()}
       </div>
     </div>
@@ -733,7 +733,7 @@ function AdminDashboard() {
         title="Admin Dashboard"
       />
       
-      <div className="flex-1 lg:ml-0 pt-14 lg:pt-0">
+      <div className="flex-1 lg:ml-0 pt-14 pr-24 lg:pt-0 lg:pr-0">
         {renderContent()}
         
         <SchedulePMDialog open={isPMDialogOpen} onOpenChange={setIsPMDialogOpen} />
