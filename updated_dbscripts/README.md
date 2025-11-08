@@ -33,23 +33,33 @@ This folder contains incremental migration scripts for updating existing KINTO Q
 - Empty UOM table → Cannot create raw materials, finished goods, or any transactions
 - Without UOM: Inventory, issuance, gatepasses, invoices ALL fail
 
-### 20251108_093400_logo_url_to_text.sql
+### 20251108_093500_image_columns_to_text.sql
 **Date:** November 8, 2025  
-**Purpose:** Supports base64-encoded company logos in invoice templates
+**Purpose:** Support base64-encoded images across all tables (users, tasks, invoices)
 
 **Changes:**
-1. Alters `invoice_templates.logo_url` column from `varchar(500)` to `text`
+1. `users.profile_image_url`: varchar → text (profile pictures)
+2. `submission_tasks.photo_url`: varchar(500) → text (QA checklist photos)
+3. `pm_execution_tasks.photo_url`: varchar(500) → text (PM task photos)
+4. `invoice_templates.logo_url`: varchar(500) → text (company logos)
 
 **Why Needed:**
-- Base64 encoded images are typically 13,000+ characters
+- Base64 encoded images are typically 13,000-650,000 characters
 - varchar(500) was too small, causing insert/update failures
-- text type supports unlimited length, perfect for base64 data
+- text type supports unlimited length, optimized for large strings
+
+**Affected Features:**
+- User profile pictures (base64 upload)
+- QA checklist task photos (camera capture)
+- PM execution task photos (maintenance documentation)
+- Invoice template company logos (branding)
 
 **Safety:**
-- Non-breaking change (varchar → text is always safe)
+- Non-breaking changes (varchar → text is always safe)
 - No data loss occurs during conversion
-- Existing data is preserved
+- All existing data preserved
 - Compatible with all PostgreSQL versions
+- No application code changes required
 
 ### 20251107_020000_notification_config.sql ⚠️ **IMPORTANT - RUN THIRD**
 **Date:** November 7, 2025  
@@ -207,8 +217,8 @@ psql $DATABASE_URL -f updated_dbscripts/20251107_machine_startup_reminders.sql
 # Step 7: Add missed checklist notifications (optional - requires Steps 3 & 5)
 psql $DATABASE_URL -f updated_dbscripts/20251107_missed_checklist_notifications.sql
 
-# Step 8: Enable base64 logo support in invoice templates (optional - if using logo upload)
-psql $DATABASE_URL -f updated_dbscripts/20251108_093400_logo_url_to_text.sql
+# Step 8: Enable base64 image support across all tables (recommended - if using image uploads)
+psql $DATABASE_URL -f updated_dbscripts/20251108_093500_image_columns_to_text.sql
 ```
 
 **Or with explicit connection:**
@@ -220,7 +230,7 @@ psql -U postgres -d kinto_qa -f updated_dbscripts/20251107_vendor_and_transactio
 psql -U postgres -d kinto_qa -f updated_dbscripts/20251107_invoicing_and_payments.sql
 psql -U postgres -d kinto_qa -f updated_dbscripts/20251107_machine_startup_reminders.sql
 psql -U postgres -d kinto_qa -f updated_dbscripts/20251107_missed_checklist_notifications.sql
-psql -U postgres -d kinto_qa -f updated_dbscripts/20251108_093400_logo_url_to_text.sql
+psql -U postgres -d kinto_qa -f updated_dbscripts/20251108_093500_image_columns_to_text.sql
 ```
 
 **⚠️ IMPORTANT:** 
