@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import type { Invoice, Gatepass } from "@shared/schema";
 import PrintableInvoice from "@/components/PrintableInvoice";
 import PrintableGatepass from "@/components/PrintableGatepass";
+import ProofOfDelivery from "@/components/ProofOfDelivery";
 
 const statusConfig = {
   // Invoice statuses
@@ -123,9 +124,10 @@ export default function DispatchTracking() {
 
       {/* Main Tracking Tables */}
       <Tabs defaultValue="invoices" className="w-full">
-        <TabsList className="grid w-full md:w-auto md:inline-grid grid-cols-2 gap-2">
+        <TabsList className="grid w-full md:w-auto md:inline-grid grid-cols-3 gap-2">
           <TabsTrigger value="invoices" data-testid="tab-invoices">Invoices ({invoiceStats.total})</TabsTrigger>
           <TabsTrigger value="gatepasses" data-testid="tab-gatepasses">Gate Passes ({gatepassStats.total})</TabsTrigger>
+          <TabsTrigger value="pod" data-testid="tab-pod">Proof of Delivery</TabsTrigger>
         </TabsList>
 
         <TabsContent value="invoices" className="space-y-4 mt-4">
@@ -248,6 +250,10 @@ export default function DispatchTracking() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="pod" className="space-y-4 mt-4">
+          <ProofOfDelivery />
         </TabsContent>
       </Tabs>
 

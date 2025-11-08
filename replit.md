@@ -19,7 +19,7 @@ The backend is an Express.js application with TypeScript and Node.js. It include
 - **Sales Dashboard:** Provides analytics on revenue, goods sold, total orders, and average order value with flexible time filters.
 - **Machine Startup Reminder System:** Manages and tracks machine startup tasks, sending multi-channel reminders (WhatsApp, Email) before scheduled production.
 - **Missed Checklist Notification System:** Automatically alerts relevant personnel (operator, reviewer, manager, admin) via WhatsApp for overdue checklist assignments.
-- **Invoice-First Gatepass Flow:** Ensures gatepasses are created only after an invoice, auto-populating items from the invoice to maintain data consistency.
+- **Invoice-First Gatepass Flow:** Strictly enforces gatepasses can ONLY be created from existing invoices. Backend returns 400 error if invoiceId is missing, preventing manual bypass. Auto-populates items from the invoice to maintain data consistency.
 - **Invoice Template Management System:** Allows admin to create and manage professional invoice templates with customizable seller details, bank information, terms & conditions, and company logo support.
 - **Enhanced Invoice Form:** Features a compact single-line item layout, template selection, ship-to address section, complete bank account details, and a print preview.
 - **Gatepass Print Functionality:** Provides a print preview for gatepasses, including company branding, details, itemized list, and signature blocks.
@@ -29,10 +29,12 @@ The backend is an Express.js application with TypeScript and Node.js. It include
 - **Updated Branding:** Login page and hero content updated to reflect the system's comprehensive "KINTO Operations & QA" capabilities.
 - **Complete Dispatch Tracking Workflow:** Bulletproof 5-stage flow with strict status validation:
   1. **Invoice Creation** (status: draft)
-  2. **Gate Pass Generation** (invoice→ready_for_gatepass, gatepass→generated)
+  2. **Gate Pass Generation** (invoice→ready_for_gatepass, gatepass→generated) - **REQUIRES invoiceId**, backend rejects creation without invoice
   3. **Vehicle Exit Recording** (gatepass→vehicle_out, invoice→dispatched) - requires generated status
   4. **Proof of Delivery** (gatepass→delivered, invoice→delivered) - requires vehicle_out status + digital signature
   - Enforces workflow ordering through backend status preconditions (400 errors for invalid transitions)
+  - **Invoice-first enforcement:** POST /api/gatepasses validates invoiceId presence, invoice existence, and one-to-one relationship
+  - **POD Screen Integration:** Accessible via Dispatch Tracking dashboard (3 tabs: Invoices, Gate Passes, Proof of Delivery)
   - Mobile-ready signature capture using HTML5 canvas with touch/mouse support
   - Multi-layer signature validation: format check, minimum length (100 chars), base64 content verification (50+ chars)
   - Prevents workflow bypass, status regression, and empty signature submissions
@@ -42,9 +44,10 @@ The backend is an Express.js application with TypeScript and Node.js. It include
 - **Authentication:** Users can log in with either username or email.
 - **Database Schema:** Includes a `is_cluster` flag in `vendors`, `gatepasses`, and `invoices` tables for mobile integration efficiency. Status tracking fields in both `invoices` (draft→ready_for_gatepass→dispatched→delivered) and `gatepasses` (generated→vehicle_out→delivered→completed) enable complete dispatch workflow tracking.
 - **Dispatch Workflow:** Invoice-first approach with tamper-proof state machine. Backend validates status preconditions before each transition:
+  - `POST /api/gatepasses` requires invoiceId (returns 400 if missing), verifies invoice exists, and ensures one-to-one invoice-gatepass relationship
   - `PATCH /api/gatepasses/:id/vehicle-exit` requires status="generated", updates to "vehicle_out" + invoice to "dispatched"
   - `PATCH /api/gatepasses/:id/pod` requires status="vehicle_out", validates non-empty signature, updates to "delivered" + invoice to "delivered"
-  - Prevents skipping stages, status regression, and workflow violations through strict 400 error responses
+  - Prevents skipping stages, status regression, manual gatepass creation, and workflow violations through strict 400 error responses
   - Digital signature required for POD: validates base64 image format, minimum content length, and actual signature data
 - **Build & Deployment:** Development uses Vite dev server with `tsx`-powered Express; production builds use Vite for frontend and `esbuild` for backend. Drizzle Kit manages database schema.
 

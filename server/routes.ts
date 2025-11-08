@@ -1523,24 +1523,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate header
       const validatedHeader = insertGatepassSchema.parse(header);
       
-      // Check if invoice is already linked to another gatepass
-      if (validatedHeader.invoiceId) {
-        const existingGatepass = await db
-          .select()
-          .from(gatepasses)
-          .where(
-            and(
-              eq(gatepasses.invoiceId, validatedHeader.invoiceId),
-              eq(gatepasses.recordStatus, 1)
-            )
+      // *** ENFORCE INVOICE-FIRST WORKFLOW: Invoice is REQUIRED ***
+      if (!validatedHeader.invoiceId) {
+        return res.status(400).json({ 
+          message: "Invoice is required. Gate passes can only be created from existing invoices (Invoice-First workflow)" 
+        });
+      }
+      
+      // Verify invoice exists
+      const [invoice] = await db
+        .select()
+        .from(invoices)
+        .where(
+          and(
+            eq(invoices.id, validatedHeader.invoiceId),
+            eq(invoices.recordStatus, 1)
           )
-          .limit(1);
-        
-        if (existingGatepass.length > 0) {
-          return res.status(400).json({ 
-            message: "This invoice is already linked to another gatepass and cannot be reused" 
-          });
-        }
+        )
+        .limit(1);
+      
+      if (!invoice) {
+        return res.status(404).json({ 
+          message: "Invoice not found or has been deleted" 
+        });
+      }
+      
+      // Check if invoice is already linked to another gatepass (one-to-one relationship)
+      const existingGatepass = await db
+        .select()
+        .from(gatepasses)
+        .where(
+          and(
+            eq(gatepasses.invoiceId, validatedHeader.invoiceId),
+            eq(gatepasses.recordStatus, 1)
+          )
+        )
+        .limit(1);
+      
+      if (existingGatepass.length > 0) {
+        return res.status(400).json({ 
+          message: "This invoice is already linked to another gatepass. Each invoice can only have one gatepass (one-to-one relationship)" 
+        });
       }
       
       // Validate items array
