@@ -371,11 +371,10 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
               padding: 10mm;
               margin: 0 auto;
               background: white;
-              page-break-after: always;
             }
 
-            .page:last-child {
-              page-break-after: auto;
+            .page:not(:first-child) {
+              page-break-before: always;
             }
 
             /* Title Section */
