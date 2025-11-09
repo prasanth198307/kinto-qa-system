@@ -1,13 +1,17 @@
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useSearch } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FileText, Package, Truck, CheckCircle, Clock } from "lucide-react";
 import { format } from "date-fns";
 import type { Invoice, Gatepass } from "@shared/schema";
 import PrintableInvoice from "@/components/PrintableInvoice";
 import PrintableGatepass from "@/components/PrintableGatepass";
 import ProofOfDelivery from "@/components/ProofOfDelivery";
+import GatepassForm from "@/components/GatepassForm";
 
 const statusConfig = {
   // Invoice statuses
@@ -22,6 +26,10 @@ const statusConfig = {
 };
 
 export default function DispatchTracking() {
+  const search = useSearch();
+  const [showGatepassForm, setShowGatepassForm] = useState(false);
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
+  
   const { data: invoices = [], isLoading: invoicesLoading } = useQuery<Invoice[]>({
     queryKey: ['/api/invoices'],
   });
@@ -29,6 +37,16 @@ export default function DispatchTracking() {
   const { data: gatepasses = [], isLoading: gatepassesLoading } = useQuery<Gatepass[]>({
     queryKey: ['/api/gatepasses'],
   });
+
+  // Detect invoice parameter in URL and auto-open gatepass form
+  useEffect(() => {
+    const params = new URLSearchParams(search);
+    const invoiceId = params.get('invoice');
+    if (invoiceId) {
+      setSelectedInvoiceId(invoiceId);
+      setShowGatepassForm(true);
+    }
+  }, [search]);
 
   const getStatusBadge = (status: string) => {
     const config = statusConfig[status as keyof typeof statusConfig];
@@ -307,6 +325,33 @@ export default function DispatchTracking() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Gatepass Creation Dialog */}
+      {showGatepassForm && (
+        <Dialog open={showGatepassForm} onOpenChange={(open) => {
+          setShowGatepassForm(open);
+          if (!open) {
+            // Clear selected invoice when dialog closes
+            setSelectedInvoiceId(null);
+            // Remove invoice parameter from URL
+            window.history.replaceState({}, '', '/dispatch-tracking');
+          }
+        }}>
+          <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Create Gate Pass from Invoice</DialogTitle>
+            </DialogHeader>
+            <GatepassForm 
+              gatepass={null} 
+              onClose={() => {
+                setShowGatepassForm(false);
+                setSelectedInvoiceId(null);
+                window.history.replaceState({}, '', '/dispatch-tracking');
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

@@ -47,9 +47,9 @@ export default function InvoiceDetail() {
         <Card className="max-w-md mx-auto p-8 text-center">
           <h2 className="text-2xl font-bold text-destructive mb-4">Invoice Not Found</h2>
           <p className="text-muted-foreground mb-6">The requested invoice could not be found.</p>
-          <Button onClick={() => navigate('/production')} data-testid="button-back">
+          <Button onClick={() => navigate('/')} data-testid="button-back">
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Production
+            Back to Dashboard
           </Button>
         </Card>
       </div>
@@ -81,11 +81,11 @@ export default function InvoiceDetail() {
   };
 
   const handleEdit = () => {
-    navigate(`/production?tab=invoices&edit=${id}`);
+    navigate(`/?tab=invoices&edit=${id}`);
   };
 
   const handleGenerateGatepass = () => {
-    navigate(`/production?tab=gatepasses&invoice=${id}`);
+    navigate(`/dispatch-tracking?invoice=${id}`);
   };
 
   const handleEmail = () => {
@@ -104,8 +104,8 @@ export default function InvoiceDetail() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate('/production')}
-            data-testid="button-back-to-production"
+            onClick={() => navigate('/')}
+            data-testid="button-back-to-dashboard"
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
