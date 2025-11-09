@@ -918,9 +918,342 @@
 
 ---
 
-## 12. Vendor Management
+## 12. Printing & Document Export Workflow
 
-### Test Case 12.1: Admin Creates Vendor Master
+### Test Case 12.1: Manager Prints Sales Invoice
+**Role**: Manager  
+**Objective**: Generate printable invoice for customer
+
+**Steps**:
+1. Login as Manager
+2. Navigate to: Manager Dashboard → Sales Invoices
+3. Find invoice: INV-2025-001
+4. Click "Print" button (or Eye icon → Print)
+5. System opens print preview showing:
+   - Company logo and GST details
+   - Invoice number and date
+   - Buyer and seller information
+   - Itemized list with HSN codes
+   - Tax breakdown (CGST, SGST, IGST)
+   - Total amount in words
+   - Bank account details
+   - Terms & conditions
+   - Authorized signatory
+6. Click browser Print (Ctrl+P)
+7. Save as PDF or print physically
+8. **Expected Result**: Professional A4-sized invoice ready for customer
+
+---
+
+### Test Case 12.2: Operator Prints Gatepass
+**Role**: Operator  
+**Objective**: Generate gatepass document for security gate
+
+**Steps**:
+1. Login as Operator
+2. Navigate to: Operator Dashboard → Dispatch Tracking → Gate Passes
+3. Find gatepass: GP-2025-001
+4. Click "Print Gatepass" button
+5. System opens print preview showing:
+   - Company branding
+   - Gatepass number and date
+   - Vehicle details (number, driver name, contact)
+   - Customer/destination details
+   - Itemized list with quantities
+   - Cases count and seal numbers
+   - Security verification section
+   - Signature blocks (Issued By, Received By, Security)
+6. Click browser Print
+7. **Expected Result**: 
+   - Gatepass printed for security gate
+   - Driver receives copy
+   - Office keeps copy
+
+---
+
+### Test Case 12.3: Manager Prints Purchase Order
+**Role**: Manager  
+**Objective**: Generate PO document for vendor
+
+**Steps**:
+1. Login as Manager
+2. Navigate to: Manager Dashboard → Purchase Orders
+3. Find PO: PO-2025-001
+4. Click "Print" button
+5. System opens print preview showing:
+   - Company letterhead
+   - PO number and date
+   - Vendor details
+   - Delivery address
+   - Itemized list with specifications
+   - Rates and amounts
+   - Tax calculations
+   - Total amount
+   - Payment terms
+   - Delivery date
+   - Terms & conditions
+6. Click browser Print
+7. **Expected Result**: Professional PO document for vendor
+
+---
+
+### Test Case 12.4: Admin Exports GST Report to Excel
+**Role**: Admin  
+**Objective**: Export GSTR-1 data for government filing
+
+**Steps**:
+1. Login as Admin
+2. Navigate to: Admin Dashboard → Reports → GST Reports
+3. Select:
+   - Report Type: GSTR-1
+   - Period: January 2025
+4. Click "Generate Report"
+5. Review on-screen:
+   - B2B invoices (with GSTIN)
+   - B2C invoices (without GSTIN)
+   - HSN summary
+   - Tax summary
+6. Click "Export to Excel"
+7. **Expected Result**:
+   - Excel file downloaded
+   - Proper formatting for GSTIN portal upload
+   - All required fields present
+   - Ready for tax filing
+
+---
+
+### Test Case 12.5: Manager Exports Inventory Report to JSON
+**Role**: Manager  
+**Objective**: Export inventory data for analysis
+
+**Steps**:
+1. Login as Manager
+2. Navigate to: Manager Dashboard → Reports → Inventory Reports
+3. Select filters:
+   - Report Type: Current Stock Levels
+   - Category: All
+4. Click "Generate Report"
+5. Review report showing:
+   - Material/Product name
+   - Current stock
+   - Minimum stock level
+   - Unit of measure
+   - Last updated
+6. Click "Export to JSON"
+7. **Expected Result**: JSON file downloaded with inventory data
+
+---
+
+### Test Case 12.6: Manager Prints Raw Material Issuance Report
+**Role**: Manager  
+**Objective**: Generate material issuance report for records
+
+**Steps**:
+1. Login as Manager
+2. Navigate to: Manager Dashboard → Reports → Operational Reports
+3. Select:
+   - Report Type: Raw Material Issuance
+   - Date Range: Last 7 days
+4. Click "Generate Report"
+5. Review report showing:
+   - Issuance number
+   - Date and time
+   - Material details
+   - Quantity issued
+   - Issued to (production line/job)
+   - Issued by (user)
+6. Click "Print Report"
+7. **Expected Result**: A4 printable report with company branding
+
+---
+
+### Test Case 12.7: Manager Prints PM Execution Report
+**Role**: Manager  
+**Objective**: Generate maintenance completion report
+
+**Steps**:
+1. Login as Manager
+2. Navigate to: Manager Dashboard → PM History
+3. Find completed PM: "Monthly Hydraulic System Check"
+4. Click "View Details" → "Print Report"
+5. System shows report with:
+   - Machine details
+   - PM template name
+   - Execution date and time
+   - Operator name
+   - All completed tasks with checkmarks
+   - Spare parts used
+   - Execution notes
+   - Total time taken
+6. Click browser Print
+7. **Expected Result**: Maintenance record for compliance/audit
+
+---
+
+## 13. System Alerts & Notifications Workflow
+
+### Test Case 13.1: System Sends Low Stock Alert
+**Role**: System (Automatic)  
+**Objective**: Alert manager when inventory falls below minimum level
+
+**Scenario**: Raw material stock drops below reorder point
+
+**Steps**:
+1. **Initial Setup**:
+   - Steel Plate 5mm
+   - Minimum Stock: 500 kg
+   - Reorder Level: 200 kg
+   - Current Stock: 250 kg
+2. Manager issues 100 kg for production
+3. **Current Stock drops to 150 kg** (below reorder level)
+4. System automatically:
+   - Checks inventory levels
+   - Detects: Steel Plate 5mm = 150 kg < 200 kg
+   - Sends notifications:
+     * WhatsApp to Manager: "LOW STOCK: Steel Plate 5mm - Current: 150kg, Min: 200kg"
+     * Email to Admin: "Reorder alert for Steel Plate 5mm"
+     * Dashboard alert with red indicator
+5. **Expected Result**:
+   - Manager receives immediate alert
+   - Can create purchase order
+   - Stock level visible in alerts panel
+
+---
+
+### Test Case 13.2: Manager Responds to Low Stock Alert
+**Role**: Manager  
+**Objective**: Take action on low stock notification
+
+**Steps**:
+1. Manager receives WhatsApp: "LOW STOCK: Steel Plate 5mm"
+2. Login as Manager
+3. See dashboard alert: "3 items below reorder level"
+4. Click alert to view details:
+   - Steel Plate 5mm: 150 kg (Min: 200 kg)
+   - Hydraulic Fluid: 15 L (Min: 20 L)
+   - Seals: 8 pcs (Min: 10 pcs)
+5. Click "Create PO" for Steel Plate
+6. System pre-fills PO with:
+   - Material: Steel Plate 5mm
+   - Suggested Quantity: 1000 kg (to reach optimal level)
+   - Last vendor used
+7. Complete and submit PO
+8. **Expected Result**:
+   - PO created
+   - Alert cleared after stock replenished
+   - Vendor notified
+
+---
+
+### Test Case 13.3: System Sends PM Overdue Alert
+**Role**: System (Automatic)  
+**Objective**: Alert when preventive maintenance is overdue
+
+**Scenario**: Scheduled PM not completed by due date
+
+**Steps**:
+1. **Scheduled PM**:
+   - Machine: Hydraulic Press 01
+   - PM: Monthly Hydraulic System Check
+   - Due Date: Jan 15, 2025
+2. **Jan 16, 2025** - PM still not executed
+3. System automatically:
+   - Checks PM schedule daily
+   - Detects overdue: 1 day past due
+   - Sends escalation:
+     * WhatsApp to Operator: "OVERDUE: Monthly Hydraulic Check - 1 day late"
+     * Email to Manager: "PM overdue alert - Hydraulic Press 01"
+     * Dashboard shows red "Overdue" indicator
+4. **Expected Result**:
+   - Operator notified to execute immediately
+   - Manager aware of compliance issue
+   - PM marked as "Overdue" with days count
+
+---
+
+### Test Case 13.4: Manager Views All System Alerts Dashboard
+**Role**: Manager  
+**Objective**: Monitor all active system alerts in one place
+
+**Steps**:
+1. Login as Manager
+2. Navigate to: Manager Dashboard → System Alerts
+3. View alerts summary:
+   - **Low Stock Alerts**: 3 items
+   - **Overdue PMs**: 2 tasks
+   - **Overdue Checklists**: 1 checklist
+   - **Pending Approvals**: 5 items
+4. Filter by:
+   - Alert Type: All / Low Stock / Overdue PM / Checklist
+   - Priority: High / Medium / Low
+   - Date Range: Last 7 days
+5. View detailed list showing:
+   - Alert type and message
+   - Severity (color-coded)
+   - Triggered date/time
+   - Status (Active / Acknowledged / Resolved)
+   - Action button
+6. **Expected Result**: Complete visibility of all system alerts
+
+---
+
+### Test Case 13.5: System Sends Invoice Payment Reminder
+**Role**: System (Automatic)  
+**Objective**: Remind manager of overdue invoice payments
+
+**Scenario**: Customer payment overdue
+
+**Steps**:
+1. **Invoice Details**:
+   - Invoice: INV-2025-001
+   - Amount: ₹59,000
+   - Payment Terms: Net 30 days
+   - Invoice Date: Jan 1, 2025
+   - Due Date: Jan 31, 2025
+2. **Feb 1, 2025** - No payment received
+3. System automatically:
+   - Checks payment status daily
+   - Detects overdue payment (1 day)
+   - Sends reminders:
+     * Email to Manager: "Payment overdue - INV-2025-001 - Customer: XYZ Industries"
+     * Dashboard shows in "Overdue Payments" widget
+4. **Feb 8, 2025** - Still unpaid (7 days overdue)
+5. System sends escalation:
+   * WhatsApp to Manager: "URGENT: Payment 7 days overdue - ₹59,000"
+   * Email to Admin
+6. **Expected Result**:
+   - Manager can follow up with customer
+   - Payment aging tracked
+   - Escalation at 7, 15, 30 days
+
+---
+
+### Test Case 13.6: Operator Acknowledges and Resolves Alert
+**Role**: Operator  
+**Objective**: Acknowledge alert and mark as resolved
+
+**Steps**:
+1. Operator receives alert: "OVERDUE: Monthly Hydraulic Check"
+2. Login as Operator
+3. Navigate to: Operator Dashboard → My Alerts
+4. See alert with "Acknowledge" button
+5. Click "Acknowledge"
+6. System records:
+   - Acknowledged by: Operator name
+   - Acknowledged at: Timestamp
+7. Execute the overdue PM
+8. Click "Mark as Resolved" on alert
+9. Add resolution note: "PM completed, all tasks done"
+10. **Expected Result**:
+    - Alert status → Resolved
+    - Removed from active alerts
+    - Logged in alert history
+
+---
+
+## 14. Vendor Management
+
+### Test Case 14.1: Admin Creates Vendor Master
 **Role**: Admin  
 **Objective**: Add new supplier to system
 
@@ -942,7 +1275,7 @@
 
 ---
 
-## 13. End-to-End Manufacturing Cycle Test
+## 15. End-to-End Manufacturing Cycle Test
 
 ### Complete Workflow Integration Test
 
