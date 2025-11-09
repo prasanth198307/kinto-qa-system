@@ -550,7 +550,6 @@ export default function AdminSparePartsManagement() {
                     <SelectValue placeholder="Select machine" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
                     {machines.filter(m => m.status === 'active').map(machine => (
                       <SelectItem key={machine.id} value={machine.id}>
                         {machine.name}

@@ -704,6 +704,7 @@ export const insertRawMaterialIssuanceSchema = createInsertSchema(rawMaterialIss
   }),
 }).omit({
   id: true,
+  issuanceNumber: true,
   recordStatus: true,
   createdAt: true,
   updatedAt: true,
