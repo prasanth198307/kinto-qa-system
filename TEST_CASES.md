@@ -189,9 +189,119 @@
 
 ---
 
-## 3. Inventory Management Workflow
+## 3. Machine Startup Reminder Workflow
 
-### Test Case 3.1: Admin Configures Inventory Items
+### Test Case 3.1: Admin Configures Machine Startup Tasks
+**Role**: Admin  
+**Objective**: Set up machine startup checklist and reminder schedule
+
+**Steps**:
+1. Login as Admin
+2. Navigate to: Admin Dashboard → Machines
+3. Select a machine: "CNC Machine 001"
+4. Click "Configure Startup Tasks"
+5. Add startup tasks:
+   - Task 1: "Power on main unit"
+   - Task 2: "Check coolant level"
+   - Task 3: "Warm up spindle (10 mins)"
+   - Task 4: "Calibrate zero position"
+   - Task 5: "Run test program"
+6. Set reminder timing: "2 hours before scheduled production"
+7. Click "Save Configuration"
+8. **Expected Result**: Startup tasks configured, ready for scheduling
+
+---
+
+### Test Case 3.2: Manager Schedules Production with Startup Reminder
+**Role**: Manager  
+**Objective**: Schedule production and trigger automatic startup reminders
+
+**Steps**:
+1. Login as Manager
+2. Navigate to: Manager Dashboard → Production Schedule
+3. Click "Schedule Production"
+4. Fill in:
+   - Machine: "CNC Machine 001"
+   - Production Date: Tomorrow
+   - Start Time: 08:00 AM
+   - Operator: John Smith
+   - Job: "Production Run #123"
+5. Check: "Send startup reminder" ✓
+6. Click "Schedule"
+7. **Expected Result**: 
+   - Production scheduled
+   - System will send reminder to operator 2 hours before (6:00 AM)
+   - Reminder includes startup task list
+
+---
+
+### Test Case 3.3: Operator Receives and Completes Startup Tasks
+**Role**: Operator  
+**Objective**: Receive reminder and complete machine startup
+
+**Steps**:
+1. **At 6:00 AM** - Operator receives:
+   - WhatsApp notification: "Machine startup in 2 hours - CNC Machine 001"
+   - Email notification with startup task list
+2. Login as Operator
+3. Navigate to: Operator Dashboard → Machine Startup
+4. See reminder: "CNC Machine 001 - Production at 8:00 AM"
+5. Click "Start Machine Startup"
+6. Complete each task:
+   - ✓ Power on main unit - Completed
+   - ✓ Check coolant level - Level OK
+   - ✓ Warm up spindle - 10 mins completed
+   - ✓ Calibrate zero position - Calibrated
+   - ✓ Run test program - Test passed
+7. Add notes: "Machine ready for production"
+8. Click "Mark Startup Complete"
+9. **Expected Result**: 
+   - Startup marked complete
+   - Machine status changed to "Ready"
+   - Manager notified that machine is ready
+
+---
+
+### Test Case 3.4: Manager Monitors Startup Completion
+**Role**: Manager  
+**Objective**: Verify machine startup completed on time
+
+**Steps**:
+1. Login as Manager
+2. Navigate to: Manager Dashboard → Machine Status
+3. View machine status:
+   - CNC Machine 001: "Ready" ✓
+   - Startup completed: 7:45 AM
+   - Completed by: John Smith
+4. View startup task completion details
+5. **Expected Result**: Can track which machines are ready for production
+
+---
+
+### Test Case 3.5: System Sends Overdue Notification (Missed Startup)
+**Role**: System (Automatic)  
+**Objective**: Alert if operator misses machine startup
+
+**Scenario**: Operator doesn't complete startup by scheduled time
+
+**Steps**:
+1. Production scheduled for 8:00 AM
+2. Reminder sent at 6:00 AM
+3. **At 8:00 AM** - Startup still not completed
+4. System automatically sends:
+   - WhatsApp alert to Operator: "URGENT: Machine startup overdue"
+   - Email alert to Manager: "CNC Machine 001 startup not completed"
+   - Dashboard notification
+5. Manager can see:
+   - Machine status: "Not Ready" ⚠️
+   - Production delayed
+6. **Expected Result**: Escalation alerts sent, manager can take action
+
+---
+
+## 4. Inventory Management Workflow
+
+### Test Case 4.1: Admin Configures Inventory Items
 **Role**: Admin  
 **Objective**: Set up raw materials and products in system
 
@@ -211,7 +321,7 @@
 
 ---
 
-### Test Case 3.2: Manager Issues Raw Material to Production
+### Test Case 4.2: Manager Issues Raw Material to Production
 **Role**: Manager  
 **Objective**: Issue raw material for production use
 
@@ -230,7 +340,7 @@
 
 ---
 
-### Test Case 3.3: Operator Records Finished Goods Production
+### Test Case 4.3: Operator Records Finished Goods Production
 **Role**: Operator  
 **Objective**: Record completed production output
 
@@ -249,7 +359,7 @@
 
 ---
 
-### Test Case 3.4: Manager Creates Purchase Order
+### Test Case 4.4: Manager Creates Purchase Order
 **Role**: Manager  
 **Objective**: Replenish low stock items by creating PO
 
@@ -272,9 +382,9 @@
 
 ---
 
-## 4. Sales & Dispatch Workflow
+## 5. Sales & Dispatch Workflow
 
-### Test Case 4.1: Admin Creates Invoice Template
+### Test Case 5.1: Admin Creates Invoice Template
 **Role**: Admin  
 **Objective**: Set up company invoice template
 
@@ -295,7 +405,7 @@
 
 ---
 
-### Test Case 4.2: Manager Creates Sales Invoice
+### Test Case 5.2: Manager Creates Sales Invoice
 **Role**: Manager  
 **Objective**: Generate invoice for customer order
 
@@ -326,7 +436,7 @@
 
 ---
 
-### Test Case 4.3: Manager Generates Gatepass from Invoice
+### Test Case 5.3: Manager Generates Gatepass from Invoice
 **Role**: Manager  
 **Objective**: Create gatepass for material dispatch
 
@@ -354,7 +464,7 @@
 
 ---
 
-### Test Case 4.4: Operator Records Vehicle Exit
+### Test Case 5.4: Operator Records Vehicle Exit
 **Role**: Operator (Security Gate)  
 **Objective**: Record vehicle leaving factory premises
 
@@ -377,7 +487,7 @@
 
 ---
 
-### Test Case 4.5: Operator Records Proof of Delivery (POD)
+### Test Case 5.5: Operator Records Proof of Delivery (POD)
 **Role**: Operator / Manager  
 **Objective**: Complete delivery confirmation with customer signature
 
@@ -401,9 +511,9 @@
 
 ---
 
-## 5. User & Role Management
+## 6. User & Role Management
 
-### Test Case 5.1: Admin Creates New User
+### Test Case 6.1: Admin Creates New User
 **Role**: Admin  
 **Objective**: Add new employee to system
 
@@ -423,7 +533,7 @@
 
 ---
 
-### Test Case 5.2: Admin Configures Role Permissions
+### Test Case 6.2: Admin Configures Role Permissions
 **Role**: Admin  
 **Objective**: Set screen-level permissions for Manager role
 
@@ -444,7 +554,7 @@
 
 ---
 
-### Test Case 5.3: Verify Role-Based Access Control
+### Test Case 6.3: Verify Role-Based Access Control
 **Role**: All Roles  
 **Objective**: Confirm users can only access permitted screens
 
@@ -468,9 +578,9 @@
 
 ---
 
-## 6. Reporting & Analytics
+## 7. Reporting & Analytics
 
-### Test Case 6.1: Manager Generates Sales Report
+### Test Case 7.1: Manager Generates Sales Report
 **Role**: Manager  
 **Objective**: View monthly sales analytics
 
@@ -490,7 +600,7 @@
 
 ---
 
-### Test Case 6.2: Admin Generates GST Report for Filing
+### Test Case 7.2: Admin Generates GST Report for Filing
 **Role**: Admin  
 **Objective**: Export GSTR-1 report for tax filing
 
@@ -510,9 +620,9 @@
 
 ---
 
-## 7. Notification System
+## 8. Notification System
 
-### Test Case 7.1: Admin Configures Notifications
+### Test Case 8.1: Admin Configures Notifications
 **Role**: Admin  
 **Objective**: Set up WhatsApp and Email notifications
 
@@ -533,9 +643,9 @@
 
 ---
 
-## 8. Vendor Management
+## 9. Vendor Management
 
-### Test Case 8.1: Admin Creates Vendor Master
+### Test Case 9.1: Admin Creates Vendor Master
 **Role**: Admin  
 **Objective**: Add new supplier to system
 
@@ -557,9 +667,9 @@
 
 ---
 
-## Summary: Complete Workflow Test
+## 10. End-to-End Manufacturing Cycle Test
 
-### End-to-End Manufacturing Cycle Test
+### Complete Workflow Integration Test
 
 **Scenario**: Complete product lifecycle from raw material to delivery
 
