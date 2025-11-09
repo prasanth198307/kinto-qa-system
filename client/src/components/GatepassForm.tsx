@@ -784,7 +784,7 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Unit of Measure</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value || ""} disabled={!!selectedInvoiceId}>
+                          <Select onValueChange={field.onChange} value={field.value || ""}>
                             <FormControl>
                               <SelectTrigger data-testid={`select-uom-${index}`}>
                                 <SelectValue placeholder="Select UOM" />
