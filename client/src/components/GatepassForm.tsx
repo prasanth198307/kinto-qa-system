@@ -171,11 +171,13 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
       const mappedItems = invoiceItems.map(invItem => {
         // Find matching finished good by product
         const matchingFG = finishedGoods.find(fg => fg.productId === invItem.productId);
+        // Find matching product for UOM fallback
+        const matchingProduct = products.find(p => p.id === invItem.productId);
         return {
           finishedGoodId: matchingFG?.id || "",
           productId: invItem.productId,
           quantityDispatched: invItem.quantity,
-          uomId: invItem.uomId || "",
+          uomId: invItem.uomId || matchingProduct?.uomId || "",
           remarks: invItem.description || "",
         };
       });
@@ -183,7 +185,7 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
       setItems(mappedItems);
       form.setValue("items", mappedItems);
     }
-  }, [invoiceItems, selectedInvoiceId, finishedGoods, form]);
+  }, [invoiceItems, selectedInvoiceId, finishedGoods, products, form]);
 
   const saveMutation = useMutation({
     mutationFn: async (data: FormData) => {
