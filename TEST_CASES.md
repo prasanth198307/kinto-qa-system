@@ -620,9 +620,284 @@
 
 ---
 
-## 8. Notification System
+## 8. Missed Checklist Notification Workflow
 
-### Test Case 8.1: Admin Configures Notifications
+### Test Case 8.1: System Sends Overdue Checklist Alert
+**Role**: System (Automatic)  
+**Objective**: Automatically alert when checklist is overdue
+
+**Scenario**: Checklist not completed by due date
+
+**Steps**:
+1. **Day 1** - Manager assigns checklist to Operator
+   - Template: "Daily Quality Inspection"
+   - Due Date: Today 5:00 PM
+2. **5:00 PM** - Checklist still not completed by Operator
+3. System automatically checks for overdue checklists
+4. System sends notifications:
+   - WhatsApp to Operator: "OVERDUE: Daily Quality Inspection checklist"
+   - WhatsApp to Reviewer: "Checklist overdue - assigned to [Operator Name]"
+   - Email to Manager: "Overdue checklist alert"
+   - Dashboard alert shown
+5. **Expected Result**:
+   - All personnel notified
+   - Checklist marked with "Overdue" status
+   - Notification logged in database
+
+---
+
+### Test Case 8.2: Operator Completes Overdue Checklist
+**Role**: Operator  
+**Objective**: Complete checklist after receiving overdue alert
+
+**Steps**:
+1. Operator receives WhatsApp alert: "OVERDUE: Daily Quality Inspection"
+2. Login as Operator
+3. Navigate to: Operator Dashboard → My Assigned Checklists
+4. See checklist marked "Overdue" with red indicator
+5. Click "Start Checklist"
+6. Complete all items
+7. Submit for review
+8. **Expected Result**:
+   - Checklist submitted
+   - Overdue alert cleared
+   - Reviewer notified for review
+
+---
+
+### Test Case 8.3: Manager Monitors Overdue Checklist Compliance
+**Role**: Manager  
+**Objective**: Track checklist completion rates and overdue patterns
+
+**Steps**:
+1. Login as Manager
+2. Navigate to: Manager Dashboard → Checklist Compliance
+3. View metrics:
+   - Total checklists assigned: 50
+   - Completed on time: 45
+   - Overdue: 3
+   - Not started: 2
+4. View overdue checklist details:
+   - Which checklists are overdue
+   - Who is assigned
+   - How long overdue
+5. **Expected Result**: Manager can identify compliance issues and take action
+
+---
+
+## 9. Payment Tracking & FIFO Allocation Workflow
+
+### Test Case 9.1: Manager Records Advance Payment
+**Role**: Manager  
+**Objective**: Record customer advance payment against invoice
+
+**Steps**:
+1. Login as Manager
+2. Navigate to: Manager Dashboard → Sales Invoices
+3. Find invoice: INV-2025-001 (Total: ₹59,000)
+4. Click "Record Payment"
+5. Fill in payment details:
+   - Payment Date: Today
+   - Amount: ₹20,000
+   - Payment Method: NEFT
+   - Reference Number: "NEFT123456"
+   - Payment Type: "Advance"
+   - Bank Name: "HDFC Bank"
+6. Click "Record Payment"
+7. **Expected Result**:
+   - Payment recorded
+   - Invoice shows: Amount Received: ₹20,000, Balance: ₹39,000
+   - Payment appears in Payment History
+
+---
+
+### Test Case 9.2: Manager Records Partial Payment
+**Role**: Manager  
+**Objective**: Record partial payment against invoice
+
+**Steps**:
+1. Login as Manager
+2. Navigate to: Manager Dashboard → Sales Invoices
+3. Find invoice: INV-2025-001 (Balance: ₹39,000)
+4. Click "Record Payment"
+5. Fill in:
+   - Amount: ₹30,000
+   - Payment Method: Cheque
+   - Reference Number: "CHQ789012"
+   - Payment Type: "Partial"
+6. Click "Record Payment"
+7. **Expected Result**:
+   - Total received: ₹50,000 (₹20K + ₹30K)
+   - Balance due: ₹9,000
+   - Invoice status: "Partially Paid"
+
+---
+
+### Test Case 9.3: Manager Records Full Payment Settlement
+**Role**: Manager  
+**Objective**: Complete invoice payment with final settlement
+
+**Steps**:
+1. Login as Manager
+2. Navigate to: Manager Dashboard → Sales Invoices
+3. Find invoice: INV-2025-001 (Balance: ₹9,000)
+4. Click "Record Payment"
+5. Fill in:
+   - Amount: ₹9,000
+   - Payment Method: UPI
+   - Reference Number: "UPI345678"
+   - Payment Type: "Full"
+6. Click "Record Payment"
+7. **Expected Result**:
+   - Total received: ₹59,000 (fully paid)
+   - Balance due: ₹0
+   - Invoice status: "Paid"
+   - Invoice marked complete
+
+---
+
+### Test Case 9.4: Manager Views FIFO Payment Allocation
+**Role**: Manager  
+**Objective**: View how payments are allocated using FIFO method
+
+**Scenario**: Customer makes bulk payment for multiple invoices
+
+**Steps**:
+1. Login as Manager
+2. Create multiple invoices for same customer:
+   - INV-001: ₹50,000 (Jan 1)
+   - INV-002: ₹30,000 (Jan 5)
+   - INV-003: ₹40,000 (Jan 10)
+3. Customer pays ₹70,000 bulk payment (Jan 15)
+4. Navigate to: Manager Dashboard → FIFO Payment Allocation
+5. System shows allocation:
+   - INV-001: ₹50,000 (fully paid) ✓
+   - INV-002: ₹20,000 (partial)
+   - INV-003: ₹0 (unpaid)
+6. **Expected Result**: 
+   - Oldest invoice paid first (FIFO)
+   - Clear allocation trail
+   - Remaining balance: ₹50,000 (INV-002: ₹10K + INV-003: ₹40K)
+
+---
+
+### Test Case 9.5: Manager Views Pending Payments Dashboard
+**Role**: Manager  
+**Objective**: Monitor all outstanding payments
+
+**Steps**:
+1. Login as Manager
+2. Navigate to: Manager Dashboard → Overview
+3. View "Pending Payments Dashboard" card
+4. See summary:
+   - Total Outstanding: ₹2,50,000
+   - Total Overdue: ₹50,000
+   - Invoices 30+ days: 5 invoices
+5. Click "View Details"
+6. See list of unpaid/partially paid invoices with:
+   - Invoice number
+   - Customer name
+   - Total amount
+   - Amount received
+   - Balance due
+   - Days outstanding
+7. **Expected Result**: Manager has complete visibility of payment status
+
+---
+
+## 10. Spare Parts Management Workflow
+
+### Test Case 10.1: Admin Creates Spare Parts Catalog
+**Role**: Admin  
+**Objective**: Set up spare parts inventory
+
+**Steps**:
+1. Login as Admin
+2. Navigate to: Admin Dashboard → Spare Parts
+3. Click "Add Spare Part"
+4. Fill in:
+   - Part Name: "Hydraulic Seal - 50mm"
+   - Part Number: "HS-50MM-001"
+   - Category: "Hydraulic Components"
+   - UOM: "pieces"
+   - Unit Cost: ₹500
+   - Minimum Stock: 20 pieces
+   - Current Stock: 50 pieces
+   - Supplier: "ABC Industrial Supplies"
+5. Click "Save"
+6. Repeat for multiple spare parts
+7. **Expected Result**: Spare parts added to catalog
+
+---
+
+### Test Case 10.2: Manager Associates Spare Parts with Machine
+**Role**: Manager  
+**Objective**: Link spare parts to specific machine for PM tracking
+
+**Steps**:
+1. Login as Manager
+2. Navigate to: Manager Dashboard → Machines
+3. Select machine: "Hydraulic Press 01"
+4. Click "Manage Spare Parts"
+5. Add associated parts:
+   - Hydraulic Seal - 50mm
+   - Hydraulic Fluid (5L)
+   - Pressure Gauge
+6. Set replacement frequency for each:
+   - Hydraulic Seal: Every 6 months
+   - Hydraulic Fluid: Every 3 months
+   - Pressure Gauge: Every 12 months
+7. Click "Save Configuration"
+8. **Expected Result**: Machine linked to spare parts, PM schedule aware
+
+---
+
+### Test Case 10.3: Operator Uses Spare Parts During PM Execution
+**Role**: Operator  
+**Objective**: Record spare parts consumption during maintenance
+
+**Steps**:
+1. Login as Operator
+2. Navigate to: Operator Dashboard → PM Execution
+3. Start PM: "Monthly Hydraulic System Check"
+4. During execution, click "Record Spare Parts Used"
+5. Select parts used:
+   - Hydraulic Seal - 50mm: 2 pieces
+   - Hydraulic Fluid: 5 liters
+6. System shows:
+   - Current stock: 50 → 48 pieces (Seals)
+   - Current stock: 100L → 95L (Fluid)
+7. Complete PM execution
+8. **Expected Result**:
+   - Spare parts inventory deducted
+   - PM execution record includes parts used
+   - Low stock alert if below minimum
+
+---
+
+### Test Case 10.4: Manager Views Spare Parts Consumption Report
+**Role**: Manager  
+**Objective**: Track spare parts usage and costs
+
+**Steps**:
+1. Login as Manager
+2. Navigate to: Manager Dashboard → Reports → Spare Parts Usage
+3. Select filters:
+   - Date Range: Last 3 months
+   - Machine: "Hydraulic Press 01"
+4. View report showing:
+   - Parts consumed
+   - Quantity used
+   - Total cost
+   - Linked to which PM execution
+5. Identify high-consumption parts
+6. **Expected Result**: Can plan purchasing and budget for spare parts
+
+---
+
+## 11. Notification System Configuration
+
+### Test Case 11.1: Admin Configures Notifications
 **Role**: Admin  
 **Objective**: Set up WhatsApp and Email notifications
 
@@ -643,9 +918,9 @@
 
 ---
 
-## 9. Vendor Management
+## 12. Vendor Management
 
-### Test Case 9.1: Admin Creates Vendor Master
+### Test Case 12.1: Admin Creates Vendor Master
 **Role**: Admin  
 **Objective**: Add new supplier to system
 
@@ -667,7 +942,7 @@
 
 ---
 
-## 10. End-to-End Manufacturing Cycle Test
+## 13. End-to-End Manufacturing Cycle Test
 
 ### Complete Workflow Integration Test
 
