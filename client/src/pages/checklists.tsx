@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ChecklistHistoryTable from "@/components/ChecklistHistoryTable";
-import { AdminChecklistBuilder } from "@/components/AdminChecklistBuilder";
+import AdminChecklistBuilder from "@/components/AdminChecklistBuilder";
 import { ManagerChecklistAssignment } from "@/components/ManagerChecklistAssignment";
 import { useAuth } from "@/hooks/use-auth";
 
