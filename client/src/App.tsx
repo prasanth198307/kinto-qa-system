@@ -51,6 +51,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import InvoiceDetail from "@/pages/invoice-detail";
 import DispatchTracking from "@/pages/dispatch-tracking";
+import ChecklistsPage from "@/pages/checklists";
 
 type Role = 'admin' | 'operator' | 'reviewer' | 'manager';
 
@@ -804,11 +805,11 @@ function AuthenticatedApp() {
     );
   }
 
-  if (!user?.role) {
+  if (!(user as any)?.role) {
     return <RoleAssignment />;
   }
 
-  const role = user.role as Role;
+  const role = (user as any).role as Role;
 
   return (
     <>
@@ -824,6 +825,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/auth" component={AuthPage} />
+      <ProtectedRoute path="/checklists" component={ChecklistsPage} />
       <ProtectedRoute path="/invoice/:id" component={InvoiceDetail} />
       <ProtectedRoute path="/dispatch-tracking" component={DispatchTracking} />
       <ProtectedRoute path="/" component={AuthenticatedApp} />
