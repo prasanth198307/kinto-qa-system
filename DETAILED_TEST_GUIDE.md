@@ -1477,5 +1477,1054 @@ Additional Notes:
 
 ---
 
-**End of Detailed Test Guide - Workflow 1 Complete**  
-*Remaining 14 workflows follow the same detailed format*
+## 🔧 WORKFLOW 2: Preventive Maintenance (PM) Workflow
+
+### Test Case 2.1: Admin Creates PM Template
+
+**Test ID**: TC-002-01  
+**Priority**: High  
+**Role**: Admin  
+**Objective**: Create a reusable PM template for scheduled maintenance tasks
+
+#### Prerequisites
+- ✅ Admin user logged in
+- ✅ At least one machine type exists in system
+
+#### Test Data
+```
+Template Name: Monthly Hydraulic System Check
+Machine Type: Hydraulic Press
+Frequency: Monthly (every 30 days)
+Estimated Duration: 2 hours
+PM Tasks:
+  1. Check hydraulic fluid level
+  2. Inspect hoses for cracks/wear
+  3. Test pressure gauge accuracy
+  4. Lubricate moving parts
+  5. Clean filters
+  6. Check for unusual noises
+Required Spare Parts:
+  - Hydraulic Fluid (2L)
+  - Filter Cartridge (1 unit)
+```
+
+#### Detailed Steps
+
+**Step 1-3: Login and Navigate**
+1. Login as admin_test
+2. Navigate to: Admin Dashboard → PM Templates
+3. Click "Create PM Template" (data-testid="button-create-pm-template")
+
+**Expected**: PM template form opens
+
+**Step 4-6: Fill Template Details**
+4. Template Name: `Monthly Hydraulic System Check`
+5. Machine Type: Select "Hydraulic Press"
+6. Frequency: `30` days, Estimated Duration: `2` hours
+
+**Expected**: Fields populated correctly
+
+**Step 7-12: Add PM Tasks**
+7. Click "Add Task" 6 times
+8. Fill each task:
+   - Task 1: "Check hydraulic fluid level"
+   - Task 2: "Inspect hoses for cracks/wear"
+   - Task 3: "Test pressure gauge accuracy"
+   - Task 4: "Lubricate moving parts"
+   - Task 5: "Clean filters"
+   - Task 6: "Check for unusual noises"
+
+**Expected**: All 6 tasks added
+
+**Step 13-14: Add Required Spare Parts**
+13. Click "Add Spare Part"
+14. Add:
+    - Hydraulic Fluid - Quantity: 2L
+    - Filter Cartridge - Quantity: 1
+
+**Expected**: Spare parts linked to template
+
+**Step 15: Save Template**
+15. Click "Save PM Template"
+
+**Expected**: Template created, appears in PM Templates list
+
+#### Edge Cases
+- Empty task list → Error: "At least one task required"
+- Duplicate template name → Allow or warn
+- Invalid frequency (0 days) → Error: "Frequency must be > 0"
+
+---
+
+### Test Case 2.2: Manager Schedules PM Plan
+
+**Test ID**: TC-002-02  
+**Priority**: High  
+**Role**: Manager  
+**Objective**: Schedule PM execution based on template
+
+#### Prerequisites
+- ✅ Test Case 2.1 completed
+- ✅ Machine "Hydraulic Press 01" exists
+- ✅ Operator available
+
+#### Test Data
+```
+PM Template: Monthly Hydraulic System Check
+Machine: Hydraulic Press 01
+Scheduled Date: Tomorrow's date
+Assigned To: operator_test
+Priority: High
+```
+
+#### Detailed Steps
+
+**Step 1-3: Login and Navigate**
+1. Login as manager_test
+2. Navigate to: Manager Dashboard → PM Plans
+3. Click "Schedule PM"
+
+**Expected**: PM scheduling form opens
+
+**Step 4-7: Fill Schedule Details**
+4. Select Template: "Monthly Hydraulic System Check"
+5. Select Machine: "Hydraulic Press 01"
+6. Scheduled Date: Tomorrow
+7. Assign to: operator_test
+8. Priority: High
+
+**Expected**: Form validates, preview shows 6 tasks + spare parts
+
+**Step 8: Save PM Plan**
+8. Click "Schedule PM"
+
+**Expected**: 
+- PM plan created
+- Operator notified
+- Status: Scheduled
+- Appears in "Upcoming PM" list
+
+#### Edge Cases
+- Schedule in past → Error
+- Overlapping PM on same machine → Warning
+
+---
+
+### Test Case 2.3: Operator Executes PM Tasks
+
+**Test ID**: TC-002-03  
+**Priority**: Critical  
+**Role**: Operator  
+**Objective**: Execute scheduled PM and record completion
+
+#### Prerequisites
+- ✅ Test Case 2.2 completed
+- ✅ PM status: Scheduled
+- ✅ Spare parts available in inventory
+
+#### Test Data
+```
+Task Completion:
+  1. Fluid level: ✓ Normal
+  2. Hoses: ✓ No cracks found
+  3. Pressure gauge: ✓ Accurate (150 PSI)
+  4. Lubrication: ✓ Applied
+  5. Filters: ✓ Cleaned
+  6. Noise check: ✓ Operating normally
+Spare Parts Used:
+  - Hydraulic Fluid: 2L
+  - Filter Cartridge: 1 unit
+Duration: 1.5 hours
+Notes: "All tasks completed. System running smoothly."
+```
+
+#### Detailed Steps
+
+**Step 1-3: Login and Start PM**
+1. Login as operator_test
+2. Navigate to: Operator Dashboard → PM Execution
+3. Find PM: "Monthly Hydraulic System Check - Hydraulic Press 01"
+4. Click "Start PM"
+
+**Expected**: PM execution page opens, timer starts
+
+**Step 4-9: Complete Each Task**
+4. Task 1 - Check fluid level: Mark ✓ Complete, Notes: "Normal"
+5. Task 2 - Inspect hoses: Mark ✓ Complete
+6. Task 3 - Test pressure: Mark ✓ Complete, Value: "150 PSI"
+7. Task 4 - Lubricate: Mark ✓ Complete
+8. Task 5 - Clean filters: Mark ✓ Complete
+9. Task 6 - Noise check: Mark ✓ Complete
+
+**Expected**: Progress: 6/6 tasks (100%)
+
+**Step 10-11: Record Spare Parts Usage**
+10. Select spare parts used:
+    - Hydraulic Fluid: 2L (auto-deducts from inventory)
+    - Filter Cartridge: 1 unit
+11. Verify inventory deducted
+
+**Expected**: Inventory updated automatically
+
+**Step 12-13: Add Notes and Submit**
+12. Add overall notes: "All tasks completed. System running smoothly."
+13. Click "Complete PM"
+
+**Expected**:
+- PM status: Completed
+- Completion time: 1.5 hours recorded
+- Manager notified
+- History record created
+
+#### Edge Cases
+- Incomplete tasks → Warning: "2 tasks remaining"
+- Spare parts not available → Alert, allow proceed with note
+- Exceed estimated time → Highlight but allow
+
+---
+
+### Test Case 2.4: Manager Reviews PM History
+
+**Test ID**: TC-002-04  
+**Priority**: Medium  
+**Role**: Manager  
+**Objective**: Review completed PM records and trends
+
+#### Prerequisites
+- ✅ Test Case 2.3 completed
+- ✅ PM completed status
+
+#### Detailed Steps
+
+**Step 1-3: Login and Navigate**
+1. Login as manager_test
+2. Navigate to: Manager Dashboard → PM History
+3. Filter: Last 30 days, Machine: Hydraulic Press 01
+
+**Expected**: Shows completed PM
+
+**Step 4-6: View PM Details**
+4. Click "View Details" for completed PM
+5. Review:
+   - All 6 tasks marked complete
+   - Spare parts used: 2L fluid, 1 filter
+   - Duration: 1.5 hours (vs estimated 2 hours)
+   - Operator notes visible
+   - Completion timestamp accurate
+
+**Expected**: Complete audit trail visible
+
+**Step 7: Print PM Report**
+7. Click "Print Report"
+
+**Expected**: Professional PM completion report with:
+- Machine details
+- Tasks completed
+- Parts used
+- Operator signature
+- Manager approval section
+
+#### Edge Cases
+- No PM history → Empty state message
+- Export to Excel → Download compliance report
+
+---
+
+## 🚀 WORKFLOW 3: Machine Startup Reminder Workflow
+
+### Test Case 3.1: Admin Configures Machine Startup Tasks
+
+**Test ID**: TC-003-01  
+**Priority**: High  
+**Role**: Admin  
+**Objective**: Configure startup checklist for machines
+
+#### Test Data
+```
+Machine: CNC Machine 001
+Startup Tasks:
+  1. Power on main switch
+  2. Check coolant level
+  3. Initialize control system
+  4. Home all axes
+  5. Warm-up cycle (10 mins)
+Reminder Lead Time: 2 hours before production
+Notification Channels: WhatsApp + Email
+```
+
+#### Detailed Steps
+
+**Step 1-3: Login and Navigate**
+1. Login as admin_test
+2. Navigate to: Admin Dashboard → Machines
+3. Find "CNC Machine 001", Click "Edit"
+
+**Step 4-6: Configure Startup Tasks**
+4. Scroll to "Startup Configuration" section
+5. Enable "Requires Startup Procedure"
+6. Add 5 startup tasks (as listed in test data)
+
+**Step 7-8: Set Reminder Settings**
+7. Reminder Lead Time: `2` hours
+8. Enable: WhatsApp + Email notifications
+
+**Step 9: Save Configuration**
+9. Click "Save Machine Settings"
+
+**Expected**: Startup tasks configured for machine
+
+---
+
+### Test Case 3.2: Manager Schedules Production with Startup Reminder
+
+**Test ID**: TC-003-02  
+**Priority**: High  
+**Role**: Manager  
+**Objective**: Schedule production, system sends startup reminder
+
+#### Test Data
+```
+Machine: CNC Machine 001
+Production Start Time: Tomorrow 10:00 AM
+Operator: operator_test
+Reminder Time: Tomorrow 8:00 AM (2 hours before)
+```
+
+#### Detailed Steps
+
+**Step 1-4: Schedule Production**
+1. Login as manager_test
+2. Navigate to: Production Scheduling
+3. Create new schedule:
+   - Machine: CNC Machine 001
+   - Start Time: Tomorrow 10:00 AM
+   - Operator: operator_test
+4. Click "Schedule"
+
+**Expected**: 
+- Production scheduled
+- System automatically calculates reminder time: Tomorrow 8:00 AM
+- Operator will receive notification at 8:00 AM
+
+---
+
+### Test Case 3.3: Operator Receives and Completes Startup Tasks
+
+**Test ID**: TC-003-03  
+**Priority**: Critical  
+**Role**: Operator  
+**Objective**: Receive reminder, complete startup, confirm ready
+
+#### Test Data
+```
+Notification Time: Tomorrow 8:00 AM
+Tasks:
+  1. Power on: ✓
+  2. Coolant level: ✓
+  3. Initialize system: ✓
+  4. Home axes: ✓
+  5. Warm-up: ✓ (10 mins)
+Completion Time: 8:25 AM
+```
+
+#### Detailed Steps
+
+**Step 1: Receive Notification (System Automatic)**
+- At 8:00 AM, operator receives:
+  - WhatsApp: "Startup reminder: CNC Machine 001 production at 10:00 AM. Complete startup tasks."
+  - Email notification
+  - In-app alert
+
+**Step 2-3: Login and View Startup Tasks**
+2. Login as operator_test (at 8:00 AM)
+3. Dashboard shows alert: "Startup due for CNC Machine 001"
+4. Click "Start Machine Startup"
+
+**Step 4-8: Complete Startup Tasks**
+4. Task 1 - Power on: Mark ✓
+5. Task 2 - Coolant: Mark ✓
+6. Task 3 - Initialize: Mark ✓
+7. Task 4 - Home axes: Mark ✓
+8. Task 5 - Warm-up: Mark ✓, Timer: 10 mins
+
+**Step 9: Confirm Ready**
+9. All tasks complete
+10. Click "Confirm Machine Ready"
+
+**Expected**:
+- Status: Ready for Production
+- Manager notified: "CNC Machine 001 ready for 10:00 AM production"
+- Production can start on time
+
+---
+
+### Test Case 3.4: Manager Monitors Startup Completion
+
+**Test ID**: TC-003-04  
+**Priority**: Medium  
+**Role**: Manager
+
+#### Detailed Steps
+
+**Step 1-3: Monitor Dashboard**
+1. Login as manager_test at 8:30 AM
+2. View: Production Dashboard
+3. See: CNC Machine 001 - Status: Ready ✓
+
+**Expected**: Real-time startup status visible
+
+---
+
+### Test Case 3.5: System Sends Overdue Notification (Missed Startup)
+
+**Test ID**: TC-003-05  
+**Priority**: High  
+**Role**: System (Automatic)  
+**Scenario**: Operator misses startup deadline
+
+#### Test Data
+```
+Reminder: 8:00 AM
+Production: 10:00 AM
+Current Time: 9:00 AM
+Startup Status: Not Started (overdue by 1 hour)
+```
+
+#### Detailed Steps
+
+**Step 1: System Detects Overdue (Automatic)**
+- At 9:00 AM (1 hour overdue), system:
+  - Checks startup status: Not Started
+  - Triggers escalation notification
+
+**Step 2: Escalation Notifications Sent**
+- WhatsApp to Operator: "URGENT: Startup overdue for CNC Machine 001"
+- WhatsApp to Manager: "Alert: Operator has not started CNC Machine 001 startup (1 hour overdue)"
+- Email to Manager
+
+**Expected**: Immediate escalation to prevent production delay
+
+---
+
+## 📦 WORKFLOW 4: Inventory Management Workflow
+
+### Test Case 4.1: Admin Configures Inventory Items
+
+**Test ID**: TC-004-01  
+**Priority**: High  
+**Role**: Admin
+
+#### Test Data
+```
+Raw Material:
+  Name: Steel Plate 5mm
+  Category: Raw Material
+  UOM: Kilograms (kg)
+  Current Stock: 500 kg
+  Minimum Stock: 200 kg
+  Reorder Level: 300 kg
+  Unit Cost: ₹150/kg
+
+Finished Good:
+  Name: Hydraulic Cylinder HC-500
+  Category: Finished Goods
+  UOM: Units (pcs)
+  Current Stock: 50 pcs
+  Minimum Stock: 10 pcs
+  Unit Cost: ₹5,000/pc
+```
+
+#### Detailed Steps
+
+**Step 1-3: Add Raw Material**
+1. Login as admin_test
+2. Navigate to: Inventory Management → Raw Materials
+3. Click "Add Raw Material"
+4. Fill all fields as per test data
+5. Click "Save"
+
+**Expected**: Steel Plate 5mm added to inventory
+
+**Step 6-10: Add Finished Good**
+6. Navigate to: Inventory Management → Finished Goods
+7. Click "Add Finished Good"
+8. Fill: Hydraulic Cylinder HC-500 details
+9. Click "Save"
+
+**Expected**: Finished good added
+
+---
+
+### Test Case 4.2: Manager Issues Raw Material to Production
+
+**Test ID**: TC-004-02  
+**Priority**: High  
+**Role**: Manager
+
+#### Test Data
+```
+Material: Steel Plate 5mm
+Quantity to Issue: 100 kg
+Issued To: Production Line A
+Job/Work Order: WO-2025-001
+Purpose: "Manufacturing hydraulic cylinders"
+```
+
+#### Detailed Steps
+
+**Step 1-4: Create Issuance**
+1. Login as manager_test
+2. Navigate to: Inventory → Raw Material Issuance
+3. Click "Issue Material"
+4. Select Material: Steel Plate 5mm
+5. Quantity: 100 kg
+6. Issued To: Production Line A
+7. Work Order: WO-2025-001
+8. Purpose: Manufacturing hydraulic cylinders
+
+**Step 9: Save and Verify**
+9. Click "Issue Material"
+
+**Expected**:
+- Issuance record created
+- Inventory auto-deducted: 500 kg → 400 kg
+- Transaction logged
+- If quantity brings stock below reorder level (300 kg), alert triggered
+
+**Validation**:
+```sql
+SELECT quantity FROM raw_materials WHERE name = 'Steel Plate 5mm';
+-- Should show: 400
+```
+
+---
+
+### Test Case 4.3: Operator Records Finished Goods Production
+
+**Test ID**: TC-004-03  
+**Priority**: Critical  
+**Role**: Operator
+
+#### Test Data
+```
+Product: Hydraulic Cylinder HC-500
+Quantity Produced: 25 units
+Work Order: WO-2025-001
+Raw Materials Consumed:
+  - Steel Plate 5mm: 100 kg (auto-calculated from BOM)
+Production Date: Today
+Shift: Morning
+```
+
+#### Detailed Steps
+
+**Step 1-5: Record Production**
+1. Login as operator_test
+2. Navigate to: Production Management → Record Production
+3. Work Order: WO-2025-001
+4. Product: Hydraulic Cylinder HC-500
+5. Quantity: 25 units
+6. Shift: Morning
+
+**Step 7: Submit Production Record**
+7. Click "Submit Production"
+
+**Expected**:
+- Finished goods inventory increased: 50 → 75 units
+- Raw material consumption linked to work order
+- Production cost calculated automatically
+- Manager notified of production completion
+
+**Validation**:
+```sql
+SELECT quantity FROM finished_goods WHERE name = 'Hydraulic Cylinder HC-500';
+-- Should show: 75
+```
+
+---
+
+### Test Case 4.4: Manager Creates Purchase Order
+
+**Test ID**: TC-004-04  
+**Priority**: High  
+**Role**: Manager
+
+#### Test Data (triggered by low stock alert from TC-004-02)
+```
+Material: Steel Plate 5mm (current: 400 kg, reorder level: 300 kg)
+Vendor: ABC Steel Suppliers
+Order Quantity: 1000 kg
+Unit Price: ₹150/kg
+Total: ₹1,50,000
+Expected Delivery: 7 days
+Payment Terms: Net 30 days
+```
+
+#### Detailed Steps
+
+**Step 1-3: Create PO from Alert**
+1. Login as manager_test
+2. Dashboard shows: "Low Stock Alert: Steel Plate 5mm (400 kg)"
+3. Click "Create Purchase Order"
+
+**Step 4-8: Fill PO Details**
+4. Material: Steel Plate 5mm (pre-filled)
+5. Vendor: Select "ABC Steel Suppliers"
+6. Quantity: 1000 kg
+7. Unit Price: ₹150/kg
+8. Expected Delivery: [Today + 7 days]
+9. Payment Terms: Net 30 days
+
+**Step 10: Save and Send PO**
+10. Click "Create PO"
+
+**Expected**:
+- PO number generated: PO-2025-001
+- Status: Sent
+- Vendor notified (email)
+- PO printable for vendor signature
+
+---
+
+## 🚚 WORKFLOW 5: Sales & Dispatch Workflow (Complete 5-Stage)
+
+### Test Case 5.1: Admin Creates Invoice Template
+
+**Test ID**: TC-005-01  
+**Priority**: High  
+**Role**: Admin
+
+#### Test Data
+```
+Template Name: Standard GST Invoice
+Seller Details:
+  Company: KINTO Manufacturing Ltd.
+  GSTIN: 29ABCDE1234F1Z5
+  Address: 123 Industrial Area, Bangalore - 560001
+  Phone: +91-9876543210
+  Email: sales@kinto.com
+Bank Details:
+  Bank: HDFC Bank
+  Account: 1234567890
+  IFSC: HDFC0001234
+  Branch: Koramangala, Bangalore
+Terms & Conditions:
+  1. Payment due within 30 days
+  2. Goods once sold cannot be returned
+  3. Subject to Bangalore jurisdiction
+Logo: [Upload company logo]
+```
+
+#### Detailed Steps
+
+**Step 1-3: Create Template**
+1. Login as admin_test
+2. Navigate to: Invoice Templates
+3. Click "Create Template"
+
+**Step 4-10: Fill Template Details**
+4-10. Fill all seller details, bank info, T&C as per test data
+
+**Step 11: Save Template**
+11. Click "Save Template"
+
+**Expected**: Template available for invoice creation
+
+---
+
+### Test Case 5.2: Manager Creates Sales Invoice (Stage 1: Invoice Creation)
+
+**Test ID**: TC-005-02  
+**Priority**: Critical  
+**Role**: Manager  
+**Dispatch Stage**: 1 of 5
+
+#### Test Data
+```
+Template: Standard GST Invoice
+Invoice Number: INV-2025-001 (auto-generated)
+Invoice Date: Today
+Customer Details:
+  Name: XYZ Industries Pvt Ltd
+  GSTIN: 29XYZAB5678C1D2
+  Billing Address: 456 Market Road, Bangalore - 560002
+  Ship To: Same as billing
+  Contact: Ramesh Kumar
+  Phone: +91-9988776655
+  Email: purchase@xyzind.com
+  
+Items:
+  1. Hydraulic Cylinder HC-500
+     Quantity: 10 units
+     HSN Code: 84122100
+     Unit Price: ₹5,000
+     Subtotal: ₹50,000
+     
+Tax Calculation (Intra-state Karnataka):
+  Subtotal: ₹50,000
+  CGST @ 9%: ₹4,500
+  SGST @ 9%: ₹4,500
+  Total: ₹59,000
+
+Payment Terms: Net 30 days
+Due Date: [Today + 30 days]
+```
+
+#### Detailed Steps
+
+**Step 1-4: Create Invoice**
+1. Login as manager_test
+2. Navigate to: Sales Invoices
+3. Click "Create Invoice"
+4. Select Template: Standard GST Invoice
+
+**Step 5-10: Fill Customer Details**
+5-10. Enter all customer information (name, GSTIN, address, contact)
+
+**Step 11-14: Add Invoice Items**
+11. Click "Add Item"
+12. Product: Hydraulic Cylinder HC-500
+13. Quantity: 10 units
+14. Unit Price: ₹5,000 (auto-filled from product master)
+15. HSN Code: 84122100 (auto-filled)
+
+**Step 15: Verify Tax Calculation**
+15. System auto-calculates:
+    - Detects same state (Karnataka) → CGST + SGST
+    - Subtotal: ₹50,000
+    - CGST 9%: ₹4,500
+    - SGST 9%: ₹4,500
+    - **Total: ₹59,000**
+
+**Step 16-17: Set Payment Terms**
+16. Payment Terms: Net 30 days
+17. Due Date: [Auto-calculated: Today + 30 days]
+
+**Step 18: Save Invoice**
+18. Click "Create Invoice"
+
+**Expected**:
+- ✅ **Invoice Created**
+- ✅ **Status: DRAFT** (Stage 1/5)
+- ✅ Invoice Number: INV-2025-001
+- ✅ Total: ₹59,000
+- ✅ **NO inventory deduction** (invoice is sales document only)
+- ✅ Can be edited/deleted
+- ✅ Printable
+- ✅ Next action: "Generate Gatepass"
+
+**Critical Validation**:
+```sql
+SELECT status, total_amount FROM invoices WHERE invoice_number = 'INV-2025-001';
+-- Status: draft, Total: 59000
+
+SELECT quantity FROM finished_goods WHERE name = 'Hydraulic Cylinder HC-500';
+-- Should STILL be 75 (NO deduction yet)
+```
+
+---
+
+### Test Case 5.3: Manager Generates Gatepass from Invoice (Stage 2: Gatepass Generation)
+
+**Test ID**: TC-005-03  
+**Priority**: Critical  
+**Role**: Manager  
+**Dispatch Stage**: 2 of 5
+
+#### Prerequisites
+- ✅ Test Case 5.2 completed
+- ✅ Invoice INV-2025-001 status: draft
+- ✅ Inventory: 75 units available
+
+#### Test Data
+```
+Invoice: INV-2025-001
+Gatepass Number: GP-2025-001 (auto-generated)
+Vehicle Details:
+  Vehicle Number: KA-01-AB-1234
+  Driver Name: Suresh Kumar
+  Driver Contact: +91-9876543210
+Transport Details:
+  Transporter: ABC Logistics
+  LR Number: LR-2025-001
+  Cases: 2 cases
+  Seal Numbers: SEAL-001, SEAL-002
+  Gross Weight: 250 kg
+```
+
+#### Detailed Steps
+
+**Step 1-3: Open Invoice and Generate Gatepass**
+1. Login as manager_test (if not already)
+2. Navigate to: Sales Invoices
+3. Find invoice: INV-2025-001 (Status: Draft)
+4. Click "Generate Gatepass" button (data-testid="button-generate-gatepass")
+
+**Expected**: Gatepass form opens with items auto-populated from invoice
+
+**Step 5-7: Verify Items Auto-Populated**
+5. Gatepass form shows:
+   - Linked Invoice: INV-2025-001
+   - Customer: XYZ Industries Pvt Ltd
+   - Items:
+     * Hydraulic Cylinder HC-500: 10 units ✓ (from invoice)
+6. Items are pre-filled, cannot be modified
+7. Total matches invoice
+
+**Step 8-13: Fill Vehicle & Transport Details**
+8. Vehicle Number: KA-01-AB-1234
+9. Driver Name: Suresh Kumar
+10. Driver Contact: +91-9876543210
+11. Transporter: ABC Logistics
+12. LR Number: LR-2025-001
+13. Cases: 2, Seal Numbers: SEAL-001, SEAL-002
+14. Gross Weight: 250 kg
+
+**Step 15: Create Gatepass**
+15. Click "Create Gatepass"
+
+**Expected**:
+- ✅ **Gatepass Created**: GP-2025-001
+- ✅ **Gatepass Status: GENERATED** (Stage 2/5)
+- ✅ **Invoice Status: draft → READY_FOR_GATEPASS**
+- ✅ **INVENTORY DEDUCTED NOW**: 75 → 65 units (physical dispatch)
+- ✅ One-to-one link: Invoice ↔ Gatepass
+- ✅ Gatepass printable for security gate
+- ✅ Next action: "Record Vehicle Exit"
+
+**Critical Validation**:
+```sql
+SELECT status FROM invoices WHERE invoice_number = 'INV-2025-001';
+-- Status: ready_for_gatepass
+
+SELECT status FROM gatepasses WHERE gatepass_number = 'GP-2025-001';
+-- Status: generated
+
+SELECT quantity FROM finished_goods WHERE name = 'Hydraulic Cylinder HC-500';
+-- Should NOW be 65 (deducted 10 units)
+```
+
+**Backend Enforcement**:
+- ✅ POST /api/gatepasses validates invoiceId is present (returns 400 if missing)
+- ✅ One gatepass per invoice (cannot create duplicate)
+- ✅ Inventory deduction happens atomically with gatepass creation
+
+---
+
+### Test Case 5.4: Operator Records Vehicle Exit (Stage 3: Vehicle Out)
+
+**Test ID**: TC-005-04  
+**Priority**: Critical  
+**Role**: Operator (Security)  
+**Dispatch Stage**: 3 of 5
+
+#### Prerequisites
+- ✅ Test Case 5.3 completed
+- ✅ Gatepass GP-2025-001 status: generated
+- ✅ Invoice INV-2025-001 status: ready_for_gatepass
+
+#### Test Data
+```
+Gatepass: GP-2025-001
+Security Verification:
+  - Vehicle Number verified: KA-01-AB-1234 ✓
+  - Seal numbers checked: SEAL-001, SEAL-002 ✓
+  - Cases count: 2 ✓
+  - Documents complete: Invoice + Gatepass ✓
+Exit Time: [Current timestamp]
+Security Officer: operator_test
+```
+
+#### Detailed Steps
+
+**Step 1-4: Security Gate - Vehicle Arrival**
+1. Login as operator_test (Security role)
+2. Navigate to: Dispatch Tracking → Gate Passes
+3. Filter: Status = Generated (ready for dispatch)
+4. Find: GP-2025-001
+
+**Expected**: Gatepass visible in "Ready to Dispatch" list
+
+**Step 5-7: Open Gatepass and Verify**
+5. Click "Record Vehicle Exit" (data-testid="button-vehicle-exit-[id]")
+6. System shows gatepass details:
+   - Vehicle: KA-01-AB-1234
+   - Driver: Suresh Kumar
+   - Items: 10 units Hydraulic Cylinder
+   - Cases: 2
+   - Seals: SEAL-001, SEAL-002
+7. Security officer verifies physically:
+   - Vehicle number matches
+   - Seals intact
+   - Cases count correct
+   - Documents present
+
+**Expected**: All details match physical verification
+
+**Step 8-10: Record Exit**
+8. Check confirmation: "All details verified ✓"
+9. Current time auto-populated: [timestamp]
+10. Click "Confirm Vehicle Exit"
+
+**Expected**:
+- ✅ **Gatepass Status: generated → VEHICLE_OUT** (Stage 3/5)
+- ✅ **Invoice Status: ready_for_gatepass → DISPATCHED**
+- ✅ Exit timestamp recorded
+- ✅ Security officer ID logged
+- ✅ Cannot record exit twice (validation prevents)
+- ✅ Next action: "Record Proof of Delivery" (when customer receives)
+
+**Critical Validation**:
+```sql
+SELECT status, vehicle_exit_time FROM gatepasses WHERE gatepass_number = 'GP-2025-001';
+-- Status: vehicle_out, Exit time: [timestamp]
+
+SELECT status FROM invoices WHERE invoice_number = 'INV-2025-001';
+-- Status: dispatched
+```
+
+**Backend Enforcement**:
+- ✅ PATCH /api/gatepasses/:id/vehicle-exit requires status="generated"
+- ✅ Returns 400 if already recorded or invalid state
+- ✅ Updates both gatepass and linked invoice statuses atomically
+
+---
+
+### Test Case 5.5: Manager/Operator Records Proof of Delivery (Stage 4: POD + Delivery Confirmation)
+
+**Test ID**: TC-005-05  
+**Priority**: Critical  
+**Role**: Manager or Operator  
+**Dispatch Stage**: 4 & 5 of 5 (Final Stages)
+
+#### Prerequisites
+- ✅ Test Case 5.4 completed
+- ✅ Gatepass GP-2025-001 status: vehicle_out
+- ✅ Invoice INV-2025-001 status: dispatched
+- ✅ Goods physically delivered to customer
+
+#### Test Data
+```
+Gatepass: GP-2025-001
+Delivery Confirmation:
+  - Customer received goods: Yes ✓
+  - Delivered Date/Time: [timestamp]
+  - Received By: Ramesh Kumar (Customer contact)
+  - Cases delivered: 2 (all)
+  - Seals intact: Yes ✓
+  - Customer Signature: [Digital signature capture]
+  - Delivery Notes: "Goods received in good condition"
+```
+
+#### Detailed Steps
+
+**Step 1-4: Navigate to POD Screen**
+1. Login as manager_test or operator_test
+2. Navigate to: Dispatch Tracking → Proof of Delivery tab
+3. Filter: Status = Vehicle Out (awaiting POD)
+4. Find: GP-2025-001
+
+**Expected**: Gatepass visible in "Awaiting Delivery Confirmation" list
+
+**Step 5-7: Open POD Form**
+5. Click "Record POD" (data-testid="button-record-pod-[id]")
+6. POD form opens showing:
+   - Gatepass: GP-2025-001
+   - Invoice: INV-2025-001
+   - Customer: XYZ Industries
+   - Items: 10 units Hydraulic Cylinder
+   - Dispatched: [exit timestamp]
+7. Form fields:
+   - Delivered Date/Time (auto: now)
+   - Received By (customer name)
+   - Cases Delivered
+   - Seals Status
+   - **Signature Canvas** (draw signature)
+   - Delivery Notes
+
+**Step 8-12: Fill POD Details**
+8. Delivered Date/Time: [Auto: current timestamp]
+9. Received By: Ramesh Kumar
+10. Cases Delivered: 2 (matches dispatched)
+11. Seals Intact: Yes ✓
+12. Delivery Notes: "Goods received in good condition"
+
+**Step 13-15: Capture Digital Signature**
+13. Signature Canvas displayed (HTML5 canvas)
+14. Customer signs on tablet/touchscreen or manager draws signature
+15. Signature preview shows (base64 image data)
+
+**Expected**: Signature captured, minimum length validation (100 chars base64)
+
+**Step 16: Submit POD**
+16. Click "Submit Proof of Delivery"
+
+**Expected**:
+- ✅ **Gatepass Status: vehicle_out → DELIVERED** (Stage 4/5)
+- ✅ **Invoice Status: dispatched → DELIVERED** (Stage 5/5 - COMPLETE)
+- ✅ Delivery timestamp recorded
+- ✅ Signature saved (base64 image in database)
+- ✅ POD document generated (printable)
+- ✅ **Workflow COMPLETE** - all 5 stages done
+- ✅ Can view/print POD with signature
+- ✅ Payment tracking begins (invoice due in 30 days)
+
+**Critical Validation**:
+```sql
+SELECT status, delivered_at, signature FROM gatepasses WHERE gatepass_number = 'GP-2025-001';
+-- Status: delivered, Delivered_at: [timestamp], Signature: [base64...]
+
+SELECT status FROM invoices WHERE invoice_number = 'INV-2025-001';
+-- Status: delivered
+
+-- Signature validation:
+-- Length should be > 100 characters (base64 data)
+-- Format: data:image/png;base64,iVBORw0KG...
+```
+
+**Backend Enforcement**:
+- ✅ PATCH /api/gatepasses/:id/pod requires status="vehicle_out"
+- ✅ Returns 400 if:
+  - Status not vehicle_out
+  - Signature missing or invalid
+  - Signature too short (< 100 chars)
+  - Signature format invalid (not base64 image)
+- ✅ Multi-layer validation:
+  - Format check (data:image/png;base64,)
+  - Minimum length (100+ chars)
+  - Base64 content verification (50+ chars after prefix)
+- ✅ Updates both gatepass and invoice statuses atomically
+- ✅ Cannot submit empty signature (validation prevents)
+
+**Edge Cases to Test**:
+- **Empty Signature**: Try submitting without signature → Error "Signature required"
+- **Very Short Signature**: Draw tiny dot → Error "Please provide a valid signature"
+- **Invalid Format**: Manually set signature to "abc123" → Error "Invalid signature format"
+- **Network Failure**: Disconnect during submit → Error, retry available
+
+---
+
+## 📊 Complete 5-Stage Dispatch Flow Summary
+
+**Status Progression**:
+
+| Stage | Actor | Action | Invoice Status | Gatepass Status | Inventory |
+|-------|-------|--------|----------------|-----------------|-----------|
+| 1 | Manager | Create Invoice | **draft** | - | No change (75) |
+| 2 | Manager | Generate Gatepass | **ready_for_gatepass** | **generated** | **Deducted (65)** |
+| 3 | Operator | Vehicle Exit | **dispatched** | **vehicle_out** | Still 65 |
+| 4 | Manager/Op | Record POD | **delivered** | **delivered** | Still 65 |
+| 5 | System | Complete | **delivered** (final) | **delivered** (final) | Still 65 |
+
+**Key Business Rules**:
+1. ✅ Invoice creation does NOT deduct inventory (just a sales document)
+2. ✅ Gatepass creation DEDUCTS inventory (physical dispatch from warehouse)
+3. ✅ One invoice → One gatepass (enforced by backend)
+4. ✅ Cannot create gatepass without invoice (400 error)
+5. ✅ Cannot skip stages (strict status preconditions)
+6. ✅ Digital signature required for POD (multi-layer validation)
+7. ✅ All status transitions are atomic (database integrity)
+
+---
+
+**This completes Workflows 2-5 in full detail. Continuing with Workflows 6-15...**
