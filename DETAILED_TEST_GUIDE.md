@@ -2528,3 +2528,1129 @@ SELECT status FROM invoices WHERE invoice_number = 'INV-2025-001';
 ---
 
 **This completes Workflows 2-5 in full detail. Continuing with Workflows 6-15...**
+
+## 👥 WORKFLOW 6: User & Role Management
+
+### Test Case 6.1: Admin Creates New User
+
+**Test ID**: TC-006-01  
+**Priority**: High  
+**Role**: Admin
+
+#### Test Data
+```
+Username: qa_engineer
+Email: qa@kinto.com
+Full Name: QA Engineer
+Password: QA@Engineer123
+Role: reviewer
+Status: Active
+```
+
+#### Detailed Steps
+
+**Step 1-5: Create User**
+1. Login as admin_test
+2. Navigate to: User Management
+3. Click "Add User"
+4. Fill all fields from test data
+5. Click "Create User"
+
+**Expected**:
+- User created successfully
+- Appears in user list
+- Can login with credentials
+- Has reviewer permissions only
+
+#### Edge Cases
+- Duplicate username → Error "Username already exists"
+- Weak password → Error "Password must contain uppercase, lowercase, number, special char"
+- Invalid email → Error "Invalid email format"
+
+---
+
+### Test Case 6.2: Admin Configures Role Permissions
+
+**Test ID**: TC-006-02  
+**Priority**: Critical  
+**Role**: Admin
+
+#### Test Data
+```
+Role: reviewer
+Screens to configure:
+  1. Dashboard: View only
+  2. Checklists: View + Edit (review)
+  3. PM History: View only
+  4. User Management: No access
+  5. Machines: View only
+  ... (all 26 screens)
+```
+
+#### Detailed Steps
+
+**Step 1-5: Configure Permissions**
+1. Login as admin_test
+2. Navigate to: Role Management
+3. Select Role: Reviewer
+4. For each of 26 screens, set permissions:
+   - View: ✓/✗
+   - Create: ✓/✗
+   - Edit: ✓/✗
+   - Delete: ✓/✗
+5. Click "Save Permissions"
+
+**Expected**:
+- Permissions saved
+- Reviewer users see only permitted screens
+- Unauthorized access returns 403
+
+#### Edge Cases
+- Remove all permissions → Warning "Role must have at least dashboard access"
+
+---
+
+### Test Case 6.3: Manager Deactivates User
+
+**Test ID**: TC-006-03  
+**Priority**: Medium  
+**Role**: Manager
+
+#### Detailed Steps
+
+**Step 1-4: Deactivate User**
+1. Login as manager_test
+2. Navigate to: User Management
+3. Find user: qa_engineer
+4. Click "Deactivate"
+5. Confirm action
+
+**Expected**:
+- User status: Active → Inactive
+- User cannot login
+- Existing sessions terminated
+- Assigned tasks reassigned or flagged
+
+---
+
+## 📊 WORKFLOW 7: Reporting & Analytics
+
+### Test Case 7.1: Manager Views Sales Dashboard
+
+**Test ID**: TC-007-01  
+**Priority**: High  
+**Role**: Manager
+
+#### Test Data
+```
+Time Period: Last 30 days
+Expected Metrics:
+  - Total Revenue: ₹5,90,000
+  - Total Orders: 10
+  - Average Order Value: ₹59,000
+  - Goods Sold: 100 units
+```
+
+#### Detailed Steps
+
+**Step 1-5: View Dashboard**
+1. Login as manager_test
+2. Navigate to: Sales Dashboard
+3. Select filter: Last 30 days
+4. View metrics:
+   - Revenue card shows ₹5,90,000
+   - Orders card shows 10
+   - AOV card shows ₹59,000
+   - Goods sold shows 100 units
+5. View charts:
+   - Revenue trend line chart
+   - Product-wise sales pie chart
+
+**Expected**:
+- All metrics accurate
+- Charts render correctly
+- Data matches invoice records
+
+#### Edge Cases
+- No data → Empty state message
+- Different time periods: Today, Week, Month, Quarter, Year
+
+---
+
+### Test Case 7.2: Admin Generates GST Reports
+
+**Test ID**: TC-007-02  
+**Priority**: Critical  
+**Role**: Admin
+
+#### Test Data
+```
+Report Type: GSTR-1
+Period: January 2025
+Expected Data:
+  B2B Invoices (with GSTIN): 8 invoices
+  B2C Invoices (no GSTIN): 2 invoices
+  Total Tax Collected: ₹53,100
+  HSN Summary: 5 HSN codes
+```
+
+#### Detailed Steps
+
+**Step 1-7: Generate GSTR-1**
+1. Login as admin_test
+2. Navigate to: Reports → GST Reports
+3. Select Report: GSTR-1
+4. Period: January 2025
+5. Click "Generate Report"
+6. Review:
+   - B2B section: 8 invoices with GSTIN details
+   - B2C section: 2 invoices aggregated
+   - HSN summary with tax breakup
+   - Total CGST, SGST, IGST amounts
+7. Click "Export to Excel"
+
+**Expected**:
+- Excel file downloaded
+- Format matches GSTIN portal requirements
+- All mandatory fields present
+- Ready for government filing
+
+---
+
+## 🔔 WORKFLOW 8: Missed Checklist Notification Workflow
+
+### Test Case 8.1: System Detects Missed Checklist
+
+**Test ID**: TC-008-01  
+**Priority**: High  
+**Role**: System (Automatic)
+
+#### Scenario
+```
+Checklist assigned to operator_test
+Due Date: Today 6:00 PM
+Current Time: Today 6:30 PM (30 mins overdue)
+Status: Pending (not started)
+```
+
+#### System Behavior
+
+**Automatic Detection (6:30 PM)**
+- System cron job runs every 15 minutes
+- Detects checklist overdue by 30 mins
+- Triggers notification cascade
+
+**Notifications Sent**:
+1. WhatsApp to Operator: "OVERDUE: Daily Quality Inspection - Due 6:00 PM"
+2. Email to Operator
+3. WhatsApp to Reviewer: "Alert: Operator has not started checklist (30 mins overdue)"
+4. Email to Manager: "Escalation: Checklist missed - Daily Quality Inspection"
+
+**Expected**: Multi-level notification sent automatically
+
+---
+
+### Test Case 8.2: Operator Completes Overdue Checklist
+
+**Test ID**: TC-008-02  
+**Priority**: High  
+**Role**: Operator
+
+#### Detailed Steps
+
+**Step 1-5: Complete Late**
+1. Operator receives alert at 6:30 PM
+2. Login as operator_test
+3. See red "OVERDUE" badge on checklist
+4. Complete checklist at 7:00 PM (1 hour late)
+5. System records:
+   - Due: 6:00 PM
+   - Completed: 7:00 PM
+   - Delay: 1 hour
+
+**Expected**:
+- Checklist marked complete
+- Delay time recorded
+- Manager notified of late completion
+- Compliance report flags late submission
+
+---
+
+### Test Case 8.3: Manager Reviews Late Completion Report
+
+**Test ID**: TC-008-03  
+**Priority**: Medium  
+**Role**: Manager
+
+#### Detailed Steps
+
+**Step 1-4: Review Compliance**
+1. Login as manager_test
+2. Navigate to: Reports → Compliance
+3. Filter: Overdue checklists, Last 7 days
+4. See: Daily Quality Inspection - Delay: 1 hour
+
+**Expected**: Late submissions tracked for performance review
+
+---
+
+## 💰 WORKFLOW 9: Payment Tracking & FIFO Allocation
+
+### Test Case 9.1: Customer Makes Partial Payment
+
+**Test ID**: TC-009-01  
+**Priority**: High  
+**Role**: Manager
+
+#### Test Data
+```
+Invoice: INV-2025-001
+Total: ₹59,000
+Payment Received: ₹30,000 (partial)
+Payment Method: Bank Transfer
+Reference: TXN-ABC123
+Payment Date: Today
+```
+
+#### Detailed Steps
+
+**Step 1-7: Record Payment**
+1. Login as manager_test
+2. Navigate to: Invoices → INV-2025-001
+3. Click "Record Payment"
+4. Amount: ₹30,000
+5. Method: Bank Transfer
+6. Reference: TXN-ABC123
+7. Click "Save Payment"
+
+**Expected**:
+- Payment recorded
+- Invoice status: Partially Paid
+- Outstanding: ₹29,000
+- Payment history shows transaction
+
+---
+
+### Test Case 9.2: FIFO Payment Allocation (Multiple Invoices)
+
+**Test ID**: TC-009-02  
+**Priority**: Critical  
+**Role**: Manager
+
+#### Test Data
+```
+Customer: XYZ Industries
+Outstanding Invoices:
+  1. INV-2025-001 (Jan 15): ₹29,000 remaining
+  2. INV-2025-002 (Jan 20): ₹45,000 outstanding
+  3. INV-2025-003 (Jan 25): ₹60,000 outstanding
+Total Outstanding: ₹1,34,000
+
+Payment Received: ₹50,000
+```
+
+#### Expected FIFO Allocation
+```
+₹50,000 applied in chronological order:
+1. INV-2025-001 gets ₹29,000 → FULLY PAID ✓
+2. INV-2025-002 gets ₹21,000 → Partial (₹24,000 remaining)
+3. INV-2025-003 gets ₹0 → Still ₹60,000 outstanding
+```
+
+#### Detailed Steps
+
+**Step 1-5: Record Payment with FIFO**
+1. Navigate to: Customer → XYZ Industries → Payments
+2. Click "Record Payment"
+3. Amount: ₹50,000
+4. System shows FIFO preview:
+   - INV-2025-001: ₹29,000 (full payment)
+   - INV-2025-002: ₹21,000 (partial)
+5. Confirm allocation
+6. Click "Save Payment"
+
+**Expected**:
+- Payment auto-allocated using FIFO
+- INV-2025-001 status: Paid ✓
+- INV-2025-002 status: Partially Paid (₹24,000 due)
+- INV-2025-003 status: Unpaid (₹60,000 due)
+- Payment receipt generated
+
+---
+
+### Test Case 9.3: Manager Generates Payment Aging Report
+
+**Test ID**: TC-009-03  
+**Priority**: High  
+**Role**: Manager
+
+#### Expected Report
+```
+Customer: XYZ Industries
+0-30 days: ₹24,000 (INV-2025-002)
+31-60 days: ₹0
+61-90 days: ₹0
+90+ days: ₹0
+Total Outstanding: ₹84,000
+```
+
+#### Detailed Steps
+
+**Step 1-4: View Aging**
+1. Navigate to: Reports → Payment Aging
+2. Select Customer: XYZ Industries
+3. View aging buckets
+4. Export to Excel
+
+**Expected**: Aging report shows outstanding by time period
+
+---
+
+### Test Case 9.4: System Sends Payment Reminder
+
+**Test ID**: TC-009-04  
+**Priority**: Medium  
+**Role**: System (Automatic)
+
+#### Scenario
+```
+Invoice: INV-2025-002
+Due Date: Feb 19, 2025
+Current Date: Feb 20, 2025 (1 day overdue)
+Outstanding: ₹24,000
+```
+
+#### System Behavior
+
+**Automatic Reminder (Feb 20)**
+- Email to Customer: "Payment reminder - INV-2025-002 overdue by 1 day"
+- Copy to Manager
+- Dashboard shows in "Overdue Payments" widget
+
+**7 Days Overdue (Feb 27)**
+- Escalation email: "URGENT: Payment 7 days overdue"
+- Manager alerted
+
+**Expected**: Automatic payment reminders at 1, 7, 15, 30 days overdue
+
+---
+
+### Test Case 9.5: Manager Exports Payment Register
+
+**Test ID**: TC-009-05  
+**Priority**: Medium  
+**Role**: Manager
+
+#### Expected Export
+```
+All payments for: January 2025
+Format: Excel
+Columns:
+  - Payment Date
+  - Invoice Number
+  - Customer
+  - Amount
+  - Method
+  - Reference
+  - Status
+```
+
+#### Detailed Steps
+
+**Step 1-4: Export Register**
+1. Navigate to: Reports → Payment Register
+2. Period: January 2025
+3. Click "Export to Excel"
+4. File downloads
+
+**Expected**: Complete payment log for accounting
+
+---
+
+## 🔧 WORKFLOW 10: Spare Parts Management
+
+### Test Case 10.1: Admin Adds Spare Part
+
+**Test ID**: TC-010-01  
+**Priority**: High  
+**Role**: Admin
+
+#### Test Data
+```
+Part Name: Hydraulic Seal Kit
+Part Number: HSK-2500
+Category: Seals & Gaskets
+UOM: Kit
+Min Stock: 5 kits
+Current Stock: 20 kits
+Unit Cost: ₹1,200
+Compatible Machines:
+  - Hydraulic Press 01
+  - Hydraulic Press 02
+```
+
+#### Detailed Steps
+
+**Step 1-6: Add Part**
+1. Login as admin_test
+2. Navigate to: Inventory → Spare Parts
+3. Click "Add Spare Part"
+4. Fill all fields
+5. Link to machines: Hydraulic Press 01, 02
+6. Click "Save"
+
+**Expected**: Part added, visible in spare parts inventory
+
+---
+
+### Test Case 10.2: Operator Uses Spare Part During PM
+
+**Test ID**: TC-010-02  
+**Priority**: Critical  
+**Role**: Operator
+
+#### Scenario
+```
+PM Execution: Monthly Hydraulic Check
+Required Part: Hydraulic Seal Kit (1 kit)
+Current Stock: 20 kits
+```
+
+#### Detailed Steps
+
+**Step 1-5: Use Part**
+1. During PM execution (from Test Case 2.3)
+2. Step: "Replace hydraulic seals"
+3. Select spare part: Hydraulic Seal Kit
+4. Quantity: 1 kit
+5. Submit PM
+
+**Expected**:
+- Part usage recorded
+- Inventory auto-deducted: 20 → 19 kits
+- Part cost added to PM cost
+- Usage history tracked
+
+---
+
+### Test Case 10.3: Manager Creates Spare Parts Purchase Order
+
+**Test ID**: TC-010-03  
+**Priority**: High  
+**Role**: Manager
+
+#### Test Data (triggered by low stock)
+```
+Part: Hydraulic Seal Kit
+Current Stock: 4 kits (below min: 5)
+Vendor: Seals & More Suppliers
+Order Quantity: 20 kits
+Unit Price: ₹1,200
+Total: ₹24,000
+```
+
+#### Detailed Steps
+
+**Step 1-6: Create PO**
+1. Login as manager_test
+2. Dashboard alert: "Low stock: Hydraulic Seal Kit"
+3. Click "Create PO"
+4. Fill vendor, quantity, price
+5. Click "Create PO"
+
+**Expected**: PO created for spare parts replenishment
+
+---
+
+### Test Case 10.4: Manager Receives and Updates Stock
+
+**Test ID**: TC-010-04  
+**Priority**: High  
+**Role**: Manager
+
+#### Test Data
+```
+PO: PO-SP-2025-001
+Ordered: 20 kits
+Received: 20 kits
+Received Date: Today
+Quality Check: Pass
+```
+
+#### Detailed Steps
+
+**Step 1-6: Receive Stock**
+1. Navigate to: Purchase Orders → PO-SP-2025-001
+2. Status: Sent
+3. Click "Receive Stock"
+4. Quantity received: 20 kits
+5. Quality: Pass
+6. Click "Confirm Receipt"
+
+**Expected**:
+- PO status: Received
+- Stock updated: 4 → 24 kits
+- Vendor invoice pending
+- Payment due tracked
+
+---
+
+## ⚙️ WORKFLOW 11: Notification System Configuration
+
+### Test Case 11.1: Admin Configures Notifications
+
+**Test ID**: TC-011-01  
+**Priority**: High  
+**Role**: Admin
+
+#### Test Data
+```
+WhatsApp Settings:
+  Enabled: Yes
+  Twilio Account SID: [from secrets]
+  Twilio Auth Token: [from secrets]
+  From Number: +1234567890
+  
+Email Settings:
+  Enabled: Yes
+  SendGrid API Key: [from secrets]
+  From Email: noreply@kinto.com
+  
+Notification Triggers:
+  1. Checklist assigned → Notify operator
+  2. Checklist submitted → Notify reviewer
+  3. Low stock → Notify manager
+  4. PM overdue → Notify operator + manager
+  5. Payment overdue → Notify manager
+  
+Reminder Timing:
+  Machine startup: 2 hours before
+  Checklist deadline: 1 hour before
+  Payment due: 7 days before
+```
+
+#### Detailed Steps
+
+**Step 1-8: Configure All Settings**
+1. Login as admin_test
+2. Navigate to: Notification Settings
+3. Enable WhatsApp, configure Twilio credentials
+4. Enable Email, configure SendGrid
+5. For each trigger, set:
+   - Enabled: Yes/No
+   - Recipients: Roles to notify
+   - Template: Message format
+6. Set reminder timings
+7. Test notifications (send test message)
+8. Click "Save Settings"
+
+**Expected**:
+- Notifications configured
+- Test messages received
+- System sends alerts for configured events
+
+---
+
+## 🖨️ WORKFLOW 12: Printing & Document Export
+
+### Test Case 12.1: Manager Prints Sales Invoice
+
+**Test ID**: TC-012-01  
+**Priority**: High  
+**Role**: Manager
+
+#### Detailed Steps
+
+**Step 1-5: Print Invoice**
+1. Login as manager_test
+2. Navigate to: Sales Invoices
+3. Find: INV-2025-001
+4. Click "Print" button
+5. Print preview opens showing:
+   - Company logo
+   - GST details
+   - Invoice number, date
+   - Customer details
+   - Itemized list with HSN codes
+   - Tax breakdown (CGST, SGST, IGST)
+   - Total in words
+   - Bank details
+   - Terms & conditions
+   - Authorized signatory
+6. Press Ctrl+P or click "Print"
+7. Save as PDF or print physically
+
+**Expected**: Professional A4 invoice ready for customer
+
+---
+
+### Test Case 12.2: Operator Prints Gatepass
+
+**Test ID**: TC-012-02  
+**Priority**: High  
+**Role**: Operator
+
+#### Detailed Steps
+
+**Step 1-5: Print Gatepass**
+1. Login as operator_test
+2. Navigate to: Dispatch Tracking → Gatepasses
+3. Find: GP-2025-001
+4. Click "Print Gatepass"
+5. Preview shows:
+   - Company branding
+   - Gatepass number, date
+   - Vehicle details
+   - Customer/destination
+   - Items with quantities
+   - Cases, seals
+   - Signature blocks
+6. Print for security gate
+
+**Expected**: Gatepass document for gate security
+
+---
+
+### Test Case 12.3: Manager Prints Purchase Order
+
+**Test ID**: TC-012-03  
+**Priority**: Medium  
+**Role**: Manager
+
+#### Detailed Steps
+
+**Step 1-4: Print PO**
+1. Navigate to: Purchase Orders → PO-2025-001
+2. Click "Print"
+3. Preview shows complete PO with T&C
+4. Print for vendor
+
+**Expected**: Professional PO document
+
+---
+
+### Test Case 12.4: Admin Exports GST Report to Excel
+
+**Test ID**: TC-012-04  
+**Priority**: Critical  
+**Role**: Admin
+
+#### Detailed Steps
+
+**Step 1-5: Export GSTR-1**
+1. Navigate to: Reports → GST Reports
+2. Select: GSTR-1, Period: January 2025
+3. Click "Generate Report"
+4. Review on-screen
+5. Click "Export to Excel"
+
+**Expected**:
+- Excel file downloaded
+- GSTIN portal compatible format
+- All fields complete
+
+---
+
+### Test Case 12.5: Manager Exports Inventory Report to JSON
+
+**Test ID**: TC-012-05  
+**Priority**: Low  
+**Role**: Manager
+
+#### Detailed Steps
+
+**Step 1-4: Export JSON**
+1. Navigate to: Reports → Inventory
+2. Select: Current Stock Levels
+3. Click "Generate Report"
+4. Click "Export to JSON"
+
+**Expected**: JSON file with inventory data
+
+---
+
+### Test Case 12.6: Manager Prints Raw Material Issuance Report
+
+**Test ID**: TC-012-06  
+**Priority**: Medium  
+**Role**: Manager
+
+#### Detailed Steps
+
+**Step 1-5: Print Report**
+1. Navigate to: Reports → Operational
+2. Type: Raw Material Issuance
+3. Date: Last 7 days
+4. Generate report
+5. Print
+
+**Expected**: Issuance report with company branding
+
+---
+
+### Test Case 12.7: Manager Prints PM Execution Report
+
+**Test ID**: TC-012-07  
+**Priority**: Medium  
+**Role**: Manager
+
+#### Detailed Steps
+
+**Step 1-4: Print PM Report**
+1. Navigate to: PM History
+2. Find completed PM
+3. Click "View Details" → "Print Report"
+4. Report shows:
+   - Machine, PM template
+   - Tasks completed
+   - Parts used
+   - Time taken
+5. Print for compliance
+
+**Expected**: PM completion certificate
+
+---
+
+## 🚨 WORKFLOW 13: System Alerts & Notifications
+
+### Test Case 13.1: System Sends Low Stock Alert
+
+**Test ID**: TC-013-01  
+**Priority**: High  
+**Role**: System (Automatic)
+
+#### Scenario
+```
+Material: Steel Plate 5mm
+Min Stock: 200 kg
+Reorder Level: 300 kg
+Current Stock: 250 kg
+After Issuance: 150 kg (below reorder level)
+```
+
+#### System Behavior
+
+**Automatic Detection**
+1. Manager issues 100 kg for production
+2. Stock drops: 250 → 150 kg
+3. System detects: 150 < 300 (reorder level)
+4. Triggers low stock alert
+
+**Notifications Sent**:
+- WhatsApp to Manager: "LOW STOCK: Steel Plate 5mm - Current: 150kg, Min: 300kg"
+- Email to Admin
+- Dashboard shows red alert badge
+
+**Expected**: Immediate notification for reordering
+
+---
+
+### Test Case 13.2: Manager Responds to Low Stock Alert
+
+**Test ID**: TC-013-02  
+**Priority**: High  
+**Role**: Manager
+
+#### Detailed Steps
+
+**Step 1-5: Create PO from Alert**
+1. Manager receives WhatsApp alert
+2. Login, see dashboard: "3 items below reorder level"
+3. Click alert
+4. View: Steel Plate 5mm: 150 kg (Min: 300 kg)
+5. Click "Create PO"
+6. System pre-fills:
+   - Material: Steel Plate 5mm
+   - Suggested Qty: 1000 kg
+   - Last vendor
+7. Complete and submit PO
+
+**Expected**:
+- PO created from alert
+- Stock replenishment initiated
+
+---
+
+### Test Case 13.3: System Sends PM Overdue Alert
+
+**Test ID**: TC-013-03  
+**Priority**: High  
+**Role**: System (Automatic)
+
+#### Scenario
+```
+PM: Monthly Hydraulic Check
+Due: Jan 15, 2025
+Current: Jan 16, 2025 (1 day overdue)
+Status: Scheduled (not executed)
+```
+
+#### System Behavior
+
+**Overdue Detection (Jan 16)**
+- System checks PM schedule daily
+- Detects 1 day overdue
+- Sends escalation:
+  - WhatsApp to Operator
+  - Email to Manager
+  - Dashboard: Red "Overdue" badge
+
+**Expected**: Immediate escalation for compliance
+
+---
+
+### Test Case 13.4: Manager Views System Alerts Dashboard
+
+**Test ID**: TC-013-04  
+**Priority**: Medium  
+**Role**: Manager
+
+#### Detailed Steps
+
+**Step 1-6: Monitor Alerts**
+1. Login as manager_test
+2. Navigate to: System Alerts
+3. View summary:
+   - Low Stock: 3 items
+   - Overdue PMs: 2 tasks
+   - Overdue Checklists: 1
+   - Pending Approvals: 5
+4. Filter by type, priority, date
+5. Click alert to view details
+6. Take action (create PO, escalate, etc.)
+
+**Expected**: Centralized alert management
+
+---
+
+### Test Case 13.5: System Sends Payment Reminder
+
+**Test ID**: TC-013-05  
+**Priority**: Medium  
+**Role**: System (Automatic)
+
+#### Scenario
+```
+Invoice: INV-2025-001
+Due Date: Jan 31, 2025
+Current: Feb 1, 2025 (1 day overdue)
+Outstanding: ₹59,000
+```
+
+#### System Behavior
+
+**1 Day Overdue (Feb 1)**
+- Email to Manager
+- Dashboard shows overdue payment
+
+**7 Days Overdue (Feb 8)**
+- WhatsApp: "URGENT: Payment 7 days overdue - ₹59,000"
+- Email to Admin
+
+**Expected**: Payment aging alerts at 1, 7, 15, 30 days
+
+---
+
+### Test Case 13.6: Operator Acknowledges and Resolves Alert
+
+**Test ID**: TC-013-06  
+**Priority**: Medium  
+**Role**: Operator
+
+#### Detailed Steps
+
+**Step 1-7: Handle Alert**
+1. Operator receives: "OVERDUE: Monthly Hydraulic Check"
+2. Login as operator_test
+3. Navigate to: My Alerts
+4. See alert, click "Acknowledge"
+5. System records acknowledgment
+6. Execute overdue PM
+7. Click "Mark as Resolved"
+8. Add note: "PM completed, all tasks done"
+
+**Expected**:
+- Alert acknowledged
+- Alert resolved after completion
+- Logged in history
+
+---
+
+## 📦 WORKFLOW 14: Vendor Management
+
+### Test Case 14.1: Admin Creates Vendor Master
+
+**Test ID**: TC-014-01  
+**Priority**: High  
+**Role**: Admin
+
+#### Test Data
+```
+Vendor Name: ABC Steel Suppliers
+GSTIN: 29ABCDE1234F1Z5
+Contact Person: Rajesh Sharma
+Phone: +91-9876543210
+Email: rajesh@abcsteel.com
+Address: 789 Industrial Estate, Bangalore - 560100
+Payment Terms: Net 30 days
+Bank Details:
+  Bank: ICICI Bank
+  Account: 9876543210
+  IFSC: ICIC0001234
+  Branch: Whitefield, Bangalore
+```
+
+#### Detailed Steps
+
+**Step 1-7: Add Vendor**
+1. Login as admin_test
+2. Navigate to: Vendor Master
+3. Click "Add Vendor"
+4. Fill all details
+5. Upload vendor documents (GST cert, PAN)
+6. Click "Save Vendor"
+
+**Expected**:
+- Vendor created
+- Available for PO creation
+- Documents stored
+
+---
+
+## 🔄 WORKFLOW 15: End-to-End Manufacturing Cycle Test
+
+### Complete Workflow Integration Test
+
+**Test ID**: TC-015-01  
+**Priority**: Critical  
+**Objective**: Test complete product lifecycle from raw material to delivery
+
+#### Scenario
+```
+Product: Widget A (new product)
+Raw Material: Steel Plate 5mm
+Customer: XYZ Industries
+Quantity: 50 units
+```
+
+#### Complete Flow (All Roles)
+
+**PHASE 1: Setup (Admin)**
+1. Create product master: Widget A
+2. Create raw material: Steel Plate 5mm
+3. Create checklist template: Quality Check - Widget A
+4. Create invoice template
+5. Create vendor: Steel supplier
+6. Add spare parts inventory
+
+**PHASE 2: Planning (Manager)**
+7. Create purchase order for steel (1000 kg)
+8. Receive steel into inventory
+9. Assign quality checklist to operator
+10. Schedule production: 50 units Widget A
+
+**PHASE 3: Production (Operator)**
+11. Complete startup checklist
+12. Execute quality checklist
+13. Issue raw materials (100 kg steel)
+14. Record production: 50 units Widget A
+15. Submit checklist for review
+
+**PHASE 4: Quality (Reviewer)**
+16. Review submitted checklist
+17. Verify quality parameters
+18. Approve checklist
+
+**PHASE 5: Approval (Manager)**
+19. Final checklist approval
+20. Verify inventory: 50 units Widget A added
+21. Verify raw material: 100 kg deducted
+
+**PHASE 6: Sales (Manager)**
+22. Create sales invoice: 50 units to XYZ Industries
+23. Total: ₹2,50,000 (₹5,000/unit)
+24. Invoice status: Draft (inventory still 50)
+
+**PHASE 7: Dispatch (Manager + Operator)**
+25. Generate gatepass from invoice
+26. **Inventory deducted: 50 → 0 units**
+27. Record vehicle exit (security gate)
+28. Record proof of delivery (with signature)
+29. Invoice status: Delivered
+
+**PHASE 8: Payment (Manager)**
+30. Customer pays: ₹1,50,000 (partial)
+31. Record payment with FIFO allocation
+32. Outstanding: ₹1,00,000
+33. Send payment reminder for balance
+
+**PHASE 9: Reporting (Admin/Manager)**
+34. Generate GST report (includes this invoice)
+35. View sales dashboard (revenue updated)
+36. Export payment register
+37. Print compliance reports
+
+#### Expected Results
+**Complete Lifecycle Verified**:
+- ✅ Raw material: Purchased → Issued → Consumed
+- ✅ Production: Planned → Executed → Quality checked
+- ✅ Finished goods: Produced → Invoiced → Dispatched → Delivered
+- ✅ Inventory: Tracked at every stage
+- ✅ Quality: Checklist completed with approvals
+- ✅ Sales: Invoice → Gatepass → POD → Payment
+- ✅ Compliance: All reports generated
+- ✅ Notifications: Sent at every critical step
+- ✅ Audit trail: Complete history maintained
+
+#### Validation Points
+```sql
+-- Verify final state:
+SELECT * FROM raw_materials WHERE name = 'Steel Plate 5mm';
+-- Remaining: 900 kg (1000 received - 100 issued)
+
+SELECT * FROM finished_goods WHERE name = 'Widget A';
+-- Quantity: 0 (50 produced - 50 dispatched)
+
+SELECT * FROM invoices WHERE invoice_number = 'INV-2025-XXX';
+-- Status: delivered, Amount: 250000, Paid: 150000, Due: 100000
+
+SELECT * FROM gatepasses WHERE invoice_id = [invoice_id];
+-- Status: delivered, Signature: [base64...]
+
+SELECT * FROM checklists WHERE template_name LIKE '%Widget A%';
+-- Status: completed, All approvals done
+```
+
+**Success Criteria**:
+- ✅ Zero inventory discrepancies
+- ✅ All workflows completed without errors
+- ✅ All notifications sent
+- ✅ Complete audit trail
+- ✅ GST compliance maintained
+- ✅ Payment tracking accurate
+
+---
+
+## 🎯 Testing Complete!
+
+**Total Test Cases Documented: 55**
+**All 15 Workflows Covered**
+**All 4 Roles Tested**
+**All 26 System Screens Included**
+
+**Coverage**:
+- ✅ Complete step-by-step instructions
+- ✅ Exact test data provided
+- ✅ UI element identifiers (data-testid)
+- ✅ Expected results after each step
+- ✅ Database validation queries
+- ✅ Edge cases and error scenarios
+- ✅ Post-condition verifications
+- ✅ End-to-end integration test
+
+**Ready for Comprehensive Testing!**
+
+---
+
+**End of Detailed Test Execution Guide**  
+*All 55 test cases fully documented with step-by-step instructions*
