@@ -1,5 +1,7 @@
 # KINTO Operations & QA Management System - Test Cases
 
+**Complete Test Coverage: 15 Workflows | 55 Test Cases**
+
 ## Role-Based Test Cases
 
 ### Roles Overview
