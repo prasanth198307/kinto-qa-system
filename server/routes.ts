@@ -3460,7 +3460,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (task) {
               // Verify sender matches assigned operator
               const assignedUser = await storage.getUser(task.assignedUserId);
-              if (!assignedUser || !assignedUser.mobile) {
+              if (!assignedUser || !assignedUser.mobileNumber) {
                 console.error(`Task ${taskRef}: No mobile number for assigned operator`);
                 await whatsappService.sendTextMessage({
                   to: from,
@@ -3472,14 +3472,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
               // Normalize both phone numbers for comparison (remove all non-digits)
               const normalizedFrom = from.replace(/\D/g, '');
-              const normalizedAssigned = assignedUser.mobile.replace(/\D/g, '');
+              const normalizedAssigned = assignedUser.mobileNumber.replace(/\D/g, '');
 
               // Compare last 10 digits (handles various country code formats)
               const fromLast10 = normalizedFrom.slice(-10);
               const assignedLast10 = normalizedAssigned.slice(-10);
 
               if (fromLast10 !== assignedLast10) {
-                console.warn(`Task ${taskRef}: Unauthorized sender ${from} (expected ${assignedUser.mobile})`);
+                console.warn(`Task ${taskRef}: Unauthorized sender ${from} (expected ${assignedUser.mobileNumber})`);
                 await whatsappService.sendTextMessage({
                   to: from,
                   message: `Task ${taskRef} is not assigned to this number.`
@@ -3540,7 +3540,183 @@ export async function registerRoutes(app: Express): Promise<Server> {
               });
             }
           } else {
-            console.log(`No valid task reference found in message: ${messageBody}`);
+            // Check for checklist reference (CL-XXXXXX)
+            const checklistRefMatch = messageBody.match(/CL-[A-Z0-9]{6}/i);
+            
+            if (checklistRefMatch) {
+              const taskRef = checklistRefMatch[0].toUpperCase();
+              console.log(`Found checklist reference: ${taskRef}`);
+
+              // Find the checklist assignment by reference ID
+              const assignment = await storage.getChecklistAssignmentByReference(taskRef);
+              
+              if (assignment) {
+                // Check if already completed
+                if (assignment.status === 'completed') {
+                  console.log(`Checklist ${taskRef} already completed`);
+                  await whatsappService.sendTextMessage({
+                    to: from,
+                    message: `Checklist ${taskRef} was already marked as completed.`
+                  });
+                  await whatsappService.markMessageAsRead(messageId);
+                  return;
+                }
+
+                // Verify sender matches assigned operator
+                const assignedOperator = await storage.getUser(assignment.operatorId);
+                if (!assignedOperator || !assignedOperator.mobileNumber) {
+                  console.error(`Checklist ${taskRef}: No mobile for assigned operator`);
+                  await whatsappService.sendTextMessage({
+                    to: from,
+                    message: `Checklist ${taskRef} verification failed. Contact administrator.`
+                  });
+                  await whatsappService.markMessageAsRead(messageId);
+                  return;
+                }
+
+                // Normalize phone numbers for comparison
+                const normalizedFrom = from.replace(/\D/g, '');
+                const normalizedAssigned = assignedOperator.mobileNumber.replace(/\D/g, '');
+                const fromLast10 = normalizedFrom.slice(-10);
+                const assignedLast10 = normalizedAssigned.slice(-10);
+
+                if (fromLast10 !== assignedLast10) {
+                  console.warn(`Checklist ${taskRef}: Unauthorized sender ${from} (expected ${assignedOperator.mobileNumber})`);
+                  await whatsappService.sendTextMessage({
+                    to: from,
+                    message: `Checklist ${taskRef} is not assigned to this number.`
+                  });
+                  await whatsappService.markMessageAsRead(messageId);
+                  return;
+                }
+
+                // Parse task results from message
+                // Expected format: "CL-ABC123 1:OK 2:NOK-broken parts 45C 3:OK"
+                const taskResults: { [key: number]: { status: string; remarks?: string } } = {};
+                const taskPattern = /(\d+):(OK|NOK|NA)(?:-(.+?))?(?=\s+\d+:|$)/gi;
+                let match;
+                
+                while ((match = taskPattern.exec(messageBody)) !== null) {
+                  const taskNum = parseInt(match[1]);
+                  const status = match[2].toUpperCase();
+                  const remarks = match[3]?.trim() || undefined;
+                  taskResults[taskNum] = { status, remarks };
+                }
+
+                // Load template tasks to validate
+                const templateTasks = await storage.getTemplateTasks(assignment.templateId);
+                if (!templateTasks || templateTasks.length === 0) {
+                  console.error(`Checklist ${taskRef}: No template tasks found`);
+                  await whatsappService.sendTextMessage({
+                    to: from,
+                    message: `Checklist ${taskRef} has no tasks defined. Contact administrator.`
+                  });
+                  await whatsappService.markMessageAsRead(messageId);
+                  return;
+                }
+
+                // Sort template tasks by orderIndex
+                const sortedTasks = templateTasks.sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
+
+                // Validate all tasks are completed
+                const missingTasks: number[] = [];
+                for (let i = 0; i < sortedTasks.length; i++) {
+                  if (!taskResults[i + 1]) {
+                    missingTasks.push(i + 1);
+                  }
+                }
+
+                if (missingTasks.length > 0) {
+                  console.warn(`Checklist ${taskRef}: Missing tasks ${missingTasks.join(', ')}`);
+                  await whatsappService.sendTextMessage({
+                    to: from,
+                    message: `Please complete ALL tasks. Missing: ${missingTasks.join(', ')}\n` +
+                      `Format: ${taskRef} 1:OK 2:OK 3:NOK-remarks`
+                  });
+                  await whatsappService.markMessageAsRead(messageId);
+                  return;
+                }
+
+                // Validate all status values are OK/NOK/NA
+                for (const [taskNum, result] of Object.entries(taskResults)) {
+                  if (!['OK', 'NOK', 'NA'].includes(result.status)) {
+                    console.warn(`Checklist ${taskRef}: Invalid status for task ${taskNum}: ${result.status}`);
+                    await whatsappService.sendTextMessage({
+                      to: from,
+                      message: `Invalid status for task ${taskNum}. Use: OK, NOK, or NA`
+                    });
+                    await whatsappService.markMessageAsRead(messageId);
+                    return;
+                  }
+                }
+
+                // Create submission with tasks
+                try {
+                  const submissionData = {
+                    templateId: assignment.templateId,
+                    machineId: assignment.machineId,
+                    operatorId: assignment.operatorId,
+                    reviewerId: assignment.reviewerId,
+                    status: 'pending',
+                    date: new Date(),
+                    shift: assignment.shift || 'Unknown',
+                    submittedAt: new Date()
+                  };
+
+                  const tasksData = sortedTasks.map((task, index) => {
+                    const result = taskResults[index + 1];
+                    return {
+                      taskName: task.taskName,
+                      result: result.status,
+                      remarks: result.remarks
+                    };
+                  });
+
+                  const { submission } = await storage.createChecklistSubmissionWithTasks(submissionData, tasksData);
+
+                  // Update assignment with response and link to submission
+                  await storage.updateChecklistAssignment(assignment.id, {
+                    status: 'completed',
+                    submissionId: submission.id,
+                    operatorResponse: messageBody,
+                    operatorResponseTime: new Date()
+                  } as any);
+
+                  console.log(`✅ Checklist ${taskRef} completed via WhatsApp, submission ${submission.id} created`);
+
+                  // Get machine name for confirmation
+                  const machine = await storage.getMachine(assignment.machineId);
+                  const confirmMsg = `Confirmed! Checklist for ${machine?.name || 'machine'} completed.\n` +
+                    `${sortedTasks.length} tasks submitted.\n` +
+                    `Status: Pending review`;
+                  
+                  await whatsappService.sendTextMessage({
+                    to: from,
+                    message: confirmMsg
+                  });
+
+                  // TODO: Notify reviewer if assigned
+                  if (assignment.reviewerId) {
+                    console.log(`TODO: Notify reviewer ${assignment.reviewerId} for submission ${submission.id}`);
+                  }
+
+                } catch (error) {
+                  console.error(`Checklist ${taskRef} submission error:`, error);
+                  await whatsappService.sendTextMessage({
+                    to: from,
+                    message: `Error creating submission for ${taskRef}. Please try again or contact administrator.`
+                  });
+                }
+              } else {
+                console.log(`Checklist not found: ${taskRef}`);
+                await whatsappService.sendTextMessage({
+                  to: from,
+                  message: `Checklist ${taskRef} not found. Please check the task ID.`
+                });
+              }
+            } else {
+              console.log(`No valid task reference found in message: ${messageBody}`);
+            }
           }
 
           // Mark message as read

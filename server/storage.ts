@@ -1603,6 +1603,54 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(submissionTasks).where(eq(submissionTasks.submissionId, submissionId));
   }
 
+  async getChecklistAssignmentByReference(taskReferenceId: string): Promise<ChecklistAssignment | undefined> {
+    const [assignment] = await db.select().from(checklistAssignments)
+      .where(and(
+        eq(checklistAssignments.taskReferenceId, taskReferenceId),
+        eq(checklistAssignments.recordStatus, 1)
+      ));
+    return assignment;
+  }
+
+  async createChecklistSubmissionWithTasks(
+    submissionData: {
+      templateId: string;
+      machineId: string;
+      operatorId: string;
+      reviewerId: string | null;
+      status: string;
+      date: Date;
+      shift: string;
+      submittedAt: Date;
+    },
+    tasks: Array<{
+      taskName: string;
+      result: string;
+      remarks?: string;
+    }>
+  ): Promise<{ submission: any; tasks: any[] }> {
+    return await db.transaction(async (tx) => {
+      // Create submission
+      const [submission] = await tx.insert(checklistSubmissions)
+        .values(submissionData)
+        .returning();
+
+      // Create submission tasks
+      const tasksData = tasks.map(task => ({
+        submissionId: submission.id,
+        taskName: task.taskName,
+        result: task.result,
+        remarks: task.remarks || null
+      }));
+
+      const createdTasks = await tx.insert(submissionTasks)
+        .values(tasksData)
+        .returning();
+
+      return { submission, tasks: createdTasks };
+    });
+  }
+
   async getMissedChecklistAssignments(): Promise<ChecklistAssignment[]> {
     const now = new Date();
     const assignments = await db.select().from(checklistAssignments)
