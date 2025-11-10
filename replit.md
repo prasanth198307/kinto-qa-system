@@ -81,3 +81,43 @@ The backend is an Express.js application built with TypeScript and Node.js. It f
 ### Other
 - Wouter (Routing)
 - TanStack Query (Server State Management)
+
+## Testing & Quality Assurance
+
+### Test Infrastructure
+- **Test Suite:** 55 comprehensive E2E test cases covering all major workflows
+- **Original Pass Rate:** 42/55 (76.4%)
+- **Current Estimated Pass Rate:** 48-52/55 (87-95%) after bug fixes
+
+### Test Credentials (E2E Testing)
+Four test users with known passwords configured for automated testing:
+- Admin: `admin` / `Admin@123`
+- Manager: `manager_test` / `Test@123`
+- Operator: `operator_test` / `Test@123`
+- Reviewer: `reviewer_test` / `Test@123`
+
+Documentation: See `TEST_CREDENTIALS.md` and `TEST_STATUS_SUMMARY.md`
+
+### Recent Bug Fixes
+
+#### Bug #7: Delete UX Standardization (FIXED)
+- **Issue:** Inconsistent delete confirmation UX across application
+- **Solution:** Created reusable `ConfirmDeleteDialog` component using shadcn AlertDialog
+- **Files:** Applied to 10 components (AdminUserManagement, AdminMachineConfig, RoleManagement, AdminMachineTypeConfig, BankManagement, PurchaseOrderManagement, AdminSparePartsManagement, AdminPMTaskListTemplates, MobileHeader, TopRightHeader)
+- **Impact:** Improved user experience and safety for all delete operations
+
+#### Bug #8: Reviewer Dashboard (FIXED)
+- **Issue:** Missing reviewer approval workflow for checklist submissions
+- **Solution:** Complete backend API + frontend page with three-tab interface
+- **Routes:** GET/PATCH `/api/checklist-submissions` with role-based authorization
+- **Files:** 
+  - `client/src/pages/ReviewerDashboard.tsx` (new)
+  - `server/routes.ts` (added endpoints)
+  - `server/storage.ts` (added methods)
+- **Features:** Pending Review, Reviewed, and All tabs with approve/reject actions
+
+#### Self-Deletion Prevention (FIXED)
+- **Issue:** Users could delete their own accounts causing session errors
+- **Solution:** Backend validation in DELETE `/api/users/:id` route
+- **Behavior:** Returns 400 error with message "Cannot delete your own account"
+- **Location:** `server/routes.ts` (lines 330-333)
