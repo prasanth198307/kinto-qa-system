@@ -5,6 +5,25 @@ KINTO Operations & QA is a comprehensive manufacturing operations and quality ma
 
 **Production Status:** ✅ READY FOR ON-PREMISES DEPLOYMENT (November 10, 2025)
 
+## Project Organization (Updated: November 10, 2025)
+
+### Documentation Structure
+All documentation has been organized into the `docs/` folder:
+- **`docs/deployment/`** - Deployment guides (start with ON_PREM_DEPLOYMENT_CHECKLIST.md)
+- **`docs/testing/`** - Test documentation and results
+- **`docs/guides/`** - User guides and system documentation
+
+### Scripts Organization
+- **`scripts/`** - Active utility scripts (create-test-users, generate-deployment-pdf)
+- **`scripts/legacy/`** - Old/archived scripts
+- **`database_scripts/`** - Database migrations and seed files
+
+### Root Directory
+Root now contains only essential configuration files:
+- Config files: package.json, tsconfig.json, vite.config.ts, drizzle.config.ts
+- Documentation: README.md (main), replit.md (architecture)
+- Core folders: client/, server/, shared/, docs/, scripts/
+
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
