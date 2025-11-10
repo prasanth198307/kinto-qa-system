@@ -1643,6 +1643,15 @@ export class DatabaseStorage implements IStorage {
     return task;
   }
 
+  async getMachineStartupTaskByReference(taskReferenceId: string): Promise<MachineStartupTask | undefined> {
+    const [task] = await db.select().from(machineStartupTasks)
+      .where(and(
+        eq(machineStartupTasks.taskReferenceId, taskReferenceId),
+        eq(machineStartupTasks.recordStatus, 1)
+      ));
+    return task;
+  }
+
   async getPendingStartupTasks(): Promise<MachineStartupTask[]> {
     return await db.select().from(machineStartupTasks)
       .where(and(
@@ -1673,11 +1682,23 @@ export class DatabaseStorage implements IStorage {
     machineStartedAt?: Date;
     whatsappSent?: number;
     emailSent?: number;
-  }): Promise<MachineStartupTask | undefined> {
+    operatorResponse?: string;
+    operatorResponseTime?: Date;
+    responseStatus?: 'on_time' | 'late' | 'early' | 'no_response';
+  }, onlyIfNotCompletedOrCancelled?: boolean): Promise<MachineStartupTask | undefined> {
+    const conditions = [eq(machineStartupTasks.id, id), eq(machineStartupTasks.recordStatus, 1)];
+    
+    // Add condition to prevent overwriting completed/cancelled tasks
+    if (onlyIfNotCompletedOrCancelled) {
+      conditions.push(
+        sql`${machineStartupTasks.status} NOT IN ('completed', 'cancelled')`
+      );
+    }
+
     const [updated] = await db
       .update(machineStartupTasks)
       .set({ ...updates, updatedAt: new Date() })
-      .where(and(eq(machineStartupTasks.id, id), eq(machineStartupTasks.recordStatus, 1)))
+      .where(and(...conditions))
       .returning();
     return updated;
   }

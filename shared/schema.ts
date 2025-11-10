@@ -1150,6 +1150,10 @@ export const machineStartupTasks = pgTable("machine_startup_tasks", {
   productionDate: date("production_date").notNull(), // Date of production
   shift: varchar("shift", { length: 50 }), // Morning, Evening, Night
   notes: text("notes"),
+  taskReferenceId: varchar("task_reference_id", { length: 50 }).unique(), // Unique ref like "MST-12345" for WhatsApp replies
+  operatorResponse: text("operator_response"), // WhatsApp reply from operator
+  operatorResponseTime: timestamp("operator_response_time"), // When operator replied via WhatsApp
+  responseStatus: varchar("response_status", { length: 20 }).default('no_response'), // on_time, late, no_response
   createdBy: varchar("created_by").references(() => users.id),
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at").defaultNow(),

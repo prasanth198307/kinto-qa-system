@@ -33,6 +33,7 @@ import ProductionManagement from "@/pages/production-management";
 import MachineStartupReminders from "@/pages/machine-startup-reminders";
 import NotificationSettings from "@/pages/notification-settings";
 import Reports from "@/pages/reports";
+import WhatsAppAnalytics from "@/pages/WhatsAppAnalytics";
 import TemplateManagement from "@/pages/template-management";
 import InventorySummaryDashboard from "@/components/InventorySummaryDashboard";
 import TodayProductionStats from "@/components/TodayProductionStats";
@@ -600,6 +601,7 @@ function AdminDashboard() {
         { id: "invoices", label: "Sales Invoices", icon: Receipt },
         { id: "dispatch-tracking", label: "Dispatch Tracking", icon: Truck },
         { id: "machine-startup-reminders", label: "Machine Startup Reminders", icon: Bell },
+        { id: "whatsapp-analytics", label: "WhatsApp Analytics", icon: TrendingUp },
       ],
       quickActions: [
         {
@@ -722,6 +724,8 @@ function AdminDashboard() {
         return <DispatchTracking />;
       case 'machine-startup-reminders':
         return <MachineStartupReminders />;
+      case 'whatsapp-analytics':
+        return <WhatsAppAnalytics />;
       case 'notification-settings':
         return <NotificationSettings />;
       case 'sales-dashboard':

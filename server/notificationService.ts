@@ -3,12 +3,13 @@
  * 
  * Supports both console logging (test mode) and real notification sending:
  * - SendGrid for Email
- * - Twilio for WhatsApp
+ * - Meta WhatsApp Cloud API for WhatsApp
  * 
  * Configuration stored in database, sensitive credentials in environment variables.
  */
 
 import { storage } from './storage';
+import { whatsappService } from './whatsappService';
 
 export interface NotificationResult {
   whatsappSent: boolean;
@@ -18,6 +19,18 @@ export interface NotificationResult {
 }
 
 export class NotificationService {
+  /**
+   * Generate unique task reference ID (e.g., MST-A1B2C3)
+   */
+  private generateTaskReference(): string {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let ref = 'MST-';
+    for (let i = 0; i < 6; i++) {
+      ref += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return ref;
+  }
+
   /**
    * Send machine startup reminder notification
    */
@@ -36,6 +49,12 @@ export class NotificationService {
       emailSent: false
     };
 
+    // Generate unique task reference ID for this reminder
+    const taskReferenceId = this.generateTaskReference();
+    
+    // Update task with reference ID
+    await storage.updateMachineStartupTask(taskId, { taskReferenceId });
+
     // Fetch notification configuration from database
     const config = await storage.getNotificationConfig();
 
@@ -47,6 +66,7 @@ export class NotificationService {
           userName,
           machineName,
           scheduledTime,
+          taskReferenceId,
           config
         );
         result.whatsappSent = true;
@@ -77,13 +97,14 @@ export class NotificationService {
   }
 
   /**
-   * Send WhatsApp message via Twilio (or console in test mode)
+   * Send WhatsApp message via Meta Cloud API (or console in test mode)
    */
   private async sendWhatsAppMessage(
     mobile: string,
     userName: string,
     machineName: string,
     scheduledTime: Date,
+    taskReferenceId: string,
     config: any
   ): Promise<void> {
     const formattedTime = scheduledTime.toLocaleString('en-IN', {
@@ -92,7 +113,9 @@ export class NotificationService {
       timeZone: 'Asia/Kolkata'
     });
 
-    const message = `KINTO Machine Startup Reminder
+    // Test mode - log to console
+    if (config.testMode === 1 || !process.env.WHATSAPP_PHONE_NUMBER_ID || !process.env.WHATSAPP_ACCESS_TOKEN) {
+      const message = `KINTO Machine Startup Reminder
 
 Hello ${userName},
 
@@ -100,12 +123,11 @@ Please start the following machine:
 Machine: ${machineName}
 Scheduled Time: ${formattedTime}
 
-Ensure the machine is properly warmed up before production begins.
+Reply "Done ${taskReferenceId}" when started
+Task ID: ${taskReferenceId}
 
 - KINTO QA System`;
 
-    // Test mode OR missing environment variables - log to console
-    if (config.testMode === 1 || !process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN) {
       console.log('\n' + '='.repeat(60));
       console.log('[WHATSAPP NOTIFICATION - TEST MODE]');
       console.log('='.repeat(60));
@@ -115,26 +137,42 @@ Ensure the machine is properly warmed up before production begins.
       return;
     }
 
-    // Production mode with environment variables configured
+    // Production mode with Meta WhatsApp Cloud API
     try {
-      const twilio = await import('twilio');
-      const client = twilio.default(
-        process.env.TWILIO_ACCOUNT_SID,
-        process.env.TWILIO_AUTH_TOKEN
+      // Format phone number for Meta API (expects: "919876543210" - country code + number without +)
+      let phoneNumber = mobile.replace(/\D/g, ''); // Remove non-digits
+      
+      // Handle various input formats
+      if (phoneNumber.startsWith('0')) {
+        // Remove leading zero (e.g., "09876543210" -> "9876543210")
+        phoneNumber = phoneNumber.substring(1);
+      }
+      
+      // Add country code if not present (assuming India +91)
+      if (!phoneNumber.startsWith('91') && phoneNumber.length === 10) {
+        phoneNumber = `91${phoneNumber}`;
+      } else if (phoneNumber.startsWith('91') && phoneNumber.length === 12) {
+        // Already has country code, use as is
+      } else {
+        console.warn(`[NOTIFICATION WARNING] Unusual phone number format: ${mobile} -> ${phoneNumber}`);
+      }
+
+      console.log(`[NOTIFICATION] Sending WhatsApp to ${phoneNumber}`);
+
+      const success = await whatsappService.sendMachineStartupReminder(
+        phoneNumber,
+        machineName,
+        formattedTime,
+        taskReferenceId
       );
 
-      const fromNumber = config.twilioPhoneNumber || 'whatsapp:+14155238886';
-      const toNumber = mobile.startsWith('whatsapp:') ? mobile : `whatsapp:+91${mobile}`;
-
-      await client.messages.create({
-        from: fromNumber,
-        to: toNumber,
-        body: message
-      });
-
-      console.log(`[WHATSAPP SENT] To: ${mobile}, Machine: ${machineName}`);
+      if (success) {
+        console.log(`[NOTIFICATION] WhatsApp sent successfully to ${phoneNumber}`);
+      } else {
+        throw new Error('WhatsApp send failed - check Meta API credentials');
+      }
     } catch (error) {
-      console.error('[WHATSAPP ERROR]', error);
+      console.error('[NOTIFICATION ERROR] Meta WhatsApp Cloud API failed:', error);
       throw error;
     }
   }

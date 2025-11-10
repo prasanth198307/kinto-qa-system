@@ -7,6 +7,7 @@ import { z } from "zod";
 import path from "path";
 import fs from "fs";
 import { db } from "./db";
+import { whatsappService } from "./whatsappService";
 
 // Simple audit logging function
 async function logAudit(userId: string | undefined, action: string, table: string, recordId: string, description: string) {
@@ -3390,6 +3391,170 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('[TEST ENDPOINT ERROR]', error);
       res.status(500).json({ message: "Failed to check missed checklists", error: String(error) });
+    }
+  });
+
+  // WhatsApp Webhook - Verification (GET)
+  app.get('/api/whatsapp/webhook', (req, res) => {
+    const mode = req.query['hub.mode'];
+    const token = req.query['hub.verify_token'];
+    const challenge = req.query['hub.challenge'];
+
+    const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
+
+    if (!VERIFY_TOKEN) {
+      console.error('❌ WHATSAPP_VERIFY_TOKEN not configured - webhook verification disabled');
+      return res.sendStatus(500);
+    }
+
+    if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+      console.log('✅ WhatsApp webhook verified');
+      res.status(200).send(challenge);
+    } else {
+      console.log('❌ WhatsApp webhook verification failed');
+      res.sendStatus(403);
+    }
+  });
+
+  // WhatsApp Webhook - Receive Messages (POST)
+  app.post('/api/whatsapp/webhook', async (req, res) => {
+    const body = req.body;
+
+    // Acknowledge receipt immediately (required by Meta)
+    res.sendStatus(200);
+
+    // Process webhook asynchronously
+    try {
+      if (body.object === 'whatsapp_business_account') {
+        const entry = body.entry?.[0];
+        const changes = entry?.changes?.[0];
+        const value = changes?.value;
+
+        // Handle incoming messages
+        if (value?.messages && value.messages[0]) {
+          const message = value.messages[0];
+          const from = message.from; // Sender's phone number
+          const messageId = message.id;
+
+          // Guard against non-text messages (buttons, images, etc.)
+          if (!message.text || !message.text.body) {
+            console.log(`Received non-text message type from ${from}, ignoring`);
+            await whatsappService.markMessageAsRead(messageId);
+            return;
+          }
+
+          const messageBody = message.text.body;
+          console.log(`WhatsApp message from ${from}: ${messageBody}`);
+
+          // Parse message for task reference
+          // Expected format: "Done MST-12345" or just "MST-12345"
+          const taskRefMatch = messageBody.match(/MST-[A-Z0-9]+/i);
+          
+          if (taskRefMatch) {
+            const taskRef = taskRefMatch[0].toUpperCase();
+            console.log(`Found task reference: ${taskRef}`);
+
+            // Find the task by reference ID
+            const task = await storage.getMachineStartupTaskByReference(taskRef);
+            
+            if (task) {
+              // Verify sender matches assigned operator
+              const assignedUser = await storage.getUser(task.assignedUserId);
+              if (!assignedUser || !assignedUser.mobile) {
+                console.error(`Task ${taskRef}: No mobile number for assigned operator`);
+                await whatsappService.sendTextMessage({
+                  to: from,
+                  message: `Task ${taskRef} verification failed. Contact administrator.`
+                });
+                await whatsappService.markMessageAsRead(messageId);
+                return;
+              }
+
+              // Normalize both phone numbers for comparison (remove all non-digits)
+              const normalizedFrom = from.replace(/\D/g, '');
+              const normalizedAssigned = assignedUser.mobile.replace(/\D/g, '');
+
+              // Compare last 10 digits (handles various country code formats)
+              const fromLast10 = normalizedFrom.slice(-10);
+              const assignedLast10 = normalizedAssigned.slice(-10);
+
+              if (fromLast10 !== assignedLast10) {
+                console.warn(`Task ${taskRef}: Unauthorized sender ${from} (expected ${assignedUser.mobile})`);
+                await whatsappService.sendTextMessage({
+                  to: from,
+                  message: `Task ${taskRef} is not assigned to this number.`
+                });
+                await whatsappService.markMessageAsRead(messageId);
+                return;
+              }
+
+              const responseTime = new Date();
+              const scheduledTime = new Date(task.scheduledStartTime);
+              const timeDiff = (responseTime.getTime() - scheduledTime.getTime()) / 1000 / 60; // Minutes
+              
+              // Determine response status (allow 15 min window before/after)
+              let responseStatus = 'on_time';
+              if (timeDiff > 15) {
+                responseStatus = 'late';
+              } else if (timeDiff < -15) {
+                responseStatus = 'early';
+              }
+
+              // Update task with operator response (atomic - only if not already completed/cancelled)
+              const updated = await storage.updateMachineStartupTask(task.id, {
+                operatorResponse: messageBody,
+                operatorResponseTime: responseTime,
+                responseStatus: responseStatus as any,
+                status: 'completed',
+                machineStartedAt: responseTime
+              }, true); // true = only update if not completed/cancelled
+
+              if (!updated) {
+                console.log(`Task ${taskRef} was already completed/cancelled in another process`);
+                await whatsappService.sendTextMessage({
+                  to: from,
+                  message: `Task ${taskRef} was already marked as completed.`
+                });
+                await whatsappService.markMessageAsRead(messageId);
+                return;
+              }
+
+              console.log(`Updated task ${taskRef}: ${responseStatus} (${Math.round(timeDiff)} min diff)`);
+
+              // Send confirmation reply (no emojis per design guidelines)
+              const machine = await storage.getMachine(task.machineId);
+              const statusText = responseStatus === 'on_time' ? 'On Time' : responseStatus === 'late' ? 'Late' : 'Early';
+              const confirmMsg = `Confirmed! Machine ${machine?.name || 'startup'} marked as started.\n` +
+                `Status: ${statusText}\n` +
+                `Time: ${Math.abs(Math.round(timeDiff))} min ${timeDiff > 0 ? 'after' : 'before'} scheduled`;
+              
+              await whatsappService.sendTextMessage({
+                to: from,
+                message: confirmMsg
+              });
+            } else {
+              console.log(`Task not found: ${taskRef}`);
+              await whatsappService.sendTextMessage({
+                to: from,
+                message: `Task ${taskRef} not found. Please check the task ID.`
+              });
+            }
+          } else {
+            console.log(`No valid task reference found in message: ${messageBody}`);
+          }
+
+          // Mark message as read
+          await whatsappService.markMessageAsRead(messageId);
+        }
+
+        // Handle message status updates (delivered, read, etc.)
+        if (value?.statuses && value.statuses[0]) {
+          const status = value.statuses[0];
+          console.log(`📊 WhatsApp status update: ${status.status} for message ${status.id}`);
+        }
+      }
+    } catch (error) {
+      console.error('❌ WhatsApp webhook processing error:', error);
     }
   });
 
