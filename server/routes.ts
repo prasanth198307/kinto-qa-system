@@ -3590,20 +3590,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   return;
                 }
 
-                // Parse task results from message
-                // Expected format: "CL-ABC123 1:OK 2:NOK-broken parts 45C 3:OK"
-                const taskResults: { [key: number]: { status: string; remarks?: string } } = {};
-                const taskPattern = /(\d+):(OK|NOK|NA)(?:-(.+?))?(?=\s+\d+:|$)/gi;
-                let match;
-                
-                while ((match = taskPattern.exec(messageBody)) !== null) {
-                  const taskNum = parseInt(match[1]);
-                  const status = match[2].toUpperCase();
-                  const remarks = match[3]?.trim() || undefined;
-                  taskResults[taskNum] = { status, remarks };
-                }
-
-                // Load template tasks to validate
+                // Load template tasks first
                 const templateTasks = await storage.getTemplateTasks(assignment.templateId);
                 if (!templateTasks || templateTasks.length === 0) {
                   console.error(`Checklist ${taskRef}: No template tasks found`);
@@ -3618,29 +3605,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 // Sort template tasks by orderIndex
                 const sortedTasks = templateTasks.sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
 
-                // Validate all tasks are completed
-                const missingTasks: number[] = [];
-                for (let i = 0; i < sortedTasks.length; i++) {
-                  if (!taskResults[i + 1]) {
-                    missingTasks.push(i + 1);
+                // Check for explicit DONE command
+                // Must appear as standalone word, not in remarks (not after "-" in task syntax)
+                // Valid: "CL-123 DONE", "CL-123 1:OK 2:OK DONE", "CL-123 DONE.", "CL-123 DONE please confirm"
+                // Invalid: "CL-123 2:NOK-already done" (done is part of remark, will be stripped)
+                // Escape taskRef to prevent regex issues with special characters
+                const escapedTaskRef = taskRef.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                // Remove ALL occurrences of task reference (handles greetings like "Hi team CL-123 1:OK DONE")
+                const afterTaskRef = messageBody.replace(new RegExp(escapedTaskRef, 'gi'), '').trim();
+                // Remove all parsed task segments (format: "1:OK" or "2:NOK-remarks with spaces")
+                // Use same tempered greedy token pattern as main task parser (case-sensitive DONE matching)
+                const withoutTasks = afterTaskRef.replace(/\d+:[A-Za-z]+(?:-((?:(?!\s+\d+:|\s+DONE\b).)+))?/g, '').trim();
+                // Check for DONE (uppercase only, case-sensitive) in remaining text
+                // This prevents false positives from lowercase "done" in remarks like "already done"
+                // Operator must use uppercase "DONE" to trigger submission
+                const isDoneCommand = /\bDONE\b/.test(withoutTasks);
+
+                // Parse task results from message
+                // Supports both incremental (single task) and bulk (all tasks)
+                // Format: "CL-ABC123 2:NOK-broken" or "CL-ABC123 1:OK thanks" or "CL-ABC123 1:ok 2:Ok DONE"
+                const taskResults: { [key: number]: { status: string; remarks?: string } } = {};
+                // Use tempered greedy token for remarks: consume everything except when next task/DONE ahead
+                // IMPORTANT: No 'i' flag - makes DONE matching case-sensitive (prevents "done" in remarks from triggering)
+                // Status captures any letters (case-insensitive), then validates after normalization
+                const taskPattern = /(\d+):([A-Za-z]+)(?:-((?:(?!\s+\d+:|\s+DONE\b).)+))?/g;
+                let match;
+                
+                while ((match = taskPattern.exec(messageBody)) !== null) {
+                  const taskNum = parseInt(match[1]);
+                  const status = match[2].toUpperCase();
+                  const remarks = match[3]?.trim() || undefined;
+                  
+                  // Validate task number is within range
+                  if (taskNum < 1 || taskNum > sortedTasks.length) {
+                    console.warn(`Checklist ${taskRef}: Invalid task number ${taskNum} (valid range: 1-${sortedTasks.length})`);
+                    await whatsappService.sendTextMessage({
+                      to: from,
+                      message: `Invalid task number ${taskNum}. Valid tasks: 1-${sortedTasks.length}`
+                    });
+                    await whatsappService.markMessageAsRead(messageId);
+                    return;
                   }
-                }
-
-                if (missingTasks.length > 0) {
-                  console.warn(`Checklist ${taskRef}: Missing tasks ${missingTasks.join(', ')}`);
-                  await whatsappService.sendTextMessage({
-                    to: from,
-                    message: `Please complete ALL tasks. Missing: ${missingTasks.join(', ')}\n` +
-                      `Format: ${taskRef} 1:OK 2:OK 3:NOK-remarks`
-                  });
-                  await whatsappService.markMessageAsRead(messageId);
-                  return;
-                }
-
-                // Validate all status values are OK/NOK/NA
-                for (const [taskNum, result] of Object.entries(taskResults)) {
-                  if (!['OK', 'NOK', 'NA'].includes(result.status)) {
-                    console.warn(`Checklist ${taskRef}: Invalid status for task ${taskNum}: ${result.status}`);
+                  
+                  // Validate status value
+                  if (!['OK', 'NOK', 'NA'].includes(status)) {
+                    console.warn(`Checklist ${taskRef}: Invalid status for task ${taskNum}: ${status}`);
                     await whatsappService.sendTextMessage({
                       to: from,
                       message: `Invalid status for task ${taskNum}. Use: OK, NOK, or NA`
@@ -3648,9 +3657,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     await whatsappService.markMessageAsRead(messageId);
                     return;
                   }
+                  
+                  taskResults[taskNum] = { status, remarks };
                 }
 
-                // Create submission with tasks
+                // If no tasks parsed and no DONE command, provide help
+                if (Object.keys(taskResults).length === 0 && !isDoneCommand) {
+                  await whatsappService.sendTextMessage({
+                    to: from,
+                    message: `Format: ${taskRef} <task>:<status>-<remarks>\n` +
+                      `Example: ${taskRef} 1:OK or ${taskRef} 2:NOK-broken part\n` +
+                      `Send "DONE" to submit current progress.`
+                  });
+                  await whatsappService.markMessageAsRead(messageId);
+                  return;
+                }
+
+                // Store partial answers (upsert each task)
+                for (const [taskNumStr, result] of Object.entries(taskResults)) {
+                  const taskNum = parseInt(taskNumStr);
+                  const task = sortedTasks[taskNum - 1];
+                  
+                  await storage.upsertPartialTaskAnswer({
+                    assignmentId: assignment.id,
+                    taskOrder: taskNum,
+                    taskName: task.taskName,
+                    status: result.status,
+                    remarks: result.remarks || null,
+                    answeredAt: new Date(),
+                    answeredBy: assignment.operatorId
+                  });
+                  
+                  console.log(`Stored answer for ${taskRef} task ${taskNum}: ${result.status}${result.remarks ? ' - ' + result.remarks : ''}`);
+                }
+
+                // Get current progress
+                const progress = await storage.getPartialTaskProgress(assignment.id, sortedTasks.length);
+                const remainingTasks = progress.total - progress.completed;
+
+                // Check if submission should be created
+                const shouldSubmit = isDoneCommand || remainingTasks === 0;
+
+                if (!shouldSubmit) {
+                  // Send progress notification
+                  const progressMsg = `Task ${Object.keys(taskResults).join(', ')} recorded.\n` +
+                    `Progress: ${progress.completed}/${progress.total} tasks (${progress.percentage}%)\n` +
+                    `Remaining: ${remainingTasks} task${remainingTasks === 1 ? '' : 's'}\n` +
+                    `Send more tasks or "DONE" to submit.`;
+                  
+                  await whatsappService.sendTextMessage({
+                    to: from,
+                    message: progressMsg
+                  });
+                  
+                  await whatsappService.markMessageAsRead(messageId);
+                  return;
+                }
+
+                // Auto-submit when all tasks completed or DONE command received
+                const missingTasks: number[] = [];
+                for (let i = 0; i < sortedTasks.length; i++) {
+                  const taskNum = i + 1;
+                  const hasAnswer = progress.answers.some(a => a.taskOrder === taskNum);
+                  if (!hasAnswer) {
+                    missingTasks.push(taskNum);
+                  }
+                }
+
+                if (missingTasks.length > 0 && isDoneCommand) {
+                  console.warn(`Checklist ${taskRef}: DONE command with missing tasks ${missingTasks.join(', ')}`);
+                  await whatsappService.sendTextMessage({
+                    to: from,
+                    message: `Cannot submit. Missing tasks: ${missingTasks.join(', ')}\n` +
+                      `Please complete all tasks before sending DONE.`
+                  });
+                  await whatsappService.markMessageAsRead(messageId);
+                  return;
+                }
+
+                // Create submission with all stored partial answers
                 try {
                   const submissionData = {
                     templateId: assignment.templateId,
@@ -3663,12 +3748,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     submittedAt: new Date()
                   };
 
+                  // Build tasks data from stored partial answers
                   const tasksData = sortedTasks.map((task, index) => {
-                    const result = taskResults[index + 1];
+                    const taskNum = index + 1;
+                    const answer = progress.answers.find(a => a.taskOrder === taskNum);
+                    
+                    if (!answer) {
+                      throw new Error(`Missing answer for task ${taskNum}`);
+                    }
+                    
                     return {
                       taskName: task.taskName,
-                      result: result.status,
-                      remarks: result.remarks
+                      result: answer.status,
+                      remarks: answer.remarks || undefined
                     };
                   });
 
@@ -3678,11 +3770,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   await storage.updateChecklistAssignment(assignment.id, {
                     status: 'completed',
                     submissionId: submission.id,
-                    operatorResponse: messageBody,
+                    operatorResponse: isDoneCommand ? `DONE command (${progress.completed} tasks)` : messageBody,
                     operatorResponseTime: new Date()
                   } as any);
 
-                  console.log(`✅ Checklist ${taskRef} completed via WhatsApp, submission ${submission.id} created`);
+                  // Clean up partial answers after successful submission
+                  await storage.deletePartialTaskAnswers(assignment.id);
+
+                  console.log(`✅ Checklist ${taskRef} completed via WhatsApp (incremental), submission ${submission.id} created`);
 
                   // Get machine name for confirmation
                   const machine = await storage.getMachine(assignment.machineId);
