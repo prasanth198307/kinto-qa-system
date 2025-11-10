@@ -10,6 +10,7 @@ These are **optional** migration scripts. The main schema in `database_scripts/0
 
 1. **20251106_163500_production_management.sql** - Production management features
 2. **20251107_020000_notification_config.sql** - Notification configuration
+3. **20251110_incremental_whatsapp_checklist.sql** - Incremental WhatsApp checklist completion with partial_task_answers table
 
 ---
 
@@ -32,6 +33,7 @@ psql -U postgres -d kinto_qa
 # Apply migrations in order
 \i updated_dbscripts/20251106_163500_production_management.sql
 \i updated_dbscripts/20251107_020000_notification_config.sql
+\i updated_dbscripts/20251110_incremental_whatsapp_checklist.sql
 ```
 
 ---
