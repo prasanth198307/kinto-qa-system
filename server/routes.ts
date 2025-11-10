@@ -3148,7 +3148,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // SECURITY: Only assigned reviewer can approve/reject (unless admin/manager)
       const user = await storage.getUser(req.user.id);
-      const userRole = user?.role || '';
+      if (!user || !user.roleId) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      const userRoleData = await storage.getUserRole(user.roleId);
+      const userRole = userRoleData?.name || '';
       
       if (userRole === 'reviewer' && submission.reviewerId !== req.user.id) {
         console.log(`[AUDIT] Reviewer ${req.user.id} attempted to modify submission ${id} not assigned to them`);
@@ -3207,7 +3211,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // If user is operator, filter to only their tasks
       const user = await storage.getUser(req.user.id);
-      const userRole = user?.role || 'operator';
+      if (!user || !user.roleId) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      const userRoleData = await storage.getUserRole(user.roleId);
+      const userRole = userRoleData?.name || 'operator';
       
       if (userRole === 'operator') {
         tasks = tasks.filter(t => t.assignedUserId === req.user.id);
@@ -3231,7 +3239,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // If user is operator, only allow viewing their own tasks
       const user = await storage.getUser(req.user.id);
-      const userRole = user?.role || 'operator';
+      if (!user || !user.roleId) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      const userRoleData = await storage.getUserRole(user.roleId);
+      const userRole = userRoleData?.name || 'operator';
       
       if (userRole === 'operator' && task.assignedUserId !== req.user.id) {
         return res.status(403).json({ message: "Access denied" });
@@ -3255,7 +3267,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Operators can only mark their own tasks as completed
       const user = await storage.getUser(req.user.id);
-      const userRole = user?.role || 'operator';
+      if (!user || !user.roleId) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      const userRoleData = await storage.getUserRole(user.roleId);
+      const userRole = userRoleData?.name || 'operator';
       
       if (userRole === 'operator') {
         if (task.assignedUserId !== req.user.id) {
