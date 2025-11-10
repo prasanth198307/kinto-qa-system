@@ -16,7 +16,9 @@ interface NotificationConfig {
   senderEmail: string | null;
   senderName: string | null;
   whatsappEnabled: number;
-  twilioPhoneNumber: string | null;
+  metaPhoneNumberId: string | null;
+  metaAccessToken: string | null;
+  metaVerifyToken: string | null;
   testMode: number;
 }
 
@@ -33,7 +35,9 @@ export default function NotificationSettings() {
     senderEmail: "",
     senderName: "",
     whatsappEnabled: false,
-    twilioPhoneNumber: "",
+    metaPhoneNumberId: "",
+    metaAccessToken: "",
+    metaVerifyToken: "",
     testMode: true,
   });
 
@@ -44,7 +48,9 @@ export default function NotificationSettings() {
         senderEmail: config.senderEmail || "",
         senderName: config.senderName || "",
         whatsappEnabled: config.whatsappEnabled === 1,
-        twilioPhoneNumber: config.twilioPhoneNumber || "",
+        metaPhoneNumberId: config.metaPhoneNumberId || "",
+        metaAccessToken: config.metaAccessToken || "",
+        metaVerifyToken: config.metaVerifyToken || "",
         testMode: config.testMode === 1,
       });
     }
@@ -57,7 +63,9 @@ export default function NotificationSettings() {
         senderEmail: data.senderEmail || null,
         senderName: data.senderName || null,
         whatsappEnabled: data.whatsappEnabled ? 1 : 0,
-        twilioPhoneNumber: data.twilioPhoneNumber || null,
+        metaPhoneNumberId: data.metaPhoneNumberId || null,
+        metaAccessToken: data.metaAccessToken || null,
+        metaVerifyToken: data.metaVerifyToken || null,
         testMode: data.testMode ? 1 : 0,
       };
       
@@ -114,14 +122,15 @@ export default function NotificationSettings() {
         <AlertTitle>On-Premise Deployment Setup</AlertTitle>
         <AlertDescription>
           <div className="space-y-2 mt-2">
-            <p>For production use, set these environment variables on your server:</p>
+            <p>For production use, you can configure notification settings here OR set environment variables on your server:</p>
             <ul className="list-disc list-inside space-y-1 text-sm">
-              <li><code className="bg-muted px-1 rounded">SENDGRID_API_KEY</code> - Your SendGrid API key</li>
-              <li><code className="bg-muted px-1 rounded">TWILIO_ACCOUNT_SID</code> - Your Twilio Account SID</li>
-              <li><code className="bg-muted px-1 rounded">TWILIO_AUTH_TOKEN</code> - Your Twilio Auth Token</li>
+              <li><code className="bg-muted px-1 rounded">SENDGRID_API_KEY</code> - SendGrid API key for email</li>
+              <li><code className="bg-muted px-1 rounded">WHATSAPP_PHONE_NUMBER_ID</code> - Meta WhatsApp Phone Number ID</li>
+              <li><code className="bg-muted px-1 rounded">WHATSAPP_ACCESS_TOKEN</code> - Meta WhatsApp Access Token</li>
+              <li><code className="bg-muted px-1 rounded">WHATSAPP_VERIFY_TOKEN</code> - Webhook verification token (required)</li>
             </ul>
             <p className="text-sm mt-2">
-              Install required packages: <code className="bg-muted px-1 rounded">npm install @sendgrid/mail twilio</code>
+              Database settings take precedence over environment variables.
             </p>
           </div>
         </AlertDescription>
@@ -185,8 +194,8 @@ export default function NotificationSettings() {
               <div className="flex items-center gap-2">
                 <MessageSquare className="w-5 h-5" />
                 <div>
-                  <CardTitle>WhatsApp Notifications (Twilio)</CardTitle>
-                  <CardDescription>Configure WhatsApp notifications via Twilio</CardDescription>
+                  <CardTitle>WhatsApp Notifications (Meta Business Cloud API)</CardTitle>
+                  <CardDescription>Configure WhatsApp via Meta Business Cloud API (2.4x cheaper, FREE service conversations)</CardDescription>
                 </div>
               </div>
               <Switch
@@ -198,26 +207,58 @@ export default function NotificationSettings() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="twilioPhone">Twilio WhatsApp Number</Label>
+              <Label htmlFor="metaPhoneNumberId">Meta Phone Number ID</Label>
               <Input
-                id="twilioPhone"
+                id="metaPhoneNumberId"
                 type="text"
-                placeholder="whatsapp:+14155238886"
-                value={formData.twilioPhoneNumber}
-                onChange={(e) => setFormData({ ...formData, twilioPhoneNumber: e.target.value })}
+                placeholder="123456789012345"
+                value={formData.metaPhoneNumberId}
+                onChange={(e) => setFormData({ ...formData, metaPhoneNumberId: e.target.value })}
                 disabled={!formData.whatsappEnabled}
-                data-testid="input-twilio-phone"
+                data-testid="input-meta-phone-id"
               />
               <p className="text-sm text-muted-foreground">
-                Use format: whatsapp:+[country code][phone number] (e.g., whatsapp:+14155238886 for Twilio sandbox)
+                Get this from Meta Business Manager under WhatsApp &gt; API Setup
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="metaAccessToken">Meta Access Token</Label>
+              <Input
+                id="metaAccessToken"
+                type="password"
+                placeholder="EAAxxxxxxxxxxxxxxxxx"
+                value={formData.metaAccessToken}
+                onChange={(e) => setFormData({ ...formData, metaAccessToken: e.target.value })}
+                disabled={!formData.whatsappEnabled}
+                data-testid="input-meta-access-token"
+              />
+              <p className="text-sm text-muted-foreground">
+                Generate a permanent access token from your Meta Business App
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="metaVerifyToken">Webhook Verify Token</Label>
+              <Input
+                id="metaVerifyToken"
+                type="text"
+                placeholder="your_secure_random_token_123"
+                value={formData.metaVerifyToken}
+                onChange={(e) => setFormData({ ...formData, metaVerifyToken: e.target.value })}
+                disabled={!formData.whatsappEnabled}
+                data-testid="input-meta-verify-token"
+              />
+              <p className="text-sm text-muted-foreground">
+                Create a secure random token for webhook verification (REQUIRED for security)
               </p>
             </div>
 
             <Alert>
               <AlertCircle className="w-4 h-4" />
               <AlertDescription className="text-sm">
-                <strong>Production Setup:</strong> Register a dedicated WhatsApp Business number through Twilio.
-                The sandbox number is for testing only.
+                <strong>Setup Guide:</strong> Create a Meta Business App, add WhatsApp product, configure webhook with verify token.
+                Webhook URL: <code className="bg-muted px-1 rounded">/api/whatsapp/webhook</code>
               </AlertDescription>
             </Alert>
           </CardContent>

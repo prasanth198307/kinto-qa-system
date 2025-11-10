@@ -1173,16 +1173,18 @@ export const insertMachineStartupTaskSchema = createInsertSchema(machineStartupT
 export type InsertMachineStartupTask = z.infer<typeof insertMachineStartupTaskSchema>;
 export type MachineStartupTask = typeof machineStartupTasks.$inferSelect;
 
-// Notification Configuration - for SendGrid and Twilio settings
+// Notification Configuration - for SendGrid and Meta WhatsApp Cloud API settings
 export const notificationConfig = pgTable("notification_config", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   // Email Settings (SendGrid)
   emailEnabled: integer("email_enabled").default(0).notNull(), // 1 = enabled, 0 = disabled
   senderEmail: varchar("sender_email", { length: 255 }), // Verified sender email in SendGrid
   senderName: varchar("sender_name", { length: 255 }), // Sender name for emails
-  // WhatsApp Settings (Twilio)
+  // WhatsApp Settings (Meta Business Cloud API)
   whatsappEnabled: integer("whatsapp_enabled").default(0).notNull(), // 1 = enabled, 0 = disabled
-  twilioPhoneNumber: varchar("twilio_phone_number", { length: 50 }), // Twilio WhatsApp number (e.g., whatsapp:+14155238886)
+  metaPhoneNumberId: varchar("meta_phone_number_id", { length: 255 }), // Meta WhatsApp Phone Number ID
+  metaAccessToken: text("meta_access_token"), // Meta WhatsApp Access Token (long-lived)
+  metaVerifyToken: varchar("meta_verify_token", { length: 255 }), // Webhook verification token (required)
   // General Settings
   testMode: integer("test_mode").default(1).notNull(), // 1 = console logging only, 0 = real sending
   recordStatus: integer("record_status").default(1).notNull(),
