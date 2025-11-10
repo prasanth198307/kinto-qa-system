@@ -209,6 +209,27 @@ export const insertChecklistAssignmentSchema = createInsertSchema(checklistAssig
 export type InsertChecklistAssignment = z.infer<typeof insertChecklistAssignmentSchema>;
 export type ChecklistAssignment = typeof checklistAssignments.$inferSelect;
 
+// Partial task answers (for incremental WhatsApp completion)
+export const partialTaskAnswers = pgTable("partial_task_answers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  assignmentId: varchar("assignment_id").references(() => checklistAssignments.id).notNull(),
+  taskOrder: integer("task_order").notNull(),
+  taskName: varchar("task_name", { length: 255 }).notNull(),
+  status: varchar("status", { length: 10 }).notNull(), // OK, NOK, NA
+  remarks: text("remarks"),
+  answeredAt: timestamp("answered_at").defaultNow().notNull(),
+  answeredBy: varchar("answered_by").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPartialTaskAnswerSchema = createInsertSchema(partialTaskAnswers).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPartialTaskAnswer = z.infer<typeof insertPartialTaskAnswerSchema>;
+export type PartialTaskAnswer = typeof partialTaskAnswers.$inferSelect;
+
 // Checklist submissions
 export const checklistSubmissions = pgTable("checklist_submissions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

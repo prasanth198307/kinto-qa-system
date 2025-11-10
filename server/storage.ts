@@ -33,6 +33,7 @@ import {
   checklistAssignments,
   checklistSubmissions,
   submissionTasks,
+  partialTaskAnswers,
   machineStartupTasks,
   notificationConfig,
   type User,
@@ -42,6 +43,8 @@ import {
   type InsertMachine,
   type ChecklistTemplate,
   type TemplateTask,
+  type PartialTaskAnswer,
+  type InsertPartialTaskAnswer,
   type SparePartCatalog,
   type MachineType,
   type InsertMachineType,
@@ -1662,6 +1665,65 @@ export class DatabaseStorage implements IStorage {
     
     // Filter assignments where dueDateTime is in the past
     return assignments.filter(a => a.dueDateTime && new Date(a.dueDateTime) < now);
+  }
+
+  // Partial Task Answers (for incremental WhatsApp completion)
+  async upsertPartialTaskAnswer(data: InsertPartialTaskAnswer): Promise<PartialTaskAnswer> {
+    // Check if answer already exists for this assignment and task order
+    const existing = await db.select().from(partialTaskAnswers)
+      .where(and(
+        eq(partialTaskAnswers.assignmentId, data.assignmentId),
+        eq(partialTaskAnswers.taskOrder, data.taskOrder)
+      ))
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      // Update existing answer
+      const [updated] = await db.update(partialTaskAnswers)
+        .set({
+          status: data.status,
+          remarks: data.remarks,
+          answeredAt: new Date(),
+        })
+        .where(eq(partialTaskAnswers.id, existing[0].id))
+        .returning();
+      return updated;
+    } else {
+      // Insert new answer
+      const [created] = await db.insert(partialTaskAnswers)
+        .values(data)
+        .returning();
+      return created;
+    }
+  }
+
+  async getPartialTaskAnswers(assignmentId: string): Promise<PartialTaskAnswer[]> {
+    return await db.select().from(partialTaskAnswers)
+      .where(eq(partialTaskAnswers.assignmentId, assignmentId))
+      .orderBy(partialTaskAnswers.taskOrder);
+  }
+
+  async getPartialTaskProgress(assignmentId: string, totalTasks: number): Promise<{
+    completed: number;
+    total: number;
+    percentage: number;
+    answers: PartialTaskAnswer[];
+  }> {
+    const answers = await this.getPartialTaskAnswers(assignmentId);
+    const completed = answers.length;
+    const percentage = totalTasks > 0 ? Math.round((completed / totalTasks) * 100) : 0;
+    
+    return {
+      completed,
+      total: totalTasks,
+      percentage,
+      answers
+    };
+  }
+
+  async deletePartialTaskAnswers(assignmentId: string): Promise<void> {
+    await db.delete(partialTaskAnswers)
+      .where(eq(partialTaskAnswers.assignmentId, assignmentId));
   }
 
   async getUsersByRole(roleName: string): Promise<User[]> {
