@@ -17,6 +17,8 @@ interface ConfirmDeleteDialogProps {
   title: string;
   description: string;
   isPending?: boolean;
+  confirmText?: string;
+  confirmVariant?: "default" | "destructive" | "outline" | "secondary" | "ghost";
 }
 
 export default function ConfirmDeleteDialog({
@@ -26,6 +28,8 @@ export default function ConfirmDeleteDialog({
   title,
   description,
   isPending = false,
+  confirmText = "Delete",
+  confirmVariant = "destructive",
 }: ConfirmDeleteDialogProps) {
   const handleOpenChange = (newOpen: boolean) => {
     if (!isPending) {
@@ -52,12 +56,12 @@ export default function ConfirmDeleteDialog({
           </AlertDialogCancel>
           <AlertDialogAction asChild>
             <Button
-              variant="destructive"
+              variant={confirmVariant}
               onClick={handleConfirm}
               disabled={isPending}
               data-testid="button-confirm-delete"
             >
-              {isPending ? "Deleting..." : "Delete"}
+              {isPending ? `${confirmText}...` : confirmText}
             </Button>
           </AlertDialogAction>
         </AlertDialogFooter>

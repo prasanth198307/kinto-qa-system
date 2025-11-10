@@ -73,6 +73,8 @@ export default function MobileHeader({
         title="Logout?"
         description="Are you sure you want to logout? You will need to log in again to access the system."
         isPending={false}
+        confirmText="Logout"
+        confirmVariant="default"
       />
     </header>
   );
