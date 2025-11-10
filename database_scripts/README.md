@@ -1,6 +1,14 @@
-# KINTO QA Database Scripts
+# KINTO Database Scripts
 
-This folder contains all necessary SQL scripts for on-premise deployment of the KINTO QA Management System.
+SQL scripts for database setup and initialization.
+
+## 📁 Files in This Folder
+
+### Core SQL Scripts (Execute in Order)
+1. **01_schema.sql** - Creates all database tables and schema
+2. **02_seed_data.sql** - Inserts default roles and admin user  
+3. **03_indexes.sql** - Creates performance indexes (optional but recommended)
+4. **03_test_users.sql** - Creates test users for testing (optional)
 
 ## Prerequisites
 
@@ -8,20 +16,67 @@ This folder contains all necessary SQL scripts for on-premise deployment of the 
 - Database user with CREATE, INSERT, UPDATE, DELETE privileges
 - Network access to the PostgreSQL server
 
-## Installation Order
+## Quick Start Installation
 
 Execute the scripts in the following order:
 
-1. **01_schema.sql** - Creates all database tables and schema (includes vendor master, raw material issuance, and gatepasses)
-2. **02_seed_data.sql** - Inserts default roles and admin user
-3. **03_indexes.sql** - Creates performance indexes (optional but recommended)
+1. **01_schema.sql** - Creates 27 tables with soft delete support
+2. **02_seed_data.sql** - Inserts 4 roles, admin user, and initial data
+3. **03_indexes.sql** - Creates 40+ performance indexes (optional but recommended)
+4. **03_test_users.sql** - Creates 4 test users (for testing only)
 
-## Latest Updates (v1.1.0 - Nov 2025)
+## 📊 What Gets Created
 
-The schema now includes:
-- **Vendor Master** - Complete vendor/customer management with address, GST, Aadhaar, mobile
-- **Raw Material Issuance** - Multi-item transaction system (header-detail pattern)
-- **Gatepasses** - Finished goods dispatch with vendor integration (header-detail pattern)
+### 01_schema.sql (27 Tables)
+**Core System:**
+- sessions, roles, role_permissions, users
+
+**Machine Management:**
+- machines, machine_types, machine_spares, spare_parts
+
+**Quality & Checklists:**
+- checklist_templates, checklist_template_tasks, checklist_assignments
+- checklist_submissions, checklist_submission_tasks
+
+**Preventive Maintenance:**
+- pm_task_lists, pm_task_list_items, pm_executions, pm_execution_items
+
+**Inventory & Materials:**
+- inventory_master, raw_material_issuance_headers, raw_material_issuance_details
+
+**Vendors & Customers:**
+- vendor_master (customers, suppliers, both)
+
+**Purchase & Invoicing:**
+- purchase_orders, purchase_order_items
+- invoice_templates, bank_details
+- invoices, invoice_items
+- gatepasses, gatepass_items
+
+**Reminders:**
+- machine_startup_tasks
+
+All tables include soft delete support (record_status field)
+
+### 02_seed_data.sql (Initial Data)
+- **4 Roles:** Admin, Manager, Operator, Reviewer
+- **1 Admin User:** admin / Admin@123
+- **60+ Permissions:** Screen-level access control
+- **8 Units:** Kg, Ltr, Nos, Mtr, Pcs, Box, Carton, Set
+- **5 Machine Types:** CNC, Lathe, Mill, Grinder, Press
+
+### 03_indexes.sql (40+ Indexes)
+- Performance indexes on all foreign keys
+- Composite indexes for common queries
+- Partial indexes for active records only
+- Full-text search support
+
+### 03_test_users.sql (Test Accounts)
+- manager_test / Test@123 (Manager)
+- operator_test / Test@123 (Operator)
+- reviewer_test / Test@123 (Reviewer)
+
+⚠️ **Delete test users before production deployment!**
 
 ## Execution Instructions
 
@@ -57,16 +112,28 @@ psql -U postgres -d kinto_qa -f 03_indexes.sql
 3. Right-click on database → SQL Editor → Execute SQL Script
 4. Select and execute each file in order
 
-## Default Admin Credentials
+## 🔐 Default Admin Credentials
 
-After running the seed data script, you can log in with:
+After running seed data:
 
 - **Username:** admin
 - **Password:** Admin@123
 - **Email:** admin@kinto.com
 - **Role:** Administrator
 
-**IMPORTANT:** Change the default admin password immediately after first login!
+⚠️ **IMPORTANT:** Change password immediately after first login!
+
+## ⚠️ Production Security
+
+Before deploying to production:
+
+1. **Change admin password** from Admin@123
+2. **Delete test users** (if you ran 03_test_users.sql):
+   ```sql
+   DELETE FROM users WHERE username IN ('manager_test', 'operator_test', 'reviewer_test');
+   ```
+3. **Review permissions** for each role
+4. **Backup database** before going live
 
 ## Database Configuration
 
