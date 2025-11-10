@@ -113,8 +113,21 @@ export class NotificationService {
       timeZone: 'Asia/Kolkata'
     });
 
+    // Set WhatsApp credentials dynamically (database takes precedence over env vars)
+    if (config.metaPhoneNumberId && config.metaAccessToken) {
+      whatsappService.setCredentials({
+        phoneNumberId: config.metaPhoneNumberId,
+        accessToken: config.metaAccessToken
+      });
+    } else if (process.env.WHATSAPP_PHONE_NUMBER_ID && process.env.WHATSAPP_ACCESS_TOKEN) {
+      whatsappService.setCredentials({
+        phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID,
+        accessToken: process.env.WHATSAPP_ACCESS_TOKEN
+      });
+    }
+
     // Test mode - log to console
-    if (config.testMode === 1 || !process.env.WHATSAPP_PHONE_NUMBER_ID || !process.env.WHATSAPP_ACCESS_TOKEN) {
+    if (config.testMode === 1) {
       const message = `KINTO Machine Startup Reminder
 
 Hello ${userName},
@@ -297,8 +310,21 @@ This checklist was not completed on time. Please take immediate action.
 
 - KINTO QA System`;
 
-    // Test mode OR missing environment variables - log to console
-    if (config.testMode === 1 || !process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN) {
+    // Set WhatsApp credentials dynamically (database takes precedence over env vars)
+    if (config.metaPhoneNumberId && config.metaAccessToken) {
+      whatsappService.setCredentials({
+        phoneNumberId: config.metaPhoneNumberId,
+        accessToken: config.metaAccessToken
+      });
+    } else if (process.env.WHATSAPP_PHONE_NUMBER_ID && process.env.WHATSAPP_ACCESS_TOKEN) {
+      whatsappService.setCredentials({
+        phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID,
+        accessToken: process.env.WHATSAPP_ACCESS_TOKEN
+      });
+    }
+
+    // Test mode - log to console
+    if (config.testMode === 1) {
       console.log('\n' + '='.repeat(60));
       console.log('[MISSED CHECKLIST WHATSAPP - TEST MODE]');
       console.log('='.repeat(60));
@@ -308,24 +334,29 @@ This checklist was not completed on time. Please take immediate action.
       return;
     }
 
-    // Production mode with environment variables configured
+    // Production mode with Meta WhatsApp Cloud API
     try {
-      const twilio = await import('twilio');
-      const client = twilio.default(
-        process.env.TWILIO_ACCOUNT_SID,
-        process.env.TWILIO_AUTH_TOKEN
-      );
+      // Format phone number for Meta API
+      let phoneNumber = mobile.replace(/\D/g, '');
+      
+      if (phoneNumber.startsWith('0')) {
+        phoneNumber = phoneNumber.substring(1);
+      }
+      
+      if (!phoneNumber.startsWith('91') && phoneNumber.length === 10) {
+        phoneNumber = `91${phoneNumber}`;
+      }
 
-      const fromNumber = config.twilioPhoneNumber || 'whatsapp:+14155238886';
-      const toNumber = mobile.startsWith('whatsapp:') ? mobile : `whatsapp:+91${mobile}`;
-
-      await client.messages.create({
-        from: fromNumber,
-        to: toNumber,
-        body: message
+      const success = await whatsappService.sendTextMessage({
+        to: phoneNumber,
+        message
       });
 
-      console.log(`[MISSED CHECKLIST WHATSAPP SENT] To: ${recipientName} (${mobile})`);
+      if (success) {
+        console.log(`[MISSED CHECKLIST WHATSAPP SENT] To: ${recipientName} (${phoneNumber})`);
+      } else {
+        throw new Error('WhatsApp send failed - check Meta API credentials');
+      }
     } catch (error) {
       console.error(`[WHATSAPP ERROR] Failed to send to ${recipientName}:`, error);
       // Don't throw - continue sending to other recipients
