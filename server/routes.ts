@@ -324,6 +324,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       
+      // Prevent self-deletion
+      if (id === req.user.id) {
+        return res.status(400).json({ message: "Cannot delete your own account" });
+      }
+      
       // Audit log
       console.log(`[AUDIT] Admin ${req.user.id} deleting user ${id}`);
       
