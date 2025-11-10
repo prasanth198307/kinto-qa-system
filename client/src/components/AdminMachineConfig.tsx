@@ -9,11 +9,14 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 import type { Machine, MachineType } from "@shared/schema";
 
 export default function AdminMachineConfig() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deletingMachineId, setDeletingMachineId] = useState<string | null>(null);
   const [editingMachine, setEditingMachine] = useState<Machine | null>(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -83,6 +86,8 @@ export default function AdminMachineConfig() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/machines'] });
+      setIsDeleteDialogOpen(false);
+      setDeletingMachineId(null);
       toast({
         title: "Machine deleted",
         description: "Machine has been deleted successfully.",
@@ -137,8 +142,20 @@ export default function AdminMachineConfig() {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this machine?')) {
-      deleteMutation.mutate(id);
+    setDeletingMachineId(id);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (deletingMachineId) {
+      deleteMutation.mutate(deletingMachineId);
+    }
+  };
+
+  const handleDeleteDialogClose = (open: boolean) => {
+    setIsDeleteDialogOpen(open);
+    if (!open) {
+      setDeletingMachineId(null);
     }
   };
 
@@ -348,6 +365,15 @@ export default function AdminMachineConfig() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDeleteDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={handleDeleteDialogClose}
+        onConfirm={confirmDelete}
+        title="Delete Machine?"
+        description="This action cannot be undone. This will permanently delete the machine from the system."
+        isPending={deleteMutation.isPending}
+      />
     </div>
   );
 }

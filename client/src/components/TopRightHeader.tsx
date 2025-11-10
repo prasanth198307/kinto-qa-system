@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Bell, LogOut } from "lucide-react";
+import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 
 interface TopRightHeaderProps {
   notificationCount?: number;
@@ -13,6 +15,21 @@ export function TopRightHeader({
   onLogoutClick,
   onNotificationClick,
 }: TopRightHeaderProps) {
+  const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
+
+  const handleLogoutClick = () => {
+    setIsLogoutDialogOpen(true);
+  };
+
+  const confirmLogout = () => {
+    setIsLogoutDialogOpen(false);
+    onLogoutClick();
+  };
+
+  const handleLogoutDialogClose = (open: boolean) => {
+    setIsLogoutDialogOpen(open);
+  };
+
   return (
     <div className="fixed top-0 right-0 h-14 bg-card border-b border-l border-border z-[100] flex items-center gap-2 px-4 shadow-sm lg:right-0 lg:left-auto">
       <div className="relative">
@@ -37,15 +54,20 @@ export function TopRightHeader({
       <Button
         size="icon"
         variant="ghost"
-        onClick={() => {
-          if (confirm('Are you sure you want to logout?')) {
-            onLogoutClick();
-          }
-        }}
+        onClick={handleLogoutClick}
         data-testid="button-logout"
       >
         <LogOut className="h-5 w-5" />
       </Button>
+
+      <ConfirmDeleteDialog
+        open={isLogoutDialogOpen}
+        onOpenChange={handleLogoutDialogClose}
+        onConfirm={confirmLogout}
+        title="Logout?"
+        description="Are you sure you want to logout? You will need to log in again to access the system."
+        isPending={false}
+      />
     </div>
   );
 }

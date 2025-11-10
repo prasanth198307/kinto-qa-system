@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { Bell, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 
 interface MobileHeaderProps {
   onLogoutClick?: () => void;
@@ -13,6 +15,21 @@ export default function MobileHeader({
   notificationCount = 0,
   title = "KINTO QA"
 }: MobileHeaderProps) {
+  const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
+
+  const handleLogoutClick = () => {
+    setIsLogoutDialogOpen(true);
+  };
+
+  const confirmLogout = () => {
+    setIsLogoutDialogOpen(false);
+    onLogoutClick?.();
+  };
+
+  const handleLogoutDialogClose = (open: boolean) => {
+    setIsLogoutDialogOpen(open);
+  };
+
   return (
     <header className="fixed top-0 left-0 right-0 h-14 bg-white border-b border-gray-200 shadow-sm z-[100]">
       <div className="flex items-center justify-between h-full px-4">
@@ -20,11 +37,7 @@ export default function MobileHeader({
           size="icon"
           variant="ghost"
           className="text-gray-700"
-          onClick={() => {
-            if (confirm('Are you sure you want to logout?')) {
-              onLogoutClick?.();
-            }
-          }}
+          onClick={handleLogoutClick}
           data-testid="button-logout"
         >
           <LogOut className="h-5 w-5" />
@@ -52,6 +65,15 @@ export default function MobileHeader({
           )}
         </div>
       </div>
+
+      <ConfirmDeleteDialog
+        open={isLogoutDialogOpen}
+        onOpenChange={handleLogoutDialogClose}
+        onConfirm={confirmLogout}
+        title="Logout?"
+        description="Are you sure you want to logout? You will need to log in again to access the system."
+        isPending={false}
+      />
     </header>
   );
 }

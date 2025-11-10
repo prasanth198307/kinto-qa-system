@@ -9,12 +9,15 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 import type { MachineType } from "@shared/schema";
 
 export default function AdminMachineTypeConfig() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingType, setEditingType] = useState<MachineType | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deletingMachineTypeId, setDeletingMachineTypeId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     description: ''
@@ -75,6 +78,8 @@ export default function AdminMachineTypeConfig() {
       return await apiRequest('DELETE', `/api/machine-types/${id}`);
     },
     onSuccess: () => {
+      setIsDeleteDialogOpen(false);
+      setDeletingMachineTypeId(null);
       queryClient.invalidateQueries({ queryKey: ['/api/machine-types'] });
       toast({
         title: "Machine type deleted",
@@ -121,8 +126,20 @@ export default function AdminMachineTypeConfig() {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this machine type?')) {
-      deleteMutation.mutate(id);
+    setDeletingMachineTypeId(id);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (deletingMachineTypeId) {
+      deleteMutation.mutate(deletingMachineTypeId);
+    }
+  };
+
+  const handleDeleteDialogClose = (open: boolean) => {
+    setIsDeleteDialogOpen(open);
+    if (!open) {
+      setDeletingMachineTypeId(null);
     }
   };
 
@@ -267,6 +284,15 @@ export default function AdminMachineTypeConfig() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDeleteDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={handleDeleteDialogClose}
+        onConfirm={confirmDelete}
+        title="Delete Machine Type?"
+        description="This action cannot be undone. This will permanently delete the machine type from the system."
+        isPending={deleteMutation.isPending}
+      />
     </div>
   );
 }

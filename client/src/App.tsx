@@ -44,6 +44,7 @@ import { OperatorAssignedChecklists } from "@/components/OperatorAssignedCheckli
 import { VerticalNavSidebar, type NavSection } from "@/components/VerticalNavSidebar";
 import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck } from "lucide-react";
 import SalesDashboard from "@/components/SalesDashboard";
+import ReviewerDashboardPage from "@/pages/ReviewerDashboard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -178,28 +179,50 @@ function OperatorDashboard() {
 
 function ReviewerDashboard() {
   const { logoutMutation } = useAuth();
-  const mockRecords = [
-    { id: '1', machine: 'RFC Machine', date: 'Oct 31, 2025', shift: 'Morning', operator: 'Ramesh Kumar', status: 'pending' as const },
-    { id: '2', machine: 'PET Blowing Machine', date: 'Oct 31, 2025', shift: 'Afternoon', operator: 'Priya Sharma', status: 'pending' as const },
+  const [activeView, setActiveView] = useState('submissions');
+
+  const handleLogout = () => {
+    logoutMutation.mutate();
+  };
+
+  const navSections: NavSection[] = [
+    {
+      id: "main",
+      items: [
+        {
+          id: "submissions",
+          label: "Review Submissions",
+          icon: ClipboardCheck,
+        },
+      ],
+    },
   ];
 
+  const renderContent = () => {
+    switch (activeView) {
+      case 'submissions':
+        return <ReviewerDashboardPage />;
+      default:
+        return <ReviewerDashboardPage />;
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex min-h-screen bg-background">
       <TopRightHeader 
-        notificationCount={2} 
-        onLogoutClick={() => logoutMutation.mutate()} 
+        notificationCount={0} 
+        onLogoutClick={handleLogout} 
       />
       
-      <div className="pt-14 p-4 space-y-4">
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-2">Pending Reviews</h3>
-          <p className="text-3xl font-bold text-primary">{mockRecords.length}</p>
-        </Card>
-
-        <div>
-          <h3 className="text-base font-semibold mb-3">Submissions to Review</h3>
-          <ChecklistHistoryTable records={mockRecords} />
-        </div>
+      <VerticalNavSidebar
+        sections={navSections}
+        activeItem={activeView}
+        onItemClick={setActiveView}
+        title="Reviewer Dashboard"
+      />
+      
+      <div className="flex-1 lg:ml-0 pt-14 pr-24 lg:pt-0 lg:pr-0">
+        {renderContent()}
       </div>
     </div>
   );

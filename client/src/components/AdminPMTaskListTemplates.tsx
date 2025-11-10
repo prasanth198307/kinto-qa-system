@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 import type { PMTaskListTemplate, PMTemplateTask, MachineType } from "@shared/schema";
 
 interface TaskFormData {
@@ -27,6 +28,8 @@ export default function AdminPMTaskListTemplates() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<PMTaskListTemplate | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null);
   const [templateName, setTemplateName] = useState('');
   const [templateDescription, setTemplateDescription] = useState('');
   const [selectedMachineType, setSelectedMachineType] = useState('');
@@ -76,6 +79,8 @@ export default function AdminPMTaskListTemplates() {
       return await apiRequest('DELETE', `/api/pm-task-list-templates/${id}`);
     },
     onSuccess: () => {
+      setIsDeleteDialogOpen(false);
+      setDeletingTemplateId(null);
       queryClient.invalidateQueries({ queryKey: ['/api/pm-task-list-templates'] });
       toast({
         title: "Template Deleted",
@@ -160,8 +165,20 @@ export default function AdminPMTaskListTemplates() {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this template? This action cannot be undone.")) {
-      deleteTemplateMutation.mutate(id);
+    setDeletingTemplateId(id);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (deletingTemplateId) {
+      deleteTemplateMutation.mutate(deletingTemplateId);
+    }
+  };
+
+  const handleDeleteDialogClose = (open: boolean) => {
+    setIsDeleteDialogOpen(open);
+    if (!open) {
+      setDeletingTemplateId(null);
     }
   };
 
@@ -469,6 +486,15 @@ export default function AdminPMTaskListTemplates() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDeleteDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={handleDeleteDialogClose}
+        onConfirm={confirmDelete}
+        title="Delete PM Task List Template?"
+        description="This action cannot be undone. This will permanently delete the template from the system."
+        isPending={deleteTemplateMutation.isPending}
+      />
     </div>
   );
 }

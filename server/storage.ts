@@ -31,6 +31,8 @@ import {
   termsConditions,
   banks,
   checklistAssignments,
+  checklistSubmissions,
+  submissionTasks,
   machineStartupTasks,
   notificationConfig,
   type User,
@@ -95,6 +97,8 @@ import {
   type InsertRolePermission,
   type ChecklistAssignment,
   type InsertChecklistAssignment,
+  type ChecklistSubmission,
+  type SubmissionTask,
   type MachineStartupTask,
   type InsertMachineStartupTask,
   type NotificationConfig,
@@ -312,6 +316,13 @@ export interface IStorage {
   getChecklistAssignmentsByDate(date: string): Promise<ChecklistAssignment[]>;
   updateChecklistAssignment(id: string, updates: Partial<InsertChecklistAssignment>): Promise<ChecklistAssignment | undefined>;
   deleteChecklistAssignment(id: string): Promise<void>;
+  
+  // Checklist Submissions
+  getAllChecklistSubmissions(): Promise<ChecklistSubmission[]>;
+  getChecklistSubmission(id: string): Promise<ChecklistSubmission | undefined>;
+  getChecklistSubmissionsByReviewer(reviewerId: string): Promise<ChecklistSubmission[]>;
+  updateChecklistSubmission(id: string, updates: Partial<ChecklistSubmission>): Promise<ChecklistSubmission | undefined>;
+  getSubmissionTasks(submissionId: string): Promise<SubmissionTask[]>;
   
   // Role Management
   createRole(role: InsertRole): Promise<Role>;
@@ -1551,6 +1562,34 @@ export class DatabaseStorage implements IStorage {
       .update(checklistAssignments)
       .set({ recordStatus: 0, updatedAt: new Date() })
       .where(eq(checklistAssignments.id, id));
+  }
+
+  // Checklist Submissions
+  async getAllChecklistSubmissions(): Promise<ChecklistSubmission[]> {
+    return await db.select().from(checklistSubmissions);
+  }
+
+  async getChecklistSubmission(id: string): Promise<ChecklistSubmission | undefined> {
+    const [submission] = await db.select().from(checklistSubmissions).where(eq(checklistSubmissions.id, id));
+    return submission;
+  }
+
+  async getChecklistSubmissionsByReviewer(reviewerId: string): Promise<ChecklistSubmission[]> {
+    return await db.select().from(checklistSubmissions)
+      .where(eq(checklistSubmissions.reviewerId, reviewerId));
+  }
+
+  async updateChecklistSubmission(id: string, updates: Partial<ChecklistSubmission>): Promise<ChecklistSubmission | undefined> {
+    const [updated] = await db
+      .update(checklistSubmissions)
+      .set(updates)
+      .where(eq(checklistSubmissions.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getSubmissionTasks(submissionId: string): Promise<SubmissionTask[]> {
+    return await db.select().from(submissionTasks).where(eq(submissionTasks.submissionId, submissionId));
   }
 
   async getMissedChecklistAssignments(): Promise<ChecklistAssignment[]> {

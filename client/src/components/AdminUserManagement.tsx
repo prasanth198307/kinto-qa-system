@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 
 interface UserWithRole {
   id: string;
@@ -27,6 +28,8 @@ export default function AdminUserManagement() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserWithRole | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   
   // Edit user form state
   const [editFirstName, setEditFirstName] = useState('');
@@ -98,6 +101,8 @@ export default function AdminUserManagement() {
       return await apiRequest('DELETE', `/api/users/${id}`, {});
     },
     onSuccess: () => {
+      setIsDeleteDialogOpen(false);
+      setDeletingUserId(null);
       queryClient.invalidateQueries({ queryKey: ['/api/users'] });
       toast({
         title: "User deleted",
@@ -180,9 +185,21 @@ export default function AdminUserManagement() {
     });
   };
 
-  const handleDeleteUser = (id: string, userName: string) => {
-    if (confirm(`Are you sure you want to delete user "${userName}"? This action cannot be undone.`)) {
-      deleteUserMutation.mutate(id);
+  const handleDeleteUser = (id: string) => {
+    setDeletingUserId(id);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (deletingUserId) {
+      deleteUserMutation.mutate(deletingUserId);
+    }
+  };
+
+  const handleDeleteDialogClose = (open: boolean) => {
+    setIsDeleteDialogOpen(open);
+    if (!open) {
+      setDeletingUserId(null);
     }
   };
 
@@ -281,7 +298,7 @@ export default function AdminUserManagement() {
                   <Button
                     variant="destructive"
                     size="sm"
-                    onClick={() => handleDeleteUser(user.id, user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username || 'this user')}
+                    onClick={() => handleDeleteUser(user.id)}
                     data-testid={`button-delete-${index}`}
                   >
                     <Trash2 className="h-4 w-4" />
@@ -468,6 +485,15 @@ export default function AdminUserManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDeleteDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={handleDeleteDialogClose}
+        onConfirm={confirmDelete}
+        title="Delete User?"
+        description="This action cannot be undone. This will permanently delete the user from the system."
+        isPending={deleteUserMutation.isPending}
+      />
     </div>
   );
 }

@@ -7,11 +7,14 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import BankForm from "@/components/BankForm";
 import BankTable from "@/components/BankTable";
+import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 import type { Bank } from "@shared/schema";
 
 export default function BankManagement() {
   const [showForm, setShowForm] = useState(false);
   const [editingBank, setEditingBank] = useState<Bank | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deletingBankId, setDeletingBankId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const { data: banks = [], isLoading } = useQuery<Bank[]>({
@@ -23,6 +26,8 @@ export default function BankManagement() {
       await apiRequest("DELETE", `/api/banks/${id}`);
     },
     onSuccess: () => {
+      setIsDeleteDialogOpen(false);
+      setDeletingBankId(null);
       queryClient.invalidateQueries({ queryKey: ["/api/banks"] });
       toast({
         title: "Success",
@@ -64,8 +69,20 @@ export default function BankManagement() {
   };
 
   const handleDelete = (bank: Bank) => {
-    if (confirm("Are you sure you want to delete this bank?")) {
-      deleteBankMutation.mutate(bank.id);
+    setDeletingBankId(bank.id);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (deletingBankId) {
+      deleteBankMutation.mutate(deletingBankId);
+    }
+  };
+
+  const handleDeleteDialogClose = (open: boolean) => {
+    setIsDeleteDialogOpen(open);
+    if (!open) {
+      setDeletingBankId(null);
     }
   };
 
@@ -104,6 +121,15 @@ export default function BankManagement() {
         onEdit={handleEdit}
         onDelete={handleDelete}
         onSetDefault={handleSetDefault}
+      />
+
+      <ConfirmDeleteDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={handleDeleteDialogClose}
+        onConfirm={confirmDelete}
+        title="Delete Bank?"
+        description="This action cannot be undone. This will permanently delete the bank from the system."
+        isPending={deleteBankMutation.isPending}
       />
     </Card>
   );

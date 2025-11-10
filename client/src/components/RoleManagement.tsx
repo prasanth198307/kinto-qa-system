@@ -10,6 +10,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Plus, Edit, Trash2, Shield, Check, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 
 interface Role {
   id: string;
@@ -66,6 +67,8 @@ export default function RoleManagement() {
   const [isPermissionsDialogOpen, setIsPermissionsDialogOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [permissionsRole, setPermissionsRole] = useState<Role | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deletingRoleId, setDeletingRoleId] = useState<string | null>(null);
   
   // Create role form
   const [newRoleName, setNewRoleName] = useState('');
@@ -140,6 +143,8 @@ export default function RoleManagement() {
       return await apiRequest('DELETE', `/api/roles/${id}`, {});
     },
     onSuccess: () => {
+      setIsDeleteDialogOpen(false);
+      setDeletingRoleId(null);
       queryClient.invalidateQueries({ queryKey: ['/api/roles'] });
       toast({
         title: "Role deleted",
@@ -237,8 +242,20 @@ export default function RoleManagement() {
       return;
     }
 
-    if (confirm(`Are you sure you want to delete the role "${role.name}"? This action cannot be undone.`)) {
-      deleteRoleMutation.mutate(role.id);
+    setDeletingRoleId(role.id);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (deletingRoleId) {
+      deleteRoleMutation.mutate(deletingRoleId);
+    }
+  };
+
+  const handleDeleteDialogClose = (open: boolean) => {
+    setIsDeleteDialogOpen(open);
+    if (!open) {
+      setDeletingRoleId(null);
     }
   };
 
@@ -580,6 +597,15 @@ export default function RoleManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDeleteDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={handleDeleteDialogClose}
+        onConfirm={confirmDelete}
+        title="Delete Role?"
+        description="This action cannot be undone. This will permanently delete the role from the system."
+        isPending={deleteRoleMutation.isPending}
+      />
     </div>
   );
 }

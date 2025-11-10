@@ -3079,6 +3079,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Checklist Submissions Routes
+  app.get('/api/checklist-submissions', isAuthenticated, async (req: any, res) => {
+    try {
+      const { reviewerId } = req.query;
+      let submissions;
+      
+      if (reviewerId) {
+        submissions = await storage.getChecklistSubmissionsByReviewer(reviewerId);
+      } else {
+        submissions = await storage.getAllChecklistSubmissions();
+      }
+      
+      res.json(submissions);
+    } catch (error) {
+      console.error("Error fetching checklist submissions:", error);
+      res.status(500).json({ message: "Failed to fetch checklist submissions" });
+    }
+  });
+
+  app.get('/api/checklist-submissions/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const submission = await storage.getChecklistSubmission(id);
+      
+      if (!submission) {
+        return res.status(404).json({ message: "Checklist submission not found" });
+      }
+      
+      res.json(submission);
+    } catch (error) {
+      console.error("Error fetching checklist submission:", error);
+      res.status(500).json({ message: "Failed to fetch checklist submission" });
+    }
+  });
+
+  app.get('/api/checklist-submissions/:id/tasks', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const tasks = await storage.getSubmissionTasks(id);
+      res.json(tasks);
+    } catch (error) {
+      console.error("Error fetching submission tasks:", error);
+      res.status(500).json({ message: "Failed to fetch submission tasks" });
+    }
+  });
+
+  app.patch('/api/checklist-submissions/:id', requireRole('reviewer', 'admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { status, reviewedAt, approvedAt } = req.body;
+      
+      // Validate status
+      if (!['pending', 'approved', 'rejected'].includes(status)) {
+        return res.status(400).json({ message: "Invalid status. Must be 'pending', 'approved', or 'rejected'" });
+      }
+      
+      // Get the submission to check authorization
+      const submission = await storage.getChecklistSubmission(id);
+      if (!submission) {
+        return res.status(404).json({ message: "Checklist submission not found" });
+      }
+      
+      // SECURITY: Only assigned reviewer can approve/reject (unless admin/manager)
+      const user = await storage.getUser(req.user.id);
+      const userRole = user?.role || '';
+      
+      if (userRole === 'reviewer' && submission.reviewerId !== req.user.id) {
+        console.log(`[AUDIT] Reviewer ${req.user.id} attempted to modify submission ${id} not assigned to them`);
+        return res.status(403).json({ message: "You can only approve/reject submissions assigned to you" });
+      }
+      
+      // Update the submission
+      const updated = await storage.updateChecklistSubmission(id, {
+        status,
+        reviewedAt: reviewedAt ? new Date(reviewedAt) : undefined,
+        approvedAt: approvedAt ? new Date(approvedAt) : undefined,
+      });
+      
+      console.log(`[AUDIT] User ${req.user.id} (${req.user.username}) updated checklist submission ${id} to status: ${status}`);
+      await logAudit(req.user.id, 'UPDATE', 'checklist_submissions', id, `Changed status to ${status}`);
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating checklist submission:", error);
+      res.status(500).json({ message: "Failed to update checklist submission" });
+    }
+  });
+
   // Machine Startup Tasks Routes
   app.post('/api/machine-startup-tasks', requireRole('admin', 'manager'), async (req: any, res) => {
     try {

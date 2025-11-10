@@ -12,12 +12,15 @@ import { useToast } from "@/hooks/use-toast";
 import type { PurchaseOrder, SparePartCatalog } from "@shared/schema";
 import { Package, AlertTriangle, CheckCircle, Clock, Plus, Trash2 } from "lucide-react";
 import PrintablePurchaseOrder from "@/components/PrintablePurchaseOrder";
+import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 
 export default function PurchaseOrderManagement() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedSparePartId, setSelectedSparePartId] = useState('');
   const [quantity, setQuantity] = useState('');
   const [urgencyLevel, setUrgencyLevel] = useState<'low' | 'medium' | 'high' | 'critical'>('medium');
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deletingPOId, setDeletingPOId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const { data: purchaseOrders = [] } = useQuery<PurchaseOrder[]>({
@@ -55,6 +58,8 @@ export default function PurchaseOrderManagement() {
       return await apiRequest('DELETE', `/api/purchase-orders/${id}`, {});
     },
     onSuccess: () => {
+      setIsDeleteDialogOpen(false);
+      setDeletingPOId(null);
       queryClient.invalidateQueries({ queryKey: ['/api/purchase-orders'] });
       toast({
         title: "Purchase Order Deleted",
@@ -111,8 +116,20 @@ export default function PurchaseOrderManagement() {
   };
 
   const handleDeletePO = (id: string) => {
-    if (confirm('Are you sure you want to delete this purchase order? This action cannot be undone.')) {
-      deletePOMutation.mutate(id);
+    setDeletingPOId(id);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (deletingPOId) {
+      deletePOMutation.mutate(deletingPOId);
+    }
+  };
+
+  const handleDeleteDialogClose = (open: boolean) => {
+    setIsDeleteDialogOpen(open);
+    if (!open) {
+      setDeletingPOId(null);
     }
   };
 
@@ -326,6 +343,15 @@ export default function PurchaseOrderManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDeleteDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={handleDeleteDialogClose}
+        onConfirm={confirmDelete}
+        title="Delete Purchase Order?"
+        description="This action cannot be undone. This will permanently delete the purchase order from the system."
+        isPending={deletePOMutation.isPending}
+      />
     </div>
   );
 }

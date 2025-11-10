@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { SparePartCatalog, Machine, MachineSpare } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 
 export default function AdminSparePartsManagement() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -21,6 +22,8 @@ export default function AdminSparePartsManagement() {
   const [editingSparePart, setEditingSparePart] = useState<SparePartCatalog | null>(null);
   const [selectedPartForMachines, setSelectedPartForMachines] = useState<SparePartCatalog | null>(null);
   const [selectedMachineIds, setSelectedMachineIds] = useState<string[]>([]);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deletingSparePartId, setDeletingSparePartId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     partName: '',
     partNumber: '',
@@ -90,6 +93,8 @@ export default function AdminSparePartsManagement() {
       return await apiRequest('DELETE', `/api/spare-parts/${id}`);
     },
     onSuccess: () => {
+      setIsDeleteDialogOpen(false);
+      setDeletingSparePartId(null);
       queryClient.invalidateQueries({ queryKey: ['/api/spare-parts'] });
       toast({
         title: "Spare part deleted",
@@ -246,8 +251,20 @@ export default function AdminSparePartsManagement() {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this spare part?')) {
-      deleteMutation.mutate(id);
+    setDeletingSparePartId(id);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (deletingSparePartId) {
+      deleteMutation.mutate(deletingSparePartId);
+    }
+  };
+
+  const handleDeleteDialogClose = (open: boolean) => {
+    setIsDeleteDialogOpen(open);
+    if (!open) {
+      setDeletingSparePartId(null);
     }
   };
 
@@ -647,6 +664,15 @@ export default function AdminSparePartsManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDeleteDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={handleDeleteDialogClose}
+        onConfirm={confirmDelete}
+        title="Delete Spare Part?"
+        description="This action cannot be undone. This will permanently delete the spare part from the system."
+        isPending={deleteMutation.isPending}
+      />
     </div>
   );
 }
