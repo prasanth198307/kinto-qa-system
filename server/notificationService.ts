@@ -20,11 +20,11 @@ export interface NotificationResult {
 
 export class NotificationService {
   /**
-   * Generate unique task reference ID (e.g., MST-A1B2C3)
+   * Generate unique task reference ID (e.g., MST-A1B2C3 or CL-A1B2C3)
    */
-  private generateTaskReference(): string {
+  private generateTaskReference(prefix: string = 'MST'): string {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let ref = 'MST-';
+    let ref = `${prefix}-`;
     for (let i = 0; i < 6; i++) {
       ref += chars.charAt(Math.floor(Math.random() * chars.length));
     }
@@ -490,6 +490,116 @@ This checklist was not completed on time. Please take immediate action.
       }
     } catch (error) {
       console.error('[MISSED CHECKLIST CHECK ERROR]', error);
+    }
+  }
+
+  /**
+   * Send checklist tasks via WhatsApp to operator
+   */
+  async sendChecklistViaWhatsApp(
+    assignmentId: string,
+    operatorName: string,
+    operatorMobile: string,
+    machineName: string,
+    checklistName: string,
+    tasks: Array<{ taskName: string; verificationCriteria?: string | null }>,
+    dueDateTime: Date
+  ): Promise<boolean> {
+    try {
+      // Generate unique task reference ID
+      const taskReferenceId = this.generateTaskReference('CL');
+      
+      // Update assignment with reference ID and notification status
+      await storage.updateChecklistAssignment(assignmentId, { 
+        taskReferenceId,
+        whatsappNotificationSent: 1,
+        whatsappNotificationSentAt: new Date()
+      });
+
+      // Fetch notification configuration
+      const config = await storage.getNotificationConfig();
+
+      // Set WhatsApp credentials dynamically
+      if (config?.metaPhoneNumberId && config?.metaAccessToken) {
+        whatsappService.setCredentials({
+          phoneNumberId: config.metaPhoneNumberId,
+          accessToken: config.metaAccessToken
+        });
+      } else if (process.env.WHATSAPP_PHONE_NUMBER_ID && process.env.WHATSAPP_ACCESS_TOKEN) {
+        whatsappService.setCredentials({
+          phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID,
+          accessToken: process.env.WHATSAPP_ACCESS_TOKEN
+        });
+      }
+
+      const formattedDueTime = dueDateTime.toLocaleString('en-IN', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+        timeZone: 'Asia/Kolkata'
+      });
+
+      // Format tasks list
+      let taskList = '';
+      tasks.forEach((task, index) => {
+        taskList += `${index + 1}. ${task.taskName}\n`;
+        if (task.verificationCriteria) {
+          taskList += `   (${task.verificationCriteria})\n`;
+        }
+      });
+
+      const message = `KINTO Checklist Assignment
+
+Hello ${operatorName},
+
+Machine: ${machineName}
+Checklist: ${checklistName}
+Due Time: ${formattedDueTime}
+
+Tasks to Complete:
+${taskList}
+Reply with task results in this format:
+${taskReferenceId} 1:OK 2:OK 3:NOK-remarks
+
+Task ID: ${taskReferenceId}
+
+- KINTO QA System`;
+
+      // Test mode - log to console
+      if (config?.testMode === 1) {
+        console.log('\n' + '='.repeat(60));
+        console.log('[CHECKLIST WHATSAPP - TEST MODE]');
+        console.log('='.repeat(60));
+        console.log(`To: ${operatorName} (${operatorMobile})`);
+        console.log(`Message:\n${message}`);
+        console.log('='.repeat(60) + '\n');
+        return true;
+      }
+
+      // Production mode - send via WhatsApp
+      let phoneNumber = operatorMobile.replace(/\D/g, '');
+      
+      if (phoneNumber.startsWith('0')) {
+        phoneNumber = phoneNumber.substring(1);
+      }
+      
+      if (!phoneNumber.startsWith('91') && phoneNumber.length === 10) {
+        phoneNumber = `91${phoneNumber}`;
+      }
+
+      const success = await whatsappService.sendTextMessage({
+        to: phoneNumber,
+        message
+      });
+
+      if (success) {
+        console.log(`[CHECKLIST WHATSAPP SENT] To: ${operatorName} (${phoneNumber}), Checklist: ${checklistName}`);
+        return true;
+      } else {
+        throw new Error('WhatsApp send failed - check Meta API credentials');
+      }
+    } catch (error) {
+      console.error(`[CHECKLIST WHATSAPP ERROR] Failed to send to ${operatorName}:`, error);
+      return false;
     }
   }
 
