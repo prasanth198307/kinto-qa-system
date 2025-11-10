@@ -12,6 +12,7 @@ All documentation has been organized into the `docs/` folder:
 - **`docs/deployment/`** - Deployment guides (start with ON_PREM_DEPLOYMENT_CHECKLIST.md)
 - **`docs/testing/`** - Test documentation and results
 - **`docs/guides/`** - User guides and system documentation
+  - **MACHINE_STARTUP_REMINDERS.md** - Complete guide for Machine Startup Reminder workflow
 
 ### Scripts Organization
 - **`scripts/`** - Active utility scripts (create-test-users, generate-deployment-pdf)
