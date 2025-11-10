@@ -17,6 +17,9 @@ import { Plus, Trash2, Calendar, AlertCircle } from "lucide-react";
 import { format, isPast, parseISO, startOfDay } from "date-fns";
 
 const formSchema = insertChecklistAssignmentSchema.omit({ assignedBy: true }).extend({
+  templateId: z.string().min(1, "Checklist template is required"),
+  machineId: z.string().min(1, "Machine is required"),
+  operatorId: z.string().min(1, "Operator is required"),
   assignedDate: z.string().min(1, "Date is required"),
 });
 
@@ -62,6 +65,7 @@ export function ManagerChecklistAssignment() {
 
   const createMutation = useMutation({
     mutationFn: (data: FormData) => {
+      console.log("Submitting checklist assignment:", data);
       // Server will set assignedBy from authenticated session for security
       return apiRequest('/api/checklist-assignments', 'POST', data);
     },
@@ -71,8 +75,18 @@ export function ManagerChecklistAssignment() {
       setIsDialogOpen(false);
       form.reset();
     },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to assign checklist", variant: "destructive" });
+    onError: (error: any) => {
+      console.error("Failed to assign checklist:", error);
+      const errorMessage = error.message || "Failed to assign checklist";
+      const errorDetails = error.errors 
+        ? error.errors.map((e: any) => e.message).join(", ")
+        : "";
+      
+      toast({ 
+        title: "Error", 
+        description: errorDetails || errorMessage, 
+        variant: "destructive" 
+      });
     },
   });
 

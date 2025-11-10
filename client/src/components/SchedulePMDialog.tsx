@@ -40,6 +40,7 @@ export default function SchedulePMDialog({ open, onOpenChange }: SchedulePMDialo
 
   const createPMMutation = useMutation({
     mutationFn: async (data: any) => {
+      console.log("Creating PM plan with data:", data);
       return await apiRequest('POST', '/api/maintenance-plans', data);
     },
     onSuccess: () => {
@@ -51,10 +52,16 @@ export default function SchedulePMDialog({ open, onOpenChange }: SchedulePMDialo
         description: "Preventive maintenance task has been scheduled successfully.",
       });
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error("Failed to create PM plan:", error);
+      const errorMessage = error.message || "Failed to schedule PM task";
+      const errorDetails = error.errors 
+        ? error.errors.map((e: any) => e.message).join(", ")
+        : "";
+      
       toast({
         title: "Error",
-        description: "Failed to schedule PM task. Please try again.",
+        description: errorDetails || errorMessage,
         variant: "destructive",
       });
     },
@@ -85,7 +92,7 @@ export default function SchedulePMDialog({ open, onOpenChange }: SchedulePMDialo
     }
 
     const data = {
-      machineId: formData.machineId,
+      machineId: formData.machineId || undefined,
       planName: formData.planName.trim(),
       planType: formData.planType.trim(),
       frequency: formData.frequency,

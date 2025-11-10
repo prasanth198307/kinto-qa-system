@@ -545,14 +545,22 @@ export class DatabaseStorage implements IStorage {
     tasks: { taskName: string; verificationCriteria?: string; orderIndex: number }[]
   ): Promise<ChecklistTemplate> {
     const [created] = await db.insert(checklistTemplates).values(template).returning();
+    console.log(`Created checklist template ${created.id} with ${tasks.length} tasks`);
     
     if (tasks.length > 0) {
-      await db.insert(templateTasks).values(
-        tasks.map(task => ({
-          ...task,
-          templateId: created.id,
-        }))
-      );
+      const tasksToInsert = tasks.map(task => ({
+        ...task,
+        templateId: created.id,
+      }));
+      console.log("Inserting template tasks:", JSON.stringify(tasksToInsert, null, 2));
+      
+      try {
+        const insertedTasks = await db.insert(templateTasks).values(tasksToInsert).returning();
+        console.log(`Successfully inserted ${insertedTasks.length} template tasks`);
+      } catch (error) {
+        console.error("Failed to insert template tasks:", error);
+        throw new Error(`Failed to insert template tasks: ${(error as Error).message}`);
+      }
     }
     
     return created;

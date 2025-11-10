@@ -113,7 +113,7 @@ export default function AdminChecklistBuilder() {
 
     const validTasks = tasks.map(({ taskName, verificationCriteria, orderIndex }) => ({
       taskName: taskName.trim(),
-      verificationCriteria: verificationCriteria?.trim() || '',
+      verificationCriteria: verificationCriteria?.trim() || undefined,
       orderIndex
     }));
 

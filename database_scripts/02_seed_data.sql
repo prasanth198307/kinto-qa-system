@@ -84,9 +84,20 @@ INSERT INTO role_permissions (role_id, screen_key, can_view, can_create, can_edi
 ('role-operator', 'finished_goods', 1, 1, 0, 0, 1),
 ('role-operator', 'raw_materials', 1, 0, 0, 0, 1),
 
--- Reviewer permissions
+-- Reviewer permissions (14 screens for quality review and approval)
 ('role-reviewer', 'dashboard', 1, 0, 0, 0, 1),
+('role-reviewer', 'machines', 1, 0, 0, 0, 1),
+('role-reviewer', 'machine_types', 1, 0, 0, 0, 1),
+('role-reviewer', 'checklist_templates', 1, 0, 0, 0, 1),
 ('role-reviewer', 'checklists', 1, 0, 1, 0, 1),
+('role-reviewer', 'spare_parts', 1, 0, 0, 0, 1),
+('role-reviewer', 'purchase_orders', 1, 0, 0, 0, 1),
+('role-reviewer', 'maintenance_plans', 1, 0, 0, 0, 1),
+('role-reviewer', 'pm_templates', 1, 0, 0, 0, 1),
+('role-reviewer', 'pm_execution', 1, 0, 0, 0, 1),
+('role-reviewer', 'products', 1, 0, 0, 0, 1),
+('role-reviewer', 'raw_materials', 1, 0, 0, 0, 1),
+('role-reviewer', 'finished_goods', 1, 0, 0, 0, 1),
 ('role-reviewer', 'reports', 1, 0, 0, 0, 1)
 ON CONFLICT DO NOTHING;
 

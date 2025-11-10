@@ -322,7 +322,7 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
         return {
           productId: product?.id || item.productId || "",
           description: product?.productName || item.productId || "",
-          hsnCode: product?.hsnCode || "",
+          hsnCode: "", // HSN code to be entered manually
           quantity: item.quantityDispatched || 1,
           unitPrice: 0, // User needs to fill price
           gstRate: 18,
@@ -481,6 +481,9 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
   });
 
   const onSubmit = (data: InvoiceFormData) => {
+    console.log("Invoice form submitted with data:", data);
+    console.log("Form validation errors:", form.formState.errors);
+    
     // When editing an invoice, don't send gatepassId (relationship already exists in gatepass table)
     // When creating, gatepassId is used to link the new invoice to the gatepass
     const submitData = invoice ? {
@@ -490,6 +493,16 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
     
     createInvoiceMutation.mutate(submitData);
   };
+  
+  // Log validation errors on form submission attempt
+  const handleFormSubmit = form.handleSubmit(onSubmit, (errors) => {
+    console.error("Form validation failed:", errors);
+    toast({
+      title: "Validation Error",
+      description: "Please check all required fields and try again.",
+      variant: "destructive",
+    });
+  });
 
   const handlePrintPreview = () => {
     setShowPrintPreview(true);
@@ -669,7 +682,7 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
         </div>
       </div>
 
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={handleFormSubmit} className="space-y-6">
         {/* System automatically uses default template and terms & conditions */}
         {/* Hidden info display */}
         {defaultTemplate && (
@@ -957,7 +970,7 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
                     const product = products.find(p => p.id === value);
                     if (product) {
                       form.setValue(`items.${index}.description`, product.productName);
-                      form.setValue(`items.${index}.hsnCode`, product.hsnCode || "");
+                      // HSN code to be entered manually - products don't have hsnCode in schema
                       toast({
                         title: "Stock Available",
                         description: `Available: ${totalAvailable} units`,
