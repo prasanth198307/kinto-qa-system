@@ -1,7 +1,7 @@
 # KINTO Operations & QA Management System
 
 ## Overview
-KINTO Operations & QA is a comprehensive manufacturing operations and quality management system. It manages production, inventory, purchase orders, invoicing, gatepasses, quality assurance, and preventive maintenance. The system supports operators, reviewers, managers, and administrators through tasks like checklist completion, verification, approval, and system configuration. Key capabilities include FIFO payment allocation, GST-compliant invoice generation, robust payment tracking, and extensive reporting. It is a full-stack TypeScript solution using React and Express, designed for speed and error prevention in industrial settings.
+KINTO Operations & QA is a comprehensive manufacturing operations and quality management system. It manages production, inventory, purchase orders, invoicing, gatepasses, quality assurance, and preventive maintenance. The system supports operators, reviewers, managers, and administrators through tasks like checklist completion, verification, approval, and system configuration. Key capabilities include FIFO payment allocation, GST-compliant invoice generation, robust payment tracking, extensive reporting, and two-way WhatsApp integration for machine startup tracking. It is a full-stack TypeScript solution using React and Express, designed for speed and error prevention in industrial settings.
 
 **Production Status:** ✅ READY FOR ON-PREMISES DEPLOYMENT (November 10, 2025)
 
@@ -52,12 +52,21 @@ The backend is an Express.js application built with TypeScript and Node.js. It f
 - **Complete Dispatch Tracking Workflow:** A 5-stage workflow (Invoice Creation, Gate Pass Generation, Vehicle Exit Recording, Proof of Delivery) with strict status validation and backend preconditions. Requires digital signature for Proof of Delivery.
 - **Comprehensive Role Permissions Management:** Updated role permissions screen includes all 26 system screens for granular access control (View, Create, Edit, Delete).
 - **Fixed Header Overlap Issue:** Resolved z-index and layout overlap issues in the UI.
+- **Two-Way WhatsApp Integration:** Production-ready integration using Meta WhatsApp Business Cloud API (2.4× cheaper than Twilio) with free service conversations. Features include:
+  - Outbound reminders with unique task reference IDs (MST-{timestamp}-{random})
+  - Webhook endpoints (GET/POST) for receiving and processing incoming messages
+  - Sender phone verification (only assigned operator can complete task)
+  - Atomic status updates with race condition protection
+  - Response status calculation (on_time, late, early) based on ±15 minute window
+  - WhatsApp Analytics admin page with response rates and detailed history
+  - Security hardening: Required WHATSAPP_VERIFY_TOKEN, message type guards, and conditional WHERE clauses
 
 ### System Design Choices
 - **Authentication:** Users can log in with either username or email.
-- **Database Schema:** Includes `is_cluster` flag for mobile integration and status tracking fields in `invoices` and `gatepasses` tables for the dispatch workflow.
+- **Database Schema:** Includes `is_cluster` flag for mobile integration and status tracking fields in `invoices` and `gatepasses` tables for the dispatch workflow. WhatsApp response tracking fields in `machineStartupTasks` table (taskReferenceId, operatorResponse, operatorResponseTime, responseStatus).
 - **Dispatch Workflow:** Invoice-first approach with a tamper-proof state machine. The backend validates status preconditions before each transition and requires a non-empty digital signature for Proof of Delivery.
 - **Inventory Management Logic:** Inventory deduction occurs only when gatepasses are created (physical dispatch), not when invoices are created.
+- **WhatsApp Integration:** Meta WhatsApp Business Cloud API with sender verification, atomic updates, and comprehensive error handling. Requires three environment variables: WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_ACCESS_TOKEN, WHATSAPP_VERIFY_TOKEN.
 - **Build & Deployment:** Development uses Vite dev server with `tsx`-powered Express; production builds use Vite for frontend and `esbuild` for backend. Drizzle Kit manages database schema.
 
 ## External Dependencies
