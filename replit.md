@@ -13,6 +13,7 @@ All documentation has been organized into the `docs/` folder:
 - **`docs/testing/`** - Test documentation and results
 - **`docs/guides/`** - User guides and system documentation
   - **MACHINE_STARTUP_REMINDERS.md** - Complete guide for Machine Startup Reminder workflow
+  - **WHATSAPP_CHECKLIST_COMPLETION.md** - Complete guide for WhatsApp-based checklist completion
 
 ### Scripts Organization
 - **`scripts/`** - Active utility scripts (create-test-users, generate-deployment-pdf)
@@ -42,6 +43,7 @@ The backend is an Express.js application built with TypeScript and Node.js. It f
 - **Enhanced Overview Dashboard:** Displays a 4-card summary showing today's raw material issuances, gatepasses, invoices created, and real-time current stock levels. Stock updates when gatepasses are created.
 - **Machine Startup Reminder System:** Manages and tracks machine startup tasks, sending multi-channel reminders (WhatsApp, Email) before scheduled production.
 - **Missed Checklist Notification System:** Automatically alerts relevant personnel (operator, reviewer, manager, admin) via WhatsApp for overdue checklist assignments.
+- **WhatsApp Checklist Completion System:** Allows operators to complete assigned checklists directly via WhatsApp messages (format: `CL-ABC123 1:OK 2:NOK-remarks 3:OK`) instead of using the mobile app, with full validation and automatic submission creation.
 - **Invoice-First Gatepass Flow:** Enforces that gatepasses can only be created from existing invoices, auto-populating items from the invoice to maintain data consistency.
 - **Invoice Template Management System:** Allows admin to create and manage professional invoice templates with customizable details.
 - **Enhanced Invoice Form & Detail Page:** Features a compact single-line item layout, template selection, ship-to address, bank details, print preview, and a dedicated detail page (`/invoice/:id`) with comprehensive information and actions.
@@ -67,7 +69,7 @@ The backend is an Express.js application built with TypeScript and Node.js. It f
 - **Database Schema:** Includes `is_cluster` flag for mobile integration and status tracking fields in `invoices` and `gatepasses` tables for the dispatch workflow. WhatsApp response tracking fields in `machineStartupTasks` table (taskReferenceId, operatorResponse, operatorResponseTime, responseStatus).
 - **Dispatch Workflow:** Invoice-first approach with a tamper-proof state machine. The backend validates status preconditions before each transition and requires a non-empty digital signature for Proof of Delivery.
 - **Inventory Management Logic:** Inventory deduction occurs only when gatepasses are created (physical dispatch), not when invoices are created.
-- **WhatsApp Integration:** Meta WhatsApp Business Cloud API with sender verification, atomic updates, and comprehensive error handling. Requires three environment variables: WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_ACCESS_TOKEN, WHATSAPP_VERIFY_TOKEN.
+- **WhatsApp Integration:** Meta WhatsApp Business Cloud API with sender verification, atomic updates, and comprehensive error handling. Supports both machine startup tracking and checklist completion via two-way messaging. Requires three environment variables: WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_ACCESS_TOKEN, WHATSAPP_VERIFY_TOKEN.
 - **Build & Deployment:** Development uses Vite dev server with `tsx`-powered Express; production builds use Vite for frontend and `esbuild` for backend. Drizzle Kit manages database schema.
 
 ## External Dependencies
