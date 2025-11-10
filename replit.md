@@ -3,6 +3,8 @@
 ## Overview
 KINTO Operations & QA is a comprehensive manufacturing operations and quality management system. It manages production, inventory, purchase orders, invoicing, gatepasses, quality assurance, and preventive maintenance. The system supports operators, reviewers, managers, and administrators through tasks like checklist completion, verification, approval, and system configuration. Key capabilities include FIFO payment allocation, GST-compliant invoice generation, robust payment tracking, and extensive reporting. It is a full-stack TypeScript solution using React and Express, designed for speed and error prevention in industrial settings.
 
+**Production Status:** ✅ READY FOR ON-PREMISES DEPLOYMENT (November 10, 2025)
+
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
