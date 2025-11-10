@@ -2,9 +2,32 @@
 
 ## Overview
 
-The KINTO Operations & QA system supports **WhatsApp-based checklist completion**, allowing operators to complete assigned checklists directly via WhatsApp messages instead of using the mobile app. This feature streamlines the completion process and provides flexibility for operators working in the field.
+The KINTO Operations & QA system supports **WhatsApp-based checklist completion with incremental task-by-task submission**, allowing operators to complete assigned checklists directly via WhatsApp messages instead of using the mobile app. Operators can submit tasks individually, in batches, or all at once - the system tracks progress and auto-submits when complete.
 
 **Status:** ✅ Production Ready (November 10, 2025)
+
+## Key Features
+
+1. **Incremental Task Submission:**
+   - Submit tasks one at a time: `CL-ABC123 1:OK`
+   - Submit in batches: `CL-ABC123 1:OK 2:NOK-remarks`
+   - Submit all at once: `CL-ABC123 1:OK 2:OK 3:OK`
+   - System tracks progress after each submission
+
+2. **Progress Tracking:**
+   - Confirmation after each task: "Task 2/5 completed. 3 remaining."
+   - Auto-submission when all tasks completed
+   - Explicit completion: Send "DONE" (uppercase) to submit anytime
+
+3. **Flexible Input:**
+   - Mixed-case status accepted: Ok, nok, NA
+   - Lowercase "done" in remarks preserved (won't trigger submission)
+   - Uppercase "DONE" command triggers submission
+
+4. **Security & Validation:**
+   - Phone number verification (only assigned operator)
+   - Prevents duplicate submissions (idempotency)
+   - Transaction-safe submission creation
 
 ## Workflow Summary
 
@@ -13,11 +36,19 @@ Manager Assigns Checklist (with WhatsApp enabled)
            ↓
 System Sends Checklist via WhatsApp to Operator
            ↓
-Operator Completes Tasks and Sends Response
+Operator Submits Task 1 (e.g., "CL-ABC123 1:OK")
            ↓
-System Validates Response & Creates Submission
+System Stores Answer & Confirms ("Task 1/5 completed. 4 remaining.")
            ↓
-Reviewer Gets Notified for Approval
+Operator Submits Task 2 (e.g., "CL-ABC123 2:NOK-broken")
+           ↓
+System Stores Answer & Confirms ("Task 2/5 completed. 3 remaining.")
+           ↓
+... continues until all tasks completed ...
+           ↓
+System Auto-Submits OR Operator Sends "DONE"
+           ↓
+System Creates Submission & Notifies Reviewer
            ↓
 Reviewer Approves/Rejects Submission
 ```
@@ -71,42 +102,73 @@ Add remarks after NOK: 2:NOK-broken parts
 
 ### Inbound Message (Operator → System)
 
-**Basic Format:**
+**Incremental Submission (One Task at a Time):**
 ```
-CL-A1B2C3 1:OK 2:OK 3:OK
+CL-A1B2C3 1:OK
+# System: "Task 1/5 completed. 4 remaining."
+
+CL-A1B2C3 2:NOK-broken parts
+# System: "Task 2/5 completed. 3 remaining."
+
+CL-A1B2C3 3:OK
+# System: "Task 3/5 completed. 2 remaining."
 ```
 
-**With Remarks:**
+**Batch Submission (Multiple Tasks):**
 ```
-CL-A1B2C3 1:OK 2:NOK-Temp 45C broken parts 3:OK
+CL-A1B2C3 1:OK 2:NOK-Temp 45C issue 3:OK
+# System: "Tasks 1, 2, 3 completed. 2/5 done. 3 remaining."
+```
+
+**Complete All at Once:**
+```
+CL-A1B2C3 1:OK 2:OK 3:OK 4:OK 5:OK
+# System: "All 5 tasks completed. Checklist submitted for review!"
+```
+
+**Explicit Completion with DONE Command:**
+```
+CL-A1B2C3 4:OK 5:NA DONE
+# System: "All 5 tasks completed. Checklist submitted for review!"
 ```
 
 **Format Rules:**
 - **Task Reference:** Must match exactly (e.g., `CL-A1B2C3`)
 - **Task Results:** `TaskNumber:STATUS[-remarks]`
-- **Status Values:** `OK`, `NOK`, or `NA` (case-insensitive)
-- **Remarks:** Optional, added after `-` (can include numbers and special characters)
-- **All Tasks Required:** Must complete ALL tasks in the checklist
+- **Status Values:** `OK`, `NOK`, or `NA` (mixed-case accepted: Ok, nok, etc.)
+- **Remarks:** Optional, added after `-` (can include numbers, spaces, lowercase "done")
+- **DONE Command:** Uppercase "DONE" only (triggers submission)
+- **Partial Submission:** Can submit any task(s) at any time
+- **No Duplicates:** Can't re-submit same task number
 
 **Valid Examples:**
 ```
-CL-ABC123 1:OK 2:OK 3:OK 4:OK
-CL-XYZ789 1:OK 2:NOK-Temperature 45C exceeds limit 3:OK
-CL-PQR456 1:NA 2:OK 3:NOK-Equipment missing
+# Single task
+CL-ABC123 1:OK
+
+# Multiple tasks with mixed case
+CL-ABC123 1:Ok 2:nok-already done 3:NA
+
+# With courtesy text (ignored)
+CL-ABC123 1:OK thanks
+
+# Explicit completion
+CL-ABC123 1:OK 2:OK DONE
 ```
 
 **Invalid Examples:**
 ```
-CL-ABC123 1:OK 2:OK              # Missing task 3
-CL-ABC123 1:PASS 2:OK 3:OK       # Invalid status (use OK/NOK/NA)
-ABC123 1:OK 2:OK 3:OK            # Missing CL- prefix
+CL-ABC123 1:PASS              # Invalid status (use OK/NOK/NA)
+ABC123 1:OK                   # Missing CL- prefix
+CL-ABC123 1:OK done           # Lowercase "done" won't submit
+CL-ABC123 1:OK 1:NOK          # Can't submit same task twice
 ```
 
 ## Database Schema
 
 ### ChecklistAssignments Table
 
-New WhatsApp-related fields:
+WhatsApp-related fields:
 
 ```typescript
 whatsappEnabled: integer("whatsapp_enabled").default(0)
@@ -118,12 +180,36 @@ operatorResponseTime: timestamp("operator_response_time")
 ```
 
 **Field Descriptions:**
-- `whatsappEnabled`: 0 = disabled, 1 = enabled (set by manager during assignment)
+- `whatsappEnabled`: 0 = disabled, 1 = enabled (set by manager)
 - `taskReferenceId`: Unique reference like `CL-ABC123` for tracking
 - `whatsappNotificationSent`: 0 = not sent, 1 = sent
 - `whatsappNotificationSentAt`: Timestamp when WhatsApp message sent
-- `operatorResponse`: Full message text from operator
-- `operatorResponseTime`: Timestamp when operator replied
+- `operatorResponse`: Full message text from operator (last message)
+- `operatorResponseTime`: Timestamp when operator last replied
+
+### PartialTaskAnswers Table (NEW)
+
+Stores incremental task submissions before final checklist submission.
+
+```typescript
+id: varchar("id").primaryKey().default(sql`gen_random_uuid()`)
+assignment_id: varchar("assignment_id").references(() => checklistAssignments.id)
+task_order: integer("task_order")
+task_name: varchar("task_name")
+status: varchar("status") // OK, NOK, or NA
+remarks: text("remarks")
+answered_at: timestamp("answered_at").defaultNow()
+answered_by: varchar("answered_by") // Operator phone number
+created_at: timestamp("created_at").defaultNow()
+UNIQUE(assignment_id, task_order) // Prevents duplicate task submissions
+```
+
+**Purpose:** Tracks progress as operator submits tasks one-by-one.
+
+**Lifecycle:**
+1. Operator sends "CL-ABC123 1:OK" → Row created
+2. Operator sends "CL-ABC123 2:NOK-remarks" → Another row created
+3. When all tasks complete → Submission created, partial answers deleted
 
 ## Backend Implementation
 
@@ -239,19 +325,28 @@ async createChecklistSubmissionWithTasks(
 **Regex Pattern Explanation:**
 
 ```typescript
-/(\d+):(OK|NOK|NA)(?:-(.+?))?(?=\s+\d+:|$)/gi
+/(\d+):([A-Za-z]+)(?:-((?:(?!\s+\d+:|\s+DONE\b).)+))?/g
 ```
 
+**Pattern Breakdown:**
 - `(\d+)`: Capture task number (1, 2, 3, ...)
-- `:(OK|NOK|NA)`: Capture status (must be OK, NOK, or NA)
-- `(?:-(.+?))?`: Optionally capture remarks after `-` (lazy match)
-- `(?=\s+\d+:|$)`: Look ahead for next task or end of string
-- Flags: `g` (global), `i` (case-insensitive)
+- `:([A-Za-z]+)`: Capture status letters (any case: OK, Ok, nok, etc.)
+- `(?:-((?:(?!\s+\d+:|\s+DONE\b).)+))?`: Optional remarks using tempered greedy token
+  - `-`: Dash separator
+  - `(?:(?!\s+\d+:|\s+DONE\b).)+`: Capture everything EXCEPT next task or DONE
+  - No `i` flag → Makes "DONE" matching case-sensitive
+- Status normalized with `.toUpperCase()` and validated
+
+**Tempered Greedy Token:**
+- Prevents remark from consuming next task (`\s+\d+:`)
+- Prevents remark from consuming DONE command (`\s+DONE\b`)
+- Allows lowercase "done" inside remarks (e.g., "already done")
+- Uppercase "DONE" as standalone command triggers submission
 
 **Why this pattern:**
-- Captures full remarks including digits and special characters
-- Stops at next task token (e.g., ` 3:`) or end of message
-- Handles cases like "NOK-Temp 45C broken" correctly
+- Captures full remarks: "NOK-Temp 45C already done" → "Temp 45C already done"
+- Stops at next task: "1:OK-broken 2:OK" → Remark is "broken", not "broken 2:OK"
+- Case-sensitive DONE: "done" in remarks preserved, "DONE" command triggers submission
 
 ## Frontend Integration (To Be Implemented)
 
@@ -524,8 +619,21 @@ Track metrics:
 
 ## Change Log
 
-**November 10, 2025:**
-- ✅ Initial implementation
+**November 10, 2025 - Version 2.0 (Incremental Submission):**
+- ✅ **MAJOR:** Incremental task-by-task submission workflow
+- ✅ Added `partial_task_answers` table for progress tracking
+- ✅ Progress notifications after each task submission
+- ✅ Auto-submission when all tasks completed
+- ✅ Explicit DONE command (uppercase only, case-sensitive)
+- ✅ Mixed-case status support (Ok, nok, NA)
+- ✅ Lowercase "done" preserved in remarks (won't trigger submission)
+- ✅ Tempered greedy token regex for robust parsing
+- ✅ Storage methods: upsertPartialTaskAnswer, getPartialTaskProgress
+- ✅ Prevents duplicate task submissions (UNIQUE constraint)
+- ✅ Cleanup partial answers after submission
+
+**November 10, 2025 - Version 1.0 (All-or-Nothing):**
+- ✅ Initial implementation (deprecated - use v2.0)
 - ✅ Regex fix for digit-containing remarks
 - ✅ Phone verification using mobileNumber field
 - ✅ Transactional submission creation
@@ -533,6 +641,6 @@ Track metrics:
 
 ---
 
-**Document Version:** 1.0  
+**Document Version:** 2.0  
 **Last Updated:** November 10, 2025  
-**Status:** Production Ready
+**Status:** Production Ready (Incremental Workflow)
