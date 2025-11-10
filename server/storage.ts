@@ -128,6 +128,7 @@ export interface IStorage {
   getAllUsers(): Promise<any[]>;
   deleteUser(id: string): Promise<void>;
   sessionStore: session.Store;
+  clearAllSessions(): Promise<void>;
   
   createMachine(machine: InsertMachine): Promise<Machine>;
   getAllMachines(): Promise<Machine[]>;
@@ -354,6 +355,16 @@ export class DatabaseStorage implements IStorage {
         console.error('Session store error:', error);
       },
     });
+  }
+
+  async clearAllSessions(): Promise<void> {
+    try {
+      const pool = (db as any)._.session.client;
+      await pool.query('DELETE FROM session');
+      console.log('✅ All sessions cleared on server startup');
+    } catch (error) {
+      console.error('❌ Failed to clear sessions:', error);
+    }
   }
 
   async getUser(id: string): Promise<User | undefined> {

@@ -72,6 +72,9 @@ function requireRole(...allowedRoles: string[]) {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Clear all sessions on server startup
+  await storage.clearAllSessions();
+
   // Serve deployment guide files
   app.get('/download.html', (req, res) => {
     const filePath = path.join(process.cwd(), 'public', 'download.html');
