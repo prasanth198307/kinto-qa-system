@@ -8,6 +8,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -21,6 +22,13 @@ const formSchema = insertChecklistAssignmentSchema.omit({ assignedBy: true }).ex
   machineId: z.string().min(1, "Machine is required"),
   operatorId: z.string().min(1, "Operator is required"),
   assignedDate: z.string().min(1, "Date is required"),
+  whatsappEnabled: z.number().optional(),
+}).refine((data) => {
+  // If WhatsApp is enabled, operator must have a mobile number
+  return true; // Validation will be done during form submission
+}, {
+  message: "Operator must have a mobile number when WhatsApp is enabled",
+  path: ["whatsappEnabled"]
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -60,6 +68,7 @@ export function ManagerChecklistAssignment() {
       assignedDate: format(new Date(), "yyyy-MM-dd"),
       shift: "Morning",
       status: "pending",
+      whatsappEnabled: 0,
     },
   });
 
@@ -102,6 +111,18 @@ export function ManagerChecklistAssignment() {
   });
 
   const onSubmit = (data: FormData) => {
+    // Validate WhatsApp requirement
+    if (data.whatsappEnabled === 1) {
+      const selectedOperator = operators.find((u: any) => u.id === data.operatorId);
+      if (!selectedOperator?.mobileNumber) {
+        toast({
+          title: "Validation Error",
+          description: "Cannot enable WhatsApp: Selected operator has no mobile number",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
     createMutation.mutate(data);
   };
 
@@ -303,6 +324,40 @@ export function ManagerChecklistAssignment() {
                         </SelectContent>
                       </Select>
                       <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="whatsappEnabled"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                      <div className="space-y-0.5">
+                        <FormLabel>Send via WhatsApp</FormLabel>
+                        <div className="text-sm text-muted-foreground">
+                          Operator will receive checklist tasks via WhatsApp
+                          {form.watch('operatorId') && (() => {
+                            const selectedOperator = operators.find((u: any) => u.id === form.watch('operatorId'));
+                            return selectedOperator?.mobileNumber ? (
+                              <div className="mt-1 text-xs">
+                                Operator phone: {selectedOperator.mobileNumber}
+                              </div>
+                            ) : (
+                              <div className="mt-1 text-xs text-amber-600">
+                                Warning: Operator has no mobile number
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value === 1}
+                          onCheckedChange={(checked) => field.onChange(checked ? 1 : 0)}
+                          data-testid="switch-whatsapp"
+                        />
+                      </FormControl>
                     </FormItem>
                   )}
                 />
