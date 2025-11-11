@@ -11,6 +11,8 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
+import { GlobalHeader } from "@/components/GlobalHeader";
+import { useAuth } from "@/hooks/use-auth";
 
 interface UserWithRole {
   id: string;
@@ -47,6 +49,7 @@ export default function AdminUserManagement() {
   const [newUserRole, setNewUserRole] = useState('operator');
   
   const { toast } = useToast();
+  const { logoutMutation } = useAuth();
 
   const { data: users = [], isLoading } = useQuery<UserWithRole[]>({
     queryKey: ['/api/users'],
@@ -219,27 +222,35 @@ export default function AdminUserManagement() {
 
   if (isLoading) {
     return (
-      <div className="text-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-      </div>
+      <>
+        <GlobalHeader
+          title="User Management"
+          onLogoutClick={() => logoutMutation.mutate()}
+        />
+        <div className="mt-14 text-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-semibold" data-testid="text-title">User Management</h2>
-          <p className="text-sm text-muted-foreground">{users.length} total users</p>
-        </div>
-        <Button 
-          onClick={() => setIsCreateDialogOpen(true)}
-          data-testid="button-create-user"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Create User
-        </Button>
-      </div>
+    <>
+      <GlobalHeader
+        title="User Management"
+        actions={
+          <Button 
+            onClick={() => setIsCreateDialogOpen(true)}
+            data-testid="button-create-user"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Create User
+          </Button>
+        }
+        onLogoutClick={() => logoutMutation.mutate()}
+      />
+      <div className="mt-14 space-y-4 p-4">
+        <p className="text-sm text-muted-foreground">{users.length} total users</p>
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -494,6 +505,7 @@ export default function AdminUserManagement() {
         description="This action cannot be undone. This will permanently delete the user from the system."
         isPending={deleteUserMutation.isPending}
       />
-    </div>
+      </div>
+    </>
   );
 }

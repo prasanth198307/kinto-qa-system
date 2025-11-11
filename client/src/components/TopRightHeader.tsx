@@ -31,7 +31,7 @@ export function TopRightHeader({
   };
 
   return (
-    <div className="fixed top-0 right-0 h-14 bg-card border-b border-l border-border z-[100] flex items-center gap-2 px-4 shadow-sm lg:right-0 lg:left-auto">
+    <div className="flex items-center gap-2">
       <div className="relative">
         <Button
           size="icon"

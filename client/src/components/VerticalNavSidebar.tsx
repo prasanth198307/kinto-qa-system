@@ -146,7 +146,7 @@ export function VerticalNavSidebar({
             <Menu className="w-6 h-6" />
           )}
         </Button>
-        <KintoLogo variant="compact" className="flex-1 justify-center" />
+        <KintoLogo variant="compact" layout="vertical" className="flex-1 justify-center" />
         <div className="w-10" />
       </div>
 

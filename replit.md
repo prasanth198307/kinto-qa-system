@@ -131,7 +131,23 @@ Four test users with known passwords configured for automated testing:
 
 Documentation: See `TEST_CREDENTIALS.md` and `TEST_STATUS_SUMMARY.md`
 
-### Recent Bug Fixes
+### Recent UI/UX Improvements
+
+#### Header Layout Redesign (COMPLETED - November 11, 2025)
+- **Issue:** KINTO logo and SmartOps text arranged horizontally caused logout/notification buttons to overlap page action buttons
+- **Solution:** 
+  - Added vertical layout option to KintoLogo component (logo stacked above text)
+  - Created GlobalHeader component combining logo, page title, action buttons, and user controls in unified toolbar
+  - Refactored TopRightHeader from fixed positioning to flex container for embedding
+  - Updated AdminUserManagement to use new GlobalHeader pattern
+- **Components:** 
+  - `client/src/components/GlobalHeader.tsx` (new)
+  - `client/src/components/branding/KintoLogo.tsx` (added layout prop)
+  - `client/src/components/TopRightHeader.tsx` (refactored to non-fixed)
+  - `client/src/components/AdminUserManagement.tsx` (migrated to GlobalHeader)
+- **Status:** Initial implementation complete, ready for rollout to remaining pages
+
+## Recent Bug Fixes
 
 #### Bug #7: Delete UX Standardization (FIXED)
 - **Issue:** Inconsistent delete confirmation UX across application
