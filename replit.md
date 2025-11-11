@@ -82,18 +82,18 @@ The backend is an Express.js application built with TypeScript and Node.js. It f
 ## Recent Updates
 
 ### GlobalHeader Implementation (November 11, 2025)
-**Objective:** Display KINTO logo horizontally in single-line header strip on every page with logout and notifications always visible on right.
+**Objective:** Display KINTO logo horizontally in single-line header strip on every page with logout and notifications always visible on right. Header extends full width across entire screen.
 
 **Components Created:**
-- **GlobalHeader** (`client/src/components/GlobalHeader.tsx`): Fixed header with horizontal KINTO logo, "SmartOps" and "Manufacturing Excellence" text, notification bell, and logout button. Supports `noSidebarOffset` prop (defaults to `true` for standalone pages).
+- **GlobalHeader** (`client/src/components/GlobalHeader.tsx`): Fixed full-width header with horizontal KINTO logo, "SmartOps" and "Manufacturing Excellence" text, notification bell, and logout button. Extends to left edge (no offset).
 - **DashboardShell** (`client/src/components/DashboardShell.tsx`): Wrapper for sidebar-based dashboards (Admin/Manager/Reviewer) with GlobalHeader, VerticalNavSidebar, and content area.
 - **OperatorDashboardShell** (`client/src/components/OperatorDashboardShell.tsx`): Wrapper for mobile bottom-nav dashboard (Operator).
 
-**Duplicate Logo Fix:**
-- Removed KINTO logos from VerticalNavSidebar (both mobile and desktop variants)
-- Sidebar now contains only navigation items, no branding
-- GlobalHeader is the single source of branding across all pages
-- Sidebar position adjusted to `top-16` to start below fixed header
+**Layout Architecture:**
+- GlobalHeader: `z-50`, full width (`left-0 right-0`), 64px height
+- VerticalNavSidebar: `z-30`, starts at `top-0`, 80px top padding to accommodate header
+- Sidebar sits **under** the header, navigation items start below header
+- No blank space above sidebar - header covers full width seamlessly
 
 **Conditional Header Pattern:**
 - Reports page supports dual-access pattern via `showHeader` prop (defaults to `true`)
