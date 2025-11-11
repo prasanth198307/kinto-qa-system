@@ -20,8 +20,11 @@ import { useToast } from "@/hooks/use-toast";
 import { CheckCircle2, XCircle, Clock, Eye, Image as ImageIcon, Wrench } from "lucide-react";
 import { format } from "date-fns";
 import type { ChecklistSubmission, SubmissionTask, User, ChecklistTemplate, Machine, PartialTaskAnswer, ChecklistAssignment, SparePartCatalog } from "@shared/schema";
+import { GlobalHeader } from "@/components/GlobalHeader";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function ReviewerDashboard() {
+  const { logoutMutation } = useAuth();
   const [selectedSubmission, setSelectedSubmission] = useState<ChecklistSubmission | null>(null);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{ type: 'approve' | 'reject', id: string } | null>(null);
@@ -202,15 +205,20 @@ export default function ReviewerDashboard() {
 
   if (submissionsLoading) {
     return (
-      <div className="p-4 space-y-4">
-        <h2 className="text-xl font-semibold">Reviewer Dashboard</h2>
-        <p className="text-muted-foreground">Loading submissions...</p>
-      </div>
+      <>
+        <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />
+        <div className="p-4 mt-16 space-y-4">
+          <h2 className="text-xl font-semibold">Reviewer Dashboard</h2>
+          <p className="text-muted-foreground">Loading submissions...</p>
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="p-4 space-y-4">
+    <>
+      <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />
+      <div className="p-4 mt-16 space-y-4">
       <h2 className="text-xl font-semibold">Reviewer Dashboard</h2>
 
       <Tabs defaultValue="pending" data-testid="tabs-submissions">
@@ -466,6 +474,7 @@ export default function ReviewerDashboard() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+      </div>
+    </>
   );
 }
