@@ -2,38 +2,40 @@
 
 ## Design Approach
 
-**System Foundation:** Professional enterprise design inspired by modern business applications (like Notion, Linear, Asana), optimized for manufacturing QA workflows with mobile-first execution.
+**System Foundation:** Professional enterprise design inspired by Meta Business Suite, optimized for manufacturing QA workflows with mobile-first execution.
 
-**Design Philosophy:** Clean, professional interface with blue accents. Prioritize clarity, intuitive navigation, and data visibility. Design for both desktop administrators and mobile operators in manufacturing environments.
+**Design Philosophy:** Clean, clear interface with Meta Business-inspired fonts and backgrounds. Prioritize clarity, readability, and data visibility with crisp typography and high contrast. Design for both desktop administrators and mobile operators in manufacturing environments.
 
-## Color System
+## Color System (Meta Business-Inspired)
 
 ### Primary Colors
-- **Primary Blue:** `#3182ce` - Main brand color for buttons, links, active states
-- **Primary Blue Hover:** `#2c5aa0` - Hover states for primary elements
-- **Light Blue:** `#ebf8ff` - Backgrounds, subtle highlights
-- **Dark Blue:** `#1a365d` - Headers, important text
+- **Primary Blue:** `#1877F2` (Meta Blue) - Main brand color for buttons, links, active states
+- **Primary Blue Dark:** `#166FE5` - Hover states for primary elements
+- **Light Blue:** `#E7F3FF` - Backgrounds, subtle highlights
+- **Accent Blue:** `#0866FF` - Interactive elements
 
-### Neutral Colors
-- **Background:** `#f5f5f5` - Page background (light gray)
-- **Card/Surface:** `#ffffff` - Cards, panels, elevated surfaces
-- **Border:** `#e2e8f0` - Dividers, card borders
-- **Text Primary:** `#2d3748` - Main content text
-- **Text Secondary:** `#4a5568` - Supporting text
-- **Text Muted:** `#718096` - Less important text
+### Neutral Colors (High Clarity)
+- **Background:** `#FAFAFA` - Page background (very light gray for comfort)
+- **Card/Surface:** `#FFFFFF` - Cards, panels, elevated surfaces (pure white)
+- **Border:** `#E4E6EB` - Dividers, card borders (subtle)
+- **Text Primary:** `#050505` - Main content text (high contrast black)
+- **Text Secondary:** `#65676B` - Supporting text
+- **Text Muted:** `#8A8D91` - Less important text
 
 ### Status Colors
-- **Success/Pass:** `#38a169` (green) - Approved items, passed tasks
-- **Warning:** `#d69e2e` (yellow) - Pending items, warnings
-- **Error/Fail:** `#e53e3e` (red) - Failed tasks, errors, critical items
-- **Info:** `#3182ce` (blue) - Informational states
+- **Success/Pass:** `#31A24C` (green) - Approved items, passed tasks
+- **Warning:** `#E39E24` (yellow) - Pending items, warnings
+- **Error/Fail:** `#E84545` (red) - Failed tasks, errors, critical items
+- **Info:** `#1877F2` (blue) - Informational states
 
-## Typography System
+## Typography System (Meta Business-Inspired)
 
 **Font Stack:**
-- Primary: System fonts (-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto)
+- Primary: "Segoe UI" (Windows), -apple-system (macOS), BlinkMacSystemFont, "Helvetica Neue", Roboto, system-ui, Arial
 - Fallback: sans-serif
-- Professional, clean readability
+- **Letter Spacing:** -0.011em (tighter for cleaner look)
+- **Heading Letter Spacing:** -0.022em
+- **Font Smoothing:** Antialiased for crisp rendering
 
 **Hierarchy:**
 - Page Titles: text-3xl (30px) font-bold text-gray-900
