@@ -619,6 +619,18 @@ Track metrics:
 
 ## Change Log
 
+**November 11, 2025 - Version 3.0 (Photo Capture & Spare Parts):**
+- ✅ **MAJOR:** Photo capture for NOK tasks with WhatsApp media download
+- ✅ **MAJOR:** Optional spare parts requests linked to inventory catalog
+- ✅ Local photo storage in `attached_assets/checklist_photos/`
+- ✅ Spare parts search by name with automatic catalog linkage
+- ✅ Conversation state tracking (`waitingForPhoto`, `waitingForSparePart`)
+- ✅ Phone verification for image uploads
+- ✅ SKIP option for spare parts request
+- ✅ Free-text fallback for non-catalog spare parts
+- ✅ Storage methods: `updatePartialTaskPhoto`, `updatePartialTaskSparePart`, `searchSparePartsByName`
+- ✅ Database fields: `photoUrl`, `sparePartId`, `sparePartRequestText` in partial_task_answers
+
 **November 10, 2025 - Version 2.0 (Incremental Submission):**
 - ✅ **MAJOR:** Incremental task-by-task submission workflow
 - ✅ Added `partial_task_answers` table for progress tracking
@@ -641,6 +653,6 @@ Track metrics:
 
 ---
 
-**Document Version:** 2.0  
-**Last Updated:** November 10, 2025  
-**Status:** Production Ready (Incremental Workflow)
+**Document Version:** 3.0  
+**Last Updated:** November 11, 2025  
+**Status:** Production Ready (Photo Capture & Spare Parts)

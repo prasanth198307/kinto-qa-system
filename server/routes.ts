@@ -3436,7 +3436,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const from = message.from; // Sender's phone number
           const messageId = message.id;
 
-          // Guard against non-text messages (buttons, images, etc.)
+          // Check for image messages (photo uploads for NOK tasks)
+          if (message.type === 'image' && message.image?.id) {
+            console.log(`Received image from ${from}`);
+            
+            // Find checklist assignment waiting for photo
+            const allAssignments = await storage.getAllChecklistAssignments();
+            let assignment: any = null;
+            let pendingPhotoTask: any = null;
+            
+            for (const a of allAssignments) {
+              if (a.status !== 'pending') continue;
+              const task = await storage.getPendingPhotoTask(a.id);
+              if (task) {
+                // Verify phone number
+                const operator = await storage.getUser(a.operatorId);
+                if (operator?.mobileNumber) {
+                  const fromLast10 = from.replace(/\D/g, '').slice(-10);
+                  const opLast10 = operator.mobileNumber.replace(/\D/g, '').slice(-10);
+                  if (fromLast10 === opLast10) {
+                    assignment = a;
+                    pendingPhotoTask = task;
+                    break;
+                  }
+                }
+              }
+            }
+            
+            if (!assignment || !pendingPhotoTask) {
+              await whatsappService.sendTextMessage({
+                to: from,
+                message: 'No pending photo request found. Please submit task first.'
+              });
+              await whatsappService.markMessageAsRead(messageId);
+              return;
+            }
+            
+            // Download photo
+            const fileName = `${assignment.taskReferenceId}_task${pendingPhotoTask.taskOrder}_${Date.now()}.jpg`;
+            const photoUrl = await whatsappService.downloadMedia(message.image.id, fileName);
+            
+            if (!photoUrl) {
+              await whatsappService.sendTextMessage({
+                to: from,
+                message: 'Failed to download photo. Please try again.'
+              });
+              await whatsappService.markMessageAsRead(messageId);
+              return;
+            }
+            
+            // Update task with photo URL and trigger spare part request
+            await storage.updatePartialTaskPhoto(assignment.id, pendingPhotoTask.taskOrder, photoUrl);
+            
+            // Ask for spare part
+            await whatsappService.sendTextMessage({
+              to: from,
+              message: `Photo received for Task ${pendingPhotoTask.taskOrder}.\n\nNeed spare part? Reply with:\n- Part name (e.g., "Bearing SKF-6205")\n- Or "SKIP" if no spare part needed`
+            });
+            
+            await whatsappService.markMessageAsRead(messageId);
+            return;
+          }
+
+          // Guard against non-text messages (buttons, etc.)
           if (!message.text || !message.text.body) {
             console.log(`Received non-text message type from ${from}, ignoring`);
             await whatsappService.markMessageAsRead(messageId);
@@ -3661,6 +3723,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   taskResults[taskNum] = { status, remarks };
                 }
 
+                // Check if waiting for spare part response
+                const pendingSparePartTask = await storage.getPendingSparePartTask(assignment.id);
+                if (pendingSparePartTask && Object.keys(taskResults).length === 0 && !isDoneCommand) {
+                  // This is a spare part response
+                  const response = messageBody.replace(new RegExp(taskRef, 'gi'), '').trim();
+                  
+                  if (response.toUpperCase() === 'SKIP') {
+                    // No spare part needed
+                    await storage.updatePartialTaskSparePart(assignment.id, pendingSparePartTask.taskOrder, null, 'SKIP');
+                    await whatsappService.sendTextMessage({
+                      to: from,
+                      message: `Task ${pendingSparePartTask.taskOrder} completed without spare part request.\n\nContinue with remaining tasks or send "DONE".`
+                    });
+                  } else {
+                    // Search for spare part in catalog
+                    const sparePartText = response;
+                    const matches = await storage.searchSparePartsByName(sparePartText);
+                    
+                    if (matches.length > 0) {
+                      // Use first match
+                      await storage.updatePartialTaskSparePart(assignment.id, pendingSparePartTask.taskOrder, matches[0].id, sparePartText);
+                      await whatsappService.sendTextMessage({
+                        to: from,
+                        message: `Spare part "${matches[0].partName}" linked to Task ${pendingSparePartTask.taskOrder}.\n\nContinue with remaining tasks or send "DONE".`
+                      });
+                    } else {
+                      // No match - just store the text
+                      await storage.updatePartialTaskSparePart(assignment.id, pendingSparePartTask.taskOrder, null, sparePartText);
+                      await whatsappService.sendTextMessage({
+                        to: from,
+                        message: `Spare part request "${sparePartText}" recorded for Task ${pendingSparePartTask.taskOrder}.\n(Not found in catalog - manager will review)\n\nContinue with remaining tasks or send "DONE".`
+                      });
+                    }
+                  }
+                  
+                  await whatsappService.markMessageAsRead(messageId);
+                  return;
+                }
+
                 // If no tasks parsed and no DONE command, provide help
                 if (Object.keys(taskResults).length === 0 && !isDoneCommand) {
                   await whatsappService.sendTextMessage({
@@ -3674,6 +3775,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 }
 
                 // Store partial answers (upsert each task)
+                let hasNOKTask = false;
+                let nokTaskNum = 0;
+                
                 for (const [taskNumStr, result] of Object.entries(taskResults)) {
                   const taskNum = parseInt(taskNumStr);
                   const task = sortedTasks[taskNum - 1];
@@ -3685,10 +3789,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     status: result.status,
                     remarks: result.remarks || null,
                     answeredAt: new Date(),
-                    answeredBy: assignment.operatorId
+                    answeredBy: assignment.operatorId,
+                    waitingForPhoto: result.status === 'NOK' ? 1 : 0,
+                    waitingForSparePart: 0
                   });
                   
+                  if (result.status === 'NOK') {
+                    hasNOKTask = true;
+                    nokTaskNum = taskNum;
+                  }
+                  
                   console.log(`Stored answer for ${taskRef} task ${taskNum}: ${result.status}${result.remarks ? ' - ' + result.remarks : ''}`);
+                }
+
+                // If NOK task submitted, request photo
+                if (hasNOKTask) {
+                  await whatsappService.sendTextMessage({
+                    to: from,
+                    message: `Task ${nokTaskNum} marked as NOK. Please send a photo of the issue.`
+                  });
+                  await whatsappService.markMessageAsRead(messageId);
+                  return;
                 }
 
                 // Get current progress

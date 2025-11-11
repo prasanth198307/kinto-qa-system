@@ -220,6 +220,8 @@ export const partialTaskAnswers = pgTable("partial_task_answers", {
   photoUrl: varchar("photo_url", { length: 500 }), // Photo for NOK tasks
   sparePartId: varchar("spare_part_id").references(() => sparePartsCatalog.id), // Optional spare part request
   sparePartRequestText: text("spare_part_request_text"), // Operator's raw spare part request
+  waitingForPhoto: integer("waiting_for_photo").default(0), // 1 = waiting for photo upload
+  waitingForSparePart: integer("waiting_for_spare_part").default(0), // 1 = waiting for spare part response
   answeredAt: timestamp("answered_at").defaultNow().notNull(),
   answeredBy: varchar("answered_by").references(() => users.id).notNull(),
   createdAt: timestamp("created_at").defaultNow(),

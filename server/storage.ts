@@ -109,7 +109,7 @@ import {
   type InvoiceWithItems,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, or, isNotNull, notInArray, gte, lte } from "drizzle-orm";
+import { eq, and, or, isNotNull, notInArray, gte, lte, sql } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 
@@ -639,6 +639,15 @@ export class DatabaseStorage implements IStorage {
       .update(sparePartsCatalog)
       .set({ recordStatus: 0, updatedAt: new Date() })
       .where(eq(sparePartsCatalog.id, id));
+  }
+
+  async searchSparePartsByName(searchTerm: string): Promise<SparePartCatalog[]> {
+    return await db.select().from(sparePartsCatalog)
+      .where(and(
+        sql`LOWER(${sparePartsCatalog.partName}) LIKE LOWER(${`%${searchTerm}%`})`,
+        eq(sparePartsCatalog.recordStatus, 1)
+      ))
+      .limit(10);
   }
 
   async createMachineType(machineType: InsertMachineType): Promise<MachineType> {
@@ -1724,6 +1733,52 @@ export class DatabaseStorage implements IStorage {
   async deletePartialTaskAnswers(assignmentId: string): Promise<void> {
     await db.delete(partialTaskAnswers)
       .where(eq(partialTaskAnswers.assignmentId, assignmentId));
+  }
+
+  async updatePartialTaskPhoto(assignmentId: string, taskOrder: number, photoUrl: string): Promise<void> {
+    await db.update(partialTaskAnswers)
+      .set({ 
+        photoUrl, 
+        waitingForPhoto: 0,
+        waitingForSparePart: 1 // Now waiting for spare part response
+      })
+      .where(and(
+        eq(partialTaskAnswers.assignmentId, assignmentId),
+        eq(partialTaskAnswers.taskOrder, taskOrder)
+      ));
+  }
+
+  async updatePartialTaskSparePart(assignmentId: string, taskOrder: number, sparePartId: string | null, sparePartText: string): Promise<void> {
+    await db.update(partialTaskAnswers)
+      .set({ 
+        sparePartId,
+        sparePartRequestText: sparePartText,
+        waitingForSparePart: 0
+      })
+      .where(and(
+        eq(partialTaskAnswers.assignmentId, assignmentId),
+        eq(partialTaskAnswers.taskOrder, taskOrder)
+      ));
+  }
+
+  async getPendingPhotoTask(assignmentId: string): Promise<PartialTaskAnswer | null> {
+    const [task] = await db.select().from(partialTaskAnswers)
+      .where(and(
+        eq(partialTaskAnswers.assignmentId, assignmentId),
+        eq(partialTaskAnswers.waitingForPhoto, 1)
+      ))
+      .limit(1);
+    return task || null;
+  }
+
+  async getPendingSparePartTask(assignmentId: string): Promise<PartialTaskAnswer | null> {
+    const [task] = await db.select().from(partialTaskAnswers)
+      .where(and(
+        eq(partialTaskAnswers.assignmentId, assignmentId),
+        eq(partialTaskAnswers.waitingForSparePart, 1)
+      ))
+      .limit(1);
+    return task || null;
   }
 
   async getUsersByRole(roleName: string): Promise<User[]> {
