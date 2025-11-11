@@ -102,8 +102,24 @@ The backend is an Express.js application built with TypeScript and Node.js. It f
 - Pattern: `{showHeader && <GlobalHeader />}` with conditional `mt-16` spacing
 
 **Duplicate Header Fix (Final):**
-- Removed GlobalHeader from 9 pages accessed ONLY via dashboards (sales-dashboard, dispatch-tracking, inventory-management, production-management, machine-startup-reminders, WhatsAppAnalytics, notification-settings, template-management, ReviewerDashboard)
-- Reports page uses conditional rendering for dual-access support
+- Removed GlobalHeader from 9 pages accessed ONLY via dashboards (sales-dashboard, inventory-management, production-management, machine-startup-reminders, WhatsAppAnalytics, notification-settings, template-management, ReviewerDashboard, AdminUserManagement)
+- Conditional header pages support dual-access pattern (Reports, Dispatch Tracking) with `showHeader` prop
+- Pattern: Standalone pages show GlobalHeader; dashboard-embedded pages rely on DashboardShell's header
+
+**Dashboard-Only Pages (No GlobalHeader):**
+1. sales-dashboard.tsx
+2. inventory-management.tsx
+3. production-management.tsx
+4. machine-startup-reminders.tsx
+5. WhatsAppAnalytics.tsx
+6. notification-settings.tsx
+7. template-management.tsx
+8. ReviewerDashboard.tsx
+9. AdminUserManagement.tsx
+
+**Dual-Access Pages (Conditional GlobalHeader):**
+1. Reports.tsx (showHeader prop)
+2. dispatch-tracking.tsx (showHeader prop)
 
 **Coverage:** 17 pages/dashboards
 - 13 standalone pages (Reports with conditional header, User Management, etc.)
