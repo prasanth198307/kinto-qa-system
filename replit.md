@@ -154,3 +154,21 @@ Documentation: See `TEST_CREDENTIALS.md` and `TEST_STATUS_SUMMARY.md`
 - **Solution:** Backend validation in DELETE `/api/users/:id` route
 - **Behavior:** Returns 400 error with message "Cannot delete your own account"
 - **Location:** `server/routes.ts` (lines 330-333)
+
+#### ReviewerDashboard Photo & Spare Parts Display (COMPLETED - November 11, 2025)
+- **Feature:** ReviewerDashboard now displays photos and spare part requests for NOK tasks
+- **Implementation:**
+  - Fetches partial task answers via `/api/checklist-assignments/:id/partial-answers` endpoint
+  - Displays uploaded photos with proper image rendering from local storage
+  - Shows spare part requests (both catalog-linked and free-text)
+  - Full integration with existing review workflow
+- **Security:**
+  - Endpoint requires reviewer/admin/manager roles
+  - Verifies assignment belongs to user's submissions
+  - Only assigned reviewer can view (unless admin/manager)
+  - Audit logging for unauthorized access attempts
+- **Files:**
+  - `client/src/pages/ReviewerDashboard.tsx`: Enhanced with photo and spare parts display
+  - `server/routes.ts`: Added secure partial-answers endpoint
+  - `server/storage.ts`: Helper methods for partial task answers
+- **Status:** Production-ready with architect approval ✅
