@@ -95,6 +95,14 @@ The backend is an Express.js application built with TypeScript and Node.js. It f
 - Sidebar sits **under** the header, navigation items start below header
 - No blank space above sidebar - header covers full width seamlessly
 
+**Mobile Responsiveness:**
+- GlobalHeader includes hamburger menu button (☰) on mobile/tablet screens (hidden on desktop with `lg:hidden`)
+- DashboardShell manages mobile menu state and coordinates header/sidebar interaction
+- VerticalNavSidebar slides in from left on mobile when menu is opened
+- Dark overlay backdrop appears behind sidebar on mobile
+- Clicking nav item or overlay closes the mobile menu automatically
+- Fully responsive across all screen sizes
+
 **Conditional Header Pattern:**
 - Reports page supports dual-access pattern via `showHeader` prop (defaults to `true`)
 - Standalone access (direct route): Shows GlobalHeader
