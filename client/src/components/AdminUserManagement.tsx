@@ -224,10 +224,9 @@ export default function AdminUserManagement() {
     return (
       <>
         <GlobalHeader
-          title="User Management"
           onLogoutClick={() => logoutMutation.mutate()}
         />
-        <div className="mt-14 text-center py-8">
+        <div className="mt-16 text-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
         </div>
       </>
@@ -237,7 +236,6 @@ export default function AdminUserManagement() {
   return (
     <>
       <GlobalHeader
-        title="User Management"
         actions={
           <Button 
             onClick={() => setIsCreateDialogOpen(true)}
@@ -249,7 +247,8 @@ export default function AdminUserManagement() {
         }
         onLogoutClick={() => logoutMutation.mutate()}
       />
-      <div className="mt-14 space-y-4 p-4">
+      <div className="mt-16 space-y-4 p-4">
+        <h2 className="text-xl font-semibold">User Management</h2>
         <p className="text-sm text-muted-foreground">{users.length} total users</p>
 
       <div className="relative">

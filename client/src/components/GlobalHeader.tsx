@@ -18,33 +18,24 @@ export function GlobalHeader({
   onNotificationClick,
 }: GlobalHeaderProps) {
   return (
-    <div className="fixed top-0 left-0 right-0 lg:left-72 h-14 bg-card border-b border-border z-50 flex items-center justify-between px-4 gap-4">
-      {/* Left: Logo (mobile only) + Title */}
-      <div className="flex items-center gap-4 min-w-0 flex-1">
-        <div className="lg:hidden">
-          <KintoLogo variant="compact" layout="vertical" />
-        </div>
-        {title && (
-          <h1 className="text-lg font-semibold text-foreground truncate">
-            {title}
-          </h1>
-        )}
+    <div className="fixed top-0 left-0 right-0 lg:left-72 h-16 bg-card border-b border-border z-50 flex items-center justify-between px-4 gap-4">
+      {/* Left: KINTO Logo + SmartOps (horizontal) */}
+      <div className="flex items-center gap-4 min-w-0">
+        <KintoLogo variant="compact" layout="horizontal" />
       </div>
 
-      {/* Center/Right: Actions + User Controls */}
-      <div className="flex items-center gap-2 flex-shrink-0">
+      {/* Right: Actions + Notifications + Logout */}
+      <div className="flex items-center gap-3 flex-shrink-0">
         {actions && (
           <div className="flex items-center gap-2">
             {actions}
           </div>
         )}
-        <div className="flex items-center gap-2">
-          <TopRightHeader
-            notificationCount={notificationCount}
-            onLogoutClick={onLogoutClick}
-            onNotificationClick={onNotificationClick}
-          />
-        </div>
+        <TopRightHeader
+          notificationCount={notificationCount}
+          onLogoutClick={onLogoutClick}
+          onNotificationClick={onNotificationClick}
+        />
       </div>
     </div>
   );
