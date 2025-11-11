@@ -78,3 +78,25 @@ The backend is an Express.js application built with TypeScript and Node.js. It f
 ### Other
 - Wouter (Routing)
 - TanStack Query (Server State Management)
+
+## Recent Updates
+
+### GlobalHeader Implementation (November 11, 2025)
+**Objective:** Display KINTO logo horizontally in single-line header strip on every page with logout and notifications always visible on right.
+
+**Components Created:**
+- **GlobalHeader** (`client/src/components/GlobalHeader.tsx`): Fixed header with horizontal KINTO logo, "SmartOps" and "Manufacturing Excellence" text, notification bell, and logout button. Supports `noSidebarOffset` prop (defaults to `true` for standalone pages).
+- **DashboardShell** (`client/src/components/DashboardShell.tsx`): Wrapper for sidebar-based dashboards (Admin/Manager/Reviewer) with GlobalHeader, VerticalNavSidebar, and content area.
+- **OperatorDashboardShell** (`client/src/components/OperatorDashboardShell.tsx`): Wrapper for mobile bottom-nav dashboard (Operator).
+
+**Duplicate Logo Fix:**
+- Removed KINTO logos from VerticalNavSidebar (both mobile and desktop variants)
+- Sidebar now contains only navigation items, no branding
+- GlobalHeader is the single source of branding across all pages
+- Sidebar position adjusted to `top-16` to start below fixed header
+
+**Coverage:** 17 pages/dashboards
+- 13 standalone pages (Reports, Sales Dashboard, User Management, etc.)
+- 4 role-based dashboards (Operator, Reviewer, Manager, Admin)
+
+**Status:** Production-ready with architect approval ✅
