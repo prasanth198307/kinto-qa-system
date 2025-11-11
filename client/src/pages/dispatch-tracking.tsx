@@ -27,7 +27,11 @@ const statusConfig = {
   vehicle_out: { label: "Vehicle Out", color: "bg-orange-500", icon: Truck },
 };
 
-export default function DispatchTracking() {
+interface DispatchTrackingProps {
+  showHeader?: boolean;
+}
+
+export default function DispatchTracking({ showHeader = true }: DispatchTrackingProps = {}) {
   const search = useSearch();
   const { logoutMutation } = useAuth();
   const [showGatepassForm, setShowGatepassForm] = useState(false);
@@ -95,7 +99,8 @@ export default function DispatchTracking() {
   if (invoicesLoading || gatepassesLoading) {
     return (
       <>
-        <div className="p-6">
+        {showHeader && <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />}
+        <div className={showHeader ? "p-6 mt-16" : "p-6"}>
           <div className="text-center">Loading dispatch tracking data...</div>
         </div>
       </>
@@ -104,7 +109,8 @@ export default function DispatchTracking() {
 
   return (
     <>
-      <div className="p-6 space-y-6">
+      {showHeader && <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />}
+      <div className={showHeader ? "p-6 mt-16 space-y-6" : "p-6 space-y-6"}>
         <div>
           <h2 className="text-2xl font-semibold">Dispatch Tracking Dashboard</h2>
           <p className="text-muted-foreground">Monitor the complete dispatch workflow from invoice to delivery</p>

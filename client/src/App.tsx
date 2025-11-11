@@ -392,7 +392,7 @@ function ManagerDashboard() {
       case 'invoices':
         return <ProductionManagement activeTab={activeView} />;
       case 'dispatch-tracking':
-        return <DispatchTracking />;
+        return <DispatchTracking showHeader={false} />;
       case 'reports':
         return <Reports showHeader={false} />;
       default:
@@ -709,7 +709,7 @@ function AdminDashboard() {
       case 'invoices':
         return <ProductionManagement activeTab={activeView} />;
       case 'dispatch-tracking':
-        return <DispatchTracking />;
+        return <DispatchTracking showHeader={false} />;
       case 'machine-startup-reminders':
         return <MachineStartupReminders />;
       case 'whatsapp-analytics':
