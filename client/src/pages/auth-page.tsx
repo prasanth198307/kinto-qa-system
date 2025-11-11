@@ -57,7 +57,7 @@ export default function AuthPage() {
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-primary">KINTO Operations & QA</h1>
-            <p className="text-muted-foreground mt-2">Manufacturing Operations & Quality Management</p>
+            <p className="text-foreground mt-2 font-medium">Powering Smart Manufacturing Excellence</p>
           </div>
 
           <Card>
