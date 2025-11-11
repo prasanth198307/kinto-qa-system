@@ -8,6 +8,7 @@ interface GlobalHeaderProps {
   notificationCount?: number;
   onLogoutClick: () => void;
   onNotificationClick?: () => void;
+  noSidebarOffset?: boolean;
 }
 
 export function GlobalHeader({
@@ -16,12 +17,20 @@ export function GlobalHeader({
   notificationCount = 0,
   onLogoutClick,
   onNotificationClick,
+  noSidebarOffset = true,
 }: GlobalHeaderProps) {
+  const headerClassName = `fixed top-0 left-0 right-0 ${!noSidebarOffset ? 'lg:left-72' : ''} h-16 bg-card border-b border-border z-50 flex items-center justify-between px-4 gap-4`;
+  
   return (
-    <div className="fixed top-0 left-0 right-0 lg:left-72 h-16 bg-card border-b border-border z-50 flex items-center justify-between px-4 gap-4">
-      {/* Left: KINTO Logo + SmartOps (horizontal) */}
+    <div className={headerClassName}>
+      {/* Left: KINTO Logo + SmartOps (horizontal) + Optional Title */}
       <div className="flex items-center gap-4 min-w-0">
         <KintoLogo variant="compact" layout="horizontal" />
+        {title && (
+          <h1 className="text-lg font-semibold text-foreground truncate">
+            {title}
+          </h1>
+        )}
       </div>
 
       {/* Right: Actions + Notifications + Logout */}

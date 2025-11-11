@@ -12,6 +12,8 @@ import AuthPage from "@/pages/auth-page";
 import Landing from "@/components/Landing";
 import RoleSelector from "@/components/RoleSelector";
 import { TopRightHeader } from "@/components/TopRightHeader";
+import { DashboardShell } from "@/components/DashboardShell";
+import { OperatorDashboardShell } from "@/components/OperatorDashboardShell";
 import DashboardStats from "@/components/DashboardStats";
 import ChecklistForm from "@/components/ChecklistForm";
 import MachineCard from "@/components/MachineCard";
@@ -80,101 +82,101 @@ function OperatorDashboard() {
     { id: '2', machine: 'PET Blowing Machine', date: 'Oct 31, 2025', shift: 'Afternoon', operator: 'You', status: 'in_review' as const },
   ];
 
-  return (
-    <div className="min-h-screen bg-background">
-      <TopRightHeader 
-        notificationCount={1} 
-        onLogoutClick={() => logoutMutation.mutate()} 
-      />
-      
-      <div className="pt-14 pb-20">
-        {activeView === 'dashboard' && (
-          <div className="p-4 space-y-6">
-            <DashboardStats stats={mockStats} />
-            
-            <OperatorAssignedChecklists />
-            
-            <div>
-              <h3 className="text-lg font-semibold mb-3">Assigned Machines</h3>
-              <div className="space-y-3">
-                <MachineCard
-                  name="RFC Machine"
-                  type="Rinse-Fill-Cap"
-                  status="active"
-                  lastMaintenance="Oct 28, 2025"
-                  onClick={() => setActiveView('checklist')}
-                />
-                <MachineCard
-                  name="PET Blowing Machine"
-                  type="Bottle Manufacturing"
-                  status="active"
-                  lastMaintenance="Oct 30, 2025"
-                  onClick={() => setActiveView('checklist')}
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeView === 'checklist' && (
-          <div className="p-4">
-            <Button
-              variant="ghost"
-              onClick={() => setActiveView('dashboard')}
-              className="mb-4"
-              data-testid="button-back"
-            >
-              ← Back to Dashboard
-            </Button>
-            <ChecklistForm
-              machineName="RFC Machine"
-              tasks={mockTasks}
-              onSubmit={() => setActiveView('dashboard')}
-            />
-          </div>
-        )}
-
-        {activeView === 'history' && (
-          <div className="p-4">
-            <h3 className="text-lg font-semibold mb-4">My Submissions</h3>
-            <ChecklistHistoryTable records={mockRecords} />
-          </div>
-        )}
-
-        {activeView === 'production' && (
-          <ProductionManagement />
-        )}
-      </div>
-
-      <div className="fixed bottom-0 left-0 right-0 bg-card border-t">
-        <div className="flex">
-          <button
-            className={`flex-1 py-3 flex flex-col items-center gap-1 ${activeView === 'dashboard' ? 'text-primary' : 'text-muted-foreground'}`}
-            onClick={() => setActiveView('dashboard')}
-            data-testid="tab-dashboard"
-          >
-            <ClipboardCheck className="h-5 w-5" />
-            <span className="text-xs">Dashboard</span>
-          </button>
-          <button
-            className={`flex-1 py-3 flex flex-col items-center gap-1 ${activeView === 'history' ? 'text-primary' : 'text-muted-foreground'}`}
-            onClick={() => setActiveView('history')}
-            data-testid="tab-history"
-          >
-            <FileText className="h-5 w-5" />
-            <span className="text-xs">History</span>
-          </button>
-          <button
-            className={`flex-1 py-3 flex flex-col items-center gap-1 ${activeView === 'production' ? 'text-primary' : 'text-muted-foreground'}`}
-            onClick={() => setActiveView('production')}
-            data-testid="tab-production"
-          >
-            <Factory className="h-5 w-5" />
-            <span className="text-xs">Production</span>
-          </button>
-        </div>
+  const bottomNav = (
+    <div className="fixed bottom-0 left-0 right-0 bg-card border-t">
+      <div className="flex">
+        <button
+          className={`flex-1 py-3 flex flex-col items-center gap-1 ${activeView === 'dashboard' ? 'text-primary' : 'text-muted-foreground'}`}
+          onClick={() => setActiveView('dashboard')}
+          data-testid="tab-dashboard"
+        >
+          <ClipboardCheck className="h-5 w-5" />
+          <span className="text-xs">Dashboard</span>
+        </button>
+        <button
+          className={`flex-1 py-3 flex flex-col items-center gap-1 ${activeView === 'history' ? 'text-primary' : 'text-muted-foreground'}`}
+          onClick={() => setActiveView('history')}
+          data-testid="tab-history"
+        >
+          <FileText className="h-5 w-5" />
+          <span className="text-xs">History</span>
+        </button>
+        <button
+          className={`flex-1 py-3 flex flex-col items-center gap-1 ${activeView === 'production' ? 'text-primary' : 'text-muted-foreground'}`}
+          onClick={() => setActiveView('production')}
+          data-testid="tab-production"
+        >
+          <Factory className="h-5 w-5" />
+          <span className="text-xs">Production</span>
+        </button>
       </div>
     </div>
+  );
+
+  return (
+    <OperatorDashboardShell
+      title="Operator Dashboard"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={1}
+      bottomNav={bottomNav}
+    >
+      {activeView === 'dashboard' && (
+        <div className="p-4 space-y-6">
+          <DashboardStats stats={mockStats} />
+          
+          <OperatorAssignedChecklists />
+          
+          <div>
+            <h3 className="text-lg font-semibold mb-3">Assigned Machines</h3>
+            <div className="space-y-3">
+              <MachineCard
+                name="RFC Machine"
+                type="Rinse-Fill-Cap"
+                status="active"
+                lastMaintenance="Oct 28, 2025"
+                onClick={() => setActiveView('checklist')}
+              />
+              <MachineCard
+                name="PET Blowing Machine"
+                type="Bottle Manufacturing"
+                status="active"
+                lastMaintenance="Oct 30, 2025"
+                onClick={() => setActiveView('checklist')}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeView === 'checklist' && (
+        <div className="p-4">
+          <Button
+            variant="ghost"
+            onClick={() => setActiveView('dashboard')}
+            className="mb-4"
+            data-testid="button-back"
+          >
+            ← Back to Dashboard
+          </Button>
+          <ChecklistForm
+            machineName="RFC Machine"
+            tasks={mockTasks}
+            onSubmit={() => setActiveView('dashboard')}
+          />
+        </div>
+      )}
+
+      {activeView === 'history' && (
+        <div className="p-4">
+          <h3 className="text-lg font-semibold mb-4">My Submissions</h3>
+          <ChecklistHistoryTable records={mockRecords} />
+        </div>
+      )}
+
+      {activeView === 'production' && (
+        <ProductionManagement />
+      )}
+    </OperatorDashboardShell>
   );
 }
 
@@ -209,23 +211,16 @@ function ReviewerDashboard() {
   };
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <TopRightHeader 
-        notificationCount={0} 
-        onLogoutClick={handleLogout} 
-      />
-      
-      <VerticalNavSidebar
-        sections={navSections}
-        activeItem={activeView}
-        onItemClick={setActiveView}
-        title="Reviewer Dashboard"
-      />
-      
-      <div className="flex-1 lg:ml-0 pt-14 pr-24 lg:pt-0 lg:pr-0">
-        {renderContent()}
-      </div>
-    </div>
+    <DashboardShell
+      title="Reviewer Dashboard"
+      onLogoutClick={handleLogout}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={setActiveView}
+    >
+      {renderContent()}
+    </DashboardShell>
   );
 }
 
@@ -417,23 +412,16 @@ function ManagerDashboard() {
   };
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <TopRightHeader 
-        notificationCount={0} 
-        onLogoutClick={handleLogout} 
-      />
-      
-      <VerticalNavSidebar
-        sections={navSections}
-        activeItem={activeView}
-        onItemClick={setActiveView}
-        title="Manager Dashboard"
-      />
-      
-      <div className="flex-1 lg:ml-0 pt-14 pr-24 lg:pt-0 lg:pr-0">
-        {renderContent()}
-      </div>
-    </div>
+    <DashboardShell
+      title="Manager Dashboard"
+      onLogoutClick={handleLogout}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={setActiveView}
+    >
+      {renderContent()}
+    </DashboardShell>
   );
 }
 
@@ -748,30 +736,23 @@ function AdminDashboard() {
   };
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <TopRightHeader 
-        notificationCount={0} 
-        onLogoutClick={handleLogout} 
-      />
+    <DashboardShell
+      title="Admin Dashboard"
+      onLogoutClick={handleLogout}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={setActiveView}
+    >
+      {renderContent()}
       
-      <VerticalNavSidebar
-        sections={navSections}
-        activeItem={activeView}
-        onItemClick={setActiveView}
-        title="Admin Dashboard"
+      <SchedulePMDialog open={isPMDialogOpen} onOpenChange={setIsPMDialogOpen} />
+      <PMExecutionDialog 
+        open={isExecutionDialogOpen} 
+        onOpenChange={setIsExecutionDialogOpen} 
+        plan={selectedPlanForExecution} 
       />
-      
-      <div className="flex-1 lg:ml-0 pt-14 pr-24 lg:pt-0 lg:pr-0">
-        {renderContent()}
-        
-        <SchedulePMDialog open={isPMDialogOpen} onOpenChange={setIsPMDialogOpen} />
-        <PMExecutionDialog 
-          open={isExecutionDialogOpen} 
-          onOpenChange={setIsExecutionDialogOpen} 
-          plan={selectedPlanForExecution} 
-        />
-      </div>
-    </div>
+    </DashboardShell>
   );
 }
 
