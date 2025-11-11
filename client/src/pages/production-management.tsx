@@ -3,6 +3,8 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
+import { GlobalHeader } from "@/components/GlobalHeader";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Plus, Package, FileText } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -35,6 +37,7 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
   const [selectedGatepassForInvoice, setSelectedGatepassForInvoice] = useState<Gatepass | null>(null);
   const [selectedInvoiceForPayment, setSelectedInvoiceForPayment] = useState<Invoice | null>(null);
   const { toast } = useToast();
+  const { logoutMutation } = useAuth();
 
   // Update activeTab when externalActiveTab changes
   useEffect(() => {
@@ -339,17 +342,19 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
   };
 
   return (
-    <div className="bg-background">
-      <div className="border-b bg-card">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <h1 className="text-2xl font-bold text-foreground">Production Management</h1>
-          <p className="text-sm text-muted-foreground mt-1">Manage raw material issuance and gatepasses</p>
+    <>
+      <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />
+      <div className="bg-background mt-16">
+        <div className="border-b bg-card">
+          <div className="max-w-7xl mx-auto px-4 py-4">
+            <h1 className="text-2xl font-bold text-foreground">Production Management</h1>
+            <p className="text-sm text-muted-foreground mt-1">Manage raw material issuance and gatepasses</p>
+          </div>
         </div>
-      </div>
 
-      <div className="p-4 pb-20">
-        {renderContent()}
-      </div>
+        <div className="p-4 pb-20">
+          {renderContent()}
+        </div>
 
       {/* Payment Dialog */}
       <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
@@ -390,6 +395,7 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
           />
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </>
   );
 }

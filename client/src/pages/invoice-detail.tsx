@@ -10,11 +10,14 @@ import PrintableInvoice from "@/components/PrintableInvoice";
 import { format } from "date-fns";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
+import { GlobalHeader } from "@/components/GlobalHeader";
 
 export default function InvoiceDetail() {
   const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const { logoutMutation } = useAuth();
 
   const { data: invoice, isLoading: isLoadingInvoice } = useQuery<Invoice>({
     queryKey: ['/api/invoices', id],
@@ -35,24 +38,30 @@ export default function InvoiceDetail() {
 
   if (isLoadingInvoice) {
     return (
-      <div className="min-h-screen p-6 flex items-center justify-center">
-        <div className="text-muted-foreground">Loading invoice...</div>
-      </div>
+      <>
+        <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />
+        <div className="min-h-screen p-6 mt-16 flex items-center justify-center">
+          <div className="text-muted-foreground">Loading invoice...</div>
+        </div>
+      </>
     );
   }
 
   if (!invoice) {
     return (
-      <div className="min-h-screen p-6">
-        <Card className="max-w-md mx-auto p-8 text-center">
-          <h2 className="text-2xl font-bold text-destructive mb-4">Invoice Not Found</h2>
-          <p className="text-muted-foreground mb-6">The requested invoice could not be found.</p>
-          <Button onClick={() => navigate('/')} data-testid="button-back">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Dashboard
-          </Button>
-        </Card>
-      </div>
+      <>
+        <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />
+        <div className="min-h-screen p-6 mt-16">
+          <Card className="max-w-md mx-auto p-8 text-center">
+            <h2 className="text-2xl font-bold text-destructive mb-4">Invoice Not Found</h2>
+            <p className="text-muted-foreground mb-6">The requested invoice could not be found.</p>
+            <Button onClick={() => navigate('/')} data-testid="button-back">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Dashboard
+            </Button>
+          </Card>
+        </div>
+      </>
     );
   }
 
@@ -97,9 +106,11 @@ export default function InvoiceDetail() {
   };
 
   return (
-    <div className="min-h-screen p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <>
+      <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />
+      <div className="min-h-screen p-6 mt-16 space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button
             variant="ghost"
@@ -359,6 +370,7 @@ export default function InvoiceDetail() {
           </CardContent>
         </Card>
       )}
-    </div>
+      </div>
+    </>
   );
 }

@@ -42,13 +42,14 @@ import { Switch } from "@/components/ui/switch";
 import { Plus, Pencil, Trash2, Search, Package, Layers, Box, CheckCircle, Users } from "lucide-react";
 import VendorManagement from "@/components/VendorManagement";
 import BankManagement from "@/components/BankManagement";
+import { GlobalHeader } from "@/components/GlobalHeader";
 
 interface InventoryManagementProps {
   activeTab?: string;
 }
 
 export default function InventoryManagement({ activeTab: externalActiveTab }: InventoryManagementProps = {}) {
-  const { user } = useAuth();
+  const { user, logoutMutation } = useAuth();
   const [activeTab, setActiveTab] = useState(externalActiveTab || "uom");
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -61,12 +62,15 @@ export default function InventoryManagement({ activeTab: externalActiveTab }: In
 
   if (!user || !['admin', 'manager'].includes(user.role || '')) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="p-8 max-w-md text-center space-y-4">
-          <h2 className="text-2xl font-bold text-destructive">Access Denied</h2>
-          <p className="text-muted-foreground">You do not have permission to access Inventory Management. This feature is only available to Admin and Manager roles.</p>
-        </Card>
-      </div>
+      <>
+        <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />
+        <div className="min-h-screen flex items-center justify-center p-4 mt-16">
+          <Card className="p-8 max-w-md text-center space-y-4">
+            <h2 className="text-2xl font-bold text-destructive">Access Denied</h2>
+            <p className="text-muted-foreground">You do not have permission to access Inventory Management. This feature is only available to Admin and Manager roles.</p>
+          </Card>
+        </div>
+      </>
     );
   }
 
@@ -90,18 +94,21 @@ export default function InventoryManagement({ activeTab: externalActiveTab }: In
   };
 
   return (
-    <div className="bg-background">
-      <div className="border-b bg-card">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <h1 className="text-2xl font-bold text-foreground">Inventory Management</h1>
-          <p className="text-sm text-muted-foreground mt-1">Manage units, products, raw materials, and finished goods</p>
+    <>
+      <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />
+      <div className="bg-background mt-16">
+        <div className="border-b bg-card">
+          <div className="max-w-7xl mx-auto px-4 py-4">
+            <h1 className="text-2xl font-bold text-foreground">Inventory Management</h1>
+            <p className="text-sm text-muted-foreground mt-1">Manage units, products, raw materials, and finished goods</p>
+          </div>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 py-6">
+          {renderContent()}
         </div>
       </div>
-
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        {renderContent()}
-      </div>
-    </div>
+    </>
   );
 }
 

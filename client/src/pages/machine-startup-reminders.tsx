@@ -41,6 +41,8 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
+import { GlobalHeader } from "@/components/GlobalHeader";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -85,6 +87,7 @@ interface MachineStartupTask {
 
 export default function MachineStartupReminders() {
   const { toast } = useToast();
+  const { logoutMutation } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [showBulkAssignment, setShowBulkAssignment] = useState(false);
   const [editingTask, setEditingTask] = useState<MachineStartupTask | null>(null);
@@ -206,8 +209,10 @@ export default function MachineStartupReminders() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <Card>
+    <>
+      <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />
+      <div className="p-6 mt-16 space-y-6">
+        <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
             <div>
@@ -564,6 +569,7 @@ export default function MachineStartupReminders() {
         open={showBulkAssignment} 
         onOpenChange={setShowBulkAssignment} 
       />
-    </div>
+      </div>
+    </>
   );
 }
