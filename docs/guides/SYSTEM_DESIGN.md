@@ -10,11 +10,12 @@
 7. [Security Architecture](#security-architecture)
 8. [User Roles & Permissions](#user-roles--permissions)
 9. [Module Descriptions](#module-descriptions)
-10. [Data Flow](#data-flow)
-11. [API Design](#api-design)
-12. [Mobile & Progressive Web App](#mobile--progressive-web-app)
-13. [Performance Considerations](#performance-considerations)
-14. [Scalability](#scalability)
+10. [WhatsApp Integration](#whatsapp-integration)
+11. [Data Flow](#data-flow)
+12. [API Design](#api-design)
+13. [Mobile & Progressive Web App](#mobile--progressive-web-app)
+14. [Performance Considerations](#performance-considerations)
+15. [Scalability](#scalability)
 
 ---
 
@@ -670,6 +671,246 @@ Administrators can create custom roles with granular permissions across 17 scree
 **Access**:
 - Master Data (UOM, Products): Admin/Manager
 - Transactions: Admin/Manager/Operator (create), All (view)
+
+---
+
+## WhatsApp Integration
+
+### Overview
+
+The system features a production-ready **two-way WhatsApp integration** using **Meta WhatsApp Business Cloud API** for automated reminders, inbound message processing, and real-time communication with operators.
+
+### Key Features
+
+**Outbound Capabilities**:
+- Machine startup reminders with task reference IDs
+- Missed checklist notifications
+- Auto-generated task completion instructions
+- Template-based messaging
+
+**Inbound Capabilities**:
+- Operator response tracking via WhatsApp replies
+- Photo upload support for "Not OK" tasks
+- Spare part requests from the field
+- Sender verification and authentication
+- Atomic status updates
+
+**Analytics & Tracking**:
+- Response time monitoring (early, on-time, late)
+- Response rate metrics
+- Delivery confirmation
+- WhatsApp communication history
+
+### Architecture
+
+#### WhatsApp Service Layer
+
+**Component**: `server/whatsappService.ts`
+
+**Responsibilities**:
+- Send text messages via Meta Business API
+- Download media files (photos) from WhatsApp
+- Mark messages as read
+- Manage API credentials (environment variables or database)
+
+**Configuration**:
+```typescript
+{
+  phoneNumberId: string;      // Meta Business Phone Number ID
+  accessToken: string;        // Meta Business Access Token
+  verifyToken: string;        // Webhook verification token
+  apiVersion: 'v18.0';        // Meta Graph API version
+}
+```
+
+**API Integration**:
+- **Base URL**: `https://graph.facebook.com/v18.0/{phone-number-id}/messages`
+- **Authentication**: Bearer token (access token)
+- **Message Format**: JSON payload with `messaging_product: 'whatsapp'`
+
+#### Webhook Infrastructure
+
+**Endpoint**: `/api/whatsapp/webhook`
+
+**GET Webhook** (Verification):
+- Verifies Meta webhook subscription
+- Validates `hub.verify_token` against environment variable
+- Returns challenge string for successful verification
+
+**POST Webhook** (Message Reception):
+- Receives inbound WhatsApp messages
+- Processes asynchronously (immediate 200 response)
+- Handles text messages, media, and status updates
+- Extracts sender phone number and message content
+
+**Webhook Processing Flow**:
+```
+1. Meta sends webhook POST request
+2. Server acknowledges immediately (200 OK)
+3. Async processing begins:
+   - Validate message structure
+   - Verify sender (if required)
+   - Parse message content
+   - Update database (atomic operations)
+   - Download media if present
+   - Mark message as read
+```
+
+#### Database Integration
+
+**Machine Startup Tasks**:
+- `whatsappEnabled`: Enable/disable WhatsApp reminders per task
+- `whatsappSent`: Track reminder send status
+- `taskReferenceId`: Unique ID for tracking operator responses
+- `operatorResponse`: Captured response text from WhatsApp
+- `operatorResponseTime`: Timestamp of operator reply
+- `responseStatus`: Classification (on_time, late, early, no_response)
+
+**Checklist Submissions**:
+- `whatsappNotificationSent`: Track missed checklist notifications
+- `whatsappNotificationSentAt`: Notification timestamp
+- Photo storage path for NOK tasks
+
+**Global Configuration**:
+- `whatsappPhoneNumberId`: Meta Business Phone Number ID (database-stored)
+- `whatsappAccessToken`: Meta Business Access Token (database-stored)
+- Credentials loaded at runtime with environment variable fallback
+
+### Use Cases
+
+#### 1. Machine Startup Reminders
+
+**Flow**:
+1. Admin/Manager assigns machine startup task to operator
+2. System sends WhatsApp reminder with task reference ID
+3. Message format:
+   ```
+   MACHINE STARTUP REMINDER
+   
+   Machine: CNC Mill 01
+   Scheduled: 2025-11-11 08:00 AM
+   
+   Reply "Done REF12345" when started
+   Task ID: REF12345
+   
+   - KINTO QA System
+   ```
+4. Operator replies with task ID when machine started
+5. Webhook receives response, parses task ID
+6. System updates task status and calculates response time
+7. Analytics categorizes response (early/on-time/late)
+
+**Response Classification**:
+- **On Time**: Within ±15 minutes of scheduled time
+- **Early**: More than 15 minutes before scheduled time
+- **Late**: More than 15 minutes after scheduled time
+- **No Response**: No WhatsApp reply received
+
+#### 2. Checklist Completion via WhatsApp
+
+**Flow**:
+1. Operator receives WhatsApp reminder for pending checklist
+2. Operator replies incrementally:
+   - Task 1: "OK"
+   - Task 2: "NOK" + photo attachment
+   - Task 3: "OK"
+3. System processes each response:
+   - Update task status
+   - Download and store photos for NOK tasks
+   - Track completion progress
+4. Optional: Operator requests spare parts via WhatsApp
+5. System marks checklist complete when all tasks submitted
+6. Reviewer notified for approval
+
+**Photo Capture**:
+- Media downloaded via Meta Graph API
+- Saved to `attached_assets/checklist_photos/`
+- File naming: `task_{taskId}_photo_{timestamp}.jpg`
+- Path stored in database for reference
+
+#### 3. Missed Checklist Notifications
+
+**Flow**:
+1. System identifies overdue checklist assignments
+2. Sends WhatsApp alert to assigned operator:
+   ```
+   CHECKLIST REMINDER
+   
+   Machine: Assembly Line 02
+   Template: Daily Safety Checklist
+   Due: Today
+   
+   Please complete via mobile app
+   
+   - KINTO QA System
+   ```
+3. Tracks notification send status
+4. Prevents duplicate notifications
+
+### Security & Verification
+
+**Sender Verification**:
+- Validate sender phone number against assigned operator
+- Prevent unauthorized responses
+- Log suspicious activity
+
+**Webhook Security**:
+- Verify Meta signature (X-Hub-Signature-256 header)
+- Validate webhook token on subscription
+- Rate limiting on webhook endpoint
+
+**Data Privacy**:
+- Phone numbers stored securely
+- WhatsApp messages not logged in plain text
+- Media files access-controlled
+
+### Analytics Dashboard
+
+**Metrics Tracked**:
+- Total WhatsApp reminders sent
+- Response rate percentage
+- On-time response count
+- Early response count
+- Late response count
+- No response count
+- Average response time
+- Response history timeline
+
+**Access**: Admin, Manager (view-only)
+
+### Configuration Management
+
+**Admin Settings Page** (`notification-settings.tsx`):
+- Configure WhatsApp credentials (Phone Number ID, Access Token)
+- Enable/disable WhatsApp for specific features
+- Test message sending
+- View webhook status
+- Manage verification token
+
+**Credential Precedence**:
+1. Database-stored credentials (preferred)
+2. Environment variables (fallback)
+
+### External Dependencies
+
+| Service | Purpose | Endpoint |
+|---------|---------|----------|
+| Meta WhatsApp Business Cloud API | Message sending & receiving | `graph.facebook.com/v18.0` |
+| Meta Webhook | Inbound message delivery | `https://{repl-url}/api/whatsapp/webhook` |
+
+### Error Handling
+
+**Common Scenarios**:
+- Credentials not configured → Silent failure with console log
+- Network timeout → Retry mechanism (future enhancement)
+- Invalid phone number → Validation before send
+- Media download failure → Log error, continue without photo
+- Webhook parsing error → Log and acknowledge to prevent retries
+
+**Logging**:
+- All WhatsApp operations logged to console
+- Error details captured for debugging
+- Success confirmations with message IDs
 
 ---
 
