@@ -4,16 +4,17 @@
 1. [Executive Summary](#executive-summary)
 2. [System Overview](#system-overview)
 3. [Architecture](#architecture)
-4. [Technology Stack](#technology-stack)
-5. [Database Design](#database-design)
-6. [Security Architecture](#security-architecture)
-7. [User Roles & Permissions](#user-roles--permissions)
-8. [Module Descriptions](#module-descriptions)
-9. [Data Flow](#data-flow)
-10. [API Design](#api-design)
-11. [Mobile & Progressive Web App](#mobile--progressive-web-app)
-12. [Performance Considerations](#performance-considerations)
-13. [Scalability](#scalability)
+4. [UI/UX Architecture](#uiux-architecture)
+5. [Technology Stack](#technology-stack)
+6. [Database Design](#database-design)
+7. [Security Architecture](#security-architecture)
+8. [User Roles & Permissions](#user-roles--permissions)
+9. [Module Descriptions](#module-descriptions)
+10. [Data Flow](#data-flow)
+11. [API Design](#api-design)
+12. [Mobile & Progressive Web App](#mobile--progressive-web-app)
+13. [Performance Considerations](#performance-considerations)
+14. [Scalability](#scalability)
 
 ---
 
@@ -157,6 +158,120 @@ KINTO QA Management System is a comprehensive quality assurance and preventive m
 - **Connection**: WebSocket-based for serverless architecture
 - **Schema Management**: Drizzle Kit for migrations
 - **Backup Strategy**: Automated daily backups with point-in-time recovery
+
+---
+
+## UI/UX Architecture
+
+### Layout Components
+
+The application uses a layered layout architecture to provide consistent navigation and branding across all pages while supporting different access patterns (dashboard-embedded vs standalone).
+
+#### GlobalHeader Component
+**Purpose**: Unified branding and navigation across all pages
+
+**Responsibilities**:
+- Display KINTO logo horizontally with "SmartOps" and "Manufacturing Excellence" branding
+- Provide logout and notification access on all screens
+- Manage mobile menu trigger (hamburger button) for dashboard pages
+- Extend full width across entire screen (left-0 to right-0)
+
+**Layout Properties**:
+- **Position**: Fixed top, z-index: 50 (top layer)
+- **Height**: 64px (h-16)
+- **Mobile**: Shows hamburger menu button (☰) on screens < 1024px (lg breakpoint)
+- **Desktop**: Menu button hidden, sidebar always visible
+
+#### DashboardShell Component
+**Purpose**: Coordinated layout wrapper for role-based dashboards (Admin, Manager, Reviewer)
+
+**Responsibilities**:
+- Render GlobalHeader with mobile menu state management
+- Render VerticalNavSidebar with controlled visibility
+- Coordinate menu open/close behavior between header and sidebar
+- Provide consistent layout structure for dashboard pages
+
+**Layout Coordination**:
+- Manages `isMobileMenuOpen` state shared between GlobalHeader and VerticalNavSidebar
+- GlobalHeader triggers menu toggle via `onMobileMenuClick` callback
+- VerticalNavSidebar receives `isMobileOpen` and `onMobileClose` props
+- Content area starts at 64px (pt-16) to accommodate fixed header
+
+#### VerticalNavSidebar Component
+**Purpose**: Role-based navigation menu
+
+**Responsibilities**:
+- Display navigation items organized by sections (Dashboard, Configuration, Production)
+- Highlight active page/view
+- Support quick actions (+ buttons) for common operations
+- Handle mobile slide-in/out behavior
+
+**Layout Properties**:
+- **Position**: Fixed left, z-index: 30 (under header)
+- **Width**: 288px (w-72)
+- **Top Padding**: 80px (pt-20) to start below GlobalHeader
+- **Desktop**: Always visible, sidebar spacer in layout
+- **Mobile**: Hidden by default, slides in from left when menu opened
+- **Overlay**: Dark backdrop (bg-black/50) on mobile when sidebar open
+
+**Z-Index Layering**:
+```
+GlobalHeader (z-50)     ← Top layer, always visible
+  ↓
+VerticalNavSidebar (z-30) ← Under header, navigation items start below
+  ↓
+Content Area             ← Main page content
+```
+
+### Page Access Patterns
+
+The system supports three distinct page access patterns:
+
+| Pattern | Description | Header Behavior | Examples |
+|---------|-------------|-----------------|----------|
+| **Dashboard-Only** | Pages accessed exclusively via dashboard navigation | Rely on DashboardShell's GlobalHeader | Sales Dashboard, Inventory Management, User Management, Role Permissions |
+| **Dual-Access** | Pages with both standalone route AND dashboard embedding | Conditional header via `showHeader` prop | Reports, Dispatch Tracking |
+| **Standalone** | Pages with independent routes | Render own GlobalHeader | Login, Checklists, Invoice Detail |
+
+**Conditional Header Implementation**:
+```typescript
+// Dual-access pages
+function ReportsPage({ showHeader = true }) {
+  return (
+    <>
+      {showHeader && <GlobalHeader />}
+      <div className={showHeader ? "mt-16" : ""}>
+        {/* Page content */}
+      </div>
+    </>
+  );
+}
+
+// Dashboard usage
+<DashboardShell>
+  <ReportsPage showHeader={false} />
+</DashboardShell>
+
+// Standalone usage (direct route)
+<Route path="/reports" component={ReportsPage} />
+```
+
+### Mobile Responsiveness Architecture
+
+**Mobile Menu Flow**:
+1. User taps hamburger button (☰) in GlobalHeader
+2. DashboardShell updates `isMobileMenuOpen` state
+3. VerticalNavSidebar slides in from left with animation
+4. Dark overlay appears behind sidebar
+5. User taps navigation item OR overlay → sidebar closes automatically
+
+**Responsive Breakpoints**:
+- **Mobile/Tablet** (< 1024px): Hamburger menu, collapsible sidebar
+- **Desktop** (≥ 1024px): Sidebar always visible, no hamburger menu
+
+**Touch Targets**:
+- All interactive elements: minimum 44x44px for touch accessibility
+- Navigation items: min-h-11 (44px) for comfortable thumb access
 
 ---
 
@@ -807,8 +922,10 @@ DELETE /api/finished-goods/:id - Soft delete finished good
 #### Responsive Design
 - **Mobile-First**: Optimized for 320px and up
 - **Touch-Friendly**: Large touch targets (min 44x44px)
-- **Fixed Header**: h-14 for consistent navigation
-- **Bottom Navigation**: Easy thumb access on mobile
+- **Fixed GlobalHeader**: h-16 (64px) full-width header with KINTO branding, notifications, and logout
+- **Hamburger Menu**: Mobile menu button (☰) in GlobalHeader for sidebar access on mobile/tablet
+- **Slide-in Sidebar**: VerticalNavSidebar slides in from left on mobile with dark overlay backdrop
+- **Bottom Navigation**: Easy thumb access on mobile (Operator dashboard)
 
 ### Cross-Platform Compatibility
 
