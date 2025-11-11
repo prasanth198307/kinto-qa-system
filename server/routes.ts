@@ -3088,6 +3088,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/checklist-assignments/:id/partial-answers', requireRole('reviewer', 'admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Get the assignment to check authorization
+      const assignment = await storage.getChecklistAssignment(id);
+      if (!assignment) {
+        return res.status(404).json({ message: "Assignment not found" });
+      }
+
+      // If there's a submission linked, verify reviewer access
+      if (assignment.submissionId) {
+        const submission = await storage.getChecklistSubmission(assignment.submissionId);
+        if (!submission) {
+          return res.status(404).json({ message: "Submission not found" });
+        }
+
+        // Get user role
+        const user = await storage.getUser(req.user.id);
+        if (!user || !user.roleId) {
+          return res.status(401).json({ message: "User not found" });
+        }
+        const userRoleData = await storage.getUserRole(user.roleId);
+        const userRole = userRoleData?.name || '';
+
+        // SECURITY: Only assigned reviewer can view (unless admin/manager)
+        if (userRole === 'reviewer' && submission.reviewerId !== req.user.id) {
+          console.log(`[AUDIT] Reviewer ${req.user.id} attempted to access assignment ${id} not assigned to them`);
+          return res.status(403).json({ message: "You can only view submissions assigned to you" });
+        }
+      }
+
+      const answers = await storage.getPartialTaskAnswers(id);
+      res.json(answers);
+    } catch (error) {
+      console.error("Error fetching partial task answers:", error);
+      res.status(500).json({ message: "Failed to fetch partial task answers" });
+    }
+  });
+
   // Checklist Submissions Routes
   app.get('/api/checklist-submissions', isAuthenticated, async (req: any, res) => {
     try {

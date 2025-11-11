@@ -17,9 +17,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle2, XCircle, Clock, Eye } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, Eye, Image as ImageIcon, Wrench } from "lucide-react";
 import { format } from "date-fns";
-import type { ChecklistSubmission, SubmissionTask, User, ChecklistTemplate, Machine } from "@shared/schema";
+import type { ChecklistSubmission, SubmissionTask, User, ChecklistTemplate, Machine, PartialTaskAnswer, ChecklistAssignment, SparePartCatalog } from "@shared/schema";
 
 export default function ReviewerDashboard() {
   const [selectedSubmission, setSelectedSubmission] = useState<ChecklistSubmission | null>(null);
@@ -50,6 +50,21 @@ export default function ReviewerDashboard() {
   const { data: selectedSubmissionTasks = [] } = useQuery<SubmissionTask[]>({
     queryKey: ['/api/checklist-submissions', selectedSubmission?.id, 'tasks'],
     enabled: !!selectedSubmission?.id,
+  });
+
+  const { data: assignments = [] } = useQuery<ChecklistAssignment[]>({
+    queryKey: ['/api/checklist-assignments'],
+  });
+
+  const { data: spareParts = [] } = useQuery<SparePartCatalog[]>({
+    queryKey: ['/api/spare-parts'],
+  });
+
+  const assignmentForSubmission = assignments.find(a => a.submissionId === selectedSubmission?.id);
+
+  const { data: partialAnswers = [] } = useQuery<PartialTaskAnswer[]>({
+    queryKey: ['/api/checklist-assignments', assignmentForSubmission?.id, 'partial-answers'],
+    enabled: !!assignmentForSubmission?.id,
   });
 
   const updateMutation = useMutation({
@@ -324,25 +339,70 @@ export default function ReviewerDashboard() {
                   {selectedSubmissionTasks.length === 0 ? (
                     <p className="text-sm text-muted-foreground">No tasks found</p>
                   ) : (
-                    selectedSubmissionTasks.map((task, index) => (
-                      <Card key={task.id} className="p-3" data-testid={`task-${index}`}>
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <p className="font-medium text-sm">{task.taskName}</p>
-                            {task.remarks && (
-                              <p className="text-sm text-muted-foreground mt-1">{task.remarks}</p>
-                            )}
+                    selectedSubmissionTasks.map((task, index) => {
+                      const partialAnswer = partialAnswers.find(pa => pa.taskOrder === (index + 1));
+                      const sparePart = partialAnswer?.sparePartId 
+                        ? spareParts.find(sp => sp.id === partialAnswer.sparePartId)
+                        : null;
+
+                      return (
+                        <Card key={task.id} className="p-3" data-testid={`task-${index}`}>
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <p className="font-medium text-sm">{task.taskName}</p>
+                              {task.remarks && (
+                                <p className="text-sm text-muted-foreground mt-1">{task.remarks}</p>
+                              )}
+                            </div>
+                            <Badge
+                              variant={task.result === 'pass' ? 'outline' : 'destructive'}
+                              className={task.result === 'pass' ? 'bg-green-100 text-green-800 border-green-300' : ''}
+                              data-testid={`badge-task-result-${index}`}
+                            >
+                              {task.result || 'N/A'}
+                            </Badge>
                           </div>
-                          <Badge
-                            variant={task.result === 'pass' ? 'outline' : 'destructive'}
-                            className={task.result === 'pass' ? 'bg-green-100 text-green-800 border-green-300' : ''}
-                            data-testid={`badge-task-result-${index}`}
-                          >
-                            {task.result || 'N/A'}
-                          </Badge>
-                        </div>
-                      </Card>
-                    ))
+
+                          {/* Photo Display for NOK tasks */}
+                          {partialAnswer?.photoUrl && (
+                            <div className="mt-3 border-t pt-3">
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                                <ImageIcon className="w-4 h-4" />
+                                <span>Photo Evidence:</span>
+                              </div>
+                              <img
+                                src={`/${partialAnswer.photoUrl}`}
+                                alt={`Task ${index + 1} photo`}
+                                className="max-w-full max-h-64 rounded border"
+                                data-testid={`task-photo-${index}`}
+                              />
+                            </div>
+                          )}
+
+                          {/* Spare Part Request */}
+                          {(partialAnswer?.sparePartId || partialAnswer?.sparePartRequestText) && (
+                            <div className="mt-3 border-t pt-3">
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                                <Wrench className="w-4 h-4" />
+                                <span>Spare Part Request:</span>
+                              </div>
+                              {sparePart ? (
+                                <div className="text-sm">
+                                  <Badge variant="outline" data-testid={`task-spare-part-${index}`}>
+                                    {sparePart.partName}
+                                    {sparePart.partNumber && ` (${sparePart.partNumber})`}
+                                  </Badge>
+                                </div>
+                              ) : partialAnswer.sparePartRequestText && partialAnswer.sparePartRequestText !== 'SKIP' ? (
+                                <p className="text-sm text-muted-foreground" data-testid={`task-spare-part-text-${index}`}>
+                                  {partialAnswer.sparePartRequestText}
+                                </p>
+                              ) : null}
+                            </div>
+                          )}
+                        </Card>
+                      );
+                    })
                   )}
                 </div>
               </div>
