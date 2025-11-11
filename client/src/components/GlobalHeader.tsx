@@ -19,10 +19,8 @@ export function GlobalHeader({
   onNotificationClick,
   noSidebarOffset = true,
 }: GlobalHeaderProps) {
-  const headerClassName = `fixed top-0 left-0 right-0 ${!noSidebarOffset ? 'lg:left-72' : ''} h-16 bg-card border-b border-border z-50 flex items-center justify-between px-4 gap-4`;
-  
   return (
-    <div className={headerClassName}>
+    <div className="fixed top-0 left-0 right-0 h-16 bg-card border-b border-border z-50 flex items-center justify-between px-4 gap-4">
       {/* Left: KINTO Logo + SmartOps (horizontal) + Optional Title */}
       <div className="flex items-center gap-4 min-w-0">
         <KintoLogo variant="compact" layout="horizontal" />

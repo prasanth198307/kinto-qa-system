@@ -158,7 +158,7 @@ export function VerticalNavSidebar({
       {/* Sidebar */}
       <div
         className={`
-          fixed top-0 left-0 bottom-0 w-72 bg-card border-r border-border z-40 pt-20 px-4 pb-4
+          fixed top-0 left-0 bottom-0 w-72 bg-card border-r border-border z-30 pt-20 px-4 pb-4
           transition-transform duration-300 ease-in-out
           flex flex-col
           ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
