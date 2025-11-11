@@ -8,7 +8,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { KintoLogo } from "@/components/branding/KintoLogo";
 
 export interface QuickAction {
   id: string;
@@ -132,8 +131,8 @@ export function VerticalNavSidebar({
 
   return (
     <>
-      {/* Mobile Header with Menu Toggle */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-card border-b border-border z-50 flex items-center justify-between px-4">
+      {/* Mobile Menu Toggle - GlobalHeader handles branding */}
+      <div className="lg:hidden fixed top-16 left-4 z-50">
         <Button
           variant="ghost"
           size="icon"
@@ -146,8 +145,6 @@ export function VerticalNavSidebar({
             <Menu className="w-6 h-6" />
           )}
         </Button>
-        <KintoLogo variant="compact" layout="vertical" className="flex-1 justify-center" />
-        <div className="w-10" />
       </div>
 
       {/* Mobile Sidebar Overlay */}
@@ -161,16 +158,13 @@ export function VerticalNavSidebar({
       {/* Sidebar */}
       <div
         className={`
-          fixed top-0 left-0 bottom-0 w-72 bg-card border-r border-border z-40 p-4
+          fixed top-16 left-0 bottom-0 w-72 bg-card border-r border-border z-40 p-4
           transition-transform duration-300 ease-in-out
           flex flex-col
           ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
           lg:translate-x-0
         `}
       >
-        <div className="hidden lg:block mb-6">
-          <KintoLogo variant="full" />
-        </div>
         {sidebarContent}
       </div>
 
