@@ -23,7 +23,6 @@ export function DashboardShell({
   return (
     <>
       <GlobalHeader 
-        title={title}
         onLogoutClick={onLogoutClick}
         notificationCount={notificationCount}
         noSidebarOffset={false}
