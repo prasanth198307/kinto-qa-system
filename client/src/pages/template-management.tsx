@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { GlobalHeader } from "@/components/GlobalHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +22,7 @@ interface TemplateManagementProps {
 }
 
 export default function TemplateManagement({ activeTab: externalActiveTab }: TemplateManagementProps = {}) {
-  const { user } = useAuth();
+  const { user, logoutMutation } = useAuth();
   const [activeTab, setActiveTab] = useState(externalActiveTab || "invoice-templates");
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -33,12 +34,15 @@ export default function TemplateManagement({ activeTab: externalActiveTab }: Tem
 
   if (!user || (user as any).role !== 'admin') {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="p-8 max-w-md text-center space-y-4">
-          <h2 className="text-2xl font-bold text-destructive">Access Denied</h2>
-          <p className="text-muted-foreground">You do not have permission to access Template Management. This feature is only available to Admin users.</p>
-        </Card>
-      </div>
+      <>
+        <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />
+        <div className="min-h-screen flex items-center justify-center p-4 mt-16">
+          <Card className="p-8 max-w-md text-center space-y-4">
+            <h2 className="text-2xl font-bold text-destructive">Access Denied</h2>
+            <p className="text-muted-foreground">You do not have permission to access Template Management. This feature is only available to Admin users.</p>
+          </Card>
+        </div>
+      </>
     );
   }
 
@@ -54,7 +58,9 @@ export default function TemplateManagement({ activeTab: externalActiveTab }: Tem
   };
 
   return (
-    <div className="min-h-screen p-6 space-y-6">
+    <>
+      <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />
+      <div className="min-h-screen p-6 mt-16 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Template Management</h1>
@@ -78,7 +84,8 @@ export default function TemplateManagement({ activeTab: externalActiveTab }: Tem
           {renderContent()}
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </>
   );
 }
 

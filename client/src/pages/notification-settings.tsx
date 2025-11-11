@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
+import { GlobalHeader } from "@/components/GlobalHeader";
 import { Bell, Mail, MessageSquare, Save, AlertCircle, Check } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
@@ -24,6 +26,7 @@ interface NotificationConfig {
 
 export default function NotificationSettings() {
   const { toast } = useToast();
+  const { logoutMutation } = useAuth();
   
   // Fetch current configuration
   const { data: config, isLoading } = useQuery<NotificationConfig>({
@@ -97,16 +100,21 @@ export default function NotificationSettings() {
 
   if (isLoading) {
     return (
-      <div className="p-6 space-y-6">
-        <div className="flex justify-center items-center py-12">
-          <div className="text-muted-foreground">Loading configuration...</div>
+      <>
+        <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />
+        <div className="p-6 mt-16 space-y-6">
+          <div className="flex justify-center items-center py-12">
+            <div className="text-muted-foreground">Loading configuration...</div>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <>
+      <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />
+      <div className="p-6 mt-16 space-y-6">
       <div>
         <h2 className="text-2xl font-bold flex items-center gap-2">
           <Bell className="w-6 h-6" />
@@ -342,6 +350,7 @@ export default function NotificationSettings() {
           </Card>
         )}
       </div>
-    </div>
+      </div>
+    </>
   );
 }

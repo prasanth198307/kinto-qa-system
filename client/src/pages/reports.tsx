@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
+import { GlobalHeader } from "@/components/GlobalHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +46,7 @@ import {
 
 export default function Reports() {
   const { toast } = useToast();
+  const { logoutMutation } = useAuth();
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [selectedCustomer, setSelectedCustomer] = useState<string>("all");
@@ -149,7 +152,9 @@ export default function Reports() {
   };
 
   return (
-    <div className="p-4 space-y-6">
+    <>
+      <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />
+      <div className="p-4 mt-16 space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Reports</h1>
         <p className="text-muted-foreground">Access all your print reports and analytics</p>
@@ -742,6 +747,7 @@ export default function Reports() {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </>
   );
 }

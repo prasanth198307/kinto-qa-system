@@ -4,13 +4,34 @@ import ChecklistHistoryTable from "@/components/ChecklistHistoryTable";
 import AdminChecklistBuilder from "@/components/AdminChecklistBuilder";
 import { ManagerChecklistAssignment } from "@/components/ManagerChecklistAssignment";
 import { useAuth } from "@/hooks/use-auth";
+import { GlobalHeader } from "@/components/GlobalHeader";
+import { useQuery } from "@tanstack/react-query";
+import { format } from "date-fns";
+import type { ChecklistSubmission } from "@shared/schema";
 
 export default function ChecklistsPage() {
-  const { user } = useAuth();
+  const { user, logoutMutation } = useAuth();
   const role = (user as any)?.role;
 
+  // Fetch checklist submissions for history
+  const { data: submissions = [] } = useQuery<ChecklistSubmission[]>({
+    queryKey: ['/api/checklist-submissions'],
+  });
+
+  // Transform submissions to the format ChecklistHistoryTable expects
+  const historyRecords = submissions.map(submission => ({
+    id: submission.id,
+    machine: submission.machineId || 'Unknown',
+    date: submission.date ? format(new Date(submission.date), 'MMM dd, yyyy') : 'Unknown',
+    shift: submission.shift || 'Unknown',
+    operator: submission.operatorId || 'Unknown',
+    status: submission.status as 'pending' | 'in_review' | 'approved' | 'rejected'
+  }));
+
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+    <>
+      <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />
+      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 mt-16">
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">Checklists</h2>
       </div>
@@ -67,11 +88,12 @@ export default function ChecklistsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ChecklistHistoryTable />
+              <ChecklistHistoryTable records={historyRecords} />
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </>
   );
 }
