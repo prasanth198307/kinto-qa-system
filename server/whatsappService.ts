@@ -124,6 +124,68 @@ export class WhatsAppService {
       console.error('Mark as read error:', error.response?.data || error.message);
     }
   }
+
+  /**
+   * Download WhatsApp media file and save locally
+   * @param mediaId - WhatsApp media ID from webhook
+   * @param fileName - Desired filename (e.g., "task_2_photo.jpg")
+   * @returns Local file path or null if failed
+   */
+  async downloadMedia(mediaId: string, fileName: string): Promise<string | null> {
+    if (!this.credentials) {
+      console.error('WhatsApp credentials not configured');
+      return null;
+    }
+
+    try {
+      // Step 1: Get media URL from WhatsApp API
+      const mediaUrlResponse = await axios.get(
+        `https://graph.facebook.com/${WHATSAPP_API_VERSION}/${mediaId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${this.credentials.accessToken}`
+          }
+        }
+      );
+
+      const mediaUrl = mediaUrlResponse.data.url;
+      
+      if (!mediaUrl) {
+        console.error('No media URL returned from WhatsApp');
+        return null;
+      }
+
+      // Step 2: Download the actual media file
+      const mediaResponse = await axios.get(mediaUrl, {
+        headers: {
+          'Authorization': `Bearer ${this.credentials.accessToken}`
+        },
+        responseType: 'arraybuffer'
+      });
+
+      // Step 3: Save to local file system
+      const fs = require('fs');
+      const path = require('path');
+      const saveDir = path.join(process.cwd(), 'attached_assets', 'checklist_photos');
+      const savePath = path.join(saveDir, fileName);
+
+      // Ensure directory exists
+      if (!fs.existsSync(saveDir)) {
+        fs.mkdirSync(saveDir, { recursive: true });
+      }
+
+      // Write file
+      fs.writeFileSync(savePath, mediaResponse.data);
+      
+      console.log(`Media downloaded successfully: ${savePath}`);
+      
+      // Return relative path for database storage
+      return `attached_assets/checklist_photos/${fileName}`;
+    } catch (error: any) {
+      console.error('Media download error:', error.response?.data || error.message);
+      return null;
+    }
+  }
 }
 
 export const whatsappService = new WhatsAppService();

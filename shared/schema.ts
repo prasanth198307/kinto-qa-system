@@ -217,6 +217,9 @@ export const partialTaskAnswers = pgTable("partial_task_answers", {
   taskName: varchar("task_name", { length: 255 }).notNull(),
   status: varchar("status", { length: 10 }).notNull(), // OK, NOK, NA
   remarks: text("remarks"),
+  photoUrl: varchar("photo_url", { length: 500 }), // Photo for NOK tasks
+  sparePartId: varchar("spare_part_id").references(() => sparePartsCatalog.id), // Optional spare part request
+  sparePartRequestText: text("spare_part_request_text"), // Operator's raw spare part request
   answeredAt: timestamp("answered_at").defaultNow().notNull(),
   answeredBy: varchar("answered_by").references(() => users.id).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
@@ -296,10 +299,15 @@ export type SparePartCatalog = typeof sparePartsCatalog.$inferSelect;
 export const requiredSpares = pgTable("required_spares", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   submissionId: varchar("submission_id").references(() => checklistSubmissions.id),
+  submissionTaskId: varchar("submission_task_id").references(() => submissionTasks.id), // Link to specific task with photo
+  sparePartId: varchar("spare_part_id").references(() => sparePartsCatalog.id), // Link to catalog
   spareItem: varchar("spare_item", { length: 255 }).notNull(),
-  quantity: integer("quantity").notNull(),
-  urgency: varchar("urgency", { length: 50 }).notNull(),
-  status: varchar("status", { length: 50 }).default('pending'),
+  quantity: integer("quantity").notNull().default(1),
+  urgency: varchar("urgency", { length: 50 }).notNull().default('medium'),
+  status: varchar("status", { length: 50 }).default('pending'), // pending, approved, rejected
+  approvedBy: varchar("approved_by").references(() => users.id), // Manager who approved
+  approvedAt: timestamp("approved_at"),
+  rejectionReason: text("rejection_reason"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
