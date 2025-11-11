@@ -343,8 +343,7 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
 
   return (
     <>
-      <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />
-      <div className="bg-background mt-16">
+      <div className="bg-background">
         <div className="border-b bg-card">
           <div className="max-w-7xl mx-auto px-4 py-4">
             <h1 className="text-2xl font-bold text-foreground">Production Management</h1>

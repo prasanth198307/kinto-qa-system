@@ -63,8 +63,7 @@ export default function InventoryManagement({ activeTab: externalActiveTab }: In
   if (!user || !['admin', 'manager'].includes(user.role || '')) {
     return (
       <>
-        <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />
-        <div className="min-h-screen flex items-center justify-center p-4 mt-16">
+        <div className="min-h-screen flex items-center justify-center p-4">
           <Card className="p-8 max-w-md text-center space-y-4">
             <h2 className="text-2xl font-bold text-destructive">Access Denied</h2>
             <p className="text-muted-foreground">You do not have permission to access Inventory Management. This feature is only available to Admin and Manager roles.</p>
@@ -95,8 +94,7 @@ export default function InventoryManagement({ activeTab: externalActiveTab }: In
 
   return (
     <>
-      <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />
-      <div className="bg-background mt-16">
+      <div className="bg-background">
         <div className="border-b bg-card">
           <div className="max-w-7xl mx-auto px-4 py-4">
             <h1 className="text-2xl font-bold text-foreground">Inventory Management</h1>

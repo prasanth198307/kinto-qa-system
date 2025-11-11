@@ -35,8 +35,7 @@ export default function TemplateManagement({ activeTab: externalActiveTab }: Tem
   if (!user || (user as any).role !== 'admin') {
     return (
       <>
-        <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />
-        <div className="min-h-screen flex items-center justify-center p-4 mt-16">
+        <div className="min-h-screen flex items-center justify-center p-4">
           <Card className="p-8 max-w-md text-center space-y-4">
             <h2 className="text-2xl font-bold text-destructive">Access Denied</h2>
             <p className="text-muted-foreground">You do not have permission to access Template Management. This feature is only available to Admin users.</p>
@@ -59,8 +58,7 @@ export default function TemplateManagement({ activeTab: externalActiveTab }: Tem
 
   return (
     <>
-      <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />
-      <div className="min-h-screen p-6 mt-16 space-y-6">
+      <div className="min-h-screen p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Template Management</h1>

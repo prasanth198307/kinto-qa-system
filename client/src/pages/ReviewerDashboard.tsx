@@ -206,8 +206,7 @@ export default function ReviewerDashboard() {
   if (submissionsLoading) {
     return (
       <>
-        <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />
-        <div className="p-4 mt-16 space-y-4">
+        <div className="p-4 space-y-4">
           <h2 className="text-xl font-semibold">Reviewer Dashboard</h2>
           <p className="text-muted-foreground">Loading submissions...</p>
         </div>
@@ -217,8 +216,7 @@ export default function ReviewerDashboard() {
 
   return (
     <>
-      <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />
-      <div className="p-4 mt-16 space-y-4">
+      <div className="p-4 space-y-4">
       <h2 className="text-xl font-semibold">Reviewer Dashboard</h2>
 
       <Tabs defaultValue="pending" data-testid="tabs-submissions">

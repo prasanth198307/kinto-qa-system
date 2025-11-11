@@ -44,7 +44,11 @@ import {
   type PeriodType,
 } from "@/lib/gst-reports";
 
-export default function Reports() {
+interface ReportsProps {
+  showHeader?: boolean;
+}
+
+export default function Reports({ showHeader = true }: ReportsProps = {}) {
   const { toast } = useToast();
   const { logoutMutation } = useAuth();
   const [dateFrom, setDateFrom] = useState("");
@@ -153,8 +157,8 @@ export default function Reports() {
 
   return (
     <>
-      <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />
-      <div className="p-4 mt-16 space-y-6">
+      {showHeader && <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />}
+      <div className={showHeader ? "p-4 mt-16 space-y-6" : "p-4 space-y-6"}>
       <div>
         <h1 className="text-2xl font-bold text-foreground">Reports</h1>
         <p className="text-muted-foreground">Access all your print reports and analytics</p>

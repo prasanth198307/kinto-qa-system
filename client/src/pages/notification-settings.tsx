@@ -101,8 +101,7 @@ export default function NotificationSettings() {
   if (isLoading) {
     return (
       <>
-        <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />
-        <div className="p-6 mt-16 space-y-6">
+        <div className="p-6 space-y-6">
           <div className="flex justify-center items-center py-12">
             <div className="text-muted-foreground">Loading configuration...</div>
           </div>
@@ -113,8 +112,7 @@ export default function NotificationSettings() {
 
   return (
     <>
-      <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />
-      <div className="p-6 mt-16 space-y-6">
+      <div className="p-6 space-y-6">
       <div>
         <h2 className="text-2xl font-bold flex items-center gap-2">
           <Bell className="w-6 h-6" />

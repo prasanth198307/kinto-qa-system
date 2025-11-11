@@ -394,7 +394,7 @@ function ManagerDashboard() {
       case 'dispatch-tracking':
         return <DispatchTracking />;
       case 'reports':
-        return <Reports />;
+        return <Reports showHeader={false} />;
       default:
         return (
           <div className="space-y-4">
@@ -723,7 +723,7 @@ function AdminDashboard() {
           </div>
         );
       case 'reports':
-        return <Reports />;
+        return <Reports showHeader={false} />;
       default:
         return (
           <div className="p-4 space-y-6">

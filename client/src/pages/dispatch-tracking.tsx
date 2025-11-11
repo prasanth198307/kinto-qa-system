@@ -95,8 +95,7 @@ export default function DispatchTracking() {
   if (invoicesLoading || gatepassesLoading) {
     return (
       <>
-        <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />
-        <div className="p-6 mt-16">
+        <div className="p-6">
           <div className="text-center">Loading dispatch tracking data...</div>
         </div>
       </>
@@ -105,8 +104,7 @@ export default function DispatchTracking() {
 
   return (
     <>
-      <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />
-      <div className="p-6 mt-16 space-y-6">
+      <div className="p-6 space-y-6">
         <div>
           <h2 className="text-2xl font-semibold">Dispatch Tracking Dashboard</h2>
           <p className="text-muted-foreground">Monitor the complete dispatch workflow from invoice to delivery</p>

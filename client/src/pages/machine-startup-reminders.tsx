@@ -210,8 +210,7 @@ export default function MachineStartupReminders() {
 
   return (
     <>
-      <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />
-      <div className="p-6 mt-16 space-y-6">
+      <div className="p-6 space-y-6">
         <Card>
         <CardHeader>
           <div className="flex justify-between items-center">

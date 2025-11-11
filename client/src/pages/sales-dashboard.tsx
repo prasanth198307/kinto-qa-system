@@ -7,8 +7,7 @@ export default function SalesDashboardPage() {
 
   return (
     <>
-      <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />
-      <div className="p-6 mt-16">
+      <div className="p-6">
         <SalesDashboard />
       </div>
     </>
