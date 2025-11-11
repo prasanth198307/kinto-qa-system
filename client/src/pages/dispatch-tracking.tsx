@@ -12,6 +12,8 @@ import PrintableInvoice from "@/components/PrintableInvoice";
 import PrintableGatepass from "@/components/PrintableGatepass";
 import ProofOfDelivery from "@/components/ProofOfDelivery";
 import GatepassForm from "@/components/GatepassForm";
+import { GlobalHeader } from "@/components/GlobalHeader";
+import { useAuth } from "@/hooks/use-auth";
 
 const statusConfig = {
   // Invoice statuses
@@ -27,6 +29,7 @@ const statusConfig = {
 
 export default function DispatchTracking() {
   const search = useSearch();
+  const { logoutMutation } = useAuth();
   const [showGatepassForm, setShowGatepassForm] = useState(false);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
   
@@ -91,18 +94,23 @@ export default function DispatchTracking() {
 
   if (invoicesLoading || gatepassesLoading) {
     return (
-      <div className="p-6">
-        <div className="text-center">Loading dispatch tracking data...</div>
-      </div>
+      <>
+        <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />
+        <div className="p-6 mt-16">
+          <div className="text-center">Loading dispatch tracking data...</div>
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h2 className="text-2xl font-semibold">Dispatch Tracking Dashboard</h2>
-        <p className="text-muted-foreground">Monitor the complete dispatch workflow from invoice to delivery</p>
-      </div>
+    <>
+      <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />
+      <div className="p-6 mt-16 space-y-6">
+        <div>
+          <h2 className="text-2xl font-semibold">Dispatch Tracking Dashboard</h2>
+          <p className="text-muted-foreground">Monitor the complete dispatch workflow from invoice to delivery</p>
+        </div>
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -352,6 +360,7 @@ export default function DispatchTracking() {
           </DialogContent>
         </Dialog>
       )}
-    </div>
+      </div>
+    </>
   );
 }
