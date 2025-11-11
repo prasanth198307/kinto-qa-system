@@ -11,8 +11,6 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
-import { GlobalHeader } from "@/components/GlobalHeader";
-import { useAuth } from "@/hooks/use-auth";
 
 interface UserWithRole {
   id: string;
@@ -49,7 +47,6 @@ export default function AdminUserManagement() {
   const [newUserRole, setNewUserRole] = useState('operator');
   
   const { toast } = useToast();
-  const { logoutMutation } = useAuth();
 
   const { data: users = [], isLoading } = useQuery<UserWithRole[]>({
     queryKey: ['/api/users'],
@@ -222,21 +219,20 @@ export default function AdminUserManagement() {
 
   if (isLoading) {
     return (
-      <>
-        <GlobalHeader
-          onLogoutClick={() => logoutMutation.mutate()}
-        />
-        <div className="mt-16 text-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-        </div>
-      </>
+      <div className="text-center py-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+      </div>
     );
   }
 
   return (
     <>
-      <GlobalHeader
-        actions={
+      <div className="space-y-4 p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-semibold">User Management</h2>
+            <p className="text-sm text-muted-foreground">{users.length} total users</p>
+          </div>
           <Button 
             onClick={() => setIsCreateDialogOpen(true)}
             data-testid="button-create-user"
@@ -244,12 +240,7 @@ export default function AdminUserManagement() {
             <Plus className="h-4 w-4 mr-2" />
             Create User
           </Button>
-        }
-        onLogoutClick={() => logoutMutation.mutate()}
-      />
-      <div className="mt-16 space-y-4 p-4">
-        <h2 className="text-xl font-semibold">User Management</h2>
-        <p className="text-sm text-muted-foreground">{users.length} total users</p>
+        </div>
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
