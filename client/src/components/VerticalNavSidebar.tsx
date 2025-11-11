@@ -36,6 +36,8 @@ interface VerticalNavSidebarProps {
   onItemClick: (itemId: string) => void;
   onLogout?: () => void;
   title?: string;
+  isMobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
 export function VerticalNavSidebar({
@@ -44,15 +46,18 @@ export function VerticalNavSidebar({
   onItemClick,
   onLogout,
   title = "Dashboard",
+  isMobileOpen = false,
+  onMobileClose,
 }: VerticalNavSidebarProps) {
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   const handleItemClick = (item: NavItem) => {
     onItemClick(item.id);
     if (item.onClick) {
       item.onClick();
     }
-    setIsMobileOpen(false);
+    if (onMobileClose) {
+      onMobileClose();
+    }
   };
 
   const renderNavItem = (item: NavItem) => {
@@ -131,27 +136,11 @@ export function VerticalNavSidebar({
 
   return (
     <>
-      {/* Mobile Menu Toggle - GlobalHeader handles branding */}
-      <div className="lg:hidden fixed top-4 left-4 z-50">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setIsMobileOpen(!isMobileOpen)}
-          data-testid="button-mobile-menu"
-        >
-          {isMobileOpen ? (
-            <X className="w-6 h-6" />
-          ) : (
-            <Menu className="w-6 h-6" />
-          )}
-        </Button>
-      </div>
-
       {/* Mobile Sidebar Overlay */}
       {isMobileOpen && (
         <div
           className="lg:hidden fixed inset-0 bg-black/50 z-40"
-          onClick={() => setIsMobileOpen(false)}
+          onClick={onMobileClose}
         />
       )}
 
