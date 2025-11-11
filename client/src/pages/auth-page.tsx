@@ -57,11 +57,7 @@ export default function AuthPage() {
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-background">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
-            <KintoLogo className="justify-center mb-4" variant="full" />
-            <h1 className="text-3xl font-bold mb-1">
-              <span className="text-foreground">SmartOps</span>
-            </h1>
-            <p className="text-foreground mt-2 font-medium">Powering Smart Manufacturing Excellence</p>
+            <KintoLogo className="justify-center" variant="full" />
           </div>
 
           <Card>
