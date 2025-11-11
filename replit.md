@@ -95,8 +95,18 @@ The backend is an Express.js application built with TypeScript and Node.js. It f
 - GlobalHeader is the single source of branding across all pages
 - Sidebar position adjusted to `top-16` to start below fixed header
 
+**Conditional Header Pattern:**
+- Reports page supports dual-access pattern via `showHeader` prop (defaults to `true`)
+- Standalone access (direct route): Shows GlobalHeader
+- Dashboard access (Admin/Manager): Passes `showHeader={false}` to prevent duplicates
+- Pattern: `{showHeader && <GlobalHeader />}` with conditional `mt-16` spacing
+
+**Duplicate Header Fix (Final):**
+- Removed GlobalHeader from 9 pages accessed ONLY via dashboards (sales-dashboard, dispatch-tracking, inventory-management, production-management, machine-startup-reminders, WhatsAppAnalytics, notification-settings, template-management, ReviewerDashboard)
+- Reports page uses conditional rendering for dual-access support
+
 **Coverage:** 17 pages/dashboards
-- 13 standalone pages (Reports, Sales Dashboard, User Management, etc.)
+- 13 standalone pages (Reports with conditional header, User Management, etc.)
 - 4 role-based dashboards (Operator, Reviewer, Manager, Admin)
 
 **Status:** Production-ready with architect approval ✅
