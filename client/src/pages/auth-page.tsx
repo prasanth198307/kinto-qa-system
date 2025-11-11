@@ -56,7 +56,10 @@ export default function AuthPage() {
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-background">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-primary">KINTO Operations & QA</h1>
+            <h1 className="text-4xl font-bold mb-1">
+              <span className="text-primary">KINTO</span>{" "}
+              <span className="text-foreground">Operations & QA</span>
+            </h1>
             <p className="text-foreground mt-2 font-medium">Powering Smart Manufacturing Excellence</p>
           </div>
 
