@@ -32,15 +32,15 @@
 
   --sidebar-border: 0 0% 92%;
 
-  --sidebar-primary: 214 89% 52%;
+  --sidebar-primary: 16 95% 55%;
 
   --sidebar-primary-foreground: 0 0% 100%;
 
-  --sidebar-accent: 214 95% 97%;
+  --sidebar-accent: 16 100% 97%;
 
-  --sidebar-accent-foreground: 214 89% 42%;
+  --sidebar-accent-foreground: 16 95% 45%;
 
-  --sidebar-ring: 214 89% 52%;
+  --sidebar-ring: 16 95% 55%;
 
   --popover: 0 0% 100%;
 
@@ -48,7 +48,7 @@
 
   --popover-border: 0 0% 90%;
 
-  --primary: 214 89% 52%;
+  --primary: 16 95% 55%;
 
   --primary-foreground: 0 0% 100%;
 
@@ -60,17 +60,17 @@
 
   --muted-foreground: 0 0% 45%;
 
-  --accent: 214 95% 97%;
+  --accent: 16 100% 97%;
 
-  --accent-foreground: 214 89% 42%;
+  --accent-foreground: 16 95% 45%;
 
   --destructive: 0 84% 60%;
 
   --destructive-foreground: 0 0% 100%;
 
   --input: 0 0% 85%;
-  --ring: 214 89% 52%;
-  --chart-1: 214 89% 52%;
+  --ring: 16 95% 55%;
+  --chart-1: 16 95% 55%;
   --chart-2: 142 76% 36%;
   --chart-3: 262 83% 58%;
   --chart-4: 45 93% 47%;
@@ -150,15 +150,15 @@
 
   --sidebar-border: 0 0% 19%;
 
-  --sidebar-primary: 211 59% 50%;
+  --sidebar-primary: 16 95% 55%;
 
   --sidebar-primary-foreground: 0 0% 100%;
 
-  --sidebar-accent: 217 10% 20%;
+  --sidebar-accent: 16 10% 20%;
 
-  --sidebar-accent-foreground: 211 70% 80%;
+  --sidebar-accent-foreground: 16 70% 75%;
 
-  --sidebar-ring: 211 59% 50%;
+  --sidebar-ring: 16 95% 55%;
 
   --popover: 0 0% 16%;
 
@@ -166,7 +166,7 @@
 
   --popover-border: 0 0% 22%;
 
-  --primary: 211 59% 50%;
+  --primary: 16 95% 55%;
 
   --primary-foreground: 0 0% 100%;
 
@@ -178,17 +178,17 @@
 
   --muted-foreground: 217 10% 75%;
 
-  --accent: 217 10% 19%;
+  --accent: 16 10% 19%;
 
-  --accent-foreground: 211 70% 80%;
+  --accent-foreground: 16 70% 75%;
 
   --destructive: 0 72% 35%;
 
   --destructive-foreground: 0 0% 98%;
 
   --input: 0 0% 35%;
-  --ring: 211 59% 50%;
-  --chart-1: 211 85% 65%;
+  --ring: 16 95% 55%;
+  --chart-1: 16 95% 65%;
   --chart-2: 30 85% 65%;
   --chart-3: 270 65% 68%;
   --chart-4: 150 60% 65%;

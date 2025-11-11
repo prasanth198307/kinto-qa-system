@@ -6,13 +6,13 @@
 
 **Design Philosophy:** Clean, clear interface with Meta Business-inspired fonts and backgrounds. Prioritize clarity, readability, and data visibility with crisp typography and high contrast. Design for both desktop administrators and mobile operators in manufacturing environments.
 
-## Color System (Meta Business-Inspired)
+## Color System (KINTO Brand + Meta Business-Inspired)
 
-### Primary Colors
-- **Primary Blue:** `#1877F2` (Meta Blue) - Main brand color for buttons, links, active states
-- **Primary Blue Dark:** `#166FE5` - Hover states for primary elements
-- **Light Blue:** `#E7F3FF` - Backgrounds, subtle highlights
-- **Accent Blue:** `#0866FF` - Interactive elements
+### Primary Colors (KINTO Hot Orange)
+- **Primary Orange:** `#FF5C28` (KINTO Hot Orange) - Main brand color for buttons, links, active states
+- **Primary Orange Dark:** `#E54E1F` - Hover states for primary elements
+- **Light Orange:** `#FFF4F0` - Backgrounds, subtle highlights
+- **Accent Orange:** `#FF6B3D` - Interactive elements
 
 ### Neutral Colors (High Clarity)
 - **Background:** `#FAFAFA` - Page background (very light gray for comfort)
