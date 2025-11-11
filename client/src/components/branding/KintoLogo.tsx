@@ -8,22 +8,24 @@ export function KintoLogo({ className = "", variant = "full" }: KintoLogoProps) 
   
   return (
     <div className={`flex items-center ${className}`} data-testid="logo-kinto">
-      <div className={`inline-flex items-center gap-2 ${isCompact ? "" : "gap-3"}`}>
+      <div className={`inline-flex items-center ${isCompact ? "gap-2" : "gap-3"}`}>
         <div 
           className={`
             bg-primary rounded-md flex items-center justify-center font-bold text-white
-            ${isCompact ? "px-3 py-1.5 text-xl" : "px-4 py-2 text-3xl"}
+            ${isCompact ? "px-2.5 py-1 text-base" : "px-4 py-2 text-2xl"}
           `}
           style={{ letterSpacing: '0.05em' }}
         >
           KINTO
         </div>
-        {!isCompact && (
-          <div className="flex flex-col leading-tight">
-            <span className="text-foreground font-bold text-lg tracking-tight">SmartOps</span>
-            <span className="text-muted-foreground text-xs font-medium">Manufacturing Excellence</span>
-          </div>
-        )}
+        <div className={`flex flex-col leading-tight ${isCompact ? "" : ""}`}>
+          <span className={`text-foreground font-bold tracking-tight ${isCompact ? "text-sm" : "text-lg"}`}>
+            SmartOps
+          </span>
+          <span className={`text-muted-foreground font-medium ${isCompact ? "text-[10px]" : "text-xs"}`}>
+            Manufacturing Excellence
+          </span>
+        </div>
       </div>
     </div>
   );
