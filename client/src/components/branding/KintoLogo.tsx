@@ -5,57 +5,56 @@ interface KintoLogoProps {
 
 export function KintoLogo({ className = "", variant = "full" }: KintoLogoProps) {
   const isCompact = variant === "compact";
-  const height = isCompact ? 32 : 48;
-  const width = isCompact ? 120 : 160;
+  const height = isCompact ? 36 : 52;
+  const width = isCompact ? 140 : 200;
   
   return (
     <div className={`flex items-center ${className}`} data-testid="logo-kinto">
       <div className={`inline-flex items-center ${isCompact ? "gap-2" : "gap-3"}`}>
-        {/* KINTO logo with wave cuts */}
+        {/* KINTO logo with wavy bottom edge */}
         <svg 
           width={width} 
           height={height} 
-          viewBox="0 0 160 48" 
+          viewBox="0 0 200 52" 
           fill="none" 
           xmlns="http://www.w3.org/2000/svg"
         >
-          {/* Background with wave cuts */}
+          {/* Background with wavy bottom cuts */}
           <path
-            d="M 8 0 
-               L 152 0 
-               C 156.418 0 160 3.582 160 8 
-               L 160 40 
-               C 160 44.418 156.418 48 152 48 
-               L 8 48 
-               C 3.582 48 0 44.418 0 40 
-               L 0 8 
-               C 0 3.582 3.582 0 8 0 Z
-               
-               M 40 0
-               Q 40 8 48 8
-               Q 40 8 40 16
-               
-               M 80 0
-               Q 80 8 88 8
-               Q 80 8 80 16
-               
-               M 120 0
-               Q 120 8 128 8
-               Q 120 8 120 16"
-            fill="#FF5C28"
-            fillRule="evenodd"
+            d="M 0 0 
+               L 200 0 
+               L 200 40
+               C 195 42, 190 45, 185 45
+               C 180 45, 175 42, 170 40
+               C 165 38, 160 35, 155 35
+               C 150 35, 145 38, 140 40
+               C 135 42, 130 45, 125 45
+               C 120 45, 115 42, 110 40
+               C 105 38, 100 35, 95 35
+               C 90 35, 85 38, 80 40
+               C 75 42, 70 45, 65 45
+               C 60 45, 55 42, 50 40
+               C 45 38, 40 35, 35 35
+               C 30 35, 25 38, 20 40
+               C 15 42, 10 45, 5 45
+               C 3 45, 1 43, 0 40
+               Z"
+            fill="#C44D28"
           />
+          
+          {/* Circular swoosh element */}
+          <circle cx="165" cy="22" r="12" fill="none" stroke="white" strokeWidth="3" opacity="0.8" />
+          <path d="M 158 20 Q 165 15, 172 20" stroke="white" strokeWidth="2.5" fill="none" strokeLinecap="round" opacity="0.8" />
           
           {/* KINTO text */}
           <text
-            x="80"
-            y="32"
-            fontFamily="Segoe UI, system-ui, -apple-system, sans-serif"
-            fontSize="24"
+            x="20"
+            y="28"
+            fontFamily="system-ui, -apple-system, 'Segoe UI', sans-serif"
+            fontSize="26"
             fontWeight="700"
             fill="white"
-            textAnchor="middle"
-            letterSpacing="1.2"
+            letterSpacing="2"
           >
             KINTO
           </text>
