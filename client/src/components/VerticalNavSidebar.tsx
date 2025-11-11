@@ -8,6 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { KintoLogo } from "@/components/branding/KintoLogo";
 
 export interface QuickAction {
   id: string;
@@ -145,7 +146,7 @@ export function VerticalNavSidebar({
             <Menu className="w-6 h-6" />
           )}
         </Button>
-        <h1 className="text-lg font-semibold">{title}</h1>
+        <KintoLogo variant="compact" className="flex-1 justify-center" />
         <div className="w-10" />
       </div>
 
@@ -168,7 +169,7 @@ export function VerticalNavSidebar({
         `}
       >
         <div className="hidden lg:block mb-6">
-          <h2 className="text-xl font-bold text-foreground">{title}</h2>
+          <KintoLogo variant="full" />
         </div>
         {sidebarContent}
       </div>
