@@ -1944,7 +1944,7 @@ export const productionReconciliationItems = pgTable("production_reconciliation_
   quantityUsed: integer("quantity_used").notNull(), // Manual entry
   quantityReturned: integer("quantity_returned").default(0).notNull(), // Manual entry - goes back to inventory
   quantityPending: integer("quantity_pending").default(0).notNull(), // Manual entry - in-process
-  netConsumed: integer("net_consumed").notNull(), // Calculated: Used = Issued - Returned - Pending
+  // Note: netConsumed = quantityUsed - quantityReturned - quantityPending (calculated dynamically, not stored)
   
   // Unit of measure
   uomId: varchar("uom_id").references(() => uom.id),

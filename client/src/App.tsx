@@ -34,6 +34,7 @@ import InventoryManagement from "@/pages/inventory-management";
 import RawMaterialTypeMaster from "@/pages/raw-material-type-master";
 import ProductionManagement from "@/pages/production-management";
 import ProductionEntries from "@/pages/production-entries";
+import ProductionReconciliations from "@/pages/production-reconciliations";
 import SalesReturns from "@/pages/sales-returns";
 import MachineStartupReminders from "@/pages/machine-startup-reminders";
 import NotificationSettings from "@/pages/notification-settings";
@@ -48,7 +49,7 @@ import { ManagerChecklistAssignment } from "@/components/ManagerChecklistAssignm
 import PendingPaymentsDashboard from "@/components/PendingPaymentsDashboard";
 import { OperatorAssignedChecklists } from "@/components/OperatorAssignedChecklists";
 import { VerticalNavSidebar, type NavSection } from "@/components/VerticalNavSidebar";
-import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck } from "lucide-react";
+import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator } from "lucide-react";
 import SalesDashboard from "@/components/SalesDashboard";
 import ReviewerDashboardPage from "@/pages/ReviewerDashboard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -324,6 +325,7 @@ function ManagerDashboard() {
         { id: "purchase-orders", label: "Purchase Orders", icon: ShoppingCart },
         { id: "raw-material-issuance", label: "Raw Material Issuance", icon: Package },
         { id: "production-entries", label: "Production Entries", icon: ListChecks },
+        { id: "production-reconciliations", label: "Production Reconciliation", icon: Calculator },
         { id: "gatepasses", label: "Gatepasses", icon: FileText },
         { id: "invoices", label: "Invoices", icon: FileText },
         { id: "dispatch-tracking", label: "Dispatch Tracking", icon: Truck },
@@ -407,6 +409,8 @@ function ManagerDashboard() {
         return <ProductionManagement activeTab={activeView} />;
       case 'production-entries':
         return <ProductionEntries />;
+      case 'production-reconciliations':
+        return <ProductionReconciliations />;
       case 'dispatch-tracking':
         return <DispatchTracking showHeader={false} />;
       case 'reports':
@@ -603,6 +607,7 @@ function AdminDashboard() {
       items: [
         { id: "raw-material-issuance", label: "Raw Material Issuance", icon: Package },
         { id: "production-entries", label: "Production Entries", icon: ListChecks },
+        { id: "production-reconciliations", label: "Production Reconciliation", icon: Calculator },
         { id: "gatepasses", label: "Gatepasses", icon: FileText },
         { id: "invoices", label: "Sales Invoices", icon: Receipt },
         { id: "dispatch-tracking", label: "Dispatch Tracking", icon: Truck },
@@ -730,6 +735,8 @@ function AdminDashboard() {
         return <ProductionManagement activeTab={activeView} />;
       case 'production-entries':
         return <ProductionEntries />;
+      case 'production-reconciliations':
+        return <ProductionReconciliations />;
       case 'dispatch-tracking':
         return <DispatchTracking showHeader={false} />;
       case 'machine-startup-reminders':

@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, salesReturns, salesReturnItems, creditNotes, creditNoteItems, manualCreditNoteRequests, products } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, salesReturns, salesReturnItems, creditNotes, creditNoteItems, manualCreditNoteRequests, products } from "@shared/schema";
 import { format } from "date-fns";
 import { z } from "zod";
 import path from "path";
@@ -2168,6 +2168,252 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.error("Error creating production entry:", error);
       res.status(500).json({ message: error instanceof Error ? error.message : "Failed to create production entry" });
+    }
+  });
+
+  // Production Reconciliation Routes
+  app.get('/api/production-reconciliations', isAuthenticated, async (req: any, res) => {
+    try {
+      const reconciliations = await storage.getAllProductionReconciliations();
+      res.json(reconciliations);
+    } catch (error) {
+      console.error("Error fetching production reconciliations:", error);
+      res.status(500).json({ message: "Failed to fetch production reconciliations" });
+    }
+  });
+
+  app.post('/api/production-reconciliations', requireRole('admin', 'manager', 'operator'), async (req: any, res) => {
+    try {
+      const { header, items } = req.body;
+      
+      // Validate header
+      const validatedHeader = insertProductionReconciliationSchema.parse(header);
+      
+      // Validate items array
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ message: "At least one reconciliation item is required" });
+      }
+      
+      // Verify issuance exists
+      const issuance = await storage.getRawMaterialIssuance(validatedHeader.issuanceId);
+      if (!issuance) {
+        return res.status(404).json({ message: "Raw material issuance not found" });
+      }
+      
+      // Verify production entry exists if linked
+      if (validatedHeader.productionEntryId) {
+        const production = await storage.getProductionEntry(validatedHeader.productionEntryId);
+        if (!production) {
+          return res.status(404).json({ message: "Production entry not found" });
+        }
+      }
+      
+      // Check for duplicate reconciliation (issuance + shift)
+      const existingReconciliations = await storage.getReconciliationsByIssuance(validatedHeader.issuanceId);
+      const duplicate = existingReconciliations.find(r => r.shift === validatedHeader.shift);
+      if (duplicate) {
+        return res.status(409).json({ 
+          message: `A reconciliation already exists for this issuance and shift (${validatedHeader.shift})` 
+        });
+      }
+      
+      // Generate reconciliation number
+      const reconciliationNumber = `REC-${Date.now()}`;
+      
+      // Wrap everything in a transaction for atomicity
+      const result = await db.transaction(async (tx) => {
+        // Create reconciliation header
+        const [reconciliation] = await tx.insert(productionReconciliations).values({
+          ...validatedHeader,
+          reconciliationNumber,
+          editCount: 0,
+          createdBy: req.user?.id,
+        }).returning();
+        
+        // Create items and update raw material inventory for returned materials
+        for (const item of items) {
+          const validatedItem = insertProductionReconciliationItemSchema.parse({
+            ...item,
+            reconciliationId: reconciliation.id
+          });
+          
+          // Create reconciliation item
+          await tx.insert(productionReconciliationItems).values(validatedItem);
+          
+          // If material was RETURNED, add it back to raw material inventory
+          if (validatedItem.quantityReturned && Number(validatedItem.quantityReturned) > 0) {
+            const [material] = await tx.select().from(rawMaterials)
+              .where(and(eq(rawMaterials.id, validatedItem.rawMaterialId), eq(rawMaterials.recordStatus, 1)))
+              .for('update');
+            
+            if (material) {
+              const newStock = (material.currentStock || 0) + Number(validatedItem.quantityReturned);
+              await tx.update(rawMaterials)
+                .set({ currentStock: newStock, updatedAt: new Date() })
+                .where(eq(rawMaterials.id, validatedItem.rawMaterialId));
+              
+              // Create transaction record for audit trail
+              await tx.insert(rawMaterialTransactions).values({
+                materialId: validatedItem.rawMaterialId,
+                transactionType: 'return',
+                quantity: Number(validatedItem.quantityReturned),
+                reference: `Reconciliation ${reconciliationNumber}`,
+                remarks: validatedItem.remarks || `Returned from shift ${validatedHeader.shift}`,
+                performedBy: req.user?.id,
+              });
+              
+              console.log(`[INVENTORY] Returned ${validatedItem.quantityReturned} units of material ${validatedItem.rawMaterialId} to stock`);
+            }
+          }
+        }
+        
+        return reconciliation;
+      });
+      
+      res.json({ reconciliation: result, message: "Production reconciliation created successfully" });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error creating production reconciliation:", error);
+      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to create production reconciliation" });
+    }
+  });
+
+  app.get('/api/production-reconciliations/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const reconciliation = await storage.getProductionReconciliation(id);
+      if (!reconciliation) {
+        return res.status(404).json({ message: "Production reconciliation not found" });
+      }
+      
+      // Fetch items for this reconciliation
+      const items = await storage.getReconciliationItems(id);
+      
+      res.json({ ...reconciliation, items });
+    } catch (error) {
+      console.error("Error fetching production reconciliation:", error);
+      res.status(500).json({ message: "Failed to fetch production reconciliation" });
+    }
+  });
+
+  app.patch('/api/production-reconciliations/:id', requireRole('admin', 'manager', 'operator'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { header, items } = req.body;
+      
+      // Fetch existing reconciliation
+      const existing = await storage.getProductionReconciliation(id);
+      if (!existing) {
+        return res.status(404).json({ message: "Production reconciliation not found" });
+      }
+      
+      // Enforce edit limits: admin = unlimited, others = max 3 edits
+      const isAdmin = req.user?.roleId === 'admin';
+      const currentEditCount = existing.editCount || 0;
+      const maxEdits = 3;
+      
+      if (!isAdmin && currentEditCount >= maxEdits) {
+        return res.status(403).json({ 
+          message: `Edit limit reached. Non-admin users can only edit this reconciliation ${maxEdits} times. Contact an administrator for further changes.` 
+        });
+      }
+      
+      // Increment edit count
+      const newEditCount = currentEditCount + 1;
+      
+      // Wrap everything in transaction
+      const result = await db.transaction(async (tx) => {
+        // Update header if provided
+        if (header) {
+          const validatedHeader = insertProductionReconciliationSchema.partial().parse(header);
+          await tx.update(productionReconciliations)
+            .set({ 
+              ...validatedHeader, 
+              editCount: newEditCount,
+              updatedAt: new Date() 
+            })
+            .where(eq(productionReconciliations.id, id));
+        }
+        
+        // Update items if provided
+        if (items && Array.isArray(items)) {
+          // Get existing items to detect quantity changes
+          const existingItems = await storage.getReconciliationItems(id);
+          
+          for (const item of items) {
+            if (item.id) {
+              // Update existing item
+              const validatedItem = insertProductionReconciliationItemSchema.partial().parse(item);
+              const oldItem = existingItems.find(i => i.id === item.id);
+              
+              // If quantityReturned changed, adjust inventory
+              if (oldItem && validatedItem.quantityReturned !== undefined) {
+                const oldReturned = Number(oldItem.quantityReturned) || 0;
+                const newReturned = Number(validatedItem.quantityReturned) || 0;
+                const delta = newReturned - oldReturned;
+                
+                if (delta !== 0) {
+                  const [material] = await tx.select().from(rawMaterials)
+                    .where(and(eq(rawMaterials.id, oldItem.rawMaterialId), eq(rawMaterials.recordStatus, 1)))
+                    .for('update');
+                  
+                  if (material) {
+                    const newStock = (material.currentStock || 0) + delta;
+                    await tx.update(rawMaterials)
+                      .set({ currentStock: newStock, updatedAt: new Date() })
+                      .where(eq(rawMaterials.id, oldItem.rawMaterialId));
+                    
+                    // Create transaction record
+                    await tx.insert(rawMaterialTransactions).values({
+                      materialId: oldItem.rawMaterialId,
+                      transactionType: delta > 0 ? 'return' : 'adjustment',
+                      quantity: delta,
+                      reference: `Reconciliation Edit ${existing.reconciliationNumber}`,
+                      remarks: `Adjustment: ${oldReturned} → ${newReturned}`,
+                      performedBy: req.user?.id,
+                    });
+                    
+                    console.log(`[INVENTORY] Adjusted material ${oldItem.rawMaterialId} by ${delta} units`);
+                  }
+                }
+              }
+              
+              await tx.update(productionReconciliationItems)
+                .set({ ...validatedItem, updatedAt: new Date() })
+                .where(eq(productionReconciliationItems.id, item.id));
+            }
+          }
+        }
+        
+        // Return updated reconciliation
+        const [updated] = await tx.select().from(productionReconciliations)
+          .where(eq(productionReconciliations.id, id));
+        return updated;
+      });
+      
+      res.json({ 
+        reconciliation: result, 
+        message: `Reconciliation updated successfully (Edit ${newEditCount}/${isAdmin ? '∞' : maxEdits})` 
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error updating production reconciliation:", error);
+      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to update production reconciliation" });
+    }
+  });
+
+  app.delete('/api/production-reconciliations/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteProductionReconciliation(id);
+      res.json({ message: "Production reconciliation deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting production reconciliation:", error);
+      res.status(500).json({ message: "Failed to delete production reconciliation" });
     }
   });
 
