@@ -997,6 +997,17 @@ export const insertRawMaterialIssuanceSchema = createInsertSchema(rawMaterialIss
     }
     return val;
   }),
+  productionReference: z.string().min(1, "Production reference cannot be empty if provided").optional(),
+  plannedOutput: z.union([
+    z.string().transform(val => {
+      if (!val || val.trim() === '') return undefined;
+      const num = parseFloat(val);
+      return isNaN(num) ? undefined : num;
+    }),
+    z.number()
+  ]).refine(val => val === undefined || val > 0, {
+    message: "Planned output must be greater than 0 if provided"
+  }).optional(),
 }).omit({
   id: true,
   issuanceNumber: true,
@@ -1024,7 +1035,31 @@ export const rawMaterialIssuanceItems = pgTable("raw_material_issuance_items", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const insertRawMaterialIssuanceItemSchema = createInsertSchema(rawMaterialIssuanceItems).omit({
+export const insertRawMaterialIssuanceItemSchema = createInsertSchema(rawMaterialIssuanceItems, {
+  quantityIssued: z.union([
+    z.string().transform(val => {
+      const num = parseFloat(val);
+      if (isNaN(num)) throw new Error("Quantity issued must be a valid number");
+      return num;
+    }),
+    z.number()
+  ]).refine(val => val > 0, {
+    message: "Quantity issued must be greater than 0"
+  }),
+  suggestedQuantity: z.union([
+    z.string().transform(val => {
+      if (!val || val.trim() === '') return undefined;
+      const num = parseFloat(val);
+      return isNaN(num) ? undefined : num;
+    }),
+    z.number()
+  ]).refine(val => val === undefined || val >= 0, {
+    message: "Suggested quantity must be non-negative if provided"
+  }).optional(),
+  calculationBasis: z.enum(['formula-based', 'direct-value', 'output-coverage', 'manual'], {
+    errorMap: () => ({ message: "Calculation basis must be one of: formula-based, direct-value, output-coverage, manual" })
+  }).optional(),
+}).omit({
   id: true,
   recordStatus: true,
   createdAt: true,
