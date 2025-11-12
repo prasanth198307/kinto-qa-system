@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, salesReturns, salesReturnItems, products } from "@shared/schema";
 import { z } from "zod";
 import path from "path";
 import fs from "fs";
@@ -3135,6 +3135,173 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting payment:", error);
       res.status(500).json({ message: "Failed to delete payment" });
+    }
+  });
+
+  // Sales Returns API
+  // Get all sales returns
+  app.get('/api/sales-returns', isAuthenticated, async (req: any, res) => {
+    try {
+      const returns = await storage.getAllSalesReturns();
+      res.json(returns);
+    } catch (error) {
+      console.error("Error fetching sales returns:", error);
+      res.status(500).json({ message: "Failed to fetch sales returns" });
+    }
+  });
+
+  // Create new sales return
+  app.post('/api/sales-returns', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { header, items } = req.body;
+      
+      // Validate header
+      const validatedHeader = insertSalesReturnSchema.parse({
+        ...header,
+        createdBy: req.user?.id,
+      });
+      
+      // Validate items
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ message: "At least one return item is required" });
+      }
+      
+      // Create return header using storage
+      const salesReturn = await storage.createSalesReturn(validatedHeader);
+      
+      // Create return items using storage
+      for (const item of items) {
+        const validatedItem = insertSalesReturnItemSchema.parse({
+          ...item,
+          returnId: salesReturn.id,
+        });
+        await storage.createSalesReturnItem(validatedItem);
+      }
+      
+      await logAudit(req.user?.id, 'CREATE', 'sales_returns', salesReturn.id, `Created sales return ${salesReturn.returnNumber}`);
+      res.json({ salesReturn, message: "Sales return created successfully" });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error creating sales return:", error);
+      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to create sales return" });
+    }
+  });
+
+  // Get specific sales return with items
+  app.get('/api/sales-returns/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const salesReturn = await storage.getSalesReturn(id);
+      if (!salesReturn) {
+        return res.status(404).json({ message: "Sales return not found" });
+      }
+      
+      const items = await storage.getSalesReturnItems(id);
+      res.json({ ...salesReturn, items });
+    } catch (error) {
+      console.error("Error fetching sales return:", error);
+      res.status(500).json({ message: "Failed to fetch sales return" });
+    }
+  });
+
+  // Mark return as received
+  app.patch('/api/sales-returns/:id/receive', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { receivedDate } = req.body;
+      
+      const updated = await storage.updateSalesReturn(id, {
+        status: 'received',
+        receivedDate: new Date(receivedDate || Date.now()),
+      });
+      
+      if (!updated) {
+        return res.status(404).json({ message: "Sales return not found" });
+      }
+      
+      await logAudit(req.user?.id, 'UPDATE', 'sales_returns', id, 'Marked return as received');
+      res.json({ salesReturn: updated, message: "Return marked as received" });
+    } catch (error) {
+      console.error("Error receiving sales return:", error);
+      res.status(500).json({ message: "Failed to receive sales return" });
+    }
+  });
+
+  // Inspect return and update inventory
+  app.patch('/api/sales-returns/:id/inspect', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { inspections } = req.body; // Array of {itemId, condition, disposition}
+      
+      if (!inspections || !Array.isArray(inspections)) {
+        return res.status(400).json({ message: "Inspection data required" });
+      }
+      
+      await db.transaction(async (tx) => {
+        // Update each return item with inspection results
+        for (const inspection of inspections) {
+          await tx.update(salesReturnItems)
+            .set({
+              conditionOnReceipt: inspection.condition,
+              disposition: inspection.disposition,
+              updatedAt: new Date(),
+            })
+            .where(eq(salesReturnItems.id, inspection.itemId));
+          
+          // Get the return item details
+          const [item] = await tx.select().from(salesReturnItems)
+            .where(eq(salesReturnItems.id, inspection.itemId));
+          
+          if (!item) continue;
+          
+          // Update inventory based on disposition
+          if (inspection.disposition === 'restock' && inspection.condition === 'good') {
+            // Return good items to finished goods inventory
+            const [product] = await tx.select().from(products)
+              .where(eq(products.id, item.productId));
+            
+            if (product) {
+              // Create new finished good record for returned items
+              await tx.insert(finishedGoods).values({
+                productId: item.productId,
+                batchNumber: `${item.batchNumber}-RETURNED`,
+                quantity: item.quantityReturned,
+                qualityStatus: 'approved',
+                remarks: `Returned goods from sales return - Good condition`,
+                createdBy: req.user?.id,
+              });
+            }
+          } else if (inspection.disposition === 'scrap' || inspection.condition === 'damaged') {
+            // Create damaged inventory record
+            await tx.insert(finishedGoods).values({
+              productId: item.productId,
+              batchNumber: `${item.batchNumber}-DAMAGED`,
+              quantity: item.quantityReturned,
+              qualityStatus: 'rejected',
+              remarks: `Returned goods - Damaged/Scrapped`,
+              createdBy: req.user?.id,
+            });
+          }
+        }
+        
+        // Update return status
+        await tx.update(salesReturns)
+          .set({
+            status: 'inspected',
+            inspectedDate: new Date(),
+            inspectedBy: req.user?.id,
+            updatedAt: new Date(),
+          })
+          .where(eq(salesReturns.id, id));
+      });
+      
+      await logAudit(req.user?.id, 'UPDATE', 'sales_returns', id, 'Inspected return and updated inventory');
+      res.json({ message: "Return inspected and inventory updated successfully" });
+    } catch (error) {
+      console.error("Error inspecting sales return:", error);
+      res.status(500).json({ message: "Failed to inspect sales return" });
     }
   });
 

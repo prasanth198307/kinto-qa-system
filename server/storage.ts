@@ -35,6 +35,8 @@ import {
   invoiceTemplates,
   termsConditions,
   banks,
+  salesReturns,
+  salesReturnItems,
   checklistAssignments,
   checklistSubmissions,
   submissionTasks,
@@ -109,6 +111,10 @@ import {
   type InsertTermsConditions,
   type Bank,
   type InsertBank,
+  type SalesReturn,
+  type InsertSalesReturn,
+  type SalesReturnItem,
+  type InsertSalesReturnItem,
   type Role,
   type InsertRole,
   type RolePermission,
@@ -376,6 +382,21 @@ export interface IStorage {
   getPayment(id: string): Promise<InvoicePayment | undefined>;
   getPaymentsByInvoice(invoiceId: string): Promise<InvoicePayment[]>;
   deletePayment(id: string): Promise<void>;
+  
+  // Sales Returns
+  createSalesReturn(salesReturn: InsertSalesReturn): Promise<SalesReturn>;
+  getAllSalesReturns(): Promise<SalesReturn[]>;
+  getSalesReturn(id: string): Promise<SalesReturn | undefined>;
+  getSalesReturnByNumber(returnNumber: string): Promise<SalesReturn | undefined>;
+  getSalesReturnsByInvoice(invoiceId: string): Promise<SalesReturn[]>;
+  updateSalesReturn(id: string, updates: Partial<InsertSalesReturn>): Promise<SalesReturn | undefined>;
+  deleteSalesReturn(id: string): Promise<void>;
+  
+  // Sales Return Items
+  createSalesReturnItem(item: InsertSalesReturnItem): Promise<SalesReturnItem>;
+  getSalesReturnItems(returnId: string): Promise<SalesReturnItem[]>;
+  updateSalesReturnItem(id: string, updates: Partial<InsertSalesReturnItem>): Promise<SalesReturnItem | undefined>;
+  deleteSalesReturnItem(id: string): Promise<void>;
   
   // Checklist Assignments
   createChecklistAssignment(assignment: InsertChecklistAssignment): Promise<ChecklistAssignment>;
@@ -1839,6 +1860,80 @@ export class DatabaseStorage implements IStorage {
 
   async deletePayment(id: string): Promise<void> {
     await db.update(invoicePayments).set({ recordStatus: 0, updatedAt: new Date() }).where(eq(invoicePayments.id, id));
+  }
+
+  // Sales Returns
+  async createSalesReturn(salesReturnData: InsertSalesReturn): Promise<SalesReturn> {
+    const returnNumber = `RET-${Date.now()}`;
+    const [created] = await db.insert(salesReturns).values({
+      ...salesReturnData,
+      returnNumber,
+    }).returning();
+    return created;
+  }
+
+  async getAllSalesReturns(): Promise<SalesReturn[]> {
+    return await db.select().from(salesReturns).where(eq(salesReturns.recordStatus, 1));
+  }
+
+  async getSalesReturn(id: string): Promise<SalesReturn | undefined> {
+    const [salesReturn] = await db.select().from(salesReturns).where(and(eq(salesReturns.id, id), eq(salesReturns.recordStatus, 1)));
+    return salesReturn;
+  }
+
+  async getSalesReturnByNumber(returnNumber: string): Promise<SalesReturn | undefined> {
+    const [salesReturn] = await db.select().from(salesReturns).where(and(eq(salesReturns.returnNumber, returnNumber), eq(salesReturns.recordStatus, 1)));
+    return salesReturn;
+  }
+
+  async getSalesReturnsByInvoice(invoiceId: string): Promise<SalesReturn[]> {
+    return await db.select().from(salesReturns).where(
+      and(
+        eq(salesReturns.invoiceId, invoiceId),
+        eq(salesReturns.recordStatus, 1)
+      )
+    );
+  }
+
+  async updateSalesReturn(id: string, updates: Partial<InsertSalesReturn>): Promise<SalesReturn | undefined> {
+    const [updated] = await db
+      .update(salesReturns)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(salesReturns.id, id), eq(salesReturns.recordStatus, 1)))
+      .returning();
+    return updated;
+  }
+
+  async deleteSalesReturn(id: string): Promise<void> {
+    await db.update(salesReturns).set({ recordStatus: 0, updatedAt: new Date() }).where(eq(salesReturns.id, id));
+  }
+
+  // Sales Return Items
+  async createSalesReturnItem(item: InsertSalesReturnItem): Promise<SalesReturnItem> {
+    const [created] = await db.insert(salesReturnItems).values(item).returning();
+    return created;
+  }
+
+  async getSalesReturnItems(returnId: string): Promise<SalesReturnItem[]> {
+    return await db.select().from(salesReturnItems).where(
+      and(
+        eq(salesReturnItems.returnId, returnId),
+        eq(salesReturnItems.recordStatus, 1)
+      )
+    );
+  }
+
+  async updateSalesReturnItem(id: string, updates: Partial<InsertSalesReturnItem>): Promise<SalesReturnItem | undefined> {
+    const [updated] = await db
+      .update(salesReturnItems)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(salesReturnItems.id, id), eq(salesReturnItems.recordStatus, 1)))
+      .returning();
+    return updated;
+  }
+
+  async deleteSalesReturnItem(id: string): Promise<void> {
+    await db.update(salesReturnItems).set({ recordStatus: 0, updatedAt: new Date() }).where(eq(salesReturnItems.id, id));
   }
 
   // Role Management

@@ -1563,6 +1563,118 @@ export const insertBankSchema = createInsertSchema(banks).omit({
 export type InsertBank = z.infer<typeof insertBankSchema>;
 export type Bank = typeof banks.$inferSelect;
 
+// Sales Returns for handling returned goods after delivery
+export const salesReturns = pgTable("sales_returns", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  returnNumber: varchar("return_number", { length: 100 }).notNull().unique(),
+  returnDate: timestamp("return_date").notNull(),
+  
+  // Links to original transaction
+  invoiceId: varchar("invoice_id").references(() => invoices.id).notNull(),
+  gatepassId: varchar("gatepass_id").references(() => gatepasses.id),
+  
+  // Return Details
+  returnReason: varchar("return_reason", { length: 50 }).notNull(), // damaged, quality_issue, wrong_item, customer_rejection, excess
+  returnType: varchar("return_type", { length: 20 }).notNull(), // full, partial
+  
+  // Status tracking
+  status: varchar("status", { length: 50 }).default("pending_receipt").notNull(), // pending_receipt, received, inspected, completed
+  receivedDate: timestamp("received_date"),
+  inspectedDate: timestamp("inspected_date"),
+  inspectedBy: varchar("inspected_by").references(() => users.id),
+  
+  // Financial
+  creditNoteNumber: varchar("credit_note_number", { length: 100 }),
+  creditNoteDate: timestamp("credit_note_date"),
+  totalCreditAmount: integer("total_credit_amount").default(0).notNull(), // Credit amount in paise
+  
+  remarks: text("remarks"),
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertSalesReturnSchema = createInsertSchema(salesReturns, {
+  returnDate: z.union([z.string(), z.date()]).transform(val => {
+    if (!val) return new Date();
+    if (typeof val === 'string') {
+      if (val.trim() === '') return new Date();
+      const date = new Date(val);
+      return isNaN(date.getTime()) ? new Date() : date;
+    }
+    return val;
+  }),
+  receivedDate: z.union([z.string(), z.date(), z.null(), z.undefined()]).transform(val => {
+    if (!val || val === '') return null;
+    if (typeof val === 'string') {
+      const date = new Date(val);
+      return isNaN(date.getTime()) ? null : date;
+    }
+    return val;
+  }).optional(),
+  inspectedDate: z.union([z.string(), z.date(), z.null(), z.undefined()]).transform(val => {
+    if (!val || val === '') return null;
+    if (typeof val === 'string') {
+      const date = new Date(val);
+      return isNaN(date.getTime()) ? null : date;
+    }
+    return val;
+  }).optional(),
+  creditNoteDate: z.union([z.string(), z.date(), z.null(), z.undefined()]).transform(val => {
+    if (!val || val === '') return null;
+    if (typeof val === 'string') {
+      const date = new Date(val);
+      return isNaN(date.getTime()) ? null : date;
+    }
+    return val;
+  }).optional(),
+}).omit({
+  id: true,
+  returnNumber: true, // Auto-generated
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertSalesReturn = z.infer<typeof insertSalesReturnSchema>;
+export type SalesReturn = typeof salesReturns.$inferSelect;
+
+// Sales Return Items (Detail/Line Items)
+export const salesReturnItems = pgTable("sales_return_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  returnId: varchar("return_id").references(() => salesReturns.id).notNull(),
+  
+  productId: varchar("product_id").references(() => products.id).notNull(),
+  batchNumber: varchar("batch_number", { length: 255 }),
+  quantityReturned: integer("quantity_returned").notNull(),
+  
+  // Condition after inspection
+  conditionOnReceipt: varchar("condition_on_receipt", { length: 50 }), // damaged, good, repairable
+  
+  // Disposition - what to do with returned goods
+  disposition: varchar("disposition", { length: 50 }), // scrap, restock, repair, quarantine
+  
+  // Financial - credit for this item
+  unitPrice: integer("unit_price").notNull(), // Price per unit from original invoice (in paise)
+  creditAmount: integer("credit_amount").notNull(), // Total credit for this item (in paise)
+  
+  remarks: text("remarks"),
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertSalesReturnItemSchema = createInsertSchema(salesReturnItems).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertSalesReturnItem = z.infer<typeof insertSalesReturnItemSchema>;
+export type SalesReturnItem = typeof salesReturnItems.$inferSelect;
+
 // Machine Startup Reminders - for notifying users to turn on machines before production
 export const machineStartupTasks = pgTable("machine_startup_tasks", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
