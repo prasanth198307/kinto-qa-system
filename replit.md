@@ -27,12 +27,13 @@ The backend is an Express.js application built with TypeScript and Node.js, feat
 - **Comprehensive Role Permissions Management:** Granular access control across 26 system screens (View, Create, Edit, Delete).
 - **Two-Way WhatsApp Integration:** Production-ready integration using Meta WhatsApp Business Cloud API for outbound reminders, inbound checklist completion, sender verification, atomic status updates, and analytics.
 - **Raw Material Type Master System:** Manages raw material definitions with three conversion methods (Formula-Based, Direct-Value, Output-Coverage) including auto-calculation for conversion values and usable units, accounting for loss percentage.
+- **Raw Material Type Master Integration:** Enhanced Raw Material entry screen with automatic type details fetching, dual stock management modes (Opening Stock Entry Only vs Ongoing Inventory), and real-time auto-calculation of closing stock and usable units. The system validates Material Type selection, auto-populates base units and conversion details, and calculates inventory based on the selected mode: Opening Stock Only (closingStock = openingStock) or Ongoing Inventory (closingStock = openingStock + received - returned + adjustments).
 
 ### System Design Choices
 - **Authentication:** Users can log in with username or email.
 - **Database Schema:** Includes `is_cluster` for mobile integration and status tracking fields for dispatch workflow and WhatsApp responses.
 - **Dispatch Workflow:** Invoice-first, tamper-proof state machine with backend validation and digital signature requirement.
-- **Inventory Management Logic:** Inventory deduction occurs on gatepass creation (physical dispatch).
+- **Inventory Management Logic:** Inventory deduction occurs on gatepass creation (physical dispatch). Raw Material inventory supports dual stock management modes: Opening Stock Entry Only mode for setting baseline inventory with openingStock and openingDate, and Ongoing Inventory mode for dynamic tracking with receivedQuantity, returnedQuantity, and adjustments. Backend auto-calculates closingStock and closingStockUsable (closingStock × usableUnits from Type Master) for both modes, with zero-value and string-numeral normalization.
 - **WhatsApp Integration:** Uses Meta WhatsApp Business Cloud API with sender verification, atomic updates, and state management for incremental checklist completion, including photo uploads and spare part requests.
 - **Build & Deployment:** Development uses Vite dev server and `tsx`-powered Express; production builds use Vite for frontend and `esbuild` for backend. Drizzle Kit manages database schema.
 - **Environment Handling:** Automatically detects Replit environment for cross-origin cookie settings (`secure: true`, `sameSite: 'none'`) to ensure session persistence.
