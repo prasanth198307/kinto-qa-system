@@ -1,6 +1,6 @@
 # KINTO Operations & QA Management System - Test Cases
 
-**Complete Test Coverage: 16 Workflows | 58 Test Cases**
+**Complete Test Coverage: 23 Workflows | 75 Test Cases**
 **Last Updated: November 12, 2025**
 
 ## Role-Based Test Cases
@@ -1522,8 +1522,597 @@ COMMENT ON COLUMN credit_notes.approved_by IS
 
 ---
 
-## Test Execution Checklist
+## 17. Product Master with BOM Management
 
+### Test Case 17.1: Create Product with Complete BOM (Multi-Tab Form)
+**Role**: Admin / Manager  
+**Objective**: Create a new product using all 4 tabs with complete BOM definition  
+**Priority**: Critical
+
+**Steps**:
+
+**Tab 1: Product Info**
+1. Login as Admin
+2. Navigate to: Admin → Production → Products
+3. Click "Add Product" button
+4. Fill Product Info tab:
+   - Product Code: "PROD-1L-PET"
+   - Product Name: "1 Liter PET Bottle Water"
+   - SKU Code: "SKU-1L-001"
+   - Category: Select "Beverages" (from Product Category dropdown)
+   - Type: Select "Bottled Water" (from Product Type dropdown)
+   - Description: "1L packaged drinking water in PET bottle"
+
+**Tab 2: Packaging**
+5. Click "Packaging" tab
+6. Fill packaging details:
+   - Base Unit: "Bottle"
+   - Derived Unit: "Case"
+   - Conversion Method: Select "Direct Value"
+   - Derived Value Per Base: 24 (24 bottles per case)
+   - Net Volume: 1000 (ml)
+
+**Tab 3: Pricing/Tax**
+7. Click "Pricing/Tax" tab
+8. Fill pricing details:
+   - Base Price: ₹20.00
+   - GST Percent: 18%
+   - Total Price: Auto-calculated (₹23.60)
+   - HSN Code: "2201"
+   - Tax Type: "GST"
+
+**Tab 4: BOM (Bill of Materials)**
+9. Click "BOM" tab
+10. Click "Add Row" to add BOM items:
+    - **Row 1:**
+      - Raw Material: "Preform 21g Transparent"
+      - Quantity Required: 1
+      - UOM: "Piece"
+      - Notes: "Main bottle body"
+    - **Row 2:**
+      - Raw Material: "Cap 28mm White"
+      - Quantity Required: 1
+      - UOM: "Piece"
+      - Notes: "Bottle cap"
+    - **Row 3:**
+      - Raw Material: "Label Adhesive"
+      - Quantity Required: 0.5
+      - UOM: "Gram"
+      - Notes: "Label glue"
+11. Click "Save"
+
+**Expected Results**:
+- Product created successfully
+- All 4 tabs are accessible and clickable
+- Tab navigation works smoothly
+- Product appears in products list
+- BOM items are saved and linked to product
+- When editing product, all BOM items are retrieved and displayed
+- Total of 3 BOM items shown in BOM tab
+- Product can be selected in production/issuance screens
+
+**Test Data**:
+- Product: PROD-1L-PET
+- BOM Items: 3 (Preform, Cap, Label Adhesive)
+- Conversion: 24 bottles per case
+
+**Test Status**: ⬜ PENDING
+
+---
+
+### Test Case 17.2: Edit Product BOM (Atomic Replacement)
+**Role**: Admin / Manager  
+**Objective**: Verify BOM can be edited and replaced atomically  
+**Priority**: High
+
+**Steps**:
+1. Open existing product: "1 Liter PET Bottle Water"
+2. Click "Edit" button
+3. Navigate to "BOM" tab
+4. Modify existing BOM:
+   - Update Row 1 quantity from 1 to 1.2 (add 20% safety margin)
+   - Delete Row 3 (Label Adhesive)
+   - Add new Row: "Shrink Film" - Qty: 0.3, UOM: "Meter"
+5. Click "Save"
+
+**Expected Results**:
+- Old BOM items are completely replaced (not appended)
+- New BOM has exactly 3 items:
+  - Preform 21g: 1.2 pieces
+  - Cap 28mm: 1 piece
+  - Shrink Film: 0.3 meter
+- Label Adhesive is removed
+- Raw material issuance reflects updated BOM quantities
+
+**Test Status**: ⬜ PENDING
+
+---
+
+### Test Case 17.3: Create Product with Empty BOM
+**Role**: Admin  
+**Objective**: Verify products can be created without BOM items  
+**Priority**: Medium
+
+**Steps**:
+1. Create new product: "Generic Product"
+2. Fill Product Info, Packaging, and Pricing tabs
+3. Navigate to BOM tab
+4. Leave BOM tab empty (no rows added)
+5. Click "Save"
+
+**Expected Results**:
+- Product created successfully
+- Product has zero BOM items
+- No errors when BOM is empty
+- Product can still be used in system
+- Warning shown when trying to use in BOM-driven issuance
+
+**Test Status**: ⬜ PENDING
+
+---
+
+## 18. Raw Material Type Master with Auto-Fetch
+
+### Test Case 18.1: Create Raw Material Type (Formula-Based Conversion)
+**Role**: Admin  
+**Objective**: Create a raw material type with formula-based conversion  
+**Priority**: Critical
+
+**Steps**:
+1. Login as Admin
+2. Navigate to: Admin → Configuration → Raw Material Types
+3. Click "Add Raw Material Type"
+4. Fill in details:
+   - Type Code: Auto-generated (RMT-001)
+   - Type Name: "Preform"
+   - Conversion Method: "Formula-Based"
+   - Base Unit: "Bag"
+   - Base Unit Weight: 25 (kg)
+   - Derived Unit: "Piece"
+   - Weight Per Derived Unit: 21 (grams)
+   - Loss Percent: 2%
+5. Click "Save"
+
+**Expected Results**:
+- Type created successfully
+- **Conversion Value** auto-calculated: 25,000g ÷ 21g = 1190 pieces
+- **Usable Units** auto-calculated: 1190 × (1 - 0.02) = 1166 pieces
+- Type code auto-generated: RMT-001
+- Type appears in dropdown when creating raw materials
+
+**Calculation Verification**:
+- 25kg bag = 25,000 grams
+- Each preform = 21 grams
+- Theoretical pieces = 25,000 ÷ 21 = 1190
+- With 2% loss = 1190 × 0.98 = 1166 usable pieces
+
+**Test Status**: ⬜ PENDING
+
+---
+
+### Test Case 18.2: Create Raw Material with Type Auto-Fetch
+**Role**: Admin / Manager  
+**Objective**: Verify Raw Material Type details auto-populate when selected  
+**Priority**: Critical
+
+**Steps**:
+1. Navigate to: Admin → Production → Raw Materials
+2. Click "Add Raw Material"
+3. Enter Material Name: "Preform 21g Transparent"
+4. **Select Material Type: "Preform"** (from dropdown)
+5. **Verify Auto-Populated Fields**:
+   - Base Unit: "Bag" (read-only, greyed out)
+   - Usable Units: "1166 pcs per bag" (read-only)
+   - Conversion Method: "Formula-Based" (read-only)
+   - Loss %: "2%" (read-only)
+6. Select Category: "Preforms"
+7. Enter Description: "21g transparent PET preform"
+8. **Stock Management Section**:
+   - Toggle "Opening Stock Only": ON
+   - Opening Stock: 50 bags
+   - Opening Date: Today
+9. Click "Save"
+
+**Expected Results**:
+- Type Master details auto-fetch instantly upon selection
+- All conversion fields are read-only (not editable)
+- Base Unit displays correctly
+- Usable Units displays with units (e.g., "1166 pcs per bag")
+- Conversion Method shows correctly
+- Loss % shows correctly
+- Opening Stock is saved: 50 bags
+- **Closing Stock** calculated: 50 bags
+- **Closing Stock Usable** calculated: 50 × 1166 = 58,300 pieces
+
+**Test Status**: ⬜ PENDING
+
+---
+
+### Test Case 18.3: Raw Material Stock Management - Ongoing Inventory Mode
+**Role**: Manager  
+**Objective**: Verify raw material inventory calculations in Ongoing Inventory mode  
+**Priority**: High
+
+**Steps**:
+1. Create new raw material: "Cap 28mm White"
+2. Select Type: "Cap" (Direct Value conversion)
+3. **Stock Management Section**:
+   - Toggle "Opening Stock Only": OFF (Ongoing Inventory mode)
+   - Opening Stock: 100 boxes
+   - Received Quantity: 50 boxes
+   - Returned Quantity: 10 boxes
+   - Adjustments: -5 boxes
+4. Click "Save"
+
+**Expected Results**:
+- **Closing Stock** calculated: 100 + 50 - 10 - 5 = 135 boxes
+- **Closing Stock Usable** calculated: 135 × (usable units per box)
+- Formula displayed or documented
+- Stock mode set to "Ongoing Inventory"
+- All transactions reflected in inventory
+
+**Test Status**: ⬜ PENDING
+
+---
+
+## 19. Product Category & Type Master Data Management
+
+### Test Case 19.1: Create Product Category
+**Role**: Admin  
+**Objective**: Create a new product category  
+**Priority**: High
+
+**Steps**:
+1. Navigate to: Admin → Configuration → Product Categories
+2. Click "Add Category"
+3. Fill in:
+   - Code: "BEV"
+   - Name: "Beverages"
+   - Description: "All beverage products"
+   - Is Active: Yes
+4. Click "Save"
+
+**Expected Results**:
+- Category created successfully
+- Appears in Product Category dropdown when creating products
+- Can be edited and deleted
+- Display order managed correctly
+
+**Test Status**: ⬜ PENDING
+
+---
+
+### Test Case 19.2: Create Product Type
+**Role**: Admin  
+**Objective**: Create a new product type  
+**Priority**: High
+
+**Steps**:
+1. Navigate to: Admin → Configuration → Product Types
+2. Click "Add Type"
+3. Fill in:
+   - Code: "BTL-WATER"
+   - Name: "Bottled Water"
+   - Description: "Packaged drinking water"
+   - Is Active: Yes
+4. Click "Save"
+
+**Expected Results**:
+- Type created successfully
+- Appears in Product Type dropdown
+- Full CRUD operations work
+
+**Test Status**: ⬜ PENDING
+
+---
+
+## 20. BOM-Driven Raw Material Issuance
+
+### Test Case 20.1: Issue Raw Materials with BOM Auto-Populate
+**Role**: Manager / Operator  
+**Objective**: Verify BOM items auto-populate when issuing materials for production  
+**Priority**: Critical
+
+**Steps**:
+1. Navigate to: Production → Issue Raw Material
+2. Click "Add Issuance"
+3. Fill header details:
+   - Date: Today
+   - Product: Select "1 Liter PET Bottle Water" (has BOM)
+   - Issued To: "Production Line 1"
+   - Shift: "Day Shift"
+   - Production Quantity: 1000 bottles
+4. **Verify BOM Auto-Populate**:
+   - System should automatically populate all BOM items
+   - Row 1: Preform 21g - Qty: 1200 (1000 × 1.2)
+   - Row 2: Cap 28mm - Qty: 1000 (1000 × 1)
+   - Row 3: Shrink Film - Qty: 300 (1000 × 0.3)
+5. **User can modify quantities** if needed
+6. Click "Save Issuance"
+
+**Expected Results**:
+- All BOM items auto-populate based on production quantity
+- Quantities calculated: Production Qty × BOM Qty
+- User can add additional items not in BOM
+- User can modify auto-populated quantities
+- Issuance saved successfully
+- Raw material inventory deducted
+- Issuance appears in issuance list
+
+**Calculation Verification**:
+- Preform: 1000 bottles × 1.2 = 1200 pieces
+- Cap: 1000 bottles × 1 = 1000 pieces
+- Shrink: 1000 bottles × 0.3m = 300 meters
+
+**Test Status**: ⬜ PENDING
+
+---
+
+### Test Case 20.2: Issue Materials for Product Without BOM
+**Role**: Manager  
+**Objective**: Handle material issuance when product has no BOM  
+**Priority**: Medium
+
+**Steps**:
+1. Create issuance for product without BOM: "Generic Product"
+2. Select product
+3. Verify no items auto-populate
+4. Manually add raw materials
+5. Save issuance
+
+**Expected Results**:
+- Warning shown: "Product has no BOM defined"
+- Items table is empty
+- User can manually add any raw materials
+- Issuance works normally
+
+**Test Status**: ⬜ PENDING
+
+---
+
+## 21. Production Entry with Variance Analysis
+
+### Test Case 21.1: Create Production Entry Linked to Issuance
+**Role**: Operator / Manager  
+**Objective**: Record production output with variance tracking  
+**Priority**: Critical
+
+**Steps**:
+1. Navigate to: Production → Production Entries
+2. Click "Add Production Entry"
+3. Fill details:
+   - Date: Today
+   - Product: "1 Liter PET Bottle Water"
+   - Shift: "Day Shift"
+   - Machine: "Blow Molding Machine 01"
+   - **Link to Raw Material Issuance**: Select from dropdown (shows today's issuances)
+   - Expected Quantity: 1000 bottles (from issuance)
+   - **Actual Produced Quantity**: 950 bottles
+   - Rejected Quantity: 30 bottles
+   - Remarks: "Machine stoppage for 30 mins due to power fluctuation"
+4. Click "Save"
+
+**Expected Results**:
+- Production entry created
+- **Variance calculated automatically**:
+  - Expected: 1000
+  - Actual: 950
+  - Variance: -50 bottles (-5%)
+  - Variance % = (950 - 1000) / 1000 × 100 = -5%
+- **Variance displayed in RED** (negative variance)
+- Finished goods created with status: "Pending Quality Approval"
+- **Quantity**: 950 bottles (actual produced)
+- **Inventory NOT updated** until quality approval
+- Production entry linked to raw material issuance
+- Shift-wise tracking enabled
+
+**Test Status**: ⬜ PENDING
+
+---
+
+### Test Case 21.2: Production Entry with Positive Variance
+**Role**: Operator  
+**Objective**: Verify positive variance handling  
+**Priority**: High
+
+**Steps**:
+1. Create production entry:
+   - Expected: 1000 bottles
+   - Actual Produced: 1050 bottles
+   - Rejected: 20 bottles
+2. Save entry
+
+**Expected Results**:
+- Variance: +50 bottles (+5%)
+- **Variance displayed in GREEN** (positive variance)
+- Good production efficiency indicator
+- Finished goods: 1050 bottles pending approval
+
+**Test Status**: ⬜ PENDING
+
+---
+
+## 22. Production Reconciliation Entry System
+
+### Test Case 22.1: Complete Production Reconciliation
+**Role**: Manager / Supervisor  
+**Objective**: Reconcile raw material consumption with actual production  
+**Priority**: Critical
+
+**Steps**:
+1. **Prerequisites**:
+   - Raw Material Issuance exists (1200 Preforms issued)
+   - Production Entry exists (950 bottles produced)
+2. Navigate to: Production Operations → Production Reconciliation
+3. Click "Add Reconciliation"
+4. Fill header:
+   - Date: Today
+   - Shift: "Day Shift"
+   - Product: "1 Liter PET Bottle Water"
+   - **Link Raw Material Issuance**: Select issuance
+   - **Link Production Entry**: Select production entry
+5. **System Auto-Displays Itemized Breakdown**:
+   - **Preform 21g:**
+     - Issued: 1200 pieces
+     - Expected Consumption: 950 pieces (based on actual production)
+     - Net Consumed: 1200 - 250 = 950 pieces
+     - Returned: 250 pieces
+     - Variance: 0% (perfect match)
+   - **Cap 28mm:**
+     - Issued: 1000 pieces
+     - Expected: 950 pieces
+     - Returned: 50 pieces
+     - Variance: 0%
+6. **Enter Returned Materials** (if any):
+   - Preform 21g: 250 pieces returned
+   - Cap 28mm: 50 pieces returned
+7. Click "Save Reconciliation"
+
+**Expected Results**:
+- Reconciliation created successfully
+- **Net Consumed** calculated dynamically: Issued - Returned
+- **Variance %** calculated: (Net Consumed - Expected) / Expected × 100
+- **Color-coded variance indicators**:
+  - Green: Within tolerance (0-2%)
+  - Yellow: Moderate variance (2-5%)
+  - Red: High variance (>5%)
+- **Returned materials update raw material inventory**
+  - Preform inventory +250 pieces
+  - Cap inventory +50 pieces
+- **Audit trail created**:
+  - User who created reconciliation
+  - Timestamp
+  - Original vs updated quantities
+- **Composite unique index enforced**: Cannot create duplicate reconciliation for same date/shift/product
+- **Data integrity maintained**
+
+**Test Status**: ⬜ PENDING
+
+---
+
+### Test Case 22.2: Reconciliation with High Variance (Material Wastage)
+**Role**: Manager  
+**Objective**: Handle high variance due to material wastage  
+**Priority**: High
+
+**Steps**:
+1. Create reconciliation:
+   - Issued: 1200 Preforms
+   - Expected: 950 pieces (based on production)
+   - Returned: 150 pieces
+   - **Net Consumed**: 1200 - 150 = 1050 pieces
+   - **Variance**: (1050 - 950) / 950 = +10.5%
+2. Add remarks: "High wastage due to defective raw material batch"
+3. Save reconciliation
+
+**Expected Results**:
+- **High variance flagged in RED** (>5%)
+- Manager alert triggered
+- Variance displayed: +10.5% (100 pieces excess consumption)
+- Requires investigation/approval
+- Wastage recorded for analytics
+
+**Test Status**: ⬜ PENDING
+
+---
+
+### Test Case 22.3: Role-Based Edit Limits
+**Role**: Operator vs Manager  
+**Objective**: Verify role-based permissions for reconciliation editing  
+**Priority**: High
+
+**Steps**:
+1. **As Operator**:
+   - Create reconciliation
+   - Try to edit after 2 hours
+   - Verify: Edit DENIED (operator can only edit within 1 hour)
+2. **As Manager**:
+   - Try to edit same reconciliation after 2 hours
+   - Verify: Edit ALLOWED (manager has extended edit window)
+
+**Expected Results**:
+- Operator: Edit blocked after time limit
+- Manager: Can edit with extended permissions
+- Error message shown: "Edit time limit exceeded for your role"
+- Server-side validation enforced (not just UI)
+
+**Test Status**: ⬜ PENDING
+
+---
+
+## 23. Variance Analytics Dashboard
+
+### Test Case 23.1: View Variance Trends Over Time
+**Role**: Manager / Admin  
+**Objective**: Analyze production efficiency and material usage trends  
+**Priority**: High
+
+**Steps**:
+1. Navigate to: Production Operations → Variance Analytics
+2. Select filters:
+   - Date Range: Last 30 days
+   - Product: "1 Liter PET Bottle Water"
+   - Material: "Preform 21g"
+3. View dashboard sections:
+   - **Key Metrics Cards**:
+     * Total Production: 28,500 bottles
+     * Average Variance: -2.3%
+     * Total Wastage: 658 pieces
+     * Efficiency Score: 97.7%
+   - **Variance Trend Chart** (Line chart):
+     * Shows daily variance % over 30 days
+     * Color-coded: Green (good), Yellow (moderate), Red (poor)
+   - **Material Consumption Chart** (Bar chart):
+     * Expected vs Actual consumption by week
+   - **Top Wastage Days** (Table):
+     * Lists dates with highest variance
+4. Click "Export to Excel"
+5. Click "Export to PDF"
+
+**Expected Results**:
+- All metrics calculated accurately
+- Charts render without errors
+- **Color-coded indicators work**:
+  - Green: Variance ≤2%
+  - Yellow: 2% < Variance ≤5%
+  - Red: Variance >5%
+- Trend analysis shows patterns
+- Excel export downloads successfully
+- PDF export downloads with branding
+- Can filter by product, material, date range
+- Mobile-responsive design
+
+**Test Status**: ⬜ PENDING
+
+---
+
+### Test Case 23.2: Identify Problem Areas
+**Role**: Manager  
+**Objective**: Use analytics to identify operational improvements  
+**Priority**: Medium
+
+**Steps**:
+1. Open Variance Analytics
+2. Filter by "All Products"
+3. Sort by "Highest Wastage"
+4. Identify top 3 problem areas
+5. Drill down to specific dates
+6. View detailed reconciliation records
+
+**Expected Results**:
+- Can identify which products have highest variance
+- Can identify which materials have highest wastage
+- Can drill down to specific dates
+- Actionable insights provided
+- Export reports for management review
+
+**Test Status**: ⬜ PENDING
+
+---
+
+## Test Execution Checklist (Updated)
+
+**Original Workflows (1-15):**
 - [x] All users created and can login ✓
 - [x] Session persistence working correctly ✓ (Bug Fix TC-16.1)
 - [x] Role permissions configured correctly ✓
@@ -1537,3 +2126,12 @@ COMMENT ON COLUMN credit_notes.approved_by IS
 - [x] Reports generation working ✓
 - [x] Notifications sending (if configured) ✓
 - [x] End-to-end cycle test passed ✓
+
+**New Production & Manufacturing Workflows (17-23):**
+- [ ] Product Master with BOM Management (3 test cases) - TC 17.1-17.3
+- [ ] Raw Material Type Master with Auto-Fetch (3 test cases) - TC 18.1-18.3
+- [ ] Product Category & Type Master (2 test cases) - TC 19.1-19.2
+- [ ] BOM-Driven Raw Material Issuance (2 test cases) - TC 20.1-20.2
+- [ ] Production Entry with Variance Analysis (2 test cases) - TC 21.1-21.2
+- [ ] Production Reconciliation Entry System (3 test cases) - TC 22.1-22.3
+- [ ] Variance Analytics Dashboard (2 test cases) - TC 23.1-23.2
