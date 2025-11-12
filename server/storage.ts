@@ -944,6 +944,16 @@ export class DatabaseStorage implements IStorage {
 
   // Product Bill of Materials (BOM)
   async createProductBomItem(bomItem: InsertProductBom): Promise<ProductBom> {
+    // Validate that productId exists
+    const [product] = await db
+      .select()
+      .from(products)
+      .where(and(eq(products.id, bomItem.productId), eq(products.recordStatus, 1)));
+    
+    if (!product) {
+      throw new Error("Product not found");
+    }
+    
     // Validate that rawMaterialId exists
     const [rawMaterial] = await db
       .select()
@@ -1019,19 +1029,32 @@ export class DatabaseStorage implements IStorage {
   }
 
   async bulkReplaceProductBom(productId: string, bomItems: InsertProductBom[]): Promise<ProductBom[]> {
-    // Delete existing BOM items for this product
-    await db
-      .update(productBom)
-      .set({ recordStatus: 0, updatedAt: new Date() })
-      .where(eq(productBom.productId, productId));
+    // Validate that productId exists
+    const [product] = await db
+      .select()
+      .from(products)
+      .where(and(eq(products.id, productId), eq(products.recordStatus, 1)));
     
-    // Insert new BOM items
-    if (bomItems.length === 0) {
-      return [];
+    if (!product) {
+      throw new Error("Product not found");
     }
     
-    const created = await db.insert(productBom).values(bomItems).returning();
-    return created;
+    // Use transaction to ensure atomicity
+    return await db.transaction(async (tx) => {
+      // Delete existing BOM items for this product
+      await tx
+        .update(productBom)
+        .set({ recordStatus: 0, updatedAt: new Date() })
+        .where(eq(productBom.productId, productId));
+      
+      // Insert new BOM items
+      if (bomItems.length === 0) {
+        return [];
+      }
+      
+      const created = await tx.insert(productBom).values(bomItems).returning();
+      return created;
+    });
   }
 
   // Vendor Master

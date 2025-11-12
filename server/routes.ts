@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments } from "@shared/schema";
 import { z } from "zod";
 import path from "path";
 import fs from "fs";
@@ -70,6 +70,37 @@ function requireRole(...allowedRoles: string[]) {
       res.status(500).json({ message: "Internal server error" });
     }
   };
+}
+
+// Helper function to auto-calculate product fields
+function calculateProductFields(data: any) {
+  const result = { ...data };
+  
+  // Auto-calculate usableDerivedUnits based on conversion method
+  if (data.conversionMethod && data.baseUnit && data.derivedUnit) {
+    const lossPercent = Number(data.defaultLossPercent) || 0;
+    const lossFactor = 1 - (lossPercent / 100);
+    
+    if (data.conversionMethod === 'Direct' && data.derivedValuePerBase) {
+      // Direct method: e.g., 12 bottles per case
+      const derivedValue = Number(data.derivedValuePerBase);
+      result.usableDerivedUnits = String((derivedValue * lossFactor).toFixed(4));
+    } else if (data.conversionMethod === 'Formula-Based' && data.weightPerBase && data.weightPerDerived) {
+      // Formula-Based: (BaseWeight / DerivedWeight) × (1 - Loss%)
+      const weightBase = Number(data.weightPerBase);
+      const weightDerived = Number(data.weightPerDerived);
+      result.usableDerivedUnits = String(((weightBase / weightDerived) * lossFactor).toFixed(4));
+    }
+  }
+  
+  // Auto-calculate totalPrice based on basePrice and GST
+  if (data.basePrice !== undefined && data.gstPercent !== undefined) {
+    const basePrice = Number(data.basePrice) || 0;
+    const gstPercent = Number(data.gstPercent) || 0;
+    result.totalPrice = Math.round(basePrice * (1 + gstPercent / 100));
+  }
+  
+  return result;
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -1092,7 +1123,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user?.id;
       const productData = { ...req.body, createdBy: userId };
       const validatedData = insertProductSchema.parse(productData);
-      const created = await storage.createProduct(validatedData);
+      
+      // Auto-calculate fields
+      const dataWithCalculations = calculateProductFields(validatedData);
+      
+      const created = await storage.createProduct(dataWithCalculations);
       res.json(created);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -1121,10 +1156,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const validatedData = insertProductSchema.partial().parse(req.body);
-      const updated = await storage.updateProduct(id, validatedData);
-      if (!updated) {
+      
+      // Get existing product to merge with updates before calculating
+      const existingProduct = await storage.getProduct(id);
+      if (!existingProduct) {
         return res.status(404).json({ message: "Product not found" });
       }
+      
+      // Merge existing data with updates, then calculate
+      const mergedData = { ...existingProduct, ...validatedData };
+      const dataWithCalculations = calculateProductFields(mergedData);
+      
+      const updated = await storage.updateProduct(id, dataWithCalculations);
       res.json(updated);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -1143,6 +1186,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting product:", error);
       res.status(500).json({ message: "Failed to delete product" });
+    }
+  });
+
+  // Product BOM (Bill of Materials) API
+  app.get('/api/products/:productId/bom', isAuthenticated, async (req: any, res) => {
+    try {
+      const { productId } = req.params;
+      const bomItems = await storage.getProductBom(productId);
+      res.json(bomItems);
+    } catch (error) {
+      console.error("Error fetching product BOM:", error);
+      res.status(500).json({ message: "Failed to fetch product BOM" });
+    }
+  });
+
+  app.post('/api/products/:productId/bom', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { productId } = req.params;
+      const bomData = { ...req.body, productId };
+      const validatedData = insertProductBomSchema.parse(bomData);
+      const created = await storage.createProductBomItem(validatedData);
+      res.json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error creating BOM item:", error);
+      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to create BOM item" });
+    }
+  });
+
+  app.patch('/api/products/:productId/bom/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertProductBomSchema.partial().parse(req.body);
+      const updated = await storage.updateProductBomItem(id, validatedData);
+      if (!updated) {
+        return res.status(404).json({ message: "BOM item not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error updating BOM item:", error);
+      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to update BOM item" });
+    }
+  });
+
+  app.delete('/api/products/:productId/bom/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteProductBomItem(id);
+      res.json({ message: "BOM item deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting BOM item:", error);
+      res.status(500).json({ message: "Failed to delete BOM item" });
     }
   });
 
