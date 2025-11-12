@@ -1675,6 +1675,90 @@ export const insertSalesReturnItemSchema = createInsertSchema(salesReturnItems).
 export type InsertSalesReturnItem = z.infer<typeof insertSalesReturnItemSchema>;
 export type SalesReturnItem = typeof salesReturnItems.$inferSelect;
 
+// Credit Notes - for invoice adjustments when goods are returned in same month
+export const creditNotes = pgTable("credit_notes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  noteNumber: varchar("note_number", { length: 100 }).unique().notNull(), // CN-{invoiceNumber}-{seq}
+  
+  // References
+  invoiceId: varchar("invoice_id").references(() => invoices.id).notNull(),
+  salesReturnId: varchar("sales_return_id").references(() => salesReturns.id),
+  
+  // Credit details
+  creditDate: date("credit_date").notNull(),
+  reason: varchar("reason", { length: 255 }).notNull(), // sales_return, pricing_error, damage, discount, other
+  status: varchar("status", { length: 50 }).default('draft').notNull(), // draft, issued, cancelled
+  
+  // Financial totals (in paise)
+  subtotal: integer("subtotal").notNull(),
+  cgstAmount: integer("cgst_amount").default(0).notNull(),
+  sgstAmount: integer("sgst_amount").default(0).notNull(),
+  igstAmount: integer("igst_amount").default(0).notNull(),
+  grandTotal: integer("grand_total").notNull(),
+  
+  // Metadata
+  issuedBy: varchar("issued_by").references(() => users.id),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  notes: text("notes"),
+  
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertCreditNoteSchema = createInsertSchema(creditNotes, {
+  creditDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format"),
+}).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertCreditNote = z.infer<typeof insertCreditNoteSchema>;
+export type CreditNote = typeof creditNotes.$inferSelect;
+
+// Credit Note Items (Detail/Line Items)
+export const creditNoteItems = pgTable("credit_note_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  creditNoteId: varchar("credit_note_id").references(() => creditNotes.id).notNull(),
+  
+  // Product reference
+  invoiceItemId: varchar("invoice_item_id").references(() => invoiceItems.id),
+  productId: varchar("product_id").references(() => products.id).notNull(),
+  description: text("description").notNull(),
+  
+  // Quantities and pricing (in paise)
+  quantity: integer("quantity").notNull(),
+  unitPrice: integer("unit_price").notNull(),
+  discountAmount: integer("discount_amount").default(0).notNull(),
+  taxableValue: integer("taxable_value").notNull(),
+  
+  // GST breakdown
+  cgstRate: integer("cgst_rate").default(0).notNull(), // Percentage (e.g., 900 = 9%)
+  cgstAmount: integer("cgst_amount").default(0).notNull(),
+  sgstRate: integer("sgst_rate").default(0).notNull(),
+  sgstAmount: integer("sgst_amount").default(0).notNull(),
+  igstRate: integer("igst_rate").default(0).notNull(),
+  igstAmount: integer("igst_amount").default(0).notNull(),
+  
+  totalAmount: integer("total_amount").notNull(), // taxableValue + GST amounts
+  
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertCreditNoteItemSchema = createInsertSchema(creditNoteItems).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertCreditNoteItem = z.infer<typeof insertCreditNoteItemSchema>;
+export type CreditNoteItem = typeof creditNoteItems.$inferSelect;
+
 // Machine Startup Reminders - for notifying users to turn on machines before production
 export const machineStartupTasks = pgTable("machine_startup_tasks", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

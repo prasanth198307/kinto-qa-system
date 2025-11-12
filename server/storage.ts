@@ -37,6 +37,8 @@ import {
   banks,
   salesReturns,
   salesReturnItems,
+  creditNotes,
+  creditNoteItems,
   checklistAssignments,
   checklistSubmissions,
   submissionTasks,
@@ -115,6 +117,10 @@ import {
   type InsertSalesReturn,
   type SalesReturnItem,
   type InsertSalesReturnItem,
+  type CreditNote,
+  type InsertCreditNote,
+  type CreditNoteItem,
+  type InsertCreditNoteItem,
   type Role,
   type InsertRole,
   type RolePermission,
@@ -397,6 +403,21 @@ export interface IStorage {
   getSalesReturnItems(returnId: string): Promise<SalesReturnItem[]>;
   updateSalesReturnItem(id: string, updates: Partial<InsertSalesReturnItem>): Promise<SalesReturnItem | undefined>;
   deleteSalesReturnItem(id: string): Promise<void>;
+  
+  // Credit Notes
+  createCreditNote(creditNote: InsertCreditNote): Promise<CreditNote>;
+  getAllCreditNotes(): Promise<CreditNote[]>;
+  getCreditNote(id: string): Promise<CreditNote | undefined>;
+  getCreditNoteByNumber(noteNumber: string): Promise<CreditNote | undefined>;
+  getCreditNotesByInvoice(invoiceId: string): Promise<CreditNote[]>;
+  updateCreditNote(id: string, updates: Partial<InsertCreditNote>): Promise<CreditNote | undefined>;
+  deleteCreditNote(id: string): Promise<void>;
+  
+  // Credit Note Items
+  createCreditNoteItem(item: InsertCreditNoteItem): Promise<CreditNoteItem>;
+  getCreditNoteItems(creditNoteId: string): Promise<CreditNoteItem[]>;
+  updateCreditNoteItem(id: string, updates: Partial<InsertCreditNoteItem>): Promise<CreditNoteItem | undefined>;
+  deleteCreditNoteItem(id: string): Promise<void>;
   
   // Checklist Assignments
   createChecklistAssignment(assignment: InsertChecklistAssignment): Promise<ChecklistAssignment>;
@@ -1934,6 +1955,76 @@ export class DatabaseStorage implements IStorage {
 
   async deleteSalesReturnItem(id: string): Promise<void> {
     await db.update(salesReturnItems).set({ recordStatus: 0, updatedAt: new Date() }).where(eq(salesReturnItems.id, id));
+  }
+
+  // Credit Notes
+  async createCreditNote(creditNoteData: InsertCreditNote): Promise<CreditNote> {
+    const [created] = await db.insert(creditNotes).values(creditNoteData).returning();
+    return created;
+  }
+
+  async getAllCreditNotes(): Promise<CreditNote[]> {
+    return await db.select().from(creditNotes).where(eq(creditNotes.recordStatus, 1));
+  }
+
+  async getCreditNote(id: string): Promise<CreditNote | undefined> {
+    const [creditNote] = await db.select().from(creditNotes).where(and(eq(creditNotes.id, id), eq(creditNotes.recordStatus, 1)));
+    return creditNote;
+  }
+
+  async getCreditNoteByNumber(noteNumber: string): Promise<CreditNote | undefined> {
+    const [creditNote] = await db.select().from(creditNotes).where(and(eq(creditNotes.noteNumber, noteNumber), eq(creditNotes.recordStatus, 1)));
+    return creditNote;
+  }
+
+  async getCreditNotesByInvoice(invoiceId: string): Promise<CreditNote[]> {
+    return await db.select().from(creditNotes).where(
+      and(
+        eq(creditNotes.invoiceId, invoiceId),
+        eq(creditNotes.recordStatus, 1)
+      )
+    );
+  }
+
+  async updateCreditNote(id: string, updates: Partial<InsertCreditNote>): Promise<CreditNote | undefined> {
+    const [updated] = await db
+      .update(creditNotes)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(creditNotes.id, id), eq(creditNotes.recordStatus, 1)))
+      .returning();
+    return updated;
+  }
+
+  async deleteCreditNote(id: string): Promise<void> {
+    await db.update(creditNotes).set({ recordStatus: 0, updatedAt: new Date() }).where(eq(creditNotes.id, id));
+  }
+
+  // Credit Note Items
+  async createCreditNoteItem(item: InsertCreditNoteItem): Promise<CreditNoteItem> {
+    const [created] = await db.insert(creditNoteItems).values(item).returning();
+    return created;
+  }
+
+  async getCreditNoteItems(creditNoteId: string): Promise<CreditNoteItem[]> {
+    return await db.select().from(creditNoteItems).where(
+      and(
+        eq(creditNoteItems.creditNoteId, creditNoteId),
+        eq(creditNoteItems.recordStatus, 1)
+      )
+    );
+  }
+
+  async updateCreditNoteItem(id: string, updates: Partial<InsertCreditNoteItem>): Promise<CreditNoteItem | undefined> {
+    const [updated] = await db
+      .update(creditNoteItems)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(creditNoteItems.id, id), eq(creditNoteItems.recordStatus, 1)))
+      .returning();
+    return updated;
+  }
+
+  async deleteCreditNoteItem(id: string): Promise<void> {
+    await db.update(creditNoteItems).set({ recordStatus: 0, updatedAt: new Date() }).where(eq(creditNoteItems.id, id));
   }
 
   // Role Management

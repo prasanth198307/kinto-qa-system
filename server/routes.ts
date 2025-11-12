@@ -2,7 +2,8 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, salesReturns, salesReturnItems, products } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, salesReturns, salesReturnItems, creditNotes, creditNoteItems, products } from "@shared/schema";
+import { format } from "date-fns";
 import { z } from "zod";
 import path from "path";
 import fs from "fs";
@@ -3239,6 +3240,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Inspection data required" });
       }
       
+      // Get the sales return and invoice to check dates
+      const salesReturn = await storage.getSalesReturn(id);
+      if (!salesReturn) {
+        return res.status(404).json({ message: "Sales return not found" });
+      }
+      
+      const invoice = await storage.getInvoice(salesReturn.invoiceId);
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      
+      // Check if return is in same month as invoice
+      // GST Compliance: Credit notes must be issued in the same tax period as the original invoice.
+      // We use the CURRENT DATE (when inspection is being recorded) as the inspection date,
+      // because this is when the credit note will actually be created in the system.
+      // This matches the inspectedDate that will be stored in the database.
+      // Back-dating is not supported to maintain GST compliance.
+      const invoiceDate = new Date(invoice.invoiceDate);
+      const inspectionDate = new Date(); // Current date = when inspection is being recorded = credit note creation date
+      const isSameMonth = 
+        invoiceDate.getFullYear() === inspectionDate.getFullYear() &&
+        invoiceDate.getMonth() === inspectionDate.getMonth();
+      
+      let creditNoteCreated = false;
+      let creditNoteNumber = '';
+      
       await db.transaction(async (tx) => {
         // Update each return item with inspection results
         for (const inspection of inspections) {
@@ -3295,13 +3322,155 @@ export async function registerRoutes(app: Express): Promise<Server> {
             updatedAt: new Date(),
           })
           .where(eq(salesReturns.id, id));
+        
+        // Auto-create credit note if in same month
+        if (isSameMonth) {
+          // Get all return items to calculate credit amounts
+          const returnItems = await tx.select().from(salesReturnItems)
+            .where(and(
+              eq(salesReturnItems.returnId, id),
+              eq(salesReturnItems.recordStatus, 1)
+            ));
+          
+          // Get existing credit notes for this invoice to generate sequence number
+          const existingCreditNotes = await tx.select().from(creditNotes)
+            .where(and(
+              eq(creditNotes.invoiceId, salesReturn.invoiceId),
+              eq(creditNotes.recordStatus, 1)
+            ));
+          
+          const seq = existingCreditNotes.length + 1;
+          creditNoteNumber = `CN-${invoice.invoiceNumber}-${seq}`;
+          
+          // Calculate totals
+          let subtotal = 0;
+          let cgstAmount = 0;
+          let sgstAmount = 0;
+          let igstAmount = 0;
+          
+          // Create credit note items and calculate totals
+          const creditNoteItems_data = [];
+          for (const returnItem of returnItems) {
+            const itemSubtotal = returnItem.unitPrice * returnItem.quantityReturned;
+            subtotal += itemSubtotal;
+            
+            // Calculate GST based on invoice item rates
+            const [invoiceItem] = await tx.select().from(invoiceItems)
+              .where(and(
+                eq(invoiceItems.invoiceId, salesReturn.invoiceId),
+                eq(invoiceItems.productId, returnItem.productId)
+              )).limit(1);
+            
+            if (invoiceItem) {
+              const itemCgst = Math.round(itemSubtotal * invoiceItem.cgstRate / 10000); // cgstRate is in basis points
+              const itemSgst = Math.round(itemSubtotal * invoiceItem.sgstRate / 10000); // sgstRate is in basis points
+              
+              cgstAmount += itemCgst;
+              sgstAmount += itemSgst;
+              
+              creditNoteItems_data.push({
+                productId: returnItem.productId,
+                invoiceItemId: invoiceItem.id,
+                description: invoiceItem.description || '',
+                quantity: returnItem.quantityReturned,
+                unitPrice: returnItem.unitPrice,
+                discountAmount: 0,
+                taxableValue: itemSubtotal,
+                cgstRate: invoiceItem.cgstRate,
+                cgstAmount: itemCgst,
+                sgstRate: invoiceItem.sgstRate,
+                sgstAmount: itemSgst,
+                igstRate: invoiceItem.igstRate || 0,
+                igstAmount: 0,
+                totalAmount: itemSubtotal + itemCgst + itemSgst,
+              });
+            }
+          }
+          
+          const grandTotal = subtotal + cgstAmount + sgstAmount + igstAmount;
+          
+          // Create credit note
+          const [creditNote] = await tx.insert(creditNotes).values({
+            noteNumber: creditNoteNumber,
+            invoiceId: salesReturn.invoiceId,
+            salesReturnId: id,
+            creditDate: format(new Date(), 'yyyy-MM-dd'),
+            reason: 'sales_return',
+            status: 'issued',
+            subtotal,
+            cgstAmount,
+            sgstAmount,
+            igstAmount,
+            grandTotal,
+            issuedBy: req.user?.id,
+            notes: `Auto-generated credit note for sales return ${salesReturn.returnNumber}`,
+          }).returning();
+          
+          // Create credit note items
+          for (const itemData of creditNoteItems_data) {
+            await tx.insert(creditNoteItems).values({
+              creditNoteId: creditNote.id,
+              ...itemData,
+            });
+          }
+          
+          creditNoteCreated = true;
+        }
       });
       
-      await logAudit(req.user?.id, 'UPDATE', 'sales_returns', id, 'Inspected return and updated inventory');
-      res.json({ message: "Return inspected and inventory updated successfully" });
+      await logAudit(req.user?.id, 'UPDATE', 'sales_returns', id, `Inspected return and updated inventory${creditNoteCreated ? `, created credit note ${creditNoteNumber}` : ''}`);
+      
+      res.json({ 
+        message: creditNoteCreated 
+          ? `Return inspected, inventory updated, and credit note ${creditNoteNumber} created` 
+          : "Return inspected and inventory updated successfully (no credit note - different month)",
+        creditNoteCreated,
+        creditNoteNumber: creditNoteCreated ? creditNoteNumber : null,
+      });
     } catch (error) {
       console.error("Error inspecting sales return:", error);
       res.status(500).json({ message: "Failed to inspect sales return" });
+    }
+  });
+
+  // Credit Notes API
+  // Get all credit notes
+  app.get('/api/credit-notes', isAuthenticated, async (req: any, res) => {
+    try {
+      const creditNotes_list = await storage.getAllCreditNotes();
+      res.json(creditNotes_list);
+    } catch (error) {
+      console.error("Error fetching credit notes:", error);
+      res.status(500).json({ message: "Failed to fetch credit notes" });
+    }
+  });
+
+  // Get credit notes for a specific invoice
+  app.get('/api/credit-notes/invoice/:invoiceId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { invoiceId } = req.params;
+      const creditNotes_list = await storage.getCreditNotesByInvoice(invoiceId);
+      res.json(creditNotes_list);
+    } catch (error) {
+      console.error("Error fetching invoice credit notes:", error);
+      res.status(500).json({ message: "Failed to fetch invoice credit notes" });
+    }
+  });
+
+  // Get specific credit note with items
+  app.get('/api/credit-notes/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const creditNote = await storage.getCreditNote(id);
+      if (!creditNote) {
+        return res.status(404).json({ message: "Credit note not found" });
+      }
+      
+      const items = await storage.getCreditNoteItems(id);
+      res.json({ ...creditNote, items });
+    } catch (error) {
+      console.error("Error fetching credit note:", error);
+      res.status(500).json({ message: "Failed to fetch credit note" });
     }
   });
 
