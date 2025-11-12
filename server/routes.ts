@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, salesReturns, salesReturnItems, creditNotes, creditNoteItems, manualCreditNoteRequests, products } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, salesReturns, salesReturnItems, creditNotes, creditNoteItems, manualCreditNoteRequests, products, productBom } from "@shared/schema";
 import { format } from "date-fns";
 import { z } from "zod";
 import path from "path";
@@ -15,7 +15,7 @@ import { calculateBOMSuggestions } from "@shared/calculations";
 async function logAudit(userId: string | undefined, action: string, table: string, recordId: string, description: string) {
   console.log(`[AUDIT] User: ${userId}, Action: ${action}, Table: ${table}, Record: ${recordId}, Description: ${description}`);
 }
-import { eq, and, ne } from "drizzle-orm";
+import { eq, and, ne, gte, lte, desc } from "drizzle-orm";
 
 // Authentication middleware
 function isAuthenticated(req: Request, res: Response, next: NextFunction) {
@@ -2414,6 +2414,153 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting production reconciliation:", error);
       res.status(500).json({ message: "Failed to delete production reconciliation" });
+    }
+  });
+
+  // Production Reconciliation Report
+  app.get('/api/reports/production-reconciliation', isAuthenticated, async (req: any, res) => {
+    try {
+      const { dateFrom, dateTo, productId, batchId, shift } = req.query;
+
+      // Build where conditions
+      const conditions = [eq(productionReconciliations.recordStatus, 1)];
+      
+      if (dateFrom) {
+        conditions.push(gte(productionReconciliations.reconciliationDate, new Date(dateFrom as string)));
+      }
+      if (dateTo) {
+        conditions.push(lte(productionReconciliations.reconciliationDate, new Date(dateTo as string)));
+      }
+      if (shift && shift !== 'all') {
+        conditions.push(eq(productionReconciliations.shift, shift as string));
+      }
+
+      // Fetch reconciliations with joins
+      const reconciliations = await db
+        .select({
+          reconciliation: productionReconciliations,
+          issuance: rawMaterialIssuance,
+          production: productionEntries,
+        })
+        .from(productionReconciliations)
+        .leftJoin(rawMaterialIssuance, eq(productionReconciliations.issuanceId, rawMaterialIssuance.id))
+        .leftJoin(productionEntries, eq(productionReconciliations.productionEntryId, productionEntries.id))
+        .where(and(...conditions))
+        .orderBy(desc(productionReconciliations.reconciliationDate));
+
+      // Apply product/batch filters
+      let filteredReconciliations = reconciliations;
+      if (productId) {
+        filteredReconciliations = filteredReconciliations.filter(r => 
+          r.issuance?.productId === productId
+        );
+      }
+      if (batchId) {
+        filteredReconciliations = filteredReconciliations.filter(r => 
+          r.production?.id === batchId
+        );
+      }
+
+      // Fetch detailed data for each reconciliation
+      const reportData = await Promise.all(
+        filteredReconciliations.map(async (r) => {
+          // Fetch reconciliation items
+          const items = await db
+            .select({
+              item: productionReconciliationItems,
+              rawMaterial: rawMaterials,
+              rawMaterialType: rawMaterialTypes,
+            })
+            .from(productionReconciliationItems)
+            .leftJoin(rawMaterials, eq(productionReconciliationItems.rawMaterialId, rawMaterials.id))
+            .leftJoin(rawMaterialTypes, eq(rawMaterials.typeId, rawMaterialTypes.id))
+            .where(eq(productionReconciliationItems.reconciliationId, r.reconciliation.id));
+
+          // Fetch product and BOM data
+          let product = null;
+          let bomItems: any[] = [];
+          if (r.issuance?.productId) {
+            [product] = await db.select().from(products).where(eq(products.id, r.issuance.productId));
+            
+            if (product) {
+              bomItems = await db
+                .select({
+                  bom: productBom,
+                  rawMaterial: rawMaterials,
+                  rawMaterialType: rawMaterialTypes,
+                })
+                .from(productBom)
+                .leftJoin(rawMaterials, eq(productBom.rawMaterialId, rawMaterials.id))
+                .leftJoin(rawMaterialTypes, eq(rawMaterials.typeId, rawMaterialTypes.id))
+                .where(eq(productBom.productId, product.id));
+            }
+          }
+
+          // Calculate metrics for each material
+          const materialDetails = items.map(i => {
+            const netConsumed = (i.item.quantityUsed || 0) - (i.item.quantityReturned || 0) - (i.item.quantityPending || 0);
+            
+            // Find expected quantity from BOM
+            const bomItem = bomItems.find(b => b.rawMaterial?.id === i.rawMaterial?.id);
+            const expectedPerCase = bomItem?.bom?.quantityRequired || 0;
+            
+            // Calculate expected based on production quantity
+            const producedCases = r.production?.producedQuantity ? parseInt(r.production.producedQuantity) : 0;
+            const expectedTotal = expectedPerCase * producedCases;
+            
+            // Calculate variance
+            const variance = netConsumed - expectedTotal;
+            const variancePercent = expectedTotal > 0 ? (variance / expectedTotal) * 100 : 0;
+
+            return {
+              rawMaterialId: i.rawMaterial?.id,
+              materialName: i.rawMaterial?.materialName || 'Unknown',
+              materialType: i.rawMaterialType?.typeName || 'Unknown',
+              baseUnit: i.rawMaterialType?.baseUnit || '',
+              quantityIssued: i.item.quantityIssued,
+              quantityUsed: i.item.quantityUsed,
+              quantityReturned: i.item.quantityReturned,
+              quantityPending: i.item.quantityPending,
+              netConsumed,
+              expectedTotal,
+              variance,
+              variancePercent,
+            };
+          });
+
+          // Calculate overall efficiency
+          const totalNetConsumed = materialDetails.reduce((sum, m) => sum + m.netConsumed, 0);
+          const totalExpected = materialDetails.reduce((sum, m) => sum + m.expectedTotal, 0);
+          const efficiency = totalExpected > 0 ? (totalExpected / totalNetConsumed) * 100 : 0;
+
+          // Calculate yield percentage
+          const producedCases = r.production?.producedQuantity ? parseInt(r.production.producedQuantity) : 0;
+          const derivedPerBase = product?.derivedValuePerBase ? parseFloat(product.derivedValuePerBase) : 12;
+          const producedBottles = producedCases * derivedPerBase;
+          const expectedCases = r.issuance?.plannedOutput ? parseFloat(r.issuance.plannedOutput) : 0;
+          const yieldPercent = expectedCases > 0 ? (producedCases / expectedCases) * 100 : 0;
+
+          return {
+            reconciliationNumber: r.reconciliation.reconciliationNumber,
+            reconciliationDate: r.reconciliation.reconciliationDate,
+            shift: r.reconciliation.shift,
+            issuanceNumber: r.issuance?.issuanceNumber || '',
+            productionId: r.production?.id || '',
+            productId: product?.id || '',
+            productName: product?.productName || '',
+            producedCases,
+            producedBottles,
+            yieldPercent,
+            efficiency,
+            materials: materialDetails,
+          };
+        })
+      );
+
+      res.json({ reportData });
+    } catch (error) {
+      console.error("Error generating production reconciliation report:", error);
+      res.status(500).json({ message: "Failed to generate report" });
     }
   });
 
