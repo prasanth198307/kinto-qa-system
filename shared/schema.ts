@@ -978,6 +978,8 @@ export const rawMaterialIssuance = pgTable("raw_material_issuance", {
   issuanceDate: timestamp("issuance_date").notNull(),
   issuedTo: varchar("issued_to", { length: 255 }),
   productId: varchar("product_id").references(() => products.id), // Product being manufactured
+  productionReference: varchar("production_reference", { length: 255 }), // Batch ID / FG Name / Shift No
+  plannedOutput: numeric("planned_output", { precision: 12, scale: 2 }), // Expected production quantity
   remarks: text("remarks"),
   recordStatus: integer("record_status").default(1).notNull(),
   issuedBy: varchar("issued_by").references(() => users.id),
@@ -1012,7 +1014,9 @@ export const rawMaterialIssuanceItems = pgTable("raw_material_issuance_items", {
   issuanceId: varchar("issuance_id").references(() => rawMaterialIssuance.id).notNull(),
   rawMaterialId: varchar("raw_material_id").references(() => rawMaterials.id).notNull(),
   productId: varchar("product_id").references(() => products.id),
-  quantityIssued: integer("quantity_issued").notNull(),
+  quantityIssued: numeric("quantity_issued", { precision: 12, scale: 6 }).notNull(), // Changed to numeric for precision
+  suggestedQuantity: numeric("suggested_quantity", { precision: 12, scale: 6 }), // Auto-calculated from BOM
+  calculationBasis: varchar("calculation_basis", { length: 50 }), // formula-based | direct-value | output-coverage | manual
   uomId: varchar("uom_id").references(() => uom.id),
   remarks: text("remarks"),
   recordStatus: integer("record_status").default(1).notNull(),

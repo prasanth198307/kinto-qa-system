@@ -1,0 +1,31 @@
+
+------------------------------------------------------------
+|               RAW MATERIAL ISSUE ENTRY (LINKED)           |
+------------------------------------------------------------
+
+[Issue ID]             : AUTO
+[Date]*                : [_____________]
+[Production Reference] : [Dropdown: Batch ID / FG Name / Shift No]
+[Product Name]*        : [Dropdown: from Product Master]
+[Planned Output]*      : [_______]  (e.g., 1000 Cases or 12,000 Bottles)
+[Issued To]*           : [Dropdown: Production / QA / Maintenance]
+[Remarks]              : [__________________________________________]
+------------------------------------------------------------
+
+|             MATERIALS TO BE ISSUED (Auto from BOM)        |
+------------------------------------------------------------
+| # | Material Name | Type | Base Unit | Suggested Qty | User Entry (Qty Issued) | Calculation Basis ▼ |
+|---|----------------|------|------------|----------------|--------------------------|---------------------|
+| 1 | Preform 21g | Preform | Bag | Auto from BOM: (1/bottle × 12,000 bottles ÷ 1166 pcs/bag) = **10.3 Bags** | [User may round: 11 Bags] | Formula-Based |
+| 2 | Cap 28mm | Cap | Box | Auto from BOM: (1/bottle × 12,000 ÷ 6930 pcs/box) = **1.73 Boxes** | [User: 2 Boxes] | Direct-Value |
+| 3 | Label Roll | Label | Kg | Auto from BOM: (12,000 ÷ 2500 bottles/kg) = **4.8 Kg** | [User: 5 Kg] | Output-Coverage |
+| 4 | Shrink Film | Shrink | Kg | Auto from BOM: (1000 ÷ 15 cases/kg) = **66.6 Kg** | [User: 70 Kg] | Output-Coverage |
+| 5 | Adhesive | Adhesive | Kg | Auto from BOM: (12,000 ÷ 800 bottles/kg) = **15 Kg** | [User: 16 Kg] | Output-Coverage |
+------------------------------------------------------------
+- **Auto Suggestion**: Quantities are derived from Product BOM + Planned Output.
+- **User Control**: Operator can adjust before saving (e.g., rounding up or buffer stock).
+------------------------------------------------------------
+
+[Save Issue]   [Cancel]
+------------------------------------------------------------
+
