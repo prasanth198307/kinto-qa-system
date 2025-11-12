@@ -911,27 +911,15 @@ function ProductDialog({
     append({ rawMaterialId: '', quantityRequired: 0, uom: '', notes: '' } as any);
   };
 
-  const handleSubmit = async (data: z.infer<typeof insertProductSchema>) => {
-    // First save the product
+  const handleSubmit = async (data: ProductFormData) => {
+    // Pass the complete form data (including bomItems) to parent's onSubmit
+    // Parent will handle the two-step mutation (product save + BOM bulk replace)
     onSubmit(data);
-
-    // If product creation/update succeeds, save BOM (handled in parent onSuccess)
-    if (item?.id) {
-      // For edit mode, BOM will be saved in parent's onSuccess
-      const bomItems = (fields as any[]).map(f => ({
-        productId: item.id,
-        rawMaterialId: f.rawMaterialId,
-        quantityRequired: Number(f.quantityRequired) || 0,
-        uom: f.uom || '',
-        notes: f.notes || '',
-      }));
-      (window as any).__pendingBomItems = bomItems;
-    }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto" data-testid="dialog-product">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto pointer-events-auto" data-testid="dialog-product">
         <DialogHeader>
           <DialogTitle>{item ? 'Edit Product' : 'Add Product'}</DialogTitle>
           <DialogDescription>
