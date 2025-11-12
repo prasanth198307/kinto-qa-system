@@ -2127,6 +2127,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdBy: req.user?.id,
       });
       
+      // Automatically add produced goods to Finished Goods inventory
+      if (issuance.productId && validatedEntry.producedQuantity > 0) {
+        try {
+          // Generate batch number: IssuanceNumber-Date-Shift
+          const dateStr = new Date(validatedEntry.productionDate).toISOString().split('T')[0];
+          const batchNumber = `${issuance.issuanceNumber}-${dateStr}-${validatedEntry.shift}`;
+          
+          // Create finished good record
+          await storage.createFinishedGood({
+            productId: issuance.productId,
+            batchNumber,
+            productionDate: validatedEntry.productionDate,
+            quantity: Math.floor(Number(validatedEntry.producedQuantity)), // Convert to integer
+            qualityStatus: 'pending', // Needs inspection/approval
+            operatorId: req.user?.id,
+            storageLocation: issuance.productionReference || null,
+            remarks: `Auto-generated from Production Entry ${productionEntry.id}. Shift: ${validatedEntry.shift}`,
+            createdBy: req.user?.id,
+          });
+          
+          console.log(`[INVENTORY] Auto-added ${validatedEntry.producedQuantity} units of product ${issuance.productId} to Finished Goods (Batch: ${batchNumber})`);
+        } catch (inventoryError) {
+          console.error("[INVENTORY WARNING] Failed to auto-update Finished Goods:", inventoryError);
+          // Don't fail the production entry creation if inventory update fails
+        }
+      }
+      
       res.json({ entry: productionEntry, message: "Production entry created successfully" });
     } catch (error) {
       if (error instanceof z.ZodError) {
