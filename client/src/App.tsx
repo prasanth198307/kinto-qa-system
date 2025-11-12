@@ -31,6 +31,7 @@ import PurchaseOrderManagement from "@/components/PurchaseOrderManagement";
 import PMHistoryView from "@/components/PMHistoryView";
 import PMExecutionDialog from "@/components/PMExecutionDialog";
 import InventoryManagement from "@/pages/inventory-management";
+import RawMaterialTypeMaster from "@/pages/raw-material-type-master";
 import ProductionManagement from "@/pages/production-management";
 import MachineStartupReminders from "@/pages/machine-startup-reminders";
 import NotificationSettings from "@/pages/notification-settings";
@@ -291,6 +292,7 @@ function ManagerDashboard() {
       items: [
         { id: "uom", label: "Unit of Measurement", icon: Layers },
         { id: "vendors", label: "Vendor Master", icon: Building2 },
+        { id: "raw-material-types", label: "Raw Material Types", icon: Archive },
       ],
       quickActions: [
         {
@@ -304,6 +306,12 @@ function ManagerDashboard() {
           label: "Add Vendor",
           icon: Building2,
           onClick: () => setActiveView("vendors"),
+        },
+        {
+          id: "add-raw-material-type",
+          label: "Add Material Type",
+          icon: Archive,
+          onClick: () => setActiveView("raw-material-types"),
         },
       ],
     },
@@ -381,6 +389,8 @@ function ManagerDashboard() {
       case 'finished-goods':
       case 'vendors':
         return <InventoryManagement activeTab={activeView} />;
+      case 'raw-material-types':
+        return <RawMaterialTypeMaster />;
       case 'purchase-orders':
         return (
           <div className="p-4">
@@ -498,6 +508,7 @@ function AdminDashboard() {
         { id: "template-management", label: "Invoice Templates", icon: FileStack },
         { id: "uom", label: "Unit of Measurement", icon: Layers },
         { id: "vendors", label: "Vendor Master", icon: Building2 },
+        { id: "raw-material-types", label: "Raw Material Types", icon: Archive },
         { id: "notification-settings", label: "Notification Settings", icon: Bell },
       ],
       quickActions: [
@@ -704,6 +715,8 @@ function AdminDashboard() {
       case 'finished-goods':
       case 'vendors':
         return <InventoryManagement activeTab={activeView} />;
+      case 'raw-material-types':
+        return <RawMaterialTypeMaster />;
       case 'raw-material-issuance':
       case 'gatepasses':
       case 'invoices':
