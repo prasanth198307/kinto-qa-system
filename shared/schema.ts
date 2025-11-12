@@ -554,14 +554,60 @@ export const insertUomSchema = createInsertSchema(uom).omit({
 export type InsertUom = z.infer<typeof insertUomSchema>;
 export type Uom = typeof uom.$inferSelect;
 
+// Product Category Master
+export const productCategories = pgTable("product_categories", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  code: varchar("code", { length: 50 }).notNull().unique(),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+  isActive: varchar("is_active").default('true'),
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertProductCategorySchema = createInsertSchema(productCategories).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertProductCategory = z.infer<typeof insertProductCategorySchema>;
+export type ProductCategory = typeof productCategories.$inferSelect;
+
+// Product Type Master
+export const productTypes = pgTable("product_types", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  code: varchar("code", { length: 50 }).notNull().unique(),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+  isActive: varchar("is_active").default('true'),
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertProductTypeSchema = createInsertSchema(productTypes).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertProductType = z.infer<typeof insertProductTypeSchema>;
+export type ProductType = typeof productTypes.$inferSelect;
+
 // Product Master
 export const products = pgTable("products", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   productCode: varchar("product_code", { length: 100 }).notNull().unique(),
   productName: varchar("product_name", { length: 255 }).notNull(),
   skuCode: varchar("sku_code", { length: 100 }).unique(),
-  category: varchar("category", { length: 100 }),
-  productType: varchar("product_type", { length: 100 }), // Bottle / Case / Jar
+  categoryId: varchar("category_id").references(() => productCategories.id),
+  typeId: varchar("type_id").references(() => productTypes.id),
+  category: varchar("category", { length: 100 }), // Legacy field (kept for backward compatibility)
+  productType: varchar("product_type", { length: 100 }), // Legacy field (kept for backward compatibility)
   description: text("description"),
   
   // Packaging & Conversion Details
