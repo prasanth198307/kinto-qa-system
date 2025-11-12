@@ -127,6 +127,34 @@ The backend is an Express.js application built with TypeScript and Node.js. It f
 
 **Status:** Production-ready, architect approved ✅
 
+### Session Cookie Authentication Fix (November 12, 2025)
+**Objective:** Fix critical 401 authentication errors caused by session cookies not persisting between requests in Replit's cross-origin environment.
+
+**Root Cause:**
+- Replit serves frontend from `*.replit.dev` and backend from `*.repl.co` (cross-origin)
+- Default `sameSite: 'lax'` cookie setting blocks cookies in cross-site scenarios
+- Browser was not sending session cookies, causing every request to get a new session ID
+
+**Solution Implemented (`server/auth.ts`):**
+- Auto-detect Replit environment using `REPLIT_DOMAINS` or `REPLIT_DEV_DOMAIN` variables
+- Automatically enable cross-origin cookie settings when on Replit:
+  - `secure: true` (required for HTTPS)
+  - `sameSite: 'none'` (required for cross-origin requests)
+- Maintains backward compatibility with local development (`sameSite: 'lax'` for non-HTTPS)
+
+**Technical Details:**
+```typescript
+const isReplit = !!(process.env.REPLIT_DOMAINS || process.env.REPLIT_DEV_DOMAIN);
+const useHttps = process.env.USE_HTTPS === "true" || isReplit;
+```
+
+**Results:**
+- Session cookies now properly persist across requests
+- Authentication works correctly in Replit environment
+- No manual environment variable configuration needed
+
+**Status:** Production-ready, architect approved ✅
+
 ### GlobalHeader Implementation (November 11, 2025)
 **Objective:** Display KINTO logo horizontally in single-line header strip on every page with logout and notifications always visible on right. Header extends full width across entire screen.
 

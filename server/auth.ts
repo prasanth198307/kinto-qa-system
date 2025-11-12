@@ -55,7 +55,9 @@ async function comparePasswords(supplied: string, stored: string) {
 
 // --- Main authentication setup ---
 export function setupAuth(app: Express) {
-  const useHttps = process.env.USE_HTTPS === "true";
+  // Auto-detect Replit environment (which uses HTTPS) or check explicit flag
+  const isReplit = !!(process.env.REPLIT_DOMAINS || process.env.REPLIT_DEV_DOMAIN);
+  const useHttps = process.env.USE_HTTPS === "true" || isReplit;
 
   // --- Session configuration ---
   const sessionSettings: session.SessionOptions = {
@@ -74,7 +76,7 @@ export function setupAuth(app: Express) {
   console.log(
     `🔧 Session configured — Secure Cookies: ${useHttps}, SameSite: ${
       useHttps ? "None" : "Lax"
-    }`
+    }${isReplit ? " (Replit auto-detected)" : ""}`
   );
 
   app.set("trust proxy", 1);
