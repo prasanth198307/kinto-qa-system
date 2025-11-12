@@ -144,7 +144,7 @@ export default function RawMaterialTypeMaster() {
 
   const createMutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      return await apiRequest("/api/raw-material-types", "POST", data);
+      return await apiRequest("POST", "/api/raw-material-types", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/raw-material-types"] });
@@ -163,7 +163,7 @@ export default function RawMaterialTypeMaster() {
 
   const updateMutation = useMutation({
     mutationFn: async (data: { id: string; updates: FormValues }) => {
-      return await apiRequest(`/api/raw-material-types/${data.id}`, "PATCH", data.updates);
+      return await apiRequest("PATCH", `/api/raw-material-types/${data.id}`, data.updates);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/raw-material-types"] });
@@ -183,7 +183,7 @@ export default function RawMaterialTypeMaster() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await apiRequest(`/api/raw-material-types/${id}`, "DELETE");
+      return await apiRequest("DELETE", `/api/raw-material-types/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/raw-material-types"] });

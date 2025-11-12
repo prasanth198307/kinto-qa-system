@@ -1305,8 +1305,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Merge existing data with updates
       const merged = { ...existing, ...req.body };
       
+      // Strip null values to prevent validation errors (Zod .optional() accepts undefined, not null)
+      const sanitized = Object.fromEntries(
+        Object.entries(merged).filter(([_, value]) => value !== null)
+      );
+      
       // VALIDATE the merged data with discriminated union schema
-      const validatedMerged = insertRawMaterialTypeSchema.parse(merged);
+      const validatedMerged = insertRawMaterialTypeSchema.parse(sanitized);
       
       // Recalculate conversion value and usable units based on validated data
       let conversionValue = 0;
@@ -1323,9 +1328,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       usableUnits = Math.round(conversionValue * (1 - (lossPercent / 100)));
       
-      // Create final update object with calculated fields
+      // Create final update object from validated data (not req.body) to prevent null values from being persisted
       const updates = {
-        ...req.body,
+        ...validatedMerged,
         conversionValue,
         usableUnits,
       };
