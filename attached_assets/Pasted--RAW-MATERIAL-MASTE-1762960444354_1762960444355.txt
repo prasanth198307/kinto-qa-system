@@ -1,0 +1,53 @@
+
+------------------------------------------------------------
+|                   RAW MATERIAL MASTER                     |
+------------------------------------------------------------
+
+[Material ID]            : AUTO
+[Material Name]*         : Preform 21g Transparent
+[Material Type]*         : Preform (select from Type Master)
+[Supplier]*              : [Dropdown / Optional]
+[Description]            : [__________________________________________]
+[Active Status]          : [✓ Active] [ ] Inactive
+
+------------------------------------------------------------
+|           AUTO-FETCHED FROM TYPE MASTER DETAILS            |
+------------------------------------------------------------
+- Base Unit                 : Bag
+- Base Unit Weight           : 25 kg
+- Derived Unit               : Piece
+- Weight per Derived Unit    : 21 g
+- Conversion Formula         : (25 * 1000) / 21
+- Conversion Value           : 1190 pcs per bag
+- Default Loss %             : 2 %
+- Usable Derived Units       : 1166 pcs per bag
+------------------------------------------------------------
+
+------------------------------------------------------------
+|              STOCK MANAGEMENT MODE SELECTION               |
+------------------------------------------------------------
+[✓] Opening Stock Entry Only  
+      (✔️ Check this if you are initializing opening stock at go-live)
+------------------------------------------------------------
+
+If **Opening Stock Entry Only** is checked:
+------------------------------------------------------------
+[Opening Stock (Base Unit)]*  : [_______]   (e.g., 100 Bags)
+[Opening Date]*               : [_____________]
+------------------------------------------------------------
+- **Closing Stock (Base Unit)**  : Same as Opening
+- **Closing Stock (Usable Units)** : Opening × Usable Derived Units
+------------------------------------------------------------
+
+If **Opening Stock Entry Only** is unchecked:
+------------------------------------------------------------
+[Received Quantity]*         : [_______]  (Manual entry)
+[Returned Quantity]          : [_______]  (Manual entry)
+[Adjustments (+/-)]          : [_______]  (Manual correction)
+------------------------------------------------------------
+- **Closing Stock (Base Unit)**  : Auto = Previous Closing + Received + Returned ± Adjustments
+- **Closing Stock (Usable Units)** : Auto = Closing × Usable Derived Units per Bag
+------------------------------------------------------------
+
+[Save]   [Cancel]
+------------------------------------------------------------
