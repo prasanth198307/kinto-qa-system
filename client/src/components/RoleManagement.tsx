@@ -30,34 +30,64 @@ interface RolePermission {
   canDelete: number;
 }
 
-// Available screens in the system
-const AVAILABLE_SCREENS = [
-  { key: 'dashboard', label: 'Dashboard' },
-  { key: 'sales_dashboard', label: 'Sales Dashboard' },
-  { key: 'users', label: 'User Management' },
-  { key: 'roles', label: 'Role Management' },
-  { key: 'machines', label: 'Machines' },
-  { key: 'machine_types', label: 'Machine Types' },
-  { key: 'checklist_templates', label: 'Checklist Templates' },
-  { key: 'checklists', label: 'Checklists' },
-  { key: 'spare_parts', label: 'Spare Parts' },
-  { key: 'purchase_orders', label: 'Purchase Orders' },
-  { key: 'maintenance_plans', label: 'Maintenance Plans' },
-  { key: 'pm_templates', label: 'PM Task Templates' },
-  { key: 'pm_execution', label: 'PM Execution' },
-  { key: 'pm_history', label: 'PM History' },
-  { key: 'inventory', label: 'Inventory Management' },
-  { key: 'uom', label: 'Units of Measure' },
-  { key: 'products', label: 'Products' },
-  { key: 'raw_materials', label: 'Raw Materials' },
-  { key: 'finished_goods', label: 'Finished Goods' },
-  { key: 'invoices', label: 'Sales Invoices' },
-  { key: 'dispatch_tracking', label: 'Dispatch Tracking' },
-  { key: 'gatepasses', label: 'Gatepasses' },
-  { key: 'vendors', label: 'Vendor Master' },
-  { key: 'invoice_templates', label: 'Invoice Templates' },
-  { key: 'notification_settings', label: 'Notification Settings' },
-  { key: 'reports', label: 'Reports' },
+interface ScreenDefinition {
+  key: string;
+  label: string;
+  allowedActions: ('view' | 'create' | 'edit' | 'delete')[];
+}
+
+// Available screens in the system - comprehensive list of all modules/pages
+// Keys use snake_case format for database storage (backward compatible with existing role_permissions records)
+const AVAILABLE_SCREENS: ScreenDefinition[] = [
+  // Dashboards & Overview (Read-only)
+  { key: 'dashboard', label: 'Dashboard', allowedActions: ['view'] },
+  { key: 'sales_dashboard', label: 'Sales Dashboard', allowedActions: ['view'] },
+  { key: 'reports', label: 'Reports', allowedActions: ['view'] },
+  
+  // Analytics & Reports (Read-only)
+  { key: 'production_reconciliation_report', label: 'Production Reconciliation Report', allowedActions: ['view'] },
+  { key: 'variance_analytics', label: 'Variance Analytics', allowedActions: ['view'] },
+  { key: 'whatsapp_analytics', label: 'WhatsApp Analytics', allowedActions: ['view'] },
+  { key: 'pm_history', label: 'PM History', allowedActions: ['view'] },
+  
+  // Master Data - Products & Materials
+  { key: 'products', label: 'Products', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'raw_materials', label: 'Raw Materials', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'finished_goods', label: 'Finished Goods', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'raw_material_types', label: 'Raw Material Types', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  
+  // Master Data - Supporting
+  { key: 'uom', label: 'Units of Measure', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'vendors', label: 'Vendor Master', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'inventory', label: 'Inventory Management', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  
+  // Quality & Maintenance
+  { key: 'machines', label: 'Machines', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'machine_types', label: 'Machine Types', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'spare_parts', label: 'Spare Parts', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'checklist_templates', label: 'Checklist Templates', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'checklists', label: 'Checklists', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'maintenance_plans', label: 'Maintenance Plans', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'pm_templates', label: 'PM Task Templates', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'pm_execution', label: 'PM Execution', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  
+  // Operations & Transactions
+  { key: 'purchase_orders', label: 'Purchase Orders', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'raw_material_issuance', label: 'Raw Material Issuance', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'production_entries', label: 'Production Entries', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'production_reconciliations', label: 'Production Reconciliation', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'gatepasses', label: 'Gatepasses', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'invoices', label: 'Sales Invoices', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'dispatch_tracking', label: 'Dispatch Tracking', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'sales_returns', label: 'Sales Returns', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  
+  // System & Configuration
+  { key: 'users', label: 'User Management', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'roles', label: 'Role Management', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'invoice_templates', label: 'Invoice Templates', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'template_management', label: 'Template Management', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'notification_settings', label: 'Notification Settings', allowedActions: ['view', 'edit'] },
+  { key: 'machine_startup_reminders', label: 'Machine Startup Reminders', allowedActions: ['view', 'create', 'edit', 'delete'] },
 ];
 
 export default function RoleManagement() {
@@ -546,32 +576,48 @@ export default function RoleManagement() {
                     <tr key={screen.key} className="border-b hover-elevate" data-testid={`row-permission-${index}`}>
                       <td className="py-3 px-2 font-medium">{screen.label}</td>
                       <td className="text-center py-3 px-2">
-                        <Checkbox
-                          checked={getPermission(screen.key, 'canView')}
-                          onCheckedChange={() => handleTogglePermission(screen.key, 'canView')}
-                          data-testid={`checkbox-view-${index}`}
-                        />
+                        {screen.allowedActions.includes('view') ? (
+                          <Checkbox
+                            checked={getPermission(screen.key, 'canView')}
+                            onCheckedChange={() => handleTogglePermission(screen.key, 'canView')}
+                            data-testid={`checkbox-view-${index}`}
+                          />
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                       </td>
                       <td className="text-center py-3 px-2">
-                        <Checkbox
-                          checked={getPermission(screen.key, 'canCreate')}
-                          onCheckedChange={() => handleTogglePermission(screen.key, 'canCreate')}
-                          data-testid={`checkbox-create-${index}`}
-                        />
+                        {screen.allowedActions.includes('create') ? (
+                          <Checkbox
+                            checked={getPermission(screen.key, 'canCreate')}
+                            onCheckedChange={() => handleTogglePermission(screen.key, 'canCreate')}
+                            data-testid={`checkbox-create-${index}`}
+                          />
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                       </td>
                       <td className="text-center py-3 px-2">
-                        <Checkbox
-                          checked={getPermission(screen.key, 'canEdit')}
-                          onCheckedChange={() => handleTogglePermission(screen.key, 'canEdit')}
-                          data-testid={`checkbox-edit-${index}`}
-                        />
+                        {screen.allowedActions.includes('edit') ? (
+                          <Checkbox
+                            checked={getPermission(screen.key, 'canEdit')}
+                            onCheckedChange={() => handleTogglePermission(screen.key, 'canEdit')}
+                            data-testid={`checkbox-edit-${index}`}
+                          />
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                       </td>
                       <td className="text-center py-3 px-2">
-                        <Checkbox
-                          checked={getPermission(screen.key, 'canDelete')}
-                          onCheckedChange={() => handleTogglePermission(screen.key, 'canDelete')}
-                          data-testid={`checkbox-delete-${index}`}
-                        />
+                        {screen.allowedActions.includes('delete') ? (
+                          <Checkbox
+                            checked={getPermission(screen.key, 'canDelete')}
+                            onCheckedChange={() => handleTogglePermission(screen.key, 'canDelete')}
+                            data-testid={`checkbox-delete-${index}`}
+                          />
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                       </td>
                     </tr>
                   ))}
