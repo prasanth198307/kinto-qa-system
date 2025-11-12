@@ -622,12 +622,28 @@ export const rawMaterials = pgTable("raw_materials", {
   materialName: varchar("material_name", { length: 255 }).notNull(),
   description: text("description"),
   category: varchar("category", { length: 100 }),
+  
+  // Conversion Method: formula-based | direct-value | output-coverage
+  conversionMethod: varchar("conversion_method", { length: 50 }),
+  
+  // Base Unit fields (common to all methods)
   baseUnit: varchar("base_unit", { length: 50 }),
-  weightPerUnit: integer("weight_per_unit"),
-  conversionType: varchar("conversion_type", { length: 50 }),
-  conversionValue: integer("conversion_value"),
-  weightPerPiece: integer("weight_per_piece"),
+  baseUnitWeight: integer("base_unit_weight"), // Weight of base unit (e.g., 25 for 25kg bag)
+  
+  // Derived Unit fields (for formula-based and direct-value)
+  derivedUnit: varchar("derived_unit", { length: 50 }), // piece, bottle, case
+  weightPerDerivedUnit: integer("weight_per_derived_unit"), // For formula-based (e.g., 21g per preform)
+  derivedValuePerBase: integer("derived_value_per_base"), // For direct-value (e.g., 7000 pcs per box)
+  
+  // Output Coverage fields (for output-coverage method)
+  outputType: varchar("output_type", { length: 50 }), // bottle, case
+  outputUnitsCovered: integer("output_units_covered"), // How many output units one base unit covers
+  
+  // Calculated fields
+  conversionValue: integer("conversion_value"), // Auto-calculated based on method
   lossPercent: integer("loss_percent").default(0),
+  usableUnits: integer("usable_units"), // Auto-calculated: conversionValue × (1 - loss%)
+  
   uomId: varchar("uom_id").references(() => uom.id),
   currentStock: integer("current_stock").default(0),
   reorderLevel: integer("reorder_level"),
@@ -635,7 +651,7 @@ export const rawMaterials = pgTable("raw_materials", {
   unitCost: integer("unit_cost"),
   location: varchar("location", { length: 255 }),
   supplier: varchar("supplier", { length: 255 }),
-  isActive: varchar("is_active").default('true'),
+  isActive: integer("is_active").default(1).notNull(), // 1 = Active, 0 = Inactive
   recordStatus: integer("record_status").default(1).notNull(),
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
@@ -644,12 +660,20 @@ export const rawMaterials = pgTable("raw_materials", {
 
 export const insertRawMaterialSchema = createInsertSchema(rawMaterials, {
   materialCode: z.string().optional(),
+  description: z.string().optional(),
+  category: z.string().optional(),
+  conversionMethod: z.string().optional(),
   baseUnit: z.string().optional(),
-  weightPerUnit: z.number().optional(),
-  conversionType: z.string().optional(),
+  baseUnitWeight: z.number().optional(),
+  derivedUnit: z.string().optional(),
+  weightPerDerivedUnit: z.number().optional(),
+  derivedValuePerBase: z.number().optional(),
+  outputType: z.string().optional(),
+  outputUnitsCovered: z.number().optional(),
   conversionValue: z.number().optional(),
-  weightPerPiece: z.number().optional(),
   lossPercent: z.number().default(0).optional(),
+  usableUnits: z.number().optional(),
+  isActive: z.number().default(1).optional(),
 }).omit({
   id: true,
   recordStatus: true,
