@@ -231,6 +231,19 @@ export interface IStorage {
   // Product Bill of Materials (BOM)
   createProductBomItem(bomItem: InsertProductBom): Promise<ProductBom>;
   getProductBom(productId: string): Promise<any[]>; // Returns enriched data with raw material details
+  getProductBomWithTypes(productId: string): Promise<{
+    items: Array<{
+      bom: typeof productBom.$inferSelect;
+      material: (typeof rawMaterials.$inferSelect) | null;
+      type: (typeof rawMaterialTypes.$inferSelect) | null;
+    }>;
+    metadata: {
+      productId: string;
+      productName: string | null;
+      totalItems: number;
+      lastUpdatedAt: Date | null;
+    };
+  }>;
   getProductBomItem(id: string): Promise<ProductBom | undefined>;
   updateProductBomItem(id: string, bomItem: Partial<InsertProductBom>): Promise<ProductBom | undefined>;
   deleteProductBomItem(id: string): Promise<void>;
@@ -1073,6 +1086,64 @@ export class DatabaseStorage implements IStorage {
       materialName: item.raw_materials?.materialName || null,
       materialCategory: item.raw_materials?.category || null,
     }));
+  }
+
+  async getProductBomWithTypes(productId: string) {
+    // Validate product exists and get metadata
+    const [product] = await db
+      .select()
+      .from(products)
+      .where(and(eq(products.id, productId), eq(products.recordStatus, 1)));
+    
+    if (!product) {
+      throw new Error('Product not found');
+    }
+
+    // Fetch BOM items with raw material and type conversion data
+    const bomItems = await db
+      .select()
+      .from(productBom)
+      .leftJoin(
+        rawMaterials,
+        and(
+          eq(productBom.rawMaterialId, rawMaterials.id),
+          eq(rawMaterials.recordStatus, 1)
+        )
+      )
+      .leftJoin(
+        rawMaterialTypes,
+        and(
+          eq(rawMaterials.materialTypeId, rawMaterialTypes.id),
+          eq(rawMaterialTypes.recordStatus, 1)
+        )
+      )
+      .where(and(
+        eq(productBom.productId, productId),
+        eq(productBom.recordStatus, 1)
+      ))
+      .orderBy(productBom.createdAt);
+
+    // Transform into structured format
+    const items = bomItems.map(item => ({
+      bom: item.product_bom,
+      material: item.raw_materials || null,
+      type: item.raw_material_types || null,
+    }));
+
+    // Get latest update timestamp from BOM items
+    const lastUpdatedAt = bomItems.length > 0
+      ? new Date(Math.max(...bomItems.map(i => new Date(i.product_bom.updatedAt || i.product_bom.createdAt).getTime())))
+      : null;
+
+    return {
+      items,
+      metadata: {
+        productId: product.id,
+        productName: product.productName,
+        totalItems: items.length,
+        lastUpdatedAt,
+      },
+    };
   }
 
   async getProductBomItem(id: string): Promise<ProductBom | undefined> {

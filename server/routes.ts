@@ -1337,6 +1337,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Product BOM with Type Conversion Data (for Raw Material Issuance)
+  app.get('/api/products/:productId/bom-with-types', isAuthenticated, async (req: any, res) => {
+    try {
+      const { productId } = req.params;
+      
+      // Validate productId format (must be valid UUID)
+      const uuidSchema = z.string().uuid({ message: "Invalid product ID format - must be a valid UUID" });
+      const validationResult = uuidSchema.safeParse(productId);
+      
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid product ID", 
+          errors: validationResult.error.errors 
+        });
+      }
+
+      const bomData = await storage.getProductBomWithTypes(productId);
+      res.json(bomData);
+    } catch (error) {
+      if (error instanceof Error && error.message === 'Product not found') {
+        return res.status(404).json({ message: "Product not found" });
+      }
+      console.error("Error fetching product BOM with types:", error);
+      res.status(500).json({ message: "Failed to fetch product BOM with conversion data" });
+    }
+  });
+
   app.post('/api/products/:productId/bom', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const { productId } = req.params;
