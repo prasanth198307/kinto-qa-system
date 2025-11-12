@@ -650,28 +650,74 @@ export const rawMaterialTypes = pgTable("raw_material_types", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const insertRawMaterialTypeSchema = createInsertSchema(rawMaterialTypes, {
+// Base schema with common fields
+const baseRawMaterialTypeSchema = createInsertSchema(rawMaterialTypes, {
   typeCode: z.string().optional(),
   typeName: z.string().min(1, "Type name is required"),
-  conversionMethod: z.string().optional(),
-  baseUnit: z.string().optional(),
-  baseUnitWeight: z.number().optional(),
-  derivedUnit: z.string().optional(),
-  weightPerDerivedUnit: z.number().optional(),
-  derivedValuePerBase: z.number().optional(),
-  outputType: z.string().optional(),
-  outputUnitsCovered: z.number().optional(),
-  conversionValue: z.number().optional(),
-  lossPercent: z.number().default(0).optional(),
-  usableUnits: z.number().optional(),
   description: z.string().optional(),
-  isActive: z.number().default(1).optional(),
+  lossPercent: z.number().min(0).max(100).default(0),
+  isActive: z.number().default(1),
 }).omit({
   id: true,
   recordStatus: true,
   createdAt: true,
   updatedAt: true,
+  conversionMethod: true,
+  baseUnit: true,
+  baseUnitWeight: true,
+  derivedUnit: true,
+  weightPerDerivedUnit: true,
+  derivedValuePerBase: true,
+  outputType: true,
+  outputUnitsCovered: true,
+  conversionValue: true,
+  usableUnits: true,
 });
+
+// Discriminated union for the three conversion methods
+export const insertRawMaterialTypeSchema = z.discriminatedUnion("conversionMethod", [
+  // Formula-Based: Auto-calculates derived units using formula (baseUnitWeight × 1000) / weightPerDerivedUnit
+  baseRawMaterialTypeSchema.extend({
+    conversionMethod: z.literal("formula-based"),
+    baseUnit: z.string().min(1, "Base unit is required"),
+    baseUnitWeight: z.number().positive("Base unit weight must be greater than 0"),
+    derivedUnit: z.string().min(1, "Derived unit is required for formula-based conversion"),
+    weightPerDerivedUnit: z.number().positive("Weight per derived unit must be greater than 0"),
+    derivedValuePerBase: z.number().optional(),
+    outputType: z.string().optional(),
+    outputUnitsCovered: z.number().optional(),
+    conversionValue: z.number().optional(),
+    usableUnits: z.number().optional(),
+  }),
+  
+  // Direct-Value: User manually enters derived units per base unit
+  baseRawMaterialTypeSchema.extend({
+    conversionMethod: z.literal("direct-value"),
+    baseUnit: z.string().min(1, "Base unit is required"),
+    baseUnitWeight: z.number().positive("Base unit weight must be greater than 0").optional(),
+    derivedUnit: z.string().min(1, "Derived unit is required for direct-value conversion"),
+    derivedValuePerBase: z.number().positive("Derived value per base must be greater than 0"),
+    weightPerDerivedUnit: z.number().optional(),
+    outputType: z.string().optional(),
+    outputUnitsCovered: z.number().optional(),
+    conversionValue: z.number().optional(),
+    usableUnits: z.number().optional(),
+  }),
+  
+  // Output-Coverage: Defines how many output units one base unit covers
+  baseRawMaterialTypeSchema.extend({
+    conversionMethod: z.literal("output-coverage"),
+    baseUnit: z.string().min(1, "Base unit is required"),
+    baseUnitWeight: z.number().positive("Base unit weight must be greater than 0").optional(),
+    outputType: z.string().min(1, "Output type is required for output-coverage"),
+    outputUnitsCovered: z.number().positive("Output units covered must be greater than 0"),
+    derivedUnit: z.string().optional(),
+    weightPerDerivedUnit: z.number().optional(),
+    derivedValuePerBase: z.number().optional(),
+    conversionValue: z.number().optional(),
+    usableUnits: z.number().optional(),
+  }),
+]);
 
 export type InsertRawMaterialType = z.infer<typeof insertRawMaterialTypeSchema>;
 export type RawMaterialType = typeof rawMaterialTypes.$inferSelect;

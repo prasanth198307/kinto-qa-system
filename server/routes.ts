@@ -1237,36 +1237,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         typeCode = `RMT-${nextNumber.toString().padStart(3, '0')}`;
       }
       
-      // Calculate conversion value and usable units based on conversion method
-      const { conversionMethod, baseUnitWeight, weightPerDerivedUnit, derivedValuePerBase, outputUnitsCovered, lossPercent = 0 } = req.body;
+      // VALIDATE FIRST with discriminated union schema - this ensures method-specific fields are present
+      const validatedInput = insertRawMaterialTypeSchema.parse({ ...req.body, typeCode });
+      
+      // NOW calculate conversion value and usable units based on validated data
       let conversionValue = 0;
       let usableUnits = 0;
+      const lossPercent = validatedInput.lossPercent || 0;
       
-      if (conversionMethod === 'formula-based' && baseUnitWeight && weightPerDerivedUnit) {
-        conversionValue = Math.round((baseUnitWeight * 1000) / weightPerDerivedUnit);
-      } else if (conversionMethod === 'direct-value' && derivedValuePerBase) {
-        conversionValue = derivedValuePerBase;
-      } else if (conversionMethod === 'output-coverage' && outputUnitsCovered) {
-        conversionValue = outputUnitsCovered;
+      if (validatedInput.conversionMethod === 'formula-based') {
+        // Formula: (baseUnitWeight × 1000) / weightPerDerivedUnit
+        conversionValue = Math.round((validatedInput.baseUnitWeight * 1000) / validatedInput.weightPerDerivedUnit);
+      } else if (validatedInput.conversionMethod === 'direct-value') {
+        // Direct value entered by user
+        conversionValue = validatedInput.derivedValuePerBase;
+      } else if (validatedInput.conversionMethod === 'output-coverage') {
+        // Output units covered
+        conversionValue = validatedInput.outputUnitsCovered;
       }
       
       // Calculate usable units after applying loss percentage
       usableUnits = Math.round(conversionValue * (1 - (lossPercent / 100)));
       
+      // Create final data object with calculated fields
       const typeData = { 
-        ...req.body, 
-        typeCode,
+        ...validatedInput,
         conversionValue,
         usableUnits,
         createdBy: userId 
       };
       
-      const validatedData = insertRawMaterialTypeSchema.parse(typeData);
-      const created = await storage.createRawMaterialType(validatedData);
+      const created = await storage.createRawMaterialType(typeData);
       res.json(created);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
       }
       console.error("Error creating raw material type:", error);
       res.status(500).json({ message: "Failed to create raw material type" });
@@ -1291,44 +1296,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       
-      // Recalculate conversion value and usable units if relevant fields are updated
-      const { conversionMethod, baseUnitWeight, weightPerDerivedUnit, derivedValuePerBase, outputUnitsCovered, lossPercent } = req.body;
-      let updates = { ...req.body };
-      
-      if (conversionMethod || baseUnitWeight !== undefined || weightPerDerivedUnit !== undefined || 
-          derivedValuePerBase !== undefined || outputUnitsCovered !== undefined || lossPercent !== undefined) {
-        
-        // Get existing type to merge with updates
-        const existing = await storage.getRawMaterialType(id);
-        if (!existing) {
-          return res.status(404).json({ message: "Raw material type not found" });
-        }
-        
-        const merged = { ...existing, ...req.body };
-        let conversionValue = 0;
-        
-        if (merged.conversionMethod === 'formula-based' && merged.baseUnitWeight && merged.weightPerDerivedUnit) {
-          conversionValue = Math.round((merged.baseUnitWeight * 1000) / merged.weightPerDerivedUnit);
-        } else if (merged.conversionMethod === 'direct-value' && merged.derivedValuePerBase) {
-          conversionValue = merged.derivedValuePerBase;
-        } else if (merged.conversionMethod === 'output-coverage' && merged.outputUnitsCovered) {
-          conversionValue = merged.outputUnitsCovered;
-        }
-        
-        const usableUnits = Math.round(conversionValue * (1 - ((merged.lossPercent || 0) / 100)));
-        updates.conversionValue = conversionValue;
-        updates.usableUnits = usableUnits;
+      // Get existing type to merge with updates
+      const existing = await storage.getRawMaterialType(id);
+      if (!existing) {
+        return res.status(404).json({ message: "Raw material type not found" });
       }
       
-      const validatedData = insertRawMaterialTypeSchema.partial().parse(updates);
-      const updated = await storage.updateRawMaterialType(id, validatedData);
+      // Merge existing data with updates
+      const merged = { ...existing, ...req.body };
+      
+      // VALIDATE the merged data with discriminated union schema
+      const validatedMerged = insertRawMaterialTypeSchema.parse(merged);
+      
+      // Recalculate conversion value and usable units based on validated data
+      let conversionValue = 0;
+      let usableUnits = 0;
+      const lossPercent = validatedMerged.lossPercent || 0;
+      
+      if (validatedMerged.conversionMethod === 'formula-based') {
+        conversionValue = Math.round((validatedMerged.baseUnitWeight * 1000) / validatedMerged.weightPerDerivedUnit);
+      } else if (validatedMerged.conversionMethod === 'direct-value') {
+        conversionValue = validatedMerged.derivedValuePerBase;
+      } else if (validatedMerged.conversionMethod === 'output-coverage') {
+        conversionValue = validatedMerged.outputUnitsCovered;
+      }
+      
+      usableUnits = Math.round(conversionValue * (1 - (lossPercent / 100)));
+      
+      // Create final update object with calculated fields
+      const updates = {
+        ...req.body,
+        conversionValue,
+        usableUnits,
+      };
+      
+      const updated = await storage.updateRawMaterialType(id, updates);
       if (!updated) {
         return res.status(404).json({ message: "Raw material type not found" });
       }
       res.json(updated);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
       }
       console.error("Error updating raw material type:", error);
       res.status(500).json({ message: "Failed to update raw material type" });
