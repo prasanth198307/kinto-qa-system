@@ -1223,7 +1223,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/raw-materials', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const userId = req.user?.id;
-      const materialData = { ...req.body, createdBy: userId };
+      
+      // Auto-generate Material Code if not provided
+      let materialCode = req.body.materialCode;
+      if (!materialCode) {
+        const allMaterials = await storage.getAllRawMaterials();
+        const existingCodes = allMaterials
+          .map(m => m.materialCode)
+          .filter(code => code.startsWith('RM-'))
+          .map(code => parseInt(code.replace('RM-', '')) || 0);
+        
+        const nextNumber = existingCodes.length > 0 ? Math.max(...existingCodes) + 1 : 1;
+        materialCode = `RM-${nextNumber.toString().padStart(4, '0')}`;
+      }
+      
+      const materialData = { 
+        ...req.body, 
+        materialCode,
+        createdBy: userId 
+      };
       const validatedData = insertRawMaterialSchema.parse(materialData);
       const created = await storage.createRawMaterial(validatedData);
       res.json(created);

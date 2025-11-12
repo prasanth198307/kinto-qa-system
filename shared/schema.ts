@@ -622,6 +622,12 @@ export const rawMaterials = pgTable("raw_materials", {
   materialName: varchar("material_name", { length: 255 }).notNull(),
   description: text("description"),
   category: varchar("category", { length: 100 }),
+  baseUnit: varchar("base_unit", { length: 50 }),
+  weightPerUnit: integer("weight_per_unit"),
+  conversionType: varchar("conversion_type", { length: 50 }),
+  conversionValue: integer("conversion_value"),
+  weightPerPiece: integer("weight_per_piece"),
+  lossPercent: integer("loss_percent").default(0),
   uomId: varchar("uom_id").references(() => uom.id),
   currentStock: integer("current_stock").default(0),
   reorderLevel: integer("reorder_level"),
@@ -636,7 +642,15 @@ export const rawMaterials = pgTable("raw_materials", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const insertRawMaterialSchema = createInsertSchema(rawMaterials).omit({
+export const insertRawMaterialSchema = createInsertSchema(rawMaterials, {
+  materialCode: z.string().optional(),
+  baseUnit: z.string().optional(),
+  weightPerUnit: z.number().optional(),
+  conversionType: z.string().optional(),
+  conversionValue: z.number().optional(),
+  weightPerPiece: z.number().optional(),
+  lossPercent: z.number().default(0).optional(),
+}).omit({
   id: true,
   recordStatus: true,
   createdAt: true,

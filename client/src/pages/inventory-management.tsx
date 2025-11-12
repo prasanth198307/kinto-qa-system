@@ -1038,10 +1038,9 @@ function RawMaterialsTab({ searchTerm, onSearchChange }: { searchTerm: string; o
                 <TableHead>Material Code</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Category</TableHead>
-                <TableHead>UOM</TableHead>
-                <TableHead>Current Stock</TableHead>
-                <TableHead>Reorder Level</TableHead>
-                <TableHead>Unit Cost</TableHead>
+                <TableHead>Base Unit</TableHead>
+                <TableHead>Conversion</TableHead>
+                <TableHead>Stock</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -1052,18 +1051,17 @@ function RawMaterialsTab({ searchTerm, onSearchChange }: { searchTerm: string; o
                   <TableRow key={i}>
                     <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-16" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-24 ml-auto" /></TableCell>
                   </TableRow>
                 ))
               ) : paginatedItems.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                     No raw materials found
                   </TableCell>
                 </TableRow>
@@ -1075,12 +1073,23 @@ function RawMaterialsTab({ searchTerm, onSearchChange }: { searchTerm: string; o
                     <TableCell className="text-muted-foreground" data-testid={`text-category-${item.id}`}>
                       {item.category || '-'}
                     </TableCell>
-                    <TableCell data-testid={`text-uom-${item.id}`}>{getUomName(item.uomId)}</TableCell>
-                    <TableCell data-testid={`text-stock-${item.id}`}>{item.currentStock || 0}</TableCell>
-                    <TableCell data-testid={`text-reorder-${item.id}`}>{item.reorderLevel || '-'}</TableCell>
-                    <TableCell data-testid={`text-cost-${item.id}`}>
-                      {item.unitCost ? `₹${item.unitCost}` : '-'}
+                    <TableCell data-testid={`text-base-unit-${item.id}`}>
+                      {item.baseUnit || '-'}
+                      {item.weightPerUnit ? ` (${item.weightPerUnit})` : ''}
                     </TableCell>
+                    <TableCell className="text-sm" data-testid={`text-conversion-${item.id}`}>
+                      {item.conversionType === 'None' || !item.conversionType ? (
+                        <span className="text-muted-foreground">None</span>
+                      ) : (
+                        <div className="flex flex-col">
+                          <span className="font-medium">{item.conversionType}</span>
+                          {item.conversionValue && (
+                            <span className="text-muted-foreground">{item.conversionValue} pcs</span>
+                          )}
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell data-testid={`text-stock-${item.id}`}>{item.currentStock || 0}</TableCell>
                     <TableCell data-testid={`badge-status-${item.id}`}>
                       <Badge variant={item.isActive === 'true' ? 'default' : 'secondary'}>
                         {item.isActive === 'true' ? 'Active' : 'Inactive'}
@@ -1195,10 +1204,16 @@ function RawMaterialDialog({
   const form = useForm<z.infer<typeof insertRawMaterialSchema>>({
     resolver: zodResolver(insertRawMaterialSchema),
     defaultValues: {
-      materialCode: '',
+      materialCode: undefined,
       materialName: '',
       description: '',
       category: '',
+      baseUnit: '',
+      weightPerUnit: undefined,
+      conversionType: 'None',
+      conversionValue: undefined,
+      weightPerPiece: undefined,
+      lossPercent: 0,
       uomId: undefined,
       currentStock: 0,
       reorderLevel: undefined,
@@ -1210,15 +1225,34 @@ function RawMaterialDialog({
     },
   });
 
+  // Watch for changes to auto-calculate conversion value
+  const conversionType = form.watch('conversionType');
+  const weightPerUnit = form.watch('weightPerUnit');
+  const weightPerPiece = form.watch('weightPerPiece');
+
+  // Auto-calculate conversion value for Derived type
+  useEffect(() => {
+    if (conversionType === 'Derived' && weightPerUnit && weightPerPiece && weightPerPiece > 0) {
+      const calculated = Math.round((weightPerUnit * 1000) / weightPerPiece);
+      form.setValue('conversionValue', calculated);
+    }
+  }, [conversionType, weightPerUnit, weightPerPiece, form]);
+
   // Reset form when item changes or dialog opens
   useEffect(() => {
     if (open) {
       if (item) {
         form.reset({
-          materialCode: item.materialCode || '',
+          materialCode: item.materialCode || undefined,
           materialName: item.materialName || '',
           description: item.description || '',
           category: item.category || '',
+          baseUnit: item.baseUnit || '',
+          weightPerUnit: item.weightPerUnit || undefined,
+          conversionType: item.conversionType || 'None',
+          conversionValue: item.conversionValue || undefined,
+          weightPerPiece: item.weightPerPiece || undefined,
+          lossPercent: item.lossPercent || 0,
           uomId: item.uomId || undefined,
           currentStock: item.currentStock || 0,
           reorderLevel: item.reorderLevel || undefined,
@@ -1230,10 +1264,16 @@ function RawMaterialDialog({
         });
       } else {
         form.reset({
-          materialCode: '',
+          materialCode: undefined,
           materialName: '',
           description: '',
           category: '',
+          baseUnit: '',
+          weightPerUnit: undefined,
+          conversionType: 'None',
+          conversionValue: undefined,
+          weightPerPiece: undefined,
+          lossPercent: 0,
           uomId: undefined,
           currentStock: 0,
           reorderLevel: undefined,
@@ -1262,20 +1302,13 @@ function RawMaterialDialog({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+            {/* Material ID (Auto-generated) & Name */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="materialCode"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Material Code *</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g., RM-001" {...field} data-testid="input-material-code" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <FormItem>
+                <FormLabel>Material ID</FormLabel>
+                <Input disabled placeholder="AUTO (generated by system)" data-testid="input-material-id" />
+                <FormDescription className="text-xs">Auto-generated on save</FormDescription>
+              </FormItem>
               <FormField
                 control={form.control}
                 name="materialName"
@@ -1283,13 +1316,201 @@ function RawMaterialDialog({
                   <FormItem>
                     <FormLabel>Material Name *</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., PET Resin" {...field} data-testid="input-material-name" />
+                      <Input placeholder="e.g., Preform 21g" {...field} data-testid="input-material-name" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
             </div>
+
+            {/* Category & Base Unit */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Category</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || ''}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-material-category">
+                          <SelectValue placeholder="Select Category" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="Preform">Preform</SelectItem>
+                        <SelectItem value="Cap">Cap</SelectItem>
+                        <SelectItem value="Label">Label</SelectItem>
+                        <SelectItem value="Shrink">Shrink</SelectItem>
+                        <SelectItem value="Adhesive">Adhesive</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="baseUnit"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Base Unit *</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || ''}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-base-unit">
+                          <SelectValue placeholder="Select Base Unit" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="Kg">Kg</SelectItem>
+                        <SelectItem value="Bag">Bag</SelectItem>
+                        <SelectItem value="Box">Box</SelectItem>
+                        <SelectItem value="Roll">Roll</SelectItem>
+                        <SelectItem value="Piece">Piece</SelectItem>
+                        <SelectItem value="Litre">Litre</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* Weight per Unit & Conversion Type */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="weightPerUnit"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Weight per Unit</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        placeholder="e.g., 25 (for 25kg Bag)" 
+                        {...field} 
+                        value={field.value || ''} 
+                        onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                        data-testid="input-weight-per-unit"
+                      />
+                    </FormControl>
+                    <FormDescription className="text-xs">Optional - weight in selected base unit</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="conversionType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Conversion Type</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || 'None'}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-conversion-type">
+                          <SelectValue placeholder="Select Conversion Type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="Direct Pieces">Direct Pieces</SelectItem>
+                        <SelectItem value="Derived">Derived (auto-calc)</SelectItem>
+                        <SelectItem value="None">None</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormDescription className="text-xs">
+                      {conversionType === 'Direct Pieces' && 'Manually enter pieces per base unit'}
+                      {conversionType === 'Derived' && 'Auto-calculated from weight formula'}
+                      {conversionType === 'None' && 'Weight-only item (like glue)'}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* Conversion Value & Weight per Piece (conditional) */}
+            {conversionType && conversionType !== 'None' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="conversionValue"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Conversion Value (Pieces)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          placeholder={conversionType === 'Derived' ? 'Auto-calculated' : 'e.g., 1190'}
+                          {...field} 
+                          value={field.value || ''} 
+                          onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                          disabled={conversionType === 'Derived'}
+                          data-testid="input-conversion-value"
+                        />
+                      </FormControl>
+                      <FormDescription className="text-xs">
+                        {conversionType === 'Derived' 
+                          ? 'Formula: (Weight per Unit × 1000 / Weight per Piece)'
+                          : 'e.g., 25kg Bag = 1190 pieces'}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                {conversionType === 'Derived' && (
+                  <FormField
+                    control={form.control}
+                    name="weightPerPiece"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Weight per Piece (g)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            placeholder="e.g., 21 (for 21g preform)" 
+                            {...field} 
+                            value={field.value || ''} 
+                            onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                            data-testid="input-weight-per-piece"
+                          />
+                        </FormControl>
+                        <FormDescription className="text-xs">Required for Derived conversion</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </div>
+            )}
+
+            {/* Loss % & Description */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <FormField
+                control={form.control}
+                name="lossPercent"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Loss %</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        placeholder="0" 
+                        {...field} 
+                        value={field.value || 0} 
+                        onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : 0)}
+                        data-testid="input-loss-percent"
+                      />
+                    </FormControl>
+                    <FormDescription className="text-xs">Default: 0%</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
             <FormField
               control={form.control}
               name="description"
@@ -1298,7 +1519,7 @@ function RawMaterialDialog({
                   <FormLabel>Description</FormLabel>
                   <FormControl>
                     <Textarea 
-                      placeholder="Material description..." 
+                      placeholder="Material description, notes, specifications..." 
                       {...field} 
                       value={field.value || ''} 
                       data-testid="input-material-description"
@@ -1308,135 +1529,8 @@ function RawMaterialDialog({
                 </FormItem>
               )}
             />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="category"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Category</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g., Packaging" {...field} value={field.value || ''} data-testid="input-material-category" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="uomId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Unit of Measurement</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ''}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-material-uom">
-                          <SelectValue placeholder="Select UOM" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {uoms.filter(u => u.isActive === 'true').map(uom => (
-                          <SelectItem key={uom.id} value={uom.id}>
-                            {uom.name} ({uom.code})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <FormField
-                control={form.control}
-                name="currentStock"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Current Stock</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number" 
-                        placeholder="0" 
-                        {...field} 
-                        value={field.value || 0} 
-                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                        data-testid="input-material-stock"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="reorderLevel"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Reorder Level</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number" 
-                        placeholder="0" 
-                        {...field} 
-                        value={field.value || ''} 
-                        onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
-                        data-testid="input-material-reorder"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="unitCost"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Unit Cost (₹)</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number" 
-                        placeholder="0" 
-                        {...field} 
-                        value={field.value || ''} 
-                        onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
-                        data-testid="input-material-cost"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="location"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Location</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g., Warehouse A, Shelf 12" {...field} value={field.value || ''} data-testid="input-material-location" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="supplier"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Supplier</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Supplier name" {...field} value={field.value || ''} data-testid="input-material-supplier" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+
+            {/* Active Status */}
             <FormField
               control={form.control}
               name="isActive"
