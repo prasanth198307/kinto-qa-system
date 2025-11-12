@@ -123,33 +123,36 @@ export function setupAuth(app: Express) {
 
   // --- Login endpoint ---
   app.post("/api/login", passport.authenticate("local"), (req, res) => {
-    // Explicitly save session to ensure cookie is properly set
-    req.session.save((err) => {
+    // Force regenerate session to ensure cookie is set properly
+    const user = req.user;
+    req.session.regenerate((err) => {
       if (err) {
-        console.error("❌ Session save error:", err);
-        return res.status(500).json({ message: "Session save failed" });
+        console.error("❌ Session regenerate error:", err);
+        return res.status(500).json({ message: "Session regeneration failed" });
       }
-      console.log(`✅ Session saved successfully`);
-      console.log(`   User: ${(req.user as any)?.username}`);
-      console.log(`   Session ID: ${req.sessionID}`);
-      console.log(`   All response headers:`, res.getHeaders());
-      console.log(`   Set-Cookie headers:`, res.getHeader('set-cookie'));
-      console.log(`   Session cookie should be: connect.sid=${req.sessionID}`);
       
-      // Manually set cookie as fallback if not set automatically
-      if (!res.getHeader('set-cookie')) {
-        console.warn('⚠️  Set-Cookie header not found! Manually setting...');
-        res.cookie('connect.sid', req.sessionID, {
-          maxAge: 7 * 24 * 60 * 60 * 1000,
-          httpOnly: true,
-          secure: false,
-          sameSite: 'lax',
-          path: '/',
+      // Re-login user after session regeneration
+      req.login(user, (err) => {
+        if (err) {
+          console.error("❌ Login error:", err);
+          return res.status(500).json({ message: "Login failed" });
+        }
+        
+        // Save the session
+        req.session.save((err) => {
+          if (err) {
+            console.error("❌ Session save error:", err);
+            return res.status(500).json({ message: "Session save failed" });
+          }
+          
+          console.log(`✅ Session regenerated and saved`);
+          console.log(`   User: ${(req.user as any)?.username}`);
+          console.log(`   Session ID: ${req.sessionID}`);
+          console.log(`   Cookie will be: connect.sid=${req.sessionID}`);
+          
+          res.json(req.user);
         });
-        console.log(`   Manually set cookie:`, res.getHeader('set-cookie'));
-      }
-      
-      res.status(200).json(req.user);
+      });
     });
   });
 
