@@ -119,7 +119,19 @@ export function setupAuth(app: Express) {
 
   // --- Login endpoint ---
   app.post("/api/login", passport.authenticate("local"), (req, res) => {
-    res.status(200).json(req.user);
+    // Explicitly save session to ensure cookie is properly set
+    req.session.save((err) => {
+      if (err) {
+        console.error("❌ Session save error:", err);
+        return res.status(500).json({ message: "Session save failed" });
+      }
+      console.log(`✅ Session saved successfully`);
+      console.log(`   User: ${(req.user as any)?.username}`);
+      console.log(`   Session ID: ${req.sessionID}`);
+      console.log(`   Cookies being set:`, res.getHeaders()['set-cookie']);
+      console.log(`   Session cookie should be: connect.sid=${req.sessionID}`);
+      res.status(200).json(req.user);
+    });
   });
 
   // --- Logout endpoint ---
@@ -205,8 +217,12 @@ export function setupAuth(app: Express) {
 
   // --- Debug session middleware ---
   app.use((req, _res, next) => {
-    console.log("🔹 Session ID:", req.sessionID);
-    console.log("🔹 Authenticated:", req.isAuthenticated());
+    if (req.path.startsWith('/api/')) {
+      console.log("🔹 Request:", req.method, req.path);
+      console.log("   Cookie header:", req.headers.cookie || '(no cookies)');
+      console.log("   Session ID:", req.sessionID);
+      console.log("   Authenticated:", req.isAuthenticated());
+    }
     next();
   });
 }
