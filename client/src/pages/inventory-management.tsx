@@ -477,6 +477,14 @@ function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSea
     queryKey: ['/api/uom'],
   });
 
+  const { data: productCategories = [] } = useQuery<any[]>({
+    queryKey: ['/api/product-categories'],
+  });
+
+  const { data: productTypes = [] } = useQuery<any[]>({
+    queryKey: ['/api/product-types'],
+  });
+
   const saveProductWithBomMutation = useMutation({
     mutationFn: async ({ mode, id, data }: { mode: 'create' | 'update'; id?: string; data: ProductFormData }) => {
       // Extract BOM items from form data
@@ -715,6 +723,8 @@ function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSea
         onOpenChange={setIsDialogOpen}
         item={editingItem}
         uoms={uoms}
+        productCategories={productCategories}
+        productTypes={productTypes}
         onSubmit={(data) => {
           saveProductWithBomMutation.mutate({
             mode: editingItem ? 'update' : 'create',
@@ -754,6 +764,8 @@ function ProductDialog({
   onOpenChange, 
   item, 
   uoms,
+  productCategories,
+  productTypes,
   onSubmit, 
   isLoading 
 }: { 
@@ -761,6 +773,8 @@ function ProductDialog({
   onOpenChange: (open: boolean) => void; 
   item: Product | null; 
   uoms: Uom[];
+  productCategories: any[];
+  productTypes: any[];
   onSubmit: (data: ProductFormData) => void;
   isLoading: boolean;
 }) {
@@ -792,9 +806,9 @@ function ProductDialog({
       productCode: '',
       productName: '',
       description: '',
-      category: '',
+      categoryId: undefined,
       skuCode: '',
-      productType: '',
+      typeId: undefined,
       uomId: undefined,
       standardCost: undefined,
       baseUnit: '',
@@ -841,9 +855,9 @@ function ProductDialog({
           productCode: item.productCode || '',
           productName: item.productName || '',
           description: item.description || '',
-          category: item.category || '',
+          categoryId: item.categoryId || undefined,
           skuCode: item.skuCode || '',
-          productType: item.productType || '',
+          typeId: item.typeId || undefined,
           uomId: item.uomId || undefined,
           standardCost: item.standardCost || undefined,
           baseUnit: item.baseUnit || '',
@@ -879,9 +893,9 @@ function ProductDialog({
           productCode: '',
           productName: '',
           description: '',
-          category: '',
+          categoryId: undefined,
           skuCode: '',
-          productType: '',
+          typeId: undefined,
           uomId: undefined,
           standardCost: undefined,
           baseUnit: '',
@@ -983,26 +997,48 @@ function ProductDialog({
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="category"
+                    name="categoryId"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Category</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Beverages" {...field} value={field.value || ''} data-testid="input-category" />
-                        </FormControl>
+                        <Select onValueChange={field.onChange} value={field.value ? String(field.value) : ''}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-category">
+                              <SelectValue placeholder="Select Category" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {productCategories.map((category: any) => (
+                              <SelectItem key={category.id} value={String(category.id)} data-testid={`select-item-category-${category.code}`}>
+                                {category.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                   <FormField
                     control={form.control}
-                    name="productType"
+                    name="typeId"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Product Type</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Finished Goods" {...field} value={field.value || ''} data-testid="input-product-type" />
-                        </FormControl>
+                        <Select onValueChange={field.onChange} value={field.value ? String(field.value) : ''}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-product-type">
+                              <SelectValue placeholder="Select Product Type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {productTypes.map((type: any) => (
+                              <SelectItem key={type.id} value={String(type.id)} data-testid={`select-item-type-${type.code}`}>
+                                {type.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
