@@ -16,6 +16,7 @@ import {
   pmExecutionTasks,
   uom,
   products,
+  productBom,
   vendors,
   rawMaterialTypes,
   rawMaterials,
@@ -67,6 +68,8 @@ import {
   type InsertUom,
   type Product,
   type InsertProduct,
+  type ProductBom,
+  type InsertProductBom,
   type Vendor,
   type InsertVendor,
   type RawMaterialType,
@@ -204,6 +207,14 @@ export interface IStorage {
   getProduct(id: string): Promise<Product | undefined>;
   updateProduct(id: string, product: Partial<InsertProduct>): Promise<Product | undefined>;
   deleteProduct(id: string): Promise<void>;
+  
+  // Product Bill of Materials (BOM)
+  createProductBomItem(bomItem: InsertProductBom): Promise<ProductBom>;
+  getProductBom(productId: string): Promise<any[]>; // Returns enriched data with raw material details
+  getProductBomItem(id: string): Promise<ProductBom | undefined>;
+  updateProductBomItem(id: string, bomItem: Partial<InsertProductBom>): Promise<ProductBom | undefined>;
+  deleteProductBomItem(id: string): Promise<void>;
+  bulkReplaceProductBom(productId: string, bomItems: InsertProductBom[]): Promise<ProductBom[]>;
   
   // Vendor Master
   createVendor(vendor: InsertVendor): Promise<Vendor>;
@@ -929,6 +940,98 @@ export class DatabaseStorage implements IStorage {
       .update(products)
       .set({ recordStatus: 0, updatedAt: new Date() })
       .where(eq(products.id, id));
+  }
+
+  // Product Bill of Materials (BOM)
+  async createProductBomItem(bomItem: InsertProductBom): Promise<ProductBom> {
+    // Validate that rawMaterialId exists
+    const [rawMaterial] = await db
+      .select()
+      .from(rawMaterials)
+      .where(and(eq(rawMaterials.id, bomItem.rawMaterialId), eq(rawMaterials.recordStatus, 1)));
+    
+    if (!rawMaterial) {
+      throw new Error("Raw material not found");
+    }
+    
+    const [created] = await db.insert(productBom).values(bomItem).returning();
+    return created;
+  }
+
+  async getProductBom(productId: string): Promise<any[]> {
+    // Return enriched data with raw material details (code, name, UOM)
+    const bomItems = await db
+      .select({
+        id: productBom.id,
+        productId: productBom.productId,
+        rawMaterialId: productBom.rawMaterialId,
+        quantityPerProduct: productBom.quantityPerProduct,
+        unitOfMeasure: productBom.unitOfMeasure,
+        usageMethod: productBom.usageMethod,
+        notes: productBom.notes,
+        // Raw material details
+        materialCode: rawMaterials.materialCode,
+        materialName: rawMaterials.materialName,
+        materialCategory: rawMaterials.category,
+      })
+      .from(productBom)
+      .leftJoin(rawMaterials, eq(productBom.rawMaterialId, rawMaterials.id))
+      .where(and(eq(productBom.productId, productId), eq(productBom.recordStatus, 1)))
+      .orderBy(productBom.createdAt);
+    
+    return bomItems;
+  }
+
+  async getProductBomItem(id: string): Promise<ProductBom | undefined> {
+    const [bomItem] = await db
+      .select()
+      .from(productBom)
+      .where(and(eq(productBom.id, id), eq(productBom.recordStatus, 1)));
+    return bomItem;
+  }
+
+  async updateProductBomItem(id: string, bomItemData: Partial<InsertProductBom>): Promise<ProductBom | undefined> {
+    // Validate rawMaterialId if it's being updated
+    if (bomItemData.rawMaterialId) {
+      const [rawMaterial] = await db
+        .select()
+        .from(rawMaterials)
+        .where(and(eq(rawMaterials.id, bomItemData.rawMaterialId), eq(rawMaterials.recordStatus, 1)));
+      
+      if (!rawMaterial) {
+        throw new Error("Raw material not found");
+      }
+    }
+    
+    const [updated] = await db
+      .update(productBom)
+      .set({ ...bomItemData, updatedAt: new Date() })
+      .where(and(eq(productBom.id, id), eq(productBom.recordStatus, 1)))
+      .returning();
+    return updated;
+  }
+
+  async deleteProductBomItem(id: string): Promise<void> {
+    await db
+      .update(productBom)
+      .set({ recordStatus: 0, updatedAt: new Date() })
+      .where(eq(productBom.id, id));
+  }
+
+  async bulkReplaceProductBom(productId: string, bomItems: InsertProductBom[]): Promise<ProductBom[]> {
+    // Delete existing BOM items for this product
+    await db
+      .update(productBom)
+      .set({ recordStatus: 0, updatedAt: new Date() })
+      .where(eq(productBom.productId, productId));
+    
+    // Insert new BOM items
+    if (bomItems.length === 0) {
+      return [];
+    }
+    
+    const created = await db.insert(productBom).values(bomItems).returning();
+    return created;
   }
 
   // Vendor Master
