@@ -9,6 +9,7 @@ import {
   text,
   integer,
   numeric,
+  unique,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -1068,6 +1069,103 @@ export const insertRawMaterialIssuanceItemSchema = createInsertSchema(rawMateria
 
 export type InsertRawMaterialIssuanceItem = z.infer<typeof insertRawMaterialIssuanceItemSchema>;
 export type RawMaterialIssuanceItem = typeof rawMaterialIssuanceItems.$inferSelect;
+
+// Production Entries - Track actual production output against raw material issuance
+export const productionEntries = pgTable("production_entries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  issuanceId: varchar("issuance_id").references(() => rawMaterialIssuance.id).notNull(), // Link to raw material issuance
+  productionDate: timestamp("production_date").notNull(),
+  shift: varchar("shift", { length: 20 }).notNull(), // A, B, or General
+  producedQuantity: numeric("produced_quantity", { precision: 12, scale: 2 }).notNull(), // Actual output
+  rejectedQuantity: numeric("rejected_quantity", { precision: 12, scale: 2 }).default('0'),
+  emptyBottlesProduced: numeric("empty_bottles_produced", { precision: 12, scale: 2 }).default('0'),
+  emptyBottlesUsed: numeric("empty_bottles_used", { precision: 12, scale: 2 }).default('0'),
+  emptyBottlesPending: numeric("empty_bottles_pending", { precision: 12, scale: 2 }).default('0'),
+  derivedUnits: numeric("derived_units", { precision: 12, scale: 2 }), // Calculated: producedQuantity × usableDerivedUnits from Product Master
+  remarks: text("remarks"),
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  // Unique constraint: one production entry per issuance per date per shift
+  unique().on(table.issuanceId, table.productionDate, table.shift),
+]);
+
+export const insertProductionEntrySchema = createInsertSchema(productionEntries, {
+  productionDate: z.union([z.string(), z.date()]).transform(val => {
+    if (!val) return new Date();
+    if (typeof val === 'string') {
+      if (val.trim() === '') return new Date();
+      const date = new Date(val);
+      return isNaN(date.getTime()) ? new Date() : date;
+    }
+    return val;
+  }),
+  shift: z.enum(['A', 'B', 'General'], {
+    errorMap: () => ({ message: "Shift must be one of: A, B, General" })
+  }),
+  producedQuantity: z.union([
+    z.string().transform(val => {
+      const num = parseFloat(val);
+      if (isNaN(num)) throw new Error("Produced quantity must be a valid number");
+      return num;
+    }),
+    z.number()
+  ]).refine(val => val > 0, {
+    message: "Produced quantity must be greater than 0"
+  }),
+  rejectedQuantity: z.union([
+    z.string().transform(val => {
+      if (!val || val.trim() === '') return 0;
+      const num = parseFloat(val);
+      return isNaN(num) ? 0 : num;
+    }),
+    z.number()
+  ]).refine(val => val >= 0, {
+    message: "Rejected quantity must be non-negative"
+  }).optional(),
+  emptyBottlesProduced: z.union([
+    z.string().transform(val => {
+      if (!val || val.trim() === '') return 0;
+      const num = parseFloat(val);
+      return isNaN(num) ? 0 : num;
+    }),
+    z.number()
+  ]).optional(),
+  emptyBottlesUsed: z.union([
+    z.string().transform(val => {
+      if (!val || val.trim() === '') return 0;
+      const num = parseFloat(val);
+      return isNaN(num) ? 0 : num;
+    }),
+    z.number()
+  ]).optional(),
+  emptyBottlesPending: z.union([
+    z.string().transform(val => {
+      if (!val || val.trim() === '') return 0;
+      const num = parseFloat(val);
+      return isNaN(num) ? 0 : num;
+    }),
+    z.number()
+  ]).optional(),
+  derivedUnits: z.union([
+    z.string().transform(val => {
+      if (!val || val.trim() === '') return undefined;
+      const num = parseFloat(val);
+      return isNaN(num) ? undefined : num;
+    }),
+    z.number()
+  ]).optional(),
+}).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertProductionEntry = z.infer<typeof insertProductionEntrySchema>;
+export type ProductionEntry = typeof productionEntries.$inferSelect;
 
 // Gatepasses for Finished Goods Dispatch (Header)
 export const gatepasses = pgTable("gatepasses", {

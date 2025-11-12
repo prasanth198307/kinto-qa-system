@@ -26,6 +26,7 @@ import {
   finishedGoods,
   rawMaterialIssuance,
   rawMaterialIssuanceItems,
+  productionEntries,
   gatepasses,
   gatepassItems,
   invoices,
@@ -90,6 +91,8 @@ import {
   type InsertRawMaterialIssuance,
   type RawMaterialIssuanceItem,
   type InsertRawMaterialIssuanceItem,
+  type ProductionEntry,
+  type InsertProductionEntry,
   type Gatepass,
   type InsertGatepass,
   type GatepassItem,
@@ -295,6 +298,14 @@ export interface IStorage {
   getIssuanceItems(issuanceId: string): Promise<RawMaterialIssuanceItem[]>;
   updateRawMaterialIssuanceItem(id: string, updates: Partial<InsertRawMaterialIssuanceItem>): Promise<RawMaterialIssuanceItem | undefined>;
   deleteRawMaterialIssuanceItem(id: string): Promise<void>;
+  
+  // Production Entries
+  createProductionEntry(entry: InsertProductionEntry): Promise<ProductionEntry>;
+  getAllProductionEntries(): Promise<ProductionEntry[]>;
+  getProductionEntry(id: string): Promise<ProductionEntry | undefined>;
+  getProductionEntriesByIssuance(issuanceId: string): Promise<ProductionEntry[]>;
+  updateProductionEntry(id: string, updates: Partial<InsertProductionEntry>): Promise<ProductionEntry | undefined>;
+  deleteProductionEntry(id: string): Promise<void>;
   
   // Gatepasses
   createGatepass(gatepass: InsertGatepass): Promise<Gatepass>;
@@ -1459,6 +1470,43 @@ export class DatabaseStorage implements IStorage {
 
   async deleteRawMaterialIssuanceItem(id: string): Promise<void> {
     await db.update(rawMaterialIssuanceItems).set({ recordStatus: 0, updatedAt: new Date() }).where(eq(rawMaterialIssuanceItems.id, id));
+  }
+
+  // Production Entries
+  async createProductionEntry(entry: InsertProductionEntry): Promise<ProductionEntry> {
+    const [created] = await db.insert(productionEntries).values(entry).returning();
+    return created;
+  }
+
+  async getAllProductionEntries(): Promise<ProductionEntry[]> {
+    return await db.select().from(productionEntries).where(eq(productionEntries.recordStatus, 1));
+  }
+
+  async getProductionEntry(id: string): Promise<ProductionEntry | undefined> {
+    const [result] = await db.select().from(productionEntries).where(and(eq(productionEntries.id, id), eq(productionEntries.recordStatus, 1)));
+    return result;
+  }
+
+  async getProductionEntriesByIssuance(issuanceId: string): Promise<ProductionEntry[]> {
+    return await db.select().from(productionEntries).where(
+      and(
+        eq(productionEntries.issuanceId, issuanceId),
+        eq(productionEntries.recordStatus, 1)
+      )
+    );
+  }
+
+  async updateProductionEntry(id: string, updates: Partial<InsertProductionEntry>): Promise<ProductionEntry | undefined> {
+    const [updated] = await db
+      .update(productionEntries)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(productionEntries.id, id), eq(productionEntries.recordStatus, 1)))
+      .returning();
+    return updated;
+  }
+
+  async deleteProductionEntry(id: string): Promise<void> {
+    await db.update(productionEntries).set({ recordStatus: 0, updatedAt: new Date() }).where(eq(productionEntries.id, id));
   }
 
   // Gatepass Items

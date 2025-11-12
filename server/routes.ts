@@ -2,12 +2,13 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments } from "@shared/schema";
 import { z } from "zod";
 import path from "path";
 import fs from "fs";
 import { db } from "./db";
 import { whatsappService } from "./whatsappService";
+import { calculateBOMSuggestions } from "@shared/calculations";
 
 // Simple audit logging function
 async function logAudit(userId: string | undefined, action: string, table: string, recordId: string, description: string) {
@@ -2025,12 +2026,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/raw-material-issuances/:id', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
-      const { id } = req.params;
+      const { id} = req.params;
       await storage.deleteRawMaterialIssuance(id);
       res.json({ message: "Raw material issuance deleted successfully" });
     } catch (error) {
       console.error("Error deleting raw material issuance:", error);
       res.status(500).json({ message: "Failed to delete raw material issuance" });
+    }
+  });
+
+  // Get issuance summary with product and BOM data
+  app.get('/api/raw-material-issuances/:id/summary', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Fetch issuance with items
+      const issuance = await storage.getRawMaterialIssuance(id);
+      if (!issuance) {
+        return res.status(404).json({ message: "Raw material issuance not found" });
+      }
+      
+      const items = await storage.getIssuanceItems(id);
+      
+      // Fetch product details if linked
+      let product = null;
+      let bomItems = [];
+      if (issuance.productId) {
+        product = await storage.getProduct(issuance.productId);
+        if (product) {
+          // Fetch BOM with enriched type data
+          const bom = await storage.getProductBom(issuance.productId);
+          
+          // Enrich BOM with raw material type details for conversion calculations
+          bomItems = await Promise.all(
+            bom.map(async (bomItem) => {
+              const material = await storage.getRawMaterial(bomItem.rawMaterialId);
+              let typeDetails = null;
+              if (material?.typeId) {
+                typeDetails = await storage.getRawMaterialType(material.typeId);
+              }
+              return {
+                ...bomItem,
+                material,
+                typeDetails
+              };
+            })
+          );
+        }
+      }
+      
+      res.json({
+        issuance: { ...issuance, items },
+        product,
+        bomItems
+      });
+    } catch (error) {
+      console.error("Error fetching issuance summary:", error);
+      res.status(500).json({ message: "Failed to fetch issuance summary" });
+    }
+  });
+
+  // Production Entry Routes
+  app.get('/api/production-entries', isAuthenticated, async (req: any, res) => {
+    try {
+      const entries = await storage.getAllProductionEntries();
+      res.json(entries);
+    } catch (error) {
+      console.error("Error fetching production entries:", error);
+      res.status(500).json({ message: "Failed to fetch production entries" });
+    }
+  });
+
+  app.post('/api/production-entries', requireRole('admin', 'manager', 'operator'), async (req: any, res) => {
+    try {
+      const entryData = req.body;
+      
+      // Validate entry data
+      const validatedEntry = insertProductionEntrySchema.parse(entryData);
+      
+      // Fetch linked issuance to get product details for derivedUnits calculation
+      const issuance = await storage.getRawMaterialIssuance(validatedEntry.issuanceId);
+      if (!issuance) {
+        return res.status(404).json({ message: "Linked raw material issuance not found" });
+      }
+      
+      // Calculate derivedUnits if product is linked
+      let derivedUnits = null;
+      if (issuance.productId) {
+        const product = await storage.getProduct(issuance.productId);
+        if (product && product.usableDerivedUnits) {
+          // derivedUnits = producedQuantity × usableDerivedUnits from Product Master
+          derivedUnits = Number(validatedEntry.producedQuantity) * Number(product.usableDerivedUnits);
+        }
+      }
+      
+      // Create production entry with calculated derivedUnits
+      const productionEntry = await storage.createProductionEntry({
+        ...validatedEntry,
+        derivedUnits: derivedUnits !== null ? derivedUnits : undefined,
+        createdBy: req.user?.id,
+      });
+      
+      res.json({ entry: productionEntry, message: "Production entry created successfully" });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error creating production entry:", error);
+      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to create production entry" });
     }
   });
 
