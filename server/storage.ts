@@ -27,6 +27,8 @@ import {
   rawMaterialIssuance,
   rawMaterialIssuanceItems,
   productionEntries,
+  productionReconciliations,
+  productionReconciliationItems,
   gatepasses,
   gatepassItems,
   invoices,
@@ -39,6 +41,7 @@ import {
   salesReturnItems,
   creditNotes,
   creditNoteItems,
+  manualCreditNoteRequests,
   checklistAssignments,
   checklistSubmissions,
   submissionTasks,
@@ -97,6 +100,10 @@ import {
   type InsertRawMaterialIssuanceItem,
   type ProductionEntry,
   type InsertProductionEntry,
+  type ProductionReconciliation,
+  type InsertProductionReconciliation,
+  type ProductionReconciliationItem,
+  type InsertProductionReconciliationItem,
   type Gatepass,
   type InsertGatepass,
   type GatepassItem,
@@ -1565,6 +1572,85 @@ export class DatabaseStorage implements IStorage {
 
   async deleteProductionEntry(id: string): Promise<void> {
     await db.update(productionEntries).set({ recordStatus: 0, updatedAt: new Date() }).where(eq(productionEntries.id, id));
+  }
+
+  // Production Reconciliations
+  async createProductionReconciliation(reconciliation: InsertProductionReconciliation): Promise<ProductionReconciliation> {
+    const [created] = await db.insert(productionReconciliations).values(reconciliation).returning();
+    return created;
+  }
+
+  async getAllProductionReconciliations(): Promise<ProductionReconciliation[]> {
+    return await db.select().from(productionReconciliations).where(eq(productionReconciliations.recordStatus, 1));
+  }
+
+  async getProductionReconciliation(id: string): Promise<ProductionReconciliation | undefined> {
+    const [result] = await db.select().from(productionReconciliations).where(and(eq(productionReconciliations.id, id), eq(productionReconciliations.recordStatus, 1)));
+    return result;
+  }
+
+  async getProductionReconciliationByNumber(reconciliationNumber: string): Promise<ProductionReconciliation | undefined> {
+    const [result] = await db.select().from(productionReconciliations).where(and(eq(productionReconciliations.reconciliationNumber, reconciliationNumber), eq(productionReconciliations.recordStatus, 1)));
+    return result;
+  }
+
+  async getReconciliationsByIssuance(issuanceId: string): Promise<ProductionReconciliation[]> {
+    return await db.select().from(productionReconciliations).where(
+      and(
+        eq(productionReconciliations.issuanceId, issuanceId),
+        eq(productionReconciliations.recordStatus, 1)
+      )
+    );
+  }
+
+  async getReconciliationsByProduction(productionEntryId: string): Promise<ProductionReconciliation[]> {
+    return await db.select().from(productionReconciliations).where(
+      and(
+        eq(productionReconciliations.productionEntryId, productionEntryId),
+        eq(productionReconciliations.recordStatus, 1)
+      )
+    );
+  }
+
+  async updateProductionReconciliation(id: string, updates: Partial<InsertProductionReconciliation>): Promise<ProductionReconciliation | undefined> {
+    const [updated] = await db
+      .update(productionReconciliations)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(productionReconciliations.id, id), eq(productionReconciliations.recordStatus, 1)))
+      .returning();
+    return updated;
+  }
+
+  async deleteProductionReconciliation(id: string): Promise<void> {
+    await db.update(productionReconciliations).set({ recordStatus: 0, updatedAt: new Date() }).where(eq(productionReconciliations.id, id));
+  }
+
+  // Production Reconciliation Items
+  async createProductionReconciliationItem(item: InsertProductionReconciliationItem): Promise<ProductionReconciliationItem> {
+    const [created] = await db.insert(productionReconciliationItems).values(item).returning();
+    return created;
+  }
+
+  async getReconciliationItems(reconciliationId: string): Promise<ProductionReconciliationItem[]> {
+    return await db.select().from(productionReconciliationItems).where(
+      and(
+        eq(productionReconciliationItems.reconciliationId, reconciliationId),
+        eq(productionReconciliationItems.recordStatus, 1)
+      )
+    );
+  }
+
+  async updateProductionReconciliationItem(id: string, updates: Partial<InsertProductionReconciliationItem>): Promise<ProductionReconciliationItem | undefined> {
+    const [updated] = await db
+      .update(productionReconciliationItems)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(productionReconciliationItems.id, id), eq(productionReconciliationItems.recordStatus, 1)))
+      .returning();
+    return updated;
+  }
+
+  async deleteProductionReconciliationItem(id: string): Promise<void> {
+    await db.update(productionReconciliationItems).set({ recordStatus: 0, updatedAt: new Date() }).where(eq(productionReconciliationItems.id, id));
   }
 
   // Gatepass Items

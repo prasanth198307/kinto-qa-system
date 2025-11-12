@@ -10,6 +10,7 @@ import {
   integer,
   numeric,
   unique,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -1901,10 +1902,13 @@ export const productionReconciliations = pgTable("production_reconciliations", {
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-}, (table) => ({
+}, (table) => [
   // Composite unique index: prevent duplicate reconciliations for same issuance + shift
-  uniqueIssuanceShift: unique().on(table.issuanceId, table.shift),
-}));
+  uniqueIndex("production_reconciliations_issuance_shift_idx").on(table.issuanceId, table.shift),
+  // Multi-column indexes for dashboard queries
+  index("production_reconciliations_date_shift_status_idx").on(table.reconciliationDate, table.shift, table.recordStatus),
+  index("production_reconciliations_issuance_status_idx").on(table.issuanceId, table.recordStatus),
+]);
 
 export const insertProductionReconciliationSchema = createInsertSchema(productionReconciliations, {
   reconciliationDate: z.union([z.string(), z.date()]).transform(val => {
