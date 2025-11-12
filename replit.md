@@ -22,7 +22,7 @@ The backend is an Express.js application with TypeScript and Node.js. It uses Em
 - **Invoice & Gatepass Management:** Enforces an Invoice-First Gatepass Flow, manages templates, and includes enhanced forms with print preview and smart item entry (auto-fills product details from master data).
 - **Centralized Reports Module:** Unified page for operational and GST reports (GSTR-1, GSTR-3B) with filtering and export.
 - **Complete Dispatch Tracking Workflow:** A 5-stage workflow (Invoice Creation to Proof of Delivery) with status validation and digital signature.
-- **Comprehensive Role Permissions Management:** Granular access control across 26 system screens.
+- **Comprehensive Role Permissions Management:** Granular access control across 36 system screens with metadata-driven UI (allowedActions field controls view-only vs. full CRUD permissions). Snake_case screen keys maintain backward compatibility with existing database records.
 - **Two-Way WhatsApp Integration:** Production-ready integration using Meta WhatsApp Business Cloud API for outbound reminders and inbound checklist completion.
 - **Raw Material Type Master System:** Manages raw material definitions with three conversion methods (Formula-Based, Direct-Value, Output-Coverage) and accounts for loss percentage. Integrates with enhanced raw material entry for dual stock management modes.
 - **Product Master with Bill of Materials (BOM):** Comprehensive product management with multi-tabbed form interface for Product Info, Packaging & Conversion, Pricing & Tax, and Bill of Materials. Supports empty BOMs and atomic BOM replacements via transactions.
