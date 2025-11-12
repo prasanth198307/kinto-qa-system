@@ -971,25 +971,26 @@ export class DatabaseStorage implements IStorage {
   async getProductBom(productId: string): Promise<any[]> {
     // Return enriched data with raw material details (code, name, UOM)
     const bomItems = await db
-      .select({
-        id: productBom.id,
-        productId: productBom.productId,
-        rawMaterialId: productBom.rawMaterialId,
-        quantityPerProduct: productBom.quantityPerProduct,
-        unitOfMeasure: productBom.unitOfMeasure,
-        usageMethod: productBom.usageMethod,
-        notes: productBom.notes,
-        // Raw material details
-        materialCode: rawMaterials.materialCode,
-        materialName: rawMaterials.materialName,
-        materialCategory: rawMaterials.category,
-      })
+      .select()
       .from(productBom)
       .leftJoin(rawMaterials, eq(productBom.rawMaterialId, rawMaterials.id))
       .where(and(eq(productBom.productId, productId), eq(productBom.recordStatus, 1)))
       .orderBy(productBom.createdAt);
     
-    return bomItems;
+    // Transform the joined data into a flatter structure
+    return bomItems.map(item => ({
+      id: item.product_bom.id,
+      productId: item.product_bom.productId,
+      rawMaterialId: item.product_bom.rawMaterialId,
+      quantityPerProduct: item.product_bom.quantityPerProduct,
+      unitOfMeasure: item.product_bom.unitOfMeasure,
+      usageMethod: item.product_bom.usageMethod,
+      notes: item.product_bom.notes,
+      // Raw material details (will be null if material not found)
+      materialCode: item.raw_materials?.materialCode || null,
+      materialName: item.raw_materials?.materialName || null,
+      materialCategory: item.raw_materials?.category || null,
+    }));
   }
 
   async getProductBomItem(id: string): Promise<ProductBom | undefined> {

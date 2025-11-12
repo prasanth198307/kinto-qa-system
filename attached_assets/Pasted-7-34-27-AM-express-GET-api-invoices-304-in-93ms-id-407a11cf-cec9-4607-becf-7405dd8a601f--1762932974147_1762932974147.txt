@@ -1,0 +1,28 @@
+7:34:27 AM [express] GET /api/invoices 304 in 93ms :: [{"id":"407a11cf-cec9-4607-becf-7405dd8a601f",…
+7:34:27 AM [express] GET /api/pm-task-list-templates 304 in 82ms :: [{"id":"d2a9ce29-3895-45a7-86fa-…
+7:34:27 AM [express] GET /api/finished-goods 304 in 84ms :: [{"id":"fg_yXeC6v1A","productId":"prod_-…
+7:34:27 AM [express] GET /api/invoice-payments 304 in 92ms :: []
+🔹 Request: GET /api/uom
+   Cookie header: connect.sid=s%3ANqZh_AvS-Rb3pPFLZk_nepDfgVGyxtUs.sSTKCinH6dFSofzDuWIZfzTSiP4CFl3URg5PBzc3xS0
+   Session ID: NqZh_AvS-Rb3pPFLZk_nepDfgVGyxtUs
+   Authenticated: true
+7:35:06 AM [express] GET /api/uom 304 in 241ms :: [{"id":"022a89b7-d1a2-4b96-9cc6-ed3b3e3f1937","cod…
+🔹 Request: GET /api/products/0dcb0979-86e7-411a-9af2-e92c87ec1db1/bom
+   Cookie header: connect.sid=s%3ANqZh_AvS-Rb3pPFLZk_nepDfgVGyxtUs.sSTKCinH6dFSofzDuWIZfzTSiP4CFl3URg5PBzc3xS0
+   Session ID: NqZh_AvS-Rb3pPFLZk_nepDfgVGyxtUs
+   Authenticated: true
+Error fetching product BOM: TypeError: Cannot convert undefined or null to object
+    at Function.entries (<anonymous>)
+    at orderSelectedFields (/home/runner/workspace/node_modules/src/utils.ts:77:16)
+    at <anonymous> (/home/runner/workspace/node_modules/src/utils.ts:88:19)
+    at Array.reduce (<anonymous>)
+    at orderSelectedFields (/home/runner/workspace/node_modules/src/utils.ts:77:32)
+    at <anonymous> (/home/runner/workspace/node_modules/src/pg-core/query-builders/select.ts:979:23)
+    at Object.startActiveSpan (/home/runner/workspace/node_modules/src/tracing.ts:27:11)
+    at PgSelectBase._prepare (/home/runner/workspace/node_modules/src/pg-core/query-builders/select.ts:978:17)
+    at <anonymous> (/home/runner/workspace/node_modules/src/pg-core/query-builders/select.ts:1009:16)
+    at Object.startActiveSpan (/home/runner/workspace/node_modules/src/tracing.ts:27:11)
+    at PgSelectBase.execute (/home/runner/workspace/node_modules/src/pg-core/query-builders/select.ts:1008:17)
+    at PgSelectBase.then (/home/runner/workspace/node_modules/src/query-promise.ts:31:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+7:35:33 AM [express] GET /api/products/0dcb0979-86e7-411a-9af2-e92c87ec1db1/bom 500 in 217ms :: {"me…
