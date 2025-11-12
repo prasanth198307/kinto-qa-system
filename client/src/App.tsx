@@ -43,6 +43,10 @@ import NotificationSettings from "@/pages/notification-settings";
 import Reports from "@/pages/reports";
 import WhatsAppAnalytics from "@/pages/WhatsAppAnalytics";
 import TemplateManagement from "@/pages/template-management";
+import ProductCategories from "@/pages/product-categories";
+import ProductTypes from "@/pages/product-types";
+import PendingPayments from "@/pages/pending-payments";
+import CreditNotes from "@/pages/credit-notes";
 import InventorySummaryDashboard from "@/components/InventorySummaryDashboard";
 import TodayProductionStats from "@/components/TodayProductionStats";
 import RolePermissionsView from "@/components/RolePermissionsView";
@@ -51,7 +55,7 @@ import { ManagerChecklistAssignment } from "@/components/ManagerChecklistAssignm
 import PendingPaymentsDashboard from "@/components/PendingPaymentsDashboard";
 import { OperatorAssignedChecklists } from "@/components/OperatorAssignedChecklists";
 import { VerticalNavSidebar, type NavSection } from "@/components/VerticalNavSidebar";
-import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator } from "lucide-react";
+import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard } from "lucide-react";
 import SalesDashboard from "@/components/SalesDashboard";
 import ReviewerDashboardPage from "@/pages/ReviewerDashboard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -561,6 +565,8 @@ function AdminDashboard() {
       label: "Production",
       items: [
         { id: "products", label: "Product Master", icon: Package },
+        { id: "product-categories", label: "Product Categories", icon: Layers },
+        { id: "product-types", label: "Product Types", icon: Archive },
         { id: "checklists", label: "Checklist Builder", icon: FileText },
         { id: "raw-materials", label: "Raw Materials", icon: Box },
         { id: "finished-goods", label: "Finished Goods", icon: CheckCircle2 },
@@ -610,6 +616,30 @@ function AdminDashboard() {
       ],
     },
     {
+      id: "finance-section",
+      label: "Finance & Sales",
+      items: [
+        { id: "invoices", label: "Sales Invoices", icon: Receipt },
+        { id: "pending-payments", label: "Pending Payments", icon: IndianRupee },
+        { id: "credit-notes", label: "Credit Notes", icon: CreditCard },
+        { id: "sales-returns", label: "Sales Returns", icon: Package },
+      ],
+      quickActions: [
+        {
+          id: "create-invoice",
+          label: "Create Invoice",
+          icon: Receipt,
+          onClick: () => setActiveView("invoices"),
+        },
+        {
+          id: "view-pending-payments",
+          label: "View Payments",
+          icon: IndianRupee,
+          onClick: () => setActiveView("pending-payments"),
+        },
+      ],
+    },
+    {
       id: "production-operations",
       label: "Production Operations",
       items: [
@@ -617,7 +647,6 @@ function AdminDashboard() {
         { id: "production-entries", label: "Production Entries", icon: ListChecks },
         { id: "production-reconciliations", label: "Production Reconciliation", icon: Calculator },
         { id: "gatepasses", label: "Gatepasses", icon: FileText },
-        { id: "invoices", label: "Sales Invoices", icon: Receipt },
         { id: "dispatch-tracking", label: "Dispatch Tracking", icon: Truck },
         { id: "machine-startup-reminders", label: "Machine Startup Reminders", icon: Bell },
         { id: "whatsapp-analytics", label: "WhatsApp Analytics", icon: TrendingUp },
@@ -636,12 +665,6 @@ function AdminDashboard() {
           label: "Create Gatepass",
           icon: FileText,
           onClick: () => setActiveView("gatepasses"),
-        },
-        {
-          id: "create-invoice",
-          label: "Create Invoice",
-          icon: Receipt,
-          onClick: () => setActiveView("invoices"),
         },
       ],
     },
@@ -737,6 +760,10 @@ function AdminDashboard() {
       case 'finished-goods':
       case 'vendors':
         return <InventoryManagement activeTab={activeView} />;
+      case 'product-categories':
+        return <ProductCategories />;
+      case 'product-types':
+        return <ProductTypes />;
       case 'raw-material-types':
         return <RawMaterialTypeMaster />;
       case 'raw-material-issuance':
@@ -751,6 +778,12 @@ function AdminDashboard() {
         return <ProductionReconciliationReport />;
       case 'variance-analytics':
         return <VarianceAnalytics />;
+      case 'sales-returns':
+        return <SalesReturns />;
+      case 'pending-payments':
+        return <PendingPayments />;
+      case 'credit-notes':
+        return <CreditNotes />;
       case 'dispatch-tracking':
         return <DispatchTracking showHeader={false} />;
       case 'machine-startup-reminders':

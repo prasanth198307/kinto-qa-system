@@ -48,7 +48,14 @@ export default function VarianceAnalytics() {
 
   // Fetch analytics data
   const { data: analyticsData, isLoading } = useQuery<AnalyticsResponse>({
-    queryKey: ['/api/analytics/variance', { period: selectedPeriod, year: selectedYear }],
+    queryKey: ['/api/analytics/variance', selectedPeriod, selectedYear],
+    queryFn: async () => {
+      const res = await fetch(`/api/analytics/variance?period=${selectedPeriod}&year=${selectedYear}`, {
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to fetch analytics');
+      return res.json();
+    },
   });
 
   const analytics = analyticsData?.analytics || [];
