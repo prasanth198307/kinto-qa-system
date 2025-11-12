@@ -57,7 +57,10 @@ async function comparePasswords(supplied: string, stored: string) {
 export function setupAuth(app: Express) {
   // Auto-detect Replit environment (which uses HTTPS) or check explicit flag
   const isReplit = !!(process.env.REPLIT_DOMAINS || process.env.REPLIT_DEV_DOMAIN);
-  const useHttps = process.env.USE_HTTPS === "true" || isReplit;
+  const isDevelopment = process.env.NODE_ENV === "development";
+  
+  // In development with Vite, disable secure cookies to allow them to work
+  const useSecure = !isDevelopment && isReplit;
 
   // --- Session configuration ---
   const sessionSettings: session.SessionOptions = {
@@ -68,13 +71,14 @@ export function setupAuth(app: Express) {
     cookie: {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       httpOnly: true,
-      secure: useHttps,
-      sameSite: "lax", // Always use "lax" since frontend/backend are same-origin
+      secure: useSecure, // Disable in development to allow cookies in Vite dev server
+      sameSite: "lax",
+      path: "/",
     },
   };
 
   console.log(
-    `🔧 Session configured — Secure Cookies: ${useHttps}, SameSite: Lax${isReplit ? " (Replit auto-detected)" : ""}`
+    `🔧 Session configured — Secure: ${useSecure}, SameSite: Lax, Dev Mode: ${isDevelopment}${isReplit ? " (Replit)" : ""}`
   );
 
   app.set("trust proxy", 1);
