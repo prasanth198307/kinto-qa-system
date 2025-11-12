@@ -15,6 +15,8 @@ import {
   pmExecutions,
   pmExecutionTasks,
   uom,
+  productCategories,
+  productTypes,
   products,
   productBom,
   vendors,
@@ -66,6 +68,10 @@ import {
   type InsertPMExecutionTask,
   type Uom,
   type InsertUom,
+  type ProductCategory,
+  type InsertProductCategory,
+  type ProductType,
+  type InsertProductType,
   type Product,
   type InsertProduct,
   type ProductBom,
@@ -200,6 +206,20 @@ export interface IStorage {
   getUom(id: string): Promise<Uom | undefined>;
   updateUom(id: string, uom: Partial<InsertUom>): Promise<Uom | undefined>;
   deleteUom(id: string): Promise<void>;
+  
+  // Product Category Master
+  createProductCategory(category: InsertProductCategory): Promise<ProductCategory>;
+  getAllProductCategories(): Promise<ProductCategory[]>;
+  getProductCategory(id: string): Promise<ProductCategory | undefined>;
+  updateProductCategory(id: string, category: Partial<InsertProductCategory>): Promise<ProductCategory | undefined>;
+  deleteProductCategory(id: string): Promise<void>;
+  
+  // Product Type Master
+  createProductType(type: InsertProductType): Promise<ProductType>;
+  getAllProductTypes(): Promise<ProductType[]>;
+  getProductType(id: string): Promise<ProductType | undefined>;
+  updateProductType(id: string, type: Partial<InsertProductType>): Promise<ProductType | undefined>;
+  deleteProductType(id: string): Promise<void>;
   
   // Product Master
   createProduct(product: InsertProduct): Promise<Product>;
@@ -909,6 +929,68 @@ export class DatabaseStorage implements IStorage {
       .update(uom)
       .set({ recordStatus: 0, updatedAt: new Date() })
       .where(eq(uom.id, id));
+  }
+
+  // Product Category Master
+  async createProductCategory(category: InsertProductCategory): Promise<ProductCategory> {
+    const [created] = await db.insert(productCategories).values(category).returning();
+    return created;
+  }
+
+  async getAllProductCategories(): Promise<ProductCategory[]> {
+    return await db.select().from(productCategories).where(eq(productCategories.recordStatus, 1));
+  }
+
+  async getProductCategory(id: string): Promise<ProductCategory | undefined> {
+    const [result] = await db.select().from(productCategories).where(and(eq(productCategories.id, id), eq(productCategories.recordStatus, 1)));
+    return result;
+  }
+
+  async updateProductCategory(id: string, categoryData: Partial<InsertProductCategory>): Promise<ProductCategory | undefined> {
+    const [updated] = await db
+      .update(productCategories)
+      .set({ ...categoryData, updatedAt: new Date() })
+      .where(and(eq(productCategories.id, id), eq(productCategories.recordStatus, 1)))
+      .returning();
+    return updated;
+  }
+
+  async deleteProductCategory(id: string): Promise<void> {
+    await db
+      .update(productCategories)
+      .set({ recordStatus: 0, updatedAt: new Date() })
+      .where(eq(productCategories.id, id));
+  }
+
+  // Product Type Master
+  async createProductType(type: InsertProductType): Promise<ProductType> {
+    const [created] = await db.insert(productTypes).values(type).returning();
+    return created;
+  }
+
+  async getAllProductTypes(): Promise<ProductType[]> {
+    return await db.select().from(productTypes).where(eq(productTypes.recordStatus, 1));
+  }
+
+  async getProductType(id: string): Promise<ProductType | undefined> {
+    const [result] = await db.select().from(productTypes).where(and(eq(productTypes.id, id), eq(productTypes.recordStatus, 1)));
+    return result;
+  }
+
+  async updateProductType(id: string, typeData: Partial<InsertProductType>): Promise<ProductType | undefined> {
+    const [updated] = await db
+      .update(productTypes)
+      .set({ ...typeData, updatedAt: new Date() })
+      .where(and(eq(productTypes.id, id), eq(productTypes.recordStatus, 1)))
+      .returning();
+    return updated;
+  }
+
+  async deleteProductType(id: string): Promise<void> {
+    await db
+      .update(productTypes)
+      .set({ recordStatus: 0, updatedAt: new Date() })
+      .where(eq(productTypes.id, id));
   }
 
   // Product Master

@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments } from "@shared/schema";
 import { z } from "zod";
 import path from "path";
 import fs from "fs";
@@ -1104,6 +1104,142 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting UOM:", error);
       res.status(500).json({ message: "Failed to delete UOM" });
+    }
+  });
+
+  // Product Category API
+  app.get('/api/product-categories', isAuthenticated, async (req: any, res) => {
+    try {
+      const categories = await storage.getAllProductCategories();
+      res.json(categories);
+    } catch (error) {
+      console.error("Error fetching product categories:", error);
+      res.status(500).json({ message: "Failed to fetch product categories" });
+    }
+  });
+
+  app.post('/api/product-categories', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const validatedData = insertProductCategorySchema.parse(req.body);
+      const created = await storage.createProductCategory(validatedData);
+      res.json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error creating product category:", error);
+      res.status(500).json({ message: "Failed to create product category" });
+    }
+  });
+
+  app.get('/api/product-categories/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const category = await storage.getProductCategory(id);
+      if (!category) {
+        return res.status(404).json({ message: "Product category not found" });
+      }
+      res.json(category);
+    } catch (error) {
+      console.error("Error fetching product category:", error);
+      res.status(500).json({ message: "Failed to fetch product category" });
+    }
+  });
+
+  app.patch('/api/product-categories/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertProductCategorySchema.partial().parse(req.body);
+      const updated = await storage.updateProductCategory(id, validatedData);
+      if (!updated) {
+        return res.status(404).json({ message: "Product category not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error updating product category:", error);
+      res.status(500).json({ message: "Failed to update product category" });
+    }
+  });
+
+  app.delete('/api/product-categories/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteProductCategory(id);
+      res.json({ message: "Product category deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting product category:", error);
+      res.status(500).json({ message: "Failed to delete product category" });
+    }
+  });
+
+  // Product Type API
+  app.get('/api/product-types', isAuthenticated, async (req: any, res) => {
+    try {
+      const types = await storage.getAllProductTypes();
+      res.json(types);
+    } catch (error) {
+      console.error("Error fetching product types:", error);
+      res.status(500).json({ message: "Failed to fetch product types" });
+    }
+  });
+
+  app.post('/api/product-types', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const validatedData = insertProductTypeSchema.parse(req.body);
+      const created = await storage.createProductType(validatedData);
+      res.json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error creating product type:", error);
+      res.status(500).json({ message: "Failed to create product type" });
+    }
+  });
+
+  app.get('/api/product-types/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const type = await storage.getProductType(id);
+      if (!type) {
+        return res.status(404).json({ message: "Product type not found" });
+      }
+      res.json(type);
+    } catch (error) {
+      console.error("Error fetching product type:", error);
+      res.status(500).json({ message: "Failed to fetch product type" });
+    }
+  });
+
+  app.patch('/api/product-types/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertProductTypeSchema.partial().parse(req.body);
+      const updated = await storage.updateProductType(id, validatedData);
+      if (!updated) {
+        return res.status(404).json({ message: "Product type not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error updating product type:", error);
+      res.status(500).json({ message: "Failed to update product type" });
+    }
+  });
+
+  app.delete('/api/product-types/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteProductType(id);
+      res.json({ message: "Product type deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting product type:", error);
+      res.status(500).json({ message: "Failed to delete product type" });
     }
   });
 
