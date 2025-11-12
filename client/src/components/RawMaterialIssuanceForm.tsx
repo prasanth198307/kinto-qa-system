@@ -4,15 +4,17 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, type RawMaterial, type Product, type Uom, type RawMaterialIssuance, type RawMaterialIssuanceItem } from "@shared/schema";
+import { calculateBOMSuggestions } from "@shared/calculations";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, AlertCircle } from "lucide-react";
 
 const headerSchema = insertRawMaterialIssuanceSchema.omit({ issuanceNumber: true });
 const itemSchema = insertRawMaterialIssuanceItemSchema.omit({ issuanceId: true });
@@ -34,7 +36,9 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
   const [items, setItems] = useState([{ 
     rawMaterialId: "", 
     productId: "", 
-    quantityIssued: 0, 
+    quantityIssued: 0,
+    suggestedQuantity: undefined,
+    calculationBasis: undefined,
     uomId: "", 
     remarks: "" 
   }]);
@@ -62,10 +66,23 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
       header: {
         issuanceDate: new Date(),
         issuedTo: "",
+        productId: undefined,
+        productionReference: "",
+        plannedOutput: undefined,
         remarks: "",
       },
       items: items,
     },
+  });
+
+  // Watch header values for BOM auto-population (MUST be after useForm)
+  const selectedProductId = form.watch('header.productId');
+  const plannedOutput = form.watch('header.plannedOutput');
+
+  // Fetch BOM data when product is selected
+  const { data: bomData, isLoading: isBomLoading } = useQuery({
+    queryKey: ['/api/products', selectedProductId, 'bom-with-types'],
+    enabled: !!selectedProductId && selectedProductId !== "",
   });
 
   useEffect(() => {
@@ -73,7 +90,9 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
       const mappedItems = issuanceItems.map(item => ({
         rawMaterialId: item.rawMaterialId,
         productId: item.productId,
-        quantityIssued: item.quantityIssued,
+        quantityIssued: Number(item.quantityIssued) || 0,
+        suggestedQuantity: item.suggestedQuantity ? Number(item.suggestedQuantity) : undefined,
+        calculationBasis: item.calculationBasis as 'formula-based' | 'direct-value' | 'output-coverage' | 'manual' | undefined,
         uomId: item.uomId || "",
         remarks: item.remarks || "",
       }));
@@ -83,12 +102,50 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
         header: {
           issuanceDate: issuance.issuanceDate ? new Date(issuance.issuanceDate) : new Date(),
           issuedTo: issuance.issuedTo || "",
+          productId: issuance.productId || undefined,
+          productionReference: issuance.productionReference || "",
+          plannedOutput: issuance.plannedOutput ? Number(issuance.plannedOutput) : undefined,
           remarks: issuance.remarks || "",
         },
         items: mappedItems,
       });
     }
   }, [issuance, issuanceItems, form]);
+
+  // Auto-populate items when BOM data and planned output are available
+  useEffect(() => {
+    // Only auto-populate for new issuances (not editing existing ones)
+    if (issuance) return;
+
+    // Require both product and planned output to calculate suggestions
+    if (!bomData || !bomData.items || !plannedOutput || plannedOutput <= 0) return;
+
+    // Calculate suggested quantities using the shared calculation utility
+    // calculateBOMSuggestions returns a Map<materialId, suggestion>
+    const suggestionsMap = calculateBOMSuggestions(plannedOutput, bomData.items);
+
+    // Convert Map to array for form structure
+    const bomItems = Array.from(suggestionsMap.values()).map(suggestion => ({
+      rawMaterialId: suggestion.rawMaterialId,
+      productId: selectedProductId || "",
+      quantityIssued: suggestion.roundedQuantity, // Pre-fill with suggested (rounded up)
+      suggestedQuantity: suggestion.suggestedQuantity,
+      calculationBasis: suggestion.calculationBasis,
+      uomId: suggestion.uomId || "",
+      remarks: suggestion.calculationDetails || "",
+    }));
+
+    // Update items state and form
+    if (bomItems.length > 0) {
+      setItems(bomItems);
+      form.setValue('items', bomItems);
+      
+      toast({
+        title: "BOM Loaded",
+        description: `${bomItems.length} materials auto-populated from product BOM`,
+      });
+    }
+  }, [bomData, plannedOutput, selectedProductId, issuance, form, toast]);
 
   const saveMutation = useMutation({
     mutationFn: async (data: FormData) => {
@@ -121,7 +178,9 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
     const newItems = [...items, { 
       rawMaterialId: "", 
       productId: "", 
-      quantityIssued: 0, 
+      quantityIssued: 0,
+      suggestedQuantity: undefined,
+      calculationBasis: 'manual' as const,
       uomId: "", 
       remarks: "" 
     }];
@@ -139,7 +198,15 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
 
   const handleClose = () => {
     form.reset();
-    setItems([{ rawMaterialId: "", productId: "", quantityIssued: 0, uomId: "", remarks: "" }]);
+    setItems([{ 
+      rawMaterialId: "", 
+      productId: "", 
+      quantityIssued: 0,
+      suggestedQuantity: undefined,
+      calculationBasis: undefined,
+      uomId: "", 
+      remarks: "" 
+    }]);
     onClose();
   };
 
@@ -199,6 +266,76 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
 
               <FormField
                 control={form.control}
+                name="header.productId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Product (Optional)</FormLabel>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      value={field.value || ""}
+                    >
+                      <FormControl>
+                        <SelectTrigger data-testid="select-product">
+                          <SelectValue placeholder="Select product to auto-load BOM" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="">-- None --</SelectItem>
+                        {products.map((product) => (
+                          <SelectItem key={product.id} value={product.id}>
+                            {product.productName} ({product.productCode})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="header.productionReference"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Production Reference (Optional)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        {...field} 
+                        value={field.value || ""} 
+                        placeholder="Batch ID / FG Name / Shift No" 
+                        data-testid="input-production-reference" 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="header.plannedOutput"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Planned Output (Optional)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={field.value || ""} 
+                        onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                        placeholder="Expected production quantity" 
+                        data-testid="input-planned-output" 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
                 name="header.remarks"
                 render={({ field }) => (
                   <FormItem>
@@ -218,7 +355,7 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
               <h4 className="font-semibold text-sm">Material Items</h4>
               <Button type="button" variant="outline" size="sm" onClick={addItem} data-testid="button-add-item">
                 <Plus className="w-4 h-4 mr-2" />
-                Add Item
+                Add off-BOM Item
               </Button>
             </div>
 
@@ -226,7 +363,14 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
               <Card key={index} className="p-4">
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
-                    <h5 className="text-sm font-medium">Item {index + 1}</h5>
+                    <div className="flex items-center gap-2">
+                      <h5 className="text-sm font-medium">Item {index + 1}</h5>
+                      {items[index]?.calculationBasis && items[index].calculationBasis !== 'manual' && (
+                        <Badge variant="secondary" className="text-xs" data-testid={`badge-calculation-${index}`}>
+                          {items[index].calculationBasis}
+                        </Badge>
+                      )}
+                    </div>
                     {items.length > 1 && (
                       <Button
                         type="button"
@@ -291,17 +435,26 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
                       )}
                     />
 
+                    {items[index]?.suggestedQuantity !== undefined && (
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium">Suggested Quantity</label>
+                        <div className="flex items-center h-9 px-3 border rounded-md bg-muted text-sm" data-testid={`display-suggested-${index}`}>
+                          {items[index].suggestedQuantity?.toFixed(2) || '0.00'}
+                        </div>
+                      </div>
+                    )}
+
                     <FormField
                       control={form.control}
                       name={`items.${index}.quantityIssued`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Quantity Issued</FormLabel>
+                          <FormLabel>Quantity Issued (Actual)</FormLabel>
                           <FormControl>
                             <Input
                               type="number"
                               {...field}
-                              onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                              onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                               data-testid={`input-quantity-${index}`}
                             />
                           </FormControl>
