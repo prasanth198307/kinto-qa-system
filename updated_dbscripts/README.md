@@ -1,67 +1,133 @@
-# Updated Database Scripts
+# Incremental Database Migrations
 
-This folder contains database migration scripts that were created during development.
+This folder contains incremental SQL migration scripts that add new features and schema changes to the KINTO Operations & QA system beyond the initial baseline schema in `database_scripts/`.
 
-## Migration Files
+## Migration Execution Order
 
-These are **optional** migration scripts. The main schema in `database_scripts/01_schema.sql` already includes these changes.
+These scripts should be executed **in timestamp order** against a database that already has the baseline schema from `database_scripts/`.
 
-### Available Migrations
+### Legacy Migrations (Nov 2024)
+1. `20251106_163500_production_management.sql` - Production management tables
+2. `20251107_020000_notification_config.sql` - Notification configuration
+3. `20251110_incremental_whatsapp_checklist.sql` - WhatsApp checklist features
+4. `20251111_add_photo_spare_parts_columns.sql` - Photo and spare parts columns
 
-1. **20251106_163500_production_management.sql** - Production management features
-2. **20251107_020000_notification_config.sql** - Notification configuration
-3. **20251110_incremental_whatsapp_checklist.sql** - Incremental WhatsApp checklist completion with partial_task_answers table
-4. **20251111_add_photo_spare_parts_columns.sql** - ⚠️ **REQUIRED** - Adds photo and spare parts columns to partial_task_answers table
+### Complete Schema Migrations (Nov 12, 2024)
+These migrations add **21 critical tables** for production-ready features:
 
----
+**4. `20251112_140000_financial_invoicing.sql` - Financial & Invoicing System (7 tables)**
+- **Tables:** banks, invoices, invoice_items, invoice_payments, invoice_templates, terms_conditions
+- **Dependencies:** None (master data)
+- **Features:** Complete invoice management, payment tracking, bank details, invoice templates
 
-## When to Use
+**5. `20251112_140001_sales_returns_credit_notes.sql` - Sales Returns & Credit Notes (5 tables)**
+- **Tables:** sales_returns, sales_return_items, credit_notes, credit_note_items, manual_credit_note_requests
+- **Dependencies:** invoices, invoice_items, products
+- **Features:** Post-delivery returns, quality segregation, automatic credit note generation, GST compliance
 
-These migration files are **only needed** if:
-- You have an existing database from before November 6, 2025
-- You want to update it without recreating from scratch
+**6. `20251112_140002_production_management.sql` - Production Management System (5 tables)**
+- **Tables:** raw_material_types, product_bom, production_entries, production_reconciliations, production_reconciliation_items
+- **Dependencies:** products, raw_materials, uom, raw_material_issuance
+- **Features:** BOM-driven issuance, production variance analysis, reconciliation workflow, material tracking
 
-For **new installations**, use `database_scripts/` instead.
+**7. `20251112_140003_configuration_assignments.sql` - Configuration & Assignments (4 tables)**
+- **Tables:** product_categories, product_types, notification_config, machine_startup_tasks, checklist_assignments
+- **Dependencies:** machines, checklist_templates, users
+- **Features:** Product classification, notification system, startup reminders, checklist workflow
 
----
+## Deployment Workflow
 
-## How to Apply Migrations
-
+### Development Environment
+Use Drizzle ORM's push command (automatically syncs schema):
 ```bash
-# Connect to your database
-psql -U postgres -d kinto_qa
-
-# Apply migrations in order
-\i updated_dbscripts/20251106_163500_production_management.sql
-\i updated_dbscripts/20251107_020000_notification_config.sql
-\i updated_dbscripts/20251110_incremental_whatsapp_checklist.sql
-\i updated_dbscripts/20251111_add_photo_spare_parts_columns.sql
-```
-
----
-
-## ⚠️ Important Notes
-
-1. **New Installations:** Use `database_scripts/01_schema.sql` - it already includes everything
-2. **Existing Databases:** Use these migrations to update incrementally
-3. **Always Backup:** Before running any migration, backup your database:
-   ```bash
-   pg_dump -U postgres kinto_qa > backup_before_migration.sql
-   ```
-
----
-
-## Preferred Method: Drizzle ORM
-
-Instead of manual SQL migrations, the recommended approach is:
-
-```bash
-# Push schema changes using Drizzle
 npm run db:push
 ```
 
-This automatically syncs your database with the schema defined in `shared/schema.ts`.
+### Production Environment
+Execute SQL migration files in order:
+```bash
+# 1. Ensure baseline schema exists (database_scripts/)
+psql -d $DATABASE_URL -f database_scripts/01_schema.sql
+psql -d $DATABASE_URL -f database_scripts/02_seed_data.sql
+psql -d $DATABASE_URL -f database_scripts/03_indexes.sql
 
----
+# 2. Run legacy migrations
+psql -d $DATABASE_URL -f updated_dbscripts/20251106_163500_production_management.sql
+psql -d $DATABASE_URL -f updated_dbscripts/20251107_020000_notification_config.sql
+psql -d $DATABASE_URL -f updated_dbscripts/20251110_incremental_whatsapp_checklist.sql
+psql -d $DATABASE_URL -f updated_dbscripts/20251111_add_photo_spare_parts_columns.sql
 
-**For new deployments, use `database_scripts/` folder instead.**
+# 3. Run complete schema migrations (in order!)
+psql -d $DATABASE_URL -f updated_dbscripts/20251112_140000_financial_invoicing.sql
+psql -d $DATABASE_URL -f updated_dbscripts/20251112_140001_sales_returns_credit_notes.sql
+psql -d $DATABASE_URL -f updated_dbscripts/20251112_140002_production_management.sql
+psql -d $DATABASE_URL -f updated_dbscripts/20251112_140003_configuration_assignments.sql
+```
+
+## Foreign Key Dependencies
+
+The migration files are ordered to respect foreign key dependencies:
+
+**Master Data First:**
+- Financial: banks, invoice_templates, terms_conditions (no dependencies)
+- Configuration: product_categories, product_types, notification_config (no dependencies)
+
+**Reference Tables:**
+- Invoices (depends on invoice_templates)
+- Machine startup tasks (depends on machines, users)
+- Product BOM (depends on products, raw_materials)
+
+**Transaction Tables:**
+- Invoice items (depends on invoices, products)
+- Sales returns (depends on invoices)
+- Production reconciliations (depends on raw_material_issuance, products)
+
+**Detail Tables:**
+- Credit note items (depends on credit_notes)
+- Production reconciliation items (depends on production_reconciliations)
+- Checklist assignments (depends on templates, machines, users)
+
+## Drizzle Migrations vs SQL Migrations
+
+**`migrations/` folder (Drizzle-generated):**
+- Auto-generated by `drizzle-kit generate`
+- Used for local development ORM sync
+- **NOT used for production deployment**
+- Can be regenerated anytime from `shared/schema.ts`
+
+**`updated_dbscripts/` folder (Manual SQL):**
+- Curated, domain-scoped migration scripts
+- **Used for production deployment**
+- Version-controlled, incremental changes
+- Respect foreign key ordering
+
+## Verifying Schema Completeness
+
+To verify all tables are created:
+```bash
+# Count tables in database
+psql -d $DATABASE_URL -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';"
+
+# Expected: 53 tables (52 data tables + 1 sessions table)
+```
+
+## Rollback Strategy
+
+These migrations use `IF NOT EXISTS` clauses, making them idempotent (safe to re-run). For rollback:
+
+1. **Soft Rollback:** Set `record_status = 0` on affected records
+2. **Hard Rollback:** Drop tables in reverse dependency order:
+   ```sql
+   -- Detail tables first
+   DROP TABLE IF EXISTS production_reconciliation_items CASCADE;
+   DROP TABLE IF EXISTS credit_note_items CASCADE;
+   -- Then parent tables...
+   ```
+
+## Notes
+
+- All migrations use `IF NOT EXISTS` for safe re-execution
+- Foreign keys use `ON DELETE` constraints appropriate to data type
+- Timestamps default to `now()` for audit trails
+- `record_status` field enables soft deletes across all tables
+- All migrations tested against PostgreSQL 14+
