@@ -1,0 +1,40 @@
+------------------------------------------------------------
+|              PRODUCTION RECONCILIATION ENTRY              |
+------------------------------------------------------------
+
+[Reconciliation ID]      : AUTO
+[Date]*                  : [_____________]
+[Shift]*                 : [A / B / General]
+[Linked Issue ID]*       : [Dropdown: ISSUE#123]
+[Linked Production ID]*  : [Dropdown: PROD#456] (Auto filtered by Issue)
+------------------------------------------------------------
+[Product Name]           : Auto from Issue (KINTO 1L)
+[Batch ID]               : Auto from Production (KINTO-B001)
+[Planned Output]         : Auto (1000 Cases)
+[Produced Quantity]      : Auto from Production (980 Cases)
+------------------------------------------------------------
+
+|             FINISHED GOODS SUMMARY                        |
+------------------------------------------------------------
+[Produced Cases]*        : Auto (980)
+[Rejected Cases]*        : Auto (10)
+[Empty Bottles Produced] : [_______]
+[Empty Bottles Used]     : [_______]
+[Empty Bottles Pending]* : [_______]
+[Remarks]                : [___________________________________]
+------------------------------------------------------------
+
+|            RAW MATERIAL RECONCILIATION TABLE              |
+------------------------------------------------------------
+| # | Material | Type | Base Unit | Issued | Used | Returned | Pending Next Day | Net Consumed | Remarks |
+|---|-----------|------|------------|--------|-------|----------|------------------|---------------|----------|
+| 1 | Preform 21g | Preform | Bag | Auto from Issue (20) | [15] | [3] | [2] | Auto:15 | 2 bags pending in hopper |
+| 2 | Cap 28mm | Cap | Box | Auto (2) | [1.6] | [0.2] | [0.2] | Auto:1.6 | Feeder balance |
+| 3 | Label Roll | Label | Kg | Auto (5) | [4.7] | [0.3] | [0] | Auto:4.7 | OK |
+| 4 | Shrink Film | Shrink | Kg | Auto (1) | [0.95] | [0.05] | [0] | Auto:0.95 | OK |
+| 5 | Adhesive | Adhesive | Kg | Auto (1) | [0.9] | [0.1] | [0] | Auto:0.9 | OK |
+------------------------------------------------------------
+Totals →  Issued: Auto | Returned: Manual | Pending: Manual | Net Consumed: Auto
+------------------------------------------------------------
+[Save Reconciliation Entry]
+------------------------------------------------------------
