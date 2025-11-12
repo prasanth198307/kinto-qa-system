@@ -2361,8 +2361,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/gatepasses/:id', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const { id } = req.params;
+      
+      // First, get all items from this gatepass to return inventory
+      const gatepassItems = await storage.getGatepassItems(id);
+      
+      // Return inventory back to finished goods for each item
+      for (const item of gatepassItems) {
+        if (item.finishedGoodId) {
+          const [finishedGood] = await db
+            .select()
+            .from(finishedGoods)
+            .where(and(
+              eq(finishedGoods.id, item.finishedGoodId),
+              eq(finishedGoods.recordStatus, 1)
+            ))
+            .limit(1);
+          
+          if (finishedGood) {
+            // Return the quantity back to finished goods inventory
+            await db.update(finishedGoods)
+              .set({ 
+                quantity: (finishedGood.quantity || 0) + (item.quantityDispatched || 0),
+                updatedAt: new Date()
+              })
+              .where(eq(finishedGoods.id, item.finishedGoodId));
+          }
+        }
+      }
+      
+      // Now delete the gatepass (soft delete)
       await storage.deleteGatepass(id);
-      res.json({ message: "Gatepass deleted successfully" });
+      
+      res.json({ 
+        message: "Gatepass cancelled and inventory returned to finished goods successfully",
+        itemsReturned: gatepassItems.length
+      });
     } catch (error) {
       console.error("Error deleting gatepass:", error);
       res.status(500).json({ message: "Failed to delete gatepass" });
@@ -2836,6 +2869,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/invoices/:id', requireRole('admin'), async (req: any, res) => {
     try {
       const { id } = req.params;
+      
+      // Check if invoice has an associated gatepass
+      const existingGatepass = await db
+        .select()
+        .from(gatepasses)
+        .where(
+          and(
+            eq(gatepasses.invoiceId, id),
+            eq(gatepasses.recordStatus, 1)
+          )
+        )
+        .limit(1);
+      
+      if (existingGatepass.length > 0) {
+        return res.status(400).json({ 
+          message: "Cannot delete invoice. A gatepass has been created for this invoice. Please cancel the gatepass first.",
+          gatepassNumber: existingGatepass[0].gatepassNumber
+        });
+      }
+      
       await storage.deleteInvoice(id);
       res.json({ message: "Invoice deleted successfully" });
     } catch (error) {
