@@ -1588,6 +1588,9 @@ export const salesReturns = pgTable("sales_returns", {
   creditNoteDate: timestamp("credit_note_date"),
   totalCreditAmount: integer("total_credit_amount").default(0).notNull(), // Credit amount in paise
   
+  // Credit note status tracking (for same-month auto vs >1 month manual)
+  creditNoteStatus: varchar("credit_note_status", { length: 30 }).default("pending_auto").notNull(), // pending_auto, auto_created, manual_required, manual_linked, not_applicable
+  
   remarks: text("remarks"),
   recordStatus: integer("record_status").default(1).notNull(),
   createdBy: varchar("created_by").references(() => users.id),
@@ -1758,6 +1761,46 @@ export const insertCreditNoteItemSchema = createInsertSchema(creditNoteItems).om
 
 export type InsertCreditNoteItem = z.infer<typeof insertCreditNoteItemSchema>;
 export type CreditNoteItem = typeof creditNoteItems.$inferSelect;
+
+// Manual Credit Note Requests - for tracking >1 month returns requiring manual GST processing
+export const manualCreditNoteRequests = pgTable("manual_credit_note_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  salesReturnId: varchar("sales_return_id").references(() => salesReturns.id).notNull(),
+  
+  // Request details
+  reasonCode: varchar("reason_code", { length: 50 }).notNull(), // old_return, gst_compliance, etc
+  requestedBy: varchar("requested_by").references(() => users.id).notNull(),
+  requestedAt: timestamp("requested_at").defaultNow().notNull(),
+  
+  // Processing workflow
+  status: varchar("status", { length: 30 }).default("pending").notNull(), // pending, in_progress, completed, rejected
+  assignedTo: varchar("assigned_to").references(() => users.id),
+  priority: varchar("priority", { length: 20 }).default("normal").notNull(), // low, normal, high, urgent
+  
+  // Completion tracking
+  completedAt: timestamp("completed_at"),
+  completedBy: varchar("completed_by").references(() => users.id),
+  externalCreditNoteNumber: varchar("external_credit_note_number", { length: 100 }), // Manually created credit note reference
+  externalCreditNoteDate: timestamp("external_credit_note_date"),
+  
+  // Notes and documentation
+  notes: text("notes"),
+  processingNotes: text("processing_notes"), // Internal notes during processing
+  
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertManualCreditNoteRequestSchema = createInsertSchema(manualCreditNoteRequests).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertManualCreditNoteRequest = z.infer<typeof insertManualCreditNoteRequestSchema>;
+export type ManualCreditNoteRequest = typeof manualCreditNoteRequests.$inferSelect;
 
 // Machine Startup Reminders - for notifying users to turn on machines before production
 export const machineStartupTasks = pgTable("machine_startup_tasks", {

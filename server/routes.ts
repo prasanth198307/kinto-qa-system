@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, salesReturns, salesReturnItems, creditNotes, creditNoteItems, products } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, salesReturns, salesReturnItems, creditNotes, creditNoteItems, manualCreditNoteRequests, products } from "@shared/schema";
 import { format } from "date-fns";
 import { z } from "zod";
 import path from "path";
@@ -3251,20 +3251,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Invoice not found" });
       }
       
-      // Check if return is in same month as invoice
-      // GST Compliance: Credit notes must be issued in the same tax period as the original invoice.
-      // We use the CURRENT DATE (when inspection is being recorded) as the inspection date,
-      // because this is when the credit note will actually be created in the system.
-      // This matches the inspectedDate that will be stored in the database.
-      // Back-dating is not supported to maintain GST compliance.
+      // Check if return is within 1 month of invoice (30 days)
+      // GST Compliance: Credit notes for same tax period can be auto-generated.
+      // Returns >1 month old require manual GST-compliant processing.
       const invoiceDate = new Date(invoice.invoiceDate);
-      const inspectionDate = new Date(); // Current date = when inspection is being recorded = credit note creation date
+      const inspectionDate = new Date(); // Current date = when inspection is being recorded
+      
+      // Calculate days between invoice and inspection
+      const daysDifference = Math.floor((inspectionDate.getTime() - invoiceDate.getTime()) / (1000 * 60 * 60 * 24));
+      const isWithinOneMonth = daysDifference <= 30;
+      
       const isSameMonth = 
         invoiceDate.getFullYear() === inspectionDate.getFullYear() &&
         invoiceDate.getMonth() === inspectionDate.getMonth();
       
       let creditNoteCreated = false;
       let creditNoteNumber = '';
+      let manualProcessingRequired = false;
       
       await db.transaction(async (tx) => {
         // Update each return item with inspection results
@@ -3313,18 +3316,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
         
-        // Update return status
+        // Determine credit note handling: BOTH same month AND within 30 days required for auto
+        const shouldAutoGenerateCreditNote = isSameMonth && isWithinOneMonth;
+        const requiresManualProcessing = !shouldAutoGenerateCreditNote;
+        
+        // Update return status with appropriate credit note status
         await tx.update(salesReturns)
           .set({
             status: 'inspected',
             inspectedDate: new Date(),
             inspectedBy: req.user?.id,
+            creditNoteStatus: shouldAutoGenerateCreditNote ? 'auto_created' : 'manual_required',
             updatedAt: new Date(),
           })
           .where(eq(salesReturns.id, id));
         
-        // Auto-create credit note if in same month
-        if (isSameMonth) {
+        // Auto-create credit note ONLY if same month AND within 30 days
+        if (shouldAutoGenerateCreditNote) {
           // Get all return items to calculate credit amounts
           const returnItems = await tx.select().from(salesReturnItems)
             .where(and(
@@ -3415,17 +3423,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           
           creditNoteCreated = true;
+        } else {
+          // Create manual credit note request for ANY return that can't be auto-processed
+          // This includes: different month (even if <30 days) OR >30 days old
+          const reason = !isSameMonth 
+            ? `Return is in different month than invoice (${daysDifference} days old). GST compliance requires manual processing.`
+            : `Return is ${daysDifference} days old (>30 days). Requires manual GST-compliant credit note processing.`;
+            
+          await tx.insert(manualCreditNoteRequests).values({
+            salesReturnId: id,
+            reasonCode: !isSameMonth ? 'different_month' : 'old_return',
+            requestedBy: req.user?.id,
+            notes: reason,
+            priority: daysDifference > 90 ? 'urgent' : 'normal',
+          });
+          
+          manualProcessingRequired = true;
         }
       });
       
-      await logAudit(req.user?.id, 'UPDATE', 'sales_returns', id, `Inspected return and updated inventory${creditNoteCreated ? `, created credit note ${creditNoteNumber}` : ''}`);
+      await logAudit(req.user?.id, 'UPDATE', 'sales_returns', id, `Inspected return and updated inventory${creditNoteCreated ? `, created credit note ${creditNoteNumber}` : ''}${manualProcessingRequired ? `, flagged for manual credit note processing` : ''}`);
+      
+      let message = "Return inspected and inventory updated successfully";
+      if (creditNoteCreated) {
+        message = `Return inspected, inventory updated, and credit note ${creditNoteNumber} created automatically`;
+      } else if (manualProcessingRequired) {
+        message = `Return inspected and inventory updated. MANUAL CREDIT NOTE REQUIRED - Return is ${daysDifference} days old (>30 days from invoice). Please process credit note manually for GST compliance.`;
+      } else if (!isWithinOneMonth) {
+        message = "Return inspected and inventory updated (no credit note - outside same month)";
+      }
       
       res.json({ 
-        message: creditNoteCreated 
-          ? `Return inspected, inventory updated, and credit note ${creditNoteNumber} created` 
-          : "Return inspected and inventory updated successfully (no credit note - different month)",
+        message,
         creditNoteCreated,
         creditNoteNumber: creditNoteCreated ? creditNoteNumber : null,
+        manualProcessingRequired,
+        daysSinceInvoice: daysDifference,
       });
     } catch (error) {
       console.error("Error inspecting sales return:", error);
