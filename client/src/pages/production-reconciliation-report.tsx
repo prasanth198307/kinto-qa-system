@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FileSpreadsheet, FileDown, Calendar } from "lucide-react";
 import { format } from "date-fns";
+import * as XLSX from 'xlsx';
 
 interface MaterialDetail {
   rawMaterialId: string;
@@ -48,12 +49,12 @@ export default function ProductionReconciliationReport() {
   const [reportGenerated, setReportGenerated] = useState(false);
 
   // Fetch products for dropdown
-  const { data: products = [] } = useQuery({
+  const { data: products = [] } = useQuery<any[]>({
     queryKey: ['/api/products'],
   });
 
   // Fetch production entries (batches) for dropdown
-  const { data: productionEntries = [] } = useQuery({
+  const { data: productionEntries = [] } = useQuery<any[]>({
     queryKey: ['/api/production-entries'],
   });
 
@@ -71,13 +72,240 @@ export default function ProductionReconciliationReport() {
   };
 
   const handleExportExcel = () => {
-    // TODO: Implement Excel export
-    console.log("Export to Excel");
+    if (reportData.length === 0) {
+      alert("No data to export. Please generate a report first.");
+      return;
+    }
+
+    // Create workbook
+    const wb = XLSX.utils.book_new();
+    
+    // Prepare data for each reconciliation
+    reportData.forEach((report, index) => {
+      // Summary data
+      const summaryData = [
+        ['Production Reconciliation Report'],
+        [''],
+        ['Reconciliation Number:', report.reconciliationNumber],
+        ['Reconciliation Date:', format(new Date(report.reconciliationDate), 'dd MMM yyyy')],
+        ['Shift:', report.shift.toUpperCase()],
+        ['Issuance Number:', report.issuanceNumber],
+        ['Production ID:', report.productionId],
+        ['Product:', report.productName],
+        ['Produced Cases:', report.producedCases],
+        ['Produced Bottles:', report.producedBottles],
+        ['Yield %:', report.yieldPercent.toFixed(2) + '%'],
+        ['Efficiency %:', report.efficiency.toFixed(2) + '%'],
+        [''],
+        ['Material Breakdown'],
+        ['Material Name', 'Type', 'Unit', 'Issued', 'Used', 'Returned', 'Pending', 'Net Consumed', 'Expected (BOM)', 'Variance', 'Var %', 'Status']
+      ];
+
+      // Material data
+      report.materials.forEach(material => {
+        summaryData.push([
+          material.materialName,
+          material.materialType,
+          material.baseUnit,
+          material.quantityIssued,
+          material.quantityUsed,
+          material.quantityReturned,
+          material.quantityPending,
+          material.netConsumed,
+          material.expectedTotal,
+          material.variance,
+          material.variancePercent.toFixed(2) + '%',
+          Math.abs(material.variancePercent) <= 2 ? 'Good' : Math.abs(material.variancePercent) <= 5 ? 'Warning' : 'Critical'
+        ]);
+      });
+
+      // Create worksheet
+      const ws = XLSX.utils.aoa_to_sheet(summaryData);
+      
+      // Add worksheet to workbook
+      const sheetName = `Reconciliation_${index + 1}`;
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    });
+
+    // Generate filename with date range
+    const fileName = `Production_Reconciliation_Report_${dateFrom || 'all'}_to_${dateTo || 'all'}.xlsx`;
+    
+    // Save file
+    XLSX.writeFile(wb, fileName);
   };
 
   const handleExportPDF = () => {
-    // TODO: Implement PDF export
-    console.log("Export to PDF");
+    if (reportData.length === 0) {
+      alert("No data to export. Please generate a report first.");
+      return;
+    }
+
+    // Note: pdfkit requires a server-side implementation for proper PDF generation
+    // For client-side, we'll use the browser's print functionality with a styled view
+    
+    // Create a new window with the report data
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert("Please allow popups to export PDF");
+      return;
+    }
+
+    // Generate HTML content for PDF
+    let htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Production Reconciliation Report</title>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            color: #333;
+          }
+          h1 {
+            color: #2563eb;
+            border-bottom: 2px solid #2563eb;
+            padding-bottom: 10px;
+          }
+          h2 {
+            color: #1a1a1a;
+            margin-top: 30px;
+          }
+          .summary {
+            margin: 20px 0;
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            gap: 10px;
+          }
+          .summary-label {
+            font-weight: bold;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 12px;
+          }
+          th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+          }
+          th {
+            background-color: #2563eb;
+            color: white;
+          }
+          .good { background-color: #dcfce7; }
+          .warning { background-color: #fef3c7; }
+          .critical { background-color: #fee2e2; }
+          .page-break {
+            page-break-after: always;
+          }
+          @media print {
+            body { margin: 0; }
+            .page-break { page-break-after: always; }
+          }
+        </style>
+      </head>
+      <body>
+    `;
+
+    reportData.forEach((report, index) => {
+      htmlContent += `
+        ${index > 0 ? '<div class="page-break"></div>' : ''}
+        <h1>Production Reconciliation Report</h1>
+        
+        <div class="summary">
+          <div class="summary-label">Reconciliation Number:</div>
+          <div>${report.reconciliationNumber}</div>
+          
+          <div class="summary-label">Reconciliation Date:</div>
+          <div>${format(new Date(report.reconciliationDate), 'dd MMM yyyy')}</div>
+          
+          <div class="summary-label">Shift:</div>
+          <div>${report.shift.toUpperCase()}</div>
+          
+          <div class="summary-label">Issuance Number:</div>
+          <div>${report.issuanceNumber}</div>
+          
+          <div class="summary-label">Production ID:</div>
+          <div>${report.productionId}</div>
+          
+          <div class="summary-label">Product:</div>
+          <div>${report.productName}</div>
+          
+          <div class="summary-label">Produced Cases:</div>
+          <div>${report.producedCases}</div>
+          
+          <div class="summary-label">Produced Bottles:</div>
+          <div>${report.producedBottles}</div>
+          
+          <div class="summary-label">Yield %:</div>
+          <div>${report.yieldPercent.toFixed(2)}%</div>
+          
+          <div class="summary-label">Efficiency %:</div>
+          <div>${report.efficiency.toFixed(2)}%</div>
+        </div>
+
+        <h2>Material Breakdown</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Material Name</th>
+              <th>Type</th>
+              <th>Unit</th>
+              <th>Issued</th>
+              <th>Used</th>
+              <th>Returned</th>
+              <th>Pending</th>
+              <th>Net Consumed</th>
+              <th>Expected (BOM)</th>
+              <th>Variance</th>
+              <th>Var %</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      report.materials.forEach(material => {
+        const varClass = Math.abs(material.variancePercent) <= 2 ? 'good' : 
+                        Math.abs(material.variancePercent) <= 5 ? 'warning' : 'critical';
+        
+        htmlContent += `
+          <tr class="${varClass}">
+            <td>${material.materialName}</td>
+            <td>${material.materialType}</td>
+            <td>${material.baseUnit}</td>
+            <td>${material.quantityIssued}</td>
+            <td>${material.quantityUsed}</td>
+            <td>${material.quantityReturned}</td>
+            <td>${material.quantityPending}</td>
+            <td>${material.netConsumed}</td>
+            <td>${material.expectedTotal}</td>
+            <td>${material.variance >= 0 ? '+' : ''}${material.variance.toFixed(2)}</td>
+            <td>${material.variancePercent >= 0 ? '+' : ''}${material.variancePercent.toFixed(2)}%</td>
+          </tr>
+        `;
+      });
+
+      htmlContent += `
+          </tbody>
+        </table>
+      `;
+    });
+
+    htmlContent += `
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+    
+    // Auto-trigger print dialog after content loads
+    printWindow.onload = () => {
+      printWindow.print();
+    };
   };
 
   // Calculate totals across all reconciliations
