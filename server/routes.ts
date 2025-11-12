@@ -1665,6 +1665,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Auto-calculate closing stock based on stock management mode
       let closingStock = null;
       let closingStockUsable = null;
+      let currentStock = null;
       
       if (typeDetails) {
         // Default isOpeningStockOnly to 1 if not provided, normalize to number for comparison
@@ -1675,6 +1676,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Opening Stock Entry Only mode (calculate even for zero quantities)
           closingStock = openingStockValue;
           closingStockUsable = Math.round(openingStockValue * (typeDetails.usableUnits || 0));
+          currentStock = openingStockValue; // Set currentStock = openingStock in Opening Stock Only mode
         } else if (isOpeningMode === 0) {
           // Ongoing Inventory mode: closingStock = openingStock + received - returned + adjustments
           const received = Number(req.body.receivedQuantity || 0);
@@ -1682,6 +1684,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const adjustments = Number(req.body.adjustments || 0);
           closingStock = openingStockValue + received - returned + adjustments;
           closingStockUsable = Math.round(closingStock * (typeDetails.usableUnits || 0));
+          currentStock = closingStock; // Set currentStock = closingStock in Ongoing Inventory mode
         }
       }
       
@@ -1690,6 +1693,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         materialCode,
         closingStock,
         closingStockUsable,
+        currentStock,
         createdBy: userId 
       };
       const validatedData = insertRawMaterialSchema.parse(materialData);
@@ -1937,11 +1941,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Create items and deduct inventory for each
         for (const item of items) {
-          // Validate item with issuanceId included
-          const validatedItem = insertRawMaterialIssuanceItemSchema.parse({
+          // Clean empty string product IDs to null
+          const cleanedItem = {
             ...item,
+            productId: item.productId === '' ? null : item.productId,
             issuanceId: issuance.id
-          });
+          };
+          
+          // Validate item with issuanceId included
+          const validatedItem = insertRawMaterialIssuanceItemSchema.parse(cleanedItem);
           
           // Get current material stock with row lock to prevent race conditions
           const [material] = await tx.select().from(rawMaterials)
