@@ -17,6 +17,7 @@ import {
   uom,
   products,
   vendors,
+  rawMaterialTypes,
   rawMaterials,
   rawMaterialTransactions,
   finishedGoods,
@@ -68,6 +69,8 @@ import {
   type InsertProduct,
   type Vendor,
   type InsertVendor,
+  type RawMaterialType,
+  type InsertRawMaterialType,
   type RawMaterial,
   type InsertRawMaterial,
   type RawMaterialTransaction,
@@ -208,6 +211,13 @@ export interface IStorage {
   getVendor(id: string): Promise<Vendor | undefined>;
   updateVendor(id: string, vendor: Partial<InsertVendor>): Promise<Vendor | undefined>;
   deleteVendor(id: string): Promise<void>;
+  
+  // Raw Material Type Master
+  createRawMaterialType(type: InsertRawMaterialType): Promise<RawMaterialType>;
+  getAllRawMaterialTypes(): Promise<RawMaterialType[]>;
+  getRawMaterialType(id: string): Promise<RawMaterialType | undefined>;
+  updateRawMaterialType(id: string, type: Partial<InsertRawMaterialType>): Promise<RawMaterialType | undefined>;
+  deleteRawMaterialType(id: string): Promise<void>;
   
   // Raw Materials/Inventory
   createRawMaterial(material: InsertRawMaterial): Promise<RawMaterial>;
@@ -950,6 +960,37 @@ export class DatabaseStorage implements IStorage {
       .update(vendors)
       .set({ recordStatus: 0, updatedAt: new Date() })
       .where(eq(vendors.id, id));
+  }
+
+  // Raw Material Type Master
+  async createRawMaterialType(type: InsertRawMaterialType): Promise<RawMaterialType> {
+    const [created] = await db.insert(rawMaterialTypes).values(type).returning();
+    return created;
+  }
+
+  async getAllRawMaterialTypes(): Promise<RawMaterialType[]> {
+    return await db.select().from(rawMaterialTypes).where(eq(rawMaterialTypes.recordStatus, 1));
+  }
+
+  async getRawMaterialType(id: string): Promise<RawMaterialType | undefined> {
+    const [type] = await db.select().from(rawMaterialTypes).where(and(eq(rawMaterialTypes.id, id), eq(rawMaterialTypes.recordStatus, 1)));
+    return type;
+  }
+
+  async updateRawMaterialType(id: string, typeData: Partial<InsertRawMaterialType>): Promise<RawMaterialType | undefined> {
+    const [updated] = await db
+      .update(rawMaterialTypes)
+      .set({ ...typeData, updatedAt: new Date() })
+      .where(and(eq(rawMaterialTypes.id, id), eq(rawMaterialTypes.recordStatus, 1)))
+      .returning();
+    return updated;
+  }
+
+  async deleteRawMaterialType(id: string): Promise<void> {
+    await db
+      .update(rawMaterialTypes)
+      .set({ recordStatus: 0, updatedAt: new Date() })
+      .where(eq(rawMaterialTypes.id, id));
   }
 
   // Raw Materials/Inventory

@@ -615,28 +615,26 @@ export const insertVendorSchema = createInsertSchema(vendors, {
 export type InsertVendor = z.infer<typeof insertVendorSchema>;
 export type Vendor = typeof vendors.$inferSelect;
 
-// Raw Materials/Inventory
-export const rawMaterials = pgTable("raw_materials", {
+// Raw Material Type Master - Defines types of raw materials with conversion methods
+export const rawMaterialTypes = pgTable("raw_material_types", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  materialCode: varchar("material_code", { length: 100 }).notNull().unique(),
-  materialName: varchar("material_name", { length: 255 }).notNull(),
-  description: text("description"),
-  category: varchar("category", { length: 100 }),
+  typeCode: varchar("type_code", { length: 100 }).notNull().unique(), // Auto-generated: RMT-001, RMT-002, etc.
+  typeName: varchar("type_name", { length: 255 }).notNull(), // Preform, Cap, Label, Shrink, Adhesive
   
   // Conversion Method: formula-based | direct-value | output-coverage
   conversionMethod: varchar("conversion_method", { length: 50 }),
   
   // Base Unit fields (common to all methods)
-  baseUnit: varchar("base_unit", { length: 50 }),
+  baseUnit: varchar("base_unit", { length: 50 }), // Bag, Kg, Box, Roll, Litre
   baseUnitWeight: integer("base_unit_weight"), // Weight of base unit (e.g., 25 for 25kg bag)
   
   // Derived Unit fields (for formula-based and direct-value)
-  derivedUnit: varchar("derived_unit", { length: 50 }), // piece, bottle, case
+  derivedUnit: varchar("derived_unit", { length: 50 }), // Piece, Bottle, Case
   weightPerDerivedUnit: integer("weight_per_derived_unit"), // For formula-based (e.g., 21g per preform)
   derivedValuePerBase: integer("derived_value_per_base"), // For direct-value (e.g., 7000 pcs per box)
   
   // Output Coverage fields (for output-coverage method)
-  outputType: varchar("output_type", { length: 50 }), // bottle, case
+  outputType: varchar("output_type", { length: 50 }), // Bottle, Case
   outputUnitsCovered: integer("output_units_covered"), // How many output units one base unit covers
   
   // Calculated fields
@@ -644,13 +642,7 @@ export const rawMaterials = pgTable("raw_materials", {
   lossPercent: integer("loss_percent").default(0),
   usableUnits: integer("usable_units"), // Auto-calculated: conversionValue × (1 - loss%)
   
-  uomId: varchar("uom_id").references(() => uom.id),
-  currentStock: integer("current_stock").default(0),
-  reorderLevel: integer("reorder_level"),
-  maxStockLevel: integer("max_stock_level"),
-  unitCost: integer("unit_cost"),
-  location: varchar("location", { length: 255 }),
-  supplier: varchar("supplier", { length: 255 }),
+  description: text("description"),
   isActive: integer("is_active").default(1).notNull(), // 1 = Active, 0 = Inactive
   recordStatus: integer("record_status").default(1).notNull(),
   createdBy: varchar("created_by").references(() => users.id),
@@ -658,10 +650,9 @@ export const rawMaterials = pgTable("raw_materials", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const insertRawMaterialSchema = createInsertSchema(rawMaterials, {
-  materialCode: z.string().optional(),
-  description: z.string().optional(),
-  category: z.string().optional(),
+export const insertRawMaterialTypeSchema = createInsertSchema(rawMaterialTypes, {
+  typeCode: z.string().optional(),
+  typeName: z.string().min(1, "Type name is required"),
   conversionMethod: z.string().optional(),
   baseUnit: z.string().optional(),
   baseUnitWeight: z.number().optional(),
@@ -673,7 +664,51 @@ export const insertRawMaterialSchema = createInsertSchema(rawMaterials, {
   conversionValue: z.number().optional(),
   lossPercent: z.number().default(0).optional(),
   usableUnits: z.number().optional(),
+  description: z.string().optional(),
   isActive: z.number().default(1).optional(),
+}).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertRawMaterialType = z.infer<typeof insertRawMaterialTypeSchema>;
+export type RawMaterialType = typeof rawMaterialTypes.$inferSelect;
+
+// Raw Materials/Inventory
+export const rawMaterials = pgTable("raw_materials", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  materialCode: varchar("material_code", { length: 100 }).notNull().unique(),
+  materialName: varchar("material_name", { length: 255 }).notNull(),
+  description: text("description"),
+  category: varchar("category", { length: 100 }),
+  baseUnit: varchar("base_unit", { length: 50 }),
+  weightPerUnit: integer("weight_per_unit"),
+  conversionType: varchar("conversion_type", { length: 50 }),
+  conversionValue: integer("conversion_value"),
+  weightPerPiece: integer("weight_per_piece"),
+  lossPercent: integer("loss_percent").default(0),
+  typeId: varchar("type_id").references(() => rawMaterialTypes.id), // Optional reference to type master
+  uomId: varchar("uom_id").references(() => uom.id),
+  currentStock: integer("current_stock").default(0),
+  reorderLevel: integer("reorder_level"),
+  maxStockLevel: integer("max_stock_level"),
+  unitCost: integer("unit_cost"),
+  location: varchar("location", { length: 255 }),
+  supplier: varchar("supplier", { length: 255 }),
+  isActive: varchar("is_active").default('true'),
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertRawMaterialSchema = createInsertSchema(rawMaterials, {
+  materialCode: z.string().optional(),
+  typeId: z.string().optional(),
+  description: z.string().optional(),
+  category: z.string().optional(),
 }).omit({
   id: true,
   recordStatus: true,

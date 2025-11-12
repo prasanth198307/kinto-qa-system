@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments } from "@shared/schema";
 import { z } from "zod";
 import path from "path";
 import fs from "fs";
@@ -1206,6 +1206,143 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting vendor:", error);
       res.status(500).json({ message: "Failed to delete vendor" });
+    }
+  });
+
+  // Raw Material Type Master API
+  app.get('/api/raw-material-types', isAuthenticated, async (req: any, res) => {
+    try {
+      const types = await storage.getAllRawMaterialTypes();
+      res.json(types);
+    } catch (error) {
+      console.error("Error fetching raw material types:", error);
+      res.status(500).json({ message: "Failed to fetch raw material types" });
+    }
+  });
+
+  app.post('/api/raw-material-types', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      
+      // Auto-generate Type Code if not provided
+      let typeCode = req.body.typeCode;
+      if (!typeCode) {
+        const allTypes = await storage.getAllRawMaterialTypes();
+        const existingCodes = allTypes
+          .map(t => t.typeCode)
+          .filter(code => code.startsWith('RMT-'))
+          .map(code => parseInt(code.replace('RMT-', '')) || 0);
+        
+        const nextNumber = existingCodes.length > 0 ? Math.max(...existingCodes) + 1 : 1;
+        typeCode = `RMT-${nextNumber.toString().padStart(3, '0')}`;
+      }
+      
+      // Calculate conversion value and usable units based on conversion method
+      const { conversionMethod, baseUnitWeight, weightPerDerivedUnit, derivedValuePerBase, outputUnitsCovered, lossPercent = 0 } = req.body;
+      let conversionValue = 0;
+      let usableUnits = 0;
+      
+      if (conversionMethod === 'formula-based' && baseUnitWeight && weightPerDerivedUnit) {
+        conversionValue = Math.round((baseUnitWeight * 1000) / weightPerDerivedUnit);
+      } else if (conversionMethod === 'direct-value' && derivedValuePerBase) {
+        conversionValue = derivedValuePerBase;
+      } else if (conversionMethod === 'output-coverage' && outputUnitsCovered) {
+        conversionValue = outputUnitsCovered;
+      }
+      
+      // Calculate usable units after applying loss percentage
+      usableUnits = Math.round(conversionValue * (1 - (lossPercent / 100)));
+      
+      const typeData = { 
+        ...req.body, 
+        typeCode,
+        conversionValue,
+        usableUnits,
+        createdBy: userId 
+      };
+      
+      const validatedData = insertRawMaterialTypeSchema.parse(typeData);
+      const created = await storage.createRawMaterialType(validatedData);
+      res.json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error creating raw material type:", error);
+      res.status(500).json({ message: "Failed to create raw material type" });
+    }
+  });
+
+  app.get('/api/raw-material-types/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const type = await storage.getRawMaterialType(id);
+      if (!type) {
+        return res.status(404).json({ message: "Raw material type not found" });
+      }
+      res.json(type);
+    } catch (error) {
+      console.error("Error fetching raw material type:", error);
+      res.status(500).json({ message: "Failed to fetch raw material type" });
+    }
+  });
+
+  app.patch('/api/raw-material-types/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Recalculate conversion value and usable units if relevant fields are updated
+      const { conversionMethod, baseUnitWeight, weightPerDerivedUnit, derivedValuePerBase, outputUnitsCovered, lossPercent } = req.body;
+      let updates = { ...req.body };
+      
+      if (conversionMethod || baseUnitWeight !== undefined || weightPerDerivedUnit !== undefined || 
+          derivedValuePerBase !== undefined || outputUnitsCovered !== undefined || lossPercent !== undefined) {
+        
+        // Get existing type to merge with updates
+        const existing = await storage.getRawMaterialType(id);
+        if (!existing) {
+          return res.status(404).json({ message: "Raw material type not found" });
+        }
+        
+        const merged = { ...existing, ...req.body };
+        let conversionValue = 0;
+        
+        if (merged.conversionMethod === 'formula-based' && merged.baseUnitWeight && merged.weightPerDerivedUnit) {
+          conversionValue = Math.round((merged.baseUnitWeight * 1000) / merged.weightPerDerivedUnit);
+        } else if (merged.conversionMethod === 'direct-value' && merged.derivedValuePerBase) {
+          conversionValue = merged.derivedValuePerBase;
+        } else if (merged.conversionMethod === 'output-coverage' && merged.outputUnitsCovered) {
+          conversionValue = merged.outputUnitsCovered;
+        }
+        
+        const usableUnits = Math.round(conversionValue * (1 - ((merged.lossPercent || 0) / 100)));
+        updates.conversionValue = conversionValue;
+        updates.usableUnits = usableUnits;
+      }
+      
+      const validatedData = insertRawMaterialTypeSchema.partial().parse(updates);
+      const updated = await storage.updateRawMaterialType(id, validatedData);
+      if (!updated) {
+        return res.status(404).json({ message: "Raw material type not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error updating raw material type:", error);
+      res.status(500).json({ message: "Failed to update raw material type" });
+    }
+  });
+
+  app.delete('/api/raw-material-types/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteRawMaterialType(id);
+      res.json({ message: "Raw material type deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting raw material type:", error);
+      res.status(500).json({ message: "Failed to delete raw material type" });
     }
   });
 
