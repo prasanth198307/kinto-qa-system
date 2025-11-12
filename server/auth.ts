@@ -69,14 +69,12 @@ export function setupAuth(app: Express) {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       httpOnly: true,
       secure: useHttps,
-      sameSite: useHttps ? "none" : "lax",
+      sameSite: "lax", // Always use "lax" since frontend/backend are same-origin
     },
   };
 
   console.log(
-    `🔧 Session configured — Secure Cookies: ${useHttps}, SameSite: ${
-      useHttps ? "None" : "Lax"
-    }${isReplit ? " (Replit auto-detected)" : ""}`
+    `🔧 Session configured — Secure Cookies: ${useHttps}, SameSite: Lax${isReplit ? " (Replit auto-detected)" : ""}`
   );
 
   app.set("trust proxy", 1);

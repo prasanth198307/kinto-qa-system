@@ -43,8 +43,8 @@ interface ReportData {
 export default function ProductionReconciliationReport() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [selectedProduct, setSelectedProduct] = useState("");
-  const [selectedBatch, setSelectedBatch] = useState("");
+  const [selectedProduct, setSelectedProduct] = useState("all");
+  const [selectedBatch, setSelectedBatch] = useState("all");
   const [selectedShift, setSelectedShift] = useState("all");
   const [reportGenerated, setReportGenerated] = useState(false);
 
@@ -365,7 +365,7 @@ export default function ProductionReconciliationReport() {
                   <SelectValue placeholder="All Products" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="" data-testid="product-option-all">All Products</SelectItem>
+                  <SelectItem value="all" data-testid="product-option-all">All Products</SelectItem>
                   {products.map((product: any) => (
                     <SelectItem key={product.id} value={product.id} data-testid={`product-option-${product.id}`}>
                       {product.productName}
@@ -382,7 +382,7 @@ export default function ProductionReconciliationReport() {
                   <SelectValue placeholder="All Batches" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="" data-testid="batch-option-all">All Batches</SelectItem>
+                  <SelectItem value="all" data-testid="batch-option-all">All Batches</SelectItem>
                   {productionEntries.map((entry: any) => (
                     <SelectItem key={entry.id} value={entry.id} data-testid={`batch-option-${entry.id}`}>
                       {entry.id}

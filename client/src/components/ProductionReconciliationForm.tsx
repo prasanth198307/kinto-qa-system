@@ -279,8 +279,8 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
                     <FormItem>
                       <FormLabel>Production Entry (Optional)</FormLabel>
                       <Select 
-                        onValueChange={handleProductionChange}
-                        value={field.value || ""}
+                        onValueChange={(value) => handleProductionChange(value === "none" ? undefined : value)}
+                        value={field.value || "none"}
                         data-testid="select-production"
                       >
                         <FormControl>
@@ -289,7 +289,7 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">None</SelectItem>
+                          <SelectItem value="none">None</SelectItem>
                           {filteredProductions.map((prod) => (
                             <SelectItem key={prod.id} value={prod.id}>
                               Shift {prod.shift} - {format(new Date(prod.productionDate), 'MMM dd')} ({prod.producedQuantity} units)

@@ -271,8 +271,8 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
                   <FormItem>
                     <FormLabel>Product (Optional)</FormLabel>
                     <Select 
-                      onValueChange={field.onChange} 
-                      value={field.value || ""}
+                      onValueChange={(value) => field.onChange(value === "none" ? undefined : value)} 
+                      value={field.value || "none"}
                     >
                       <FormControl>
                         <SelectTrigger data-testid="select-product">
@@ -280,7 +280,7 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">-- None --</SelectItem>
+                        <SelectItem value="none">-- None --</SelectItem>
                         {products.map((product) => (
                           <SelectItem key={product.id} value={product.id}>
                             {product.productName} ({product.productCode})
