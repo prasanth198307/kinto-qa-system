@@ -8,6 +8,7 @@ import {
   varchar,
   text,
   integer,
+  numeric,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -558,10 +559,33 @@ export const products = pgTable("products", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   productCode: varchar("product_code", { length: 100 }).notNull().unique(),
   productName: varchar("product_name", { length: 255 }).notNull(),
-  description: text("description"),
+  skuCode: varchar("sku_code", { length: 100 }).unique(),
   category: varchar("category", { length: 100 }),
+  productType: varchar("product_type", { length: 100 }), // Bottle / Case / Jar
+  description: text("description"),
+  
+  // Packaging & Conversion Details
+  baseUnit: varchar("base_unit", { length: 50 }), // Case / Bottle
+  derivedUnit: varchar("derived_unit", { length: 50 }), // Bottle / Case
+  conversionMethod: varchar("conversion_method", { length: 50 }), // Direct / Formula-Based
+  derivedValuePerBase: numeric("derived_value_per_base", { precision: 10, scale: 2 }), // For Direct method (e.g., 12.50 bottles per case)
+  weightPerBase: numeric("weight_per_base", { precision: 10, scale: 2 }), // For Formula-Based (in grams, e.g., 21.5g)
+  weightPerDerived: numeric("weight_per_derived", { precision: 10, scale: 2 }), // For Formula-Based (in grams)
+  defaultLossPercent: numeric("default_loss_percent", { precision: 5, scale: 2 }).default('0'), // Loss percentage (e.g., 0.5%, 18.5%)
+  usableDerivedUnits: numeric("usable_derived_units", { precision: 12, scale: 4 }), // Auto-calculated (can be fractional, e.g., 11.4567)
+  netVolume: integer("net_volume"), // In ml (whole numbers)
+  
+  // Pricing & Tax Information
+  basePrice: integer("base_price"), // Price per Base Unit (excluding GST, in paise)
+  gstPercent: numeric("gst_percent", { precision: 5, scale: 2 }), // GST percentage (e.g., 18.5%)
+  totalPrice: integer("total_price"), // Auto-calculated (including GST, in paise)
+  mrp: integer("mrp"), // MRP (Printed Price) in paise
+  hsnCode: varchar("hsn_code", { length: 50 }),
+  
+  // Legacy fields (kept for backward compatibility)
   uomId: varchar("uom_id").references(() => uom.id),
   standardCost: integer("standard_cost"),
+  
   isActive: varchar("is_active").default('true'),
   recordStatus: integer("record_status").default(1).notNull(),
   createdBy: varchar("created_by").references(() => users.id),
@@ -578,6 +602,32 @@ export const insertProductSchema = createInsertSchema(products).omit({
 
 export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type Product = typeof products.$inferSelect;
+
+// Product Bill of Materials (BOM)
+export const productBom = pgTable("product_bom", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  productId: varchar("product_id").references(() => products.id, { onDelete: 'cascade' }).notNull(),
+  rawMaterialId: varchar("raw_material_id").references(() => rawMaterials.id).notNull(),
+  quantityPerProduct: numeric("quantity_per_product", { precision: 12, scale: 6 }).notNull(), // Quantity needed per product unit (supports fractions like 1/2500 = 0.0004)
+  unitOfMeasure: varchar("unit_of_measure", { length: 50 }), // Piece, Kg, etc.
+  usageMethod: varchar("usage_method", { length: 50 }), // Formula, Direct, Coverage
+  notes: text("notes"),
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  productIdIdx: index("product_bom_product_id_idx").on(table.productId),
+}));
+
+export const insertProductBomSchema = createInsertSchema(productBom).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertProductBom = z.infer<typeof insertProductBomSchema>;
+export type ProductBom = typeof productBom.$inferSelect;
 
 // Vendors/Customers Master
 export const vendors = pgTable("vendors", {

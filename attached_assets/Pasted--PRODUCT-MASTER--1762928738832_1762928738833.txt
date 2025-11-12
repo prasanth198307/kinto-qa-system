@@ -1,0 +1,55 @@
+------------------------------------------------------------
+|                  PRODUCT MASTER                   |
+------------------------------------------------------------
+
+[Product ID]             : AUTO
+[Product Name]*          : KINTO 1L Packaged Drinking Water
+[SKU Code]*              : KINTO-1L
+[Category]*              : Water / Juice / Soft Drink
+[Product Type]*          : Bottle / Case / Jar
+[Description]            : [__________________________________________]
+[Active Status]          : [✓ Active] [ ] Inactive
+------------------------------------------------------------
+
+|                PACKAGING & CONVERSION DETAILS              |
+------------------------------------------------------------
+[Base Unit]*             : [Dropdown: Case / Bottle]
+[Derived Unit]*          : [Dropdown: Bottle / Case]
+[Conversion Method]*      : [Dropdown: Direct / Formula-Based]
+
+If "Direct" selected:
+   [Derived Value per Base]* : [12] (e.g., 12 bottles per case)
+   [Default Loss %]          : [0]
+   → Usable Derived Units    : Auto = 12 × (1 - 0/100) = 12 bottles/case
+
+If "Formula-Based" selected:
+   [Weight per Base Unit]*   : [_________]
+   [Weight per Derived Unit]*: [_________]
+   [Default Loss %]          : [__0__]
+   → Usable Derived Units    : Auto = (BaseWeight*1000)/DerivedWeight × (1-Loss%)
+------------------------------------------------------------
+[Net Volume]*             : [1000 ml]
+------------------------------------------------------------
+
+|                PRICING & TAX INFORMATION                   |
+------------------------------------------------------------
+[Base Price (Excl. GST)]* : ₹ [_________]   (price per Base Unit, e.g., per Case)
+[GST %]*                  : [_________]     (e.g., 18%)
+[Total Price (Incl. GST)] : ₹ [Auto = BasePrice × (1 + GST%/100)]
+[MRP (Printed Price)]     : ₹ [_________]   (optional override)
+------------------------------------------------------------
+[HSN Code]                : [Optional]
+------------------------------------------------------------
+
+|            BILL OF MATERIALS (BOM) FOR THIS PRODUCT        |
+------------------------------------------------------------
+| # | Raw Material Name* | Type | UOM | Qty per Product | Method | Notes |
+|---|--------------------|------|-----|------------------|---------|--------|
+| 1 | Preform 21g        | Preform | Piece | 1 per Bottle | Formula | Required |
+| 2 | Cap 28mm           | Cap | Piece | 1 per Bottle | Direct | Required |
+| 3 | Label Roll         | Label | Kg | 1 / 2500 Bottles | Coverage | For bottles |
+| 4 | Shrink Film        | Shrink | Kg | 1 / 15 Cases | Coverage | For cases |
+| 5 | Adhesive           | Adhesive | Kg | 1 / 800 Bottles | Coverage | For label sticking |
+------------------------------------------------------------
+[Add Material]   [Delete]   [Save Product + BOM]
+------------------------------------------------------------
