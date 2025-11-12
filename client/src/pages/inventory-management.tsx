@@ -45,7 +45,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Pencil, Trash2, Search, Package, Layers, Box, CheckCircle, Users, Minus } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Package, Layers, Box, CheckCircle, Users, Minus, Check, X } from "lucide-react";
 import VendorManagement from "@/components/VendorManagement";
 import BankManagement from "@/components/BankManagement";
 import { GlobalHeader } from "@/components/GlobalHeader";
@@ -2413,6 +2413,27 @@ function FinishedGoodsTab({ searchTerm, onSearchChange }: { searchTerm: string; 
     },
   });
 
+  const approvalMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: 'approved' | 'rejected' }) => {
+      return await apiRequest('PATCH', `/api/finished-goods/${id}`, {
+        qualityStatus: status,
+        inspectionDate: new Date().toISOString(),
+      });
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/finished-goods'] });
+      const action = variables.status === 'approved' ? 'approved' : 'rejected';
+      toast({ 
+        title: "Success", 
+        description: `Finished good ${action} successfully`,
+        variant: variables.status === 'approved' ? 'default' : 'destructive'
+      });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
   const filteredItems = goods.filter(item =>
     item.batchNumber.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -2546,6 +2567,32 @@ function FinishedGoodsTab({ searchTerm, onSearchChange }: { searchTerm: string; 
                     <TableCell data-testid={`text-machine-${item.id}`}>{getMachineName(item.machineId)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
+                        {item.qualityStatus === 'pending' && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => approvalMutation.mutate({ id: item.id, status: 'approved' })}
+                              disabled={approvalMutation.isPending}
+                              title="Approve"
+                              data-testid={`button-approve-${item.id}`}
+                              className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                            >
+                              <CheckCircle className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => approvalMutation.mutate({ id: item.id, status: 'rejected' })}
+                              disabled={approvalMutation.isPending}
+                              title="Reject"
+                              data-testid={`button-reject-${item.id}`}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"
