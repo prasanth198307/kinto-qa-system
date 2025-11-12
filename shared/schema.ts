@@ -1870,3 +1870,90 @@ export const insertNotificationConfigSchema = createInsertSchema(notificationCon
 
 export type InsertNotificationConfig = z.infer<typeof insertNotificationConfigSchema>;
 export type NotificationConfig = typeof notificationConfig.$inferSelect;
+
+// Production Reconciliation - End of day reconciliation linking issuance, production, and actual consumption
+export const productionReconciliations = pgTable("production_reconciliations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  reconciliationNumber: varchar("reconciliation_number", { length: 100 }).notNull().unique(),
+  reconciliationDate: timestamp("reconciliation_date").notNull(),
+  shift: varchar("shift", { length: 20 }).notNull(), // A, B, General
+  
+  // Links to source documents
+  issuanceId: varchar("issuance_id").references(() => rawMaterialIssuance.id).notNull(),
+  productionEntryId: varchar("production_entry_id").references(() => productionEntries.id).notNull(),
+  
+  // Finished goods summary (auto-populated from production)
+  producedCases: integer("produced_cases").notNull(), // From production entry
+  rejectedCases: integer("rejected_cases").default(0).notNull(), // From production entry
+  
+  // Empty bottle tracking
+  emptyBottlesProduced: integer("empty_bottles_produced").default(0).notNull(),
+  emptyBottlesUsed: integer("empty_bottles_used").default(0).notNull(),
+  emptyBottlesPending: integer("empty_bottles_pending").default(0).notNull(),
+  
+  // Edit tracking for role-based limits
+  editCount: integer("edit_count").default(0).notNull(), // Track number of edits
+  lastEditedBy: varchar("last_edited_by").references(() => users.id),
+  lastEditedAt: timestamp("last_edited_at"),
+  
+  remarks: text("remarks"),
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertProductionReconciliationSchema = createInsertSchema(productionReconciliations, {
+  reconciliationDate: z.union([z.string(), z.date()]).transform(val => {
+    if (!val) return new Date();
+    if (typeof val === 'string') {
+      if (val.trim() === '') return new Date();
+      const date = new Date(val);
+      return isNaN(date.getTime()) ? new Date() : date;
+    }
+    return val;
+  }),
+}).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertProductionReconciliation = z.infer<typeof insertProductionReconciliationSchema>;
+export type ProductionReconciliation = typeof productionReconciliations.$inferSelect;
+
+// Production Reconciliation Items - Material-level reconciliation details
+export const productionReconciliationItems = pgTable("production_reconciliation_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  reconciliationId: varchar("reconciliation_id").references(() => productionReconciliations.id).notNull(),
+  
+  // Material reference
+  rawMaterialId: varchar("raw_material_id").references(() => rawMaterials.id).notNull(),
+  issuanceItemId: varchar("issuance_item_id").references(() => rawMaterialIssuanceItems.id), // Link to original issuance item
+  
+  // Quantities (in base unit from issuance)
+  quantityIssued: integer("quantity_issued").notNull(), // Auto from issuance
+  quantityUsed: integer("quantity_used").notNull(), // Manual entry
+  quantityReturned: integer("quantity_returned").default(0).notNull(), // Manual entry - goes back to inventory
+  quantityPending: integer("quantity_pending").default(0).notNull(), // Manual entry - in-process
+  netConsumed: integer("net_consumed").notNull(), // Calculated: Used = Issued - Returned - Pending
+  
+  // Unit of measure
+  uomId: varchar("uom_id").references(() => uom.id),
+  
+  remarks: text("remarks"),
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertProductionReconciliationItemSchema = createInsertSchema(productionReconciliationItems).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertProductionReconciliationItem = z.infer<typeof insertProductionReconciliationItemSchema>;
+export type ProductionReconciliationItem = typeof productionReconciliationItems.$inferSelect;
