@@ -35,6 +35,7 @@ import RawMaterialTypeMaster from "@/pages/raw-material-type-master";
 import ProductionManagement from "@/pages/production-management";
 import ProductionEntries from "@/pages/production-entries";
 import ProductionReconciliations from "@/pages/production-reconciliations";
+import ProductionReconciliationReport from "@/pages/production-reconciliation-report";
 import SalesReturns from "@/pages/sales-returns";
 import MachineStartupReminders from "@/pages/machine-startup-reminders";
 import NotificationSettings from "@/pages/notification-settings";
@@ -330,6 +331,7 @@ function ManagerDashboard() {
         { id: "invoices", label: "Invoices", icon: FileText },
         { id: "dispatch-tracking", label: "Dispatch Tracking", icon: Truck },
         { id: "sales-returns", label: "Sales Returns", icon: Package },
+        { id: "production-reconciliation-report", label: "Production Reconciliation Report", icon: FileStack },
       ],
       quickActions: [
         {
@@ -411,6 +413,8 @@ function ManagerDashboard() {
         return <ProductionEntries />;
       case 'production-reconciliations':
         return <ProductionReconciliations />;
+      case 'production-reconciliation-report':
+        return <ProductionReconciliationReport />;
       case 'dispatch-tracking':
         return <DispatchTracking showHeader={false} />;
       case 'reports':
@@ -613,6 +617,7 @@ function AdminDashboard() {
         { id: "dispatch-tracking", label: "Dispatch Tracking", icon: Truck },
         { id: "machine-startup-reminders", label: "Machine Startup Reminders", icon: Bell },
         { id: "whatsapp-analytics", label: "WhatsApp Analytics", icon: TrendingUp },
+        { id: "production-reconciliation-report", label: "Production Reconciliation Report", icon: FileStack },
       ],
       quickActions: [
         {
@@ -737,6 +742,8 @@ function AdminDashboard() {
         return <ProductionEntries />;
       case 'production-reconciliations':
         return <ProductionReconciliations />;
+      case 'production-reconciliation-report':
+        return <ProductionReconciliationReport />;
       case 'dispatch-tracking':
         return <DispatchTracking showHeader={false} />;
       case 'machine-startup-reminders':
@@ -866,6 +873,7 @@ function Router() {
       <ProtectedRoute path="/invoice/:id" component={InvoiceDetail} />
       <ProtectedRoute path="/dispatch-tracking" component={DispatchTracking} />
       <ProtectedRoute path="/sales-returns" component={SalesReturns} />
+      <ProtectedRoute path="/reports/production-reconciliation" component={ProductionReconciliationReport} allowedRoles={['admin', 'manager']} />
       <ProtectedRoute path="/" component={AuthenticatedApp} />
       <Route component={NotFound} />
     </Switch>
