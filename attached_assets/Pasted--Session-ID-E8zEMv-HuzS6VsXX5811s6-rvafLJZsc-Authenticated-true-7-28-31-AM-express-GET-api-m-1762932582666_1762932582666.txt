@@ -1,0 +1,97 @@
+ Session ID: E8zEMv-HuzS6VsXX5811s6-rvafLJZsc
+   Authenticated: true
+7:28:31 AM [express] GET /api/maintenance-plans 304 in 95ms :: []
+🔹 Request: GET /api/stats/today
+   Cookie header: connect.sid=s%3AE8zEMv-HuzS6VsXX5811s6-rvafLJZsc.7R8T6UoCKgFWG7iuQAvZDtJwL3WyWK%2FFMvGHIgem4%2FI
+   Session ID: E8zEMv-HuzS6VsXX5811s6-rvafLJZsc
+   Authenticated: true
+🔹 Request: GET /api/invoices
+   Cookie header: connect.sid=s%3AE8zEMv-HuzS6VsXX5811s6-rvafLJZsc.7R8T6UoCKgFWG7iuQAvZDtJwL3WyWK%2FFMvGHIgem4%2FI
+   Session ID: E8zEMv-HuzS6VsXX5811s6-rvafLJZsc
+   Authenticated: true
+🔹 Request: GET /api/raw-materials
+   Cookie header: connect.sid=s%3AE8zEMv-HuzS6VsXX5811s6-rvafLJZsc.7R8T6UoCKgFWG7iuQAvZDtJwL3WyWK%2FFMvGHIgem4%2FI
+   Session ID: E8zEMv-HuzS6VsXX5811s6-rvafLJZsc
+   Authenticated: true
+🔹 Request: GET /api/products
+   Cookie header: connect.sid=s%3AE8zEMv-HuzS6VsXX5811s6-rvafLJZsc.7R8T6UoCKgFWG7iuQAvZDtJwL3WyWK%2FFMvGHIgem4%2FI
+   Session ID: E8zEMv-HuzS6VsXX5811s6-rvafLJZsc
+   Authenticated: true
+Error fetching products: error: column "mrp" does not exist
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/node_modules/src/node-postgres/session.ts:104:19)
+    at async DatabaseStorage.getAllProducts (/home/runner/workspace/server/storage.ts:921:12)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:1113:24) {
+  length: 104,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '324',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3722',
+  routine: 'errorMissingColumn'
+}
+Error fetching raw materials: error: column "weight_per_unit" does not exist
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/node_modules/src/node-postgres/session.ts:104:19)
+    at async DatabaseStorage.getAllRawMaterials (/home/runner/workspace/server/storage.ts:1129:12)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:1466:25) {
+  length: 115,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '88',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3722',
+  routine: 'errorMissingColumn'
+}
+7:28:31 AM [express] GET /api/stats/today 200 in 144ms :: {"rawMaterialIssuancesCount":1,"gatepasses…
+7:28:31 AM [express] GET /api/invoices 200 in 112ms :: [{"id":"407a11cf-cec9-4607-becf-7405dd8a601f"…
+7:28:31 AM [express] GET /api/products 500 in 116ms :: {"message":"Failed to fetch products"}
+🔹 Request: GET /api/pm-task-list-templates
+   Cookie header: connect.sid=s%3AE8zEMv-HuzS6VsXX5811s6-rvafLJZsc.7R8T6UoCKgFWG7iuQAvZDtJwL3WyWK%2FFMvGHIgem4%2FI
+   Session ID: E8zEMv-HuzS6VsXX5811s6-rvafLJZsc
+   Authenticated: true
+7:28:31 AM [express] GET /api/raw-materials 500 in 245ms :: {"message":"Failed to fetch raw material…
+7:28:31 AM [express] GET /api/pm-task-list-templates 200 in 95ms :: [{"id":"d2a9ce29-3895-45a7-86fa-…
+🔹 Request: GET /api/spare-parts
+   Cookie header: connect.sid=s%3AE8zEMv-HuzS6VsXX5811s6-rvafLJZsc.7R8T6UoCKgFWG7iuQAvZDtJwL3WyWK%2FFMvGHIgem4%2FI
+   Session ID: E8zEMv-HuzS6VsXX5811s6-rvafLJZsc
+   Authenticated: true
+7:28:33 AM [express] GET /api/spare-parts 200 in 2255ms :: [{"id":"748fea7e-6c0a-4160-ad12-4f2d84abb…
+🔹 Request: GET /api/invoice-templates
+   Cookie header: connect.sid=s%3AE8zEMv-HuzS6VsXX5811s6-rvafLJZsc.7R8T6UoCKgFWG7iuQAvZDtJwL3WyWK%2FFMvGHIgem4%2FI
+   Session ID: E8zEMv-HuzS6VsXX5811s6-rvafLJZsc
+   Authenticated: true
+7:28:47 AM [express] GET /api/invoice-templates 200 in 309ms :: [{"id":"726e00df-bd66-4fbf-a439-7960…
+🔹 Request: GET /api/products
+   Cookie header: connect.sid=s%3AE8zEMv-HuzS6VsXX5811s6-rvafLJZsc.7R8T6UoCKgFWG7iuQAvZDtJwL3WyWK%2FFMvGHIgem4%2FI
+   Session ID: E8zEMv-HuzS6VsXX5811s6-rvafLJZsc
+   Authenticated: true
+Error fetching products: error: column "mrp" does not exist
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/node_modules/src/node-postgres/session.ts:104:19)
+    at async DatabaseStorage.getAllProducts (/home/runner/workspace/server/storage.ts:921:12)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:1113:24) {
+  length: 104,
