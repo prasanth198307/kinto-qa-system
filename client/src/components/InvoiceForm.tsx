@@ -970,10 +970,21 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
                     const product = products.find(p => p.id === value);
                     if (product) {
                       form.setValue(`items.${index}.description`, product.productName);
-                      // HSN code to be entered manually - products don't have hsnCode in schema
+                      // Auto-fill base price from Product Master (convert from paise to rupees)
+                      if (product.basePrice) {
+                        form.setValue(`items.${index}.unitPrice`, product.basePrice / 100);
+                      }
+                      // Auto-fill HSN code if available
+                      if (product.hsnCode) {
+                        form.setValue(`items.${index}.hsnCode`, product.hsnCode);
+                      }
+                      // Auto-fill GST rate if available
+                      if (product.gstRate) {
+                        form.setValue(`items.${index}.gstRate`, product.gstRate);
+                      }
                       toast({
                         title: "Stock Available",
-                        description: `Available: ${totalAvailable} units`,
+                        description: `Available: ${totalAvailable} units | Price: ₹${(product.basePrice / 100).toFixed(2)}`,
                       });
                     }
                   }}
