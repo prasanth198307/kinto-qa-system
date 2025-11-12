@@ -16,8 +16,10 @@ const expressModule = await import("express");
 const { registerRoutes } = await import("./routes");
 const { setupVite, serveStatic, log } = await import("./vite");
 const { notificationService } = await import("./notificationService");
+const corsModule = await import("cors");
 
 const express = expressModule.default;
+const cors = corsModule.default;
 const { Request, Response, NextFunction } = expressModule;
 
 const app = express();
@@ -30,6 +32,14 @@ declare module "http" {
 
 // ✅ Allow Express to trust proxy headers (needed for session cookies)
 app.set("trust proxy", 1);
+
+// ✅ CORS configuration to support credentials (cookies)
+app.use(cors({
+  origin: true, // Reflects the request origin
+  credentials: true, // Allow cookies to be sent
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 
 app.use(
   express.json({
