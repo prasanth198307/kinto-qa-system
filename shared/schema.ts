@@ -735,7 +735,7 @@ export const rawMaterials = pgTable("raw_materials", {
   conversionValue: integer("conversion_value"),
   weightPerPiece: integer("weight_per_piece"),
   lossPercent: integer("loss_percent").default(0),
-  typeId: varchar("type_id").references(() => rawMaterialTypes.id), // Optional reference to type master
+  typeId: varchar("type_id").references(() => rawMaterialTypes.id), // Reference to type master (nullable for backward compatibility)
   uomId: varchar("uom_id").references(() => uom.id),
   currentStock: integer("current_stock").default(0),
   reorderLevel: integer("reorder_level"),
@@ -743,6 +743,14 @@ export const rawMaterials = pgTable("raw_materials", {
   unitCost: integer("unit_cost"),
   location: varchar("location", { length: 255 }),
   supplier: varchar("supplier", { length: 255 }),
+  isOpeningStockOnly: integer("is_opening_stock_only").default(1), // 1 = Opening Stock Entry Only, 0 = Ongoing Inventory
+  openingStock: integer("opening_stock"), // Opening stock in base units
+  openingDate: date("opening_date"), // Date of opening stock entry
+  closingStock: integer("closing_stock"), // Calculated closing stock in base units
+  closingStockUsable: integer("closing_stock_usable"), // Calculated closing stock in usable derived units
+  receivedQuantity: integer("received_quantity"), // For ongoing mode: received quantity
+  returnedQuantity: integer("returned_quantity"), // For ongoing mode: returned quantity
+  adjustments: integer("adjustments"), // For ongoing mode: adjustments (+/-)
   isActive: varchar("is_active").default('true'),
   recordStatus: integer("record_status").default(1).notNull(),
   createdBy: varchar("created_by").references(() => users.id),
@@ -751,10 +759,20 @@ export const rawMaterials = pgTable("raw_materials", {
 });
 
 export const insertRawMaterialSchema = createInsertSchema(rawMaterials, {
-  materialCode: z.string().optional(),
-  typeId: z.string().optional(),
+  materialCode: z.string().optional(), // Auto-generated on backend
+  typeId: z.string().min(1, "Material Type is required"), // REQUIRED for new entries
   description: z.string().optional(),
-  category: z.string().optional(),
+  category: z.string().optional(), // Legacy field, optional
+  baseUnit: z.string().optional(), // Legacy field, optional
+  supplier: z.string().optional(),
+  isOpeningStockOnly: z.number().optional(),
+  openingStock: z.number().optional(),
+  openingDate: z.string().optional(), // Will be validated as date string
+  closingStock: z.number().optional(),
+  closingStockUsable: z.number().optional(),
+  receivedQuantity: z.number().optional(),
+  returnedQuantity: z.number().optional(),
+  adjustments: z.number().optional(),
 }).omit({
   id: true,
   recordStatus: true,

@@ -1388,14 +1388,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
         materialCode = `RM-${nextNumber.toString().padStart(4, '0')}`;
       }
       
+      // Fetch Type Master details if typeId is provided
+      let typeDetails = null;
+      if (req.body.typeId) {
+        typeDetails = await storage.getRawMaterialType(req.body.typeId);
+        if (!typeDetails) {
+          return res.status(400).json({ message: "Invalid Material Type ID" });
+        }
+      }
+      
+      // Auto-calculate closing stock based on stock management mode
+      let closingStock = null;
+      let closingStockUsable = null;
+      
+      if (typeDetails) {
+        // Default isOpeningStockOnly to 1 if not provided, normalize to number for comparison
+        const isOpeningMode = req.body.isOpeningStockOnly === undefined ? 1 : Number(req.body.isOpeningStockOnly);
+        const openingStockValue = req.body.openingStock != null ? Number(req.body.openingStock) : 0;
+        
+        if (isOpeningMode === 1) {
+          // Opening Stock Entry Only mode (calculate even for zero quantities)
+          closingStock = openingStockValue;
+          closingStockUsable = Math.round(openingStockValue * (typeDetails.usableUnits || 0));
+        } else if (isOpeningMode === 0) {
+          // Ongoing Inventory mode: closingStock = openingStock + received - returned + adjustments
+          const received = Number(req.body.receivedQuantity || 0);
+          const returned = Number(req.body.returnedQuantity || 0);
+          const adjustments = Number(req.body.adjustments || 0);
+          closingStock = openingStockValue + received - returned + adjustments;
+          closingStockUsable = Math.round(closingStock * (typeDetails.usableUnits || 0));
+        }
+      }
+      
       const materialData = { 
         ...req.body, 
         materialCode,
+        closingStock,
+        closingStockUsable,
         createdBy: userId 
       };
       const validatedData = insertRawMaterialSchema.parse(materialData);
       const created = await storage.createRawMaterial(validatedData);
-      res.json(created);
+      
+      // Return created material with type details
+      res.json({ ...created, typeDetails });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
@@ -1412,7 +1448,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!material) {
         return res.status(404).json({ message: "Raw material not found" });
       }
-      res.json(material);
+      
+      // Fetch Type Master details if typeId exists
+      let typeDetails = null;
+      if (material.typeId) {
+        typeDetails = await storage.getRawMaterialType(material.typeId);
+      }
+      
+      res.json({ ...material, typeDetails });
     } catch (error) {
       console.error("Error fetching raw material:", error);
       res.status(500).json({ message: "Failed to fetch raw material" });
@@ -1422,12 +1465,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/raw-materials/:id', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const { id } = req.params;
-      const validatedData = insertRawMaterialSchema.partial().parse(req.body);
-      const updated = await storage.updateRawMaterial(id, validatedData);
-      if (!updated) {
+      
+      // Fetch existing material for merging
+      const existing = await storage.getRawMaterial(id);
+      if (!existing) {
         return res.status(404).json({ message: "Raw material not found" });
       }
-      res.json(updated);
+      
+      // Strip null values (Zod .optional() expects undefined, not null)
+      const sanitized = Object.fromEntries(
+        Object.entries(req.body).filter(([_, v]) => v !== null)
+      );
+      
+      // Merge with existing data
+      const merged = { ...existing, ...sanitized };
+      
+      // Fetch Type Master details if typeId exists
+      let typeDetails = null;
+      if (merged.typeId) {
+        typeDetails = await storage.getRawMaterialType(merged.typeId);
+        if (!typeDetails && req.body.typeId) {
+          return res.status(400).json({ message: "Invalid Material Type ID" });
+        }
+      }
+      
+      // Recalculate closing stock if type details exist and stock fields changed
+      let updates: any = { ...sanitized };
+      if (typeDetails && (sanitized.isOpeningStockOnly !== undefined || sanitized.openingStock !== undefined || sanitized.receivedQuantity !== undefined || sanitized.returnedQuantity !== undefined || sanitized.adjustments !== undefined)) {
+        // Default isOpeningStockOnly to 1 if not provided, normalize to number for comparison
+        const isOpeningMode = merged.isOpeningStockOnly === undefined ? 1 : Number(merged.isOpeningStockOnly);
+        const openingStockValue = merged.openingStock != null ? Number(merged.openingStock) : 0;
+        
+        if (isOpeningMode === 1) {
+          // Opening Stock Entry Only mode (calculate even for zero quantities)
+          updates.closingStock = openingStockValue;
+          updates.closingStockUsable = Math.round(openingStockValue * (typeDetails.usableUnits || 0));
+        } else if (isOpeningMode === 0) {
+          // Ongoing Inventory mode: closingStock = openingStock + received - returned + adjustments
+          const received = Number(merged.receivedQuantity || 0);
+          const returned = Number(merged.returnedQuantity || 0);
+          const adjustments = Number(merged.adjustments || 0);
+          const closingStockValue = openingStockValue + received - returned + adjustments;
+          updates.closingStock = closingStockValue;
+          updates.closingStockUsable = Math.round(closingStockValue * (typeDetails.usableUnits || 0));
+        }
+      }
+      
+      const validatedData = insertRawMaterialSchema.partial().parse(updates);
+      const updated = await storage.updateRawMaterial(id, validatedData);
+      
+      // Return updated material with type details
+      res.json({ ...updated, typeDetails });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
