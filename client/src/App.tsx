@@ -34,6 +34,7 @@ import InventoryManagement from "@/pages/inventory-management";
 import RawMaterialTypeMaster from "@/pages/raw-material-type-master";
 import ProductionManagement from "@/pages/production-management";
 import ProductionEntries from "@/pages/production-entries";
+import SalesReturns from "@/pages/sales-returns";
 import MachineStartupReminders from "@/pages/machine-startup-reminders";
 import NotificationSettings from "@/pages/notification-settings";
 import Reports from "@/pages/reports";
@@ -326,6 +327,7 @@ function ManagerDashboard() {
         { id: "gatepasses", label: "Gatepasses", icon: FileText },
         { id: "invoices", label: "Invoices", icon: FileText },
         { id: "dispatch-tracking", label: "Dispatch Tracking", icon: Truck },
+        { id: "sales-returns", label: "Sales Returns", icon: Package },
       ],
       quickActions: [
         {
@@ -856,6 +858,7 @@ function Router() {
       <ProtectedRoute path="/checklists" component={ChecklistsPage} />
       <ProtectedRoute path="/invoice/:id" component={InvoiceDetail} />
       <ProtectedRoute path="/dispatch-tracking" component={DispatchTracking} />
+      <ProtectedRoute path="/sales-returns" component={SalesReturns} />
       <ProtectedRoute path="/" component={AuthenticatedApp} />
       <Route component={NotFound} />
     </Switch>
