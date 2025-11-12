@@ -922,7 +922,7 @@ function ProductDialog({
   }, [item, open, form, existingBom, replace]);
 
   const handleAddBomRow = () => {
-    append({ rawMaterialId: '', quantityRequired: 0, uom: '', notes: '' } as any);
+    append({ rawMaterialId: '', quantityRequired: 0, uom: '', notes: '' } as any, { shouldFocus: false });
   };
 
   const handleSubmit = async (data: ProductFormData) => {
