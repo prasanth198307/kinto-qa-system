@@ -33,6 +33,7 @@ import PMExecutionDialog from "@/components/PMExecutionDialog";
 import InventoryManagement from "@/pages/inventory-management";
 import RawMaterialTypeMaster from "@/pages/raw-material-type-master";
 import ProductionManagement from "@/pages/production-management";
+import ProductionEntries from "@/pages/production-entries";
 import MachineStartupReminders from "@/pages/machine-startup-reminders";
 import NotificationSettings from "@/pages/notification-settings";
 import Reports from "@/pages/reports";
@@ -321,6 +322,7 @@ function ManagerDashboard() {
       items: [
         { id: "purchase-orders", label: "Purchase Orders", icon: ShoppingCart },
         { id: "raw-material-issuance", label: "Raw Material Issuance", icon: Package },
+        { id: "production-entries", label: "Production Entries", icon: ListChecks },
         { id: "gatepasses", label: "Gatepasses", icon: FileText },
         { id: "invoices", label: "Invoices", icon: FileText },
         { id: "dispatch-tracking", label: "Dispatch Tracking", icon: Truck },
@@ -401,6 +403,8 @@ function ManagerDashboard() {
       case 'gatepasses':
       case 'invoices':
         return <ProductionManagement activeTab={activeView} />;
+      case 'production-entries':
+        return <ProductionEntries />;
       case 'dispatch-tracking':
         return <DispatchTracking showHeader={false} />;
       case 'reports':
@@ -596,6 +600,7 @@ function AdminDashboard() {
       label: "Production Operations",
       items: [
         { id: "raw-material-issuance", label: "Raw Material Issuance", icon: Package },
+        { id: "production-entries", label: "Production Entries", icon: ListChecks },
         { id: "gatepasses", label: "Gatepasses", icon: FileText },
         { id: "invoices", label: "Sales Invoices", icon: Receipt },
         { id: "dispatch-tracking", label: "Dispatch Tracking", icon: Truck },
@@ -721,6 +726,8 @@ function AdminDashboard() {
       case 'gatepasses':
       case 'invoices':
         return <ProductionManagement activeTab={activeView} />;
+      case 'production-entries':
+        return <ProductionEntries />;
       case 'dispatch-tracking':
         return <DispatchTracking showHeader={false} />;
       case 'machine-startup-reminders':

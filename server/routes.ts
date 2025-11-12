@@ -2132,6 +2132,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
       }
+      // Handle unique constraint violation (duplicate issuance/date/shift)
+      if (error instanceof Error && error.message.includes('unique constraint')) {
+        return res.status(409).json({ 
+          message: "A production entry already exists for this issuance, date, and shift combination" 
+        });
+      }
       console.error("Error creating production entry:", error);
       res.status(500).json({ message: error instanceof Error ? error.message : "Failed to create production entry" });
     }
