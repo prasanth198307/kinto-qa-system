@@ -649,6 +649,20 @@ export const insertProductSchema = createInsertSchema(products).omit({
   recordStatus: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  productCode: z.string().trim().min(1, "Product code is required"),
+  productName: z.string().trim().min(1, "Product name is required"),
+  // Numeric fields - accept both strings and numbers
+  basePrice: z.coerce.number().optional().nullable(),
+  gstPercent: z.coerce.number().optional().nullable(),
+  totalPrice: z.coerce.number().optional().nullable(),
+  mrp: z.coerce.number().optional().nullable(),
+  standardCost: z.coerce.number().optional().nullable(),
+  minimumStockLevel: z.coerce.number().optional().nullable(),
+  derivedValue: z.coerce.number().optional().nullable(),
+  defaultLossPercent: z.coerce.number().optional().nullable(),
+  usableDerivedUnits: z.coerce.number().optional().nullable(),
+  netVolume: z.coerce.number().optional().nullable(),
 });
 
 export type InsertProduct = z.infer<typeof insertProductSchema>;

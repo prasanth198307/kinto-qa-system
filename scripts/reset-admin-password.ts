@@ -20,11 +20,11 @@ async function resetAdminPassword() {
     await client.connect();
     console.log("✅ Connected to database");
     
-    const newPasswordHash = await hashPassword("admin123");
-    console.log("✅ Generated new password hash");
+    const newPasswordHash = await hashPassword("Admin@123");
+    console.log("✅ Generated new password hash for password: Admin@123");
     
     const result = await client.query(
-      `UPDATE users SET password = $1 WHERE email = 'admin@kinto.com' RETURNING id, email`,
+      `UPDATE users SET password = $1 WHERE username = 'admin' RETURNING id, username, email`,
       [newPasswordHash]
     );
     
