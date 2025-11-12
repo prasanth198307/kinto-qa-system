@@ -1,7 +1,7 @@
 # KINTO Operations & QA Management System
 
 ## Overview
-KINTO Operations & QA is a comprehensive manufacturing operations and quality management system designed to manage production, inventory, purchase orders, invoicing, gatepasses, quality assurance, and preventive maintenance. It supports various user roles (operators, reviewers, managers, administrators) through tasks like checklist completion, verification, approval, and system configuration. Key features include FIFO payment allocation, GST-compliant invoice generation, robust payment tracking, extensive reporting, and two-way WhatsApp integration for machine startup and checklist management. The system is a full-stack TypeScript solution (React and Express) focused on speed and error prevention in industrial settings.
+KINTO Operations & QA is a comprehensive manufacturing operations and quality management system designed to manage production, inventory, purchase orders, invoicing, gatepasses, quality assurance, and preventive maintenance. It supports various user roles through tasks like checklist completion, verification, approval, and system configuration. Key capabilities include FIFO payment allocation, GST-compliant invoice generation, robust payment tracking, extensive reporting, and two-way WhatsApp integration for machine startup and checklist management. The system is a full-stack TypeScript solution focused on speed and error prevention in industrial settings, aiming to streamline industrial operations and enhance quality control.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -9,10 +9,10 @@ Preferred communication style: Simple, everyday language.
 ## System Architecture
 
 ### UI/UX Decisions
-The frontend uses React 18 with TypeScript, Vite, Wouter, `shadcn/ui` (Radix UI), and Tailwind CSS ("New York" theme, Material Design principles). It features a mobile-first approach, custom styling, a Vertical Sidebar for navigation with role-based dashboards, and dedicated detail pages for invoices and dispatch tracking. Form validation is handled by `react-hook-form` and `zod`. A GlobalHeader ensures consistent branding and navigation across all pages, adapting for both sidebar and standalone layouts.
+The frontend uses React 18 with TypeScript, Vite, Wouter, `shadcn/ui` (Radix UI), and Tailwind CSS ("New York" theme, Material Design principles). It features a mobile-first approach, custom styling, a Vertical Sidebar for navigation with role-based dashboards, and dedicated detail pages. Form validation is handled by `react-hook-form` and `zod`. A GlobalHeader ensures consistent branding and navigation.
 
 ### Technical Implementations
-The backend is an Express.js application built with TypeScript and Node.js. It features Email/Password Authentication using `scrypt` and `Passport.js`, and a Dynamic Role-Based Access Control (RBAC) system for `admin`, `manager`, `operator`, and `reviewer` roles with granular, screen-level permissions. The database is Neon Serverless PostgreSQL, managed via Drizzle ORM. The system implements multi-item issuance, a Header-Detail pattern for transactions, automatic inventory management, and comprehensive vendor and role management. The API is RESTful JSON with structured error handling, audit logging, and multi-layer authorization.
+The backend is an Express.js application built with TypeScript and Node.js, featuring Email/Password Authentication using `scrypt` and `Passport.js`. It includes a Dynamic Role-Based Access Control (RBAC) system for `admin`, `manager`, `operator`, and `reviewer` roles with granular, screen-level permissions. The database is Neon Serverless PostgreSQL, managed via Drizzle ORM. The system implements multi-item issuance, a Header-Detail pattern for transactions, automatic inventory management, and comprehensive vendor and role management. The API is RESTful JSON with structured error handling, audit logging, and multi-layer authorization.
 
 ### Feature Specifications
 - **Comprehensive Reporting System:** Generates printable, branded reports for various operations (Raw Material Issuance, Purchase Orders, PM Execution, Gatepass, GST-Compliant Invoices).
@@ -20,13 +20,13 @@ The backend is an Express.js application built with TypeScript and Node.js. It f
 - **Machine Startup Reminder System:** Manages and tracks machine startup tasks, sending multi-channel reminders (WhatsApp, Email).
 - **Missed Checklist Notification System:** Automatically alerts personnel via WhatsApp for overdue checklist assignments.
 - **WhatsApp Checklist Completion System:** Allows operators to complete assigned checklists via WhatsApp with incremental task submission, photo uploads for "Not OK" tasks, and optional spare part requests.
-- **Invoice-First Gatepass Flow:** Enforces gatepass creation from existing invoices, auto-populating items for data consistency.
+- **Invoice-First Gatepass Flow:** Enforces gatepass creation from existing invoices, auto-populating items.
 - **Invoice & Gatepass Management:** Includes template management, enhanced invoice forms with print preview, and multi-screen printing options.
 - **Centralized Reports Module:** A unified page for operational and GST reports with filtering and export options, including GSTR-1 and GSTR-3B.
-- **Professional Delete Confirmations:** Consistent UX for all delete operations using `shadcn AlertDialog`.
 - **Complete Dispatch Tracking Workflow:** A 5-stage workflow (Invoice Creation to Proof of Delivery) with strict status validation and digital signature for Proof of Delivery.
 - **Comprehensive Role Permissions Management:** Granular access control across 26 system screens (View, Create, Edit, Delete).
-- **Two-Way WhatsApp Integration:** Production-ready integration using Meta WhatsApp Business Cloud API for outbound reminders, inbound checklist completion, sender verification, atomic status updates, and analytics. Supports photo capture for NOK tasks and spare part requests.
+- **Two-Way WhatsApp Integration:** Production-ready integration using Meta WhatsApp Business Cloud API for outbound reminders, inbound checklist completion, sender verification, atomic status updates, and analytics.
+- **Raw Material Type Master System:** Manages raw material definitions with three conversion methods (Formula-Based, Direct-Value, Output-Coverage) including auto-calculation for conversion values and usable units, accounting for loss percentage.
 
 ### System Design Choices
 - **Authentication:** Users can log in with username or email.
@@ -35,6 +35,7 @@ The backend is an Express.js application built with TypeScript and Node.js. It f
 - **Inventory Management Logic:** Inventory deduction occurs on gatepass creation (physical dispatch).
 - **WhatsApp Integration:** Uses Meta WhatsApp Business Cloud API with sender verification, atomic updates, and state management for incremental checklist completion, including photo uploads and spare part requests.
 - **Build & Deployment:** Development uses Vite dev server and `tsx`-powered Express; production builds use Vite for frontend and `esbuild` for backend. Drizzle Kit manages database schema.
+- **Environment Handling:** Automatically detects Replit environment for cross-origin cookie settings (`secure: true`, `sameSite: 'none'`) to ensure session persistence.
 
 ## External Dependencies
 
@@ -78,133 +79,3 @@ The backend is an Express.js application built with TypeScript and Node.js. It f
 ### Other
 - Wouter (Routing)
 - TanStack Query (Server State Management)
-
-## Recent Updates
-
-### Enhanced Raw Material Management (November 12, 2025)
-**Objective:** Comprehensive raw material system with auto-generated Material IDs, structured category/unit dropdowns, conversion type logic, and auto-calculation for piece conversions.
-
-**Schema Enhancements (`rawMaterials` table):**
-- `materialCode`: Auto-generated on backend (RM-001, RM-002, etc.) using atomic counter
-- `category`: Dropdown values (Preform, Cap, Label, Shrink, Adhesive, Other)
-- `baseUnit`: Dropdown values (Kg, Bag, Box, Roll, Piece, Litre, Other)
-- `weightPerUnit`: Integer (optional, weight in selected base unit)
-- `conversionType`: Dropdown ("Direct Pieces", "Derived", "None")
-- `conversionValue`: Integer (pieces per base unit, manual or auto-calculated)
-- `weightPerPiece`: Integer (grams, required for Derived type)
-- `lossPercent`: Integer (default 0)
-
-**Conversion Type Logic:**
-1. **Direct Pieces:** User manually enters conversion value (e.g., 25kg Bag = 1190 pieces)
-2. **Derived:** Auto-calculates using formula: `conversionValue = Math.round((weightPerUnit * 1000) / weightPerPiece)`
-   - Example: 25kg bag, 21g preform → (25 × 1000 / 21) = 1190 pieces
-3. **None:** Weight-only material (e.g., adhesives, liquids) with no piece conversion
-
-**Backend Implementation (`server/routes.ts`):**
-- POST /api/raw-materials: Auto-generates Material Code using atomic SELECT/UPDATE counter
-- Format: RM-{counter} padded to 3 digits (RM-001, RM-002, etc.)
-- Proper null/undefined handling for all optional numeric fields
-
-**Frontend Implementation (`client/src/pages/inventory-management.tsx`):**
-- **RawMaterialDialog Form:**
-  - Material ID field shown as disabled with "AUTO (generated by system)" placeholder
-  - Category and Base Unit dropdowns with predefined values
-  - Conversion Type dropdown with conditional field rendering
-  - Auto-calculation: React `useEffect` watches `weightPerUnit`, `weightPerPiece`, `conversionType`
-  - Conversion Value field disabled and auto-populated for Derived type
-  - Weight per Piece field only appears for Derived type
-- **Raw Materials Table:**
-  - Displays: Material Code, Name, Category, Base Unit, Conversion, Stock, Status, Actions
-  - Base Unit column shows unit and weight: "Bag (25)"
-  - Conversion column shows type and pieces: "Direct Pieces" / "1190 pcs"
-
-**Key Features:**
-- Sequential Material ID generation starting from RM-001
-- Form validation ensures required fields based on conversion type
-- Auto-calculation prevents manual errors in Derived conversions
-- Clean table layout with organized display of new fields
-- Backward compatible with existing raw materials
-
-**Status:** Production-ready, architect approved ✅
-
-### Session Cookie Authentication Fix (November 12, 2025)
-**Objective:** Fix critical 401 authentication errors caused by session cookies not persisting between requests in Replit's cross-origin environment.
-
-**Root Cause:**
-- Replit serves frontend from `*.replit.dev` and backend from `*.repl.co` (cross-origin)
-- Default `sameSite: 'lax'` cookie setting blocks cookies in cross-site scenarios
-- Browser was not sending session cookies, causing every request to get a new session ID
-
-**Solution Implemented (`server/auth.ts`):**
-- Auto-detect Replit environment using `REPLIT_DOMAINS` or `REPLIT_DEV_DOMAIN` variables
-- Automatically enable cross-origin cookie settings when on Replit:
-  - `secure: true` (required for HTTPS)
-  - `sameSite: 'none'` (required for cross-origin requests)
-- Maintains backward compatibility with local development (`sameSite: 'lax'` for non-HTTPS)
-
-**Technical Details:**
-```typescript
-const isReplit = !!(process.env.REPLIT_DOMAINS || process.env.REPLIT_DEV_DOMAIN);
-const useHttps = process.env.USE_HTTPS === "true" || isReplit;
-```
-
-**Results:**
-- Session cookies now properly persist across requests
-- Authentication works correctly in Replit environment
-- No manual environment variable configuration needed
-
-**Status:** Production-ready, architect approved ✅
-
-### GlobalHeader Implementation (November 11, 2025)
-**Objective:** Display KINTO logo horizontally in single-line header strip on every page with logout and notifications always visible on right. Header extends full width across entire screen.
-
-**Components Created:**
-- **GlobalHeader** (`client/src/components/GlobalHeader.tsx`): Fixed full-width header with horizontal KINTO logo, "SmartOps" and "Manufacturing Excellence" text, notification bell, and logout button. Extends to left edge (no offset).
-- **DashboardShell** (`client/src/components/DashboardShell.tsx`): Wrapper for sidebar-based dashboards (Admin/Manager/Reviewer) with GlobalHeader, VerticalNavSidebar, and content area.
-- **OperatorDashboardShell** (`client/src/components/OperatorDashboardShell.tsx`): Wrapper for mobile bottom-nav dashboard (Operator).
-
-**Layout Architecture:**
-- GlobalHeader: `z-50`, full width (`left-0 right-0`), 64px height
-- VerticalNavSidebar: `z-30`, starts at `top-0`, 80px top padding to accommodate header
-- Sidebar sits **under** the header, navigation items start below header
-- No blank space above sidebar - header covers full width seamlessly
-
-**Mobile Responsiveness:**
-- GlobalHeader includes hamburger menu button (☰) on mobile/tablet screens (hidden on desktop with `lg:hidden`)
-- DashboardShell manages mobile menu state and coordinates header/sidebar interaction
-- VerticalNavSidebar slides in from left on mobile when menu is opened
-- Dark overlay backdrop appears behind sidebar on mobile
-- Clicking nav item or overlay closes the mobile menu automatically
-- Fully responsive across all screen sizes
-
-**Conditional Header Pattern:**
-- Reports page supports dual-access pattern via `showHeader` prop (defaults to `true`)
-- Standalone access (direct route): Shows GlobalHeader
-- Dashboard access (Admin/Manager): Passes `showHeader={false}` to prevent duplicates
-- Pattern: `{showHeader && <GlobalHeader />}` with conditional `mt-16` spacing
-
-**Duplicate Header Fix (Final):**
-- Removed GlobalHeader from 9 pages accessed ONLY via dashboards (sales-dashboard, inventory-management, production-management, machine-startup-reminders, WhatsAppAnalytics, notification-settings, template-management, ReviewerDashboard, AdminUserManagement)
-- Conditional header pages support dual-access pattern (Reports, Dispatch Tracking) with `showHeader` prop
-- Pattern: Standalone pages show GlobalHeader; dashboard-embedded pages rely on DashboardShell's header
-
-**Dashboard-Only Pages (No GlobalHeader):**
-1. sales-dashboard.tsx
-2. inventory-management.tsx
-3. production-management.tsx
-4. machine-startup-reminders.tsx
-5. WhatsAppAnalytics.tsx
-6. notification-settings.tsx
-7. template-management.tsx
-8. ReviewerDashboard.tsx
-9. AdminUserManagement.tsx
-
-**Dual-Access Pages (Conditional GlobalHeader):**
-1. Reports.tsx (showHeader prop)
-2. dispatch-tracking.tsx (showHeader prop)
-
-**Coverage:** 17 pages/dashboards
-- 13 standalone pages (Reports with conditional header, User Management, etc.)
-- 4 role-based dashboards (Operator, Reviewer, Manager, Admin)
-
-**Status:** Production-ready with architect approval ✅
