@@ -1,15 +1,19 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { 
   insertUomSchema, 
-  insertProductSchema, 
+  insertProductSchema,
+  insertProductBomSchema,
+  productFormSchema,
   insertRawMaterialSchema, 
   insertFinishedGoodSchema,
   type Uom,
   type Product,
+  type ProductBom,
+  type ProductFormData,
   type RawMaterial,
   type RawMaterialType,
   type FinishedGood,
@@ -40,7 +44,8 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Pencil, Trash2, Search, Package, Layers, Box, CheckCircle, Users } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, Pencil, Trash2, Search, Package, Layers, Box, CheckCircle, Users, Minus } from "lucide-react";
 import VendorManagement from "@/components/VendorManagement";
 import BankManagement from "@/components/BankManagement";
 import { GlobalHeader } from "@/components/GlobalHeader";
@@ -472,29 +477,62 @@ function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSea
     queryKey: ['/api/uom'],
   });
 
-  const createMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof insertProductSchema>) => {
-      return await apiRequest('POST', '/api/products', data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/products'] });
-      toast({ title: "Success", description: "Product created successfully" });
-      setIsDialogOpen(false);
-    },
-    onError: (error: Error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    },
-  });
+  const saveProductWithBomMutation = useMutation({
+    mutationFn: async ({ mode, id, data }: { mode: 'create' | 'update'; id?: string; data: ProductFormData }) => {
+      // Extract BOM items from form data
+      const { bomItems, ...productData } = data;
+      
+      // Step 1: Save product
+      let productId: string;
+      let savedProduct: Product;
+      if (mode === 'create') {
+        const result = await apiRequest('POST', '/api/products', productData);
+        productId = result.id;
+        savedProduct = result; // Full product object returned from API
+      } else {
+        const result = await apiRequest('PATCH', `/api/products/${id}`, productData);
+        productId = id!;
+        savedProduct = result; // Full product object returned from API
+      }
 
-  const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<z.infer<typeof insertProductSchema>> }) => {
-      return await apiRequest('PATCH', `/api/products/${id}`, data);
+      // Step 2: Save BOM (bulk replace) - only if bomItems exist
+      let bomSuccess = true;
+      let bomError: string | null = null;
+      if (bomItems && bomItems.length > 0) {
+        try {
+          await apiRequest('POST', `/api/products/${productId}/bom`, bomItems);
+        } catch (error) {
+          console.error('BOM save failed after product save:', error);
+          bomSuccess = false;
+          bomError = (error as Error).message;
+        }
+      }
+
+      return { productId, bomSuccess, bomError, createdProduct: mode === 'create', savedProduct };
     },
-    onSuccess: () => {
+    onSuccess: ({ productId, bomSuccess, bomError, createdProduct, savedProduct }, variables) => {
+      // Always invalidate product list to show newly created/updated product
       queryClient.invalidateQueries({ queryKey: ['/api/products'] });
-      toast({ title: "Success", description: "Product updated successfully" });
-      setIsDialogOpen(false);
-      setEditingItem(null);
+      
+      if (bomSuccess) {
+        // Full success - invalidate BOM cache and close dialog
+        queryClient.invalidateQueries({ queryKey: ['/api/products', productId, 'bom'] });
+        toast({ title: "Success", description: "Product and BOM saved successfully" });
+        setIsDialogOpen(false);
+        setEditingItem(null);
+      } else {
+        // Partial success - product saved but BOM failed
+        toast({ 
+          title: "Partial Success", 
+          description: `Product saved successfully, but BOM update failed: ${bomError}. Please fix the BOM and save again.`, 
+          variant: "destructive" 
+        });
+        
+        // Switch to update mode using the savedProduct returned from API
+        // This ensures the dialog is in update mode for retry (avoiding duplicate product creation)
+        setEditingItem(savedProduct);
+        // Keep dialog open for retry
+      }
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -678,13 +716,13 @@ function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSea
         item={editingItem}
         uoms={uoms}
         onSubmit={(data) => {
-          if (editingItem) {
-            updateMutation.mutate({ id: editingItem.id, data });
-          } else {
-            createMutation.mutate(data);
-          }
+          saveProductWithBomMutation.mutate({
+            mode: editingItem ? 'update' : 'create',
+            id: editingItem?.id,
+            data
+          });
         }}
-        isLoading={createMutation.isPending || updateMutation.isPending}
+        isLoading={saveProductWithBomMutation.isPending}
       />
 
       <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
@@ -723,23 +761,79 @@ function ProductDialog({
   onOpenChange: (open: boolean) => void; 
   item: Product | null; 
   uoms: Uom[];
-  onSubmit: (data: z.infer<typeof insertProductSchema>) => void;
+  onSubmit: (data: ProductFormData) => void;
   isLoading: boolean;
 }) {
-  const form = useForm<z.infer<typeof insertProductSchema>>({
-    resolver: zodResolver(insertProductSchema),
+  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState("info");
+  const [bomSaving, setBomSaving] = useState(false);
+
+  // Fetch raw materials for BOM dropdown
+  const { data: rawMaterials = [] } = useQuery<RawMaterial[]>({
+    queryKey: ['/api/raw-materials'],
+    enabled: open,
+  });
+
+  // Fetch existing BOM when editing
+  const { data: existingBom = [] } = useQuery<any[]>({
+    queryKey: ['/api/products', item?.id, 'bom'],
+    queryFn: async () => {
+      if (!item?.id) return [];
+      const response = await fetch(`/api/products/${item.id}/bom`);
+      if (!response.ok) throw new Error('Failed to fetch BOM');
+      return response.json();
+    },
+    enabled: open && !!item?.id,
+  });
+
+  const form = useForm<ProductFormData>({
+    resolver: zodResolver(productFormSchema),
     defaultValues: {
       productCode: '',
       productName: '',
       description: '',
       category: '',
+      skuCode: '',
+      productType: '',
       uomId: undefined,
       standardCost: undefined,
+      baseUnit: '',
+      derivedUnit: '',
+      conversionMethod: '',
+      derivedValuePerBase: undefined,
+      weightPerBase: undefined,
+      weightPerDerived: undefined,
+      usableDerivedUnits: '',
+      defaultLossPercent: undefined,
+      basePrice: undefined,
+      gstPercent: undefined,
+      totalPrice: undefined,
+      hsnCode: '',
+      sacCode: '',
+      taxType: '',
+      minimumStockLevel: undefined,
       isActive: 'true',
+      bomItems: [],
     },
   });
 
-  // Reset form when item changes or dialog opens
+  // BOM field array
+  const { fields, append, remove, replace } = useFieldArray({
+    control: form.control,
+    name: "bomItems",
+  });
+
+  // Watch basePrice and gstPercent for totalPrice calculation
+  const basePrice = useWatch({ control: form.control, name: "basePrice" });
+  const gstPercent = useWatch({ control: form.control, name: "gstPercent" });
+  const conversionMethod = useWatch({ control: form.control, name: "conversionMethod" });
+
+  // Calculate totalPrice
+  const calculatedTotalPrice = basePrice && gstPercent !== undefined
+    ? Math.round((Number(basePrice) || 0) * (1 + (Number(gstPercent) || 0) / 100))
+    : undefined;
+
+  // Reset form and BOM when dialog opens/closes or item changes
   useEffect(() => {
     if (open) {
       if (item) {
@@ -748,165 +842,681 @@ function ProductDialog({
           productName: item.productName || '',
           description: item.description || '',
           category: item.category || '',
+          skuCode: item.skuCode || '',
+          productType: item.productType || '',
           uomId: item.uomId || undefined,
           standardCost: item.standardCost || undefined,
+          baseUnit: item.baseUnit || '',
+          derivedUnit: item.derivedUnit || '',
+          conversionMethod: item.conversionMethod || '',
+          derivedValuePerBase: item.derivedValuePerBase || undefined,
+          weightPerBase: item.weightPerBase || undefined,
+          weightPerDerived: item.weightPerDerived || undefined,
+          usableDerivedUnits: item.usableDerivedUnits || '',
+          defaultLossPercent: item.defaultLossPercent || undefined,
+          basePrice: item.basePrice || undefined,
+          gstPercent: item.gstPercent || undefined,
+          totalPrice: item.totalPrice || undefined,
+          hsnCode: item.hsnCode || '',
+          sacCode: item.sacCode || '',
+          taxType: item.taxType || '',
+          minimumStockLevel: item.minimumStockLevel || undefined,
           isActive: item.isActive || 'true',
         });
+        // Hydrate BOM items when editing
+        if (existingBom.length > 0) {
+          replace(existingBom.map(bom => ({
+            rawMaterialId: bom.rawMaterialId || bom.raw_material_id,
+            quantityRequired: bom.quantityRequired || bom.quantity_required,
+            uom: bom.uom || '',
+            notes: bom.notes || '',
+          })));
+        } else {
+          replace([]);
+        }
       } else {
         form.reset({
           productCode: '',
           productName: '',
           description: '',
           category: '',
+          skuCode: '',
+          productType: '',
           uomId: undefined,
           standardCost: undefined,
+          baseUnit: '',
+          derivedUnit: '',
+          conversionMethod: '',
+          derivedValuePerBase: undefined,
+          weightPerBase: undefined,
+          weightPerDerived: undefined,
+          usableDerivedUnits: '',
+          defaultLossPercent: undefined,
+          basePrice: undefined,
+          gstPercent: undefined,
+          totalPrice: undefined,
+          hsnCode: '',
+          sacCode: '',
+          taxType: '',
+          minimumStockLevel: undefined,
           isActive: 'true',
         });
+        replace([]);
       }
+      setActiveTab("info");
     }
-  }, [item, open, form]);
+  }, [item, open, form, existingBom, replace]);
 
-  const handleSubmit = (data: z.infer<typeof insertProductSchema>) => {
+  const handleAddBomRow = () => {
+    append({ rawMaterialId: '', quantityRequired: 0, uom: '', notes: '' } as any);
+  };
+
+  const handleSubmit = async (data: z.infer<typeof insertProductSchema>) => {
+    // First save the product
     onSubmit(data);
+
+    // If product creation/update succeeds, save BOM (handled in parent onSuccess)
+    if (item?.id) {
+      // For edit mode, BOM will be saved in parent's onSuccess
+      const bomItems = (fields as any[]).map(f => ({
+        productId: item.id,
+        rawMaterialId: f.rawMaterialId,
+        quantityRequired: Number(f.quantityRequired) || 0,
+        uom: f.uom || '',
+        notes: f.notes || '',
+      }));
+      (window as any).__pendingBomItems = bomItems;
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto" data-testid="dialog-product">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto" data-testid="dialog-product">
         <DialogHeader>
           <DialogTitle>{item ? 'Edit Product' : 'Add Product'}</DialogTitle>
           <DialogDescription>
-            {item ? 'Update the product details' : 'Create a new product'}
+            {item ? 'Update product details and bill of materials' : 'Create a new product with packaging, pricing, and BOM'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="productCode"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Product Code *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., PROD-001" {...field} data-testid="input-product-code" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="productName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Product Name *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., Mineral Water 1L" {...field} data-testid="input-product-name" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder="Product description..." 
-                      {...field} 
-                      value={field.value || ''} 
-                      data-testid="input-product-description"
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="info" data-testid="tab-info">Product Info</TabsTrigger>
+                <TabsTrigger value="packaging" data-testid="tab-packaging">Packaging</TabsTrigger>
+                <TabsTrigger value="pricing" data-testid="tab-pricing">Pricing/Tax</TabsTrigger>
+                <TabsTrigger value="bom" data-testid="tab-bom">BOM</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="info" className="space-y-4 mt-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="productCode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Product Code *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="PROD-001" {...field} data-testid="input-product-code" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="skuCode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>SKU Code</FormLabel>
+                        <FormControl>
+                          <Input placeholder="SKU-001" {...field} value={field.value || ''} data-testid="input-sku-code" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="productName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Product Name *</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Mineral Water 1L" {...field} data-testid="input-product-name" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="category"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Category</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Beverages" {...field} value={field.value || ''} data-testid="input-category" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="productType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Product Type</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Finished Goods" {...field} value={field.value || ''} data-testid="input-product-type" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Textarea placeholder="Product description..." {...field} value={field.value || ''} data-testid="input-description" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="uomId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Unit of Measurement</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || ''}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-uom">
+                              <SelectValue placeholder="Select UOM" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {uoms.filter(u => u.isActive === 'true').map(uom => (
+                              <SelectItem key={uom.id} value={uom.id}>
+                                {uom.name} ({uom.code})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="standardCost"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Standard Cost (₹)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            placeholder="0" 
+                            {...field} 
+                            value={field.value || ''} 
+                            onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                            data-testid="input-standard-cost"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="isActive"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base">Active Status</FormLabel>
+                        <FormDescription>Enable or disable this product</FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value === 'true'}
+                          onCheckedChange={(checked) => field.onChange(checked ? 'true' : 'false')}
+                          data-testid="switch-active"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </TabsContent>
+
+              <TabsContent value="packaging" className="space-y-4 mt-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="baseUnit"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Base Unit</FormLabel>
+                        <FormControl>
+                          <Input placeholder="kg" {...field} value={field.value || ''} data-testid="input-base-unit" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="derivedUnit"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Derived Unit</FormLabel>
+                        <FormControl>
+                          <Input placeholder="bottle" {...field} value={field.value || ''} data-testid="input-derived-unit" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="conversionMethod"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Conversion Method</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value || ''}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-conversion-method">
+                            <SelectValue placeholder="Select conversion method" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="None">None</SelectItem>
+                          <SelectItem value="Direct">Direct</SelectItem>
+                          <SelectItem value="Formula-Based">Formula-Based</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {conversionMethod === 'Direct' && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="derivedValuePerBase"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Derived Value per Base</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="number" 
+                              step="0.01"
+                              placeholder="12" 
+                              {...field} 
+                              value={field.value || ''} 
+                              onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                              data-testid="input-derived-value"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="category"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Category</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., Beverages" {...field} value={field.value || ''} data-testid="input-product-category" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="uomId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Unit of Measurement</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value || ''}>
-                    <FormControl>
-                      <SelectTrigger data-testid="select-product-uom">
-                        <SelectValue placeholder="Select UOM" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {uoms.filter(u => u.isActive === 'true').map(uom => (
-                        <SelectItem key={uom.id} value={uom.id}>
-                          {uom.name} ({uom.code})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="standardCost"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Standard Cost (₹)</FormLabel>
-                  <FormControl>
-                    <Input 
-                      type="number" 
-                      placeholder="0" 
-                      {...field} 
-                      value={field.value || ''} 
-                      onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
-                      data-testid="input-product-cost"
+                    <FormField
+                      control={form.control}
+                      name="defaultLossPercent"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Default Loss %</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="number" 
+                              step="0.01"
+                              placeholder="5" 
+                              {...field} 
+                              value={field.value || ''} 
+                              onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                              data-testid="input-loss-percent"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="isActive"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                  <div className="space-y-0.5">
-                    <FormLabel className="text-base">Active Status</FormLabel>
-                    <FormDescription>Enable or disable this product</FormDescription>
                   </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value === 'true'}
-                      onCheckedChange={(checked) => field.onChange(checked ? 'true' : 'false')}
-                      data-testid="switch-product-active"
+                )}
+
+                {conversionMethod === 'Formula-Based' && (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="weightPerBase"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Weight per Base Unit</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                step="0.01"
+                                placeholder="1000" 
+                                {...field} 
+                                value={field.value || ''} 
+                                onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                                data-testid="input-weight-base"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="weightPerDerived"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Weight per Derived Unit</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                step="0.01"
+                                placeholder="1" 
+                                {...field} 
+                                value={field.value || ''} 
+                                onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                                data-testid="input-weight-derived"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <FormField
+                      control={form.control}
+                      name="defaultLossPercent"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Default Loss %</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="number" 
+                              step="0.01"
+                              placeholder="5" 
+                              {...field} 
+                              value={field.value || ''} 
+                              onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                              data-testid="input-loss-percent-formula"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
+                  </>
+                )}
+
+                {(conversionMethod === 'Direct' || conversionMethod === 'Formula-Based') && (
+                  <FormItem>
+                    <FormLabel>Usable Derived Units (Auto-Calculated)</FormLabel>
+                    <Input 
+                      value={item?.usableDerivedUnits || 'Calculated after save'} 
+                      disabled 
+                      className="bg-muted"
+                      data-testid="display-usable-units"
+                    />
+                    <FormDescription className="text-xs">
+                      This value is calculated by the backend based on conversion method and loss percentage
+                    </FormDescription>
+                  </FormItem>
+                )}
+              </TabsContent>
+
+              <TabsContent value="pricing" className="space-y-4 mt-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="basePrice"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Base Price (Paise)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            placeholder="50000" 
+                            {...field} 
+                            value={field.value || ''} 
+                            onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                            data-testid="input-base-price"
+                          />
+                        </FormControl>
+                        <FormDescription className="text-xs">Price in paise (₹500 = 50000 paise)</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="gstPercent"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>GST %</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            step="0.01"
+                            placeholder="18" 
+                            {...field} 
+                            value={field.value || ''} 
+                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                            data-testid="input-gst-percent"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {calculatedTotalPrice !== undefined && (
+                  <FormItem>
+                    <FormLabel>Total Price with GST (Paise)</FormLabel>
+                    <Input 
+                      value={calculatedTotalPrice} 
+                      disabled 
+                      className="bg-muted font-semibold"
+                      data-testid="display-total-price"
+                    />
+                    <FormDescription className="text-xs">
+                      ₹{(calculatedTotalPrice / 100).toFixed(2)} (Auto-calculated)
+                    </FormDescription>
+                  </FormItem>
+                )}
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="hsnCode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>HSN Code</FormLabel>
+                        <FormControl>
+                          <Input placeholder="2201" {...field} value={field.value || ''} data-testid="input-hsn-code" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="sacCode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>SAC Code</FormLabel>
+                        <FormControl>
+                          <Input placeholder="9973" {...field} value={field.value || ''} data-testid="input-sac-code" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="taxType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Tax Type</FormLabel>
+                        <FormControl>
+                          <Input placeholder="GST" {...field} value={field.value || ''} data-testid="input-tax-type" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="minimumStockLevel"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Minimum Stock Level</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            step="0.01"
+                            placeholder="100" 
+                            {...field} 
+                            value={field.value || ''} 
+                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                            data-testid="input-min-stock"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="bom" className="space-y-4 mt-4">
+                <div className="rounded-lg border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Raw Material</TableHead>
+                        <TableHead>Quantity Required</TableHead>
+                        <TableHead>UOM</TableHead>
+                        <TableHead>Notes</TableHead>
+                        <TableHead className="w-20">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {fields.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                            No BOM items. Click "Add Row" to add raw materials.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        fields.map((field, index) => (
+                          <TableRow key={field.id}>
+                            <TableCell>
+                              <Select 
+                                value={(field as any).rawMaterialId || ''} 
+                                onValueChange={(value) => form.setValue(`bomItems.${index}.rawMaterialId` as any, value)}
+                              >
+                                <SelectTrigger data-testid={`select-bom-material-${index}`}>
+                                  <SelectValue placeholder="Select material" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {rawMaterials.filter(rm => rm.recordStatus === 1).map(rm => (
+                                    <SelectItem key={rm.id} value={rm.id}>
+                                      {rm.materialCode} - {rm.materialName}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell>
+                              <Input 
+                                type="number" 
+                                step="0.01"
+                                placeholder="0" 
+                                value={(field as any).quantityRequired || ''} 
+                                onChange={(e) => form.setValue(`bomItems.${index}.quantityRequired` as any, parseFloat(e.target.value) || 0)}
+                                data-testid={`input-bom-quantity-${index}`}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input 
+                                placeholder="kg" 
+                                value={(field as any).uom || ''} 
+                                onChange={(e) => form.setValue(`bomItems.${index}.uom` as any, e.target.value)}
+                                data-testid={`input-bom-uom-${index}`}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input 
+                                placeholder="Optional notes" 
+                                value={(field as any).notes || ''} 
+                                onChange={(e) => form.setValue(`bomItems.${index}.notes` as any, e.target.value)}
+                                data-testid={`input-bom-notes-${index}`}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => remove(index)}
+                                data-testid={`button-delete-bom-${index}`}
+                              >
+                                <Minus className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={handleAddBomRow}
+                  data-testid="button-add-bom-row"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Row
+                </Button>
+              </TabsContent>
+            </Tabs>
+
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} data-testid="button-cancel">
                 Cancel
               </Button>
-              <Button type="submit" disabled={isLoading} data-testid="button-submit">
-                {isLoading ? 'Saving...' : (item ? 'Update' : 'Create')}
+              <Button type="submit" disabled={isLoading || bomSaving} data-testid="button-submit">
+                {isLoading || bomSaving ? 'Saving...' : (item ? 'Update Product' : 'Create Product')}
               </Button>
             </DialogFooter>
           </form>

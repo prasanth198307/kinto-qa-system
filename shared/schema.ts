@@ -581,6 +581,9 @@ export const products = pgTable("products", {
   totalPrice: integer("total_price"), // Auto-calculated (including GST, in paise)
   mrp: integer("mrp"), // MRP (Printed Price) in paise
   hsnCode: varchar("hsn_code", { length: 50 }),
+  sacCode: varchar("sac_code", { length: 50 }),
+  taxType: varchar("tax_type", { length: 50 }),
+  minimumStockLevel: numeric("minimum_stock_level", { precision: 10, scale: 2 }),
   
   // Legacy fields (kept for backward compatibility)
   uomId: varchar("uom_id").references(() => uom.id),
@@ -608,15 +611,16 @@ export const productBom = pgTable("product_bom", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   productId: varchar("product_id").references(() => products.id, { onDelete: 'cascade' }).notNull(),
   rawMaterialId: varchar("raw_material_id").references(() => rawMaterials.id).notNull(),
-  quantityPerProduct: numeric("quantity_per_product", { precision: 12, scale: 6 }).notNull(), // Quantity needed per product unit (supports fractions like 1/2500 = 0.0004)
-  unitOfMeasure: varchar("unit_of_measure", { length: 50 }), // Piece, Kg, etc.
-  usageMethod: varchar("usage_method", { length: 50 }), // Formula, Direct, Coverage
+  quantityRequired: numeric("quantity_required", { precision: 12, scale: 6 }).notNull(), // Quantity needed (supports fractions)
+  uom: varchar("uom", { length: 50 }), // Unit of measure (kg, pcs, etc.)
   notes: text("notes"),
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
   productIdIdx: index("product_bom_product_id_idx").on(table.productId),
+  rawMaterialIdIdx: index("product_bom_raw_material_id_idx").on(table.rawMaterialId),
+  recordStatusIdx: index("product_bom_record_status_idx").on(table.recordStatus),
 }));
 
 export const insertProductBomSchema = createInsertSchema(productBom).omit({
@@ -628,6 +632,25 @@ export const insertProductBomSchema = createInsertSchema(productBom).omit({
 
 export type InsertProductBom = z.infer<typeof insertProductBomSchema>;
 export type ProductBom = typeof productBom.$inferSelect;
+
+// Composite form schema for ProductDialog (includes BOM items array)
+export const productFormSchema = insertProductSchema.extend({
+  bomItems: z.array(
+    insertProductBomSchema.pick({
+      rawMaterialId: true,
+      quantityRequired: true,
+      uom: true,
+      notes: true,
+    }).extend({
+      rawMaterialId: z.string().min(1, "Raw material is required"),
+      quantityRequired: z.coerce.number().min(0, "Quantity must be positive"),
+      uom: z.string().optional(),
+      notes: z.string().optional(),
+    })
+  ).default([]),
+});
+
+export type ProductFormData = z.infer<typeof productFormSchema>;
 
 // Vendors/Customers Master
 export const vendors = pgTable("vendors", {
