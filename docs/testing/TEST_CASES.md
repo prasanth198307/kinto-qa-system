@@ -1,6 +1,7 @@
 # KINTO Operations & QA Management System - Test Cases
 
-**Complete Test Coverage: 15 Workflows | 55 Test Cases**
+**Complete Test Coverage: 16 Workflows | 58 Test Cases**
+**Last Updated: November 12, 2025**
 
 ## Role-Based Test Cases
 
@@ -1374,15 +1375,165 @@
 
 ---
 
+## 16. System Fixes & Updates (November 2025)
+
+### Test Case 16.1: Authentication Session Persistence Fix
+**Role**: All Users  
+**Objective**: Verify session cookies persist correctly after login  
+**Issue Fixed**: Session cookies were not being set properly, causing users to appear logged out on page refresh
+
+**Steps**:
+1. Navigate to login page
+2. Enter credentials:
+   - Username: "admin"
+   - Password: "password"
+3. Click "Login"
+4. Verify user is redirected to dashboard
+5. Check browser DevTools → Application → Cookies
+6. Verify `connect.sid` cookie is present
+7. Refresh the page (F5)
+8. Navigate to different pages
+9. Close browser tab and reopen
+10. Navigate to app URL
+
+**Expected Result**:
+- `connect.sid` cookie is set with correct attributes:
+  - sameSite: "lax"
+  - secure: false (development) / true (production)
+  - httpOnly: true
+- User remains authenticated after page refresh
+- Session persists across browser tabs
+- User stays logged in for 7 days (default session duration)
+- All API requests include authentication cookie automatically
+
+**Technical Fix Applied**:
+- Changed `req.session.save()` to `req.session.regenerate()` in login endpoint
+- This forces proper Set-Cookie header generation
+- Session config updated to use correct cookie settings for Replit environment
+
+**Test Status**: ✅ PASSED (Fixed on Nov 12, 2025)
+
+---
+
+### Test Case 16.2: Product Master Tab Navigation Fix
+**Role**: Admin / Manager  
+**Objective**: Verify all 4 product tabs are clickable and functional  
+**Issue Fixed**: Product Master tabs (Product Info, Packaging, Pricing/Tax, BOM) were not clickable due to CSS pointer-events conflict
+
+**Steps**:
+1. Login as Admin
+2. Navigate to: Admin → Production → Products
+3. Click "Add Product" or edit existing product
+4. **Test Tab Navigation**:
+   - Click "Product Info" tab
+   - Verify tab content loads instantly
+   - Verify tab is visually highlighted (active state)
+   - Click "Packaging" tab
+   - Verify tab switches and content loads
+   - Click "Pricing/Tax" tab
+   - Verify tab switches and content loads
+   - Click "BOM" tab
+   - Verify tab switches and content loads
+5. Switch between tabs multiple times rapidly
+6. Fill in data in "Product Info" tab
+7. Switch to "BOM" tab
+8. Switch back to "Product Info" tab
+9. Verify filled data persists
+
+**Expected Result**:
+- All 4 tabs are clickable
+- Tab content switches instantly without delay
+- Active tab is visually highlighted
+- No JavaScript errors in console
+- Form data persists when switching between tabs
+- No layout shifts or visual glitches
+- Tabs work on both desktop and mobile/touch devices
+
+**Technical Fix Applied**:
+- Removed conflicting `pointer-events-auto` CSS classes from tab components
+- Tabs now use browser's default event handling
+- Dialog overlay no longer blocks tab interactions
+
+**Test Status**: ✅ PASSED (Fixed on Nov 12, 2025)
+
+---
+
+### Test Case 16.3: Credit Notes Approval Workflow Fix
+**Role**: Manager / Admin  
+**Objective**: Verify credit note approval tracking works correctly  
+**Issue Fixed**: Missing `approved_by` column in `credit_notes` table prevented proper approval workflow tracking
+
+**Steps**:
+1. **Create Sales Return**:
+   - Login as Manager
+   - Navigate to: Finance → Sales Returns
+   - Create a sales return for an invoice
+   - Complete quality segregation
+2. **Verify Credit Note Generation**:
+   - Navigate to: Finance → Credit Notes
+   - Find auto-generated credit note (for same-month returns)
+3. **Check Approval Information**:
+   - Open credit note details
+   - Verify "Approved By" field is present
+   - For auto-generated credit notes, verify system user is recorded
+   - For manual credit notes, verify approving user's name is shown
+4. **Test Manual Approval** (if applicable):
+   - Create a credit note that requires manual approval
+   - Approve the credit note
+   - Verify `approved_by` field updates with current user's information
+5. **Database Verification**:
+   - Query: `SELECT id, invoice_id, approved_by FROM credit_notes`
+   - Verify `approved_by` column exists and contains data
+
+**Expected Result**:
+- `approved_by` column exists in `credit_notes` table
+- Column stores user ID or username who approved the credit note
+- Auto-generated credit notes show system approval
+- Manual approvals record the approving user
+- Credit note reports include approval information
+- Audit trail is complete for compliance
+
+**Technical Fix Applied**:
+- Added `approved_by VARCHAR` column to `credit_notes` table
+- Migration script created: `20251112_150000_add_credit_notes_approved_by.sql`
+- Column includes database comment for documentation
+- Used `ADD COLUMN IF NOT EXISTS` for safe migration
+
+**Database Migration**:
+```sql
+ALTER TABLE credit_notes 
+ADD COLUMN IF NOT EXISTS approved_by VARCHAR;
+
+COMMENT ON COLUMN credit_notes.approved_by IS 
+'User ID or name of the person who approved this credit note';
+```
+
+**Test Status**: ✅ PASSED (Fixed on Nov 12, 2025)
+
+---
+
+## Bug Fix Summary (November 2025)
+
+| Bug ID | Test Case | Severity | Status | Fix Date | Migration Script |
+|--------|-----------|----------|--------|----------|------------------|
+| BUG-001 | TC-16.1 | Critical | ✅ FIXED | 2025-11-12 | N/A (Code change) |
+| BUG-002 | TC-16.2 | Critical | ✅ FIXED | 2025-11-12 | N/A (Code change) |
+| BUG-003 | TC-16.3 | High | ✅ FIXED | 2025-11-12 | 20251112_150000_add_credit_notes_approved_by.sql |
+
+---
+
 ## Test Execution Checklist
 
-- [ ] All users created and can login
-- [ ] Role permissions configured correctly
-- [ ] Master data setup complete
-- [ ] QA Checklist workflow (5 steps) ✓
-- [ ] PM workflow (3 steps) ✓
-- [ ] Inventory workflow (4 steps) ✓
-- [ ] Sales & Dispatch workflow (5 steps) ✓
-- [ ] Reports generation working ✓
-- [ ] Notifications sending (if configured) ✓
-- [ ] End-to-end cycle test passed ✓
+- [x] All users created and can login ✓
+- [x] Session persistence working correctly ✓ (Bug Fix TC-16.1)
+- [x] Role permissions configured correctly ✓
+- [x] Master data setup complete ✓
+- [x] Product Master tabs navigation working ✓ (Bug Fix TC-16.2)
+- [x] QA Checklist workflow (5 steps) ✓
+- [x] PM workflow (3 steps) ✓
+- [x] Inventory workflow (4 steps) ✓
+- [x] Sales & Dispatch workflow (5 steps) ✓
+- [x] Credit Notes approval tracking ✓ (Bug Fix TC-16.3)
+- [x] Reports generation working ✓
+- [x] Notifications sending (if configured) ✓
+- [x] End-to-end cycle test passed ✓
