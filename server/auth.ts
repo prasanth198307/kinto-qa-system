@@ -132,8 +132,23 @@ export function setupAuth(app: Express) {
       console.log(`✅ Session saved successfully`);
       console.log(`   User: ${(req.user as any)?.username}`);
       console.log(`   Session ID: ${req.sessionID}`);
-      console.log(`   Cookies being set:`, res.getHeaders()['set-cookie']);
+      console.log(`   All response headers:`, res.getHeaders());
+      console.log(`   Set-Cookie headers:`, res.getHeader('set-cookie'));
       console.log(`   Session cookie should be: connect.sid=${req.sessionID}`);
+      
+      // Manually set cookie as fallback if not set automatically
+      if (!res.getHeader('set-cookie')) {
+        console.warn('⚠️  Set-Cookie header not found! Manually setting...');
+        res.cookie('connect.sid', req.sessionID, {
+          maxAge: 7 * 24 * 60 * 60 * 1000,
+          httpOnly: true,
+          secure: false,
+          sameSite: 'lax',
+          path: '/',
+        });
+        console.log(`   Manually set cookie:`, res.getHeader('set-cookie'));
+      }
+      
       res.status(200).json(req.user);
     });
   });
