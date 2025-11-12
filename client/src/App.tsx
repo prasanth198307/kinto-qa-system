@@ -36,6 +36,7 @@ import ProductionManagement from "@/pages/production-management";
 import ProductionEntries from "@/pages/production-entries";
 import ProductionReconciliations from "@/pages/production-reconciliations";
 import ProductionReconciliationReport from "@/pages/production-reconciliation-report";
+import VarianceAnalytics from "@/pages/variance-analytics";
 import SalesReturns from "@/pages/sales-returns";
 import MachineStartupReminders from "@/pages/machine-startup-reminders";
 import NotificationSettings from "@/pages/notification-settings";
@@ -332,6 +333,7 @@ function ManagerDashboard() {
         { id: "dispatch-tracking", label: "Dispatch Tracking", icon: Truck },
         { id: "sales-returns", label: "Sales Returns", icon: Package },
         { id: "production-reconciliation-report", label: "Production Reconciliation Report", icon: FileStack },
+        { id: "variance-analytics", label: "Variance Analytics", icon: TrendingUp },
       ],
       quickActions: [
         {
@@ -415,6 +417,8 @@ function ManagerDashboard() {
         return <ProductionReconciliations />;
       case 'production-reconciliation-report':
         return <ProductionReconciliationReport />;
+      case 'variance-analytics':
+        return <VarianceAnalytics />;
       case 'dispatch-tracking':
         return <DispatchTracking showHeader={false} />;
       case 'reports':
@@ -618,6 +622,7 @@ function AdminDashboard() {
         { id: "machine-startup-reminders", label: "Machine Startup Reminders", icon: Bell },
         { id: "whatsapp-analytics", label: "WhatsApp Analytics", icon: TrendingUp },
         { id: "production-reconciliation-report", label: "Production Reconciliation Report", icon: FileStack },
+        { id: "variance-analytics", label: "Variance Analytics", icon: TrendingUp },
       ],
       quickActions: [
         {
@@ -744,6 +749,8 @@ function AdminDashboard() {
         return <ProductionReconciliations />;
       case 'production-reconciliation-report':
         return <ProductionReconciliationReport />;
+      case 'variance-analytics':
+        return <VarianceAnalytics />;
       case 'dispatch-tracking':
         return <DispatchTracking showHeader={false} />;
       case 'machine-startup-reminders':

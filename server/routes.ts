@@ -15,7 +15,7 @@ import { calculateBOMSuggestions } from "@shared/calculations";
 async function logAudit(userId: string | undefined, action: string, table: string, recordId: string, description: string) {
   console.log(`[AUDIT] User: ${userId}, Action: ${action}, Table: ${table}, Record: ${recordId}, Description: ${description}`);
 }
-import { eq, and, ne, gte, lte, desc } from "drizzle-orm";
+import { eq, and, ne, gte, lte, desc, inArray } from "drizzle-orm";
 
 // Authentication middleware
 function isAuthenticated(req: Request, res: Response, next: NextFunction) {
@@ -2561,6 +2561,206 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error generating production reconciliation report:", error);
       res.status(500).json({ message: "Failed to generate report" });
+    }
+  });
+
+  // Production Variance Analytics - Aggregate variance trends by time period
+  app.get('/api/analytics/variance', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { period = 'monthly', year } = req.query;
+      const currentYear = year ? parseInt(year as string) : new Date().getFullYear();
+
+      // Fetch all reconciliations for the year
+      const yearReconciliations = await db
+        .select({
+          reconciliation: productionReconciliations,
+          issuance: rawMaterialIssuance,
+          production: productionEntries,
+        })
+        .from(productionReconciliations)
+        .leftJoin(rawMaterialIssuance, eq(productionReconciliations.issuanceId, rawMaterialIssuance.id))
+        .leftJoin(productionEntries, eq(productionReconciliations.productionEntryId, productionEntries.id))
+        .where(
+          and(
+            eq(productionReconciliations.recordStatus, 1),
+            gte(productionReconciliations.reconciliationDate, new Date(currentYear, 0, 1)),
+            lte(productionReconciliations.reconciliationDate, new Date(currentYear, 11, 31, 23, 59, 59))
+          )
+        )
+        .orderBy(productionReconciliations.reconciliationDate);
+
+      // Fetch all reconciliation items for variance analysis (scoped to year's reconciliations)
+      const reconciliationIds = yearReconciliations.map(r => r.reconciliation.id);
+      const allItems = reconciliationIds.length > 0 ? await db
+        .select({
+          item: productionReconciliationItems,
+          rawMaterial: rawMaterials,
+        })
+        .from(productionReconciliationItems)
+        .leftJoin(rawMaterials, eq(productionReconciliationItems.rawMaterialId, rawMaterials.id))
+        .where(
+          and(
+            eq(productionReconciliationItems.recordStatus, 1),
+            inArray(productionReconciliationItems.reconciliationId, reconciliationIds)
+          )
+        ) : [];
+
+      // Helper function to get period key and index from date
+      const getPeriodInfo = (date: Date, periodType: string) => {
+        const month = date.getMonth() + 1; // 1-12
+        const isoWeek = getISOWeek(date);
+        
+        if (periodType === 'weekly') {
+          return { key: `Week ${isoWeek} ${currentYear}`, index: isoWeek };
+        } else if (periodType === 'monthly') {
+          const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          return { key: `${monthNames[month-1]} ${currentYear}`, index: month };
+        } else if (periodType === 'quarterly') {
+          const quarter = Math.ceil(month / 3);
+          return { key: `Q${quarter} ${currentYear}`, index: quarter };
+        } else { // yearly
+          return { key: `${currentYear}`, index: 1 };
+        }
+      };
+
+      // Helper function to get ISO week number
+      function getISOWeek(date: Date) {
+        const target = new Date(date.valueOf());
+        const dayNr = (date.getDay() + 6) % 7;
+        target.setDate(target.getDate() - dayNr + 3);
+        const jan4 = new Date(target.getFullYear(), 0, 4);
+        const dayDiff = (target.getTime() - jan4.getTime()) / 86400000;
+        return 1 + Math.ceil(dayDiff / 7);
+      }
+
+      // Aggregate data by period
+      const periodData: Record<string, {
+        totalVariance: number;
+        totalEfficiency: number;
+        totalYield: number;
+        reconciliationCount: number;
+        goodCount: number;
+        warningCount: number;
+        criticalCount: number;
+        index: number;
+        materials: Record<string, { variance: number; count: number; name: string }>;
+      }> = {};
+
+      yearReconciliations.forEach(r => {
+        const periodInfo = getPeriodInfo(new Date(r.reconciliation.reconciliationDate), period as string);
+        
+        if (!periodData[periodInfo.key]) {
+          periodData[periodInfo.key] = {
+            totalVariance: 0,
+            totalEfficiency: 0,
+            totalYield: 0,
+            reconciliationCount: 0,
+            goodCount: 0,
+            warningCount: 0,
+            criticalCount: 0,
+            index: periodInfo.index,
+            materials: {},
+          };
+        }
+
+        const data = periodData[periodInfo.key];
+        data.reconciliationCount += 1;
+        data.totalEfficiency += r.reconciliation.efficiency ? parseFloat(r.reconciliation.efficiency) : 0;
+        data.totalYield += r.reconciliation.yieldPercent ? parseFloat(r.reconciliation.yieldPercent) : 0;
+
+        // Get items for this reconciliation and calculate variance
+        const reconciliationItems = allItems.filter(i => i.item.reconciliationId === r.reconciliation.id);
+        let maxVariancePercent = 0;
+
+        reconciliationItems.forEach(i => {
+          const variancePercent = i.item.variancePercent ? parseFloat(i.item.variancePercent) : 0;
+          const variance = i.item.variance ? parseFloat(i.item.variance) : 0;
+          const absVariancePercent = Math.abs(variancePercent);
+          
+          if (absVariancePercent > maxVariancePercent) {
+            maxVariancePercent = absVariancePercent;
+          }
+
+          // Track material-specific variance
+          const materialId = i.item.rawMaterialId;
+          if (materialId) {
+            if (!data.materials[materialId]) {
+              data.materials[materialId] = {
+                variance: 0,
+                count: 0,
+                name: i.rawMaterial?.materialName || 'Unknown',
+              };
+            }
+            data.materials[materialId].variance += Math.abs(variance);
+            data.materials[materialId].count += 1;
+          }
+        });
+
+        // Categorize by status
+        if (maxVariancePercent <= 2) {
+          data.goodCount += 1;
+        } else if (maxVariancePercent <= 5) {
+          data.warningCount += 1;
+        } else {
+          data.criticalCount += 1;
+        }
+
+        data.totalVariance += maxVariancePercent;
+      });
+
+      // Convert to array and calculate averages
+      const analytics = Object.entries(periodData).map(([period, data]) => ({
+        period,
+        avgVariance: data.reconciliationCount > 0 ? data.totalVariance / data.reconciliationCount : 0,
+        avgEfficiency: data.reconciliationCount > 0 ? data.totalEfficiency / data.reconciliationCount : 0,
+        avgYield: data.reconciliationCount > 0 ? data.totalYield / data.reconciliationCount : 0,
+        reconciliationCount: data.reconciliationCount,
+        goodCount: data.goodCount,
+        warningCount: data.warningCount,
+        criticalCount: data.criticalCount,
+        periodIndex: data.index,
+        materials: data.materials,
+      })).sort((a, b) => a.periodIndex - b.periodIndex);
+
+      // Calculate totals and top materials
+      const totals = {
+        totalReconciliations: analytics.reduce((sum, p) => sum + p.reconciliationCount, 0),
+        avgVariance: analytics.length > 0 ? analytics.reduce((sum, p) => sum + p.avgVariance, 0) / analytics.length : 0,
+        avgEfficiency: analytics.length > 0 ? analytics.reduce((sum, p) => sum + p.avgEfficiency, 0) / analytics.length : 0,
+        avgYield: analytics.length > 0 ? analytics.reduce((sum, p) => sum + p.avgYield, 0) / analytics.length : 0,
+        totalGood: analytics.reduce((sum, p) => sum + p.goodCount, 0),
+        totalWarning: analytics.reduce((sum, p) => sum + p.warningCount, 0),
+        totalCritical: analytics.reduce((sum, p) => sum + p.criticalCount, 0),
+      };
+
+      // Aggregate material variance across all periods
+      const materialVarianceMap: Record<string, { variance: number; count: number; name: string }> = {};
+      analytics.forEach(a => {
+        Object.entries(a.materials).forEach(([materialId, material]) => {
+          if (!materialVarianceMap[materialId]) {
+            materialVarianceMap[materialId] = { variance: 0, count: 0, name: material.name };
+          }
+          materialVarianceMap[materialId].variance += material.variance;
+          materialVarianceMap[materialId].count += material.count;
+        });
+      });
+
+      // Get top 10 materials with highest variance
+      const topMaterials = Object.entries(materialVarianceMap)
+        .map(([materialId, data]) => ({
+          materialId,
+          materialName: data.name,
+          avgVariance: data.count > 0 ? data.variance / data.count : 0,
+          totalVariance: data.variance,
+          occurrences: data.count,
+        }))
+        .sort((a, b) => b.avgVariance - a.avgVariance)
+        .slice(0, 10);
+
+      res.json({ analytics, totals, topMaterials, year: currentYear, period });
+    } catch (error) {
+      console.error("Error generating variance analytics:", error);
+      res.status(500).json({ message: "Failed to generate variance analytics" });
     }
   });
 
