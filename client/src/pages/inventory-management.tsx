@@ -927,13 +927,13 @@ function ProductDialog({
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="info" data-testid="tab-info">Product Info</TabsTrigger>
-                <TabsTrigger value="packaging" data-testid="tab-packaging">Packaging</TabsTrigger>
-                <TabsTrigger value="pricing" data-testid="tab-pricing">Pricing/Tax</TabsTrigger>
-                <TabsTrigger value="bom" data-testid="tab-bom">BOM</TabsTrigger>
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6 pointer-events-auto">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="pointer-events-auto">
+              <TabsList className="grid w-full grid-cols-4 pointer-events-auto">
+                <TabsTrigger value="info" data-testid="tab-info" className="pointer-events-auto">Product Info</TabsTrigger>
+                <TabsTrigger value="packaging" data-testid="tab-packaging" className="pointer-events-auto">Packaging</TabsTrigger>
+                <TabsTrigger value="pricing" data-testid="tab-pricing" className="pointer-events-auto">Pricing/Tax</TabsTrigger>
+                <TabsTrigger value="bom" data-testid="tab-bom" className="pointer-events-auto">BOM</TabsTrigger>
               </TabsList>
 
               <TabsContent value="info" className="space-y-4 mt-4">
