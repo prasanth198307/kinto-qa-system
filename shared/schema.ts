@@ -1878,9 +1878,9 @@ export const productionReconciliations = pgTable("production_reconciliations", {
   reconciliationDate: timestamp("reconciliation_date").notNull(),
   shift: varchar("shift", { length: 20 }).notNull(), // A, B, General
   
-  // Links to source documents
-  issuanceId: varchar("issuance_id").references(() => rawMaterialIssuance.id).notNull(),
-  productionEntryId: varchar("production_entry_id").references(() => productionEntries.id).notNull(),
+  // Links to source documents (FK with cascading rules)
+  issuanceId: varchar("issuance_id").references(() => rawMaterialIssuance.id, { onUpdate: "cascade", onDelete: "restrict" }).notNull(),
+  productionEntryId: varchar("production_entry_id").references(() => productionEntries.id, { onUpdate: "cascade", onDelete: "restrict" }).notNull(),
   
   // Finished goods summary (auto-populated from production)
   producedCases: integer("produced_cases").notNull(), // From production entry
@@ -1901,7 +1901,10 @@ export const productionReconciliations = pgTable("production_reconciliations", {
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => ({
+  // Composite unique index: prevent duplicate reconciliations for same issuance + shift
+  uniqueIssuanceShift: unique().on(table.issuanceId, table.shift),
+}));
 
 export const insertProductionReconciliationSchema = createInsertSchema(productionReconciliations, {
   reconciliationDate: z.union([z.string(), z.date()]).transform(val => {

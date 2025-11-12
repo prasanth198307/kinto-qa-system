@@ -319,6 +319,22 @@ export interface IStorage {
   updateProductionEntry(id: string, updates: Partial<InsertProductionEntry>): Promise<ProductionEntry | undefined>;
   deleteProductionEntry(id: string): Promise<void>;
   
+  // Production Reconciliations
+  createProductionReconciliation(reconciliation: InsertProductionReconciliation): Promise<ProductionReconciliation>;
+  getAllProductionReconciliations(): Promise<ProductionReconciliation[]>;
+  getProductionReconciliation(id: string): Promise<ProductionReconciliation | undefined>;
+  getProductionReconciliationByNumber(reconciliationNumber: string): Promise<ProductionReconciliation | undefined>;
+  getReconciliationsByIssuance(issuanceId: string): Promise<ProductionReconciliation[]>;
+  getReconciliationsByProduction(productionEntryId: string): Promise<ProductionReconciliation[]>;
+  updateProductionReconciliation(id: string, updates: Partial<InsertProductionReconciliation>): Promise<ProductionReconciliation | undefined>;
+  deleteProductionReconciliation(id: string): Promise<void>;
+  
+  // Production Reconciliation Items
+  createProductionReconciliationItem(item: InsertProductionReconciliationItem): Promise<ProductionReconciliationItem>;
+  getReconciliationItems(reconciliationId: string): Promise<ProductionReconciliationItem[]>;
+  updateProductionReconciliationItem(id: string, updates: Partial<InsertProductionReconciliationItem>): Promise<ProductionReconciliationItem | undefined>;
+  deleteProductionReconciliationItem(id: string): Promise<void>;
+  
   // Gatepasses
   createGatepass(gatepass: InsertGatepass): Promise<Gatepass>;
   getAllGatepasses(): Promise<Gatepass[]>;
