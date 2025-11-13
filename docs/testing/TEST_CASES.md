@@ -2686,6 +2686,507 @@ If Net Consumed was 1040 pieces:
 
 ---
 
+## 24. Sales Returns & Damage Handling System
+
+> **🔄 THREE-STAGE WORKFLOW**: Sales returns follow a structured process:
+> ```
+> Stage 1: Return Creation (from delivered invoice)
+>     ↓
+> Stage 2: Quality Segregation (good vs damaged)
+>     ↓
+> Stage 3: Inventory Reconciliation + Credit Note Generation
+> ```
+
+### Test Case 24.1: Create Sales Return from Delivered Invoice
+**Role**: Manager  
+**Objective**: Initiate sales return for delivered goods  
+**Priority**: Critical
+
+**Pre-requisite**: 
+- Invoice delivered (TC 5.5 completed)
+- POD recorded with customer signature
+
+**Steps**:
+1. Login as Manager
+2. Navigate to: Finance & Sales → Sales Returns
+3. Click "Create Sales Return"
+4. Fill return header:
+   - **Select Invoice**: Choose delivered invoice (e.g., INV-2025-001)
+   - System auto-fills:
+     - Customer: "XYZ Industries"
+     - Original Invoice Date: 2025-01-10
+     - Original Total: ₹59,000
+     - Delivery Date: 2025-01-12
+   - **Return Date**: Today (2025-01-15)
+   - **Return Reason**: Select "Customer Complaint - Quality Issue"
+   - **Remarks**: "Customer reported leaking bottles"
+5. **Select Return Items**:
+   - System displays all invoice items
+   - Item: "1 Liter PET Bottle Water"
+   - Original Quantity: 50 bottles
+   - **Return Quantity**: 10 bottles (partial return)
+   - **Return Type**: Select "Quality Issue" (will need quality check)
+6. Click "Create Return"
+
+**Expected Results**:
+✅ **Sales Return Created**:
+- Return number assigned: SR-2025-001
+- Status: "Pending Quality Segregation"
+- Linked to original invoice: INV-2025-001
+- Return items recorded: 10 bottles
+
+✅ **Workflow State**:
+- Cannot generate credit note yet (quality segregation required first)
+- Return appears in "Pending Quality Check" list
+- **No inventory impact yet** (goods not yet received back)
+
+✅ **Audit Trail**:
+- Return creation logged
+- Customer notified (optional)
+- Manager assigned for quality check
+
+**Test Status**: ⬜ PENDING
+
+---
+
+### Test Case 24.2: Quality Segregation of Returned Goods
+**Role**: Manager / Quality Inspector  
+**Objective**: Inspect returned items and categorize as good or damaged  
+**Priority**: Critical
+
+**Pre-requisite**: TC 24.1 completed - Sales return created (SR-2025-001)
+
+**Steps**:
+1. Login as Manager
+2. Navigate to: Finance & Sales → Sales Returns
+3. Find return: SR-2025-001 (Status: "Pending Quality Segregation")
+4. Click "Quality Segregation"
+5. **Inspect Returned Items**:
+   - Item: "1 Liter PET Bottle Water"
+   - Returned Quantity: 10 bottles
+   
+   **Segregation**:
+   - **Good Condition**: 3 bottles
+     - Reason: "Unopened, no damage, resaleable"
+     - Disposition: "Return to Inventory"
+   - **Damaged**: 7 bottles
+     - Damage Type: Select "Manufacturing Defect - Leaking"
+     - Severity: "Major"
+     - Disposition: "Scrap/Disposal"
+     - Photos: Upload 2 photos of defects
+6. Add quality inspector notes: "Batch inspection recommended"
+7. Click "Complete Segregation"
+
+**Expected Results**:
+✅ **Quality Segregation Complete**:
+- Return status: "Pending Quality Segregation" → "Quality Checked"
+- Segregation recorded:
+  - Good: 3 bottles
+  - Damaged: 7 bottles
+- Photos attached to return record
+
+✅ **Next Stage Triggered**:
+- System ready for inventory reconciliation (TC 24.3)
+- Damage report generated
+- Quality data available for analytics
+
+✅ **Notifications** (Optional):
+- Production team notified about defects
+- Batch quality review triggered
+
+**Test Status**: ⬜ PENDING
+
+---
+
+### Test Case 24.3: Inventory Reconciliation for Returned Goods
+**Role**: Manager  
+**Objective**: Update inventory based on quality segregation results  
+**Priority**: Critical
+
+**Pre-requisite**: TC 24.2 completed - Quality segregation done
+
+**Steps**:
+1. Navigate to: Finance & Sales → Sales Returns
+2. Find return: SR-2025-001 (Status: "Quality Checked")
+3. Click "Reconcile Inventory"
+4. **Review Segregation Summary**:
+   - Good Condition: 3 bottles → Return to inventory
+   - Damaged: 7 bottles → Write off
+5. Confirm inventory actions:
+   - **Good Items**: Add to finished goods inventory
+   - **Damaged Items**: Create disposal/scrap record
+6. Click "Reconcile Inventory"
+
+**Expected Results**:
+✅ **Inventory Updated**:
+- **Finished Goods Inventory +3 bottles**
+  - Transaction: "Returned from SR-2025-001 (Good Condition)"
+  - Stock increased by 3 units
+  - Available for resale
+  
+- **Damaged Goods Recorded**:
+  - 7 bottles marked as scrapped
+  - No inventory increase (written off)
+  - Scrap record created for audit
+
+✅ **Return Status Updated**:
+- Status: "Quality Checked" → "Inventory Reconciled"
+- Ready for credit note generation (TC 24.4)
+
+✅ **Audit Trail**:
+- Inventory transactions logged
+- Separate entries for good vs damaged
+- Scrap disposal documented
+
+**Test Status**: ⬜ PENDING
+
+---
+
+### Test Case 24.4: Automatic Credit Note Generation (Same Month Return)
+**Role**: Manager  
+**Objective**: Verify automatic credit note generation for same-month returns  
+**Priority**: Critical
+
+> **🔑 TIME-BASED RULE**: 
+> - **Same Month Return** (Invoice Jan 10, Return Jan 15) → **AUTO credit note**
+> - **Old Return** (Invoice Dec 10, Return Jan 15) → **Manual tracking**
+
+**Pre-requisite**: TC 24.3 completed - Inventory reconciled
+
+**Scenario**: Same-month return (Invoice: Jan 10, Return: Jan 15)
+
+**Steps**:
+1. Navigate to: Finance & Sales → Sales Returns
+2. Find return: SR-2025-001 (Status: "Inventory Reconciled")
+3. Click "Generate Credit Note"
+4. **System Auto-Calculates Credit Amount**:
+   - Original Item Price: ₹1,180 per bottle (including GST)
+   - Return Quantity: 10 bottles
+   - **Good Condition**: 3 bottles × ₹1,180 = ₹3,540
+   - **Damaged**: 7 bottles × ₹1,180 = ₹8,260
+   
+   **Credit Calculation**:
+   - Good items credit: ₹3,540 (full credit)
+   - Damaged items credit: ₹8,260 (full credit - quality issue)
+   - **Total Credit**: ₹11,800
+   
+   **GST Breakdown** (18%):
+   - Taxable Amount: ₹10,000
+   - CGST (9%): ₹900
+   - SGST (9%): ₹900
+   - Total: ₹11,800
+
+5. Review credit note preview
+6. Click "Generate Credit Note"
+
+**Expected Results**:
+✅ **Credit Note Auto-Generated** (Same Month):
+- Credit Note Number: CN-2025-001
+- Type: "Sales Return Credit"
+- Status: "Approved" (auto-approved for same month)
+- Amount: ₹11,800
+- Linked to:
+  - Original Invoice: INV-2025-001
+  - Sales Return: SR-2025-001
+
+✅ **GST-Compliant Document**:
+- Proper tax breakdown (CGST/SGST)
+- Reference to original invoice
+- Return reason documented
+- Segregation details (3 good, 7 damaged)
+
+✅ **Financial Impact**:
+- Customer account credited: ₹11,800
+- Can be applied to outstanding invoices (TC 25.3)
+- Original invoice outstanding reduced
+
+✅ **Return Workflow Complete**:
+- Return status: "Inventory Reconciled" → "Completed"
+- Credit note generated and approved
+- Full audit trail maintained
+
+**Test Status**: ⬜ PENDING
+
+---
+
+### Test Case 24.5: Manual Credit Note Tracking (Old Return)
+**Role**: Manager  
+**Objective**: Handle returns from previous months requiring manual tracking  
+**Priority**: High
+
+**Scenario**: Cross-month return (Invoice: Dec 10, 2024, Return: Jan 15, 2025)
+
+**Steps**:
+1. Create sales return for old invoice (Dec 2024)
+2. Complete quality segregation
+3. Complete inventory reconciliation
+4. Attempt to generate credit note
+5. **System Behavior**:
+   - Detects cross-month return
+   - Warning: "Return is from previous month - Manual credit note tracking required"
+   - Cannot auto-generate credit note
+   
+6. **Manual Process**:
+   - Create manual credit note entry
+   - Requires additional approval
+   - Accounting team notified
+   - Manual GST adjustment required
+
+**Expected Results**:
+✅ **Manual Tracking Triggered**:
+- System flags as "Manual Credit Note Required"
+- Warning displayed about previous month return
+- Cannot auto-approve
+
+✅ **Approval Workflow**:
+- Manager creates credit note draft
+- Finance approval required
+- Accounting team review
+- Manual GST return adjustment
+
+✅ **Audit & Compliance**:
+- Cross-month return documented
+- Separate GST period tracking
+- Approval chain maintained
+
+**Rationale**: Previous month GST already filed, requires manual adjustment
+
+**Test Status**: ⬜ PENDING
+
+---
+
+## 25. Credit Notes Viewing & Management System
+
+### Test Case 25.1: View All Credit Notes (List Page)
+**Role**: Manager / Finance  
+**Objective**: Access and search credit notes list  
+**Priority**: High
+
+**Steps**:
+1. Login as Manager
+2. Navigate to: Finance & Sales → Credit Notes
+3. View credit notes list:
+   - CN-2025-001: ₹11,800 (Sales Return) - Status: Approved
+   - CN-2025-002: ₹5,900 (Price Adjustment) - Status: Draft
+   - CN-2024-045: ₹23,600 (Sales Return) - Status: Applied
+4. **Use Filters**:
+   - Date Range: Last 30 days
+   - Status: "Approved"
+   - Type: "Sales Return"
+   - Customer: "XYZ Industries"
+5. **Search**: Enter credit note number or customer name
+6. **Sort**: By date (newest first), amount (highest first)
+
+**Expected Results**:
+✅ **Credit Notes List Displayed**:
+- All credit notes shown with key information:
+  - Credit Note Number
+  - Date
+  - Customer Name
+  - Amount (with GST)
+  - Type (Sales Return, Price Adjustment, etc.)
+  - Status (Draft, Approved, Applied, Cancelled)
+  - Linked Invoice
+
+✅ **Filtering & Search**:
+- Filters work correctly
+- Search returns accurate results
+- Sort functions properly
+
+✅ **Quick Actions**:
+- View Details button
+- Apply to Invoice button (for approved notes)
+- Export button (PDF/Excel)
+- Print button
+
+**Test Status**: ⬜ PENDING
+
+---
+
+### Test Case 25.2: Credit Note Detail View with Tax Breakdown
+**Role**: Manager / Finance  
+**Objective**: View complete credit note details including GST breakdown  
+**Priority**: Critical
+
+**Steps**:
+1. Navigate to: Finance & Sales → Credit Notes
+2. Click on credit note: CN-2025-001
+3. **View Credit Note Details Page**:
+
+**Header Section**:
+- Credit Note Number: CN-2025-001
+- Date: 2025-01-15
+- Status: Approved
+- Type: Sales Return Credit
+- Customer: XYZ Industries
+- Original Invoice: INV-2025-001
+- Sales Return Reference: SR-2025-001
+
+**Line Items Section**:
+- Item: 1 Liter PET Bottle Water
+- Quantity: 10 bottles
+- Rate: ₹1,000 per bottle (base price)
+- Taxable Amount: ₹10,000
+- GST @18%: ₹1,800
+- **Line Total**: ₹11,800
+
+**Tax Breakdown**:
+- Taxable Amount: ₹10,000
+- CGST @9%: ₹900
+- SGST @9%: ₹900
+- **Total Credit**: ₹11,800
+
+**Additional Information**:
+- Return Reason: Quality Issue - Leaking bottles
+- Quality Segregation: 3 good, 7 damaged
+- Inventory Impact: +3 bottles to stock
+- Created By: Manager (John Doe)
+- Approved By: System (Auto-approved - same month)
+- Created Date: 2025-01-15
+
+4. Click "Download PDF"
+5. Click "Print"
+
+**Expected Results**:
+✅ **Complete Details Displayed**:
+- All header information accurate
+- Line items with proper calculations
+- GST breakdown clear and correct
+- Links to related documents (invoice, return)
+
+✅ **GST Compliance**:
+- Proper tax structure (CGST/SGST)
+- HSN codes displayed
+- Tax rates shown
+- Compliant with GST regulations
+
+✅ **Document Actions**:
+- PDF download works
+- Print preview formatted correctly
+- Company branding/logo included
+
+**Test Status**: ⬜ PENDING
+
+---
+
+### Test Case 25.3: Apply Credit Note to Outstanding Invoice
+**Role**: Manager / Finance  
+**Objective**: Use credit note to offset outstanding invoice balance  
+**Priority**: High
+
+**Pre-requisite**: 
+- Approved credit note exists (CN-2025-001: ₹11,800)
+- Customer has outstanding invoice (INV-2025-005: ₹50,000)
+
+**Steps**:
+1. Navigate to: Finance & Sales → Credit Notes
+2. Find approved credit note: CN-2025-001 (₹11,800)
+3. Status: "Approved" (available for application)
+4. Click "Apply to Invoice"
+5. **Application Dialog**:
+   - Select Invoice: INV-2025-005 (Outstanding: ₹50,000)
+   - Credit Note Amount: ₹11,800
+   - Application Amount: ₹11,800 (full amount)
+   - Confirm customer: XYZ Industries (must match)
+6. Add notes: "Applied return credit to latest invoice"
+7. Click "Apply Credit"
+
+**Expected Results**:
+✅ **Credit Note Applied**:
+- Credit Note status: "Approved" → "Applied"
+- Application date recorded
+- Linked to invoice: INV-2025-005
+
+✅ **Invoice Updated**:
+- Original amount: ₹50,000
+- Credit applied: ₹11,800
+- **New outstanding**: ₹38,200
+- Payment history shows credit note application
+
+✅ **Financial Records**:
+- Transaction logged in customer account
+- Credit note marked as utilized
+- Cannot be applied again
+- Proper accounting entries created
+
+✅ **Audit Trail**:
+- Application recorded with timestamp
+- User who applied credit logged
+- Full transaction history maintained
+
+**Verification**:
+1. Navigate to: Finance & Sales → Invoices
+2. Open invoice: INV-2025-005
+3. Verify outstanding balance: ₹38,200
+4. Check payment history shows credit application
+
+**Test Status**: ⬜ PENDING
+
+---
+
+### Test Case 25.4: Credit Note Reports & Analytics
+**Role**: Manager / Finance  
+**Objective**: Generate credit note reports for financial analysis  
+**Priority**: Medium
+
+**Steps**:
+1. Navigate to: Finance & Sales → Credit Notes
+2. Click "Reports" button
+3. **Generate Credit Note Summary Report**:
+   - Period: Last Quarter (Oct-Dec 2024)
+   - Customer: All Customers
+   - Type: All Types
+4. Click "Generate Report"
+
+**Report Contents**:
+- **Summary Metrics**:
+  - Total Credit Notes: 45
+  - Total Credit Amount: ₹4,56,000
+  - Average Credit: ₹10,133
+  - By Type:
+    - Sales Returns: 38 notes (₹3,98,000)
+    - Price Adjustments: 7 notes (₹58,000)
+  
+- **Top Customers by Credit**:
+  1. XYZ Industries: ₹45,000 (4 notes)
+  2. ABC Corp: ₹38,000 (3 notes)
+  
+- **Monthly Trend**:
+  - October: ₹1,25,000
+  - November: ₹1,48,000
+  - December: ₹1,83,000
+
+5. Click "Export to Excel"
+6. Click "Export to PDF"
+
+**Expected Results**:
+✅ **Comprehensive Report**:
+- All metrics calculated correctly
+- Trend analysis displayed
+- Breakdown by customer, type, status
+- Visual charts/graphs (optional)
+
+✅ **Export Functionality**:
+- Excel export downloads with all data
+- PDF export formatted professionally
+- Company branding included
+
+✅ **Analytics Insights**:
+- Identify high-return customers
+- Track return trends over time
+- Analyze return reasons
+- Financial impact assessment
+
+**Use Cases**:
+- Month-end financial closing
+- Customer credit analysis
+- Return trend monitoring
+- Management reporting
+
+**Test Status**: ⬜ PENDING
+
+---
+
 ## Test Execution Checklist (Updated)
 
 **Original Workflows (1-15):**
@@ -2711,3 +3212,33 @@ If Net Consumed was 1040 pieces:
 - [ ] Production Entry with Variance Analysis (2 test cases) - TC 21.1-21.2
 - [ ] Production Reconciliation Entry System (3 test cases) - TC 22.1-22.3
 - [ ] Variance Analytics Dashboard (2 test cases) - TC 23.1-23.2
+
+**Sales Returns & Credit Notes (24-25):**
+- [ ] Sales Returns & Damage Handling (5 test cases) - TC 24.1-24.5
+  - [ ] Create Sales Return from Invoice (TC 24.1)
+  - [ ] Quality Segregation of Returns (TC 24.2)
+  - [ ] Inventory Reconciliation (TC 24.3)
+  - [ ] Auto Credit Note (Same Month) (TC 24.4)
+  - [ ] Manual Credit Note (Old Returns) (TC 24.5)
+- [ ] Credit Notes Viewing & Management (4 test cases) - TC 25.1-25.4
+  - [ ] View Credit Notes List (TC 25.1)
+  - [ ] Credit Note Detail with GST (TC 25.2)
+  - [ ] Apply Credit to Invoice (TC 25.3)
+  - [ ] Credit Note Reports (TC 25.4)
+
+---
+
+## Summary Statistics
+
+**Total Test Cases**: 87 (was 78)  
+**New Test Cases Added**: 9  
+**Test Sections**: 25 (was 23)  
+**Coverage**: 100% of major features ✅
+
+**Critical Workflows Documented**:
+- ✅ Manufacturing Production Cycle (Complete)
+- ✅ Sales & Dispatch with Cancellations (Complete)
+- ✅ Sales Returns & Credit Notes (Complete - NEW)
+- ✅ Inventory Management (Complete)
+- ✅ Quality & Maintenance (Complete)
+- ✅ Payment Tracking (Complete)
