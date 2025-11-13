@@ -24,15 +24,16 @@ import {
 
 interface CreditNote {
   id: string;
-  creditNoteNumber: string;
+  noteNumber: string;
   invoiceId: string;
   invoiceNumber: string;
   creditDate: string | Date;
   buyerName: string;
-  totalAmount: number;
-  cgst: number;
-  sgst: number;
-  igst: number;
+  subtotal: number;
+  cgstAmount: number;
+  sgstAmount: number;
+  igstAmount: number;
+  grandTotal: number;
   reason: string;
 }
 
@@ -125,11 +126,11 @@ export default function CreditNotes() {
               </TableHeader>
               <TableBody>
                 {creditNotes.map((cn) => {
-                  const total = cn.totalAmount + cn.cgst + cn.sgst + cn.igst;
+                  const total = (cn.grandTotal ?? 0) / 100;
                   return (
                     <TableRow key={cn.id}>
                       <TableCell className="font-medium">
-                        {cn.creditNoteNumber}
+                        {cn.noteNumber}
                       </TableCell>
                       <TableCell>{cn.invoiceNumber}</TableCell>
                       <TableCell>
@@ -137,16 +138,16 @@ export default function CreditNotes() {
                       </TableCell>
                       <TableCell>{cn.buyerName}</TableCell>
                       <TableCell className="text-right">
-                        ₹{cn.totalAmount.toFixed(2)}
+                        ₹{((cn.subtotal ?? 0) / 100).toFixed(2)}
                       </TableCell>
                       <TableCell className="text-right">
-                        ₹{cn.cgst.toFixed(2)}
+                        ₹{((cn.cgstAmount ?? 0) / 100).toFixed(2)}
                       </TableCell>
                       <TableCell className="text-right">
-                        ₹{cn.sgst.toFixed(2)}
+                        ₹{((cn.sgstAmount ?? 0) / 100).toFixed(2)}
                       </TableCell>
                       <TableCell className="text-right">
-                        ₹{cn.igst.toFixed(2)}
+                        ₹{((cn.igstAmount ?? 0) / 100).toFixed(2)}
                       </TableCell>
                       <TableCell className="text-right font-semibold">
                         ₹{total.toFixed(2)}
@@ -218,12 +219,12 @@ export default function CreditNotes() {
                       {creditNoteItems.map((item) => (
                         <TableRow key={item.id}>
                           <TableCell>{item.productName}</TableCell>
-                          <TableCell className="text-right">{item.quantity}</TableCell>
+                          <TableCell className="text-right">{item.quantity ?? 0}</TableCell>
                           <TableCell className="text-right">
-                            ₹{item.unitPrice.toFixed(2)}
+                            ₹{(item.unitPrice ?? 0).toFixed(2)}
                           </TableCell>
                           <TableCell className="text-right">
-                            ₹{item.amount.toFixed(2)}
+                            ₹{(item.amount ?? 0).toFixed(2)}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -236,30 +237,24 @@ export default function CreditNotes() {
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Subtotal:</span>
-                    <span>₹{selectedCreditNote.totalAmount.toFixed(2)}</span>
+                    <span>₹{((selectedCreditNote.subtotal ?? 0) / 100).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">CGST:</span>
-                    <span>₹{selectedCreditNote.cgst.toFixed(2)}</span>
+                    <span>₹{((selectedCreditNote.cgstAmount ?? 0) / 100).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">SGST:</span>
-                    <span>₹{selectedCreditNote.sgst.toFixed(2)}</span>
+                    <span>₹{((selectedCreditNote.sgstAmount ?? 0) / 100).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">IGST:</span>
-                    <span>₹{selectedCreditNote.igst.toFixed(2)}</span>
+                    <span>₹{((selectedCreditNote.igstAmount ?? 0) / 100).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between font-bold text-lg border-t pt-2">
                     <span>Total:</span>
                     <span>
-                      ₹
-                      {(
-                        selectedCreditNote.totalAmount +
-                        selectedCreditNote.cgst +
-                        selectedCreditNote.sgst +
-                        selectedCreditNote.igst
-                      ).toFixed(2)}
+                      ₹{((selectedCreditNote.grandTotal ?? 0) / 100).toFixed(2)}
                     </span>
                   </div>
                 </div>

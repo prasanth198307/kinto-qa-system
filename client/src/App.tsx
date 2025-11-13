@@ -913,6 +913,8 @@ function Router() {
       <ProtectedRoute path="/invoice/:id" component={InvoiceDetail} />
       <ProtectedRoute path="/dispatch-tracking" component={DispatchTracking} />
       <ProtectedRoute path="/sales-returns" component={SalesReturns} />
+      <ProtectedRoute path="/credit-notes" component={CreditNotes} />
+      <ProtectedRoute path="/pending-payments" component={PendingPayments} />
       <ProtectedRoute path="/reports/production-reconciliation" component={ProductionReconciliationReport} />
       <ProtectedRoute path="/" component={AuthenticatedApp} />
       <Route component={NotFound} />
