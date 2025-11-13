@@ -91,6 +91,14 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
   // Watch form values outside of effects to avoid subscription issues
   const watchedIssuanceId = form.watch('issuanceId');
   const watchedProductionId = form.watch('productionEntryId');
+  
+  // Debug logging (without mutations - they're defined later)
+  console.log('[DEBUG] Form state:', {
+    watchedIssuanceId,
+    watchedProductionId,
+    itemsLength: items.length,
+    buttonWillBeDisabled: !watchedIssuanceId || !watchedProductionId || items.length === 0
+  });
 
   // Sync selectedIssuanceId from form value
   useEffect(() => {
@@ -210,7 +218,10 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
   });
 
   const onSubmit = (data: HeaderFormData) => {
+    console.log('[DEBUG] onSubmit called', { data, itemsLength: items.length });
+    
     if (items.length === 0) {
+      console.log('[DEBUG] Early return - no items');
       toast({
         title: "Error",
         description: "At least one reconciliation item is required",
@@ -223,6 +234,8 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
       header: data,
       items: items,
     };
+    
+    console.log('[DEBUG] Calling mutation with payload:', payload);
 
     if (reconciliation) {
       updateMutation.mutate(payload);
@@ -537,7 +550,7 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
                 </Button>
                 <Button
                   type="submit"
-                  disabled={createMutation.isPending || updateMutation.isPending || !selectedIssuanceId || !selectedProductionId || items.length === 0}
+                  disabled={createMutation.isPending || updateMutation.isPending || !watchedIssuanceId || !watchedProductionId || items.length === 0}
                   data-testid="button-submit"
                 >
                   {createMutation.isPending || updateMutation.isPending ? "Saving..." : reconciliation ? "Update Reconciliation" : "Create Reconciliation"}
