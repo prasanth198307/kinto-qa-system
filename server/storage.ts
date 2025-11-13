@@ -1153,9 +1153,8 @@ export class DatabaseStorage implements IStorage {
       id: item.product_bom.id,
       productId: item.product_bom.productId,
       rawMaterialId: item.product_bom.rawMaterialId,
-      quantityPerProduct: item.product_bom.quantityPerProduct,
-      unitOfMeasure: item.product_bom.unitOfMeasure,
-      usageMethod: item.product_bom.usageMethod,
+      quantityRequired: item.product_bom.quantityRequired,  // Fixed: match schema field name
+      uom: item.product_bom.uom,  // Fixed: match schema field name
       notes: item.product_bom.notes,
       // Raw material details (will be null if material not found)
       materialCode: item.raw_materials?.materialCode || null,

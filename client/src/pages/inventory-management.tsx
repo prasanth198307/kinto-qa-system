@@ -513,8 +513,6 @@ function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSea
       if (mode === 'create') {
         const response = await apiRequest('POST', '/api/products', productData);
         const result = await response.json();
-        console.log('[DEBUG] Product creation response:', result);
-        console.log('[DEBUG] Product ID from response:', result?.id);
         productId = result.id;
         savedProduct = result;
       } else {
@@ -536,12 +534,12 @@ function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSea
         try {
           const bomPayload = bomItems.map(item => ({
             rawMaterialId: item.rawMaterialId.trim(),
-            quantityRequired: Number(item.quantityRequired),
-            uom: item.uom?.trim() || '',
-            notes: item.notes?.trim() || '',
+            quantityRequired: String(item.quantityRequired),  // Must be string for Drizzle-Zod numeric schema
+            uom: item.uom?.trim() || null,  // Send null instead of empty string for nullable fields
+            notes: item.notes?.trim() || null,  // Send null instead of empty string for nullable fields
           }));
-          console.log('[DEBUG] BOM payload:', bomPayload);
-          await apiRequest('POST', `/api/products/${productId}/bom`, bomPayload);
+          const response = await apiRequest('POST', `/api/products/${productId}/bom`, bomPayload);
+          await response.json();  // Consume response
         } catch (error) {
           console.error('BOM save failed after product save:', error);
           bomSuccess = false;
@@ -950,12 +948,16 @@ function ProductDialog({
   useEffect(() => {
     if (open && item) {
       if (existingBom.length > 0) {
-        replace(existingBom.map(bom => ({
-          rawMaterialId: bom.rawMaterialId || bom.raw_material_id,
-          quantityRequired: bom.quantityRequired || bom.quantity_required,
-          uom: bom.uom || '',
-          notes: bom.notes || '',
-        })));
+        const hydratedBom = existingBom.map(bom => {
+          const quantityStr = bom.quantityRequired || bom.quantity_required;
+          return {
+            rawMaterialId: bom.rawMaterialId || bom.raw_material_id || '',
+            quantityRequired: quantityStr ? parseFloat(quantityStr) : 0,
+            uom: bom.uom || '',
+            notes: bom.notes || '',
+          };
+        });
+        replace(hydratedBom);
       } else {
         // Clear BOM array when editing product with no BOM
         replace([]);

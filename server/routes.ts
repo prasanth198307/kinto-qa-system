@@ -1266,14 +1266,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const dataWithCalculations = calculateProductFields(validatedData);
       
       const created = await storage.createProduct(dataWithCalculations);
-      console.log('[DEBUG] Product created:', JSON.stringify({ id: created.id, code: created.productCode }));
       res.json(created);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        console.error('[ERROR] Product validation failed:', error.errors);
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
       }
-      console.error("[ERROR] Error creating product:", error);
+      console.error("Error creating product:", error);
       res.status(500).json({ message: "Failed to create product" });
     }
   });
@@ -1384,7 +1382,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return bomItemSchema.parse(item);
           } catch (error) {
             if (error instanceof z.ZodError) {
-              throw new Error(`Invalid BOM item at index ${index}: ${error.errors.map(e => e.message).join(', ')}`);
+              throw new Error(`Invalid BOM item at index ${index}: ${error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')}`);
             }
             throw error;
           }
