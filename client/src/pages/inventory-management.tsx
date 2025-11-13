@@ -942,15 +942,48 @@ function ProductDialog({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="info" data-testid="tab-info">Product Info</TabsTrigger>
-                <TabsTrigger value="packaging" data-testid="tab-packaging">Packaging</TabsTrigger>
-                <TabsTrigger value="pricing" data-testid="tab-pricing">Pricing/Tax</TabsTrigger>
-                <TabsTrigger value="bom" data-testid="tab-bom">BOM</TabsTrigger>
-              </TabsList>
+            {/* Custom Tab Implementation - Manual Control */}
+            <div className="space-y-4">
+              <div className="grid w-full grid-cols-4 gap-2 rounded-md bg-muted p-1">
+                <Button
+                  type="button"
+                  variant={activeTab === 'info' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setActiveTab('info')}
+                  data-testid="tab-info"
+                >
+                  Product Info
+                </Button>
+                <Button
+                  type="button"
+                  variant={activeTab === 'packaging' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setActiveTab('packaging')}
+                  data-testid="tab-packaging"
+                >
+                  Packaging
+                </Button>
+                <Button
+                  type="button"
+                  variant={activeTab === 'pricing' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setActiveTab('pricing')}
+                  data-testid="tab-pricing"
+                >
+                  Pricing/Tax
+                </Button>
+                <Button
+                  type="button"
+                  variant={activeTab === 'bom' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setActiveTab('bom')}
+                  data-testid="tab-bom"
+                >
+                  BOM
+                </Button>
+              </div>
 
-              <TabsContent value="info" className="space-y-4 mt-4">
+              {activeTab === 'info' && (<div className="space-y-4 mt-4">
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -1125,9 +1158,9 @@ function ProductDialog({
                     </FormItem>
                   )}
                 />
-              </TabsContent>
+              </div>)}
 
-              <TabsContent value="packaging" className="space-y-4 mt-4">
+              {activeTab === 'packaging' && (<div className="space-y-4 mt-4">
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -1311,9 +1344,9 @@ function ProductDialog({
                     </FormDescription>
                   </FormItem>
                 )}
-              </TabsContent>
+              </div>)}
 
-              <TabsContent value="pricing" className="space-y-4 mt-4">
+              {activeTab === 'pricing' && (<div className="space-y-4 mt-4">
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -1439,9 +1472,9 @@ function ProductDialog({
                     )}
                   />
                 </div>
-              </TabsContent>
+              </div>)}
 
-              <TabsContent value="bom" className="space-y-4 mt-4">
+              {activeTab === 'bom' && (<div className="space-y-4 mt-4">
                 <div className="rounded-lg border">
                   <Table>
                     <TableHeader>
@@ -1532,8 +1565,8 @@ function ProductDialog({
                   <Plus className="h-4 w-4 mr-2" />
                   Add Row
                 </Button>
-              </TabsContent>
-            </Tabs>
+              </div>)}
+            </div>
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} data-testid="button-cancel">

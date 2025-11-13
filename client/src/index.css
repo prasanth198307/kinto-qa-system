@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Force hide inactive tab PANELS only (not triggers) to override any layout classes */
+[role="tabpanel"][data-state="inactive"] {
+  display: none !important;
+}
+
 /* LIGHT MODE */
 :root {
   --button-outline: rgba(0,0,0, .10);
