@@ -211,7 +211,16 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
   });
 
   const onSubmit = (data: HeaderFormData) => {
-    if (items.length === 0) {
+    console.log('[DEBUG] onSubmit called', {
+      data,
+      reconciliation: !!reconciliation,
+      itemsLength: items.length
+    });
+    
+    // Only require items in create mode
+    // In edit mode, allow updates even with zero items (for fixing data issues)
+    if (!reconciliation && items.length === 0) {
+      console.log('[DEBUG] Blocking submit - no items in create mode');
       toast({
         title: "Error",
         description: "At least one reconciliation item is required",
@@ -224,6 +233,8 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
       header: data,
       items: items,
     };
+    
+    console.log('[DEBUG] Calling mutation', { isUpdate: !!reconciliation, payload });
 
     if (reconciliation) {
       updateMutation.mutate(payload);
@@ -243,7 +254,15 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
   };
 
   // Filter productions for selected issuance
-  const filteredProductions = productions.filter(p => p.issuanceId === selectedIssuanceId);
+  // In edit mode, ensure the current production entry is always available even if not in filtered list
+  let filteredProductions = productions.filter(p => p.issuanceId === selectedIssuanceId);
+  
+  if (reconciliation && reconciliation.productionEntryId) {
+    const currentProduction = productions.find(p => p.id === reconciliation.productionEntryId);
+    if (currentProduction && !filteredProductions.find(p => p.id === currentProduction.id)) {
+      filteredProductions = [currentProduction, ...filteredProductions];
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -298,6 +317,7 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
                       <Select 
                         onValueChange={field.onChange}
                         value={field.value}
+                        disabled={!!reconciliation}
                         data-testid="select-production"
                       >
                         <FormControl>
@@ -535,7 +555,13 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
                 </Button>
                 <Button
                   type="submit"
-                  disabled={createMutation.isPending || updateMutation.isPending || !watchedIssuanceId || !watchedProductionId || items.length === 0}
+                  disabled={
+                    createMutation.isPending || 
+                    updateMutation.isPending || 
+                    !watchedIssuanceId || 
+                    !watchedProductionId || 
+                    (!reconciliation && items.length === 0) // Only require items in create mode
+                  }
                   data-testid="button-submit"
                 >
                   {createMutation.isPending || updateMutation.isPending ? "Saving..." : reconciliation ? "Update Reconciliation" : "Create Reconciliation"}
