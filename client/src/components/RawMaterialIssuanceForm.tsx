@@ -210,24 +210,27 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
 
   const saveMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      // Transform UI form data to API format (null for IDs/numbers, empty string for text)
+      // Transform UI form data to API format
+      // UUIDs (productId, uomId): empty string → null to prevent FK violations
+      // Text (productionReference, remarks): empty string → "" for non-nullable string columns
+      // Numbers: preserve 0, convert undefined/NaN → null
       const apiPayload = {
         header: {
           issuanceDate: data.header.issuanceDate instanceof Date ? data.header.issuanceDate.toISOString() : data.header.issuanceDate,
           issuedTo: data.header.issuedTo,
-          productId: data.header.productId || null,
-          productionReference: data.header.productionReference || "",
+          productId: data.header.productId?.trim() || null, // UUID: empty → null
+          productionReference: data.header.productionReference?.trim() || "", // String: empty → ""
           plannedOutput: Number.isFinite(data.header.plannedOutput) ? data.header.plannedOutput : null,
-          remarks: data.header.remarks || "",
+          remarks: data.header.remarks?.trim() || "", // String: empty → ""
         },
         items: data.items.map(item => ({
-          rawMaterialId: item.rawMaterialId,
-          productId: item.productId || null,
-          quantityIssued: item.quantityIssued,
+          rawMaterialId: item.rawMaterialId, // Required, never null
+          productId: item.productId?.trim() || null, // UUID: empty → null
+          quantityIssued: item.quantityIssued, // Required number
           suggestedQuantity: item.suggestedQuantity || null,
           calculationBasis: item.calculationBasis || null,
-          uomId: item.uomId || null,
-          remarks: item.remarks || "",
+          uomId: item.uomId?.trim() || null, // UUID: empty → null to prevent FK violation
+          remarks: item.remarks?.trim() || "", // String: empty → ""
         })),
       };
       
