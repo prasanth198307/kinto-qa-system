@@ -31,10 +31,12 @@ export interface RawMaterialTypeConversion {
 export interface BOMCalculationInput {
   plannedOutput: number;            // e.g., 12000 bottles
   quantityRequired: number;         // From BOM: quantity per unit (usually 1)
-  typeConversion: RawMaterialTypeConversion;
+  typeConversion: RawMaterialTypeConversion | null; // Null when material has no type assigned
 }
 
 export interface BOMCalculationResult {
+  rawMaterialId: string;            // ID of the raw material
+  uomId: string | null;             // Unit of measure ID
   suggestedQuantity: number;        // Calculated quantity to issue
   calculationBasis: CalculationMethod;
   calculationDetails: string;       // Human-readable explanation
@@ -161,13 +163,32 @@ function normalizeConversionMethod(method: string | undefined | null): Calculati
 /**
  * Main calculation function - dispatches to appropriate method
  */
-export function calculateSuggestedQuantity(input: BOMCalculationInput): BOMCalculationResult {
-  const { typeConversion } = input;
+export function calculateSuggestedQuantity(input: BOMCalculationInput, rawMaterialId: string, uomId: string | null): BOMCalculationResult {
+  const { typeConversion, plannedOutput, quantityRequired } = input;
   let suggestedQuantity = 0;
   let calculationDetails = '';
+  let calculationBasis: CalculationMethod = 'manual';
+  
+  // Handle missing type conversion data - use basic BOM calculation as fallback
+  if (!typeConversion) {
+    // Basic BOM calculation: plannedOutput × quantityRequired
+    suggestedQuantity = plannedOutput * quantityRequired;
+    calculationDetails = `Basic BOM: ${plannedOutput} units × ${quantityRequired} per unit (no type conversion)`;
+    calculationBasis = 'manual'; // Mark as manual since no conversion formula exists
+    
+    return {
+      rawMaterialId,
+      uomId,
+      suggestedQuantity: Math.max(0, suggestedQuantity),
+      calculationBasis,
+      calculationDetails,
+      roundedQuantity: Math.ceil(Math.max(0, suggestedQuantity)),
+    };
+  }
   
   // Normalize conversion method to handle all DB format variants
   const normalizedMethod = normalizeConversionMethod(typeConversion.conversionMethod);
+  calculationBasis = normalizedMethod;
   
   switch (normalizedMethod) {
     case 'formula-based':
@@ -187,8 +208,9 @@ export function calculateSuggestedQuantity(input: BOMCalculationInput): BOMCalcu
       
     case 'manual':
     default:
-      suggestedQuantity = 0;
-      calculationDetails = 'Manual entry required';
+      // For manual mode with type conversion, still use basic BOM calc
+      suggestedQuantity = plannedOutput * quantityRequired;
+      calculationDetails = `Manual (BOM-based): ${plannedOutput} units × ${quantityRequired} per unit`;
       break;
   }
   
@@ -199,8 +221,10 @@ export function calculateSuggestedQuantity(input: BOMCalculationInput): BOMCalcu
   }
   
   return {
+    rawMaterialId,
+    uomId,
     suggestedQuantity: Math.max(0, suggestedQuantity), // Never negative
-    calculationBasis: normalizedMethod || 'manual',
+    calculationBasis,
     calculationDetails,
     roundedQuantity: Math.ceil(Math.max(0, suggestedQuantity)), // Round up for safety
   };
@@ -212,21 +236,52 @@ export function calculateSuggestedQuantity(input: BOMCalculationInput): BOMCalcu
 export function calculateBOMSuggestions(
   plannedOutput: number,
   bomItems: Array<{
-    rawMaterialId: string;
-    quantityRequired: number;
-    typeConversion: RawMaterialTypeConversion;
+    bom: { rawMaterialId: string; quantityRequired: number; uom: string | null };
+    material: any;
+    type: any;
   }>
 ): Map<string, BOMCalculationResult> {
   const results = new Map<string, BOMCalculationResult>();
   
+  // Guard against invalid input
+  if (!bomItems || !Array.isArray(bomItems) || bomItems.length === 0) {
+    return results;
+  }
+  
   for (const item of bomItems) {
-    const result = calculateSuggestedQuantity({
-      plannedOutput,
-      quantityRequired: item.quantityRequired,
-      typeConversion: item.typeConversion,
-    });
+    // Skip invalid items (missing bom data)
+    if (!item || !item.bom || !item.bom.rawMaterialId) {
+      console.warn('[BOM Calculation] Skipping invalid BOM item', item);
+      continue;
+    }
     
-    results.set(item.rawMaterialId, result);
+    // Parse and validate quantityRequired
+    const quantityRequired = Number(item.bom.quantityRequired);
+    if (isNaN(quantityRequired) || quantityRequired < 0) {
+      console.warn('[BOM Calculation] Invalid quantityRequired for material', item.bom.rawMaterialId, item.bom.quantityRequired);
+      // Add item with manual entry required
+      results.set(item.bom.rawMaterialId, {
+        rawMaterialId: item.bom.rawMaterialId,
+        uomId: item.bom.uom,
+        suggestedQuantity: 0,
+        calculationBasis: 'manual',
+        calculationDetails: 'Manual entry required (invalid quantity)',
+        roundedQuantity: 0,
+      });
+      continue;
+    }
+    
+    const result = calculateSuggestedQuantity(
+      {
+        plannedOutput,
+        quantityRequired,
+        typeConversion: item.type || null,
+      },
+      item.bom.rawMaterialId,
+      item.bom.uom
+    );
+    
+    results.set(item.bom.rawMaterialId, result);
   }
   
   return results;

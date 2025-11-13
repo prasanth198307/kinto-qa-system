@@ -1013,7 +1013,9 @@ export const insertRawMaterialIssuanceSchema = createInsertSchema(rawMaterialIss
     }
     return val;
   }),
-  productionReference: z.string().min(1, "Production reference cannot be empty if provided").optional(),
+  issuedTo: z.string().optional().transform(val => !val || val.trim() === '' ? undefined : val),
+  productionReference: z.string().optional().transform(val => !val || val.trim() === '' ? undefined : val),
+  remarks: z.string().optional().transform(val => !val || val.trim() === '' ? undefined : val),
   plannedOutput: z.union([
     z.string().transform(val => {
       if (!val || val.trim() === '') return undefined;
