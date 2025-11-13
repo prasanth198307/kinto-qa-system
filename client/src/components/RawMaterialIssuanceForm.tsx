@@ -234,8 +234,6 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
         })),
       };
       
-      console.log('[RAW MATERIAL ISSUANCE] Submitting payload:', JSON.stringify(apiPayload, null, 2));
-      
       if (issuance) {
         return await apiRequest('PATCH', `/api/raw-material-issuances/${issuance.id}`, apiPayload);
       } else {

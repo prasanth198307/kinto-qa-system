@@ -82,10 +82,7 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
 
   const createMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      return await apiRequest('/api/production-entries', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
+      return await apiRequest('POST', '/api/production-entries', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/production-entries'] });
