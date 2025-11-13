@@ -487,28 +487,59 @@ function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSea
 
   const saveProductWithBomMutation = useMutation({
     mutationFn: async ({ mode, id, data }: { mode: 'create' | 'update'; id?: string; data: ProductFormData }) => {
-      // Extract BOM items from form data
+      // Extract BOM items from submitted form data
       const { bomItems, ...productData } = data;
       
-      // Step 1: Save product
-      let productId: string;
+      // Step 0: Validate BOM BEFORE product save to prevent orphaned products
+      if (bomItems && bomItems.length > 0) {
+        const invalidRows: number[] = [];
+        bomItems.forEach((item, index) => {
+          const hasRawMaterial = item.rawMaterialId && item.rawMaterialId.trim() !== '';
+          const hasValidQuantity = item.quantityRequired && Number(item.quantityRequired) > 0;
+          if (!hasRawMaterial || !hasValidQuantity) {
+            invalidRows.push(index + 1);
+          }
+        });
+
+        if (invalidRows.length > 0) {
+          throw new Error(`BOM validation failed: Row(s) ${invalidRows.join(', ')} have missing raw material or invalid quantity. Please complete or remove these rows before saving.`);
+        }
+      }
+      
+      // Step 1: Save product (only after BOM validation passes)
+      let productId: string | undefined;
       let savedProduct: Product;
+      
       if (mode === 'create') {
         const result = await apiRequest('POST', '/api/products', productData);
+        console.log('[DEBUG] Product creation response:', result);
+        console.log('[DEBUG] Product ID from response:', result?.id);
         productId = result.id;
-        savedProduct = result; // Full product object returned from API
+        savedProduct = result;
       } else {
         const result = await apiRequest('PATCH', `/api/products/${id}`, productData);
-        productId = id!;
-        savedProduct = result; // Full product object returned from API
+        productId = id;
+        savedProduct = result;
       }
 
-      // Step 2: Save BOM (bulk replace) - only if bomItems exist
+      // Guard: Ensure productId exists before BOM save
+      if (!productId) {
+        throw new Error('Failed to get product ID from save response');
+      }
+
+      // Step 2: Save BOM (all items already validated)
       let bomSuccess = true;
       let bomError: string | null = null;
       if (bomItems && bomItems.length > 0) {
         try {
-          await apiRequest('POST', `/api/products/${productId}/bom`, bomItems);
+          const bomPayload = bomItems.map(item => ({
+            rawMaterialId: item.rawMaterialId.trim(),
+            quantityRequired: Number(item.quantityRequired),
+            uom: item.uom?.trim() || '',
+            notes: item.notes?.trim() || '',
+          }));
+          console.log('[DEBUG] BOM payload:', bomPayload);
+          await apiRequest('POST', `/api/products/${productId}/bom`, bomPayload);
         } catch (error) {
           console.error('BOM save failed after product save:', error);
           bomSuccess = false;
