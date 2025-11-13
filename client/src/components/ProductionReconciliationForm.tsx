@@ -64,7 +64,7 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
     resolver: zodResolver(headerSchema),
     defaultValues: {
       issuanceId: "",
-      productionEntryId: "",
+      productionEntryId: undefined,
       reconciliationDate: new Date(),
       shift: 'A',
       remarks: "",
@@ -88,9 +88,36 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
     }
   }, [reconciliation, form]);
 
-  // Auto-populate items when issuance is selected
+  // Watch form values outside of effects to avoid subscription issues
+  const watchedIssuanceId = form.watch('issuanceId');
+  const watchedProductionId = form.watch('productionEntryId');
+
+  // Sync selectedIssuanceId from form value
   useEffect(() => {
-    if (issuanceSummary && !reconciliation && items.length === 0) {
+    const currentIssuanceId = watchedIssuanceId || "";
+    // Only update if it's a real change (not redundant selection or initial render)
+    if (currentIssuanceId !== "" && currentIssuanceId !== selectedIssuanceId) {
+      setSelectedIssuanceId(currentIssuanceId);
+      // Only reset items if issuance actually changed (not redundant selection)
+      if (selectedIssuanceId !== "") {
+        setItems([]);
+      }
+    }
+  }, [watchedIssuanceId, selectedIssuanceId]);
+
+  // Sync selectedProductionId from form value
+  useEffect(() => {
+    const currentProductionId = watchedProductionId || "";
+    if (currentProductionId !== selectedProductionId) {
+      setSelectedProductionId(currentProductionId);
+    }
+  }, [watchedProductionId, selectedProductionId]);
+
+  // Auto-populate items when issuance is selected (create mode only)
+  useEffect(() => {
+    // Only auto-fill in create mode, when summary is loaded, and items are empty
+    // Prevent auto-fill during edit mode even if items get cleared
+    if (issuanceSummary && !reconciliation && items.length === 0 && selectedIssuanceId) {
       const issuanceItems = issuanceSummary.issuance.items.map((item: any) => ({
         rawMaterialId: item.rawMaterialId,
         issuanceItemId: item.id,
@@ -102,7 +129,7 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
       }));
       setItems(issuanceItems);
     }
-  }, [issuanceSummary, reconciliation, items.length]);
+  }, [issuanceSummary, reconciliation, items.length, selectedIssuanceId]);
 
   const createMutation = useMutation({
     mutationFn: async (data: { header: HeaderFormData; items: ItemFormData[] }) => {
@@ -204,16 +231,8 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
     }
   };
 
-  const handleIssuanceChange = (issuanceId: string) => {
-    setSelectedIssuanceId(issuanceId);
-    form.setValue('issuanceId', issuanceId);
-    setItems([]); // Reset items when issuance changes
-  };
-
-  const handleProductionChange = (productionId: string) => {
-    setSelectedProductionId(productionId);
-    form.setValue('productionEntryId', productionId || undefined);
-  };
+  // Note: These handlers are no longer needed since we sync via useEffect
+  // Kept for backwards compatibility but now just pass through to field.onChange
 
   const updateItem = (index: number, field: keyof ItemFormData, value: any) => {
     const updatedItems = [...items];
@@ -249,7 +268,7 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
                     <FormItem>
                       <FormLabel>Raw Material Issuance *</FormLabel>
                       <Select 
-                        onValueChange={handleIssuanceChange}
+                        onValueChange={field.onChange}
                         value={field.value}
                         disabled={!!reconciliation}
                         data-testid="select-issuance"
@@ -279,7 +298,9 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
                     <FormItem>
                       <FormLabel>Production Entry (Optional)</FormLabel>
                       <Select 
-                        onValueChange={(value) => handleProductionChange(value === "none" ? undefined : value)}
+                        onValueChange={(value) => {
+                          field.onChange(value === "none" ? undefined : value);
+                        }}
                         value={field.value || "none"}
                         data-testid="select-production"
                       >
