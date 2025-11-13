@@ -13,10 +13,11 @@ import { Switch } from "@/components/ui/switch";
 
 interface ProductCategory {
   id: string;
-  categoryName: string;
+  code: string;
+  name: string;
   description: string | null;
-  isActive: number;
   displayOrder: number | null;
+  isActive: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -28,10 +29,11 @@ export default function ProductCategories() {
   const [editingCategory, setEditingCategory] = useState<ProductCategory | null>(null);
 
   const [formData, setFormData] = useState({
-    categoryName: "",
+    code: "",
+    name: "",
     description: "",
-    isActive: true,
     displayOrder: "",
+    isActive: true,
   });
 
   const { data: categories, isLoading } = useQuery<ProductCategory[]>({
@@ -77,30 +79,33 @@ export default function ProductCategories() {
 
   const resetForm = () => {
     setFormData({
-      categoryName: "",
+      code: "",
+      name: "",
       description: "",
-      isActive: true,
       displayOrder: "",
+      isActive: true,
     });
     setEditingCategory(null);
   };
 
   const handleCreate = () => {
     createMutation.mutate({
-      categoryName: formData.categoryName,
+      code: formData.code,
+      name: formData.name,
       description: formData.description || null,
-      isActive: formData.isActive ? 1 : 0,
       displayOrder: formData.displayOrder ? parseInt(formData.displayOrder) : null,
+      isActive: formData.isActive ? 'true' : 'false',
     });
   };
 
   const handleEdit = (category: ProductCategory) => {
     setEditingCategory(category);
     setFormData({
-      categoryName: category.categoryName,
+      code: category.code,
+      name: category.name,
       description: category.description || "",
-      isActive: category.isActive === 1,
       displayOrder: category.displayOrder?.toString() || "",
+      isActive: category.isActive === 'true',
     });
     setIsEditOpen(true);
   };
@@ -110,10 +115,11 @@ export default function ProductCategories() {
     updateMutation.mutate({
       id: editingCategory.id,
       data: {
-        categoryName: formData.categoryName,
+        code: formData.code,
+        name: formData.name,
         description: formData.description || null,
-        isActive: formData.isActive ? 1 : 0,
         displayOrder: formData.displayOrder ? parseInt(formData.displayOrder) : null,
+        isActive: formData.isActive ? 'true' : 'false',
       }
     });
   };
@@ -162,7 +168,10 @@ export default function ProductCategories() {
                       data-testid={`category-item-${category.id}`}
                     >
                       <div className="flex-1">
-                        <h3 className="font-medium">{category.categoryName}</h3>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-medium">{category.name}</h3>
+                          <span className="text-sm text-muted-foreground">({category.code})</span>
+                        </div>
                         {category.description && (
                           <p className="text-sm text-muted-foreground mt-1">
                             {category.description}
@@ -170,8 +179,8 @@ export default function ProductCategories() {
                         )}
                         <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                           <span>Order: {category.displayOrder || 'N/A'}</span>
-                          <span className={category.isActive === 1 ? "text-green-600" : "text-red-600"}>
-                            {category.isActive === 1 ? "Active" : "Inactive"}
+                          <span className={category.isActive === 'true' ? "text-green-600" : "text-red-600"}>
+                            {category.isActive === 'true' ? "Active" : "Inactive"}
                           </span>
                         </div>
                       </div>
@@ -200,7 +209,6 @@ export default function ProductCategories() {
           </CardContent>
         </Card>
 
-        {/* Create Dialog */}
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogContent data-testid="dialog-create-category">
             <DialogHeader>
@@ -211,11 +219,21 @@ export default function ProductCategories() {
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="categoryName">Category Name *</Label>
+                <Label htmlFor="code">Category Code *</Label>
                 <Input
-                  id="categoryName"
-                  value={formData.categoryName}
-                  onChange={(e) => setFormData({ ...formData, categoryName: e.target.value })}
+                  id="code"
+                  value={formData.code}
+                  onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                  placeholder="e.g., CAT-001, BVRG"
+                  data-testid="input-category-code"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="name">Category Name *</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="e.g., Electronics, Furniture"
                   data-testid="input-category-name"
                 />
@@ -237,7 +255,7 @@ export default function ProductCategories() {
                   type="number"
                   value={formData.displayOrder}
                   onChange={(e) => setFormData({ ...formData, displayOrder: e.target.value })}
-                  placeholder="Order number"
+                  placeholder="Order number for sorting"
                   data-testid="input-display-order"
                 />
               </div>
@@ -257,7 +275,7 @@ export default function ProductCategories() {
               </Button>
               <Button
                 onClick={handleCreate}
-                disabled={!formData.categoryName || createMutation.isPending}
+                disabled={!formData.code || !formData.name || createMutation.isPending}
                 data-testid="button-save-category"
               >
                 {createMutation.isPending ? "Creating..." : "Create"}
@@ -266,7 +284,6 @@ export default function ProductCategories() {
           </DialogContent>
         </Dialog>
 
-        {/* Edit Dialog */}
         <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
           <DialogContent data-testid="dialog-edit-category">
             <DialogHeader>
@@ -277,11 +294,20 @@ export default function ProductCategories() {
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-categoryName">Category Name *</Label>
+                <Label htmlFor="edit-code">Category Code *</Label>
                 <Input
-                  id="edit-categoryName"
-                  value={formData.categoryName}
-                  onChange={(e) => setFormData({ ...formData, categoryName: e.target.value })}
+                  id="edit-code"
+                  value={formData.code}
+                  onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                  data-testid="input-edit-category-code"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Category Name *</Label>
+                <Input
+                  id="edit-name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   data-testid="input-edit-category-name"
                 />
               </div>
@@ -320,7 +346,7 @@ export default function ProductCategories() {
               </Button>
               <Button
                 onClick={handleUpdate}
-                disabled={!formData.categoryName || updateMutation.isPending}
+                disabled={!formData.code || !formData.name || updateMutation.isPending}
                 data-testid="button-update-category"
               >
                 {updateMutation.isPending ? "Updating..." : "Update"}

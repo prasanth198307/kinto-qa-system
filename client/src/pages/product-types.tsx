@@ -13,10 +13,11 @@ import { Switch } from "@/components/ui/switch";
 
 interface ProductType {
   id: string;
-  typeName: string;
+  code: string;
+  name: string;
   description: string | null;
-  isActive: number;
   displayOrder: number | null;
+  isActive: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -28,10 +29,11 @@ export default function ProductTypes() {
   const [editingType, setEditingType] = useState<ProductType | null>(null);
 
   const [formData, setFormData] = useState({
-    typeName: "",
+    code: "",
+    name: "",
     description: "",
-    isActive: true,
     displayOrder: "",
+    isActive: true,
   });
 
   const { data: types, isLoading } = useQuery<ProductType[]>({
@@ -77,30 +79,33 @@ export default function ProductTypes() {
 
   const resetForm = () => {
     setFormData({
-      typeName: "",
+      code: "",
+      name: "",
       description: "",
-      isActive: true,
       displayOrder: "",
+      isActive: true,
     });
     setEditingType(null);
   };
 
   const handleCreate = () => {
     createMutation.mutate({
-      typeName: formData.typeName,
+      code: formData.code,
+      name: formData.name,
       description: formData.description || null,
-      isActive: formData.isActive ? 1 : 0,
       displayOrder: formData.displayOrder ? parseInt(formData.displayOrder) : null,
+      isActive: formData.isActive ? 'true' : 'false',
     });
   };
 
   const handleEdit = (type: ProductType) => {
     setEditingType(type);
     setFormData({
-      typeName: type.typeName,
+      code: type.code,
+      name: type.name,
       description: type.description || "",
-      isActive: type.isActive === 1,
       displayOrder: type.displayOrder?.toString() || "",
+      isActive: type.isActive === 'true',
     });
     setIsEditOpen(true);
   };
@@ -110,10 +115,11 @@ export default function ProductTypes() {
     updateMutation.mutate({
       id: editingType.id,
       data: {
-        typeName: formData.typeName,
+        code: formData.code,
+        name: formData.name,
         description: formData.description || null,
-        isActive: formData.isActive ? 1 : 0,
         displayOrder: formData.displayOrder ? parseInt(formData.displayOrder) : null,
+        isActive: formData.isActive ? 'true' : 'false',
       }
     });
   };
@@ -162,7 +168,10 @@ export default function ProductTypes() {
                       data-testid={`type-item-${type.id}`}
                     >
                       <div className="flex-1">
-                        <h3 className="font-medium">{type.typeName}</h3>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-medium">{type.name}</h3>
+                          <span className="text-sm text-muted-foreground">({type.code})</span>
+                        </div>
                         {type.description && (
                           <p className="text-sm text-muted-foreground mt-1">
                             {type.description}
@@ -170,8 +179,8 @@ export default function ProductTypes() {
                         )}
                         <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                           <span>Order: {type.displayOrder || 'N/A'}</span>
-                          <span className={type.isActive === 1 ? "text-green-600" : "text-red-600"}>
-                            {type.isActive === 1 ? "Active" : "Inactive"}
+                          <span className={type.isActive === 'true' ? "text-green-600" : "text-red-600"}>
+                            {type.isActive === 'true' ? "Active" : "Inactive"}
                           </span>
                         </div>
                       </div>
@@ -200,7 +209,6 @@ export default function ProductTypes() {
           </CardContent>
         </Card>
 
-        {/* Create Dialog */}
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogContent data-testid="dialog-create-type">
             <DialogHeader>
@@ -211,11 +219,21 @@ export default function ProductTypes() {
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="typeName">Type Name *</Label>
+                <Label htmlFor="code">Type Code *</Label>
                 <Input
-                  id="typeName"
-                  value={formData.typeName}
-                  onChange={(e) => setFormData({ ...formData, typeName: e.target.value })}
+                  id="code"
+                  value={formData.code}
+                  onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                  placeholder="e.g., PT-001, RAWMAT"
+                  data-testid="input-type-code"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="name">Type Name *</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="e.g., Raw Material, Finished Good"
                   data-testid="input-type-name"
                 />
@@ -237,7 +255,7 @@ export default function ProductTypes() {
                   type="number"
                   value={formData.displayOrder}
                   onChange={(e) => setFormData({ ...formData, displayOrder: e.target.value })}
-                  placeholder="Order number"
+                  placeholder="Order number for sorting"
                   data-testid="input-display-order"
                 />
               </div>
@@ -257,7 +275,7 @@ export default function ProductTypes() {
               </Button>
               <Button
                 onClick={handleCreate}
-                disabled={!formData.typeName || createMutation.isPending}
+                disabled={!formData.code || !formData.name || createMutation.isPending}
                 data-testid="button-save-type"
               >
                 {createMutation.isPending ? "Creating..." : "Create"}
@@ -266,7 +284,6 @@ export default function ProductTypes() {
           </DialogContent>
         </Dialog>
 
-        {/* Edit Dialog */}
         <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
           <DialogContent data-testid="dialog-edit-type">
             <DialogHeader>
@@ -277,11 +294,20 @@ export default function ProductTypes() {
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-typeName">Type Name *</Label>
+                <Label htmlFor="edit-code">Type Code *</Label>
                 <Input
-                  id="edit-typeName"
-                  value={formData.typeName}
-                  onChange={(e) => setFormData({ ...formData, typeName: e.target.value })}
+                  id="edit-code"
+                  value={formData.code}
+                  onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                  data-testid="input-edit-type-code"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Type Name *</Label>
+                <Input
+                  id="edit-name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   data-testid="input-edit-type-name"
                 />
               </div>
@@ -320,7 +346,7 @@ export default function ProductTypes() {
               </Button>
               <Button
                 onClick={handleUpdate}
-                disabled={!formData.typeName || updateMutation.isPending}
+                disabled={!formData.code || !formData.name || updateMutation.isPending}
                 data-testid="button-update-type"
               >
                 {updateMutation.isPending ? "Updating..." : "Update"}
