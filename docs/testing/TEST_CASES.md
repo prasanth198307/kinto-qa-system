@@ -1,7 +1,7 @@
 # KINTO Operations & QA Management System - Test Cases
 
-**🎉 100% Complete Test Coverage: 25 Workflows | 97 Test Cases**
-**Last Updated: November 13, 2025 (Final)**
+**🎉 100% Complete Test Coverage: 26 Workflows | 100 Test Cases**
+**Last Updated: November 13, 2025 (Final - E2E Integration Added)**
 
 > **📋 Test Status Legend**:  
 > - ⬜ **PENDING** = Test case documented and ready for QA execution (not yet executed)  
@@ -4211,6 +4211,478 @@ Verified By:   ____________    Date: ________
 
 ---
 
+## 26. End-to-End Integration Testing 🔄
+
+> **🎯 PURPOSE**: These test cases demonstrate complete business flows across multiple systems, validating that all components work together seamlessly in real-world manufacturing scenarios.
+
+### Test Case 26.1: Complete Manufacturing Cycle - Raw Material to Finished Goods
+**Roles**: Admin, Manager, Operator, Reviewer  
+**Objective**: Execute complete manufacturing workflow from raw material setup to quality-approved finished goods  
+**Priority**: CRITICAL  
+**Integration Points**: Raw Material Types → Product BOM → Raw Material Issuance → Production Entry → Quality Approval
+
+**End-to-End Scenario**: Manufacturing 500 units of "Premium Widget A"
+
+**Phase 1: Setup (Admin)**
+1. **Create Raw Material Types** (TC 18.1):
+   - Navigate to Admin Dashboard → Raw Material Types
+   - Create "Plastic Pellets":
+     - Unit: "kg"
+     - Conversion Formula: 1 bag = 25 kg
+     - Loss Percentage: 2%
+   - Create "Steel Rods":
+     - Unit: "pieces"
+     - Conversion Formula: 1 bundle = 50 pieces
+     - Loss Percentage: 1%
+
+2. **Create Product with BOM** (TC 17.1):
+   - Navigate to Admin Dashboard → Product Master
+   - Create "Premium Widget A":
+     - Product Code: PWA-001
+     - Category: Widgets
+     - Type: Premium
+   - Switch to "Bill of Materials" tab
+   - Add BOM items:
+     - Plastic Pellets: 0.5 kg per unit (500 units × 0.5 = 250 kg needed)
+     - Steel Rods: 2 pieces per unit (500 units × 2 = 1000 pieces needed)
+   - Save BOM
+
+3. **Setup Raw Material Inventory** (TC 4.1):
+   - Navigate to Inventory → Raw Materials
+   - Add "Plastic Pellets":
+     - Mode: "Ongoing Inventory"
+     - Opening Stock: 300 kg (12 bags)
+   - Add "Steel Rods":
+     - Mode: "Ongoing Inventory"
+     - Opening Stock: 1200 pieces (24 bundles)
+
+**Phase 2: Raw Material Issuance (Manager)**
+4. **BOM-Driven Issuance** (TC 20.1):
+   - Navigate to Production → Raw Material Issuance
+   - Click "Create Issuance"
+   - Select Product: "Premium Widget A"
+   - Enter Target Quantity: 500 units
+   - **System Auto-Populates**:
+     ```
+     Material              Required   Loss (2%)   Suggested
+     Plastic Pellets       250 kg     +5 kg       255 kg (10.2 bags)
+     Steel Rods           1000 pcs    +10 pcs    1010 pcs (20.2 bundles)
+     ```
+   - Manager adjusts to whole units:
+     - Plastic Pellets: 11 bags (275 kg)
+     - Steel Rods: 21 bundles (1050 pieces)
+   - Submit Issuance
+   - **Issuance ID**: RMI-2025-001
+
+**Phase 3: Production Entry (Operator)**
+5. **Record Production** (TC 21.1):
+   - Navigate to Production → Production Entry
+   - Click "Create Production Entry"
+   - Link to Issuance: RMI-2025-001
+   - Enter Production Details:
+     - Shift: "Morning Shift (6 AM - 2 PM)"
+     - Operator: John Doe
+     - Machine: Widget Press #3
+   - Enter Actual Output:
+     - Good Units: 485 units
+     - Defective Units: 8 units
+     - Total Produced: 493 units
+   - **System Auto-Creates** 493 finished goods (status: "Pending Quality Approval")
+   - Submit Production Entry
+   - **Production ID**: PROD-2025-001
+
+**Phase 4: Production Reconciliation (Manager)**
+6. **Reconcile Materials** (TC 22.1):
+   - Navigate to Production → Production Reconciliation
+   - Click "Create Reconciliation"
+   - Select Production Entry: PROD-2025-001
+   - **System Shows**:
+     ```
+     Material          Issued    Expected    Actual Used    Returned    Variance
+     Plastic Pellets   275 kg    246.5 kg    250 kg        25 kg       +3.5 kg over
+     Steel Rods       1050 pcs   986 pcs     990 pcs       60 pcs      +4 pcs over
+     ```
+   - Manager verifies physical counts
+   - Enter Actual Consumption:
+     - Plastic Pellets Used: 250 kg
+     - Plastic Pellets Returned: 25 kg
+     - Steel Rods Used: 990 pieces
+     - Steel Rods Returned: 60 pieces
+   - Add Notes: "Slight overuse due to material defects in batch"
+   - Submit Reconciliation
+   - **Inventory Updated**:
+     - Plastic Pellets: 300 - 250 + 25 = 75 kg remaining
+     - Steel Rods: 1200 - 990 + 60 = 270 pieces remaining
+
+**Phase 5: Quality Approval (Reviewer)**
+7. **Approve Finished Goods** (TC 7.1):
+   - Navigate to Quality → Pending Approvals
+   - Filter: Production Entry PROD-2025-001
+   - **See 493 units pending approval**:
+     - 485 Good Units
+     - 8 Defective Units
+   - Review Quality:
+     - Good Units: Approve 485 units → Status: "Approved for Dispatch"
+     - Defective Units: Reject 8 units → Status: "Rejected"
+   - **Final Inventory**:
+     - Premium Widget A (Approved): 485 units available for sale
+     - Premium Widget A (Rejected): 8 units (quarantined)
+
+**Expected Results**:
+✅ **Complete Material Traceability**:
+- Raw materials linked to BOM
+- Issuance linked to production
+- Production linked to finished goods
+- Reconciliation closes the loop
+
+✅ **Inventory Accuracy**:
+- Raw material stock reduced by actual consumption
+- Returned materials added back to inventory
+- Finished goods created with correct quantities
+- Quality status properly tracked
+
+✅ **Variance Analysis**:
+- Variance calculated: +3.5 kg plastic, +4 pcs steel
+- Variance percentage: +1.4% plastic, +0.4% steel
+- Variance within acceptable tolerance
+
+✅ **Audit Trail**:
+- All transactions timestamped
+- User actions recorded
+- Document IDs linked
+- Immutable history maintained
+
+✅ **Data Integrity**:
+- No phantom inventory
+- No orphaned records
+- All quantities reconcile
+- Status workflows enforced
+
+**Test Status**: ⬜ PENDING
+
+---
+
+### Test Case 26.2: Complete Sales Cycle - Finished Goods to Customer Delivery
+**Roles**: Manager, Admin  
+**Objective**: Execute complete sales workflow from invoice creation to proof of delivery with payment tracking  
+**Priority**: CRITICAL  
+**Integration Points**: Finished Goods Inventory → Invoice → Gatepass → Dispatch → Payment
+
+**Pre-requisite**: TC 26.1 completed - 485 units of "Premium Widget A" approved for dispatch
+
+**End-to-End Scenario**: Selling 200 units to "ABC Manufacturing Ltd."
+
+**Phase 1: Invoice Creation (Manager)**
+1. **Create GST Invoice** (TC 8.1):
+   - Navigate to Sales → Invoices
+   - Click "Create Invoice"
+   - Customer: ABC Manufacturing Ltd.
+   - Invoice Date: 2025-11-13
+   - Add Line Items:
+     - Premium Widget A: 200 units @ ₹500/unit = ₹1,00,000
+   - **GST Calculation** (Auto):
+     - Taxable Amount: ₹1,00,000
+     - CGST 9%: ₹9,000
+     - SGST 9%: ₹9,000
+     - **Total Invoice Value**: ₹1,18,000
+   - Payment Terms: Net 30 days
+   - Submit Invoice
+   - **Invoice ID**: INV-2025-001
+   - **Status**: "Pending Gatepass"
+
+**Phase 2: Gatepass & Dispatch (Manager)**
+2. **Create Gatepass** (TC 8.2):
+   - Navigate from Invoice Detail
+   - Click "Create Gatepass"
+   - **System Validates**: Invoice must exist (✓)
+   - Gatepass Details:
+     - Vehicle Number: MH-12-AB-1234
+     - Driver Name: Rajesh Kumar
+     - Driver Phone: +91-98765-43210
+     - Expected Delivery: 2025-11-14
+   - **Items Auto-Populated** from Invoice:
+     - Premium Widget A: 200 units
+   - Submit Gatepass
+   - **Gatepass ID**: GP-2025-001
+   - **Inventory Deduction Triggered**:
+     - Premium Widget A: 485 - 200 = 285 units remaining
+
+3. **Record Dispatch** (TC 10.1):
+   - Status: "Gatepass Created" → "In Transit"
+   - Update Dispatch Details:
+     - Actual Departure: 2025-11-13 14:30
+     - Transporter: XYZ Logistics
+     - Tracking Number: XYZ-2025-789
+   - Status: "In Transit"
+
+4. **Record Delivery** (TC 10.2):
+   - Status: "In Transit" → "Delivered"
+   - Upload Proof of Delivery:
+     - Customer Signature (digital)
+     - Delivery Photo
+     - Delivery Date: 2025-11-14 11:00
+   - Status: "Delivered"
+
+**Phase 3: Payment Tracking (Manager)**
+5. **Record Partial Payment** (TC 9.1):
+   - Navigate to Finance → Payments
+   - Click "Record Payment"
+   - Invoice: INV-2025-001
+   - Payment Details:
+     - Amount: ₹50,000 (partial)
+     - Payment Date: 2025-11-20
+     - Payment Mode: NEFT
+     - Reference: NEFT-2025-XYZ123
+   - **Payment Allocation**:
+     - Invoice Total: ₹1,18,000
+     - Paid: ₹50,000
+     - Outstanding: ₹68,000
+   - Submit Payment
+
+6. **View Pending Payments** (TC 9.6):
+   - Navigate to Finance → Pending Payments
+   - **Dashboard Shows**:
+     - ABC Manufacturing Ltd.
+     - Invoice: INV-2025-001
+     - Outstanding: ₹68,000
+     - Due Date: 2025-12-13
+     - Aging: 0-30 days (Green)
+
+7. **Record Final Payment** (TC 9.1):
+   - Record second payment:
+     - Amount: ₹68,000
+     - Payment Date: 2025-12-05
+     - Payment Mode: Cheque
+     - Reference: CHQ-456789
+   - **Invoice Status**: "Fully Paid" ✓
+   - **Outstanding**: ₹0
+
+**Expected Results**:
+✅ **Invoice-First Workflow Enforced**:
+- Cannot create gatepass without invoice
+- Gatepass auto-populates from invoice
+- Quantities match exactly
+
+✅ **Inventory Management**:
+- Finished goods inventory reduced only on gatepass creation
+- No inventory deduction on invoice creation
+- Real-time stock levels accurate
+
+✅ **5-Stage Dispatch Tracking**:
+- Invoice Created → Gatepass Created → In Transit → Delivered → Proof of Delivery
+- Status progression validated
+- Cannot skip stages
+
+✅ **Payment Tracking**:
+- FIFO payment allocation
+- Partial payments tracked
+- Outstanding amounts calculated
+- Payment history maintained
+- Aging analysis accurate
+
+✅ **GST Compliance**:
+- Tax calculations correct
+- Invoice format compliant
+- Tax breakup displayed
+- HSN codes included (if configured)
+
+**Test Status**: ⬜ PENDING
+
+---
+
+### Test Case 26.3: End-to-End Integration with Returns - Raw Material to Customer with Sales Return
+**Roles**: Admin, Manager, Operator, Reviewer  
+**Objective**: Execute complete end-to-end business cycle including sales return, quality segregation, and credit note  
+**Priority**: CRITICAL  
+**Integration Points**: Manufacturing Cycle → Sales Cycle → Sales Returns → Quality Segregation → Inventory Reconciliation → Credit Notes
+
+**Pre-requisite**: TC 26.2 completed - 200 units delivered to ABC Manufacturing Ltd.
+
+**End-to-End Scenario**: Customer returns 15 defective units
+
+**Phase 1: Sales Return Creation (Manager)**
+1. **Create Return from Invoice** (TC 24.1):
+   - Navigate to Sales → Sales Returns
+   - Click "Create Return"
+   - Select Invoice: INV-2025-001
+   - Return Details:
+     - Return Date: 2025-11-20
+     - Reason: "Manufacturing Defects - Surface cracks"
+     - Customer Contact: procurement@abc.com
+   - Add Return Items:
+     - Premium Widget A: 15 units
+   - Attach Evidence:
+     - Customer complaint email
+     - Photos of defective units
+   - Submit Return
+   - **Return ID**: RET-2025-001
+   - **Status**: "Return Initiated"
+
+**Phase 2: Quality Segregation (Reviewer)**
+2. **Segregate Returned Goods** (TC 24.2):
+   - Navigate to Quality → Sales Returns Inspection
+   - Select Return: RET-2025-001
+   - **Physical Inspection** of 15 returned units:
+     - Inspect each unit
+     - Categorize based on quality
+   - **Segregation Decision**:
+     - Resaleable (Good): 8 units (minor packaging issues only)
+     - Rework Required: 4 units (fixable defects)
+     - Scrap/Damage: 3 units (irreparable)
+   - Enter Inspection Notes: "Surface cracks on 3 units. 4 units can be refurbished. 8 units are resaleable."
+   - Submit Segregation
+   - **Status**: "Quality Segregation Complete"
+
+**Phase 3: Inventory Reconciliation (Manager)**
+3. **Reconcile Inventory** (TC 24.3):
+   - Navigate to Inventory → Returns Reconciliation
+   - Select Return: RET-2025-001
+   - **System Shows Segregation**:
+     ```
+     Category          Quantity    Action
+     Resaleable        8 units     → Add to Available Inventory
+     Rework Required   4 units     → Add to Rework Inventory
+     Scrap/Damage      3 units     → Add to Scrap Inventory
+     ```
+   - Confirm Reconciliation
+   - **Inventory Updated**:
+     - Premium Widget A (Available): 285 + 8 = 293 units
+     - Premium Widget A (Rework): 0 + 4 = 4 units
+     - Premium Widget A (Scrap): 8 + 3 = 11 units
+   - **Status**: "Inventory Reconciled"
+
+**Phase 4: Credit Note Generation (Manager)**
+4. **Auto Credit Note (Same Month)** (TC 24.4):
+   - **System Auto-Checks**: Return date (Nov 20) within same month as invoice (Nov 13)
+   - Navigate to Finance → Credit Notes
+   - **System Auto-Generated**:
+     - **Credit Note ID**: CN-2025-001
+     - Linked to Invoice: INV-2025-001
+     - Linked to Return: RET-2025-001
+   - **Credit Calculation**:
+     - Returned Quantity: 15 units @ ₹500 = ₹7,500
+     - CGST 9%: ₹675
+     - SGST 9%: ₹675
+     - **Total Credit**: ₹8,850
+   - **Invoice Adjustment**:
+     - Original Invoice: ₹1,18,000
+     - Less: Credit Note: ₹8,850
+     - **Net Payable**: ₹1,09,150
+   - Credit Note Status: "Approved"
+
+5. **Apply Credit to Outstanding** (TC 25.3):
+   - Navigate to Invoice Detail: INV-2025-001
+   - **Payment Status Before**:
+     - Total: ₹1,18,000
+     - Paid: ₹1,18,000 (from TC 26.2)
+     - Outstanding: ₹0
+   - **Credit Note Applied**:
+     - Credit Amount: ₹8,850
+     - **Refund Due to Customer**: ₹8,850
+   - Process Refund:
+     - Refund Mode: Bank Transfer
+     - Refund Date: 2025-11-25
+     - Reference: NEFT-REF-789
+   - **Final Status**: "Refund Processed"
+
+**Phase 5: Reporting & Analytics (Admin)**
+6. **View Complete Audit Trail**:
+   - Navigate to Reports → Transaction History
+   - Filter: Customer "ABC Manufacturing Ltd."
+   - **Complete Chain Visible**:
+     ```
+     Nov 13: Raw Material Issuance (RMI-2025-001)
+     Nov 13: Production Entry (PROD-2025-001)
+     Nov 13: Production Reconciliation (RECON-2025-001)
+     Nov 13: Quality Approval (485 units approved)
+     Nov 13: Invoice Created (INV-2025-001) - ₹1,18,000
+     Nov 13: Gatepass Created (GP-2025-001) - 200 units dispatched
+     Nov 14: Delivery Confirmed
+     Nov 20: Payment Received - ₹50,000
+     Nov 20: Sales Return Initiated (RET-2025-001) - 15 units
+     Nov 20: Quality Segregation (8/4/3 split)
+     Nov 20: Inventory Reconciled (+8 available, +4 rework, +3 scrap)
+     Nov 20: Credit Note Generated (CN-2025-001) - ₹8,850
+     Nov 25: Refund Processed - ₹8,850
+     Dec 05: Final Payment - ₹68,000
+     ```
+
+7. **Variance Analytics Dashboard** (TC 23.1):
+   - Navigate to Analytics → Production Variance
+   - **Production Efficiency**:
+     - Target: 500 units
+     - Actual: 493 units
+     - Efficiency: 98.6%
+   - **Material Variance**:
+     - Plastic Pellets: +1.4% overuse
+     - Steel Rods: +0.4% overuse
+   - **Quality Metrics**:
+     - First Pass Yield: 485/493 = 98.4%
+     - Defect Rate: 8/493 = 1.6%
+     - Return Rate: 15/200 = 7.5%
+
+**Expected Results**:
+✅ **Complete End-to-End Traceability**:
+- Raw materials → Production → Finished goods → Sales → Returns
+- Every transaction linked and traceable
+- Audit trail shows complete history
+- Document IDs connected throughout
+
+✅ **Inventory Accuracy Across Entire Cycle**:
+- Raw material consumption tracked
+- Finished goods creation automated
+- Sales dispatch reduces inventory
+- Returns properly categorized and added back
+- All inventory movements accounted for
+
+✅ **Financial Accuracy**:
+- Invoice total correct with GST
+- Payments tracked with FIFO allocation
+- Credit note auto-generated for same-month returns
+- Refund processed correctly
+- Net payable calculated accurately
+
+✅ **Quality Control Integration**:
+- Production quality approval required
+- Sales returns inspected and segregated
+- Rework vs scrap properly categorized
+- Quality metrics calculated
+
+✅ **Business Rules Enforced**:
+- Invoice-first gatepass workflow
+- No inventory deduction without gatepass
+- Quality approval required for dispatch
+- Same-month returns auto-generate credit notes
+- All state transitions validated
+
+✅ **Reporting & Analytics**:
+- Complete transaction history available
+- Production variance calculated
+- Material efficiency measured
+- Return rates tracked
+- Financial impact analyzed
+
+**Integration Validation Points**:
+1. ✅ Raw Material Types → Product BOM (TC 18.1 + TC 17.1)
+2. ✅ Product BOM → Raw Material Issuance (TC 20.1)
+3. ✅ Raw Material Issuance → Production Entry (TC 21.1)
+4. ✅ Production Entry → Production Reconciliation (TC 22.1)
+5. ✅ Production Entry → Finished Goods (Auto-creation)
+6. ✅ Finished Goods → Quality Approval (TC 7.1)
+7. ✅ Quality Approval → Invoice (TC 8.1)
+8. ✅ Invoice → Gatepass (TC 8.2)
+9. ✅ Gatepass → Inventory Deduction (Automatic)
+10. ✅ Invoice → Payment Tracking (TC 9.1)
+11. ✅ Invoice → Sales Return (TC 24.1)
+12. ✅ Sales Return → Quality Segregation (TC 24.2)
+13. ✅ Quality Segregation → Inventory Reconciliation (TC 24.3)
+14. ✅ Sales Return → Credit Note (TC 24.4)
+15. ✅ Credit Note → Refund Processing (TC 25.3)
+
+**Test Status**: ⬜ PENDING
+
+---
+
 ## Test Execution Checklist (Updated)
 
 **Original Workflows (1-15):**
@@ -4254,15 +4726,16 @@ Verified By:   ____________    Date: ________
 
 ## Summary Statistics
 
-**Total Test Cases**: 87 (was 78)  
-**New Test Cases Added**: 9  
-**Test Sections**: 25 (was 23)  
-**Coverage**: 100% of major features ✅
+**Total Test Cases**: 100 (was 97)  
+**New Test Cases Added**: 3 comprehensive end-to-end integration tests  
+**Test Sections**: 26 (was 25)  
+**Coverage**: 100% of major features + End-to-End Integration ✅
 
 **Critical Workflows Documented**:
 - ✅ Manufacturing Production Cycle (Complete)
 - ✅ Sales & Dispatch with Cancellations (Complete)
-- ✅ Sales Returns & Credit Notes (Complete - NEW)
+- ✅ Sales Returns & Credit Notes (Complete)
 - ✅ Inventory Management (Complete)
 - ✅ Quality & Maintenance (Complete)
 - ✅ Payment Tracking (Complete)
+- ✅ **End-to-End Integration Testing (Complete - NEW)** 🎯
