@@ -347,9 +347,14 @@
 
 ---
 
-**Scenario B: Ongoing Inventory Mode**
+**Scenario B: Ongoing Inventory Mode (with Raw Material Type Linkage)**
 
 **Use Case**: Active inventory management with purchase receipts, production returns, stock adjustments
+
+> **🔗 IMPORTANT**: Raw Materials can be linked to **Raw Material Types** (see TC 18.1-18.3) which provide:
+> - Conversion formulas (bag → kg → pieces)
+> - Auto-populated unit conversions
+> - Standardized calculation methods
 
 **Steps**:
 1. Login as Admin
@@ -359,10 +364,14 @@
    - Material Code: "RESIN-PET-21G"
    - Material Name: "PET Resin 21g Preform"
    - Category: "Plastic Resins"
-   - Raw Material Type: Select type with conversion formula (optional)
-   - UOM: "kg"
+   - **Raw Material Type**: Select "Preform" (provides conversion formula)
+     - **Effect**: Auto-populates conversion method and units
+     - **Example**: 1 Bag = 25 kg, 21g per piece → 1190 pieces/bag
+     - See TC 18.2 for auto-fetch behavior
+   - UOM: "kg" (base unit for calculations)
    - Minimum Stock Level: 2000 kg
    - Reorder Level: 500 kg
+   - Loss Percentage: 2% (optional, for wastage calculation)
 5. **Select Inventory Mode**: "Ongoing Inventory"
 6. Enter initial stock (optional):
    - Opening Stock: 0 kg (or enter if migrating from another system)
@@ -370,13 +379,16 @@
 7. Click "Save"
 
 **Expected Results**:
-✅ **Material Created** (Ongoing Mode):
+✅ **Material Created** (Ongoing Mode with Type Linkage):
 - Material saved with mode: "Ongoing Inventory"
+- **Raw Material Type linked**: "Preform" with conversion formula
+- Conversion method: Formula-Based (auto-populated from type)
 - Current Stock: 0 kg (or opening stock if provided)
 - **Receipts**: Enabled (stock increases on PO receipt)
 - **Returns**: Enabled (stock increases from production reconciliation)
 - **Adjustments**: Enabled (manual stock corrections)
 - Full transaction history tracking
+- **Conversion calculations** available for BOM-driven issuance (TC 20.1)
 
 ---
 
@@ -386,11 +398,20 @@
 |---------|-------------------|-------------------|
 | **Use Case** | Initial setup | Active management |
 | **Opening Stock** | Required | Optional |
+| **Raw Material Type Link** | ✅ Optional | ✅ Optional |
+| **Conversion Formula** | ✅ Yes (if type linked) | ✅ Yes (if type linked) |
 | **Purchase Receipts** | ❌ Not tracked | ✅ Tracked |
 | **Production Returns** | ❌ Not tracked | ✅ Tracked |
 | **Stock Adjustments** | ❌ Not available | ✅ Available |
 | **Issuance Deduction** | ✅ Yes | ✅ Yes |
 | **Transaction History** | Basic | Complete |
+
+> **💡 Note**: Both inventory modes support **Raw Material Type linkage** (TC 18.1-18.3) for conversion formulas. The difference is in how receipts/returns/adjustments are tracked.
+
+**Cross-References**:
+- TC 18.1 - Create Raw Material Type with conversion formula
+- TC 18.2 - Raw Material Type auto-fetch behavior
+- TC 20.1 - BOM-Driven issuance uses conversion formulas
 
 **Test Status**: ⬜ PENDING
 
