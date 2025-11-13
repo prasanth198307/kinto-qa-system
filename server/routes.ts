@@ -1987,28 +1987,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
             throw new Error(`Raw material ${validatedItem.rawMaterialId} not found`);
           }
           
-          const newQuantity = (material.currentStock || 0) - validatedItem.quantityIssued;
-          if (newQuantity < 0) {
-            throw new Error(`Insufficient stock for material ${material.materialName}. Available: ${material.currentStock}, Required: ${validatedItem.quantityIssued}`);
-          }
-          
           // Create issuance item
           await tx.insert(rawMaterialIssuanceItems).values(validatedItem);
           
-          // Deduct from inventory
-          await tx.update(rawMaterials)
-            .set({ currentStock: newQuantity, updatedAt: new Date() })
-            .where(eq(rawMaterials.id, validatedItem.rawMaterialId));
+          // Only deduct stock if material is in Ongoing Inventory mode (isOpeningStockOnly = 0 or false)
+          // Handle both integer (0/1) and boolean (false/true) representations
+          const isOngoingInventory = !material.isOpeningStockOnly || material.isOpeningStockOnly === 0;
           
-          // Create transaction record for audit trail
-          await tx.insert(rawMaterialTransactions).values({
-            materialId: validatedItem.rawMaterialId,
-            transactionType: 'issue',
-            quantity: -validatedItem.quantityIssued,
-            reference: `Issuance ${issuanceNumber}`,
-            remarks: validatedItem.remarks,
-            performedBy: req.user?.id,
-          });
+          if (isOngoingInventory) {
+            const newQuantity = (material.currentStock || 0) - validatedItem.quantityIssued;
+            if (newQuantity < 0) {
+              throw new Error(`Insufficient stock for material ${material.materialName}. Available: ${material.currentStock}, Required: ${validatedItem.quantityIssued}`);
+            }
+            
+            // Deduct from inventory
+            await tx.update(rawMaterials)
+              .set({ currentStock: newQuantity, updatedAt: new Date() })
+              .where(eq(rawMaterials.id, validatedItem.rawMaterialId));
+            
+            // Create transaction record for audit trail
+            await tx.insert(rawMaterialTransactions).values({
+              materialId: validatedItem.rawMaterialId,
+              transactionType: 'issue',
+              quantity: -validatedItem.quantityIssued,
+              reference: `Issuance ${issuanceNumber}`,
+              remarks: validatedItem.remarks,
+              performedBy: req.user?.id,
+            });
+            
+            console.log(`[INVENTORY] Deducted ${validatedItem.quantityIssued} units from ${material.materialName}. New stock: ${newQuantity}`);
+          } else {
+            console.log(`[INVENTORY] Material ${material.materialName} is in Opening Stock Only mode - stock not deducted`);
+          }
         }
         
         return issuance;

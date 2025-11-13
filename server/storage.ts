@@ -1595,7 +1595,28 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllProductionEntries(): Promise<ProductionEntry[]> {
-    return await db.select().from(productionEntries).where(eq(productionEntries.recordStatus, 1));
+    const results = await db
+      .select({
+        id: productionEntries.id,
+        issuanceId: productionEntries.issuanceId,
+        issuanceNumber: rawMaterialIssuance.issuanceNumber,
+        productionDate: productionEntries.productionDate,
+        shift: productionEntries.shift,
+        producedQuantity: productionEntries.producedQuantity,
+        rejectedQuantity: productionEntries.rejectedQuantity,
+        emptyBottlesProduced: productionEntries.emptyBottlesProduced,
+        emptyBottlesUsed: productionEntries.emptyBottlesUsed,
+        emptyBottlesPending: productionEntries.emptyBottlesPending,
+        remarks: productionEntries.remarks,
+        recordStatus: productionEntries.recordStatus,
+        createdAt: productionEntries.createdAt,
+        updatedAt: productionEntries.updatedAt,
+      })
+      .from(productionEntries)
+      .leftJoin(rawMaterialIssuance, eq(productionEntries.issuanceId, rawMaterialIssuance.id))
+      .where(eq(productionEntries.recordStatus, 1));
+    
+    return results as any;
   }
 
   async getProductionEntry(id: string): Promise<ProductionEntry | undefined> {

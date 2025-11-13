@@ -124,8 +124,8 @@ export default function ProductionEntries() {
                         Shift {entry.shift}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {entry.issuanceId}
+                    <TableCell className="text-sm text-muted-foreground" data-testid={`cell-issuance-${entry.id}`}>
+                      {(entry as any).issuanceNumber || entry.issuanceId}
                     </TableCell>
                     <TableCell className="text-right font-semibold">
                       {Number(entry.producedQuantity || 0).toFixed(2)}
