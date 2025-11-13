@@ -913,7 +913,7 @@ function Router() {
       <ProtectedRoute path="/invoice/:id" component={InvoiceDetail} />
       <ProtectedRoute path="/dispatch-tracking" component={DispatchTracking} />
       <ProtectedRoute path="/sales-returns" component={SalesReturns} />
-      <ProtectedRoute path="/reports/production-reconciliation" component={ProductionReconciliationReport} allowedRoles={['admin', 'manager']} />
+      <ProtectedRoute path="/reports/production-reconciliation" component={ProductionReconciliationReport} />
       <ProtectedRoute path="/" component={AuthenticatedApp} />
       <Route component={NotFound} />
     </Switch>

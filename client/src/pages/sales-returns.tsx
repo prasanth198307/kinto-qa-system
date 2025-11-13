@@ -78,7 +78,7 @@ export default function SalesReturnsPage() {
   const createMutation = useMutation({
     mutationFn: async (data: CreateReturnForm) => {
       const { items, ...header } = data;
-      return apiRequest('/api/sales-returns', 'POST', { header, items });
+      return apiRequest('POST', '/api/sales-returns', { header, items });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/sales-returns'] });
@@ -93,7 +93,7 @@ export default function SalesReturnsPage() {
 
   const receiveMutation = useMutation({
     mutationFn: async (id: string) => {
-      return apiRequest(`/api/sales-returns/${id}/receive`, 'PATCH', { receivedDate: new Date().toISOString() });
+      return apiRequest('PATCH', `/api/sales-returns/${id}/receive`, { receivedDate: new Date().toISOString() });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/sales-returns'] });
@@ -106,7 +106,7 @@ export default function SalesReturnsPage() {
 
   const inspectMutation = useMutation({
     mutationFn: async ({ id, inspections }: { id: string; inspections: any[] }) => {
-      return apiRequest(`/api/sales-returns/${id}/inspect`, 'PATCH', { inspections });
+      return apiRequest('PATCH', `/api/sales-returns/${id}/inspect`, { inspections });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/sales-returns'] });
@@ -123,7 +123,7 @@ export default function SalesReturnsPage() {
   };
 
   const handleInspect = async (returnRecord: any) => {
-    const returnWithItems = await apiRequest(`/api/sales-returns/${returnRecord.id}`, 'GET');
+    const returnWithItems = await apiRequest('GET', `/api/sales-returns/${returnRecord.id}`);
     setSelectedReturn(returnWithItems);
     setInspectDialogOpen(true);
   };
