@@ -1844,29 +1844,53 @@ COMMENT ON COLUMN credit_notes.approved_by IS
    - Tax Type: "GST"
 
 **Tab 4: BOM (Bill of Materials)**
+
+> **🔗 CRITICAL**: BOM uses **Raw Materials** (which are linked to **Raw Material Types** with conversion formulas). This enables automatic quantity calculations during BOM-driven issuance (TC 20.1).
+
 9. Click "BOM" tab
 10. Click "Add Row" to add BOM items:
     - **Row 1:**
-      - Raw Material: "Preform 21g Transparent"
-      - Quantity Required: 1
+      - **Raw Material**: "Preform 21g Transparent"
+        - *(Linked to Raw Material Type: "Preform" with conversion: 1 Bag = 25kg = 1190 pieces)*
+      - Quantity Required: 1 piece per bottle
       - UOM: "Piece"
       - Notes: "Main bottle body"
     - **Row 2:**
-      - Raw Material: "Cap 28mm White"
-      - Quantity Required: 1
+      - **Raw Material**: "Cap 28mm White"
+        - *(Linked to Raw Material Type: "Cap" with conversion: 1 Bag = 5kg = 2500 pieces)*
+      - Quantity Required: 1 piece per bottle
       - UOM: "Piece"
       - Notes: "Bottle cap"
     - **Row 3:**
-      - Raw Material: "Label Adhesive"
-      - Quantity Required: 0.5
+      - **Raw Material**: "Label Adhesive"
+        - *(Linked to Raw Material Type: "Adhesive" with conversion: 1 Bag = 25kg)*
+      - Quantity Required: 0.5 grams per bottle
       - UOM: "Gram"
       - Notes: "Label glue"
 11. Click "Save"
 
 **Expected Results**:
-- Product created successfully
+✅ **Product Created Successfully**:
+- Product saved with code: PROD-1L-PET
 - All 4 tabs are accessible and clickable
 - Tab navigation works smoothly
+
+✅ **BOM Configured**:
+- **3 raw materials added** to BOM
+- Each raw material **inherits conversion formula** from its Raw Material Type
+- Quantity requirements defined (1 preform, 1 cap, 0.5g adhesive per bottle)
+- **BOM ready for auto-populate** in Raw Material Issuance (TC 20.1)
+
+✅ **Conversion Chain Established**:
+```
+Product BOM → Raw Materials → Raw Material Types → Conversion Formulas
+Example Flow:
+1. Product: "1 Liter PET Bottle Water" (BOM defined)
+2. BOM Item: "Preform 21g Transparent" (raw material)
+3. Type Link: "Preform" type (conversion: 25kg/bag, 21g/piece)
+4. Auto-Calculation: Produce 1000 bottles → Need 1000 preforms
+   → Calculate: 1000 ÷ 1190 = 0.84 bags → 21 kg
+```
 - Product appears in products list
 - BOM items are saved and linked to product
 - When editing product, all BOM items are retrieved and displayed
@@ -2092,52 +2116,100 @@ COMMENT ON COLUMN credit_notes.approved_by IS
 
 > **🎯 This is the PRIMARY workflow** for raw material issuance in production scenarios. For edge cases (products without BOM, ad-hoc materials), see **TC 4.2: Manual/Ad-hoc Issuance**.
 
-### Test Case 20.1: Issue Raw Materials with BOM Auto-Populate
+### Test Case 20.1: Issue Raw Materials with BOM Auto-Populate (Using Type Conversions)
 **Role**: Manager / Operator  
-**Objective**: Verify BOM items auto-populate when issuing materials for production  
+**Objective**: Verify BOM items auto-populate with intelligent quantity calculations using the conversion chain  
 **Priority**: Critical  
 **Status**: ✅ COMPLETED (November 2025)
+
+> **🔗 CONVERSION CHAIN**: This workflow leverages the full conversion chain:
+> ```
+> Product BOM → Raw Materials → Raw Material Types → Conversion Formulas → Auto-Calculated Quantities
+> ```
+
+**Pre-requisite**: 
+- Product with BOM defined (TC 17.1)
+- BOM items are raw materials
+- Raw materials linked to raw material types with conversion formulas (TC 18.1, TC 4.1)
 
 **Steps**:
 1. Navigate to: Production → Raw Material Issuance
 2. Click "Issue Material" button
 3. Fill header details:
    - Issuance Date: Today
-   - Product: Select "Test Water Bottle 1L (BOM Sample)" (has BOM)
+   - **Product**: Select "1 Liter PET Bottle Water" (has 3-item BOM from TC 17.1)
    - Issued To: "Production Line 1"
-   - Planned Output: 1000 bottles
-4. **Verify BOM Auto-Populate**:
-   - System automatically populates all BOM items
-   - Toast notification: "BOM Loaded - X materials auto-populated"
-   - Example for test product:
-     - Row 1: Material A - Qty: 1200 (1000 × 1.2)
-     - Row 2: Material B - Qty: 1000 (1000 × 1)
-     - Row 3: Material C - Qty: 300 (1000 × 0.3)
+   - **Planned Output**: 1000 bottles
+4. **Verify BOM Auto-Populate with Type Conversions**:
+   - System automatically populates all 3 BOM items
+   - Toast notification: "BOM Loaded - 3 materials auto-populated"
+   - **Intelligent calculations using conversion chain**:
+     
+     **Row 1: Preform 21g Transparent**
+     - BOM Requirement: 1 piece per bottle
+     - Planned Output: 1000 bottles
+     - **Conversion Chain**:
+       1. Raw Material: "Preform 21g Transparent"
+       2. Linked Type: "Preform" (25kg/bag, 21g/piece = 1190 pieces/bag)
+       3. Calculation: 1000 bottles × 1 piece = 1000 pieces
+       4. **Auto-populated Qty**: 1000 pieces (or 0.84 bags, or 21 kg)
+     
+     **Row 2: Cap 28mm White**
+     - BOM Requirement: 1 piece per bottle
+     - Planned Output: 1000 bottles
+     - **Conversion Chain**:
+       1. Raw Material: "Cap 28mm White"
+       2. Linked Type: "Cap" (5kg/bag, 2g/piece = 2500 pieces/bag)
+       3. Calculation: 1000 bottles × 1 piece = 1000 pieces
+       4. **Auto-populated Qty**: 1000 pieces (or 0.4 bags, or 2 kg)
+     
+     **Row 3: Label Adhesive**
+     - BOM Requirement: 0.5 grams per bottle
+     - Planned Output: 1000 bottles
+     - **Conversion Chain**:
+       1. Raw Material: "Label Adhesive"
+       2. Linked Type: "Adhesive" (25kg/bag)
+       3. Calculation: 1000 bottles × 0.5g = 500g
+       4. **Auto-populated Qty**: 500 grams (or 0.5 kg)
+
 5. **User can**:
-   - View suggested quantities (calculated from BOM)
+   - View suggested quantities (calculated from BOM + Type conversions)
    - Modify quantities if needed
    - Add additional off-BOM items using "Add off-BOM Item" button
 6. Click "Create Issuance"
 
 **Expected Results**:
-- ✅ All BOM items auto-populate based on production quantity
-- ✅ Quantities calculated: Planned Output × BOM Quantity Required
-- ✅ User can add additional items not in BOM
-- ✅ User can modify auto-populated quantities
-- ✅ Issuance saved successfully (no validation errors)
-- ✅ Raw material inventory deducted
-- ✅ Issuance appears in issuance list
-- ✅ Calculation basis tracked (formula-based, direct-value, manual)
+✅ **BOM Auto-Populate**:
+- All 3 BOM items auto-populate based on production quantity
+- Quantities calculated using **conversion formulas from Raw Material Types**
+- Calculation method indicator shown (Formula-Based, Direct-Value, Output-Coverage)
 
-**Calculation Methods**:
-1. **With Type Conversion**: Uses formula-based/direct-value/output-coverage
-2. **Without Type Conversion**: Basic BOM calc (Planned Output × Qty Required)
-3. **Graceful Degradation**: Materials without conversion data still populate
+✅ **Conversion Chain Working**:
+- System traverses: Product BOM → Raw Materials → Raw Material Types → Formulas
+- Accurate quantity calculations based on conversion ratios
+- Loss percentage applied if configured (e.g., 2% wastage)
 
-**Calculation Examples**:
-- Preform: 1000 bottles × 1.2 = 1200 pieces
-- Cap: 1000 bottles × 1 = 1000 pieces
-- Shrink: 1000 bottles × 0.3m = 300 meters
+✅ **User Flexibility**:
+- Can add additional items not in BOM
+- Can modify auto-populated quantities
+- Can specify issuance in any unit (pieces, bags, kg) - system converts automatically
+
+✅ **Inventory & Tracking**:
+- Issuance saved successfully (no validation errors)
+- Raw material inventory deducted (in base UOM: kg)
+- Issuance appears in issuance list
+- Calculation basis tracked for audit trail
+
+**Calculation Methods** (Based on Raw Material Type):
+1. **Formula-Based**: Bag weight ÷ piece weight = pieces/bag (e.g., Preform: 25kg ÷ 0.021kg = 1190 pieces)
+2. **Direct-Value**: User-defined conversion (e.g., 1 Box = 100 pieces)
+3. **Output-Coverage**: Material covers X units of output (e.g., 1 Roll = 500 labels)
+
+**Cross-References**:
+- TC 17.1 - Product Master creates BOM with raw materials
+- TC 18.1 - Raw Material Type defines conversion formulas
+- TC 4.1 - Raw Materials linked to Types
+- TC 18.2 - Type details auto-fetch on material selection
 
 **Test Status**: ✅ **COMPLETED** - All scenarios verified
 
