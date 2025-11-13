@@ -919,7 +919,7 @@ function ProductDialog({
       }
       setActiveTab("info");
     }
-  }, [item, open, form, existingBom, replace]);
+  }, [item, open, existingBom, replace]);
 
   const handleAddBomRow = () => {
     append({ rawMaterialId: '', quantityRequired: 0, uom: '', notes: '' } as any, { shouldFocus: false });
@@ -976,7 +976,11 @@ function ProductDialog({
                   type="button"
                   variant={activeTab === 'bom' ? 'default' : 'ghost'}
                   size="sm"
-                  onClick={() => setActiveTab('bom')}
+                  onClick={() => {
+                    console.log('BOM tab clicked, current activeTab:', activeTab);
+                    setActiveTab('bom');
+                    console.log('After setActiveTab, should be: bom');
+                  }}
                   data-testid="tab-bom"
                 >
                   BOM
