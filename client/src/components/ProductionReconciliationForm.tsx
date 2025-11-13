@@ -98,12 +98,13 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
     // Only update if it's a real change (not redundant selection or initial render)
     if (currentIssuanceId !== "" && currentIssuanceId !== selectedIssuanceId) {
       setSelectedIssuanceId(currentIssuanceId);
-      // Only reset items if issuance actually changed (not redundant selection)
-      if (selectedIssuanceId !== "") {
+      // Only reset items in create mode when issuance changes
+      // In edit mode, preserve existing items to prevent data loss
+      if (!reconciliation && selectedIssuanceId !== "") {
         setItems([]);
       }
     }
-  }, [watchedIssuanceId, selectedIssuanceId]);
+  }, [watchedIssuanceId, selectedIssuanceId, reconciliation]);
 
   // Sync selectedProductionId from form value
   useEffect(() => {
@@ -230,9 +231,6 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
       createMutation.mutate(payload);
     }
   };
-
-  // Note: These handlers are no longer needed since we sync via useEffect
-  // Kept for backwards compatibility but now just pass through to field.onChange
 
   const updateItem = (index: number, field: keyof ItemFormData, value: any) => {
     const updatedItems = [...items];
