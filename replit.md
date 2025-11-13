@@ -3,6 +3,9 @@
 ## Overview
 KINTO Operations & QA is a comprehensive manufacturing operations and quality management system. It manages production, inventory, purchase orders, invoicing, gatepasses, quality assurance, and preventive maintenance. The system supports various user roles through tasks like checklist completion, verification, approval, and configuration. Key capabilities include FIFO payment allocation, GST-compliant invoice generation, payment tracking, extensive reporting, and two-way WhatsApp integration for machine startup and checklist management. This full-stack TypeScript solution aims to streamline industrial operations, enhance quality control, and prevent errors in industrial settings.
 
+## Recent Changes
+- **2025-11-13**: Fixed Dialog overlay blocking Select dropdowns - Elevated shared `SelectContent` component from `z-50` to `z-[100]` to ensure dropdowns appear above Dialog overlays. Z-index hierarchy documented: Dialog overlay (50) < Select dropdown (100) < Toast/Sheet (higher). This fix applies to all dialog-based forms throughout the application.
+
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 

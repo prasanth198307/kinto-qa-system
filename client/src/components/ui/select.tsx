@@ -67,6 +67,10 @@ const SelectScrollDownButton = React.forwardRef<
 SelectScrollDownButton.displayName =
   SelectPrimitive.ScrollDownButton.displayName
 
+/**
+ * SelectContent with z-[100] to ensure dropdowns appear above Dialog overlays (z-50).
+ * Z-index hierarchy: Dialog overlay (50) < Select dropdown (100) < Toast/Sheet (higher)
+ */
 const SelectContent = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
