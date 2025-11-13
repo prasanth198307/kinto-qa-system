@@ -1980,15 +1980,54 @@ Example Flow:
 5. Click "Save"
 
 **Expected Results**:
-- Type created successfully
-- **Conversion Value** auto-calculated: 25,000g ÷ 21g = 1190 pieces
-- **Usable Units** auto-calculated: 1190 × (1 - 0.02) = 1166 pieces
-- Type code auto-generated: RMT-001
+✅ **Type Created Successfully**:
+- Type saved with code: RMT-001
+- **Conversion Value** auto-calculated: 25,000g ÷ 21g = 1190 pieces/bag
+- **Usable Units** auto-calculated: 1190 × (1 - 0.02) = **1166 pieces/bag**
 - Type appears in dropdown when creating raw materials
+
+✅ **Loss Percentage Impact Chain**:
+
+**1. At Raw Material Type Level:**
+```
+Theoretical Conversion: 25kg ÷ 21g = 1190 pieces/bag
+Loss Percentage: 2% (accounts for breakage, defects, handling loss)
+Usable Units: 1190 × 0.98 = 1166 pieces/bag
+```
+
+**2. During Raw Material Issuance (TC 20.1):**
+```
+Planned Output: 1000 bottles
+BOM Requirement: 1 preform per bottle
+Expected Need: 1000 pieces
+
+LOSS-ADJUSTED CALCULATION:
+Suggested Issuance = 1000 ÷ 1166 × 1190 = 1020 pieces
+(System increases quantity to account for 2% expected loss)
+```
+
+**3. During Production Reconciliation (TC 22.1):**
+```
+Issued: 1020 pieces
+Actual Production: 1000 bottles
+Expected Consumption: 1000 pieces (based on actual output)
+Returned: 20 pieces (unused material)
+Net Consumed: 1020 - 20 = 1000 pieces
+
+Variance Calculation:
+- Net Consumed: 1000 pieces
+- Expected: 1000 pieces  
+- Variance: 0% ✅ (Perfect - actual loss matched expected loss)
+
+If Net Consumed was 1040 pieces:
+- Variance: (1040 - 1000) / 1000 = +4% ⚠️ (Excess wastage)
+```
 
 **Calculation Verification**:
 - 25kg bag = 25,000 grams
 - Each preform = 21 grams
+- Theoretical pieces/bag = 1190
+- **Loss adjustment ensures accurate material planning**
 - Theoretical pieces = 25,000 ÷ 21 = 1190
 - With 2% loss = 1190 × 0.98 = 1166 usable pieces
 
@@ -2379,46 +2418,138 @@ Example Flow:
 
 ## 22. Production Reconciliation Entry System
 
-### Test Case 22.1: Complete Production Reconciliation
+> **📊 LOSS PERCENTAGE FLOW - COMPLETE SYSTEM OVERVIEW**
+>
+> Loss percentage in Raw Material Type flows through the entire production cycle:
+>
+> ```
+> STEP 1: Raw Material Type Configuration (TC 18.1)
+> ┌─────────────────────────────────────────────────────────┐
+> │ Type: "Preform"                                         │
+> │ Conversion: 25kg ÷ 21g = 1190 pieces/bag               │
+> │ Loss Percentage: 2%                                     │
+> │ ➜ Usable Units: 1190 × 0.98 = 1166 pieces/bag         │
+> └─────────────────────────────────────────────────────────┘
+>          ↓
+> STEP 2: Raw Material Issuance with BOM Auto-Populate (TC 20.1)
+> ┌─────────────────────────────────────────────────────────┐
+> │ Planned Output: 1000 bottles                           │
+> │ BOM Requirement: 1 preform per bottle                  │
+> │                                                         │
+> │ LOSS-ADJUSTED CALCULATION:                             │
+> │ Need: 1000 pieces                                      │
+> │ Suggested Qty: 1000 ÷ 1166 × 1190 = 1020 pieces       │
+> │ (System adds 20 extra pieces for 2% expected loss)     │
+> │                                                         │
+> │ ✅ Issued: 1020 pieces                                 │
+> │ ✅ Inventory deducted: 1020 pieces                     │
+> └─────────────────────────────────────────────────────────┘
+>          ↓
+> STEP 3: Production Entry (TC 21.1)
+> ┌─────────────────────────────────────────────────────────┐
+> │ Actual Production: 1000 bottles produced               │
+> │ Finished Goods Created: 1000 bottles (pending QA)      │
+> └─────────────────────────────────────────────────────────┘
+>          ↓
+> STEP 4: Production Reconciliation (TC 22.1)
+> ┌─────────────────────────────────────────────────────────┐
+> │ CALCULATION:                                            │
+> │ • Issued: 1020 pieces                                  │
+> │ • Expected Consumption: 1000 pieces (actual output)    │
+> │ • Returned: 20 pieces (unused material)                │
+> │ • Net Consumed: 1020 - 20 = 1000 pieces               │
+> │                                                         │
+> │ VARIANCE ANALYSIS:                                      │
+> │ Variance = (1000 - 1000) / 1000 × 100 = 0% ✅         │
+> │ Status: GREEN (Perfect - actual matched expected)      │
+> │                                                         │
+> │ INVENTORY UPDATE:                                       │
+> │ • Raw material inventory +20 pieces (returned)         │
+> └─────────────────────────────────────────────────────────┘
+>
+> **KEY INSIGHTS**:
+> - Loss percentage is configured ONCE at Raw Material Type level
+> - System automatically accounts for loss during issuance
+> - Reconciliation variance shows if ACTUAL loss exceeded EXPECTED loss
+> - 0% variance = Actual loss matched the configured 2% loss
+> - Positive variance = Excess wastage (needs investigation)
+> - Negative variance = Better than expected efficiency
+> ```
+
+## 22. Production Reconciliation Entry System
+
+### Test Case 22.1: Complete Production Reconciliation (with Loss Percentage Impact)
 **Role**: Manager / Supervisor  
-**Objective**: Reconcile raw material consumption with actual production  
+**Objective**: Reconcile raw material consumption with actual production and understand loss percentage impact  
 **Priority**: Critical
+
+> **🔗 LOSS PERCENTAGE IMPACT**: Loss percentage from Raw Material Type affects Expected Consumption calculations:
+> ```
+> Raw Material Type (2% loss) → Usable Units = 1166 pcs/bag (not 1190)
+> → Expected Consumption accounts for this loss
+> → Variance shows if ACTUAL wastage exceeded EXPECTED wastage
+> ```
 
 **Steps**:
 1. **Prerequisites**:
+   - **Raw Material Type** configured with loss percentage:
+     - Type: "Preform" 
+     - Conversion: 25kg ÷ 21g = 1190 pieces/bag
+     - **Loss Percent: 2%**
+     - **Usable Units: 1190 × 0.98 = 1166 pieces/bag**
    - Raw Material Issuance exists (1200 Preforms issued)
-   - Production Entry exists (950 bottles produced)
+   - Production Entry exists (950 bottles actually produced)
+   
 2. Navigate to: Production Operations → Production Reconciliation
 3. Click "Add Reconciliation"
 4. Fill header:
    - Date: Today
    - Shift: "Day Shift"
    - Product: "1 Liter PET Bottle Water"
-   - **Link Raw Material Issuance**: Select issuance
-   - **Link Production Entry**: Select production entry
-5. **System Auto-Displays Itemized Breakdown**:
-   - **Preform 21g:**
-     - Issued: 1200 pieces
-     - Expected Consumption: 950 pieces (based on actual production)
-     - Net Consumed: 1200 - 250 = 950 pieces
-     - Returned: 250 pieces
-     - Variance: 0% (perfect match)
-   - **Cap 28mm:**
-     - Issued: 1000 pieces
-     - Expected: 950 pieces
-     - Returned: 50 pieces
-     - Variance: 0%
+   - **Link Raw Material Issuance**: Select issuance (1200 preforms)
+   - **Link Production Entry**: Select production entry (950 bottles)
+   
+5. **System Auto-Displays Itemized Breakdown with Loss Calculations**:
+   
+   **Preform 21g (Type has 2% loss percentage):**
+   - **Issued**: 1200 pieces
+   - **Expected Consumption**: 950 pieces
+     - *Calculation*: Actual Production (950) × BOM Qty (1 piece/bottle) = 950 pieces
+     - *Note*: Loss percentage already factored into issuance quantity, not expected consumption
+   - **Returned**: 250 pieces (entered by user)
+   - **Net Consumed**: 1200 - 250 = 950 pieces (auto-calculated)
+   - **Variance**: (950 - 950) / 950 = 0% ✅ (perfect match)
+   
+   **Cap 28mm (Type has 1% loss percentage):**
+   - **Issued**: 1000 pieces
+   - **Expected Consumption**: 950 pieces
+   - **Returned**: 50 pieces
+   - **Net Consumed**: 1000 - 50 = 950 pieces
+   - **Variance**: 0% ✅
+   
 6. **Enter Returned Materials** (if any):
-   - Preform 21g: 250 pieces returned
+   - Preform 21g: 250 pieces returned (unused material)
    - Cap 28mm: 50 pieces returned
 7. Click "Save Reconciliation"
 
 **Expected Results**:
-- Reconciliation created successfully
-- **Net Consumed** calculated dynamically: Issued - Returned
-- **Variance %** calculated: (Net Consumed - Expected) / Expected × 100
+✅ **Reconciliation Created Successfully**:
+- Reconciliation saved with linked issuance and production
+- All calculations accurate
+
+✅ **Loss Percentage Understanding**:
+- **During Issuance** (TC 20.1): Loss percentage increases suggested quantity
+  - Example: Need 950 pieces → System suggests 1200 to account for 2% loss
+- **During Reconciliation**: Expected = Actual Production × BOM Quantity
+  - Expected: 950 pieces (based on actual output, not suggested issuance)
+  - If Net Consumed = 950, Variance = 0% (loss was within expected range)
+  - If Net Consumed = 1000, Variance = +5.3% (excess wastage, needs investigation)
+
+✅ **Calculations**:
+- **Net Consumed** = Issued - Returned (dynamic calculation)
+- **Variance %** = (Net Consumed - Expected) / Expected × 100
 - **Color-coded variance indicators**:
-  - Green: Within tolerance (0-2%)
+  - Green: Within tolerance (0-2%) - Normal operational loss
   - Yellow: Moderate variance (2-5%)
   - Red: High variance (>5%)
 - **Returned materials update raw material inventory**
