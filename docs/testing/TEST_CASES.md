@@ -4324,9 +4324,50 @@ Verified By:   ____________    Date: ________
    - Review Quality:
      - Good Units: Approve 485 units → Status: "Approved for Dispatch"
      - Defective Units: Reject 8 units → Status: "Rejected"
-   - **Final Inventory**:
-     - Premium Widget A (Approved): 485 units available for sale
-     - Premium Widget A (Rejected): 8 units (quarantined)
+   - **Finished Goods Created**:
+     - **Batch ID**: BATCH-2025-001 (for traceability)
+     - Product: Premium Widget A
+     - Approved Quantity: 485 units
+     - Rejected Quantity: 8 units
+
+**Phase 6: Verify Finished Goods Availability**
+8. **Validate Finished Goods in Inventory**:
+   - Navigate to Inventory → Finished Goods
+   - Filter: Product "Premium Widget A"
+   - **Verify Inventory Status**:
+     - **Batch**: BATCH-2025-001
+     - **Status**: Approved for Dispatch
+     - **Available Quantity**: 485 units
+     - **Quality Status**: Passed ✓
+     - **Source**: Production Entry PROD-2025-001
+     - **Raw Material Issuance**: RMI-2025-001
+   - **Integration Point 5-6-7 Validated** ✓:
+     - ✅ Production Entry → Finished Goods (Auto-creation)
+     - ✅ Finished Goods → Quality Approval
+     - ✅ Quality Approval → Inventory Availability
+
+9. **Verify Complete Traceability Chain**:
+   - Navigate to Reports → Batch Traceability
+   - Enter Batch ID: BATCH-2025-001
+   - **System Shows Complete Chain**:
+     ```
+     Raw Materials (RMI-2025-001):
+       - Plastic Pellets: 275 kg issued → 250 kg used → 25 kg returned
+       - Steel Rods: 1050 pcs issued → 990 pcs used → 60 pcs returned
+     
+     Production (PROD-2025-001):
+       - Target: 500 units
+       - Produced: 493 units (98.6% efficiency)
+       - Good: 485 units | Defective: 8 units
+     
+     Reconciliation (RECON-2025-001):
+       - Material Variance: +1.4% plastic, +0.4% steel
+       - Returned to Inventory: 25 kg plastic, 60 pcs steel
+     
+     Quality Approval:
+       - Approved: 485 units (Batch: BATCH-2025-001)
+       - Available for Sale: YES ✓
+     ```
 
 **Expected Results**:
 ✅ **Complete Material Traceability**:
@@ -4368,18 +4409,35 @@ Verified By:   ____________    Date: ________
 **Priority**: CRITICAL  
 **Integration Points**: Finished Goods Inventory → Invoice → Gatepass → Dispatch → Payment
 
-**Pre-requisite**: TC 26.1 completed - 485 units of "Premium Widget A" approved for dispatch
+**Pre-requisite**: TC 26.1 completed with verified outputs:
+- **Batch**: BATCH-2025-001
+- **Available Inventory**: 485 units Premium Widget A (Approved)
+- **Source**: Production Entry PROD-2025-001
+- **Raw Material**: RMI-2025-001
 
 **End-to-End Scenario**: Selling 200 units to "ABC Manufacturing Ltd."
 
-**Phase 1: Invoice Creation (Manager)**
-1. **Create GST Invoice** (TC 8.1):
+**Phase 1: Verify Starting Inventory (Continuity Check)**
+1. **Confirm Inventory from TC 26.1**:
+   - Navigate to Inventory → Finished Goods
+   - Filter: Batch BATCH-2025-001
+   - **Verify Starting State**:
+     - Product: Premium Widget A
+     - Batch: BATCH-2025-001
+     - Available: 485 units ✓
+     - Status: Approved for Dispatch ✓
+   - **Integration Point 7 Validated** ✓:
+     - ✅ Quality Approval → Invoice (inventory available)
+
+**Phase 2: Invoice Creation (Manager)**
+2. **Create GST Invoice** (TC 8.1):
    - Navigate to Sales → Invoices
    - Click "Create Invoice"
    - Customer: ABC Manufacturing Ltd.
    - Invoice Date: 2025-11-13
    - Add Line Items:
      - Premium Widget A: 200 units @ ₹500/unit = ₹1,00,000
+     - **Select Batch**: BATCH-2025-001 (from TC 26.1)
    - **GST Calculation** (Auto):
      - Taxable Amount: ₹1,00,000
      - CGST 9%: ₹9,000
@@ -4492,13 +4550,19 @@ Verified By:   ____________    Date: ________
 
 ### Test Case 26.3: End-to-End Integration with Returns - Raw Material to Customer with Sales Return
 **Roles**: Admin, Manager, Operator, Reviewer  
-**Objective**: Execute complete end-to-end business cycle including sales return, quality segregation, and credit note  
+**Objective**: Execute complete end-to-end business cycle including sales return, quality segregation, inventory reconciliation, and raw material backflush  
 **Priority**: CRITICAL  
-**Integration Points**: Manufacturing Cycle → Sales Cycle → Sales Returns → Quality Segregation → Inventory Reconciliation → Credit Notes
+**Integration Points**: Manufacturing Cycle → Sales Cycle → Sales Returns → Quality Segregation → Inventory Reconciliation → Credit Notes → Raw Material Backflush
 
-**Pre-requisite**: TC 26.2 completed - 200 units delivered to ABC Manufacturing Ltd.
+**Pre-requisite**: TC 26.1 & TC 26.2 completed with verified chain:
+- **Raw Material Issuance**: RMI-2025-001 (275 kg plastic, 1050 pcs steel)
+- **Production**: PROD-2025-001 (493 units produced)
+- **Reconciliation**: RECON-2025-001 (250 kg plastic used, 990 pcs steel used)
+- **Batch**: BATCH-2025-001 (485 units approved)
+- **Invoice**: INV-2025-001 (200 units sold to ABC Manufacturing Ltd.)
+- **Gatepass**: GP-2025-001 (200 units dispatched from BATCH-2025-001)
 
-**End-to-End Scenario**: Customer returns 15 defective units
+**End-to-End Scenario**: Customer returns 15 defective units, triggering raw material consumption adjustments
 
 **Phase 1: Sales Return Creation (Manager)**
 1. **Create Return from Invoice** (TC 24.1):
@@ -4585,8 +4649,176 @@ Verified By:   ____________    Date: ________
      - Reference: NEFT-REF-789
    - **Final Status**: "Refund Processed"
 
-**Phase 5: Reporting & Analytics (Admin)**
-6. **View Complete Audit Trail**:
+**Phase 5: Raw Material Backflush Validation (Critical)**
+6. **Validate Scrap/Rework Impact on Raw Material Consumption**:
+   - Navigate to Production → Production Reconciliation Detail
+   - Select: RECON-2025-001
+   - **Current Reconciliation Data**:
+     ```
+     Original Production: 493 units (485 good + 8 defective)
+     Raw Materials Used:
+       - Plastic Pellets: 250 kg (for 493 units)
+       - Steel Rods: 990 pcs (for 493 units)
+     ```
+
+7. **Calculate Scrap Material Impact**:
+   - **Scrapped Units**: 3 units (from sales return)
+   - **BOM Requirements per Unit**:
+     - Plastic Pellets: 0.5 kg/unit
+     - Steel Rods: 2 pcs/unit
+   - **Material Consumed for Scrapped Units**:
+     - Plastic: 3 units × 0.5 kg = 1.5 kg (wasted)
+     - Steel: 3 units × 2 pcs = 6 pcs (wasted)
+   
+8. **Verify Adjusted Production Variance**:
+   - Navigate to Analytics → Production Variance (Updated)
+   - Filter: Production PROD-2025-001
+   - **System Shows Adjusted Metrics**:
+     ```
+     Effective Good Output: 485 - 3 scrapped = 482 units
+     
+     Expected Material for 482 units:
+       - Plastic: 482 × 0.5 kg = 241 kg
+       - Steel: 482 × 2 pcs = 964 pcs
+     
+     Actual Material Used (from RECON-2025-001):
+       - Plastic: 250 kg
+       - Steel: 990 pcs
+     
+     Adjusted Variance:
+       - Plastic: (250 - 241) / 241 = +3.7% overuse (was +1.4%)
+       - Steel: (990 - 964) / 964 = +2.7% overuse (was +0.4%)
+     ```
+   - **Scrap Impact Analysis**:
+     - Wasted Plastic: 1.5 kg (0.6% of total used)
+     - Wasted Steel: 6 pcs (0.6% of total used)
+     - **Total Material Loss**: Scrap + Production Variance
+
+9. **Link Scrap Units to Original Raw Material Issuance**:
+   - Navigate to Reports → Raw Material Traceability
+   - Select: RMI-2025-001
+   - **System Shows Complete Chain**:
+     ```
+     Issuance: RMI-2025-001
+       - Plastic Pellets: 275 kg issued
+       - Steel Rods: 1050 pcs issued
+     
+     Production: PROD-2025-001
+       - Used: 250 kg plastic, 990 pcs steel
+       - Produced: 493 units
+     
+     Quality Outcomes:
+       - Approved for Sale: 485 units (BATCH-2025-001)
+       - Production Defects: 8 units (rejected during production)
+     
+     Sales & Returns:
+       - Sold: 200 units (INV-2025-001)
+       - Returned: 15 units (RET-2025-001)
+         → Resaleable: 8 units (returned to inventory)
+         → Rework: 4 units (can be refurbished)
+         → Scrap: 3 units ← MATERIAL LOSS
+     
+     Final Material Efficiency:
+       - Input: 275 kg plastic, 1050 pcs steel
+       - Output (Effective Good Units): 482 units
+       - Material per Good Unit:
+         * Plastic: 275 ÷ 482 = 0.571 kg/unit (vs BOM 0.5 kg)
+         * Steel: 1050 ÷ 482 = 2.178 pcs/unit (vs BOM 2.0 pcs)
+       - Overall Efficiency: ~88% (accounting for all losses)
+     ```
+
+10. **Verify Integration Point 16 (NEW) - Backflush Ledger Entry**:
+    - **Scrap/Rework → Raw Material Consumption Adjustment**
+    - Navigate to Production → Reconciliation Adjustments
+    - Select: RECON-2025-001
+    - Click "View Backflush Ledger"
+    - **System Shows Backflush Entry**:
+      ```
+      Backflush Ledger Entry: BFL-2025-001
+      Created: 2025-11-20 (when sales return scrap processed)
+      Linked To: RMI-2025-001 → RECON-2025-001 → RET-2025-001
+      
+      Scrap Waste Recorded:
+        - 3 scrapped units (from RET-2025-001)
+        - Material consumed but lost:
+          * Plastic Pellets: 1.5 kg (3 units × 0.5 kg BOM)
+          * Steel Rods: 6 pcs (3 units × 2 pcs BOM)
+      
+      Original Reconciliation (RECON-2025-001):
+        - Plastic: 250 kg consumed, +1.4% variance
+        - Steel: 990 pcs consumed, +0.4% variance
+      
+      Adjusted After Scrap (BFL-2025-001):
+        - Effective Good Output: 482 units (485 - 3 scrap)
+        - Plastic: 250 kg for 482 units = +3.7% variance
+        - Steel: 990 pcs for 482 units = +2.7% variance
+      
+      Linked Back to Original Issuance:
+        ✅ RMI-2025-001 reference updated
+        ✅ Variance metrics recalculated
+        ✅ Material efficiency adjusted to 88%
+        ✅ Audit trail: RMI → PROD → RECON → BFL complete
+      ```
+
+11. **Verify Complete Material Accountability Chain**:
+    - Navigate to Reports → Material Traceability
+    - Select: RMI-2025-001
+    - Click "Show Complete Lifecycle"
+    - **System Displays Complete Material Flow**:
+      ```
+      ═══════════════════════════════════════════════════════
+      RAW MATERIAL LIFECYCLE: RMI-2025-001
+      ═══════════════════════════════════════════════════════
+      
+      ISSUANCE (RMI-2025-001):
+        Date: 2025-11-13
+        Plastic Pellets: 275 kg issued
+        Steel Rods: 1050 pcs issued
+      
+      PRODUCTION (PROD-2025-001):
+        Date: 2025-11-13
+        Used: 250 kg plastic, 990 pcs steel
+        Output: 493 units (485 good + 8 defective)
+        Batch: BATCH-2025-001
+      
+      RECONCILIATION (RECON-2025-001):
+        Date: 2025-11-13
+        Returned: 25 kg plastic, 60 pcs steel
+        Net Consumed: 250 kg plastic, 990 pcs steel
+        Variance: +1.4% plastic, +0.4% steel
+      
+      SALES RETURN SCRAP (BFL-2025-001):
+        Date: 2025-11-20
+        Scrap: 3 units from RET-2025-001
+        Waste: 1.5 kg plastic, 6 pcs steel
+        ↳ BACKFLUSH: Adjusts RECON-2025-001
+        ↳ TRACES BACK: Links to RMI-2025-001
+        ↳ RECALCULATES: Variance now +3.7% plastic, +2.7% steel
+      
+      FINAL MATERIAL ACCOUNTABILITY:
+        ✅ Total Issued: 275 kg plastic, 1050 pcs steel
+        ✅ Total Returned: 25 kg plastic, 60 pcs steel
+        ✅ Net Consumed: 250 kg plastic, 990 pcs steel
+        ✅ Good Output: 482 units (after scrap)
+        ✅ Material/Unit: 0.519 kg plastic, 2.053 pcs steel
+        ✅ vs BOM (0.5 kg, 2.0 pcs): 88% efficiency ✓
+      
+      AUDIT CHAIN COMPLETE:
+        RMI-2025-001 → PROD-2025-001 → RECON-2025-001 → 
+        BATCH-2025-001 → INV-2025-001 → GP-2025-001 →
+        RET-2025-001 → BFL-2025-001 ← BACKFLUSH COMPLETE ✓
+      ═══════════════════════════════════════════════════════
+      ```
+    
+    - **Integration Point 16 Validated** ✓:
+      - Scrap waste (BFL-2025-001) explicitly links back to RMI-2025-001
+      - Variance metrics updated from +1.4%/+0.4% to +3.7%/+2.7%
+      - Material efficiency recalculated from 98.6% to 88%
+      - Complete audit trail maintained throughout lifecycle
+      - All 1.5 kg plastic + 6 pcs steel waste properly accounted
+
+**Phase 6: Reporting & Analytics (Admin)**
+11. **View Complete Audit Trail**:
    - Navigate to Reports → Transaction History
    - Filter: Customer "ABC Manufacturing Ltd."
    - **Complete Chain Visible**:
@@ -4667,17 +4899,22 @@ Verified By:   ____________    Date: ________
 2. ✅ Product BOM → Raw Material Issuance (TC 20.1)
 3. ✅ Raw Material Issuance → Production Entry (TC 21.1)
 4. ✅ Production Entry → Production Reconciliation (TC 22.1)
-5. ✅ Production Entry → Finished Goods (Auto-creation)
-6. ✅ Finished Goods → Quality Approval (TC 7.1)
-7. ✅ Quality Approval → Invoice (TC 8.1)
-8. ✅ Invoice → Gatepass (TC 8.2)
-9. ✅ Gatepass → Inventory Deduction (Automatic)
-10. ✅ Invoice → Payment Tracking (TC 9.1)
-11. ✅ Invoice → Sales Return (TC 24.1)
-12. ✅ Sales Return → Quality Segregation (TC 24.2)
-13. ✅ Quality Segregation → Inventory Reconciliation (TC 24.3)
-14. ✅ Sales Return → Credit Note (TC 24.4)
-15. ✅ Credit Note → Refund Processing (TC 25.3)
+5. ✅ Production Entry → Finished Goods (Auto-creation) - **Validated in TC 26.1 Phase 6**
+6. ✅ Finished Goods → Quality Approval (TC 7.1) - **Validated in TC 26.1 Phase 6**
+7. ✅ Quality Approval → Invoice (TC 8.1) - **Validated in TC 26.2 Phase 1**
+8. ✅ Invoice → Gatepass (TC 8.2) - **Validated in TC 26.2 Phase 2**
+9. ✅ Gatepass → Inventory Deduction (Automatic) - **Validated in TC 26.2 Phase 2**
+10. ✅ Invoice → Payment Tracking (TC 9.1) - **Validated in TC 26.2 Phase 3**
+11. ✅ Invoice → Sales Return (TC 24.1) - **Validated in TC 26.3 Phase 1**
+12. ✅ Sales Return → Quality Segregation (TC 24.2) - **Validated in TC 26.3 Phase 2**
+13. ✅ Quality Segregation → Inventory Reconciliation (TC 24.3) - **Validated in TC 26.3 Phase 3**
+14. ✅ Sales Return → Credit Note (TC 24.4) - **Validated in TC 26.3 Phase 4**
+15. ✅ Credit Note → Refund Processing (TC 25.3) - **Validated in TC 26.3 Phase 4**
+16. ✅ **Scrap/Rework → Raw Material Backflush (NEW)** - **Validated in TC 26.3 Phase 5**
+    - Scrap units traced back to original RMI-2025-001
+    - Material consumption adjusted for waste (1.5 kg plastic, 6 pcs steel)
+    - Production variance recalculated (+3.7% plastic, +2.7% steel)
+    - Overall material efficiency: 88% (accounting for all losses)
 
 **Test Status**: ⬜ PENDING
 
