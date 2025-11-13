@@ -16,12 +16,29 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2, AlertCircle } from "lucide-react";
 
-const headerSchema = insertRawMaterialIssuanceSchema.omit({ issuanceNumber: true });
-const itemSchema = insertRawMaterialIssuanceItemSchema.omit({ issuanceId: true });
+// UI-friendly form schema - handles empty strings, undefined, and coerces types
+const formHeaderSchema = z.object({
+  issuanceDate: z.coerce.date(),
+  issuedTo: z.string().min(1, "Issued To is required"),
+  productId: z.string().optional().transform(val => val || undefined),
+  productionReference: z.string().optional(),
+  plannedOutput: z.coerce.number().optional().transform(val => val || undefined),
+  remarks: z.string().optional(),
+});
+
+const formItemSchema = z.object({
+  rawMaterialId: z.string().min(1, "Raw material is required"),
+  productId: z.string().optional().transform(val => val || undefined),
+  quantityIssued: z.coerce.number().min(0.01, "Quantity must be greater than 0"),
+  suggestedQuantity: z.coerce.number().optional().transform(val => val || undefined),
+  calculationBasis: z.enum(['formula-based', 'direct-value', 'output-coverage', 'manual']).optional().nullable(),
+  uomId: z.string().optional().transform(val => val || undefined),
+  remarks: z.string().optional(),
+});
 
 const formSchema = z.object({
-  header: headerSchema,
-  items: z.array(itemSchema).min(1, "At least one item is required"),
+  header: formHeaderSchema,
+  items: z.array(formItemSchema).min(1, "At least one item is required"),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -76,8 +93,9 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
   });
 
   // Watch header values for BOM auto-population (MUST be after useForm)
-  const selectedProductId = form.watch('header.productId');
-  const plannedOutput = form.watch('header.plannedOutput');
+  const watchedHeader = form.watch('header');
+  const selectedProductId = watchedHeader?.productId;
+  const plannedOutput = watchedHeader?.plannedOutput;
 
   // Fetch BOM data when product is selected
   const { data: bomData, isLoading: isBomLoading } = useQuery<{
@@ -192,10 +210,33 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
 
   const saveMutation = useMutation({
     mutationFn: async (data: FormData) => {
+      // Transform UI form data to API format (convert undefined to null where needed)
+      const apiPayload = {
+        header: {
+          issuanceDate: data.header.issuanceDate,
+          issuedTo: data.header.issuedTo,
+          productId: data.header.productId || null,
+          productionReference: data.header.productionReference || null,
+          plannedOutput: data.header.plannedOutput || null,
+          remarks: data.header.remarks || null,
+        },
+        items: data.items.map(item => ({
+          rawMaterialId: item.rawMaterialId,
+          productId: item.productId || null,
+          quantityIssued: item.quantityIssued,
+          suggestedQuantity: item.suggestedQuantity || null,
+          calculationBasis: item.calculationBasis || null,
+          uomId: item.uomId || null,
+          remarks: item.remarks || null,
+        })),
+      };
+      
+      console.log('[RAW MATERIAL ISSUANCE] Submitting payload:', JSON.stringify(apiPayload, null, 2));
+      
       if (issuance) {
-        return await apiRequest('PATCH', `/api/raw-material-issuances/${issuance.id}`, data);
+        return await apiRequest('PATCH', `/api/raw-material-issuances/${issuance.id}`, apiPayload);
       } else {
-        return await apiRequest('POST', '/api/raw-material-issuances', data);
+        return await apiRequest('POST', '/api/raw-material-issuances', apiPayload);
       }
     },
     onSuccess: () => {
