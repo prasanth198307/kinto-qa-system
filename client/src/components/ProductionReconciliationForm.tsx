@@ -221,16 +221,9 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
   });
 
   const onSubmit = (data: HeaderFormData) => {
-    console.log('[DEBUG] onSubmit called', {
-      data,
-      reconciliation: !!reconciliation,
-      itemsLength: items.length
-    });
-    
     // Only require items in create mode
     // In edit mode, allow updates even with zero items (for fixing data issues)
     if (!reconciliation && items.length === 0) {
-      console.log('[DEBUG] Blocking submit - no items in create mode');
       toast({
         title: "Error",
         description: "At least one reconciliation item is required",
@@ -243,8 +236,6 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
       header: data,
       items: items,
     };
-    
-    console.log('[DEBUG] Calling mutation', { isUpdate: !!reconciliation, payload });
 
     if (reconciliation) {
       updateMutation.mutate(payload);
@@ -584,20 +575,6 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
                     !watchedProductionId || 
                     (!reconciliation && items.length === 0) // Only require items in create mode
                   }
-                  onClick={() => {
-                    const errors = form.formState.errors;
-                    console.log('[DEBUG] Button clicked!', {
-                      isValid: form.formState.isValid,
-                      isDirty: form.formState.isDirty,
-                      formValues: form.getValues(),
-                      errorKeys: Object.keys(errors),
-                      errors: JSON.stringify(errors, null, 2)
-                    });
-                    // Log each error individually
-                    Object.keys(errors).forEach(key => {
-                      console.log(`[DEBUG] Field "${key}" error:`, errors[key as keyof typeof errors]);
-                    });
-                  }}
                   data-testid="button-submit"
                 >
                   {createMutation.isPending || updateMutation.isPending ? "Saving..." : reconciliation ? "Update Reconciliation" : "Create Reconciliation"}
