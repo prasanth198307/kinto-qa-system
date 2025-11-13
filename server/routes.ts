@@ -3063,6 +3063,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // CRITICAL GUARD: Validate invoice status BEFORE making any updates
+      // This prevents duplicate vehicle exits and ensures proper state machine flow
+      if (existing.invoiceId) {
+        const [linkedInvoice] = await db.select().from(invoices).where(eq(invoices.id, existing.invoiceId));
+        if (!linkedInvoice) {
+          return res.status(404).json({ message: "Linked invoice not found" });
+        }
+        
+        if (linkedInvoice.status !== 'ready_for_gatepass') {
+          return res.status(400).json({ 
+            message: `Cannot record vehicle exit. Invoice status must be 'ready_for_gatepass' but is '${linkedInvoice.status}'. Vehicle exit may have already been recorded.` 
+          });
+        }
+      }
+      
       // Update gatepass with vehicle exit details
       const [updated] = await db.update(gatepasses)
         .set({
@@ -3077,7 +3092,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Gatepass not found" });
       }
       
-      // If gatepass has an linked invoice, update invoice status to "dispatched"
+      // Update linked invoice status to "dispatched" (preconditions already validated above)
       if (updated.invoiceId) {
         await db.update(invoices)
           .set({
@@ -3106,20 +3121,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "podReceivedBy and podDate are required" });
       }
       
-      if (!podSignature || typeof podSignature !== 'string' || !podSignature.startsWith('data:image/')) {
-        return res.status(400).json({ message: "podSignature is required and must be a valid base64 image" });
-      }
-      
-      // Ensure signature has actual content (not just header)
-      // A valid signature should be at least 100 characters (header + base64 data)
-      if (podSignature.length < 100) {
-        return res.status(400).json({ message: "podSignature must contain actual signature data" });
-      }
-      
-      // Verify base64 portion exists and is not empty
-      const base64Match = podSignature.match(/^data:image\/[a-z]+;base64,(.+)$/i);
-      if (!base64Match || !base64Match[1] || base64Match[1].length < 50) {
-        return res.status(400).json({ message: "podSignature must contain valid base64 encoded signature data" });
+      // Signature is optional, but if provided, validate it
+      if (podSignature) {
+        if (typeof podSignature !== 'string' || !podSignature.startsWith('data:image/')) {
+          return res.status(400).json({ message: "podSignature must be a valid base64 image" });
+        }
+        
+        // Ensure signature has actual content (not just header)
+        // A valid signature should be at least 100 characters (header + base64 data)
+        if (podSignature.length < 100) {
+          return res.status(400).json({ message: "podSignature must contain actual signature data" });
+        }
+        
+        // Verify base64 portion exists and is not empty
+        const base64Match = podSignature.match(/^data:image\/[a-z]+;base64,(.+)$/i);
+        if (!base64Match || !base64Match[1] || base64Match[1].length < 50) {
+          return res.status(400).json({ message: "podSignature must contain valid base64 encoded signature data" });
+        }
       }
       
       // Verify gatepass is in "vehicle_out" status
@@ -3151,7 +3169,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // If gatepass has a linked invoice, update invoice status to "delivered"
+      // Guard: Only update if invoice is currently in "dispatched" status (prevent out-of-order transitions)
       if (updated.invoiceId) {
+        const [linkedInvoice] = await db.select().from(invoices).where(eq(invoices.id, updated.invoiceId));
+        if (!linkedInvoice) {
+          return res.status(404).json({ message: "Linked invoice not found" });
+        }
+        
+        if (linkedInvoice.status !== 'dispatched') {
+          return res.status(400).json({ 
+            message: `Cannot capture POD. Invoice status must be 'dispatched' but is '${linkedInvoice.status}'. Please ensure vehicle exit was recorded first.` 
+          });
+        }
+        
         await db.update(invoices)
           .set({
             status: 'delivered',

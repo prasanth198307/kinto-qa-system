@@ -1865,6 +1865,7 @@ export class DatabaseStorage implements IStorage {
 
   async getAvailableInvoices(): Promise<Invoice[]> {
     // Get invoices that are not linked to any ACTIVE gatepass (recordStatus = 1)
+    // AND have status "ready_for_gatepass" to prevent reusing dispatched/delivered invoices
     // Invoices linked to deleted gatepasses (recordStatus = 0) are available for reuse
     const usedInvoiceIds = await db
       .select({ invoiceId: gatepasses.invoiceId })
@@ -1879,8 +1880,13 @@ export class DatabaseStorage implements IStorage {
     const usedIds = usedInvoiceIds.map(row => row.invoiceId).filter((id): id is string => id !== null);
     
     if (usedIds.length === 0) {
-      // No active gatepasses using any invoices - all invoices are available
-      return await db.select().from(invoices).where(eq(invoices.recordStatus, 1));
+      // No active gatepasses using any invoices - return only invoices with "ready_for_gatepass" status
+      return await db.select().from(invoices).where(
+        and(
+          eq(invoices.recordStatus, 1),
+          eq(invoices.status, 'ready_for_gatepass')
+        )
+      );
     }
     
     return await db
@@ -1889,6 +1895,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(invoices.recordStatus, 1),
+          eq(invoices.status, 'ready_for_gatepass'),
           notInArray(invoices.id, usedIds)
         )
       );
