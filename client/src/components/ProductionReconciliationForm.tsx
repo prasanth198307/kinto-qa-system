@@ -68,6 +68,11 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
       reconciliationDate: new Date(),
       shift: 'A',
       remarks: "",
+      producedCases: 0,
+      rejectedCases: 0,
+      emptyBottlesProduced: 0,
+      emptyBottlesUsed: 0,
+      emptyBottlesPending: 0,
     },
   });
 
@@ -79,6 +84,11 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
         reconciliationDate: reconciliation.reconciliationDate ? new Date(reconciliation.reconciliationDate) : new Date(),
         shift: reconciliation.shift || 'A',
         remarks: reconciliation.remarks || "",
+        producedCases: reconciliation.producedCases || 0,
+        rejectedCases: reconciliation.rejectedCases || 0,
+        emptyBottlesProduced: reconciliation.emptyBottlesProduced || 0,
+        emptyBottlesUsed: reconciliation.emptyBottlesUsed || 0,
+        emptyBottlesPending: reconciliation.emptyBottlesPending || 0,
       });
       setSelectedIssuanceId(reconciliation.issuanceId);
       setSelectedProductionId(reconciliation.productionEntryId || "");
@@ -284,25 +294,30 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Raw Material Issuance *</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        disabled={!!reconciliation}
-                        data-testid="select-issuance"
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select issuance" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {issuances.map((issuance) => (
-                            <SelectItem key={issuance.id} value={issuance.id}>
-                              {issuance.issuanceNumber} - {format(new Date(issuance.issuanceDate), 'MMM dd, yyyy')}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      {reconciliation ? (
+                        <div className="px-3 py-2 border rounded-md bg-muted text-muted-foreground" data-testid="select-issuance-readonly">
+                          {issuances.find(i => i.id === field.value)?.issuanceNumber || 'Unknown'} - {issuances.find(i => i.id === field.value) ? format(new Date(issuances.find(i => i.id === field.value)!.issuanceDate), 'MMM dd, yyyy') : ''}
+                        </div>
+                      ) : (
+                        <Select 
+                          onValueChange={field.onChange}
+                          value={field.value}
+                          data-testid="select-issuance"
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select issuance" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {issuances.map((issuance) => (
+                              <SelectItem key={issuance.id} value={issuance.id}>
+                                {issuance.issuanceNumber} - {format(new Date(issuance.issuanceDate), 'MMM dd, yyyy')}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}
@@ -314,25 +329,32 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Production Entry *</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        disabled={!!reconciliation}
-                        data-testid="select-production"
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select production entry" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {filteredProductions.map((prod) => (
-                            <SelectItem key={prod.id} value={prod.id}>
-                              Shift {prod.shift} - {format(new Date(prod.productionDate), 'MMM dd')} ({prod.producedQuantity} units)
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      {reconciliation ? (
+                        <div className="px-3 py-2 border rounded-md bg-muted text-muted-foreground" data-testid="select-production-readonly">
+                          {filteredProductions.find(p => p.id === field.value) 
+                            ? `Shift ${filteredProductions.find(p => p.id === field.value)!.shift} - ${format(new Date(filteredProductions.find(p => p.id === field.value)!.productionDate), 'MMM dd')} (${filteredProductions.find(p => p.id === field.value)!.producedQuantity} units)`
+                            : 'Unknown'}
+                        </div>
+                      ) : (
+                        <Select 
+                          onValueChange={field.onChange}
+                          value={field.value}
+                          data-testid="select-production"
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select production entry" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {filteredProductions.map((prod) => (
+                              <SelectItem key={prod.id} value={prod.id}>
+                                Shift {prod.shift} - {format(new Date(prod.productionDate), 'MMM dd')} ({prod.producedQuantity} units)
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}
@@ -562,6 +584,20 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
                     !watchedProductionId || 
                     (!reconciliation && items.length === 0) // Only require items in create mode
                   }
+                  onClick={() => {
+                    const errors = form.formState.errors;
+                    console.log('[DEBUG] Button clicked!', {
+                      isValid: form.formState.isValid,
+                      isDirty: form.formState.isDirty,
+                      formValues: form.getValues(),
+                      errorKeys: Object.keys(errors),
+                      errors: JSON.stringify(errors, null, 2)
+                    });
+                    // Log each error individually
+                    Object.keys(errors).forEach(key => {
+                      console.log(`[DEBUG] Field "${key}" error:`, errors[key as keyof typeof errors]);
+                    });
+                  }}
                   data-testid="button-submit"
                 >
                   {createMutation.isPending || updateMutation.isPending ? "Saving..." : reconciliation ? "Update Reconciliation" : "Create Reconciliation"}
