@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -9,9 +10,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
-import { IndianRupee, AlertCircle } from "lucide-react";
+import { IndianRupee, AlertCircle, Eye } from "lucide-react";
 
 interface Invoice {
   id: string;
@@ -154,6 +156,7 @@ export default function PendingPaymentsDashboard() {
                   <TableHead className="text-right">Paid</TableHead>
                   <TableHead className="text-right">Outstanding</TableHead>
                   <TableHead className="text-center">Status</TableHead>
+                  <TableHead className="text-center">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -187,6 +190,17 @@ export default function PendingPaymentsDashboard() {
                         >
                           {percentagePaid > 0 ? `${percentagePaid.toFixed(0)}% Paid` : 'Unpaid'}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Link href={`/invoice/${invoice.id}`}>
+                          <Button 
+                            size="sm" 
+                            variant="ghost"
+                            data-testid={`button-view-invoice-${invoice.id}`}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </Link>
                       </TableCell>
                     </TableRow>
                   );

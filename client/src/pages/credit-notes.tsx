@@ -176,7 +176,7 @@ export default function CreditNotes() {
           <DialogHeader>
             <DialogTitle>Credit Note Details</DialogTitle>
             <DialogDescription>
-              {selectedCreditNote?.creditNoteNumber}
+              {selectedCreditNote?.noteNumber}
             </DialogDescription>
           </DialogHeader>
 
