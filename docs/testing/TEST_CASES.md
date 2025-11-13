@@ -306,23 +306,93 @@
 
 > **📋 Workflow Update (November 2025)**: Raw material issuance now defaults to **BOM-Driven Auto-Populate** (see TC 20.1). The manual workflow below (TC 4.2) is retained for edge cases: products without BOM, ad-hoc adjustments, or off-BOM material additions.
 
-### Test Case 4.1: Admin Configures Inventory Items
+### Test Case 4.1: Admin Configures Raw Material with Inventory Modes
 **Role**: Admin  
-**Objective**: Set up raw materials and products in system
+**Objective**: Set up raw materials with two different inventory tracking modes  
+**Priority**: High
+
+> **🔄 KEY FEATURE**: Raw materials support TWO inventory modes:
+> 1. **Opening Stock Entry Only** - One-time initial stock setup
+> 2. **Ongoing Inventory** - Continuous tracking with receipts, returns, adjustments
+
+**Scenario A: Opening Stock Entry Only Mode**
+
+**Use Case**: Initial system setup, warehouse stock takeover, one-time inventory recording
 
 **Steps**:
 1. Login as Admin
-2. Navigate to: Admin Dashboard → Raw Materials
+2. Navigate to: Inventory → Raw Materials
 3. Click "Add Raw Material"
-4. Fill in:
+4. Fill in basic details:
+   - Material Code: "STL-PLT-5MM"
    - Material Name: "Steel Plate 5mm"
-   - SKU: "STL-PLT-5MM"
+   - Category: "Steel"
    - UOM: "kg"
-   - Minimum Stock: 500 kg
+   - Minimum Stock Level: 500 kg
    - Reorder Level: 200 kg
-5. Click "Save"
-6. Repeat for multiple materials
-7. **Expected Result**: Materials added to inventory system
+5. **Select Inventory Mode**: "Opening Stock Entry Only"
+6. Enter opening stock details:
+   - Opening Stock: 1000 kg
+   - Opening Date: Today
+   - Opening Stock Location: "Warehouse A"
+7. Click "Save"
+
+**Expected Results**:
+✅ **Material Created** (Opening Stock Mode):
+- Material saved with mode: "Opening Stock Entry Only"
+- Current Stock: 1000 kg (from opening stock)
+- Opening date recorded
+- **Receipts/Returns/Adjustments**: Disabled (not applicable in this mode)
+- Inventory deducts on issuance only
+
+---
+
+**Scenario B: Ongoing Inventory Mode**
+
+**Use Case**: Active inventory management with purchase receipts, production returns, stock adjustments
+
+**Steps**:
+1. Login as Admin
+2. Navigate to: Inventory → Raw Materials
+3. Click "Add Raw Material"
+4. Fill in basic details:
+   - Material Code: "RESIN-PET-21G"
+   - Material Name: "PET Resin 21g Preform"
+   - Category: "Plastic Resins"
+   - Raw Material Type: Select type with conversion formula (optional)
+   - UOM: "kg"
+   - Minimum Stock Level: 2000 kg
+   - Reorder Level: 500 kg
+5. **Select Inventory Mode**: "Ongoing Inventory"
+6. Enter initial stock (optional):
+   - Opening Stock: 0 kg (or enter if migrating from another system)
+   - Opening Date: Today
+7. Click "Save"
+
+**Expected Results**:
+✅ **Material Created** (Ongoing Mode):
+- Material saved with mode: "Ongoing Inventory"
+- Current Stock: 0 kg (or opening stock if provided)
+- **Receipts**: Enabled (stock increases on PO receipt)
+- **Returns**: Enabled (stock increases from production reconciliation)
+- **Adjustments**: Enabled (manual stock corrections)
+- Full transaction history tracking
+
+---
+
+**Inventory Mode Comparison**:
+
+| Feature | Opening Stock Only | Ongoing Inventory |
+|---------|-------------------|-------------------|
+| **Use Case** | Initial setup | Active management |
+| **Opening Stock** | Required | Optional |
+| **Purchase Receipts** | ❌ Not tracked | ✅ Tracked |
+| **Production Returns** | ❌ Not tracked | ✅ Tracked |
+| **Stock Adjustments** | ❌ Not available | ✅ Available |
+| **Issuance Deduction** | ✅ Yes | ✅ Yes |
+| **Transaction History** | Basic | Complete |
+
+**Test Status**: ⬜ PENDING
 
 ---
 
@@ -366,22 +436,30 @@
 
 ---
 
-### Test Case 4.3: Operator Records Finished Goods Production
+### Test Case 4.3: Operator Records Finished Goods Production [OBSOLETE]
+**Status**: ❌ **OBSOLETE** - Replaced by automated workflow  
 **Role**: Operator  
 **Objective**: Record completed production output
 
-**Steps**:
-1. Login as Operator
-2. Navigate to: Operator Dashboard → Finished Goods
-3. Click "Add Production"
-4. Fill in:
-   - Product: "Widget A"
-   - Quantity Produced: 50 units
-   - Production Date: Today
-   - Batch Number: "BATCH-001"
-   - Quality Status: "Passed"
-5. Click "Save Production"
-6. **Expected Result**: Finished goods inventory increased, available for sale
+> **⚠️ WORKFLOW CHANGED (November 2025)**: Finished goods are NO LONGER manually entered. They are **auto-created from Production Entry** (see TC 21.1). This test case is retained for historical reference only.
+
+**New Workflow**:
+1. Operator creates **Production Entry** (TC 21.1)
+2. System **automatically creates Finished Goods** with:
+   - Batch Number: Auto-generated as `IssuanceNumber-Date-Shift`
+   - Quality Status: `pending` (requires approval)
+   - Quantity: From production entry
+3. Quality inspector **approves** finished goods (TC 21.2)
+4. Only then are goods available for sale
+
+**Old Steps (No Longer Used)**:
+1. ~~Login as Operator~~
+2. ~~Navigate to: Operator Dashboard → Finished Goods~~
+3. ~~Click "Add Production"~~
+4. ~~Fill in manual details~~
+5. ~~Click "Save Production"~~
+
+**Expected Result**: N/A - See TC 21.1 for new production workflow
 
 ---
 
@@ -431,62 +509,120 @@
 
 ---
 
-### Test Case 5.2: Manager Creates Sales Invoice
+### Test Case 5.2: Manager Creates Sales Invoice (NO Inventory Deduction)
 **Role**: Manager  
-**Objective**: Generate invoice for customer order
+**Objective**: Generate GST-compliant invoice for customer order
+
+> **⚠️ IMPORTANT**: Invoice creation does **NOT deduct inventory**. Inventory deducts only on **Gatepass creation** (TC 5.3).
+
+**Pre-requisite**: Finished goods must be `approved` status (see TC 21.2)
 
 **Steps**:
 1. Login as Manager
-2. Navigate to: Manager Dashboard → Sales Invoices
+2. Navigate to: Finance & Sales → Sales Invoices
 3. Click "Create Invoice"
 4. Select Template: "Standard GST Invoice"
-5. Fill in:
+5. Fill in customer details:
    - Invoice Date: Today
    - Customer: "XYZ Industries"
    - Customer GSTIN: "29XYZAB5678C1D2"
    - Billing Address
    - Shipping Address
-6. Add items:
-   - Product: "Widget A"
+6. Add invoice items:
+   - Product: "1 Liter PET Bottle Water" (select from approved finished goods)
    - Quantity: 50 units
    - Rate: ₹1,000/unit
    - HSN Code: 8481
-   - GST: 18%
-7. System calculates:
+   - GST Rate: 18%
+7. System auto-calculates:
    - Subtotal: ₹50,000
    - CGST 9%: ₹4,500
    - SGST 9%: ₹4,500
-   - **Total: ₹59,000**
-8. Click "Save Invoice"
-9. **Expected Result**: Invoice created with status "Draft", invoice number assigned
+   - **Invoice Total: ₹59,000**
+8. Review print preview (optional)
+9. Click "Create Invoice"
+
+**Expected Results**:
+✅ **Invoice Created**:
+- Invoice number auto-assigned (e.g., INV-2025-001)
+- Status: "Pending" (awaiting gatepass)
+- GST calculation correct
+- Invoice appears in invoice list
+
+✅ **Inventory Status**:
+- **Inventory NOT deducted** (remains unchanged)
+- Finished goods still show in inventory
+- Deduction happens on gatepass creation (TC 5.3)
+
+✅ **Document Generation**:
+- GST-compliant invoice PDF generated
+- Can print/download invoice
+- Ready for gatepass generation
+
+**Common Mistake**: ❌ Expecting inventory to deduct here (it doesn't!)
+
+**Test Status**: ⬜ PENDING
 
 ---
 
-### Test Case 5.3: Manager Generates Gatepass from Invoice
+### Test Case 5.3: Manager Generates Gatepass (INVENTORY DEDUCTED HERE)
 **Role**: Manager  
-**Objective**: Create gatepass for material dispatch
+**Objective**: Create gatepass for material dispatch and deduct inventory
+
+> **🔑 CRITICAL**: This is when **INVENTORY IS DEDUCTED**! Not on invoice creation, but on gatepass creation.
+
+**Pre-requisite**: TC 5.2 completed - Invoice created with status "Pending"
 
 **Steps**:
 1. Login as Manager
-2. Navigate to: Manager Dashboard → Dispatch Tracking → Invoices tab
-3. Find invoice for "XYZ Industries"
+2. Navigate to: Finance & Sales → Dispatch Tracking → Invoices tab
+3. Find invoice for "XYZ Industries" (INV-2025-001, Total: ₹59,000)
 4. Click "Generate Gatepass" button
 5. System auto-fills:
-   - Invoice details
-   - Items from invoice
+   - Invoice number and date
+   - Items from invoice (50 units of 1 Liter PET Bottle Water)
    - Customer information
+   - Billing/shipping address
 6. Add dispatch details:
    - Vehicle Number: "MH-01-AB-1234"
    - Driver Name: "Ramesh Kumar"
    - Driver Phone: "9876543210"
    - Number of Cases: 5
    - Seal Numbers: "SEAL001, SEAL002"
-7. Click "Create Gatepass"
-8. **Expected Result**: 
-   - Gatepass created (status: "Generated")
-   - Invoice status → "Ready for Dispatch"
-   - **Inventory deducted** (50 units of Widget A)
-   - Gatepass number assigned
+   - Expected Dispatch Date/Time: Today
+7. Review gatepass preview (optional)
+8. Click "Create Gatepass"
+
+**Expected Results**:
+✅ **Gatepass Created**:
+- Gatepass number auto-assigned (e.g., GP-2025-001)
+- Status: "Generated" (ready for vehicle exit)
+- Linked to invoice INV-2025-001
+- Printable gatepass PDF generated
+
+✅ **Inventory Deduction** (HAPPENS NOW!):
+- **50 units deducted from finished goods**
+- Inventory updated immediately
+- Stock level reduced
+- Transaction recorded in inventory log
+- Audit trail: "Deducted for Gatepass GP-2025-001"
+
+✅ **Status Updates**:
+- Invoice status: "Pending" → "Ready for Dispatch"
+- Gatepass status: "Generated"
+- Dispatch workflow proceeds to TC 5.4 (Vehicle Exit)
+
+✅ **Tamper-Proof State Machine**:
+- Cannot modify invoice after gatepass created
+- Cannot delete gatepass without inventory return (see TC 5.7)
+- State transitions validated by backend
+
+**Verification Steps**:
+1. Navigate to: Inventory → Finished Goods
+2. Verify stock reduced by 50 units
+3. Check inventory transaction log shows deduction
+
+**Test Status**: ⬜ PENDING
 
 ---
 
@@ -534,6 +670,108 @@
    - Invoice status → "Delivered"
    - Digital signature saved
    - Delivery complete, workflow closed
+
+---
+
+### Test Case 5.6: Invoice Cancellation with Gatepass Check
+**Role**: Manager  
+**Objective**: Cancel an invoice and verify system prevents cancellation if gatepass exists  
+**Priority**: High
+
+> **🔒 BUSINESS RULE**: Cannot cancel invoice if gatepass has been created (prevents inventory discrepancies)
+
+**Scenario A: Cancel Invoice WITHOUT Gatepass** ✅
+
+**Steps**:
+1. Login as Manager
+2. Navigate to: Finance & Sales → Sales Invoices
+3. Find invoice with status "Pending" (no gatepass created)
+4. Click "Cancel Invoice" button
+5. Confirm cancellation reason: "Customer order cancelled"
+6. Click "Confirm Cancellation"
+
+**Expected Results**:
+✅ **Invoice Cancelled**:
+- Invoice status: "Pending" → "Cancelled"
+- Invoice marked as void
+- Cannot be used for gatepass creation
+- Cancellation recorded with timestamp and user
+
+✅ **Inventory Behavior**:
+- **No inventory impact** (inventory was never deducted)
+- Finished goods remain in stock
+- Available for other invoices
+
+**Scenario B: Attempt to Cancel Invoice WITH Gatepass** ❌
+
+**Steps**:
+1. Find invoice with status "Ready for Dispatch" (gatepass created)
+2. Click "Cancel Invoice" button
+3. System shows error message
+
+**Expected Results**:
+❌ **Cancellation Blocked**:
+- Error: "Cannot cancel invoice - Gatepass already created (GP-2025-001)"
+- Instruction: "Cancel gatepass first (TC 5.7), then cancel invoice"
+- Invoice status unchanged
+- Tamper-proof state machine enforced
+
+**Test Status**: ⬜ PENDING
+
+---
+
+### Test Case 5.7: Gatepass Cancellation with Automatic Inventory Return
+**Role**: Manager  
+**Objective**: Cancel gatepass and verify automatic inventory return  
+**Priority**: Critical
+
+> **🔄 KEY FEATURE**: Cancelling gatepass **automatically returns inventory** to finished goods!
+
+**Pre-requisite**: TC 5.3 completed - Gatepass created (inventory deducted)
+
+**Steps**:
+1. Login as Manager
+2. Navigate to: Finance & Sales → Dispatch Tracking → Gate Passes tab
+3. Find gatepass: GP-2025-001 (Status: "Generated")
+4. Verify current finished goods stock (should be reduced by 50 units)
+5. Click "Cancel Gatepass" button
+6. Enter cancellation reason: "Vehicle breakdown - order postponed"
+7. Click "Confirm Cancellation"
+
+**Expected Results**:
+✅ **Gatepass Cancelled**:
+- Gatepass status: "Generated" → "Cancelled"
+- Gatepass voided, cannot be used for vehicle exit
+- Cancellation timestamp and reason recorded
+
+✅ **Automatic Inventory Return** (CRITICAL):
+- **50 units automatically returned to finished goods**
+- Inventory stock restored to pre-gatepass level
+- Transaction logged: "Returned from cancelled Gatepass GP-2025-001"
+- Audit trail maintained
+
+✅ **Invoice Status Rollback**:
+- Invoice status: "Ready for Dispatch" → "Pending"
+- Invoice now available for new gatepass creation
+- Can be cancelled if needed (TC 5.6 Scenario A)
+
+✅ **State Machine Validation**:
+- Cannot cancel gatepass if vehicle has exited (status: "Vehicle Out")
+- Cannot cancel if POD recorded (status: "Delivered")
+- Backend validates all state transitions
+
+**Verification Steps**:
+1. Navigate to: Inventory → Finished Goods
+2. Verify stock increased by 50 units
+3. Check inventory transaction log shows return
+4. Verify invoice status reverted to "Pending"
+
+**Edge Cases**:
+- ❌ Cannot cancel gatepass after vehicle exit
+- ❌ Cannot cancel gatepass after delivery (POD recorded)
+- ✅ Can create new gatepass from same invoice after cancellation
+
+**Test Status**: ⬜ PENDING
 
 ---
 
@@ -1913,45 +2151,118 @@ COMMENT ON COLUMN credit_notes.approved_by IS
 
 ## 21. Production Entry with Variance Analysis
 
-### Test Case 21.1: Create Production Entry Linked to Issuance
+### Test Case 21.1: Create Production Entry with Auto Finished Goods Creation
 **Role**: Operator / Manager  
-**Objective**: Record production output with variance tracking  
+**Objective**: Record production output with automatic finished goods creation and variance tracking  
 **Priority**: Critical
+
+> **🔄 KEY FEATURE**: This workflow **automatically creates finished goods** with `pending` status. No manual entry required!
 
 **Steps**:
 1. Navigate to: Production → Production Entries
 2. Click "Add Production Entry"
 3. Fill details:
-   - Date: Today
-   - Product: "1 Liter PET Bottle Water"
-   - Shift: "Day Shift"
-   - Machine: "Blow Molding Machine 01"
-   - **Link to Raw Material Issuance**: Select from dropdown (shows today's issuances)
-   - Expected Quantity: 1000 bottles (from issuance)
+   - Production Date: Today
+   - **Link to Raw Material Issuance**: Select issuance (e.g., "RM-2025-001")
+     - System auto-fills Product and Planned Output from issuance
+   - Shift: "Day Shift" (A, B, or General)
+   - Machine: "Blow Molding Machine 01" (optional)
    - **Actual Produced Quantity**: 950 bottles
    - Rejected Quantity: 30 bottles
+   - Empty Bottles Produced: 0 (optional)
+   - Empty Bottles Used: 0 (optional)
    - Remarks: "Machine stoppage for 30 mins due to power fluctuation"
-4. Click "Save"
+4. Click "Create Production Entry"
 
 **Expected Results**:
-- Production entry created
-- **Variance calculated automatically**:
-  - Expected: 1000
-  - Actual: 950
-  - Variance: -50 bottles (-5%)
-  - Variance % = (950 - 1000) / 1000 × 100 = -5%
-- **Variance displayed in RED** (negative variance)
-- Finished goods created with status: "Pending Quality Approval"
-- **Quantity**: 950 bottles (actual produced)
-- **Inventory NOT updated** until quality approval
-- Production entry linked to raw material issuance
+✅ **Production Entry Created**:
+- Production entry saved successfully
+- Linked to raw material issuance
 - Shift-wise tracking enabled
+
+✅ **Variance Analysis** (Automatic):
+- Expected (from issuance): 1000 bottles
+- Actual Produced: 950 bottles
+- Variance: -50 bottles (-5%)
+- Formula: (950 - 1000) / 1000 × 100 = -5%
+- **Variance displayed in RED** (negative variance indicator)
+
+✅ **Finished Goods Auto-Created** (Automatic):
+- **Batch Number**: Auto-generated as `RM-2025-001-2025-11-13-Day Shift`
+- **Quality Status**: `pending` (awaiting approval)
+- **Quantity**: 950 bottles (actual produced, not planned)
+- **Product**: Auto-linked from issuance
+- **Production Date**: From production entry
+- **Remarks**: Auto-generated as "Auto-generated from Production Entry [ID]. Shift: Day Shift"
+- **Inventory**: NOT updated yet (requires quality approval - see TC 21.2)
+
+✅ **System Behavior**:
+- Finished goods appear in Finished Goods list with `pending` badge
+- Cannot be invoiced until approved
+- Quality inspector notified for approval
+
+**Verification Steps**:
+1. Navigate to: Inventory → Finished Goods
+2. Verify new batch appears with status: `pending`
+3. Verify batch number format: `IssuanceNumber-Date-Shift`
+4. Verify quantity matches actual produced (not planned)
 
 **Test Status**: ⬜ PENDING
 
 ---
 
-### Test Case 21.2: Production Entry with Positive Variance
+### Test Case 21.2: Quality Approval of Finished Goods
+**Role**: Quality Inspector / Manager  
+**Objective**: Approve finished goods for sale after production  
+**Priority**: Critical
+
+> **🔑 REQUIRED STEP**: Finished goods must be approved before they can be invoiced/sold!
+
+**Pre-requisite**: TC 21.1 completed - Finished goods exist with `pending` status
+
+**Steps**:
+1. Navigate to: Inventory → Finished Goods
+2. Filter by Status: "Pending"
+3. Find batch: "RM-2025-001-2025-11-13-Day Shift" (950 bottles)
+4. Click "Inspect/Approve" button
+5. Review details:
+   - Product: 1 Liter PET Bottle Water
+   - Quantity: 950 bottles
+   - Production Date: Today
+   - Shift: Day Shift
+   - Rejected in Production: 30 bottles
+6. Perform quality inspection (visual check, sampling, etc.)
+7. Select Quality Status: "Approved" (or "Rejected" if fails)
+8. Add inspection remarks: "Quality check passed. Ready for dispatch"
+9. Click "Update Status"
+
+**Expected Results**:
+✅ **Quality Status Updated**:
+- Status changed from `pending` → `approved`
+- Inspector name and date recorded
+- Goods now appear in "Available for Sale" list
+
+✅ **Inventory Availability**:
+- Finished goods NOW available for invoicing
+- Shows in product selection dropdown for sales invoices
+- Stock level visible to sales team
+
+✅ **System Behavior**:
+- Cannot invoice `pending` goods (validation error)
+- Only `approved` goods selectable in invoice form
+- Batch tracking maintained throughout workflow
+
+**Rejection Workflow** (if quality fails):
+1. Select Status: "Rejected"
+2. Add remarks: "Defects found in sealing"
+3. Rejected goods removed from saleable inventory
+4. Marked for rework or disposal
+
+**Test Status**: ⬜ PENDING
+
+---
+
+### Test Case 21.3: Production Entry with Positive Variance
 **Role**: Operator  
 **Objective**: Verify positive variance handling  
 **Priority**: High
@@ -1967,7 +2278,7 @@ COMMENT ON COLUMN credit_notes.approved_by IS
 - Variance: +50 bottles (+5%)
 - **Variance displayed in GREEN** (positive variance)
 - Good production efficiency indicator
-- Finished goods: 1050 bottles pending approval
+- Finished goods: 1050 bottles auto-created with pending status
 
 **Test Status**: ⬜ PENDING
 
