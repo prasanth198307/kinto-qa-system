@@ -877,18 +877,9 @@ function ProductDialog({
           minimumStockLevel: item.minimumStockLevel || undefined,
           isActive: item.isActive || 'true',
         });
-        // Hydrate BOM items when editing
-        if (existingBom.length > 0) {
-          replace(existingBom.map(bom => ({
-            rawMaterialId: bom.rawMaterialId || bom.raw_material_id,
-            quantityRequired: bom.quantityRequired || bom.quantity_required,
-            uom: bom.uom || '',
-            notes: bom.notes || '',
-          })));
-        } else {
-          replace([]);
-        }
+        // BOM will be hydrated by separate effect below
       } else {
+        // Adding new product - reset form and clear BOM
         form.reset({
           productCode: '',
           productName: '',
@@ -915,11 +906,30 @@ function ProductDialog({
           minimumStockLevel: undefined,
           isActive: 'true',
         });
-        replace([]);
+        replace([]); // Clear any stale BOM rows from previous edit
       }
       setActiveTab("info");
     }
-  }, [item, open, existingBom, replace]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, item?.id]); // Only reset when dialog opens or editing different item
+
+  // Effect 2: Hydrate BOM field array when BOM data loads (separate to avoid tab reset)
+  useEffect(() => {
+    if (open && item) {
+      if (existingBom.length > 0) {
+        replace(existingBom.map(bom => ({
+          rawMaterialId: bom.rawMaterialId || bom.raw_material_id,
+          quantityRequired: bom.quantityRequired || bom.quantity_required,
+          uom: bom.uom || '',
+          notes: bom.notes || '',
+        })));
+      } else {
+        // Clear BOM array when editing product with no BOM
+        replace([]);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [existingBom, open, item?.id]); // When BOM data changes or dialog opens for edit
 
   const handleAddBomRow = () => {
     append({ rawMaterialId: '', quantityRequired: 0, uom: '', notes: '' } as any, { shouldFocus: false });
