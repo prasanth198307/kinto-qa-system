@@ -64,7 +64,7 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
     resolver: zodResolver(headerSchema),
     defaultValues: {
       issuanceId: "",
-      productionEntryId: undefined,
+      productionEntryId: "",
       reconciliationDate: new Date(),
       shift: 'A',
       remarks: "",
@@ -296,21 +296,18 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
                   name="productionEntryId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Production Entry (Optional)</FormLabel>
+                      <FormLabel>Production Entry *</FormLabel>
                       <Select 
-                        onValueChange={(value) => {
-                          field.onChange(value === "none" ? undefined : value);
-                        }}
-                        value={field.value || "none"}
+                        onValueChange={field.onChange}
+                        value={field.value}
                         data-testid="select-production"
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Link to production entry" />
+                            <SelectValue placeholder="Select production entry" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="none">None</SelectItem>
                           {filteredProductions.map((prod) => (
                             <SelectItem key={prod.id} value={prod.id}>
                               Shift {prod.shift} - {format(new Date(prod.productionDate), 'MMM dd')} ({prod.producedQuantity} units)
@@ -540,7 +537,7 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
                 </Button>
                 <Button
                   type="submit"
-                  disabled={createMutation.isPending || updateMutation.isPending || !selectedIssuanceId || items.length === 0}
+                  disabled={createMutation.isPending || updateMutation.isPending || !selectedIssuanceId || !selectedProductionId || items.length === 0}
                   data-testid="button-submit"
                 >
                   {createMutation.isPending || updateMutation.isPending ? "Saving..." : reconciliation ? "Update Reconciliation" : "Create Reconciliation"}
