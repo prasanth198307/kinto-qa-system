@@ -239,6 +239,7 @@ export function calculateBOMSuggestions(
     bom: { rawMaterialId: string; quantityRequired: number; uom: string | null };
     material: any;
     type: any;
+    effectiveUomId?: string | null; // UUID from material.uomId or type.uomId
   }>
 ): Map<string, BOMCalculationResult> {
   const results = new Map<string, BOMCalculationResult>();
@@ -255,6 +256,9 @@ export function calculateBOMSuggestions(
       continue;
     }
     
+    // Resolve UOM ID: effectiveUomId (UUID) or legacy display name as fallback
+    const uomId = item.effectiveUomId || item.bom.uom;
+    
     // Parse and validate quantityRequired
     const quantityRequired = Number(item.bom.quantityRequired);
     if (isNaN(quantityRequired) || quantityRequired < 0) {
@@ -262,7 +266,7 @@ export function calculateBOMSuggestions(
       // Add item with manual entry required
       results.set(item.bom.rawMaterialId, {
         rawMaterialId: item.bom.rawMaterialId,
-        uomId: item.bom.uom,
+        uomId,
         suggestedQuantity: 0,
         calculationBasis: 'manual',
         calculationDetails: 'Manual entry required (invalid quantity)',
@@ -278,7 +282,7 @@ export function calculateBOMSuggestions(
         typeConversion: item.type || null,
       },
       item.bom.rawMaterialId,
-      item.bom.uom
+      uomId
     );
     
     results.set(item.bom.rawMaterialId, result);

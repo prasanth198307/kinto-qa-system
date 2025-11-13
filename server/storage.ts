@@ -1199,12 +1199,18 @@ export class DatabaseStorage implements IStorage {
       ))
       .orderBy(productBom.createdAt);
 
-    // Transform into structured format
-    const items = bomItems.map(item => ({
-      bom: item.product_bom,
-      material: item.raw_materials || null,
-      type: item.raw_material_types || null,
-    }));
+    // Transform into structured format with effective UOM ID resolution
+    const items = bomItems.map(item => {
+      // Resolve effective UOM ID: material.uomId (primary) → type.uomId (fallback) → null
+      const effectiveUomId = item.raw_materials?.uomId || item.raw_material_types?.uomId || null;
+      
+      return {
+        bom: item.product_bom,
+        material: item.raw_materials || null,
+        type: item.raw_material_types || null,
+        effectiveUomId, // UUID for database FK constraints
+      };
+    });
 
     // Get latest update timestamp from BOM items
     const lastUpdatedAt = bomItems.length > 0

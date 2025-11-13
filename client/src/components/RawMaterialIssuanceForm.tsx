@@ -22,7 +22,7 @@ const formHeaderSchema = z.object({
   issuedTo: z.string().min(1, "Issued To is required"),
   productId: z.string().optional().transform(val => val || undefined),
   productionReference: z.string().optional(),
-  plannedOutput: z.coerce.number().optional().transform(val => val || undefined),
+  plannedOutput: z.coerce.number().optional().transform(val => Number.isFinite(val) ? val : undefined),
   remarks: z.string().optional(),
 });
 
@@ -210,15 +210,15 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
 
   const saveMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      // Transform UI form data to API format (convert undefined to null where needed)
+      // Transform UI form data to API format (null for IDs/numbers, empty string for text)
       const apiPayload = {
         header: {
-          issuanceDate: data.header.issuanceDate,
+          issuanceDate: data.header.issuanceDate instanceof Date ? data.header.issuanceDate.toISOString() : data.header.issuanceDate,
           issuedTo: data.header.issuedTo,
           productId: data.header.productId || null,
-          productionReference: data.header.productionReference || null,
-          plannedOutput: data.header.plannedOutput || null,
-          remarks: data.header.remarks || null,
+          productionReference: data.header.productionReference || "",
+          plannedOutput: Number.isFinite(data.header.plannedOutput) ? data.header.plannedOutput : null,
+          remarks: data.header.remarks || "",
         },
         items: data.items.map(item => ({
           rawMaterialId: item.rawMaterialId,
@@ -227,7 +227,7 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
           suggestedQuantity: item.suggestedQuantity || null,
           calculationBasis: item.calculationBasis || null,
           uomId: item.uomId || null,
-          remarks: item.remarks || null,
+          remarks: item.remarks || "",
         })),
       };
       
