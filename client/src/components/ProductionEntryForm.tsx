@@ -86,6 +86,7 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/production-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/finished-goods'], exact: false });
       toast({
         title: "Success",
         description: "Production entry created successfully",

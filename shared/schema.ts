@@ -1068,17 +1068,18 @@ export const insertRawMaterialIssuanceItemSchema = createInsertSchema(rawMateria
   }),
   suggestedQuantity: z.union([
     z.string().transform(val => {
-      if (!val || val.trim() === '') return undefined;
+      if (!val || val.trim() === '') return null;
       const num = parseFloat(val);
-      return isNaN(num) ? undefined : num;
+      return isNaN(num) ? null : num;
     }),
-    z.number()
-  ]).refine(val => val === undefined || val >= 0, {
+    z.number(),
+    z.null()
+  ]).refine(val => val === null || val === undefined || val >= 0, {
     message: "Suggested quantity must be non-negative if provided"
   }).optional(),
   calculationBasis: z.enum(['formula-based', 'direct-value', 'output-coverage', 'manual'], {
     errorMap: () => ({ message: "Calculation basis must be one of: formula-based, direct-value, output-coverage, manual" })
-  }).optional(),
+  }).nullable().optional(),
 }).omit({
   id: true,
   recordStatus: true,
