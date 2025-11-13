@@ -944,47 +944,51 @@ function ProductDialog({
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
             {/* Custom Tab Implementation - Manual Control */}
             <div className="space-y-4">
-              <div className="grid w-full grid-cols-4 gap-2 rounded-md bg-muted p-1">
-                <Button
-                  type="button"
-                  variant={activeTab === 'info' ? 'default' : 'ghost'}
-                  size="sm"
+              <div className="grid w-full grid-cols-4 gap-1 rounded-md bg-muted p-1">
+                <div
                   onClick={() => setActiveTab('info')}
+                  className={`cursor-pointer rounded px-3 py-2 text-sm font-medium transition-colors ${
+                    activeTab === 'info' 
+                      ? 'bg-background text-foreground shadow-sm' 
+                      : 'text-muted-foreground hover:bg-background/50'
+                  }`}
                   data-testid="tab-info"
                 >
                   Product Info
-                </Button>
-                <Button
-                  type="button"
-                  variant={activeTab === 'packaging' ? 'default' : 'ghost'}
-                  size="sm"
+                </div>
+                <div
                   onClick={() => setActiveTab('packaging')}
+                  className={`cursor-pointer rounded px-3 py-2 text-sm font-medium transition-colors ${
+                    activeTab === 'packaging' 
+                      ? 'bg-background text-foreground shadow-sm' 
+                      : 'text-muted-foreground hover:bg-background/50'
+                  }`}
                   data-testid="tab-packaging"
                 >
                   Packaging
-                </Button>
-                <Button
-                  type="button"
-                  variant={activeTab === 'pricing' ? 'default' : 'ghost'}
-                  size="sm"
+                </div>
+                <div
                   onClick={() => setActiveTab('pricing')}
+                  className={`cursor-pointer rounded px-3 py-2 text-sm font-medium transition-colors ${
+                    activeTab === 'pricing' 
+                      ? 'bg-background text-foreground shadow-sm' 
+                      : 'text-muted-foreground hover:bg-background/50'
+                  }`}
                   data-testid="tab-pricing"
                 >
                   Pricing/Tax
-                </Button>
-                <Button
-                  type="button"
-                  variant={activeTab === 'bom' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => {
-                    console.log('BOM tab clicked, current activeTab:', activeTab);
-                    setActiveTab('bom');
-                    console.log('After setActiveTab, should be: bom');
-                  }}
+                </div>
+                <div
+                  onClick={() => setActiveTab('bom')}
+                  className={`cursor-pointer rounded px-3 py-2 text-sm font-medium transition-colors ${
+                    activeTab === 'bom' 
+                      ? 'bg-background text-foreground shadow-sm' 
+                      : 'text-muted-foreground hover:bg-background/50'
+                  }`}
                   data-testid="tab-bom"
                 >
                   BOM
-                </Button>
+                </div>
               </div>
 
               {activeTab === 'info' && (<div className="space-y-4 mt-4">
