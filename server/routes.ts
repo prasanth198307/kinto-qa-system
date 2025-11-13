@@ -1266,12 +1266,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const dataWithCalculations = calculateProductFields(validatedData);
       
       const created = await storage.createProduct(dataWithCalculations);
+      console.log('[DEBUG] Product created:', JSON.stringify({ id: created.id, code: created.productCode }));
       res.json(created);
     } catch (error) {
       if (error instanceof z.ZodError) {
+        console.error('[ERROR] Product validation failed:', error.errors);
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
       }
-      console.error("Error creating product:", error);
+      console.error("[ERROR] Error creating product:", error);
       res.status(500).json({ message: "Failed to create product" });
     }
   });
@@ -1369,10 +1371,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/products/:productId/bom', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const { productId } = req.params;
-      const bomData = { ...req.body, productId };
-      const validatedData = insertProductBomSchema.parse(bomData);
-      const created = await storage.createProductBomItem(validatedData);
-      res.json(created);
+      
+      // Check if body is an array (bulk replace) or single item
+      if (Array.isArray(req.body)) {
+        // Bulk replace: Atomically replace all BOM items using transaction
+        console.log(`[BOM] Bulk replacing BOM for product ${productId} with ${req.body.length} items`);
+        
+        // Validate all items BEFORE any database operations
+        const bomItemSchema = insertProductBomSchema.omit({ productId: true });
+        const validatedItems = req.body.map((item, index) => {
+          try {
+            return bomItemSchema.parse(item);
+          } catch (error) {
+            if (error instanceof z.ZodError) {
+              throw new Error(`Invalid BOM item at index ${index}: ${error.errors.map(e => e.message).join(', ')}`);
+            }
+            throw error;
+          }
+        });
+        
+        // Atomic replace using transaction
+        const createdItems = await storage.replaceProductBom(productId, validatedItems);
+        
+        console.log(`[BOM] Successfully replaced BOM with ${createdItems.length} items`);
+        return res.json({ message: "BOM replaced successfully", items: createdItems });
+      } else {
+        // Single item creation
+        const bomData = { ...req.body, productId };
+        const validatedData = insertProductBomSchema.parse(bomData);
+        const created = await storage.createProductBomItem(validatedData);
+        res.json(created);
+      }
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid data", errors: error.errors });

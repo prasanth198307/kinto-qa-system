@@ -511,13 +511,15 @@ function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSea
       let savedProduct: Product;
       
       if (mode === 'create') {
-        const result = await apiRequest('POST', '/api/products', productData);
+        const response = await apiRequest('POST', '/api/products', productData);
+        const result = await response.json();
         console.log('[DEBUG] Product creation response:', result);
         console.log('[DEBUG] Product ID from response:', result?.id);
         productId = result.id;
         savedProduct = result;
       } else {
-        const result = await apiRequest('PATCH', `/api/products/${id}`, productData);
+        const response = await apiRequest('PATCH', `/api/products/${id}`, productData);
+        const result = await response.json();
         productId = id;
         savedProduct = result;
       }
