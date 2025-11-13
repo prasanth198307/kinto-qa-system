@@ -80,7 +80,19 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
   const plannedOutput = form.watch('header.plannedOutput');
 
   // Fetch BOM data when product is selected
-  const { data: bomData, isLoading: isBomLoading } = useQuery({
+  const { data: bomData, isLoading: isBomLoading } = useQuery<{
+    items: Array<{
+      bom: any;
+      material: any;
+      type: any;
+    }>;
+    metadata: {
+      productId: string;
+      productName: string;
+      totalItems: number;
+      lastUpdatedAt: Date | null;
+    };
+  }>({
     queryKey: ['/api/products', selectedProductId, 'bom-with-types'],
     enabled: !!selectedProductId && selectedProductId !== "",
   });
@@ -114,15 +126,41 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
 
   // Auto-populate items when BOM data and planned output are available
   useEffect(() => {
+    console.log('[BOM Auto-Populate] useEffect triggered', {
+      issuance: !!issuance,
+      bomData: !!bomData,
+      bomDataItems: bomData?.items?.length || 0,
+      plannedOutput,
+      selectedProductId
+    });
+
     // Only auto-populate for new issuances (not editing existing ones)
-    if (issuance) return;
+    if (issuance) {
+      console.log('[BOM Auto-Populate] Skipping - editing existing issuance');
+      return;
+    }
 
     // Require both product and planned output to calculate suggestions
-    if (!bomData || !bomData.items || !plannedOutput || plannedOutput <= 0) return;
+    if (!bomData || !bomData.items || !plannedOutput || plannedOutput <= 0) {
+      console.log('[BOM Auto-Populate] Conditions not met', {
+        hasBomData: !!bomData,
+        hasItems: !!bomData?.items,
+        itemsLength: bomData?.items?.length,
+        plannedOutput,
+        plannedOutputType: typeof plannedOutput,
+        isPlannedOutputValid: plannedOutput > 0
+      });
+      return;
+    }
 
+    console.log('[BOM Auto-Populate] Calculating suggestions...');
     // Calculate suggested quantities using the shared calculation utility
     // calculateBOMSuggestions returns a Map<materialId, suggestion>
     const suggestionsMap = calculateBOMSuggestions(plannedOutput, bomData.items);
+    console.log('[BOM Auto-Populate] Suggestions calculated', { 
+      suggestionsCount: suggestionsMap.size,
+      suggestions: Array.from(suggestionsMap.values())
+    });
 
     // Convert Map to array for form structure
     const bomItems = Array.from(suggestionsMap.values()).map(suggestion => ({
@@ -135,8 +173,11 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
       remarks: suggestion.calculationDetails || "",
     }));
 
+    console.log('[BOM Auto-Populate] BOM items created', { count: bomItems.length, bomItems });
+
     // Update items state and form
     if (bomItems.length > 0) {
+      console.log('[BOM Auto-Populate] Setting items and showing toast');
       setItems(bomItems);
       form.setValue('items', bomItems);
       
@@ -144,6 +185,8 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
         title: "BOM Loaded",
         description: `${bomItems.length} materials auto-populated from product BOM`,
       });
+    } else {
+      console.log('[BOM Auto-Populate] No BOM items to populate');
     }
   }, [bomData, plannedOutput, selectedProductId, issuance, form, toast]);
 

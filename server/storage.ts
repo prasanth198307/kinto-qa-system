@@ -1189,7 +1189,7 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(
         rawMaterialTypes,
         and(
-          eq(rawMaterials.materialTypeId, rawMaterialTypes.id),
+          eq(rawMaterials.typeId, rawMaterialTypes.id),
           eq(rawMaterialTypes.recordStatus, 1)
         )
       )
