@@ -2888,10 +2888,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Create gatepass header
         const [gatepass] = await tx.insert(gatepasses).values(gatepassData).returning();
         
-        // If gatepass is linked to an invoice, update invoice status to "ready_for_gatepass"
+        // If gatepass is linked to an invoice, update invoice status to "dispatched"
         if (gatepass.invoiceId) {
           await tx.update(invoices)
-            .set({ status: 'ready_for_gatepass' })
+            .set({ status: 'dispatched' })
             .where(eq(invoices.id, gatepass.invoiceId));
         }
         
