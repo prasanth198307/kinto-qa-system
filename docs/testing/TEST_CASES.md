@@ -304,6 +304,8 @@
 
 ## 4. Inventory Management Workflow
 
+> **📋 Workflow Update (November 2025)**: Raw material issuance now defaults to **BOM-Driven Auto-Populate** (see TC 20.1). The manual workflow below (TC 4.2) is retained for edge cases: products without BOM, ad-hoc adjustments, or off-BOM material additions.
+
 ### Test Case 4.1: Admin Configures Inventory Items
 **Role**: Admin  
 **Objective**: Set up raw materials and products in system
@@ -324,22 +326,43 @@
 
 ---
 
-### Test Case 4.2: Manager Issues Raw Material to Production
+### Test Case 4.2: Manual/Ad-hoc Raw Material Issuance (Fallback Scenario)
 **Role**: Manager  
-**Objective**: Issue raw material for production use
+**Objective**: Issue raw materials manually when BOM is not available or for off-BOM adjustments  
+**Use Cases**: 
+- Products without BOM defined
+- Ad-hoc maintenance/repair materials
+- Off-BOM additional items
+- Manual overrides for special cases
+
+> **Note**: For standard production with BOM, use **TC 20.1: BOM-Driven Auto-Populate** (primary workflow)
 
 **Steps**:
 1. Login as Manager
-2. Navigate to: Manager Dashboard → Inventory Management → Raw Materials
+2. Navigate to: Production → Raw Material Issuance
 3. Click "Issue Material" button
-4. Fill in:
-   - Material: "Steel Plate 5mm"
-   - Quantity: 100 kg
-   - Issued To: Production Line 1
-   - Purpose: "Job Order #1234"
-   - Date: Today
-5. Click "Issue Material"
-6. **Expected Result**: Inventory deducted, transaction recorded, stock level updated
+4. Fill header details:
+   - Issuance Date: Today
+   - Issued To: "Production Line 1"
+   - Production Reference: "Maintenance Job #1234"
+   - Leave "Product" field empty (or select product without BOM)
+5. Click "Add off-BOM Item" to manually add materials
+6. For each material:
+   - Select Material: "Steel Plate 5mm"
+   - Enter Quantity: 100 kg
+   - Add Remarks: "Ad-hoc maintenance repair"
+7. Click "Create Issuance"
+8. **Expected Result**: 
+   - Issuance created successfully
+   - Raw material inventory deducted (100 kg)
+   - Transaction recorded with manual entry marker
+   - Stock level updated
+
+**Edge Case Coverage**:
+- ✅ Products without BOM
+- ✅ Off-BOM materials (consumables, spare parts)
+- ✅ Manual quantity overrides
+- ✅ Ad-hoc/maintenance issuances
 
 ---
 
@@ -1806,65 +1829,83 @@ COMMENT ON COLUMN credit_notes.approved_by IS
 
 ---
 
-## 20. BOM-Driven Raw Material Issuance
+## 20. BOM-Driven Raw Material Issuance (PRIMARY WORKFLOW)
+
+> **🎯 This is the PRIMARY workflow** for raw material issuance in production scenarios. For edge cases (products without BOM, ad-hoc materials), see **TC 4.2: Manual/Ad-hoc Issuance**.
 
 ### Test Case 20.1: Issue Raw Materials with BOM Auto-Populate
 **Role**: Manager / Operator  
 **Objective**: Verify BOM items auto-populate when issuing materials for production  
-**Priority**: Critical
+**Priority**: Critical  
+**Status**: ✅ COMPLETED (November 2025)
 
 **Steps**:
-1. Navigate to: Production → Issue Raw Material
-2. Click "Add Issuance"
+1. Navigate to: Production → Raw Material Issuance
+2. Click "Issue Material" button
 3. Fill header details:
-   - Date: Today
-   - Product: Select "1 Liter PET Bottle Water" (has BOM)
+   - Issuance Date: Today
+   - Product: Select "Test Water Bottle 1L (BOM Sample)" (has BOM)
    - Issued To: "Production Line 1"
-   - Shift: "Day Shift"
-   - Production Quantity: 1000 bottles
+   - Planned Output: 1000 bottles
 4. **Verify BOM Auto-Populate**:
-   - System should automatically populate all BOM items
-   - Row 1: Preform 21g - Qty: 1200 (1000 × 1.2)
-   - Row 2: Cap 28mm - Qty: 1000 (1000 × 1)
-   - Row 3: Shrink Film - Qty: 300 (1000 × 0.3)
-5. **User can modify quantities** if needed
-6. Click "Save Issuance"
+   - System automatically populates all BOM items
+   - Toast notification: "BOM Loaded - X materials auto-populated"
+   - Example for test product:
+     - Row 1: Material A - Qty: 1200 (1000 × 1.2)
+     - Row 2: Material B - Qty: 1000 (1000 × 1)
+     - Row 3: Material C - Qty: 300 (1000 × 0.3)
+5. **User can**:
+   - View suggested quantities (calculated from BOM)
+   - Modify quantities if needed
+   - Add additional off-BOM items using "Add off-BOM Item" button
+6. Click "Create Issuance"
 
 **Expected Results**:
-- All BOM items auto-populate based on production quantity
-- Quantities calculated: Production Qty × BOM Qty
-- User can add additional items not in BOM
-- User can modify auto-populated quantities
-- Issuance saved successfully
-- Raw material inventory deducted
-- Issuance appears in issuance list
+- ✅ All BOM items auto-populate based on production quantity
+- ✅ Quantities calculated: Planned Output × BOM Quantity Required
+- ✅ User can add additional items not in BOM
+- ✅ User can modify auto-populated quantities
+- ✅ Issuance saved successfully (no validation errors)
+- ✅ Raw material inventory deducted
+- ✅ Issuance appears in issuance list
+- ✅ Calculation basis tracked (formula-based, direct-value, manual)
 
-**Calculation Verification**:
+**Calculation Methods**:
+1. **With Type Conversion**: Uses formula-based/direct-value/output-coverage
+2. **Without Type Conversion**: Basic BOM calc (Planned Output × Qty Required)
+3. **Graceful Degradation**: Materials without conversion data still populate
+
+**Calculation Examples**:
 - Preform: 1000 bottles × 1.2 = 1200 pieces
 - Cap: 1000 bottles × 1 = 1000 pieces
 - Shrink: 1000 bottles × 0.3m = 300 meters
 
-**Test Status**: ⬜ PENDING
+**Test Status**: ✅ **COMPLETED** - All scenarios verified
 
 ---
 
-### Test Case 20.2: Issue Materials for Product Without BOM
+### Test Case 20.2: Issue Materials for Product Without BOM (Fallback to Manual)
 **Role**: Manager  
-**Objective**: Handle material issuance when product has no BOM  
+**Objective**: Handle material issuance when product has no BOM defined  
 **Priority**: Medium
 
+> **Note**: This scenario automatically falls back to manual entry. See **TC 4.2** for detailed manual issuance workflow.
+
 **Steps**:
-1. Create issuance for product without BOM: "Generic Product"
-2. Select product
-3. Verify no items auto-populate
-4. Manually add raw materials
-5. Save issuance
+1. Navigate to: Production → Raw Material Issuance
+2. Click "Issue Material"
+3. Select product without BOM: "Generic Product"
+4. Enter Planned Output (optional)
+5. Verify no items auto-populate
+6. Click "Add off-BOM Item" to manually add raw materials
+7. Save issuance
 
 **Expected Results**:
-- Warning shown: "Product has no BOM defined"
-- Items table is empty
+- No auto-populate occurs (product has no BOM)
+- Items table is empty, ready for manual entry
 - User can manually add any raw materials
-- Issuance works normally
+- Issuance works normally (falls back to TC 4.2 workflow)
+- Calculation basis marked as "manual"
 
 **Test Status**: ⬜ PENDING
 
