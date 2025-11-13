@@ -17,6 +17,14 @@ async function logAudit(userId: string | undefined, action: string, table: strin
 }
 import { eq, and, ne, gte, lte, desc, inArray } from "drizzle-orm";
 
+// Custom error class for database conflicts (used in transactions)
+class ConflictError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ConflictError';
+  }
+}
+
 // Authentication middleware
 function isAuthenticated(req: Request, res: Response, next: NextFunction) {
   if (req.isAuthenticated()) {
@@ -3043,15 +3051,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Record vehicle exit (Security gate operation)
   app.patch('/api/gatepasses/:id/vehicle-exit', requireRole('admin', 'manager', 'operator'), async (req: any, res) => {
+    const { id } = req.params;
+    const { outTime, verifiedBy } = req.body;
+    
     try {
-      const { id } = req.params;
-      const { outTime, verifiedBy } = req.body;
-      
+      // === STEP 1: VALIDATE ALL INPUTS ===
       if (!outTime || !verifiedBy) {
         return res.status(400).json({ message: "outTime and verifiedBy are required" });
       }
       
-      // Verify gatepass is in "generated" status
+      // === STEP 2: VALIDATE GATEPASS EXISTS AND STATUS ===
       const [existing] = await db.select().from(gatepasses).where(eq(gatepasses.id, id));
       if (!existing) {
         return res.status(404).json({ message: "Gatepass not found" });
@@ -3059,12 +3068,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (existing.status !== 'generated') {
         return res.status(400).json({ 
-          message: `Cannot record vehicle exit. Gatepass status must be 'generated' but is '${existing.status}'` 
+          message: `Cannot record vehicle exit. Gatepass status must be 'generated' but is '${existing.status}'. Vehicle exit may have already been recorded.` 
         });
       }
       
-      // CRITICAL GUARD: Validate invoice status BEFORE making any updates
-      // This prevents duplicate vehicle exits and ensures proper state machine flow
+      // === STEP 3: VALIDATE INVOICE STATUS (CRITICAL GUARD) ===
+      // This prevents duplicate vehicle exits - invoice must be in "ready_for_gatepass" status
       if (existing.invoiceId) {
         const [linkedInvoice] = await db.select().from(invoices).where(eq(invoices.id, existing.invoiceId));
         if (!linkedInvoice) {
@@ -3078,36 +3087,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Update gatepass with vehicle exit details
-      const [updated] = await db.update(gatepasses)
-        .set({
-          outTime: new Date(outTime),
-          verifiedBy,
-          status: 'vehicle_out'
-        })
-        .where(eq(gatepasses.id, id))
-        .returning();
+      // === STEP 4: ALL VALIDATIONS PASSED - PERFORM TRANSACTIONAL UPDATE ===
+      // CRITICAL: Use database transaction to prevent TOCTOU race conditions
+      // Both gatepass and invoice updates succeed together or fail together (atomic)
+      let updated;
       
-      if (!updated) {
-        return res.status(404).json({ message: "Gatepass not found" });
+      try {
+        updated = await db.transaction(async (tx) => {
+          // Update gatepass ONLY if status is still "generated"
+          const updatedGatepasses = await tx.update(gatepasses)
+            .set({
+              outTime: new Date(outTime),
+              verifiedBy,
+              status: 'vehicle_out'
+            })
+            .where(
+              and(
+                eq(gatepasses.id, id),
+                eq(gatepasses.status, 'generated')  // Atomic status guard
+              )
+            )
+            .returning();
+          
+          // If 0 rows updated, gatepass status changed (race condition detected)
+          if (updatedGatepasses.length === 0) {
+            throw new ConflictError("Vehicle exit already recorded. Gatepass status is no longer 'generated'.");
+          }
+          
+          const gatepass = updatedGatepasses[0];
+          
+          // Update linked invoice ONLY if status is still "ready_for_gatepass"
+          if (gatepass.invoiceId) {
+            const updatedInvoices = await tx.update(invoices)
+              .set({
+                status: 'dispatched',
+                dispatchDate: new Date(outTime),
+                vehicleNumber: gatepass.vehicleNumber,
+                transportMode: 'Road'
+              })
+              .where(
+                and(
+                  eq(invoices.id, gatepass.invoiceId),
+                  eq(invoices.status, 'ready_for_gatepass')  // Atomic status guard
+                )
+              )
+              .returning();
+            
+            // If 0 rows updated, invoice status changed (race condition detected)
+            if (updatedInvoices.length === 0) {
+              throw new ConflictError("Vehicle exit already recorded. Invoice status is no longer 'ready_for_gatepass'.");
+            }
+          }
+          
+          // Both updates succeeded - return gatepass
+          return gatepass;
+        });
+      } catch (error: any) {
+        // Handle ConflictError (thrown from transaction) or its wrapped version
+        // Drizzle wraps errors in TransactionRollbackError with originalError or cause property
+        const conflictError = (error instanceof ConflictError) 
+          ? error 
+          : (error.originalError instanceof ConflictError ? error.originalError 
+            : (error.cause instanceof ConflictError ? error.cause : null));
+        
+        if (conflictError) {
+          return res.status(409).json({ 
+            message: conflictError.message
+          });
+        }
+        
+        // Unexpected error - let it propagate to outer catch block
+        throw error;
       }
       
-      // Update linked invoice status to "dispatched" (preconditions already validated above)
-      if (updated.invoiceId) {
-        await db.update(invoices)
-          .set({
-            status: 'dispatched',
-            dispatchDate: new Date(outTime),
-            vehicleNumber: updated.vehicleNumber,
-            transportMode: 'Road'
-          })
-          .where(eq(invoices.id, updated.invoiceId));
-      }
-      
-      res.json({ gatepass: updated, message: "Vehicle exit recorded successfully" });
+      return res.json({ gatepass: updated, message: "Vehicle exit recorded successfully" });
     } catch (error) {
       console.error("Error recording vehicle exit:", error);
-      res.status(500).json({ message: "Failed to record vehicle exit" });
+      return res.status(500).json({ message: "Failed to record vehicle exit" });
     }
   });
 

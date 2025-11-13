@@ -19,7 +19,7 @@ The backend is an Express.js application built with TypeScript and Node.js. It e
 - **Automated Reminder Systems:** Includes Machine Startup Reminders and Missed Checklist Notifications via WhatsApp and Email.
 - **WhatsApp Checklist Completion System:** Enables operators to complete checklists via WhatsApp with incremental task submission, photo uploads, and spare part requests.
 - **Invoice & Gatepass Management:** Enforces an Invoice-First Gatepass Flow, manages templates, and includes enhanced forms with print preview and smart item entry.
-- **Complete Dispatch Tracking Workflow:** A 5-stage workflow from Invoice Creation to Proof of Delivery, including status validation and digital signature.
+- **Complete Dispatch Tracking Workflow:** A 5-stage workflow from Invoice Creation to Proof of Delivery with strict state machine enforcement, TOCTOU race condition protection via database transactions, atomic status updates, optional digital signature, and comprehensive validation guards to prevent duplicate operations and out-of-order state transitions.
 - **Comprehensive Role Permissions Management:** Granular access control across 36 system screens with metadata-driven UI.
 - **Raw Material Type Master System:** Manages raw material definitions with three conversion methods and accounts for loss percentage, integrating with enhanced raw material entry for dual stock management modes.
 - **Product Master with Bill of Materials (BOM):** Comprehensive product management with a multi-tabbed form interface, supporting empty BOMs and atomic BOM replacements.
@@ -36,7 +36,7 @@ The backend is an Express.js application built with TypeScript and Node.js. It e
 
 ### System Design Choices
 - **Authentication:** Users can log in with username or email.
-- **Dispatch Workflow:** Invoice-first, tamper-proof state machine with backend validation and digital signature.
+- **Dispatch Workflow:** Invoice-first, tamper-proof state machine with strict backend validation, ConflictError-based race condition prevention, database transactions for atomic updates, and optional digital signature. Enforces lifecycle: Invoice (ready_for_gatepass → dispatched → delivered) synchronized with Gatepass (generated → vehicle_out → delivered). Uses conditional WHERE clauses with status guards to prevent TOCTOU vulnerabilities and returns 409 Conflict for concurrent modification attempts.
 - **Inventory Management Logic:** Inventory deduction on gatepass creation. Raw Material inventory supports "Opening Stock Entry Only" and "Ongoing Inventory" modes. Finished goods require explicit quality approval. Invoice/gatepass cancellations trigger automatic inventory returns. Production reconciliation returned materials update raw material inventory with audit trail.
 - **Production Reconciliation Design:** `netConsumed` calculated dynamically, composite unique index for data integrity, and server-side enforced role-based edit limits.
 - **WhatsApp Integration:** Uses Meta WhatsApp Business Cloud API for incremental checklist completion, including photo uploads and spare part requests.
