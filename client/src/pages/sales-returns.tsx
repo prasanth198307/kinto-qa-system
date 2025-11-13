@@ -123,7 +123,8 @@ export default function SalesReturnsPage() {
   };
 
   const handleInspect = async (returnRecord: any) => {
-    const returnWithItems = await apiRequest('GET', `/api/sales-returns/${returnRecord.id}`);
+    const response = await apiRequest('GET', `/api/sales-returns/${returnRecord.id}`);
+    const returnWithItems = await response.json();
     setSelectedReturn(returnWithItems);
     setInspectDialogOpen(true);
   };
