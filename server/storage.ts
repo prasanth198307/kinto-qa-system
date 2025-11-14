@@ -414,8 +414,8 @@ export interface IStorage {
   
   // Sales Returns
   createSalesReturn(salesReturn: InsertSalesReturn): Promise<SalesReturn>;
-  getAllSalesReturns(): Promise<SalesReturn[]>;
-  getSalesReturn(id: string): Promise<SalesReturn | undefined>;
+  getAllSalesReturns(): Promise<(SalesReturn & { invoiceNumber: string | null })[]>;
+  getSalesReturn(id: string): Promise<(SalesReturn & { invoiceNumber: string | null }) | undefined>;
   getSalesReturnByNumber(returnNumber: string): Promise<SalesReturn | undefined>;
   getSalesReturnsByInvoice(invoiceId: string): Promise<SalesReturn[]>;
   updateSalesReturn(id: string, updates: Partial<InsertSalesReturn>): Promise<SalesReturn | undefined>;
@@ -2074,13 +2074,68 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async getAllSalesReturns(): Promise<SalesReturn[]> {
-    return await db.select().from(salesReturns).where(eq(salesReturns.recordStatus, 1));
+  async getAllSalesReturns(): Promise<(SalesReturn & { invoiceNumber: string | null })[]> {
+    const results = await db
+      .select({
+        id: salesReturns.id,
+        returnNumber: salesReturns.returnNumber,
+        returnDate: salesReturns.returnDate,
+        invoiceId: salesReturns.invoiceId,
+        gatepassId: salesReturns.gatepassId,
+        returnReason: salesReturns.returnReason,
+        returnType: salesReturns.returnType,
+        status: salesReturns.status,
+        receivedDate: salesReturns.receivedDate,
+        inspectedDate: salesReturns.inspectedDate,
+        inspectedBy: salesReturns.inspectedBy,
+        creditNoteNumber: salesReturns.creditNoteNumber,
+        creditNoteDate: salesReturns.creditNoteDate,
+        totalCreditAmount: salesReturns.totalCreditAmount,
+        creditNoteStatus: salesReturns.creditNoteStatus,
+        remarks: salesReturns.remarks,
+        recordStatus: salesReturns.recordStatus,
+        createdBy: salesReturns.createdBy,
+        createdAt: salesReturns.createdAt,
+        updatedAt: salesReturns.updatedAt,
+        invoiceNumber: invoices.invoiceNumber,
+      })
+      .from(salesReturns)
+      .leftJoin(invoices, eq(salesReturns.invoiceId, invoices.id))
+      .where(eq(salesReturns.recordStatus, 1));
+    
+    return results as (SalesReturn & { invoiceNumber: string | null })[];
   }
 
-  async getSalesReturn(id: string): Promise<SalesReturn | undefined> {
-    const [salesReturn] = await db.select().from(salesReturns).where(and(eq(salesReturns.id, id), eq(salesReturns.recordStatus, 1)));
-    return salesReturn;
+  async getSalesReturn(id: string): Promise<(SalesReturn & { invoiceNumber: string | null }) | undefined> {
+    const results = await db
+      .select({
+        id: salesReturns.id,
+        returnNumber: salesReturns.returnNumber,
+        returnDate: salesReturns.returnDate,
+        invoiceId: salesReturns.invoiceId,
+        gatepassId: salesReturns.gatepassId,
+        returnReason: salesReturns.returnReason,
+        returnType: salesReturns.returnType,
+        status: salesReturns.status,
+        receivedDate: salesReturns.receivedDate,
+        inspectedDate: salesReturns.inspectedDate,
+        inspectedBy: salesReturns.inspectedBy,
+        creditNoteNumber: salesReturns.creditNoteNumber,
+        creditNoteDate: salesReturns.creditNoteDate,
+        totalCreditAmount: salesReturns.totalCreditAmount,
+        creditNoteStatus: salesReturns.creditNoteStatus,
+        remarks: salesReturns.remarks,
+        recordStatus: salesReturns.recordStatus,
+        createdBy: salesReturns.createdBy,
+        createdAt: salesReturns.createdAt,
+        updatedAt: salesReturns.updatedAt,
+        invoiceNumber: invoices.invoiceNumber,
+      })
+      .from(salesReturns)
+      .leftJoin(invoices, eq(salesReturns.invoiceId, invoices.id))
+      .where(and(eq(salesReturns.id, id), eq(salesReturns.recordStatus, 1)));
+    
+    return results[0] as (SalesReturn & { invoiceNumber: string | null }) | undefined;
   }
 
   async getSalesReturnByNumber(returnNumber: string): Promise<SalesReturn | undefined> {

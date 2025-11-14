@@ -434,7 +434,9 @@ export default function SalesReturnsPage() {
                 returns.map((returnRecord: any) => (
                   <TableRow key={returnRecord.id} data-testid={`row-return-${returnRecord.id}`}>
                     <TableCell className="font-medium">{returnRecord.returnNumber}</TableCell>
-                    <TableCell>{returnRecord.invoiceId}</TableCell>
+                    <TableCell data-testid={`text-invoice-number-${returnRecord.id}`}>
+                      {returnRecord.invoiceNumber || returnRecord.invoiceId}
+                    </TableCell>
                     <TableCell>{format(new Date(returnRecord.returnDate), "dd MMM yyyy")}</TableCell>
                     <TableCell>{returnRecord.returnReason.replace(/_/g, ' ')}</TableCell>
                     <TableCell>{getStatusBadge(returnRecord.status)}</TableCell>
