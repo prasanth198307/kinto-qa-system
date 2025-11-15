@@ -120,6 +120,49 @@ All 24 major workflows have been comprehensively tested and validated across 100
 
 ---
 
+## Documentation
+
+### Multi-Language End User Manual (Updated: November 15, 2025)
+**Status**: ✅ **COMPLETE - 3 LANGUAGES**
+
+Comprehensive illustrated end user manuals with 34+ screenshots covering all 24 workflows:
+
+#### Available Languages
+1. **English Manual** (4.4 MB PDF)
+   - Path: `docs/deployment/KINTO_End_User_Manual.pdf`
+   - Comprehensive coverage of all features with embedded screenshots
+   
+2. **Telugu Manual** (తెలుగు) (1.0 MB PDF)
+   - Path: `docs/deployment/KINTO_End_User_Manual_Telugu.pdf`
+   - Path (HTML): `docs/deployment/KINTO_End_User_Manual_Telugu.html`
+   - Full translation with all screenshots embedded
+   
+3. **Hindi Manual** (हिंदी) (663 KB PDF)
+   - Path: `docs/deployment/KINTO_End_User_Manual_Hindi.pdf`
+   - Path (HTML): `docs/deployment/KINTO_End_User_Manual_Hindi.html`
+   - Full translation with all screenshots embedded
+
+#### Documentation Coverage
+- Getting Started & Login
+- Admin workflows (User Management, Roles & Permissions, Master Data)
+- Operator workflows (QA Checklists, Raw Material Issuance, Production Entry)
+- Reviewer workflows (Quality Verification, Approval Processes)
+- Manager workflows (Reports, Analytics, Payment Tracking)
+- All 24 major features with role-specific instructions
+
+#### Screenshot Library
+- Total Screenshots: 40 PNG files
+- Location: `attached_assets/screenshots/`
+- Coverage: Login, Dashboard, Forms, Reports, Analytics, Mobile Views
+
+#### Technical Implementation
+- PDF Generation: Playwright with headless Chromium
+- Screenshot Integration: Base64 embedded data URIs
+- System Dependency: Chromium installed via Nix
+- Generator Script: `scripts/generate_manuals_pdf.ts`
+
+---
+
 ## External Dependencies
 
 ### Database
