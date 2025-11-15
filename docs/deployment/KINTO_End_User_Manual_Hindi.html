@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KINTO Smart Ops - यूज़र मैनुअल</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 20mm;
+        }
+        
+        body {
+            font-family: 'Noto Sans Devanagari', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 210mm;
+            margin: 0 auto;
+            padding: 20px;
+            background: white;
+        }
+        
+        h1 {
+            color: #0d9488;
+            border-bottom: 3px solid #0d9488;
+            padding-bottom: 10px;
+            font-size: 28px;
+            margin-top: 30px;
+        }
+        
+        h2 {
+            color: #0d9488;
+            font-size: 22px;
+            margin-top: 25px;
+            border-left: 5px solid #0d9488;
+            padding-left: 15px;
+        }
+        
+        h3 {
+            color: #0f766e;
+            font-size: 18px;
+            margin-top: 20px;
+        }
+        
+        h4 {
+            color: #134e4a;
+            font-size: 16px;
+            margin-top: 15px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            border-bottom: 2px solid #0d9488;
+            padding-bottom: 20px;
+        }
+        
+        .header img {
+            max-width: 150px;
+            margin-bottom: 20px;
+        }
+        
+        .header h1 {
+            color: #0d9488;
+            font-size: 32px;
+            margin: 10px 0;
+            border: none;
+        }
+        
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .screenshot {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 20px 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            page-break-inside: avoid;
+        }
+        
+        .screenshot-caption {
+            text-align: center;
+            font-style: italic;
+            color: #666;
+            margin-top: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        
+        .step-box {
+            background: #f0fdfa;
+            border-left: 4px solid #0d9488;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+            page-break-inside: avoid;
+        }
+        
+        .note-box {
+            background: #fffbeb;
+            border-left: 4px solid #f59e0b;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+            page-break-inside: avoid;
+        }
+        
+        .warning-box {
+            background: #fef2f2;
+            border-left: 4px solid #ef4444;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+            page-break-inside: avoid;
+        }
+        
+        .info-box {
+            background: #eff6ff;
+            border-left: 4px solid #3b82f6;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+            page-break-inside: avoid;
+        }
+        
+        ul, ol {
+            margin: 10px 0;
+            padding-left: 30px;
+        }
+        
+        li {
+            margin: 8px 0;
+        }
+        
+        code {
+            background: #f3f4f6;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        
+        .page-break {
+            page-break-before: always;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            page-break-inside: avoid;
+        }
+        
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        
+        th {
+            background: #0d9488;
+            color: white;
+        }
+        
+        tr:nth-child(even) {
+            background: #f9fafb;
+        }
+        
+        .toc {
+            background: #f9fafb;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .toc ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .toc li {
+            margin: 8px 0;
+            padding-left: 20px;
+        }
+        
+        .toc a {
+            color: #0d9488;
+            text-decoration: none;
+        }
+        
+        .toc a:hover {
+            text-decoration: underline;
+        }
+        
+        @media print {
+            body {
+                background: white;
+            }
+            
+            .page-break {
+                page-break-before: always;
+            }
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div class="header">
+    <h1>🏭 KINTO Smart Ops</h1>
+    <h2>संपूर्ण यूज़र मैनुअल</h2>
+    <p><strong>विनिर्माण संचालन और गुणवत्ता प्रबंधन प्रणाली</strong></p>
+    <p>संस्करण: 1.0.0 | तिथि: 15 नवंबर, 2025</p>
+</div>
+
+<div class="toc">
+    <h2>📑 विषय सूची</h2>
+    <ul>
+        <li><a href="#section-1">1. परिचय</a></li>
+        <li><a href="#section-2">2. शुरुआत करना</a></li>
+        <li><a href="#section-3">3. Admin Role - प्रशासक भूमिका</a></li>
+        <li><a href="#section-4">4. Operator Role - ऑपरेटर भूमिका</a></li>
+        <li><a href="#section-5">5. Reviewer Role - समीक्षक भूमिका</a></li>
+        <li><a href="#section-6">6. Manager Role - प्रबंधक भूमिका</a></li>
+        <li><a href="#section-7">7. इन्वेंटरी प्रबंधन</a></li>
+        <li><a href="#section-8">8. बिक्री और डिस्पैच</a></li>
+        <li><a href="#section-9">9. रिपोर्ट और Analytics</a></li>
+        <li><a href="#section-10">10. मोबाइल ऐप का उपयोग</a></li>
+    </ul>
+</div>
+
+<div class="page-break"></div>
+
+<h1 id="section-1">1. परिचय</h1>
+
+<h2>KINTO Smart Ops क्या है?</h2>
+
+<p>KINTO Smart Ops एक व्यापक विनिर्माण संचालन और गुणवत्ता प्रबंधन प्रणाली है जो औद्योगिक वातावरण के लिए डिज़ाइन की गई है। यह प्रणाली निम्नलिखित को प्रबंधित करती है:</p>
+
+<ul>
+    <li>✅ <strong>गुणवत्ता आश्वासन (QA)</strong> - दैनिक चेकलिस्ट और निरीक्षण</li>
+    <li>✅ <strong>निवारक रखरखाव (PM)</strong> - अनुसूचित रखरखाव कार्य</li>
+    <li>✅ <strong>इन्वेंटरी प्रबंधन</strong> - कच्चा माल और तैयार माल</li>
+    <li>✅ <strong>बिक्री और इनवॉइसिंग</strong> - GST-अनुपालक इनवॉइस</li>
+    <li>✅ <strong>डिस्पैच ट्रैकिंग</strong> - 5-चरणीय डिलीवरी वर्कफ़्लो</li>
+    <li>✅ <strong>भुगतान ट्रैकिंग</strong> - FIFO आवंटन और देय निगरानी</li>
+    <li>✅ <strong>उत्पादन प्रबंधन</strong> - BOM-संचालित कच्चा माल जारी करना</li>
+    <li>✅ <strong>रिपोर्टिंग और Analytics</strong> - संपूर्ण व्यापार अंतर्दृष्टि</li>
+</ul>
+
+<div class="info-box">
+    <strong>📱 मोबाइल-अनुकूल:</strong> KINTO Smart Ops को आप डेस्कटॉप, टैबलेट, या स्मार्टफोन से उपयोग कर सकते हैं। फ़ैक्टरी फ्लोर पर काम करने के लिए पूरी तरह से अनुकूलित।
+</div>
+
+<h2>मुख्य विशेषताएं</h2>
+
+<div class="step-box">
+    <h3>🎯 भूमिका-आधारित एक्सेस नियंत्रण</h3>
+    <p>सिस्टम चार मुख्य भूमिकाओं का समर्थन करता है:</p>
+    <ul>
+        <li><strong>Admin</strong> - संपूर्ण सिस्टम कॉन्फ़िगरेशन और सेटअप</li>
+        <li><strong>Operator</strong> - चेकलिस्ट पूर्णता और PM निष्पादन</li>
+        <li><strong>Reviewer</strong> - गुणवत्ता जांच और सत्यापन</li>
+        <li><strong>Manager</strong> - निगरानी, रिपोर्ट, और अनुमोदन</li>
+    </ul>
+</div>
+
+<div class="page-break"></div>
+
+<h1 id="section-2">2. शुरुआत करना</h1>
+
+<h2>2.1 एप्लिकेशन तक पहुंच</h2>
+
+<div class="step-box">
+    <h3>चरण 1: लॉगिन पेज खोलें</h3>
+    <ol>
+        <li>अपना वेब ब्राउज़र खोलें (Chrome, Firefox, Safari, या Edge)</li>
+        <li>KINTO Smart Ops URL टाइप करें</li>
+        <li>आप लॉगिन स्क्रीन देखेंगे</li>
+    </ol>
+</div>
+
+<img src="../../attached_assets/screenshots/01_login_page.png" alt="Login Page" class="screenshot">
+<p class="screenshot-caption">चित्र 1: KINTO Smart Ops लॉगिन पेज</p>
+
+<div class="step-box">
+    <h3>चरण 2: अपने क्रेडेंशियल्स के साथ लॉगिन करें</h3>
+    <ol>
+        <li><strong>Username या Email</strong> फ़ील्ड में अपना username टाइप करें</li>
+        <li><strong>Password</strong> फ़ील्ड में अपना पासवर्ड दर्ज करें</li>
+        <li><strong>"Login"</strong> बटन पर क्लिक करें</li>
+    </ol>
+</div>
+
+<div class="note-box">
+    <strong>💡 नोट:</strong> आपके admin ने आपको username और पासवर्ड प्रदान किया है। पहली बार लॉगिन के बाद अपना पासवर्ड बदलने की सिफारिश की जाती है।
+</div>
+
+<h2>2.2 Dashboard Navigation</h2>
+
+<p>सफल लॉगिन के बाद, आप अपनी भूमिका के आधार पर dashboard देखेंगे:</p>
+
+<img src="../../attached_assets/screenshots/02_admin_dashboard.png" alt="Admin Dashboard" class="screenshot">
+<p class="screenshot-caption">चित्र 2: Admin Dashboard - मुख्य स्क्रीन</p>
+
+<div class="info-box">
+    <h3>🧭 Sidebar Navigation</h3>
+    <p>बाईं ओर sidebar विभिन्न अनुभागों तक त्वरित पहुंच प्रदान करता है:</p>
+    <ul>
+        <li><strong>Dashboard</strong> - मुख्य अवलोकन और आंकड़े</li>
+        <li><strong>Quality Checklists</strong> - QA चेकलिस्ट प्रबंधन</li>
+        <li><strong>Maintenance</strong> - PM शेड्यूलिंग और निष्पादन</li>
+        <li><strong>Inventory</strong> - स्टॉक प्रबंधन</li>
+        <li><strong>Sales</strong> - इनवॉइस और गेटपास</li>
+        <li><strong>Reports</strong> - विश्लेषणात्मक रिपोर्ट</li>
+    </ul>
+</div>
+
+<img src="../../attached_assets/screenshots/03_sidebar_navigation.png" alt="Sidebar Navigation" class="screenshot">
+<p class="screenshot-caption">चित्र 3: Sidebar Navigation Menu</p>
+
+<div class="page-break"></div>
+
+<h1 id="section-3">3. Admin Role - प्रशासक भूमिका</h1>
+
+<h2>3.1 Admin भूमिका अवलोकन</h2>
+
+<p>Admin भूमिका में संपूर्ण सिस्टम कॉन्फ़िगरेशन और सेटअप जिम्मेदारियां शामिल हैं:</p>
+
+<ul>
+    <li>✅ उपयोगकर्ता खातों और भूमिकाओं का प्रबंधन</li>
+    <li>✅ मशीनों और स्थानों को सेटअप करना</li>
+    <li>✅ चेकलिस्ट टेम्प्लेट बनाना</li>
+    <li>✅ PM टेम्प्लेट डिज़ाइन करना</li>
+    <li>✅ इन्वेंटरी आइटम कॉन्फ़िगर करना</li>
+    <li>✅ विक्रेताओं का प्रबंधन</li>
+    <li>✅ सिस्टम अनुमतियों को नियंत्रित करना</li>
+</ul>
+
+<h2>3.2 Quality Checklist Templates बनाना</h2>
+
+<div class="step-box">
+    <h3>QA Checklist Template जोड़ना</h3>
+    <ol>
+        <li>Sidebar से <strong>"Checklists"</strong> पर क्लिक करें</li>
+        <li><strong>"Create Template"</strong> बटन (ऊपरी दाएं कोने में) क्लिक करें</li>
+        <li>टेम्प्लेट विवरण भरें:
+            <ul>
+                <li><strong>Template Name:</strong> चेकलिस्ट के लिए विवरणात्मक नाम</li>
+                <li><strong>Description:</strong> चेकलिस्ट का उद्देश्य</li>
+                <li><strong>Machine Type:</strong> किस मशीन के लिए</li>
+                <li><strong>Frequency:</strong> कितनी बार निष्पादित करना है</li>
+            </ul>
+        </li>
+        <li>चेकलिस्ट आइटम जोड़ें</li>
+        <li><strong>"Save Template"</strong> पर क्लिक करें</li>
+    </ol>
+</div>
+
+<img src="../../attached_assets/screenshots/03_qa_checklist_list.png" alt="QA Checklist List" class="screenshot">
+<p class="screenshot-caption">चित्र 4: Quality Checklist Templates सूची</p>
+
+<img src="../../attached_assets/screenshots/04_qa_checklist_form.png" alt="QA Checklist Form" class="screenshot">
+<p class="screenshot-caption">चित्र 5: Checklist Template बनाने का फॉर्म</p>
+
+<h2>3.3 Preventive Maintenance Templates</h2>
+
+<div class="step-box">
+    <h3>PM Template बनाना</h3>
+    <ol>
+        <li><strong>"Maintenance"</strong> → <strong>"PM Templates"</strong> पर navigate करें</li>
+        <li><strong>"Create PM Template"</strong> पर क्लिक करें</li>
+        <li>विवरण दर्ज करें:
+            <ul>
+                <li><strong>Template Name:</strong> रखरखाव कार्य का नाम</li>
+                <li><strong>Machine Type:</strong> संबंधित मशीन</li>
+                <li><strong>Frequency:</strong> दिनों में आवृत्ति (उदा., 30 दिन)</li>
+                <li><strong>Estimated Duration:</strong> अनुमानित समय</li>
+            </ul>
+        </li>
+        <li>PM Tasks जोड़ें (प्रत्येक चरण का वर्णन करें)</li>
+        <li>आवश्यक Spare Parts लिंक करें</li>
+        <li><strong>"Save Template"</strong> पर क्लिक करें</li>
+    </ol>
+</div>
+
+<img src="../../attached_assets/screenshots/06_preventive_maintenance.png" alt="Preventive Maintenance" class="screenshot">
+<p class="screenshot-caption">चित्र 6: Preventive Maintenance Template फॉर्म</p>
+
+<div class="page-break"></div>
+
+<h1 id="section-4">4. Operator Role - ऑपरेटर भूमिका</h1>
+
+<h2>4.1 Operator जिम्मेदारियां</h2>
+
+<p>Operator भूमिका दैनिक गुणवत्ता और रखरखाव गतिविधियों पर केंद्रित है:</p>
+
+<ul>
+    <li>✅ दैनिक QA चेकलिस्ट पूरी करना</li>
+    <li>✅ अनुसूचित PM कार्य निष्पादित करना</li>
+    <li>✅ मशीन startup चेकलिस्ट रिकॉर्ड करना</li>
+    <li>✅ निरीक्षण के दौरान फोटो अपलोड करना</li>
+    <li>✅ मुद्दों और पाई गई कमियों की रिपोर्ट करना</li>
+    <li>✅ WhatsApp के माध्यम से चेकलिस्ट सबमिट करना (मोबाइल)</li>
+</ul>
+
+<h2>4.2 Daily Quality Checklist पूरी करना</h2>
+
+<div class="step-box">
+    <h3>Checklist निष्पादित करना</h3>
+    <ol>
+        <li>Operator dashboard से <strong>"My Checklists"</strong> पर क्लिक करें</li>
+        <li>असाइन की गई चेकलिस्ट (रंग: नारंगी या लाल badge) चुनें</li>
+        <li><strong>"Start Checklist"</strong> पर क्लिक करें</li>
+        <li>प्रत्येक आइटम भरें:
+            <ul>
+                <li><strong>Yes/No questions:</strong> उपयुक्त विकल्प चुनें</li>
+                <li><strong>Numeric values:</strong> माप दर्ज करें (उदा., temperature)</li>
+                <li><strong>Text responses:</strong> टिप्पणियां टाइप करें</li>
+                <li><strong>Photo uploads:</strong> यदि आवश्यक हो तो छवियां जोड़ें</li>
+            </ul>
+        </li>
+        <li>यदि समस्याएं पाई जाएं तो टिप्पणियां जोड़ें</li>
+        <li>समीक्षा के लिए <strong>"Submit for Review"</strong> पर क्लिक करें</li>
+    </ol>
+</div>
+
+<img src="../../attached_assets/screenshots/04_qa_checklists.png" alt="QA Checklist Execution" class="screenshot">
+<p class="screenshot-caption">चित्र 7: Daily Quality Checklist निष्पादन</p>
+
+<div class="warning-box">
+    <strong>⚠️ महत्वपूर्ण:</strong> एक बार सबमिट करने के बाद, आप checklist को संपादित नहीं कर सकते। सबमिट करने से पहले सुनिश्चित करें कि सभी प्रविष्टियां सही हैं।
+</div>
+
+<h2>4.3 Preventive Maintenance निष्पादित करना</h2>
+
+<div class="step-box">
+    <h3>PM Task पूरा करना</h3>
+    <ol>
+        <li><strong>"Maintenance"</strong> → <strong>"My PM Tasks"</strong> पर navigate करें</li>
+        <li>असाइन किए गए PM कार्य को चुनें</li>
+        <li><strong>"Start Maintenance"</strong> पर क्लिक करें</li>
+        <li>प्रत्येक रखरखाव चरण पूरा करें:
+            <ul>
+                <li>कार्य निष्पादित करें</li>
+                <li>कार्य की पूर्णता की पुष्टि करें</li>
+                <li>यदि आवश्यक हो तो फोटो जोड़ें</li>
+                <li>उपयोग किए गए spare parts रिकॉर्ड करें</li>
+            </ul>
+        </li>
+        <li>पाई गई समस्याओं के बारे में नोट्स जोड़ें</li>
+        <li><strong>"Complete Maintenance"</strong> पर क्लिक करें</li>
+    </ol>
+</div>
+
+<h2>4.4 Machine Startup Checklist</h2>
+
+<div class="step-box">
+    <h3>मशीन Startup निष्पादन</h3>
+    <ol>
+        <li>उत्पादन शिफ्ट शुरू होने से 2 घंटे पहले WhatsApp reminder प्राप्त करें</li>
+        <li>WhatsApp लिंक के माध्यम से startup checklist खोलें</li>
+        <li>प्रत्येक startup चरण पूरा करें</li>
+        <li>मशीन उत्पादन के लिए तैयार है की पुष्टि करें</li>
+    </ol>
+</div>
+
+<img src="../../attached_assets/screenshots/07_machine_startup.png" alt="Machine Startup" class="screenshot">
+<p class="screenshot-caption">चित्र 8: Machine Startup Checklist</p>
+
+<div class="page-break"></div>
+
+<h1 id="section-5">5. Reviewer Role - समीक्षक भूमिका</h1>
+
+<h2>5.1 Reviewer जिम्मेदारियां</h2>
+
+<p>Reviewer भूमिका operator सबमिशन के गुणवत्ता नियंत्रण पर केंद्रित है:</p>
+
+<ul>
+    <li>✅ सबमिट की गई checklists की समीक्षा करना</li>
+    <li>✅ गुणवत्ता मानकों का अनुपालन सत्यापित करना</li>
+    <li>✅ चेकलिस्ट को approve या reject करना</li>
+    <li>✅ गुणवत्ता रुझानों की निगरानी करना</li>
+    <li>✅ मुद्दों को manager तक पहुंचाना</li>
+</ul>
+
+<h2>5.2 Checklist की समीक्षा और Approve करना</h2>
+
+<div class="step-box">
+    <h3>Submitted Checklist की समीक्षा</h3>
+    <ol>
+        <li>Reviewer dashboard से <strong>"Pending Reviews"</strong> चुनें</li>
+        <li>समीक्षा करने के लिए checklist पर क्लिक करें</li>
+        <li>प्रत्येक आइटम response को ध्यान से समीक्षा करें:
+            <ul>
+                <li>जांचें कि मान अपेक्षित सीमा में हैं</li>
+                <li>अपलोड की गई फोटो उचित गुणवत्ता की हैं देखें</li>
+                <li>पाई गई समस्याओं की विस्तार से जांच करें</li>
+                <li>Operator की टिप्पणियां पढ़ें</li>
+            </ul>
+        </li>
+        <li>अपना निर्णय लें:
+            <ul>
+                <li><strong>Approve:</strong> यदि सब कुछ सही है</li>
+                <li><strong>Reject:</strong> यदि समस्याएं या कमियां हैं</li>
+            </ul>
+        </li>
+        <li>rejection के लिए टिप्पणियां जोड़ें</li>
+        <li>निर्णय की पुष्टि करें</li>
+    </ol>
+</div>
+
+<img src="../../attached_assets/screenshots/05_reviewer_dashboard.png" alt="Reviewer Dashboard" class="screenshot">
+<p class="screenshot-caption">चित्र 9: Reviewer Dashboard - Pending Reviews</p>
+
+<div class="info-box">
+    <strong>💡 Best Practice:</strong> Checklists की समीक्षा 24 घंटे के भीतर करें। देरी से समीक्षा उत्पादन शेड्यूल को प्रभावित कर सकती है।
+</div>
+
+<div class="page-break"></div>
+
+<h1 id="section-6">6. Manager Role - प्रबंधक भूमिका</h1>
+
+<h2>6.1 Manager जिम्मेदारियां</h2>
+
+<p>Manager भूमिका निगरानी, निर्णय लेने, और रिपोर्टिंग पर केंद्रित है:</p>
+
+<ul>
+    <li>✅ Operators को checklists और PM tasks असाइन करना</li>
+    <li>✅ गुणवत्ता और रखरखाव गतिविधियों की निगरानी करना</li>
+    <li>✅ विश्लेषणात्मक रिपोर्ट उत्पन्न करना</li>
+    <li>✅ इन्वेंटरी स्तरों का प्रबंधन करना</li>
+    <li>✅ बिक्री और dispatch प्रक्रियाओं को approve करना</li>
+    <li>✅ भुगतान और इनवॉइस को ट्रैक करना</li>
+    <li>✅ महत्वपूर्ण निर्णय लेना</li>
+</ul>
+
+<h2>6.2 Production Planning & Scheduling</h2>
+
+<div class="step-box">
+    <h3>QA Checklists असाइन करना</h3>
+    <ol>
+        <li>Manager dashboard से <strong>"Assign Checklists"</strong> चुनें</li>
+        <li>checklist template चुनें</li>
+        <li>मशीन और operator चुनें</li>
+        <li>शेड्यूल frequency सेट करें (दैनिक, साप्ताहिक, मासिक)</li>
+        <li>असाइनमेंट की पुष्टि करें</li>
+    </ol>
+</div>
+
+<h2>6.3 Inventory Management</h2>
+
+<p>Manager inventory स्तरों की निगरानी करते हैं और replenishment के लिए निर्णय लेते हैं:</p>
+
+<div class="step-box">
+    <h3>Purchase Order बनाना</h3>
+    <ol>
+        <li><strong>"Inventory"</strong> → <strong>"Purchase Orders"</strong> पर navigate करें</li>
+        <li><strong>"Create PO"</strong> पर क्लिक करें</li>
+        <li>Vendor चुनें</li>
+        <li>ऑर्डर आइटम और quantities जोड़ें</li>
+        <li>भुगतान शर्तें सेट करें</li>
+        <li>PO उत्पन्न करें और print करें</li>
+    </ol>
+</div>
+
+<div class="page-break"></div>
+
+<h1 id="section-7">7. इन्वेंटरी प्रबंधन</h1>
+
+<h2>7.1 Raw Material Management</h2>
+
+<div class="step-box">
+    <h3>Raw Material जोड़ना</h3>
+    <ol>
+        <li><strong>"Inventory"</strong> → <strong>"Raw Materials"</strong> चुनें</li>
+        <li><strong>"Add Raw Material"</strong> पर क्लिक करें</li>
+        <li>विवरण दर्ज करें:
+            <ul>
+                <li><strong>Material Name:</strong> विवरणात्मक नाम</li>
+                <li><strong>Material Type:</strong> category</li>
+                <li><strong>UOM:</strong> माप की इकाई (Kg, Ltr, Pcs)</li>
+                <li><strong>Reorder Level:</strong> न्यूनतम stock level</li>
+                <li><strong>Current Stock:</strong> वर्तमान inventory</li>
+            </ul>
+        </li>
+        <li><strong>"Save"</strong> पर क्लिक करें</li>
+    </ol>
+</div>
+
+<h2>7.2 Finished Goods Tracking</h2>
+
+<p>Finished goods केवल अनुमोदन के बाद बिक्री के लिए उपलब्ध हैं:</p>
+
+<ul>
+    <li>✅ उत्पादन पूर्ण होने पर inventory अपडेट होता है</li>
+    <li>✅ गुणवत्ता जांच अनिवार्य है</li>
+    <li>✅ अनुमोदन के बाद ही बिक्री संभव है</li>
+    <li>✅ FIFO विधि समर्थित है</li>
+</ul>
+
+<div class="page-break"></div>
+
+<h1 id="section-8">8. बिक्री और डिस्पैच</h1>
+
+<h2>8.1 5-Stage Dispatch Workflow</h2>
+
+<p>KINTO Smart Ops व्यापक 5-चरणीय dispatch ट्रैकिंग सिस्टम प्रदान करता है:</p>
+
+<div class="step-box">
+    <h3>चरण 1: Invoice बनाना</h3>
+    <ol>
+        <li><strong>"Sales"</strong> → <strong>"Invoices"</strong> → <strong>"Create Invoice"</strong></li>
+        <li>ग्राहक विवरण select करें</li>
+        <li>उत्पाद और quantities जोड़ें</li>
+        <li>GST स्वचालित रूप से गणना होती है</li>
+        <li>भुगतान शर्तें सेट करें</li>
+        <li><strong>"Create Invoice"</strong> (Status: Draft)</li>
+    </ol>
+</div>
+
+<div class="step-box">
+    <h3>चरण 2: Gatepass Generate करना</h3>
+    <ol>
+        <li>Invoice से <strong>"Generate Gatepass"</strong> चुनें</li>
+        <li>वाहन विवरण दर्ज करें (vehicle number, driver name)</li>
+        <li>Transport details जोड़ें</li>
+        <li><strong>"Generate"</strong> पर क्लिक करें</li>
+        <li>⚠️ <strong>Inventory स्वचालित रूप से घट जाती है</strong></li>
+    </ol>
+</div>
+
+<div class="warning-box">
+    <strong>⚠️ महत्वपूर्ण:</strong> Gatepass उत्पन्न होने पर, inventory तुरंत घट जाती है। यह कार्रवाई प्रतिवर्ती नहीं है, इसलिए सावधानी से आगे बढ़ें।
+</div>
+
+<div class="step-box">
+    <h3>चरण 3: Vehicle Exit Record करना</h3>
+    <ol>
+        <li>वाहन gate पार करने पर <strong>"Mark Vehicle Exit"</strong></li>
+        <li>Security guard exit time की पुष्टि करता है</li>
+        <li>Status: Dispatched</li>
+    </ol>
+</div>
+
+<div class="step-box">
+    <h3>चरण 4: In-Transit Tracking</h3>
+    <p>वाहन ग्राहक के पास जाते समय ट्रैक किया जाता है। Manager real-time status देख सकते हैं।</p>
+</div>
+
+<div class="step-box">
+    <h3>चरण 5: Proof of Delivery (POD)</h3>
+    <ol>
+        <li>ग्राहक delivery प्राप्त करने पर <strong>"Record POD"</strong> पर क्लिक करें</li>
+        <li>Delivery confirmation अपलोड करें (signature या photo)</li>
+        <li>Received date/time दर्ज करें</li>
+        <li>Status: Delivered ✅</li>
+    </ol>
+</div>
+
+<div class="info-box">
+    <strong>📊 Dispatch Tracking:</strong> प्रत्येक चरण में, सभी stakeholders को स्वचालित रूप से notifications भेजे जाते हैं। Manager dashboard से पूरी ट्रैकिंग timeline देख सकते हैं।
+</div>
+
+<h2>8.2 Payment Tracking</h2>
+
+<p>KINTO Smart Ops FIFO (First-In-First-Out) भुगतान आवंटन का समर्थन करता है:</p>
+
+<ul>
+    <li>✅ Invoice-wise बकाया शेष ट्रैकिंग</li>
+    <li>✅ स्वचालित FIFO आवंटन</li>
+    <li>✅ भुगतान aging विश्लेषण</li>
+    <li>✅ देय तिथि reminders</li>
+    <li>✅ आंशिक भुगतान समर्थित</li>
+</ul>
+
+<div class="page-break"></div>
+
+<h1 id="section-9">9. रिपोर्ट और Analytics</h1>
+
+<h2>9.1 उपलब्ध रिपोर्ट</h2>
+
+<p>KINTO Smart Ops व्यापक रिपोर्टिंग सिस्टम प्रदान करता है:</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>रिपोर्ट प्रकार</th>
+            <th>विवरण</th>
+            <th>एक्सेस भूमिका</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>गुणवत्ता रिपोर्ट</strong></td>
+            <td>Checklist completion rates और रुझान</td>
+            <td>Reviewer, Manager</td>
+        </tr>
+        <tr>
+            <td><strong>रखरखाव रिपोर्ट</strong></td>
+            <td>PM execution ट्रैकिंग और downtime</td>
+            <td>Manager</td>
+        </tr>
+        <tr>
+            <td><strong>इन्वेंटरी रिपोर्ट</strong></td>
+            <td>Stock levels, movements, valuations</td>
+            <td>Manager, Admin</td>
+        </tr>
+        <tr>
+            <td><strong>बिक्री रिपोर्ट</strong></td>
+            <td>Revenue, invoice trends, customer analysis</td>
+            <td>Manager</td>
+        </tr>
+        <tr>
+            <td><strong>GST रिपोर्ट</strong></td>
+            <td>Tax calculations, GSTR filing data</td>
+            <td>Manager, Admin</td>
+        </tr>
+        <tr>
+            <td><strong>Dispatch रिपोर्ट</strong></td>
+            <td>Delivery timelines, pending dispatches</td>
+            <td>Manager</td>
+        </tr>
+        <tr>
+            <td><strong>भुगतान रिपोर्ट</strong></td>
+            <td>Outstanding balances, collections</td>
+            <td>Manager</td>
+        </tr>
+        <tr>
+            <td><strong>Variance Analysis</strong></td>
+            <td>उत्पादन efficiency, material usage</td>
+            <td>Manager</td>
+        </tr>
+    </tbody>
+</table>
+
+<h2>9.2 रिपोर्ट Generate करना</h2>
+
+<div class="step-box">
+    <h3>रिपोर्ट बनाना</h3>
+    <ol>
+        <li>Sidebar से <strong>"Reports"</strong> चुनें</li>
+        <li>वांछित रिपोर्ट प्रकार select करें</li>
+        <li>Filters सेट करें:
+            <ul>
+                <li><strong>Date Range:</strong> से और तक तिथियां</li>
+                <li><strong>Machine/Department:</strong> विशिष्ट क्षेत्र</li>
+                <li><strong>Status:</strong> completed, pending, आदि</li>
+            </ul>
+        </li>
+        <li><strong>"Generate Report"</strong> पर क्लिक करें</li>
+        <li>रिपोर्ट देखें:
+            <ul>
+                <li><strong>On-Screen:</strong> graphs और tables के साथ</li>
+                <li><strong>Export to Excel:</strong> विश्लेषण के लिए</li>
+                <li><strong>Export to PDF:</strong> printing के लिए</li>
+            </ul>
+        </li>
+    </ol>
+</div>
+
+<h2>9.3 Variance Analytics Dashboard</h2>
+
+<p>उत्पादन efficiency और material usage रुझान ट्रैक करें:</p>
+
+<ul>
+    <li>📊 <strong>Actual vs Expected:</strong> उत्पादन output comparison</li>
+    <li>📈 <strong>Material Consumption:</strong> planned vs actual usage</li>
+    <li>🎯 <strong>Efficiency Metrics:</strong> मशीन और shift-wise performance</li>
+    <li>⚡ <strong>Trend Analysis:</strong> दैनिक, साप्ताहिक, मासिक रुझान</li>
+</ul>
+
+<div class="page-break"></div>
+
+<h1 id="section-10">10. मोबाइल ऐप का उपयोग</h1>
+
+<h2>10.1 मोबाइल Features</h2>
+
+<p>KINTO Smart Ops पूरी तरह से मोबाइल-responsive है और फ़ैक्टरी फ्लोर उपयोग के लिए अनुकूलित है:</p>
+
+<ul>
+    <li>📱 <strong>Progressive Web App (PWA):</strong> home screen पर install करें</li>
+    <li>📸 <strong>Camera Integration:</strong> सीधे फोटो लें</li>
+    <li>🔔 <strong>Push Notifications:</strong> तत्काल alerts और reminders</li>
+    <li>⚡ <strong>Offline Support:</strong> इंटरनेट के बिना काम करें</li>
+    <li>🎨 <strong>Touch-Optimized:</strong> बड़े buttons और forms</li>
+</ul>
+
+<h2>10.2 WhatsApp Integration</h2>
+
+<p>Operators WhatsApp के माध्यम से checklists पूरी कर सकते हैं:</p>
+
+<div class="step-box">
+    <h3>WhatsApp के माध्यम से Checklist पूरी करना</h3>
+    <ol>
+        <li>WhatsApp notification प्राप्त करें</li>
+        <li>चेकलिस्ट लिंक पर क्लिक करें</li>
+        <li>प्रत्येक आइटम step-by-step पूरा करें</li>
+        <li>फोटो सीधे WhatsApp के माध्यम से भेजें</li>
+        <li>यदि आवश्यक हो तो spare parts request करें</li>
+        <li>अंतिम item के बाद स्वचालित रूप से submit होता है</li>
+    </ol>
+</div>
+
+<div class="info-box">
+    <strong>💡 सुझाव:</strong> WhatsApp integration फ़ैक्टरी फ्लोर पर कंप्यूटर एक्सेस के बिना operators के लिए बहुत सुविधाजनक है।
+</div>
+
+<h2>10.3 मोबाइल ऐप Install करना</h2>
+
+<div class="step-box">
+    <h3>Android/iPhone में PWA Install</h3>
+    <ol>
+        <li>मोबाइल ब्राउज़र में KINTO Smart Ops खोलें</li>
+        <li>मेनू (⋮) → <strong>"Add to Home Screen"</strong> टैप करें</li>
+        <li><strong>"Install"</strong> की पुष्टि करें</li>
+        <li>ऐप icon home screen पर दिखाई देगा</li>
+        <li>अब standalone ऐप की तरह उपयोग करें!</li>
+    </ol>
+</div>
+
+<div class="page-break"></div>
+
+<h1>📞 सहायता और मदद</h1>
+
+<h2>सामान्य समस्याएं</h2>
+
+<table>
+    <thead>
+        <tr>
+            <th>समस्या</th>
+            <th>समाधान</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>लॉगिन समस्याएं</strong></td>
+            <td>
+                <ul>
+                    <li>Username और पासवर्ड सही है जांचें</li>
+                    <li>Caps Lock off है देखें</li>
+                    <li>पासवर्ड भूल गए तो admin से संपर्क करें</li>
+                </ul>
+            </td>
+        </tr>
+        <tr>
+            <td><strong>पेज लोड नहीं हो रहा</strong></td>
+            <td>
+                <ul>
+                    <li>इंटरनेट कनेक्शन जांचें</li>
+                    <li>पेज refresh करें (F5)</li>
+                    <li>ब्राउज़र cache clear करें</li>
+                </ul>
+            </td>
+        </tr>
+        <tr>
+            <td><strong>फोटो अपलोड नहीं हो रही</strong></td>
+            <td>
+                <ul>
+                    <li>फ़ाइल size 5MB से कम है देखें</li>
+                    <li>JPEG या PNG format है जांचें</li>
+                    <li>Camera permissions अनुमत हैं देखें</li>
+                </ul>
+            </td>
+        </tr>
+        <tr>
+            <td><strong>डेटा save नहीं हो रहा</strong></td>
+            <td>
+                <ul>
+                    <li>सभी required फ़ील्ड भरे हैं जांचें</li>
+                    <li>Validation errors पढ़ें</li>
+                    <li>इंटरनेट कनेक्शन स्थिर है देखें</li>
+                </ul>
+            </td>
+        </tr>
+    </tbody>
+</table>
+
+<h2>मदद के लिए संपर्क करें</h2>
+
+<div class="info-box">
+    <p><strong>📧 Email:</strong> support@kintosmart.com</p>
+    <p><strong>📱 WhatsApp:</strong> +91-XXXXXXXXXX</p>
+    <p><strong>🕐 Working Hours:</strong> सोमवार - शनिवार, सुबह 9:00 - शाम 6:00</p>
+</div>
+
+<div class="note-box">
+    <strong>💡 अच्छा अभ्यास:</strong> समस्या रिपोर्ट करते समय screenshots जोड़ना मददगार होता है। स्पष्ट रूप से बताएं कि क्या समस्या आ रही है।
+</div>
+
+<hr style="margin: 40px 0; border: 1px solid #0d9488;">
+
+<div style="text-align: center; color: #666; padding: 20px;">
+    <p><strong>KINTO Smart Ops</strong> - विनिर्माण उद्योगों के लिए स्मार्ट संचालन</p>
+    <p>संस्करण 1.0.0 | © 2025 KINTO. सर्वाधिकार सुरक्षित।</p>
+    <p style="font-size: 12px; margin-top: 10px;">यह मैनुअल अंतिम बार अपडेट किया गया: 15 नवंबर, 2025</p>
+</div>
+
+</body>
+</html>
