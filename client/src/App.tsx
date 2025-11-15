@@ -910,6 +910,7 @@ function Router() {
     <Switch>
       <Route path="/auth" component={AuthPage} />
       <ProtectedRoute path="/checklists" component={ChecklistsPage} />
+      <ProtectedRoute path="/reviewer-dashboard" component={ReviewerDashboardPage} />
       <ProtectedRoute path="/invoice/:id" component={InvoiceDetail} />
       <ProtectedRoute path="/dispatch-tracking" component={DispatchTracking} />
       <ProtectedRoute path="/sales-returns" component={SalesReturns} />
