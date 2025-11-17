@@ -7,7 +7,7 @@ import 'dotenv/config';
 
 const ACCESS_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN!;
 const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID!;
-const RECIPIENT = '916305507336'; // Test number
+const RECIPIENT = '919966557726'; // Test number
 
 async function sendFreeFormMessage(
   phoneNumber: string,
@@ -44,7 +44,7 @@ async function sendFreeFormMessage(
       console.log('✅ SUCCESS! Message sent!\n');
       console.log('Message ID:', data.messages[0].id);
       console.log('Status:', data.messages[0].message_status);
-      console.log('\n📱 Check WhatsApp on +916305507336');
+      console.log('\n📱 Check WhatsApp on +919966557726');
       console.log('You should receive the test message!\n');
     } else {
       console.error('❌ FAILED to send message\n');
@@ -56,11 +56,11 @@ async function sendFreeFormMessage(
       // Common error handling
       if (data.error?.code === 131047) {
         console.log('💡 SOLUTION: This error means the 24-hour window is closed.');
-        console.log('   From +916305507336, send a WhatsApp message to your business number first.');
+        console.log('   From +919966557726, send a WhatsApp message to your business number first.');
         console.log('   Then run this script again within 24 hours.\n');
       } else if (data.error?.code === 131026) {
         console.log('💡 SOLUTION: Recipient number is not registered on WhatsApp.');
-        console.log('   Make sure +916305507336 has WhatsApp installed.\n');
+        console.log('   Make sure +919966557726 has WhatsApp installed.\n');
       } else if (data.error?.code === 100) {
         console.log('💡 SOLUTION: Invalid access token or permissions.');
         console.log('   Check WHATSAPP_ACCESS_TOKEN in your secrets.\n');
@@ -110,7 +110,7 @@ Time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
   console.log('=' .repeat(60));
   console.log('\n✅ Test complete!');
   console.log('\nNext steps:');
-  console.log('1. Check WhatsApp on +916305507336');
+  console.log('1. Check WhatsApp on +919966557726');
   console.log('2. Submit templates to Meta for production use');
   console.log('3. After templates are approved, full automation will work');
 }
