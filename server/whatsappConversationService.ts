@@ -198,15 +198,40 @@ You can also send a photo if needed.`;
       imageUrl?: string;
     }
   ): Promise<void> {
-    const session = await this.getSession(sessionId);
-    if (!session) return;
+    // Parse message for OK/NOK
+    const message = data.message.trim().toUpperCase();
+    const hasValidAnswer = message === 'OK' || message.startsWith('OK') || 
+                          message === 'NOK' || message.startsWith('NOK');
 
-    const tasks = await this.getTemplateTasks(session.templateId!);
-    const currentTask = tasks[session.currentTaskIndex];
+    // CASE 1: Photo with caption containing OK/NOK (common WhatsApp behavior)
+    if (data.messageType === 'image' && data.imageUrl && hasValidAnswer) {
+      // Complete answer: image + caption with OK/NOK
+      let result: 'OK' | 'NOK';
+      let remarks = '';
 
-    // CASE 1: Photo received first (without text answer)
-    if (data.messageType === 'image' && data.imageUrl) {
-      // Store photo URL, ask for text response
+      if (message === 'OK' || message.startsWith('OK')) {
+        result = 'OK';
+      } else {
+        result = 'NOK';
+        const remarkMatch = data.message.match(/NOK\s*-?\s*(.+)/i);
+        if (remarkMatch) {
+          remarks = remarkMatch[1].trim();
+        }
+      }
+
+      await this.saveAnswerAndProgress(sessionId, {
+        result,
+        remarks,
+        photoUrl: data.imageUrl,
+      });
+      return;
+    }
+
+    // CASE 2: Photo without meaningful caption (store as pending)
+    if (data.messageType === 'image' && data.imageUrl && !hasValidAnswer) {
+      const session = await this.getSession(sessionId);
+      if (!session) return;
+
       await db
         .update(whatsappConversationSessions)
         .set({
@@ -222,22 +247,11 @@ You can also send a photo if needed.`;
       return;
     }
 
-    // CASE 2: Text answer received
-    const message = data.message.trim().toUpperCase();
-    let result: 'OK' | 'NOK';
-    let remarks = '';
+    // CASE 3: Text-only answer (may attach pending photo)
+    if (!hasValidAnswer) {
+      const session = await this.getSession(sessionId);
+      if (!session) return;
 
-    if (message === 'OK' || message.startsWith('OK')) {
-      result = 'OK';
-    } else if (message === 'NOK' || message.startsWith('NOK')) {
-      result = 'NOK';
-      // Extract remarks after "NOK"
-      const remarkMatch = data.message.match(/NOK\s*-?\s*(.+)/i);
-      if (remarkMatch) {
-        remarks = remarkMatch[1].trim();
-      }
-    } else {
-      // Invalid response
       await whatsappService.sendTextMessage({
         to: session.phoneNumber,
         message: '❌ Invalid response. Please reply with:\n✅ OK\n❌ NOK - describe issue',
@@ -245,41 +259,75 @@ You can also send a photo if needed.`;
       return;
     }
 
-    // Create answer object (attach pending photo if exists)
+    let result: 'OK' | 'NOK';
+    let remarks = '';
+
+    if (message === 'OK' || message.startsWith('OK')) {
+      result = 'OK';
+    } else {
+      result = 'NOK';
+      const remarkMatch = data.message.match(/NOK\s*-?\s*(.+)/i);
+      if (remarkMatch) {
+        remarks = remarkMatch[1].trim();
+      }
+    }
+
+    await this.saveAnswerAndProgress(sessionId, {
+      result,
+      remarks,
+      photoUrl: undefined, // Will be attached from pendingPhotoUrl if exists
+    });
+  }
+
+  /**
+   * Save answer and progress to next question (atomically with fresh session data)
+   */
+  private async saveAnswerAndProgress(
+    sessionId: string,
+    partialAnswer: {
+      result: 'OK' | 'NOK';
+      remarks: string;
+      photoUrl?: string;
+    }
+  ): Promise<void> {
+    // Re-fetch session to get fresh data (avoid stale session issues)
+    const session = await this.getSession(sessionId);
+    if (!session) return;
+
+    const tasks = await this.getTemplateTasks(session.templateId!);
+    const currentTask = tasks[session.currentTaskIndex];
+
+    // Build complete answer with fresh session data
     const answer: TaskAnswer = {
       taskIndex: session.currentTaskIndex,
       taskName: currentTask.taskName,
-      result,
-      remarks,
-      photoUrl: session.pendingPhotoUrl || data.imageUrl || undefined,
+      result: partialAnswer.result,
+      remarks: partialAnswer.remarks,
+      // Use provided photo URL, or fallback to pending photo from session
+      photoUrl: partialAnswer.photoUrl || session.pendingPhotoUrl || undefined,
     };
 
-    // Update answers array
+    // Update answers array with fresh session data
     const updatedAnswers = [...(session.answers as TaskAnswer[])];
     updatedAnswers[session.currentTaskIndex] = answer;
 
-    // Update session (clear pending photo)
+    // Atomic update: save answer, clear pending photo, update timestamp, and advance
+    const isLastQuestion = session.currentTaskIndex + 1 >= session.totalTasks;
+
     await db
       .update(whatsappConversationSessions)
       .set({
         answers: updatedAnswers,
-        pendingPhotoUrl: null, // Clear pending photo
+        pendingPhotoUrl: null, // Always clear pending photo
         lastMessageAt: new Date(),
+        currentTaskIndex: isLastQuestion ? session.currentTaskIndex : session.currentTaskIndex + 1,
       })
       .where(eq(whatsappConversationSessions.id, sessionId));
 
     // Check if this was the last question
-    if (session.currentTaskIndex + 1 >= session.totalTasks) {
+    if (isLastQuestion) {
       await this.sendConfirmationSummary(sessionId, updatedAnswers);
     } else {
-      // Move to next question
-      await db
-        .update(whatsappConversationSessions)
-        .set({
-          currentTaskIndex: session.currentTaskIndex + 1,
-        })
-        .where(eq(whatsappConversationSessions.id, sessionId));
-
       await this.sendQuestion(sessionId, session.currentTaskIndex + 1, tasks);
     }
   }
