@@ -9,6 +9,7 @@ import path from "path";
 import fs from "fs";
 import { db } from "./db";
 import { whatsappService } from "./whatsappService";
+import { whatsappWebhookRouter } from "./whatsappWebhook";
 import { calculateBOMSuggestions } from "@shared/calculations";
 
 // Simple audit logging function
@@ -164,6 +165,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   setupAuth(app);
+
+  // Register WhatsApp webhook routes (must be before authentication)
+  app.use('/api/whatsapp', whatsappWebhookRouter);
 
   // Auth routes are handled by setupAuth() in auth.ts
   // /api/register, /api/login, /api/logout, /api/user are automatically set up

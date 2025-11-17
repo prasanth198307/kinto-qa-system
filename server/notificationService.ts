@@ -10,6 +10,7 @@
 
 import { storage } from './storage';
 import { whatsappService } from './whatsappService';
+import { whatsappConversationService } from './whatsappConversationService';
 
 export interface NotificationResult {
   whatsappSent: boolean;

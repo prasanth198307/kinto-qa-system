@@ -275,6 +275,32 @@ export const submissionTasks = pgTable("submission_tasks", {
 
 export type SubmissionTask = typeof submissionTasks.$inferSelect;
 
+// WhatsApp conversation sessions for interactive checklist completion
+export const whatsappConversationSessions = pgTable("whatsapp_conversation_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  phoneNumber: varchar("phone_number", { length: 20 }).notNull(),
+  submissionId: varchar("submission_id").references(() => checklistSubmissions.id),
+  templateId: varchar("template_id").references(() => checklistTemplates.id),
+  machineId: varchar("machine_id").references(() => machines.id),
+  operatorId: varchar("operator_id").references(() => users.id),
+  status: varchar("status", { length: 50 }).default('active'),
+  currentTaskIndex: integer("current_task_index").default(0),
+  totalTasks: integer("total_tasks").notNull(),
+  answers: jsonb("answers").default('[]'),
+  lastMessageAt: timestamp("last_message_at").defaultNow(),
+  startedAt: timestamp("started_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+  expiresAt: timestamp("expires_at").notNull(),
+});
+
+export const insertWhatsAppConversationSessionSchema = createInsertSchema(whatsappConversationSessions).omit({
+  id: true,
+  startedAt: true,
+});
+
+export type InsertWhatsAppConversationSession = z.infer<typeof insertWhatsAppConversationSessionSchema>;
+export type WhatsAppConversationSession = typeof whatsappConversationSessions.$inferSelect;
+
 // Spare parts catalog
 export const sparePartsCatalog = pgTable("spare_parts_catalog", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
