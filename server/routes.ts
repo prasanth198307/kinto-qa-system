@@ -166,6 +166,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   setupAuth(app);
 
+  // Serve uploaded WhatsApp photos ONLY (restricted to whatsapp-photos directory for security)
+  const express = await import('express');
+  app.use('/whatsapp-photos', express.default.static(
+    path.join(process.cwd(), 'uploads', 'whatsapp-photos'),
+    {
+      // Security: prevent directory traversal
+      dotfiles: 'deny',
+      index: false,
+      // Only allow image files
+      setHeaders: (res, filepath) => {
+        if (!/\.(jpg|jpeg|png|gif|webp)$/i.test(filepath)) {
+          res.status(403).send('Forbidden');
+        }
+      }
+    }
+  ));
+
   // Register WhatsApp webhook routes (must be before authentication)
   app.use('/api/whatsapp', whatsappWebhookRouter);
 

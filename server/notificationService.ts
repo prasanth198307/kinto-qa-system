@@ -608,7 +608,7 @@ export class NotificationService {
         return true;
       }
 
-      // Production mode - send via WhatsApp using approved template + follow-up with task details
+      // Production mode - start interactive WhatsApp conversation
       let phoneNumber = operatorMobile.replace(/\D/g, '');
       
       if (phoneNumber.startsWith('0')) {
@@ -637,21 +637,24 @@ export class NotificationService {
         throw new Error('WhatsApp template send failed - check Meta API credentials and template approval');
       }
 
-      // Step 2: Send follow-up free-form message with task details (allowed within 24-hour window after template)
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second between messages
-      
-      const taskDetailsSuccess = await whatsappService.sendTextMessage({
-        to: phoneNumber,
-        message: taskDetailsMessage
+      // Step 2: Get assignment details to start interactive conversation
+      const assignment = await storage.getChecklistAssignment(assignmentId);
+      if (!assignment) {
+        throw new Error('Assignment not found');
+      }
+
+      // Step 3: Start interactive conversation (asks questions one by one)
+      // This creates a new checklist submission and starts asking questions
+      await whatsappConversationService.startConversation({
+        phoneNumber,
+        assignmentId: assignment.id,
+        templateId: assignment.templateId,
+        machineId: assignment.machineId,
+        operatorId: assignment.operatorId,
       });
 
-      if (taskDetailsSuccess) {
-        console.log(`[CHECKLIST WHATSAPP SENT] To: ${operatorName} (${phoneNumber}), Checklist: ${checklistName} (template + task details)`);
-        return true;
-      } else {
-        console.warn(`[CHECKLIST WHATSAPP] Template sent but task details failed for ${operatorName}`);
-        return true; // Template was sent successfully, task details failure is not critical
-      }
+      console.log(`[CHECKLIST WHATSAPP] Interactive conversation started for ${operatorName} (${phoneNumber}), Checklist: ${checklistName}`);
+      return true;
     } catch (error) {
       console.error(`[CHECKLIST WHATSAPP ERROR] Failed to send to ${operatorName}:`, error);
       return false;

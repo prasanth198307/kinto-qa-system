@@ -35,21 +35,34 @@ export class WhatsAppConversationService {
    */
   async startConversation(data: {
     phoneNumber: string;
-    submissionId: string;
+    assignmentId: string;
     templateId: string;
     machineId: string;
     operatorId: string;
   }): Promise<string> {
     // Get checklist template tasks
-    const templateTasks = await db
+    const tasksList = await db
       .select()
-      .from(checklistTemplateTasks)
-      .where(eq(checklistTemplateTasks.templateId, data.templateId))
-      .orderBy(checklistTemplateTasks.displayOrder);
+      .from(templateTasks)
+      .where(eq(templateTasks.templateId, data.templateId))
+      .orderBy(templateTasks.orderIndex);
 
-    if (templateTasks.length === 0) {
+    if (tasksList.length === 0) {
       throw new Error('No tasks found in checklist template');
     }
+
+    // Create checklist submission (status: pending until confirmed)
+    const [submission] = await db
+      .insert(checklistSubmissions)
+      .values({
+        templateId: data.templateId,
+        machineId: data.machineId,
+        operatorId: data.operatorId,
+        status: 'pending',
+        date: new Date(),
+        shift: null,
+      })
+      .returning();
 
     // Create conversation session (expires in 24 hours)
     const expiresAt = new Date();
@@ -59,20 +72,20 @@ export class WhatsAppConversationService {
       .insert(whatsappConversationSessions)
       .values({
         phoneNumber: data.phoneNumber,
-        submissionId: data.submissionId,
+        submissionId: submission.id, // Real submission ID
         templateId: data.templateId,
         machineId: data.machineId,
         operatorId: data.operatorId,
         status: 'active',
         currentTaskIndex: 0,
-        totalTasks: templateTasks.length,
+        totalTasks: tasksList.length,
         answers: [],
         expiresAt,
       })
       .returning();
 
     // Send first question
-    await this.sendQuestion(session.id, 0, templateTasks);
+    await this.sendQuestion(session.id, 0, tasksList);
 
     return session.id;
   }
@@ -91,7 +104,7 @@ export class WhatsAppConversationService {
     const message = `📋 *Question ${questionNumber} of ${session.totalTasks}*
 
 ${task.taskName}
-${task.taskDescription ? `\n_${task.taskDescription}_` : ''}
+${task.verificationCriteria ? `\n_${task.verificationCriteria}_` : ''}
 
 Reply with:
 ✅ OK - if task is complete
@@ -384,9 +397,9 @@ You can also send a photo if needed.`;
   private async getTemplateTasks(templateId: string): Promise<any[]> {
     return await db
       .select()
-      .from(checklistTemplateTasks)
-      .where(eq(checklistTemplateTasks.templateId, templateId))
-      .orderBy(checklistTemplateTasks.displayOrder);
+      .from(templateTasks)
+      .where(eq(templateTasks.templateId, templateId))
+      .orderBy(templateTasks.orderIndex);
   }
 
   /**

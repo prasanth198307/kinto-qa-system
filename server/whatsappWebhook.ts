@@ -97,7 +97,7 @@ whatsappWebhookRouter.post('/webhook', async (req, res) => {
 });
 
 /**
- * Download media from WhatsApp
+ * Download media from WhatsApp and save to file system
  */
 async function downloadWhatsAppMedia(mediaId: string): Promise<string> {
   try {
@@ -134,18 +134,38 @@ async function downloadWhatsAppMedia(mediaId: string): Promise<string> {
       throw new Error(`Failed to download media: ${fileResponse.statusText}`);
     }
 
-    // For now, we'll store this as a temporary URL
-    // In production, you'd upload to S3 or similar storage
-    const buffer = await fileResponse.arrayBuffer();
-    const base64 = Buffer.from(buffer).toString('base64');
-    const mimeType = mediaData.mime_type || 'image/jpeg';
+    // Step 3: Save to file system using streaming (memory efficient)
+    const fs = await import('fs');
+    const path = await import('path');
+    const { Readable } = await import('stream');
+    const { pipeline } = await import('stream/promises');
     
-    // Return data URI (can be saved to database)
-    const dataUri = `data:${mimeType};base64,${base64}`;
+    const uploadsDir = path.join(process.cwd(), 'uploads', 'whatsapp-photos');
     
-    console.log(`[WHATSAPP] Downloaded media ${mediaId}, size: ${base64.length} bytes`);
+    // Create directory if it doesn't exist
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+
+    // Generate unique filename (sanitized)
+    const timestamp = Date.now();
+    const randomId = Math.random().toString(36).substring(7);
+    const ext = (mediaData.mime_type?.split('/')[1] || 'jpg').replace(/[^a-z0-9]/gi, '');
+    const filename = `${timestamp}-${randomId}.${ext}`;
+    const filePath = path.join(uploadsDir, filename);
+
+    // Stream to file without buffering entire file in memory
+    const fileStream = fs.createWriteStream(filePath);
+    const readableStream = Readable.fromWeb(fileResponse.body as any);
     
-    return dataUri;
+    await pipeline(readableStream, fileStream);
+
+    // Return relative path (served via restricted static middleware)
+    const relativeUrl = `/whatsapp-photos/${filename}`;
+    
+    console.log(`[WHATSAPP] Streamed media ${mediaId} to ${relativeUrl}`);
+    
+    return relativeUrl;
   } catch (error) {
     console.error('[WHATSAPP] Media download error:', error);
     return '';
