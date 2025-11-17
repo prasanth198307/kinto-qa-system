@@ -1862,13 +1862,22 @@ export const insertMachineStartupTaskSchema = createInsertSchema(machineStartupT
 export type InsertMachineStartupTask = z.infer<typeof insertMachineStartupTaskSchema>;
 export type MachineStartupTask = typeof machineStartupTasks.$inferSelect;
 
-// Notification Configuration - for SendGrid and Meta WhatsApp Cloud API settings
+// Notification Configuration - for SendGrid, Office 365 SMTP, and Meta WhatsApp Cloud API settings
 export const notificationConfig = pgTable("notification_config", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   // Email Settings (SendGrid)
   emailEnabled: integer("email_enabled").default(0).notNull(), // 1 = enabled, 0 = disabled
   senderEmail: varchar("sender_email", { length: 255 }), // Verified sender email in SendGrid
   senderName: varchar("sender_name", { length: 255 }), // Sender name for emails
+  // Email Provider Selection (SendGrid or Office365)
+  emailProvider: varchar("email_provider", { length: 50 }).default('SendGrid'), // 'SendGrid' or 'Office365'
+  // Office 365 SMTP Settings
+  smtpHost: varchar("smtp_host", { length: 255 }), // smtp.office365.com
+  smtpPort: integer("smtp_port").default(587), // 587 for TLS, 465 for SSL
+  smtpUser: varchar("smtp_user", { length: 255 }), // Office 365 email address
+  smtpPassword: text("smtp_password"), // App password or account password
+  smtpSecure: integer("smtp_secure").default(0).notNull(), // 0 = TLS (587), 1 = SSL (465)
+  smtpFromName: varchar("smtp_from_name", { length: 255 }), // Display name for Office 365 emails
   // WhatsApp Settings (Meta Business Cloud API)
   whatsappEnabled: integer("whatsapp_enabled").default(0).notNull(), // 1 = enabled, 0 = disabled
   metaPhoneNumberId: varchar("meta_phone_number_id", { length: 255 }), // Meta WhatsApp Phone Number ID

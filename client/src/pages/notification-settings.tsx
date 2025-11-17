@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { GlobalHeader } from "@/components/GlobalHeader";
@@ -17,6 +18,13 @@ interface NotificationConfig {
   emailEnabled: number;
   senderEmail: string | null;
   senderName: string | null;
+  emailProvider: string | null;
+  smtpHost: string | null;
+  smtpPort: number | null;
+  smtpUser: string | null;
+  smtpPassword: string | null;
+  smtpSecure: number | null;
+  smtpFromName: string | null;
   whatsappEnabled: number;
   metaPhoneNumberId: string | null;
   metaAccessToken: string | null;
@@ -37,6 +45,13 @@ export default function NotificationSettings() {
     emailEnabled: false,
     senderEmail: "",
     senderName: "",
+    emailProvider: "SendGrid",
+    smtpHost: "",
+    smtpPort: 587,
+    smtpUser: "",
+    smtpPassword: "",
+    smtpSecure: false,
+    smtpFromName: "",
     whatsappEnabled: false,
     metaPhoneNumberId: "",
     metaAccessToken: "",
@@ -50,6 +65,13 @@ export default function NotificationSettings() {
         emailEnabled: config.emailEnabled === 1,
         senderEmail: config.senderEmail || "",
         senderName: config.senderName || "",
+        emailProvider: config.emailProvider || "SendGrid",
+        smtpHost: config.smtpHost || "",
+        smtpPort: config.smtpPort || 587,
+        smtpUser: config.smtpUser || "",
+        smtpPassword: config.smtpPassword || "",
+        smtpSecure: config.smtpSecure === 1,
+        smtpFromName: config.smtpFromName || "",
         whatsappEnabled: config.whatsappEnabled === 1,
         metaPhoneNumberId: config.metaPhoneNumberId || "",
         metaAccessToken: config.metaAccessToken || "",
@@ -65,6 +87,13 @@ export default function NotificationSettings() {
         emailEnabled: data.emailEnabled ? 1 : 0,
         senderEmail: data.senderEmail || null,
         senderName: data.senderName || null,
+        emailProvider: data.emailProvider || 'SendGrid',
+        smtpHost: data.smtpHost || null,
+        smtpPort: data.smtpPort || 587,
+        smtpUser: data.smtpUser || null,
+        smtpPassword: data.smtpPassword || null,
+        smtpSecure: data.smtpSecure ? 1 : 0,
+        smtpFromName: data.smtpFromName || null,
         whatsappEnabled: data.whatsappEnabled ? 1 : 0,
         metaPhoneNumberId: data.metaPhoneNumberId || null,
         metaAccessToken: data.metaAccessToken || null,
@@ -150,8 +179,8 @@ export default function NotificationSettings() {
               <div className="flex items-center gap-2">
                 <Mail className="w-5 h-5" />
                 <div>
-                  <CardTitle>Email Notifications (SendGrid)</CardTitle>
-                  <CardDescription>Configure email notifications via SendGrid</CardDescription>
+                  <CardTitle>Email Notifications</CardTitle>
+                  <CardDescription>Configure email notifications via SendGrid or Office 365 SMTP</CardDescription>
                 </div>
               </div>
               <Switch
@@ -162,34 +191,161 @@ export default function NotificationSettings() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Email Provider Selection */}
             <div className="space-y-2">
-              <Label htmlFor="senderEmail">Sender Email Address</Label>
-              <Input
-                id="senderEmail"
-                type="email"
-                placeholder="noreply@yourcompany.com"
-                value={formData.senderEmail}
-                onChange={(e) => setFormData({ ...formData, senderEmail: e.target.value })}
+              <Label htmlFor="emailProvider">Email Provider</Label>
+              <Select
+                value={formData.emailProvider}
+                onValueChange={(value) => setFormData({ ...formData, emailProvider: value })}
                 disabled={!formData.emailEnabled}
-                data-testid="input-sender-email"
-              />
-              <p className="text-sm text-muted-foreground">
-                This email must be verified in your SendGrid account
-              </p>
+              >
+                <SelectTrigger id="emailProvider" data-testid="select-email-provider">
+                  <SelectValue placeholder="Select email provider" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="SendGrid">SendGrid</SelectItem>
+                  <SelectItem value="Office365">Office 365 SMTP</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="senderName">Sender Name</Label>
-              <Input
-                id="senderName"
-                type="text"
-                placeholder="KINTO QA System"
-                value={formData.senderName}
-                onChange={(e) => setFormData({ ...formData, senderName: e.target.value })}
-                disabled={!formData.emailEnabled}
-                data-testid="input-sender-name"
-              />
-            </div>
+            {/* SendGrid Configuration */}
+            {formData.emailProvider === 'SendGrid' && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="senderEmail">Sender Email Address</Label>
+                  <Input
+                    id="senderEmail"
+                    type="email"
+                    placeholder="noreply@yourcompany.com"
+                    value={formData.senderEmail}
+                    onChange={(e) => setFormData({ ...formData, senderEmail: e.target.value })}
+                    disabled={!formData.emailEnabled}
+                    data-testid="input-sender-email"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    This email must be verified in your SendGrid account
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="senderName">Sender Name</Label>
+                  <Input
+                    id="senderName"
+                    type="text"
+                    placeholder="KINTO QA System"
+                    value={formData.senderName}
+                    onChange={(e) => setFormData({ ...formData, senderName: e.target.value })}
+                    disabled={!formData.emailEnabled}
+                    data-testid="input-sender-name"
+                  />
+                </div>
+
+                <Alert>
+                  <AlertCircle className="w-4 h-4" />
+                  <AlertDescription className="text-sm">
+                    <strong>SendGrid Setup:</strong> You need a SendGrid account and API key. Set <code className="bg-muted px-1 rounded">SENDGRID_API_KEY</code> environment variable.
+                  </AlertDescription>
+                </Alert>
+              </>
+            )}
+
+            {/* Office 365 SMTP Configuration */}
+            {formData.emailProvider === 'Office365' && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="smtpHost">SMTP Host</Label>
+                  <Input
+                    id="smtpHost"
+                    type="text"
+                    placeholder="smtp.office365.com"
+                    value={formData.smtpHost}
+                    onChange={(e) => setFormData({ ...formData, smtpHost: e.target.value })}
+                    disabled={!formData.emailEnabled}
+                    data-testid="input-smtp-host"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    For Office 365: smtp.office365.com
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="smtpPort">SMTP Port</Label>
+                  <Select
+                    value={formData.smtpPort.toString()}
+                    onValueChange={(value) => setFormData({ ...formData, smtpPort: parseInt(value), smtpSecure: value === '465' })}
+                    disabled={!formData.emailEnabled}
+                  >
+                    <SelectTrigger id="smtpPort" data-testid="select-smtp-port">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="587">587 (TLS - Recommended)</SelectItem>
+                      <SelectItem value="465">465 (SSL)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-sm text-muted-foreground">
+                    Use 587 for TLS (recommended) or 465 for SSL
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="smtpUser">SMTP Username (Email Address)</Label>
+                  <Input
+                    id="smtpUser"
+                    type="email"
+                    placeholder="your-email@yourcompany.com"
+                    value={formData.smtpUser}
+                    onChange={(e) => setFormData({ ...formData, smtpUser: e.target.value })}
+                    disabled={!formData.emailEnabled}
+                    data-testid="input-smtp-user"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Your Office 365 email address
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="smtpPassword">SMTP Password</Label>
+                  <Input
+                    id="smtpPassword"
+                    type="password"
+                    placeholder="••••••••"
+                    value={formData.smtpPassword}
+                    onChange={(e) => setFormData({ ...formData, smtpPassword: e.target.value })}
+                    disabled={!formData.emailEnabled}
+                    data-testid="input-smtp-password"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Your Office 365 password or app-specific password
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="smtpFromName">From Name</Label>
+                  <Input
+                    id="smtpFromName"
+                    type="text"
+                    placeholder="KINTO QA System"
+                    value={formData.smtpFromName}
+                    onChange={(e) => setFormData({ ...formData, smtpFromName: e.target.value })}
+                    disabled={!formData.emailEnabled}
+                    data-testid="input-smtp-from-name"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Display name for outgoing emails
+                  </p>
+                </div>
+
+                <Alert>
+                  <AlertCircle className="w-4 h-4" />
+                  <AlertDescription className="text-sm">
+                    <strong>Office 365 Setup:</strong> Use smtp.office365.com with port 587 (TLS). 
+                    If you have 2FA enabled, create an app-specific password in your Microsoft account settings.
+                  </AlertDescription>
+                </Alert>
+              </>
+            )}
           </CardContent>
         </Card>
 
