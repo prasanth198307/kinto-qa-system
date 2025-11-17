@@ -279,6 +279,7 @@ export type SubmissionTask = typeof submissionTasks.$inferSelect;
 export const whatsappConversationSessions = pgTable("whatsapp_conversation_sessions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   phoneNumber: varchar("phone_number", { length: 20 }).notNull(),
+  assignmentId: varchar("assignment_id").references(() => checklistAssignments.id),
   submissionId: varchar("submission_id").references(() => checklistSubmissions.id),
   templateId: varchar("template_id").references(() => checklistTemplates.id),
   machineId: varchar("machine_id").references(() => machines.id),

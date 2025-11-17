@@ -4,7 +4,7 @@
  */
 
 import { db } from './db';
-import { whatsappConversationSessions, checklistTemplates, templateTasks, submissionTasks, checklistSubmissions, users, machines } from '@shared/schema';
+import { whatsappConversationSessions, checklistTemplates, templateTasks, submissionTasks, checklistSubmissions, checklistAssignments, users, machines } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 import { whatsappService } from './whatsappService';
 
@@ -40,6 +40,22 @@ export class WhatsAppConversationService {
     machineId: string;
     operatorId: string;
   }): Promise<string> {
+    // Check for existing active conversation for this assignment (prevent duplicates)
+    const existingSessions = await db
+      .select()
+      .from(whatsappConversationSessions)
+      .where(
+        and(
+          eq(whatsappConversationSessions.assignmentId, data.assignmentId),
+          eq(whatsappConversationSessions.status, 'active')
+        )
+      );
+
+    if (existingSessions.length > 0) {
+      console.log(`[WHATSAPP] Active conversation already exists for assignment ${data.assignmentId}`);
+      return existingSessions[0].id; // Return existing session ID
+    }
+
     // Get checklist template tasks
     const tasksList = await db
       .select()
@@ -72,6 +88,7 @@ export class WhatsAppConversationService {
       .insert(whatsappConversationSessions)
       .values({
         phoneNumber: data.phoneNumber,
+        assignmentId: data.assignmentId, // Link to assignment
         submissionId: submission.id, // Real submission ID
         templateId: data.templateId,
         machineId: data.machineId,
@@ -365,6 +382,17 @@ You can also send a photo if needed.`;
         completedAt: new Date(),
       })
       .where(eq(whatsappConversationSessions.id, sessionId));
+
+    // Mark assignment as completed (if linked)
+    if (session.assignmentId) {
+      await db
+        .update(checklistAssignments)
+        .set({
+          status: 'completed',
+          operatorResponseTime: new Date(),
+        })
+        .where(eq(checklistAssignments.id, session.assignmentId));
+    }
   }
 
   /**
