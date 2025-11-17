@@ -128,29 +128,33 @@ export class NotificationService {
 
     // Test mode - log to console
     if (config.testMode === 1) {
-      const message = `KINTO Machine Startup Reminder
-
-Hello ${userName},
-
-Please start the following machine:
-Machine: ${machineName}
-Scheduled Time: ${formattedTime}
-
-Reply "Done ${taskReferenceId}" when started
-Task ID: ${taskReferenceId}
-
-- KINTO QA System`;
-
       console.log('\n' + '='.repeat(60));
       console.log('[WHATSAPP NOTIFICATION - TEST MODE]');
       console.log('='.repeat(60));
       console.log(`To: ${mobile}`);
-      console.log(`Message:\n${message}`);
+      console.log('Template: machine_startup_reminder');
+      console.log('Parameters:');
+      console.log(`  1. Name: ${userName}`);
+      console.log(`  2. Machine: ${machineName}`);
+      console.log(`  3. Time: ${formattedTime}`);
+      console.log('\nRendered Message:');
+      console.log(`Hello ${userName},`);
+      console.log('');
+      console.log('This is a reminder to start the machine before production begins:');
+      console.log('');
+      console.log(`Machine: ${machineName}`);
+      console.log(`Scheduled Start Time: ${formattedTime}`);
+      console.log('');
+      console.log('Please ensure the machine is properly warmed up and ready for production.');
+      console.log('');
+      console.log('Reply with your status.');
+      console.log('');
+      console.log('- KINTO Operations Team');
       console.log('='.repeat(60) + '\n');
       return;
     }
 
-    // Production mode with Meta WhatsApp Cloud API
+    // Production mode with Meta WhatsApp Cloud API using approved template
     try {
       // Format phone number for Meta API (expects: "919876543210" - country code + number without +)
       let phoneNumber = mobile.replace(/\D/g, ''); // Remove non-digits
@@ -170,19 +174,25 @@ Task ID: ${taskReferenceId}
         console.warn(`[NOTIFICATION WARNING] Unusual phone number format: ${mobile} -> ${phoneNumber}`);
       }
 
-      console.log(`[NOTIFICATION] Sending WhatsApp to ${phoneNumber}`);
+      console.log(`[NOTIFICATION] Sending WhatsApp template to ${phoneNumber}`);
 
-      const success = await whatsappService.sendMachineStartupReminder(
-        phoneNumber,
-        machineName,
-        formattedTime,
-        taskReferenceId
-      );
+      // Use approved template: machine_startup_reminder
+      // Template parameters: {{1}} = userName, {{2}} = machineName, {{3}} = scheduledTime
+      const success = await whatsappService.sendTemplateMessage({
+        to: phoneNumber,
+        templateName: 'machine_startup_reminder',
+        languageCode: 'en',
+        parameters: [
+          userName,
+          machineName,
+          formattedTime
+        ]
+      });
 
       if (success) {
-        console.log(`[NOTIFICATION] WhatsApp sent successfully to ${phoneNumber}`);
+        console.log(`[NOTIFICATION] WhatsApp template sent successfully to ${phoneNumber}`);
       } else {
-        throw new Error('WhatsApp send failed - check Meta API credentials');
+        throw new Error('WhatsApp template send failed - check Meta API credentials and template approval');
       }
     } catch (error) {
       console.error('[NOTIFICATION ERROR] Meta WhatsApp Cloud API failed:', error);
@@ -298,18 +308,6 @@ Task ID: ${taskReferenceId}
       timeZone: 'Asia/Kolkata'
     });
 
-    const message = `KINTO Missed Checklist Alert
-
-Checklist Not Completed:
-Operator: ${operatorName}
-Machine: ${machineName}
-Checklist: ${checklistName}
-Due Time: ${formattedDueTime}
-
-This checklist was not completed on time. Please take immediate action.
-
-- KINTO QA System`;
-
     // Set WhatsApp credentials dynamically (database takes precedence over env vars)
     if (config.metaPhoneNumberId && config.metaAccessToken) {
       whatsappService.setCredentials({
@@ -329,12 +327,29 @@ This checklist was not completed on time. Please take immediate action.
       console.log('[MISSED CHECKLIST WHATSAPP - TEST MODE]');
       console.log('='.repeat(60));
       console.log(`To: ${recipientName} (${mobile})`);
-      console.log(`Message:\n${message}`);
+      console.log('Template: missed_checklist_alert');
+      console.log('Parameters:');
+      console.log(`  1. Operator: ${operatorName}`);
+      console.log(`  2. Machine: ${machineName}`);
+      console.log(`  3. Checklist: ${checklistName}`);
+      console.log(`  4. Due: ${formattedDueTime}`);
+      console.log('\nRendered Message:');
+      console.log('KINTO Missed Checklist Alert');
+      console.log('');
+      console.log(`Operator ${operatorName} has not completed the following checklist:`);
+      console.log('');
+      console.log(`Machine: ${machineName}`);
+      console.log(`Checklist: ${checklistName}`);
+      console.log(`Due Time: ${formattedDueTime}`);
+      console.log('');
+      console.log('Please take immediate action.');
+      console.log('');
+      console.log('- KINTO QA System');
       console.log('='.repeat(60) + '\n');
       return;
     }
 
-    // Production mode with Meta WhatsApp Cloud API
+    // Production mode with Meta WhatsApp Cloud API using approved template
     try {
       // Format phone number for Meta API
       let phoneNumber = mobile.replace(/\D/g, '');
@@ -347,15 +362,24 @@ This checklist was not completed on time. Please take immediate action.
         phoneNumber = `91${phoneNumber}`;
       }
 
-      const success = await whatsappService.sendTextMessage({
+      // Use approved template: missed_checklist_alert
+      // Template parameters: {{1}} = operatorName, {{2}} = machineName, {{3}} = checklistName, {{4}} = dueTime
+      const success = await whatsappService.sendTemplateMessage({
         to: phoneNumber,
-        message
+        templateName: 'missed_checklist_alert',
+        languageCode: 'en',
+        parameters: [
+          operatorName,
+          machineName,
+          checklistName,
+          formattedDueTime
+        ]
       });
 
       if (success) {
         console.log(`[MISSED CHECKLIST WHATSAPP SENT] To: ${recipientName} (${phoneNumber})`);
       } else {
-        throw new Error('WhatsApp send failed - check Meta API credentials');
+        throw new Error('WhatsApp template send failed - check Meta API credentials and template approval');
       }
     } catch (error) {
       console.error(`[WHATSAPP ERROR] Failed to send to ${recipientName}:`, error);
@@ -538,7 +562,7 @@ This checklist was not completed on time. Please take immediate action.
         timeZone: 'Asia/Kolkata'
       });
 
-      // Format tasks list
+      // Format tasks list for follow-up message
       let taskList = '';
       tasks.forEach((task, index) => {
         taskList += `${index + 1}. ${task.taskName}\n`;
@@ -547,22 +571,7 @@ This checklist was not completed on time. Please take immediate action.
         }
       });
 
-      const message = `KINTO Checklist Assignment
-
-Hello ${operatorName},
-
-Machine: ${machineName}
-Checklist: ${checklistName}
-Due Time: ${formattedDueTime}
-
-Tasks to Complete:
-${taskList}
-Reply with task results in this format:
-${taskReferenceId} 1:OK 2:OK 3:NOK-remarks
-
-Task ID: ${taskReferenceId}
-
-- KINTO QA System`;
+      const taskDetailsMessage = `📋 *Task Details for ${taskReferenceId}*\n\nTasks to Complete:\n${taskList}\nReply with task results in this format:\n${taskReferenceId} 1:OK 2:OK 3:NOK-remarks\n\nExample:\n${taskReferenceId} 1:OK 2:OK 3:NOK-Oil leak found`;
 
       // Test mode - log to console
       if (config?.testMode === 1) {
@@ -570,12 +579,35 @@ Task ID: ${taskReferenceId}
         console.log('[CHECKLIST WHATSAPP - TEST MODE]');
         console.log('='.repeat(60));
         console.log(`To: ${operatorName} (${operatorMobile})`);
-        console.log(`Message:\n${message}`);
+        console.log('\n--- MESSAGE 1: Template (qa_checklist_assigned) ---');
+        console.log('Parameters:');
+        console.log(`  1. Operator: ${operatorName}`);
+        console.log(`  2. Task ID: ${taskReferenceId}`);
+        console.log(`  3. Machine: ${machineName}`);
+        console.log(`  4. Checklist: ${checklistName}`);
+        console.log(`  5. Due: ${formattedDueTime}`);
+        console.log('\nRendered:');
+        console.log(`Hello ${operatorName},`);
+        console.log('');
+        console.log('New QA Checklist Assigned:');
+        console.log('');
+        console.log(`Task ID: ${taskReferenceId}`);
+        console.log(`Machine: ${machineName}`);
+        console.log(`Checklist: ${checklistName}`);
+        console.log(`Due: ${formattedDueTime}`);
+        console.log('');
+        console.log('Please complete this checklist on time.');
+        console.log('');
+        console.log('Reply with your status or questions.');
+        console.log('');
+        console.log('- KINTO QA Team');
+        console.log('\n--- MESSAGE 2: Task Details (Free-form) ---');
+        console.log(taskDetailsMessage);
         console.log('='.repeat(60) + '\n');
         return true;
       }
 
-      // Production mode - send via WhatsApp
+      // Production mode - send via WhatsApp using approved template + follow-up with task details
       let phoneNumber = operatorMobile.replace(/\D/g, '');
       
       if (phoneNumber.startsWith('0')) {
@@ -586,16 +618,38 @@ Task ID: ${taskReferenceId}
         phoneNumber = `91${phoneNumber}`;
       }
 
-      const success = await whatsappService.sendTextMessage({
+      // Step 1: Send approved template (qa_checklist_assigned) to initiate conversation
+      const templateSuccess = await whatsappService.sendTemplateMessage({
         to: phoneNumber,
-        message
+        templateName: 'qa_checklist_assigned',
+        languageCode: 'en',
+        parameters: [
+          operatorName,
+          taskReferenceId,
+          machineName,
+          checklistName,
+          formattedDueTime
+        ]
       });
 
-      if (success) {
-        console.log(`[CHECKLIST WHATSAPP SENT] To: ${operatorName} (${phoneNumber}), Checklist: ${checklistName}`);
+      if (!templateSuccess) {
+        throw new Error('WhatsApp template send failed - check Meta API credentials and template approval');
+      }
+
+      // Step 2: Send follow-up free-form message with task details (allowed within 24-hour window after template)
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second between messages
+      
+      const taskDetailsSuccess = await whatsappService.sendTextMessage({
+        to: phoneNumber,
+        message: taskDetailsMessage
+      });
+
+      if (taskDetailsSuccess) {
+        console.log(`[CHECKLIST WHATSAPP SENT] To: ${operatorName} (${phoneNumber}), Checklist: ${checklistName} (template + task details)`);
         return true;
       } else {
-        throw new Error('WhatsApp send failed - check Meta API credentials');
+        console.warn(`[CHECKLIST WHATSAPP] Template sent but task details failed for ${operatorName}`);
+        return true; // Template was sent successfully, task details failure is not critical
       }
     } catch (error) {
       console.error(`[CHECKLIST WHATSAPP ERROR] Failed to send to ${operatorName}:`, error);

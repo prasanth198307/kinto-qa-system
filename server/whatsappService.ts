@@ -83,23 +83,59 @@ export class WhatsAppService {
     }
   }
 
-  async sendMachineStartupReminder(
-    phoneNumber: string, 
-    machineName: string, 
-    scheduledTime: string,
-    taskReferenceId: string
-  ): Promise<boolean> {
-    const message = `MACHINE STARTUP REMINDER\n\n` +
-      `Machine: ${machineName}\n` +
-      `Scheduled: ${scheduledTime}\n\n` +
-      `Reply "Done ${taskReferenceId}" when started\n` +
-      `Task ID: ${taskReferenceId}\n\n` +
-      `- KINTO QA System`;
+  /**
+   * Send WhatsApp template message
+   * Uses approved Meta templates for compliance with postpaid numbers
+   */
+  async sendTemplateMessage(options: WhatsAppTemplateOptions): Promise<boolean> {
+    if (!this.credentials) {
+      console.error('WhatsApp credentials not configured');
+      return false;
+    }
 
-    return await this.sendTextMessage({
-      to: phoneNumber,
-      message
-    });
+    try {
+      const payload: any = {
+        messaging_product: 'whatsapp',
+        to: options.to,
+        type: 'template',
+        template: {
+          name: options.templateName,
+          language: {
+            code: options.languageCode || 'en'
+          }
+        }
+      };
+
+      // Add parameters if provided
+      if (options.parameters && options.parameters.length > 0) {
+        payload.template.components = [
+          {
+            type: 'body',
+            parameters: options.parameters.map(text => ({
+              type: 'text',
+              text
+            }))
+          }
+        ];
+      }
+
+      const response = await axios.post(
+        this.getApiUrl(),
+        payload,
+        {
+          headers: {
+            'Authorization': `Bearer ${this.credentials.accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      console.log('WhatsApp template message sent successfully:', response.data);
+      return true;
+    } catch (error: any) {
+      console.error('WhatsApp template send error:', error.response?.data || error.message);
+      return false;
+    }
   }
 
   async markMessageAsRead(messageId: string): Promise<void> {
