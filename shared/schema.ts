@@ -288,6 +288,7 @@ export const whatsappConversationSessions = pgTable("whatsapp_conversation_sessi
   currentTaskIndex: integer("current_task_index").default(0),
   totalTasks: integer("total_tasks").notNull(),
   answers: jsonb("answers").default('[]'),
+  pendingPhotoUrl: text("pending_photo_url"), // Store photo received before text answer
   lastMessageAt: timestamp("last_message_at").defaultNow(),
   startedAt: timestamp("started_at").defaultNow(),
   completedAt: timestamp("completed_at"),

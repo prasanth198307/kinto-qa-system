@@ -204,7 +204,25 @@ You can also send a photo if needed.`;
     const tasks = await this.getTemplateTasks(session.templateId!);
     const currentTask = tasks[session.currentTaskIndex];
 
-    // Parse answer
+    // CASE 1: Photo received first (without text answer)
+    if (data.messageType === 'image' && data.imageUrl) {
+      // Store photo URL, ask for text response
+      await db
+        .update(whatsappConversationSessions)
+        .set({
+          pendingPhotoUrl: data.imageUrl,
+          lastMessageAt: new Date(),
+        })
+        .where(eq(whatsappConversationSessions.id, sessionId));
+
+      await whatsappService.sendTextMessage({
+        to: session.phoneNumber,
+        message: '📸 Photo received! Now please reply with:\n✅ OK\n❌ NOK - describe issue',
+      });
+      return;
+    }
+
+    // CASE 2: Text answer received
     const message = data.message.trim().toUpperCase();
     let result: 'OK' | 'NOK';
     let remarks = '';
@@ -218,10 +236,6 @@ You can also send a photo if needed.`;
       if (remarkMatch) {
         remarks = remarkMatch[1].trim();
       }
-    } else if (data.messageType === 'image') {
-      // If they send image without text, assume it's for the current question
-      result = session.answers[session.currentTaskIndex]?.result || 'NOK';
-      remarks = session.answers[session.currentTaskIndex]?.remarks || 'See photo';
     } else {
       // Invalid response
       await whatsappService.sendTextMessage({
@@ -231,24 +245,25 @@ You can also send a photo if needed.`;
       return;
     }
 
-    // Create answer object
+    // Create answer object (attach pending photo if exists)
     const answer: TaskAnswer = {
       taskIndex: session.currentTaskIndex,
       taskName: currentTask.taskName,
       result,
       remarks,
-      photoUrl: data.imageUrl,
+      photoUrl: session.pendingPhotoUrl || data.imageUrl || undefined,
     };
 
     // Update answers array
     const updatedAnswers = [...(session.answers as TaskAnswer[])];
     updatedAnswers[session.currentTaskIndex] = answer;
 
-    // Update session
+    // Update session (clear pending photo)
     await db
       .update(whatsappConversationSessions)
       .set({
         answers: updatedAnswers,
+        pendingPhotoUrl: null, // Clear pending photo
         lastMessageAt: new Date(),
       })
       .where(eq(whatsappConversationSessions.id, sessionId));
