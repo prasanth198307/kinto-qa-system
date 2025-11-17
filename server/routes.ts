@@ -166,22 +166,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   setupAuth(app);
 
-  // Serve uploaded WhatsApp photos ONLY (restricted to whatsapp-photos directory for security)
-  const express = await import('express');
-  app.use('/whatsapp-photos', express.default.static(
-    path.join(process.cwd(), 'uploads', 'whatsapp-photos'),
-    {
-      // Security: prevent directory traversal
-      dotfiles: 'deny',
-      index: false,
-      // Only allow image files
-      setHeaders: (res, filepath) => {
-        if (!/\.(jpg|jpeg|png|gif|webp)$/i.test(filepath)) {
-          res.status(403).send('Forbidden');
+  // Secure WhatsApp photo download route (validates files before serving)
+  app.get('/whatsapp-photos/:filename', async (req, res) => {
+    try {
+      const filename = req.params.filename;
+
+      // Security: validate filename format (no path traversal)
+      if (!filename || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+        return res.status(403).json({ message: 'Invalid filename' });
+      }
+
+      // Security: validate file extension (images only)
+      const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+      const ext = path.extname(filename).toLowerCase();
+      if (!allowedExtensions.includes(ext)) {
+        return res.status(403).json({ message: 'File type not allowed' });
+      }
+
+      // Build full file path
+      const uploadsDir = path.join(process.cwd(), 'uploads', 'whatsapp-photos');
+      const filePath = path.join(uploadsDir, filename);
+
+      // Security: verify file exists and is within allowed directory
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ message: 'File not found' });
+      }
+
+      // Security: ensure resolved path is still within uploads directory (prevent symlink attacks)
+      const resolvedPath = fs.realpathSync(filePath);
+      const resolvedUploadsDir = fs.realpathSync(uploadsDir);
+      if (!resolvedPath.startsWith(resolvedUploadsDir)) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+
+      // Set appropriate content type
+      const contentTypes: Record<string, string> = {
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.png': 'image/png',
+        '.gif': 'image/gif',
+        '.webp': 'image/webp',
+      };
+      res.setHeader('Content-Type', contentTypes[ext] || 'application/octet-stream');
+
+      // Stream file to response
+      const fileStream = fs.createReadStream(filePath);
+      fileStream.pipe(res);
+      fileStream.on('error', (err) => {
+        console.error('[WHATSAPP] Error streaming photo:', err);
+        if (!res.headersSent) {
+          res.status(500).json({ message: 'Error streaming file' });
         }
+      });
+    } catch (error) {
+      console.error('[WHATSAPP] Error serving photo:', error);
+      if (!res.headersSent) {
+        res.status(500).json({ message: 'Internal server error' });
       }
     }
-  ));
+  });
 
   // Register WhatsApp webhook routes (must be before authentication)
   app.use('/api/whatsapp', whatsappWebhookRouter);
