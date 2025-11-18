@@ -101,8 +101,8 @@ export class WhatsAppConversationService {
       })
       .returning();
 
-    // Send first question
-    await this.sendQuestion(session.id, 0, tasksList);
+    // Send first question (use tasksList.length directly)
+    await this.sendQuestion(session.phoneNumber, 0, tasksList.length, tasksList);
 
     return session.id;
   }
@@ -318,6 +318,7 @@ You can also send a photo if needed.`;
     let nextIndex = 0;
     let updatedAnswers: TaskAnswer[] = [];
     let phoneNumber = '';
+    let totalTasks = 0;
     let tasks: any[] = [];
 
     // Use database transaction for true atomicity (COMMIT before network I/O)
@@ -344,7 +345,7 @@ You can also send a photo if needed.`;
       }
 
       const currentIndex = session.currentTaskIndex;
-      const totalTasks = session.totalTasks;
+      totalTasks = session.totalTasks; // Capture for use after transaction
 
       // Step 2: Get template tasks (INSIDE TRANSACTION for consistency)
       tasks = await tx
@@ -391,7 +392,7 @@ You can also send a photo if needed.`;
     if (isLastQuestion) {
       await this.sendConfirmationSummary(sessionId, updatedAnswers);
     } else {
-      await this.sendQuestion(sessionId, nextIndex, tasks);
+      await this.sendQuestion(phoneNumber, nextIndex, totalTasks, tasks);
     }
   }
 
