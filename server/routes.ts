@@ -10,6 +10,7 @@ import fs from "fs";
 import { db } from "./db";
 import { whatsappService } from "./whatsappService";
 import { whatsappWebhookRouter } from "./whatsappWebhook";
+import { whatsappConversationService } from "./whatsappConversationService";
 import { calculateBOMSuggestions } from "@shared/calculations";
 
 // Simple audit logging function
@@ -223,6 +224,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!res.headersSent) {
         res.status(500).json({ message: 'Internal server error' });
       }
+    }
+  });
+
+  // Test endpoint to start WhatsApp conversation (for testing only - no auth required)
+  app.post('/api/whatsapp/test-start-conversation', async (req, res) => {
+    try {
+      const { phoneNumber, templateId, machineId, operatorId, assignmentId } = req.body;
+      
+      // Validate required fields
+      if (!phoneNumber || !templateId || !machineId || !operatorId) {
+        return res.status(400).json({ 
+          message: 'Missing required fields: phoneNumber, templateId, machineId, operatorId' 
+        });
+      }
+
+      console.log('[WHATSAPP TEST] Starting conversation:', { phoneNumber, templateId, machineId, operatorId });
+
+      // Start the interactive conversation
+      const sessionId = await whatsappConversationService.startConversation({
+        phoneNumber,
+        assignmentId: assignmentId || null,
+        templateId,
+        machineId,
+        operatorId,
+      });
+
+      res.json({ 
+        success: true, 
+        sessionId,
+        message: `WhatsApp conversation started! First question sent to ${phoneNumber}` 
+      });
+    } catch (error) {
+      console.error('[WHATSAPP TEST ERROR]:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: error instanceof Error ? error.message : 'Failed to start conversation' 
+      });
     }
   });
 
