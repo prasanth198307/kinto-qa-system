@@ -109,16 +109,19 @@ export class WhatsAppConversationService {
 
   /**
    * Send a specific question to the operator
+   * Uses snapshot data from transaction to avoid re-fetching and desync issues
    */
-  private async sendQuestion(sessionId: string, taskIndex: number, tasks: any[]): Promise<void> {
-    const session = await this.getSession(sessionId);
-    if (!session) throw new Error('Session not found');
-
+  private async sendQuestion(
+    phoneNumber: string,
+    taskIndex: number,
+    totalTasks: number,
+    tasks: any[]
+  ): Promise<void> {
     const task = tasks[taskIndex];
     if (!task) throw new Error('Task not found');
 
     const questionNumber = taskIndex + 1;
-    const message = `📋 *Question ${questionNumber} of ${session.totalTasks}*
+    const message = `📋 *Question ${questionNumber} of ${totalTasks}*
 
 ${task.taskName}
 ${task.verificationCriteria ? `\n_${task.verificationCriteria}_` : ''}
@@ -133,7 +136,7 @@ NOK - describe the problem
 You can also send a photo if needed.`;
 
     await whatsappService.sendTextMessage({
-      to: session.phoneNumber,
+      to: phoneNumber,
       message,
     });
   }
@@ -229,21 +232,41 @@ You can also send a photo if needed.`;
 
     // CASE 2: Photo without meaningful caption (store as pending)
     if (data.messageType === 'image' && data.imageUrl && !hasValidAnswer) {
-      const session = await this.getSession(sessionId);
-      if (!session) return;
+      let phoneNumber = '';
 
-      await db
-        .update(whatsappConversationSessions)
-        .set({
-          pendingPhotoUrl: data.imageUrl,
-          lastMessageAt: new Date(),
-        })
-        .where(eq(whatsappConversationSessions.id, sessionId));
+      // Use transaction to atomically store pending photo (COMMIT before network I/O)
+      await db.transaction(async (tx) => {
+        // Lock and fetch session
+        const sessions = await tx
+          .select()
+          .from(whatsappConversationSessions)
+          .where(eq(whatsappConversationSessions.id, sessionId))
+          .for('update');
 
-      await whatsappService.sendTextMessage({
-        to: session.phoneNumber,
-        message: '📸 Photo received! Now please reply with:\n✅ OK\n❌ NOK - describe issue',
+        if (!sessions || sessions.length === 0) return;
+
+        const session = sessions[0];
+        phoneNumber = session.phoneNumber;
+
+        // Update with pending photo
+        await tx
+          .update(whatsappConversationSessions)
+          .set({
+            pendingPhotoUrl: data.imageUrl,
+            lastMessageAt: new Date(),
+          })
+          .where(eq(whatsappConversationSessions.id, sessionId));
+
+        // Transaction will COMMIT here (lock released)
       });
+
+      // Send acknowledgment AFTER transaction commits (no lock held)
+      if (phoneNumber) {
+        await whatsappService.sendTextMessage({
+          to: phoneNumber,
+          message: '📸 Photo received! Now please reply with:\n✅ OK\n❌ NOK - describe issue',
+        });
+      }
       return;
     }
 
@@ -280,7 +303,7 @@ You can also send a photo if needed.`;
   }
 
   /**
-   * Save answer and progress to next question (atomically with fresh session data)
+   * Save answer and progress to next question (atomically with transaction)
    */
   private async saveAnswerAndProgress(
     sessionId: string,
@@ -290,45 +313,85 @@ You can also send a photo if needed.`;
       photoUrl?: string;
     }
   ): Promise<void> {
-    // Re-fetch session to get fresh data (avoid stale session issues)
-    const session = await this.getSession(sessionId);
-    if (!session) return;
+    // Variables to hold data after transaction commits
+    let isLastQuestion = false;
+    let nextIndex = 0;
+    let updatedAnswers: TaskAnswer[] = [];
+    let phoneNumber = '';
+    let tasks: any[] = [];
 
-    const tasks = await this.getTemplateTasks(session.templateId!);
-    const currentTask = tasks[session.currentTaskIndex];
+    // Use database transaction for true atomicity (COMMIT before network I/O)
+    await db.transaction(async (tx) => {
+      // Step 1: Lock session row and fetch fresh data (prevents concurrent updates)
+      const sessions = await tx
+        .select()
+        .from(whatsappConversationSessions)
+        .where(eq(whatsappConversationSessions.id, sessionId))
+        .for('update'); // Row-level lock
 
-    // Build complete answer with fresh session data
-    const answer: TaskAnswer = {
-      taskIndex: session.currentTaskIndex,
-      taskName: currentTask.taskName,
-      result: partialAnswer.result,
-      remarks: partialAnswer.remarks,
-      // Use provided photo URL, or fallback to pending photo from session
-      photoUrl: partialAnswer.photoUrl || session.pendingPhotoUrl || undefined,
-    };
+      if (!sessions || sessions.length === 0) {
+        console.error(`[WHATSAPP] Session ${sessionId} not found in transaction`);
+        return;
+      }
 
-    // Update answers array with fresh session data
-    const updatedAnswers = [...(session.answers as TaskAnswer[])];
-    updatedAnswers[session.currentTaskIndex] = answer;
+      const session = sessions[0];
+      phoneNumber = session.phoneNumber;
 
-    // Atomic update: save answer, clear pending photo, update timestamp, and advance
-    const isLastQuestion = session.currentTaskIndex + 1 >= session.totalTasks;
+      // Validate session state
+      if (session.currentTaskIndex === null || session.totalTasks === null) {
+        console.error(`[WHATSAPP] Invalid session state for ${sessionId}`);
+        return;
+      }
 
-    await db
-      .update(whatsappConversationSessions)
-      .set({
-        answers: updatedAnswers,
-        pendingPhotoUrl: null, // Always clear pending photo
-        lastMessageAt: new Date(),
-        currentTaskIndex: isLastQuestion ? session.currentTaskIndex : session.currentTaskIndex + 1,
-      })
-      .where(eq(whatsappConversationSessions.id, sessionId));
+      const currentIndex = session.currentTaskIndex;
+      const totalTasks = session.totalTasks;
 
-    // Check if this was the last question
+      // Step 2: Get template tasks (INSIDE TRANSACTION for consistency)
+      tasks = await tx
+        .select()
+        .from(templateTasks)
+        .where(eq(templateTasks.templateId, session.templateId!))
+        .orderBy(templateTasks.orderIndex);
+
+      const currentTask = tasks[currentIndex];
+
+      // Step 3: Build complete answer with fresh locked session data
+      const answer: TaskAnswer = {
+        taskIndex: currentIndex,
+        taskName: currentTask.taskName,
+        result: partialAnswer.result,
+        remarks: partialAnswer.remarks,
+        // Use provided photo URL, or fallback to pending photo from locked session
+        photoUrl: partialAnswer.photoUrl || session.pendingPhotoUrl || undefined,
+      };
+
+      // Step 4: Update answers array with fresh session data
+      updatedAnswers = [...(session.answers as TaskAnswer[])];
+      updatedAnswers[currentIndex] = answer;
+
+      // Step 5: Atomic update within transaction
+      isLastQuestion = currentIndex + 1 >= totalTasks;
+      nextIndex = isLastQuestion ? currentIndex : currentIndex + 1;
+
+      // CRITICAL: UPDATE with WHERE clause to only affect THIS session
+      await tx
+        .update(whatsappConversationSessions)
+        .set({
+          answers: updatedAnswers,
+          pendingPhotoUrl: null, // Always clear pending photo
+          lastMessageAt: new Date(),
+          currentTaskIndex: nextIndex,
+        })
+        .where(eq(whatsappConversationSessions.id, sessionId));
+
+      // Transaction will COMMIT here (lock released)
+    });
+
+    // Step 6: Send next question or summary (AFTER transaction commit, no lock held)
     if (isLastQuestion) {
       await this.sendConfirmationSummary(sessionId, updatedAnswers);
     } else {
-      await this.sendQuestion(sessionId, session.currentTaskIndex + 1, tasks);
+      await this.sendQuestion(sessionId, nextIndex, tasks);
     }
   }
 
