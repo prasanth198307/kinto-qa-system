@@ -151,7 +151,10 @@ psql -U your_username -d kinto_production
 # Run WhatsApp system migrations (in order)
 \i updated_dbscripts/20251110_incremental_whatsapp_checklist.sql
 \i updated_dbscripts/20251118_checklist_assignments_whatsapp_columns.sql
-\i updated_dbscripts/whatsapp_conversation_sessions.sql
+\i updated_dbscripts/20251118_add_missing_whatsapp_columns.sql
+
+# Note: Run 20251118_add_missing_whatsapp_columns.sql instead of 
+# whatsapp_conversation_sessions.sql if the table already exists
 ```
 
 ### Verification
