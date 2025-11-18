@@ -124,6 +124,53 @@ These migrations use `IF NOT EXISTS` clauses, making them idempotent (safe to re
    -- Then parent tables...
    ```
 
+### WhatsApp Interactive Conversation System (Nov 18, 2024)
+These migrations add the **WhatsApp conversation feature** for interactive checklist completion:
+
+**8. `20251118_checklist_assignments_whatsapp_columns.sql` - WhatsApp Columns (New)**
+- **Tables Modified:** checklist_assignments
+- **New Columns:** task_reference_id, whatsapp_enabled, whatsapp_notification_sent, whatsapp_notification_sent_at, operator_response, operator_response_time
+- **Dependencies:** None (extends existing table)
+- **Features:** WhatsApp conversation tracking, operator response management
+
+**9. `whatsapp_conversation_sessions.sql` - Conversation State Management (Updated)**
+- **Tables:** whatsapp_conversation_sessions (NEW)
+- **Dependencies:** checklist_assignments, checklist_submissions, checklist_templates, machines, users
+- **Features:** Stateful WhatsApp conversations, session expiry, photo handling, JSON answer storage
+
+**Note:** Script `20251110_incremental_whatsapp_checklist.sql` was updated to include additional columns for photo and spare part support.
+
+### Production Deployment (colloki.micapps.com)
+
+To deploy the complete WhatsApp system to your production server:
+
+```bash
+# Connect to production database
+psql -U your_username -d kinto_production
+
+# Run WhatsApp system migrations (in order)
+\i updated_dbscripts/20251110_incremental_whatsapp_checklist.sql
+\i updated_dbscripts/20251118_checklist_assignments_whatsapp_columns.sql
+\i updated_dbscripts/whatsapp_conversation_sessions.sql
+```
+
+### Verification
+
+Check if WhatsApp tables and columns exist:
+
+```sql
+-- Verify tables
+SELECT table_name FROM information_schema.tables 
+WHERE table_schema = 'public' 
+AND table_name IN ('whatsapp_conversation_sessions', 'partial_task_answers');
+
+-- Verify columns in checklist_assignments
+SELECT column_name, data_type 
+FROM information_schema.columns 
+WHERE table_name = 'checklist_assignments' 
+AND column_name IN ('task_reference_id', 'whatsapp_enabled', 'whatsapp_notification_sent');
+```
+
 ## Notes
 
 - All migrations use `IF NOT EXISTS` for safe re-execution
@@ -131,3 +178,4 @@ These migrations use `IF NOT EXISTS` clauses, making them idempotent (safe to re
 - Timestamps default to `now()` for audit trails
 - `record_status` field enables soft deletes across all tables
 - All migrations tested against PostgreSQL 14+
+- **WhatsApp system scripts updated 2025-11-18** with complete conversation support
