@@ -271,7 +271,7 @@ You will help interpret operator responses for various checklist tasks. Each res
             'Content-Type': 'application/json',
             'x-api-key': this.apiKey,
           },
-          timeout: 30000, // 30 second timeout
+          timeout: 60000, // 60 second timeout
         }
       );
 
@@ -343,7 +343,7 @@ You will help interpret operator responses for various checklist tasks. Each res
             'Content-Type': 'application/json',
             'x-api-key': this.apiKey,
           },
-          timeout: 30000, // 30 second timeout (increased from 10s)
+          timeout: 60000, // 60 second timeout
         }
       );
 
