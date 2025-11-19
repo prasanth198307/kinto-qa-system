@@ -280,7 +280,7 @@ You can also send a photo if needed.`;
     // CASE 1: Photo with caption containing OK/NOK (common WhatsApp behavior)
     if (data.messageType === 'image' && data.imageUrl && hasValidAnswer) {
       // Use AI to interpret response with photo context
-      let result: 'OK' | 'NOK' = 'NOK';
+      let result: 'OK' | 'NOK';
       let remarks = '';
 
       try {
@@ -302,21 +302,31 @@ You can also send a photo if needed.`;
           remarks: interpretation.remarks,
         });
 
-        if (interpretation.status === 'OK') {
-          result = 'OK';
-        } else if (interpretation.status === 'NOK') {
-          result = 'NOK';
-          remarks = interpretation.remarks || data.message;
+        // GATE: Only use AI result if confidence >= 70% AND status is not UNCLEAR
+        if (interpretation.confidence >= 70 && interpretation.status !== 'UNCLEAR') {
+          if (interpretation.status === 'OK') {
+            result = 'OK';
+          } else {
+            result = 'NOK';
+            remarks = interpretation.remarks || data.message;
+          }
         } else {
-          // UNCLEAR - fallback to basic parsing
+          // Low confidence or UNCLEAR - fallback to basic keyword parsing
+          console.log('[WHATSAPP AI] Low confidence or UNCLEAR, using keyword fallback');
           result = message.startsWith('NOK') ? 'NOK' : 'OK';
-          remarks = message.startsWith('NOK') ? data.message.substring(3).trim() : '';
+          if (result === 'NOK') {
+            const remarkMatch = data.message.match(/NOK\s*-?\s*(.+)/i);
+            remarks = remarkMatch?.[1]?.trim() || '';
+          }
         }
       } catch (error) {
-        console.error('[WHATSAPP AI] Interpretation failed, using fallback:', error);
-        // Fallback to basic parsing
+        console.error('[WHATSAPP AI] Interpretation failed, using keyword fallback:', error);
+        // Fallback to basic keyword parsing
         result = message.startsWith('NOK') ? 'NOK' : 'OK';
-        remarks = message.startsWith('NOK') ? data.message.substring(3).trim() : '';
+        if (result === 'NOK') {
+          const remarkMatch = data.message.match(/NOK\s*-?\s*(.+)/i);
+          remarks = remarkMatch?.[1]?.trim() || '';
+        }
       }
 
       await this.saveAnswerAndProgress(sessionId, {
@@ -369,7 +379,7 @@ You can also send a photo if needed.`;
 
     // CASE 3: Text-only answer (may attach pending photo)
     // Use AI to interpret even if it doesn't start with OK/NOK
-    let result: 'OK' | 'NOK' = 'NOK';
+    let result: 'OK' | 'NOK' | null = null;
     let remarks = '';
 
     try {
@@ -392,53 +402,62 @@ You can also send a photo if needed.`;
         remarks: interpretation.remarks,
       });
 
-      // If AI is confident, use its interpretation
-      if (interpretation.confidence >= 70) {
+      // GATE: Only use AI result if confidence >= 70% AND status is not UNCLEAR
+      if (interpretation.confidence >= 70 && interpretation.status !== 'UNCLEAR') {
         if (interpretation.status === 'OK') {
           result = 'OK';
-        } else if (interpretation.status === 'NOK') {
+        } else {
           result = 'NOK';
           remarks = interpretation.remarks || data.message;
+        }
+      } else if (interpretation.status === 'UNCLEAR' || interpretation.confidence < 70) {
+        // UNCLEAR status OR low confidence - try keyword fallback first
+        console.log('[WHATSAPP AI] UNCLEAR or low confidence, trying keyword fallback');
+        
+        if (hasValidAnswer) {
+          // Has OK/NOK keywords - use basic parsing
+          result = message.startsWith('NOK') ? 'NOK' : 'OK';
+          if (result === 'NOK') {
+            const remarkMatch = data.message.match(/NOK\s*-?\s*(.+)/i);
+            remarks = remarkMatch?.[1]?.trim() || '';
+          }
         } else {
-          // UNCLEAR with high confidence - ask user to clarify
+          // No valid keywords AND AI is unclear - ask operator to clarify
           await whatsappService.sendTextMessage({
             to: session.phoneNumber,
-            message: '❓ I didn\'t understand. Please reply with:\n✅ OK - if task is complete\n❌ NOK - describe the problem',
+            message: '❓ I didn\'t understand your response. Please reply with:\n✅ OK - if task is complete\n❌ NOK - describe the problem',
           });
-          return;
+          return; // DO NOT advance checklist
         }
-      } else if (hasValidAnswer) {
-        // Low confidence but has OK/NOK - use basic parsing
+      }
+    } catch (error) {
+      console.error('[WHATSAPP AI] Interpretation error, using keyword fallback:', error);
+      
+      // AI failed - try keyword fallback
+      if (hasValidAnswer) {
         result = message.startsWith('NOK') ? 'NOK' : 'OK';
         if (result === 'NOK') {
           const remarkMatch = data.message.match(/NOK\s*-?\s*(.+)/i);
           remarks = remarkMatch?.[1]?.trim() || '';
         }
       } else {
-        // Low confidence and no clear OK/NOK - ask for clarification
-        await whatsappService.sendTextMessage({
-          to: session.phoneNumber,
-          message: '❓ Please reply with:\n✅ OK - if task is complete\n❌ NOK - describe the problem',
-        });
-        return;
-      }
-    } catch (error) {
-      console.error('[WHATSAPP AI] Interpretation error, using fallback:', error);
-      
-      // Fallback to basic parsing
-      if (!hasValidAnswer) {
+        // No valid keywords - ask for clarification
         await whatsappService.sendTextMessage({
           to: session.phoneNumber,
           message: '❌ Invalid response. Please reply with:\n✅ OK\n❌ NOK - describe issue',
         });
-        return;
+        return; // DO NOT advance checklist
       }
+    }
 
-      result = message.startsWith('NOK') ? 'NOK' : 'OK';
-      if (result === 'NOK') {
-        const remarkMatch = data.message.match(/NOK\s*-?\s*(.+)/i);
-        remarks = remarkMatch?.[1]?.trim() || '';
-      }
+    // Final safety check: result must be set
+    if (result === null) {
+      console.error('[WHATSAPP] No valid result determined, asking for clarification');
+      await whatsappService.sendTextMessage({
+        to: session.phoneNumber,
+        message: '❌ Please reply with:\n✅ OK - if complete\n❌ NOK - if there\'s an issue',
+      });
+      return; // DO NOT advance checklist
     }
 
     await this.saveAnswerAndProgress(sessionId, {
