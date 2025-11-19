@@ -1,12 +1,14 @@
 /**
  * WhatsApp Conversation Service
  * Manages interactive step-by-step checklist completion via WhatsApp
+ * Integrated with Colloki Flow AI for intelligent response interpretation
  */
 
 import { db } from './db';
 import { whatsappConversationSessions, checklistTemplates, templateTasks, submissionTasks, checklistSubmissions, checklistAssignments, users, machines } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 import { whatsappService } from './whatsappService';
+import { collokiFlowService } from './collokiFlowService';
 
 interface TaskAnswer {
   taskIndex: number;
@@ -80,13 +82,33 @@ export class WhatsAppConversationService {
       })
       .returning();
 
+    // Get context for AI session
+    const [template] = await db
+      .select()
+      .from(checklistTemplates)
+      .where(eq(checklistTemplates.id, data.templateId));
+    
+    const [machine] = await db
+      .select()
+      .from(machines)
+      .where(eq(machines.id, data.machineId));
+    
+    const [operator] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, data.operatorId));
+
     // Create conversation session (expires in 24 hours)
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 24);
 
+    // Generate a session ID for both WhatsApp and AI
+    const sessionId = crypto.randomUUID();
+
     const [session] = await db
       .insert(whatsappConversationSessions)
       .values({
+        id: sessionId,
         phoneNumber: data.phoneNumber,
         assignmentId: data.assignmentId, // Link to assignment
         submissionId: submission.id, // Real submission ID
@@ -97,9 +119,24 @@ export class WhatsAppConversationService {
         currentTaskIndex: 0,
         totalTasks: tasksList.length,
         answers: [],
+        aiSessionId: sessionId, // Use same session ID for AI
         expiresAt,
       })
       .returning();
+
+    // Initialize AI conversation context with checklist metadata
+    try {
+      await collokiFlowService.initializeSession({
+        sessionId: session.id,
+        checklistName: template?.name || 'Quality Checklist',
+        machineName: machine?.name || 'Machine',
+        operatorName: operator?.username || 'Operator',
+      });
+      console.log('[WHATSAPP AI] AI session initialized:', session.id);
+    } catch (error) {
+      console.error('[WHATSAPP AI] Failed to initialize AI session:', error);
+      // Continue anyway - AI is optional
+    }
 
     // Send first question (use tasksList.length directly)
     await this.sendQuestion(session.phoneNumber, 0, tasksList.length, tasksList);
@@ -192,6 +229,7 @@ You can also send a photo if needed.`;
 
   /**
    * Handle task answer from operator
+   * Uses AI to intelligently interpret responses
    */
   private async handleTaskAnswer(
     sessionId: string,
@@ -201,25 +239,84 @@ You can also send a photo if needed.`;
       imageUrl?: string;
     }
   ): Promise<void> {
-    // Parse message for OK/NOK
+    // Get current session to access task context
+    const session = await this.getSession(sessionId);
+    if (!session) return;
+
+    // Get current task for AI context
+    const tasksList = await db
+      .select()
+      .from(templateTasks)
+      .where(eq(templateTasks.templateId, session.templateId))
+      .orderBy(templateTasks.orderIndex);
+
+    const currentTask = tasksList[session.currentTaskIndex];
+    if (!currentTask) {
+      console.error('[WHATSAPP] Current task not found');
+      return;
+    }
+
+    // Get context metadata for AI
+    const [template] = await db
+      .select()
+      .from(checklistTemplates)
+      .where(eq(checklistTemplates.id, session.templateId));
+    
+    const [machine] = await db
+      .select()
+      .from(machines)
+      .where(eq(machines.id, session.machineId));
+    
+    const [operator] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, session.operatorId));
+
+    // Parse message for OK/NOK (basic check first)
     const message = data.message.trim().toUpperCase();
     const hasValidAnswer = message === 'OK' || message.startsWith('OK') || 
                           message === 'NOK' || message.startsWith('NOK');
 
     // CASE 1: Photo with caption containing OK/NOK (common WhatsApp behavior)
     if (data.messageType === 'image' && data.imageUrl && hasValidAnswer) {
-      // Complete answer: image + caption with OK/NOK
-      let result: 'OK' | 'NOK';
+      // Use AI to interpret response with photo context
+      let result: 'OK' | 'NOK' = 'NOK';
       let remarks = '';
 
-      if (message === 'OK' || message.startsWith('OK')) {
-        result = 'OK';
-      } else {
-        result = 'NOK';
-        const remarkMatch = data.message.match(/NOK\s*-?\s*(.+)/i);
-        if (remarkMatch) {
-          remarks = remarkMatch[1].trim();
+      try {
+        const interpretation = await collokiFlowService.interpretResponse({
+          operatorMessage: data.message,
+          taskName: currentTask.taskName,
+          verificationCriteria: currentTask.verificationCriteria || undefined,
+          sessionId: session.aiSessionId || session.id,
+          context: {
+            machineName: machine?.name,
+            templateName: template?.name,
+            operatorName: operator?.username,
+          },
+        });
+
+        console.log('[WHATSAPP AI] Photo+caption interpretation:', {
+          status: interpretation.status,
+          confidence: interpretation.confidence,
+          remarks: interpretation.remarks,
+        });
+
+        if (interpretation.status === 'OK') {
+          result = 'OK';
+        } else if (interpretation.status === 'NOK') {
+          result = 'NOK';
+          remarks = interpretation.remarks || data.message;
+        } else {
+          // UNCLEAR - fallback to basic parsing
+          result = message.startsWith('NOK') ? 'NOK' : 'OK';
+          remarks = message.startsWith('NOK') ? data.message.substring(3).trim() : '';
         }
+      } catch (error) {
+        console.error('[WHATSAPP AI] Interpretation failed, using fallback:', error);
+        // Fallback to basic parsing
+        result = message.startsWith('NOK') ? 'NOK' : 'OK';
+        remarks = message.startsWith('NOK') ? data.message.substring(3).trim() : '';
       }
 
       await this.saveAnswerAndProgress(sessionId, {
@@ -271,27 +368,76 @@ You can also send a photo if needed.`;
     }
 
     // CASE 3: Text-only answer (may attach pending photo)
-    if (!hasValidAnswer) {
-      const session = await this.getSession(sessionId);
-      if (!session) return;
-
-      await whatsappService.sendTextMessage({
-        to: session.phoneNumber,
-        message: '❌ Invalid response. Please reply with:\n✅ OK\n❌ NOK - describe issue',
-      });
-      return;
-    }
-
-    let result: 'OK' | 'NOK';
+    // Use AI to interpret even if it doesn't start with OK/NOK
+    let result: 'OK' | 'NOK' = 'NOK';
     let remarks = '';
 
-    if (message === 'OK' || message.startsWith('OK')) {
-      result = 'OK';
-    } else {
-      result = 'NOK';
-      const remarkMatch = data.message.match(/NOK\s*-?\s*(.+)/i);
-      if (remarkMatch) {
-        remarks = remarkMatch[1].trim();
+    try {
+      const interpretation = await collokiFlowService.interpretResponse({
+        operatorMessage: data.message,
+        taskName: currentTask.taskName,
+        verificationCriteria: currentTask.verificationCriteria || undefined,
+        sessionId: session.aiSessionId || session.id,
+        context: {
+          machineName: machine?.name,
+          templateName: template?.name,
+          operatorName: operator?.username,
+        },
+      });
+
+      console.log('[WHATSAPP AI] Text response interpretation:', {
+        message: data.message,
+        status: interpretation.status,
+        confidence: interpretation.confidence,
+        remarks: interpretation.remarks,
+      });
+
+      // If AI is confident, use its interpretation
+      if (interpretation.confidence >= 70) {
+        if (interpretation.status === 'OK') {
+          result = 'OK';
+        } else if (interpretation.status === 'NOK') {
+          result = 'NOK';
+          remarks = interpretation.remarks || data.message;
+        } else {
+          // UNCLEAR with high confidence - ask user to clarify
+          await whatsappService.sendTextMessage({
+            to: session.phoneNumber,
+            message: '❓ I didn\'t understand. Please reply with:\n✅ OK - if task is complete\n❌ NOK - describe the problem',
+          });
+          return;
+        }
+      } else if (hasValidAnswer) {
+        // Low confidence but has OK/NOK - use basic parsing
+        result = message.startsWith('NOK') ? 'NOK' : 'OK';
+        if (result === 'NOK') {
+          const remarkMatch = data.message.match(/NOK\s*-?\s*(.+)/i);
+          remarks = remarkMatch?.[1]?.trim() || '';
+        }
+      } else {
+        // Low confidence and no clear OK/NOK - ask for clarification
+        await whatsappService.sendTextMessage({
+          to: session.phoneNumber,
+          message: '❓ Please reply with:\n✅ OK - if task is complete\n❌ NOK - describe the problem',
+        });
+        return;
+      }
+    } catch (error) {
+      console.error('[WHATSAPP AI] Interpretation error, using fallback:', error);
+      
+      // Fallback to basic parsing
+      if (!hasValidAnswer) {
+        await whatsappService.sendTextMessage({
+          to: session.phoneNumber,
+          message: '❌ Invalid response. Please reply with:\n✅ OK\n❌ NOK - describe issue',
+        });
+        return;
+      }
+
+      result = message.startsWith('NOK') ? 'NOK' : 'OK';
+      if (result === 'NOK') {
+        const remarkMatch = data.message.match(/NOK\s*-?\s*(.+)/i);
+        remarks = remarkMatch?.[1]?.trim() || '';
       }
     }
 

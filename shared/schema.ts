@@ -289,6 +289,7 @@ export const whatsappConversationSessions = pgTable("whatsapp_conversation_sessi
   totalTasks: integer("total_tasks").notNull(),
   answers: jsonb("answers").default('[]'),
   pendingPhotoUrl: text("pending_photo_url"), // Store photo received before text answer
+  aiSessionId: varchar("ai_session_id", { length: 255 }), // Colloki Flow AI session ID for context
   lastMessageAt: timestamp("last_message_at").defaultNow(),
   startedAt: timestamp("started_at").defaultNow(),
   completedAt: timestamp("completed_at"),
