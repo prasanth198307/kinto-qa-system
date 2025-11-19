@@ -306,17 +306,19 @@ You will help interpret operator responses for various checklist tasks. Each res
       // Format input_value as: "text: <message>, from: <phone>, phoneNumberId: <id>"
       const inputValue = `text: ${params.message}, from: ${params.phoneNumber}, phoneNumberId: ${whatsappPhoneId}`;
 
+      console.log('\n🔍 INPUT VALUE BREAKDOWN:');
+      console.log('  Message:', params.message);
+      console.log('  Phone:', params.phoneNumber);
+      console.log('  PhoneNumberId:', whatsappPhoneId);
+      console.log('  Final input_value:', inputValue);
+      console.log('');
+
       const requestData: CollokiFlowRequest = {
         output_type: 'chat',
         input_type: 'chat',
         input_value: inputValue,
         session_id: params.phoneNumber, // Use phone number as session_id (as per your Java code)
       };
-
-      console.log('[COLLOKI FLOW] Sending WhatsApp message via Colloki Flow:', {
-        inputValue: inputValue.substring(0, 100),
-        sessionId: params.phoneNumber,
-      });
 
       const startTime = Date.now();
       
