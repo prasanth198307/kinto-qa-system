@@ -1,17 +1,27 @@
 # Colloki Flow AI Integration for WhatsApp Conversations
 
 ## Overview
-The KINTO WhatsApp conversation system now integrates with Colloki Flow AI (collokiflow.micapps.com) to provide intelligent response interpretation for operator checklist submissions via WhatsApp.
+The KINTO WhatsApp conversation system now integrates with Colloki Flow AI (collokiflow.micapps.com) for:
+1. **Intelligent Response Interpretation**: AI-powered understanding of operator checklist responses
+2. **Dual-Channel WhatsApp Messaging**: Colloki Flow as primary channel with Meta Graph API as fallback
 
 ## Integration Date
 **November 19, 2025**
 
 ## Purpose
-The AI integration assists in:
+The AI integration provides:
+
+### Response Interpretation
 1. **Intelligent OK/NOK Detection**: Understands natural language responses beyond simple keyword matching
 2. **Remark Extraction**: Automatically extracts meaningful remarks from operator messages
 3. **Context Awareness**: Maintains conversation context including checklist, machine, and operator information
 4. **Confidence-Based Decision Making**: Uses AI confidence scores to determine when to use AI vs. keyword fallback
+
+### Dual-Channel Messaging
+1. **Colloki Flow as Primary**: All conversation messages sent via Colloki Flow first
+2. **Meta Graph API as Fallback**: Automatic fallback if Colloki Flow fails
+3. **Session Context Preservation**: Maintains conversation continuity across channels
+4. **Transparent Routing**: Operators don't notice which channel is used
 
 ## Architecture
 
@@ -125,6 +135,94 @@ Each operator response is interpreted with:
 - Checklist template name
 - Operator name
 - Full conversation history (via session_id)
+
+## Dual-Channel Messaging System
+
+### Architecture
+The system uses a **Colloki Flow primary + Meta fallback** strategy for sending WhatsApp messages:
+
+```
+┌─────────────────────────────────────────┐
+│  WhatsApp Conversation Service         │
+│  (All outgoing messages)                │
+└──────────────┬──────────────────────────┘
+               │ sessionId provided?
+               ├─ YES → Primary Channel
+               │  ┌──────────────────────────┐
+               │  │  Colloki Flow API        │
+               │  │  (Try First)             │
+               │  └──────┬───────────────────┘
+               │         │ Success?
+               │         ├─ YES → ✅ Done
+               │         └─ NO  → Fallback ↓
+               │
+               ↓ NO or Fallback
+        ┌──────────────────────────┐
+        │  Meta WhatsApp Graph API │
+        │  (Direct)                │
+        └──────────────────────────┘
+```
+
+### Message Routing Logic
+
+**When sessionId is provided:**
+```typescript
+// Primary: Try Colloki Flow first
+const collokiResult = await collokiFlowService.sendWhatsAppMessage({
+  message: 'Your message',
+  sessionId: session.id,
+});
+
+if (collokiResult.success) {
+  // ✅ Success via Colloki Flow
+  return true;
+} else {
+  // ⚠️ Fallback to Meta Graph API
+  await metaGraphApi.sendMessage(...);
+}
+```
+
+**When no sessionId (legacy or no active session):**
+```typescript
+// Use Meta Graph API directly
+await metaGraphApi.sendMessage(...);
+```
+
+### Colloki Flow Message Format
+```json
+{
+  "output_type": "chat",
+  "input_type": "chat",
+  "input_value": "📋 Question 1 of 5: Check oil level...",
+  "session_id": "d1d6f706-fcd3-434b-93aa-56d5ee2a1316"
+}
+```
+
+**Note**: Colloki Flow internally routes to Meta WhatsApp Graph API, so operators receive messages from the same WhatsApp Business number regardless of which channel is used.
+
+### Session Context Preservation
+All conversation messages maintain session context:
+- ✅ Initial question
+- ✅ Photo acknowledgments
+- ✅ Clarification requests
+- ✅ Progress updates
+- ✅ Confirmation summary
+- ✅ Submission/cancellation messages
+- ✅ Reminders
+- ✅ Session expiry notices
+
+### Logging
+```
+[WHATSAPP] Trying Colloki Flow as primary channel...
+[COLLOKI FLOW] Sending WhatsApp message via Colloki Flow: {...}
+[COLLOKI FLOW] WhatsApp message sent successfully via Colloki Flow
+[WHATSAPP] ✅ Message sent via Colloki Flow (primary)
+
+# Or on fallback:
+[WHATSAPP] ⚠️ Colloki Flow failed, falling back to Meta Graph API: Error...
+[WHATSAPP] Using Meta Graph API (fallback)
+[WHATSAPP] ✅ Message sent via Meta Graph API: wamid.xyz...
+```
 
 ## Message Flow Examples
 
