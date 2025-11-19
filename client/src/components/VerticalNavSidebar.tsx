@@ -82,7 +82,7 @@ export function VerticalNavSidebar({
 
   const sidebarContent = (
     <div 
-      className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-visible"
+      className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-visible"
       style={{
         scrollbarWidth: 'thin',
         scrollbarColor: 'hsl(var(--muted-foreground) / 0.3) transparent',
