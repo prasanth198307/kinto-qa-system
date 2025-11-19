@@ -357,6 +357,15 @@ You will help interpret operator responses for various checklist tasks. Each res
       const aiResponse = response.data.outputs?.[0]?.outputs?.[0]?.results?.message?.text;
       console.log('[COLLOKI FLOW] AI Response Text:', aiResponse);
 
+      // Check if Colloki Flow returned an error
+      if (aiResponse && aiResponse.toLowerCase().includes('error')) {
+        console.error('[COLLOKI FLOW] ❌ Colloki Flow returned error:', aiResponse);
+        return {
+          success: false,
+          error: aiResponse,
+        };
+      }
+
       console.log('[COLLOKI FLOW] ✅ WhatsApp message sent successfully via Colloki Flow');
 
       return { success: true };
