@@ -3,6 +3,8 @@
  * Integrates with collokiflow.micapps.com for intelligent response interpretation
  */
 
+import axios from 'axios';
+
 interface CollokiFlowRequest {
   output_type: 'chat';
   input_type: 'chat';
@@ -96,20 +98,18 @@ Respond in JSON format:
         sessionId: params.sessionId,
       });
 
-      const response = await fetch(`${this.apiUrl}?stream=false`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`,
-        },
-        body: JSON.stringify(requestData),
-      });
+      const response = await axios.post<CollokiFlowResponse>(
+        `${this.apiUrl}?stream=false`,
+        requestData,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.apiKey}`,
+          },
+        }
+      );
 
-      if (!response.ok) {
-        throw new Error(`Colloki Flow API error: ${response.status} ${response.statusText}`);
-      }
-
-      const result: CollokiFlowResponse = await response.json();
+      const result = response.data;
       
       // Extract AI response text
       const aiText = result.outputs?.[0]?.outputs?.[0]?.results?.message?.text || '';
@@ -124,14 +124,15 @@ Respond in JSON format:
         rawAiResponse: aiText,
       };
 
-    } catch (error) {
-      console.error('[COLLOKI FLOW ERROR]:', error);
+    } catch (error: any) {
+      const errorMessage = error.response?.data || error.message || 'Unknown error';
+      console.error('[COLLOKI FLOW ERROR]:', errorMessage);
       
       // Fallback to simple keyword-based interpretation
       const fallback = this.fallbackInterpretation(params.operatorMessage);
       return {
         ...fallback,
-        rawAiResponse: 'Error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        rawAiResponse: 'Error: ' + errorMessage,
       };
     }
   }
@@ -262,14 +263,16 @@ You will help interpret operator responses for various checklist tasks. Each res
         session_id: params.sessionId,
       };
 
-      await fetch(`${this.apiUrl}?stream=false`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`,
-        },
-        body: JSON.stringify(requestData),
-      });
+      await axios.post(
+        `${this.apiUrl}?stream=false`,
+        requestData,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.apiKey}`,
+          },
+        }
+      );
 
       console.log('[COLLOKI FLOW] Session initialized:', params.sessionId);
     } catch (error) {
@@ -299,31 +302,23 @@ You will help interpret operator responses for various checklist tasks. Each res
         sessionId: params.sessionId,
       });
 
-      const response = await fetch(`${this.apiUrl}?stream=false`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`,
-        },
-        body: JSON.stringify(requestData),
-      });
+      const response = await axios.post<CollokiFlowResponse>(
+        `${this.apiUrl}?stream=false`,
+        requestData,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.apiKey}`,
+          },
+        }
+      );
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('[COLLOKI FLOW] WhatsApp send error:', response.status, errorText);
-        return {
-          success: false,
-          error: `Colloki Flow API error: ${response.status} ${response.statusText}`,
-        };
-      }
-
-      const result: CollokiFlowResponse = await response.json();
       console.log('[COLLOKI FLOW] WhatsApp message sent successfully via Colloki Flow');
 
       return { success: true };
 
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    } catch (error: any) {
+      const errorMessage = error.response?.data || error.message || 'Unknown error';
       console.error('[COLLOKI FLOW] WhatsApp send error:', errorMessage);
       return {
         success: false,
