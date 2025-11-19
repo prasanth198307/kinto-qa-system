@@ -319,7 +319,19 @@ You will help interpret operator responses for various checklist tasks. Each res
       });
 
       const startTime = Date.now();
-      console.log('[COLLOKI FLOW] Request payload:', JSON.stringify(requestData, null, 2));
+      
+      // Print full request details
+      console.log('\n========================================');
+      console.log('[COLLOKI FLOW] REQUEST DETAILS');
+      console.log('========================================');
+      console.log('URL:', `${this.apiUrl}?stream=false`);
+      console.log('Method: POST');
+      console.log('Headers:', {
+        'Content-Type': 'application/json',
+        'x-api-key': this.apiKey.substring(0, 10) + '...',
+      });
+      console.log('Body:', JSON.stringify(requestData, null, 2));
+      console.log('========================================\n');
       
       const response = await axios.post<CollokiFlowResponse>(
         `${this.apiUrl}?stream=false`,
