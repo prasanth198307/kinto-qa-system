@@ -1,10 +1,12 @@
 import axios from 'axios';
+import { collokiFlowService } from './collokiFlowService';
 
 const WHATSAPP_API_VERSION = process.env.WHATSAPP_API_VERSION || 'v18.0';
 
 export interface WhatsAppMessageOptions {
   to: string;
   message: string;
+  sessionId?: string; // Optional: If provided, use Colloki Flow as primary channel
 }
 
 export interface WhatsAppTemplateOptions {
@@ -58,7 +60,31 @@ export class WhatsAppService {
       return false;
     }
 
+    // Strategy: Try Colloki Flow first (if session_id provided), fallback to Meta Graph API
+    if (options.sessionId) {
+      console.log('[WHATSAPP] Trying Colloki Flow as primary channel...');
+      
+      try {
+        const collokiResult = await collokiFlowService.sendWhatsAppMessage({
+          message: options.message,
+          sessionId: options.sessionId,
+        });
+
+        if (collokiResult.success) {
+          console.log('[WHATSAPP] ✅ Message sent via Colloki Flow (primary)');
+          return true;
+        } else {
+          console.warn('[WHATSAPP] ⚠️ Colloki Flow failed, falling back to Meta Graph API:', collokiResult.error);
+        }
+      } catch (error) {
+        console.warn('[WHATSAPP] ⚠️ Colloki Flow error, falling back to Meta Graph API:', error);
+      }
+    }
+
+    // Fallback to Meta Graph API (or primary if no session_id)
     try {
+      console.log('[WHATSAPP] Using Meta Graph API' + (options.sessionId ? ' (fallback)' : ' (primary)'));
+      
       const response = await axios.post(
         this.getApiUrl(),
         {
@@ -75,10 +101,10 @@ export class WhatsAppService {
         }
       );
 
-      console.log('WhatsApp message sent successfully:', response.data);
+      console.log('[WHATSAPP] ✅ Message sent via Meta Graph API:', response.data.messages?.[0]?.id);
       return true;
     } catch (error: any) {
-      console.error('WhatsApp send error:', error.response?.data || error.message);
+      console.error('[WHATSAPP] ❌ Meta Graph API send error:', error.response?.data || error.message);
       return false;
     }
   }

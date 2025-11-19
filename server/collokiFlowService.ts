@@ -277,6 +277,60 @@ You will help interpret operator responses for various checklist tasks. Each res
       // Non-critical - continue without AI context
     }
   }
+
+  /**
+   * Send WhatsApp message via Colloki Flow
+   * Colloki Flow internally routes to Meta WhatsApp Graph API
+   */
+  async sendWhatsAppMessage(params: {
+    message: string;
+    sessionId: string;
+  }): Promise<{ success: boolean; error?: string }> {
+    try {
+      const requestData: CollokiFlowRequest = {
+        output_type: 'chat',
+        input_type: 'chat',
+        input_value: params.message,
+        session_id: params.sessionId,
+      };
+
+      console.log('[COLLOKI FLOW] Sending WhatsApp message via Colloki Flow:', {
+        messagePreview: params.message.substring(0, 50),
+        sessionId: params.sessionId,
+      });
+
+      const response = await fetch(`${this.apiUrl}?stream=false`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify(requestData),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[COLLOKI FLOW] WhatsApp send error:', response.status, errorText);
+        return {
+          success: false,
+          error: `Colloki Flow API error: ${response.status} ${response.statusText}`,
+        };
+      }
+
+      const result: CollokiFlowResponse = await response.json();
+      console.log('[COLLOKI FLOW] WhatsApp message sent successfully via Colloki Flow');
+
+      return { success: true };
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[COLLOKI FLOW] WhatsApp send error:', errorMessage);
+      return {
+        success: false,
+        error: errorMessage,
+      };
+    }
+  }
 }
 
 export const collokiFlowService = new CollokiFlowService();
