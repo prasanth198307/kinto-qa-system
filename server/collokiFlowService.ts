@@ -10,14 +10,6 @@ interface CollokiFlowRequest {
   input_type: 'chat';
   input_value: string;
   session_id: string;
-  tweaks?: {
-    'WhatsAppOutput-uqikJ'?: {
-      to_phone?: string;
-      phone_id?: string;
-      token?: string;
-      message?: string;
-    };
-  };
 }
 
 interface CollokiFlowResponse {
@@ -279,7 +271,7 @@ You will help interpret operator responses for various checklist tasks. Each res
             'Content-Type': 'application/json',
             'x-api-key': this.apiKey,
           },
-          timeout: 10000, // 10 second timeout
+          timeout: 30000, // 30 second timeout
         }
       );
 
@@ -300,38 +292,35 @@ You will help interpret operator responses for various checklist tasks. Each res
     phoneNumber: string;
   }): Promise<{ success: boolean; error?: string }> {
     try {
-      // Get WhatsApp credentials from environment
+      // Get WhatsApp Phone Number ID from environment
       const whatsappPhoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-      const whatsappToken = process.env.WHATSAPP_ACCESS_TOKEN;
 
-      if (!whatsappPhoneId || !whatsappToken) {
-        console.error('[COLLOKI FLOW] WhatsApp credentials not configured');
+      if (!whatsappPhoneId) {
+        console.error('[COLLOKI FLOW] WhatsApp Phone Number ID not configured');
         return {
           success: false,
-          error: 'WhatsApp credentials not configured',
+          error: 'WhatsApp Phone Number ID not configured',
         };
       }
+
+      // Format input_value as: "text: <message>, from: <phone>, phoneNumberId: <id>"
+      const inputValue = `text: ${params.message}, from: ${params.phoneNumber}, phoneNumberId: ${whatsappPhoneId}`;
 
       const requestData: CollokiFlowRequest = {
         output_type: 'chat',
         input_type: 'chat',
-        input_value: params.message,
-        session_id: params.sessionId,
-        tweaks: {
-          'WhatsAppOutput-uqikJ': {
-            message: params.message,
-            to_phone: params.phoneNumber,
-            phone_id: whatsappPhoneId,
-            token: whatsappToken,
-          },
-        },
+        input_value: inputValue,
+        session_id: params.phoneNumber, // Use phone number as session_id (as per your Java code)
       };
 
       console.log('[COLLOKI FLOW] Sending WhatsApp message via Colloki Flow:', {
-        messagePreview: params.message.substring(0, 50),
-        sessionId: params.sessionId,
+        inputValue: inputValue.substring(0, 100),
+        sessionId: params.phoneNumber,
       });
 
+      const startTime = Date.now();
+      console.log('[COLLOKI FLOW] Request payload:', JSON.stringify(requestData, null, 2));
+      
       const response = await axios.post<CollokiFlowResponse>(
         `${this.apiUrl}?stream=false`,
         requestData,
@@ -340,10 +329,13 @@ You will help interpret operator responses for various checklist tasks. Each res
             'Content-Type': 'application/json',
             'x-api-key': this.apiKey,
           },
-          timeout: 10000, // 10 second timeout
+          timeout: 30000, // 30 second timeout (increased from 10s)
         }
       );
 
+      const responseTime = Date.now() - startTime;
+      console.log(`[COLLOKI FLOW] Response received in ${responseTime}ms`);
+      
       // Log the full response to understand what Colloki Flow returns
       console.log('[COLLOKI FLOW] Full response:', JSON.stringify(response.data, null, 2));
       
@@ -351,7 +343,7 @@ You will help interpret operator responses for various checklist tasks. Each res
       const aiResponse = response.data.outputs?.[0]?.outputs?.[0]?.results?.message?.text;
       console.log('[COLLOKI FLOW] AI Response Text:', aiResponse);
 
-      console.log('[COLLOKI FLOW] WhatsApp message request sent to Colloki Flow');
+      console.log('[COLLOKI FLOW] ✅ WhatsApp message sent successfully via Colloki Flow');
 
       return { success: true };
 
