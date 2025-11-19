@@ -81,7 +81,13 @@ export function VerticalNavSidebar({
   };
 
   const sidebarContent = (
-    <div className="flex-1 overflow-y-auto">
+    <div 
+      className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-visible"
+      style={{
+        scrollbarWidth: 'thin',
+        scrollbarColor: 'hsl(var(--muted-foreground) / 0.3) transparent'
+      }}
+    >
       <div className="space-y-6">
         {sections.map((section, index) => (
           <div key={section.id}>
