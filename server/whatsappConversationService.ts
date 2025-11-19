@@ -127,12 +127,12 @@ export class WhatsAppConversationService {
     // Initialize AI conversation context with checklist metadata
     try {
       await collokiFlowService.initializeSession({
-        sessionId: session.id,
+        sessionId: data.phoneNumber, // Use phone number for Colloki session
         checklistName: template?.name || 'Quality Checklist',
         machineName: machine?.name || 'Machine',
         operatorName: operator?.username || 'Operator',
       });
-      console.log('[WHATSAPP AI] AI session initialized:', session.id);
+      console.log('[WHATSAPP AI] AI session initialized for phone:', data.phoneNumber);
     } catch (error) {
       console.error('[WHATSAPP AI] Failed to initialize AI session:', error);
       // Continue anyway - AI is optional
