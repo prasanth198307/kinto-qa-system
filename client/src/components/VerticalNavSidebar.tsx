@@ -85,7 +85,9 @@ export function VerticalNavSidebar({
       className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-visible"
       style={{
         scrollbarWidth: 'thin',
-        scrollbarColor: 'hsl(var(--muted-foreground) / 0.3) transparent'
+        scrollbarColor: 'hsl(var(--muted-foreground) / 0.3) transparent',
+        WebkitOverflowScrolling: 'touch',
+        touchAction: 'pan-y'
       }}
     >
       <div className="space-y-6">
@@ -156,7 +158,7 @@ export function VerticalNavSidebar({
         className={`
           fixed top-0 left-0 bottom-0 w-72 bg-card border-r border-border z-40 pt-20 px-4 pb-4
           transition-transform duration-300 ease-in-out
-          flex flex-col
+          flex flex-col h-full
           ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
           lg:translate-x-0
         `}
