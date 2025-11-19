@@ -1,0 +1,105 @@
+Error fetching today's stats: error: column "cases_count" does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getGatepassesByDate (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:2633:16)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:8355:27 {
+  length: 112,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '205',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+10:30:00 AM [express] GET /api/spare-parts 304 in 17ms :: [{"id":"66d39383-d0c9-4f4f-92fa-86487dfd485…
+Error fetching raw materials: error: column "weight_per_unit" does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllRawMaterials (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:2535:16)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:6325:25 {
+  length: 115,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '88',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+10:30:00 AM [express] GET /api/raw-materials 500 in 19ms :: {"message":"Failed to fetch raw materials…
+10:30:00 AM [express] GET /api/stats/today 500 in 20ms :: {"message":"Failed to fetch stats"}
+10:30:00 AM [express] GET /api/products 200 in 21ms :: [{"id":"871415b7-ccbb-4194-8444-b77188a2782a",…
+🔹 Request: GET /api/maintenance-plans
+   Cookie header: connect.sid=s%3AD6R9a0O8MP69Dnb1Y0_3nWGvJMk1jgrI.1f8xqJZHQmye2GofirwMuqjSQI%2FBaEFKk4APC3IQekY
+   Session ID: D6R9a0O8MP69Dnb1Y0_3nWGvJMk1jgrI
+   Authenticated: true
+🔹 Request: GET /api/pm-task-list-templates
+   Cookie header: connect.sid=s%3AD6R9a0O8MP69Dnb1Y0_3nWGvJMk1jgrI.1f8xqJZHQmye2GofirwMuqjSQI%2FBaEFKk4APC3IQekY
+   Session ID: D6R9a0O8MP69Dnb1Y0_3nWGvJMk1jgrI
+   Authenticated: true
+10:30:00 AM [express] GET /api/maintenance-plans 304 in 6ms :: []
+10:30:00 AM [express] GET /api/pm-task-list-templates 304 in 6ms :: []
+🔹 Request: GET /api/finished-goods
+   Cookie header: connect.sid=s%3AD6R9a0O8MP69Dnb1Y0_3nWGvJMk1jgrI.1f8xqJZHQmye2GofirwMuqjSQI%2FBaEFKk4APC3IQekY
+   Session ID: D6R9a0O8MP69Dnb1Y0_3nWGvJMk1jgrI
+   Authenticated: true
+🔹 Request: GET /api/checklist-templates
+   Cookie header: connect.sid=s%3AD6R9a0O8MP69Dnb1Y0_3nWGvJMk1jgrI.1f8xqJZHQmye2GofirwMuqjSQI%2FBaEFKk4APC3IQekY
+   Session ID: D6R9a0O8MP69Dnb1Y0_3nWGvJMk1jgrI
+   Authenticated: true
+10:30:00 AM [express] GET /api/checklist-templates 304 in 7ms :: []
+10:30:00 AM [express] GET /api/finished-goods 304 in 6ms :: [{"id":"988602b4-2926-4921-b67e-a31238dc5…
+🔹 Request: GET /api/invoice-payments
+   Cookie header: connect.sid=s%3AD6R9a0O8MP69Dnb1Y0_3nWGvJMk1jgrI.1f8xqJZHQmye2GofirwMuqjSQI%2FBaEFKk4APC3IQekY
+   Session ID: D6R9a0O8MP69Dnb1Y0_3nWGvJMk1jgrI
+   Authenticated: true
+10:30:00 AM [express] GET /api/invoice-payments 304 in 12ms :: []
+🔹 Request: GET /api/raw-material-types
+   Cookie header: connect.sid=s%3AD6R9a0O8MP69Dnb1Y0_3nWGvJMk1jgrI.1f8xqJZHQmye2GofirwMuqjSQI%2FBaEFKk4APC3IQekY
+   Session ID: D6R9a0O8MP69Dnb1Y0_3nWGvJMk1jgrI
+   Authenticated: true
+Error fetching raw material types: error: column "type_code" does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllRawMaterialTypes (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:2516:16)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:6214:21 {
+  length: 184,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: 'Perhaps you meant to reference the column "raw_material_types.type_name".',
+  position: '14',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
