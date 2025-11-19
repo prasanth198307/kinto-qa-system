@@ -1,0 +1,59 @@
+ Session ID: FhFFzMQhvtARwW-k5ulEmqDhyzvA91xQ
+   Cookie will be: connect.sid=FhFFzMQhvtARwW-k5ulEmqDhyzvA91xQ
+10:12:11 AM [express] POST /api/login 200 in 135ms :: {"id":"user-admin","username":"admin","password…
+🔹 Request: GET /api/machines
+   Cookie header: connect.sid=s%3AFhFFzMQhvtARwW-k5ulEmqDhyzvA91xQ.wQf8FUI2gOAPVIP9G1ey1vGu2NFoAH3oSLWjk79Idlw
+   Session ID: FhFFzMQhvtARwW-k5ulEmqDhyzvA91xQ
+   Authenticated: true
+Error fetching machines: error: column "warmup_time_minutes" does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllMachines (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:2078:16)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:5208:25 {
+  length: 119,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '52',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+🔹 Request: GET /api/stats/today
+   Cookie header: connect.sid=s%3AFhFFzMQhvtARwW-k5ulEmqDhyzvA91xQ.wQf8FUI2gOAPVIP9G1ey1vGu2NFoAH3oSLWjk79Idlw
+   Session ID: FhFFzMQhvtARwW-k5ulEmqDhyzvA91xQ
+   Authenticated: true
+Error fetching today's stats: error: column "production_reference" does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getRawMaterialIssuancesByDate (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:2605:16)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:8354:36 {
+  length: 120,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '77',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
