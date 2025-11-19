@@ -139,7 +139,7 @@ export class WhatsAppConversationService {
     }
 
     // Send first question (use tasksList.length directly)
-    await this.sendQuestion(session.phoneNumber, 0, tasksList.length, tasksList);
+    await this.sendQuestion(session.phoneNumber, 0, tasksList.length, tasksList, session.id);
 
     return session.id;
   }
@@ -152,7 +152,8 @@ export class WhatsAppConversationService {
     phoneNumber: string,
     taskIndex: number,
     totalTasks: number,
-    tasks: any[]
+    tasks: any[],
+    sessionId?: string
   ): Promise<void> {
     const task = tasks[taskIndex];
     if (!task) throw new Error('Task not found');
@@ -175,6 +176,7 @@ You can also send a photo if needed.`;
     await whatsappService.sendTextMessage({
       to: phoneNumber,
       message,
+      sessionId, // Use Colloki Flow if session ID provided
     });
   }
 
@@ -215,6 +217,7 @@ You can also send a photo if needed.`;
       await whatsappService.sendTextMessage({
         to: data.phoneNumber,
         message: '⏱️ This checklist session has expired. Please contact your supervisor.',
+        sessionId: session.id,
       });
       return;
     }
@@ -372,6 +375,7 @@ You can also send a photo if needed.`;
         await whatsappService.sendTextMessage({
           to: phoneNumber,
           message: '📸 Photo received! Now please reply with:\n✅ OK\n❌ NOK - describe issue',
+          sessionId,
         });
       }
       return;
@@ -426,6 +430,7 @@ You can also send a photo if needed.`;
           await whatsappService.sendTextMessage({
             to: session.phoneNumber,
             message: '❓ I didn\'t understand your response. Please reply with:\n✅ OK - if task is complete\n❌ NOK - describe the problem',
+            sessionId: session.id,
           });
           return; // DO NOT advance checklist
         }
@@ -445,6 +450,7 @@ You can also send a photo if needed.`;
         await whatsappService.sendTextMessage({
           to: session.phoneNumber,
           message: '❌ Invalid response. Please reply with:\n✅ OK\n❌ NOK - describe issue',
+          sessionId: session.id,
         });
         return; // DO NOT advance checklist
       }
@@ -456,6 +462,7 @@ You can also send a photo if needed.`;
       await whatsappService.sendTextMessage({
         to: session.phoneNumber,
         message: '❌ Please reply with:\n✅ OK - if complete\n❌ NOK - if there\'s an issue',
+        sessionId: session.id,
       });
       return; // DO NOT advance checklist
     }
@@ -557,7 +564,7 @@ You can also send a photo if needed.`;
     if (isLastQuestion) {
       await this.sendConfirmationSummary(sessionId, updatedAnswers);
     } else {
-      await this.sendQuestion(phoneNumber, nextIndex, totalTasks, tasks);
+      await this.sendQuestion(phoneNumber, nextIndex, totalTasks, tasks, sessionId);
     }
   }
 
@@ -602,6 +609,7 @@ You can also send a photo if needed.`;
     await whatsappService.sendTextMessage({
       to: session.phoneNumber,
       message: summary,
+      sessionId,
     });
   }
 
@@ -619,6 +627,7 @@ You can also send a photo if needed.`;
       await whatsappService.sendTextMessage({
         to: session.phoneNumber,
         message: '✅ *Checklist Submitted Successfully!*\n\nThank you for completing the checklist. Your supervisor has been notified.',
+        sessionId,
       });
     } else if (response === 'CANCEL' || response === 'NO') {
       // Cancel submission
@@ -627,12 +636,14 @@ You can also send a photo if needed.`;
       await whatsappService.sendTextMessage({
         to: session.phoneNumber,
         message: '❌ *Checklist Cancelled*\n\nYour answers have been discarded.',
+        sessionId,
       });
     } else {
       // Invalid response
       await whatsappService.sendTextMessage({
         to: session.phoneNumber,
         message: '❌ Invalid response. Please reply with:\n✅ CONFIRM\n❌ CANCEL',
+        sessionId,
       });
     }
   }
@@ -737,6 +748,7 @@ You can also send a photo if needed.`;
     await whatsappService.sendTextMessage({
       to: session.phoneNumber,
       message,
+      sessionId: session.id,
     });
   }
 }
