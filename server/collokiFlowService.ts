@@ -99,13 +99,13 @@ Respond in JSON format:
       });
 
       const response = await axios.post<CollokiFlowResponse>(
-        `${this.apiUrl}?stream=false`,
+        `${this.apiUrl}?stream=false&x-api-key=${this.apiKey}`,
         requestData,
         {
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${this.apiKey}`,
           },
+          timeout: 10000, // 10 second timeout
         }
       );
 
@@ -264,13 +264,13 @@ You will help interpret operator responses for various checklist tasks. Each res
       };
 
       await axios.post(
-        `${this.apiUrl}?stream=false`,
+        `${this.apiUrl}?stream=false&x-api-key=${this.apiKey}`,
         requestData,
         {
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${this.apiKey}`,
           },
+          timeout: 10000, // 10 second timeout
         }
       );
 
@@ -303,13 +303,13 @@ You will help interpret operator responses for various checklist tasks. Each res
       });
 
       const response = await axios.post<CollokiFlowResponse>(
-        `${this.apiUrl}?stream=false`,
+        `${this.apiUrl}?stream=false&x-api-key=${this.apiKey}`,
         requestData,
         {
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${this.apiKey}`,
           },
+          timeout: 10000, // 10 second timeout
         }
       );
 
