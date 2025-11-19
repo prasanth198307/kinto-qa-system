@@ -476,8 +476,9 @@ You can also send a photo if needed.`;
 
   /**
    * Save answer and progress to next question (atomically with transaction)
+   * Public method to allow external callers (e.g., webhook endpoints)
    */
-  private async saveAnswerAndProgress(
+  async saveAnswerAndProgress(
     sessionId: string,
     partialAnswer: {
       result: 'OK' | 'NOK';

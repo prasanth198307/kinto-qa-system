@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, salesReturns, salesReturnItems, creditNotes, creditNoteItems, manualCreditNoteRequests, products, productBom } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, salesReturns, salesReturnItems, creditNotes, creditNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions } from "@shared/schema";
 import { format } from "date-fns";
 import { z } from "zod";
 import path from "path";
@@ -5891,6 +5891,117 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (error) {
       console.error('❌ WhatsApp webhook processing error:', error);
+    }
+  });
+
+  // Colloki Flow Callback Endpoint (if using webhook pattern)
+  // This endpoint receives AI interpretation results from Colloki Flow
+  app.post('/api/colloki/callback', async (req, res) => {
+    try {
+      console.log('[COLLOKI CALLBACK] Received:', JSON.stringify(req.body, null, 2));
+
+      // Verify API key for security
+      const apiKey = req.headers.authorization?.replace('Bearer ', '');
+      const expectedKey = process.env.COLLOKI_CALLBACK_API_KEY || 'KINTO_COLLOKI_WEBHOOK_SECRET_2025';
+      
+      if (apiKey !== expectedKey) {
+        console.error('[COLLOKI CALLBACK] Unauthorized - Invalid API key');
+        return res.status(401).json({ 
+          error: 'Unauthorized',
+          message: 'Invalid API key' 
+        });
+      }
+
+      // Extract data from Colloki Flow response
+      const { session_id, outputs } = req.body;
+
+      if (!session_id) {
+        console.error('[COLLOKI CALLBACK] Missing session_id');
+        return res.status(400).json({ 
+          error: 'Bad Request',
+          message: 'Missing session_id' 
+        });
+      }
+
+      // Extract AI interpretation from outputs
+      const aiText = outputs?.[0]?.outputs?.[0]?.results?.message?.text || '';
+      
+      if (!aiText) {
+        console.error('[COLLOKI CALLBACK] No AI response text found');
+        return res.status(400).json({ 
+          error: 'Bad Request',
+          message: 'No AI response text' 
+        });
+      }
+
+      console.log('[COLLOKI CALLBACK] AI Response:', aiText.substring(0, 200));
+
+      // Parse AI response (try to extract JSON)
+      let interpretation;
+      try {
+        const jsonMatch = aiText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          interpretation = JSON.parse(jsonMatch[0]);
+        } else {
+          throw new Error('No JSON found in AI response');
+        }
+      } catch (parseError) {
+        console.error('[COLLOKI CALLBACK] Failed to parse AI response:', parseError);
+        return res.status(400).json({ 
+          error: 'Bad Request',
+          message: 'Invalid AI response format' 
+        });
+      }
+
+      // Get session (phone number is used as session_id)
+      const phoneNumber = session_id;
+      
+      // Find active conversation session
+      const [session] = await db
+        .select()
+        .from(whatsappConversationSessions)
+        .where(
+          and(
+            eq(whatsappConversationSessions.phoneNumber, phoneNumber),
+            eq(whatsappConversationSessions.status, 'active')
+          )
+        );
+
+      if (!session) {
+        console.error('[COLLOKI CALLBACK] No active session found for', phoneNumber);
+        return res.status(404).json({ 
+          error: 'Not Found',
+          message: 'No active session found' 
+        });
+      }
+
+      // Process interpretation and save answer
+      const result: 'OK' | 'NOK' = interpretation.status === 'NOK' ? 'NOK' : 'OK';
+      const remarks = interpretation.remarks || '';
+
+      // Save answer and progress to next question
+      await whatsappConversationService.saveAnswerAndProgress(session.id, {
+        result,
+        remarks,
+        photoUrl: undefined,
+      });
+
+      console.log('[COLLOKI CALLBACK] Successfully processed interpretation for', phoneNumber);
+
+      // Respond to Colloki Flow
+      res.status(200).json({ 
+        success: true,
+        message: 'Interpretation processed successfully',
+        session_id: phoneNumber
+      });
+
+    } catch (error) {
+      console.error('[COLLOKI CALLBACK] Error:', error);
+      res.status(500).json({ 
+        success: false,
+        error: 'Internal Server Error',
+        message: 'Failed to process callback'
+      });
     }
   });
 
