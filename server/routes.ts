@@ -5953,8 +5953,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Get session (phone number is used as session_id)
-      const phoneNumber = session_id;
+      // Get session (phone number is used as session_id, add + prefix back for DB lookup)
+      const phoneNumber = session_id.startsWith('+') ? session_id : `+${session_id}`;
       
       // Find active conversation session
       const [session] = await db

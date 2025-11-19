@@ -88,7 +88,7 @@ Respond in JSON format:
         output_type: 'chat',
         input_type: 'chat',
         input_value: contextPrompt,
-        session_id: params.sessionId,
+        session_id: params.sessionId.replace(/^\+/, ''), // Remove + prefix for session_id
       };
 
       console.log('[COLLOKI FLOW] Sending interpretation request:', {
@@ -260,7 +260,7 @@ You will help interpret operator responses for various checklist tasks. Each res
         output_type: 'chat',
         input_type: 'chat',
         input_value: contextMessage,
-        session_id: params.sessionId,
+        session_id: params.sessionId.replace(/^\+/, ''), // Remove + prefix for session_id
       };
 
       await axios.post(
@@ -317,7 +317,7 @@ You will help interpret operator responses for various checklist tasks. Each res
         output_type: 'chat',
         input_type: 'chat',
         input_value: inputValue,
-        session_id: params.phoneNumber, // Use phone number as session_id (as per your Java code)
+        session_id: params.phoneNumber.replace(/^\+/, ''), // Remove + prefix for session_id
       };
 
       const startTime = Date.now();
