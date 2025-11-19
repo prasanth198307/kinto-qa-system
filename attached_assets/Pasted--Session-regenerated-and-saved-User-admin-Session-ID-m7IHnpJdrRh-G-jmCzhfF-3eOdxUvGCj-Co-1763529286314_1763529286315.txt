@@ -1,0 +1,568 @@
+✅ Session regenerated and saved
+   User: admin
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Cookie will be: connect.sid=m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+10:38:19 AM [express] POST /api/login 200 in 111ms :: {"id":"user-admin","username":"admin","password…
+🔹 Request: GET /api/users
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
+10:38:19 AM [express] GET /api/users 304 in 6ms :: [{"id":"user-admin","username":"admin","email":"ad…
+🔹 Request: GET /api/spare-parts
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
+10:38:19 AM [express] GET /api/spare-parts 304 in 4ms :: [{"id":"66d39383-d0c9-4f4f-92fa-86487dfd485f…
+🔹 Request: GET /api/invoices
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
+🔹 Request: GET /api/machines
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
+🔹 Request: GET /api/stats/today
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
+🔹 Request: GET /api/maintenance-plans
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
+10:38:19 AM [express] GET /api/invoices 304 in 8ms :: [{"id":"6db04d1a-34f1-4676-b0ff-4bfe4a3b20a5","…
+🔹 Request: GET /api/checklist-templates
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
+10:38:19 AM [express] GET /api/maintenance-plans 304 in 14ms :: []
+🔹 Request: GET /api/raw-materials
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
+10:38:19 AM [express] GET /api/stats/today 200 in 18ms :: {"rawMaterialIssuancesCount":0,"gatepassesC…
+10:38:19 AM [express] GET /api/checklist-templates 304 in 17ms :: []
+10:38:19 AM [express] GET /api/machines 304 in 20ms :: [{"id":"80649cc4-2677-493d-a712-63f0833ae39d",…
+🔹 Request: GET /api/products
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
+10:38:19 AM [express] GET /api/raw-materials 200 in 21ms :: [{"id":"69898f7e-c760-4b3e-9333-666921606…
+🔹 Request: GET /api/pm-task-list-templates
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
+🔹 Request: GET /api/invoice-payments
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
+🔹 Request: GET /api/finished-goods
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
+10:38:19 AM [express] GET /api/products 304 in 10ms :: [{"id":"871415b7-ccbb-4194-8444-b77188a2782a",…
+10:38:19 AM [express] GET /api/pm-task-list-templates 304 in 4ms :: []
+10:38:19 AM [express] GET /api/invoice-payments 304 in 4ms :: []
+10:38:19 AM [express] GET /api/finished-goods 304 in 5ms :: [{"id":"988602b4-2926-4921-b67e-a31238dc5…
+🔹 Request: GET /api/notification-config
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
+Error fetching notification config: error: column "smtp_from_name" does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getNotificationConfig (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:3423:26)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:8984:22 {
+  length: 115,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '151',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+10:38:35 AM [express] GET /api/notification-config 500 in 37ms :: {"message":"Failed to fetch notific…
+🔹 Request: GET /api/product-categories
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
+Error fetching product categories: error: column "code" does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllProductCategories (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:2313:16)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:5874:26 {
+  length: 104,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '14',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+🔹 Request: GET /api/product-types
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
+🔹 Request: GET /api/uom
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
+10:38:36 AM [express] GET /api/product-categories 500 in 20ms :: {"message":"Failed to fetch product …
+Error fetching product types: error: column "code" does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllProductTypes (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:2332:16)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:5936:21 {
+  length: 104,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '14',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+10:38:36 AM [express] GET /api/product-types 500 in 19ms :: {"message":"Failed to fetch product types…
+10:38:36 AM [express] GET /api/uom 304 in 19ms :: [{"id":"84feebc5-c472-4434-9a86-6459e3bbc0c2","code…
+🔹 Request: GET /api/product-categories
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
+Error fetching product categories: error: column "code" does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllProductCategories (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:2313:16)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:5874:26 {
+  length: 104,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '14',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+10:39:00 AM [express] GET /api/product-categories 500 in 27ms :: {"message":"Failed to fetch product …
+🔹 Request: GET /api/product-categories
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
+🔹 Request: GET /api/product-types
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
+Error fetching product categories: error: column "code" does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllProductCategories (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:2313:16)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:5874:26 {
+  length: 104,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '14',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+Error fetching product types: error: column "code" does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllProductTypes (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:2332:16)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:5936:21 {
+  length: 104,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '14',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+10:39:11 AM [express] GET /api/product-categories 500 in 28ms :: {"message":"Failed to fetch product …
+10:39:11 AM [express] GET /api/product-types 500 in 27ms :: {"message":"Failed to fetch product types…
+🔹 Request: GET /api/role-permissions
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
+🔹 Request: GET /api/roles
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
+10:39:29 AM [express] GET /api/role-permissions 304 in 36ms :: [{"id":"5ecef253-de68-455f-a59c-f77ef6…
+10:39:29 AM [express] GET /api/roles 304 in 39ms :: [{"id":"role-admin","name":"admin","description":…
+🔹 Request: GET /api/machine-types
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
+10:39:38 AM [express] GET /api/machine-types 304 in 8ms :: [{"id":"257a3bfc-c21d-4dc0-85ea-5edb9154ef…
+🔹 Request: GET /api/invoice-templates
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
+10:40:05 AM [express] GET /api/invoice-templates 304 in 19ms :: [{"id":"a4aa4cb6-1ab3-44fb-bb4a-464a5…
+🔹 Request: GET /api/vendors
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
+10:40:14 AM [express] GET /api/vendors 304 in 5ms :: [{"id":"8175fd79-9d36-4c2f-bb18-db1d5e644ee4","v…
+🔹 Request: GET /api/raw-material-types
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
+Error fetching raw material types: error: column "type_code" does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllRawMaterialTypes (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:2516:16)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:6214:21 {
+  length: 184,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: 'Perhaps you meant to reference the column "raw_material_types.type_name".',
+  position: '14',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+10:40:20 AM [express] GET /api/raw-material-types 500 in 16ms :: {"message":"Failed to fetch raw mate…
+🔹 Request: GET /api/notification-config
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
+Error fetching notification config: error: column "smtp_from_name" does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getNotificationConfig (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:3423:26)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:8984:22 {
+  length: 115,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '151',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+10:40:43 AM [express] GET /api/notification-config 500 in 30ms :: {"message":"Failed to fetch notific…
+🔹 Request: GET /api/raw-material-types
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
+Error fetching raw material types: error: column "type_code" does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllRawMaterialTypes (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:2516:16)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:6214:21 {
+  length: 184,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: 'Perhaps you meant to reference the column "raw_material_types.type_name".',
+  position: '14',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+10:41:08 AM [express] GET /api/raw-material-types 500 in 18ms :: {"message":"Failed to fetch raw mate…
+🔹 Request: GET /api/pm-executions
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
+10:41:31 AM [express] GET /api/pm-executions 304 in 19ms :: []
+🔹 Request: GET /api/purchase-orders
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
+10:41:38 AM [express] GET /api/purchase-orders 304 in 8ms :: []
+🔹 Request: GET /api/gatepasses
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
+10:41:43 AM [express] GET /api/gatepasses 200 in 7ms :: []
+🔹 Request: GET /api/invoice-items/6db04d1a-34f1-4676-b0ff-4bfe4a3b20a5
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
+🔹 Request: GET /api/raw-material-issuances
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
+10:41:43 AM [express] GET /api/invoice-items/6db04d1a-34f1-4676-b0ff-4bfe4a3b20a5 304 in 15ms :: [{"i…
+10:41:43 AM [express] GET /api/raw-material-issuances 304 in 15ms :: []
+🔹 Request: GET /api/credit-notes
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
+10:41:56 AM [express] GET /api/credit-notes 304 in 14ms :: []
+🔹 Request: GET /api/sales-returns
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
+Error fetching sales returns: error: column sales_returns.gatepass_id does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllSalesReturns (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:3034:25)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:7949:23 {
+  length: 124,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '124',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+10:42:01 AM [express] GET /api/sales-returns 500 in 19ms :: {"message":"Failed to fetch sales returns…
+🔹 Request: GET /api/production-entries
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
+Error fetching production entries: error: column production_entries.produced_quantity does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllProductionEntries (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:2669:25)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:6698:23 {
+  length: 135,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '184',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+10:42:19 AM [express] GET /api/production-entries 500 in 25ms :: {"message":"Failed to fetch producti…
+🔹 Request: GET /api/production-reconciliations
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
+Error fetching production reconciliations: error: column "production_entry_id" does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllProductionReconciliations (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:2712:16)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:6763:31 {
+  length: 119,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '86',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+🔹 Request: GET /api/production-entries
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
+10:42:24 AM [express] GET /api/production-reconciliations 500 in 13ms :: {"message":"Failed to fetch …
+Error fetching production entries: error: column production_entries.produced_quantity does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllProductionEntries (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:2669:25)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:6698:23 {
+  length: 135,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '184',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+10:42:24 AM [express] GET /api/production-entries 500 in 14ms :: {"message":"Failed to fetch producti…
+🔹 Request: GET /api/machine-startup-tasks
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
+10:42:43 AM [express] GET /api/machine-startup-tasks 304 in 25ms :: []
+🔹 Request: GET /api/production-entries
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
+Error fetching production entries: error: column production_entries.produced_quantity does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllProductionEntries (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:2669:25)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:6698:23 {
+  length: 135,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '184',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+10:42:58 AM [express] GET /api/production-entries 500 in 24ms :: {"message":"Failed to fetch producti…
+🔹 Request: GET /api/analytics/variance
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
+Error generating variance analytics: error: column production_reconciliations.production_entry_id does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:7046:35 {
+  length: 146,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '2101',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+10:43:02 AM [express] GET /api/analytics/variance 500 in 17ms :: {"message":"Failed to generate varia…
+🔹 Request: GET /api/sales-analytics/[object%20Object]
+   Cookie header: connect.sid=s%3Am7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj.VR9qe7m1bRPY7iNEezmqqakPCkkrFpyXJVwiy%2FJfiEs
+   Session ID: m7IHnpJdrRh_G-jmCzhfF_3eOdxUvGCj
+   Authenticated: true
