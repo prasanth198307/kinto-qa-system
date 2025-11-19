@@ -68,6 +68,7 @@ export class WhatsAppService {
         const collokiResult = await collokiFlowService.sendWhatsAppMessage({
           message: options.message,
           sessionId: options.sessionId,
+          phoneNumber: options.to,
         });
 
         if (collokiResult.success) {

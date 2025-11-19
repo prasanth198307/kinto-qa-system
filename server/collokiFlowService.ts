@@ -10,7 +10,14 @@ interface CollokiFlowRequest {
   input_type: 'chat';
   input_value: string;
   session_id: string;
-  tweaks?: Record<string, any>;
+  tweaks?: {
+    'WhatsAppOutput-uqikJ'?: {
+      to_phone?: string;
+      phone_id?: string;
+      token?: string;
+      message?: string;
+    };
+  };
 }
 
 interface CollokiFlowResponse {
@@ -290,13 +297,34 @@ You will help interpret operator responses for various checklist tasks. Each res
   async sendWhatsAppMessage(params: {
     message: string;
     sessionId: string;
+    phoneNumber: string;
   }): Promise<{ success: boolean; error?: string }> {
     try {
+      // Get WhatsApp credentials from environment
+      const whatsappPhoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+      const whatsappToken = process.env.WHATSAPP_ACCESS_TOKEN;
+
+      if (!whatsappPhoneId || !whatsappToken) {
+        console.error('[COLLOKI FLOW] WhatsApp credentials not configured');
+        return {
+          success: false,
+          error: 'WhatsApp credentials not configured',
+        };
+      }
+
       const requestData: CollokiFlowRequest = {
         output_type: 'chat',
         input_type: 'chat',
         input_value: params.message,
         session_id: params.sessionId,
+        tweaks: {
+          'WhatsAppOutput-uqikJ': {
+            message: params.message,
+            to_phone: params.phoneNumber,
+            phone_id: whatsappPhoneId,
+            token: whatsappToken,
+          },
+        },
       };
 
       console.log('[COLLOKI FLOW] Sending WhatsApp message via Colloki Flow:', {
