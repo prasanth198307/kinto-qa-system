@@ -88,7 +88,75 @@ BEGIN
 END $$;
 
 -- =====================================================
--- 4. PRODUCTS - Add Missing Columns
+-- 4. RAW_MATERIAL_TYPES - Add Missing Columns
+-- =====================================================
+
+-- Add all missing columns to raw_material_types table
+ALTER TABLE raw_material_types ADD COLUMN IF NOT EXISTS type_code VARCHAR(100);
+ALTER TABLE raw_material_types ADD COLUMN IF NOT EXISTS type_name VARCHAR(255);
+ALTER TABLE raw_material_types ADD COLUMN IF NOT EXISTS conversion_method VARCHAR(50);
+ALTER TABLE raw_material_types ADD COLUMN IF NOT EXISTS base_unit VARCHAR(50);
+ALTER TABLE raw_material_types ADD COLUMN IF NOT EXISTS base_unit_weight INTEGER;
+ALTER TABLE raw_material_types ADD COLUMN IF NOT EXISTS derived_unit VARCHAR(50);
+ALTER TABLE raw_material_types ADD COLUMN IF NOT EXISTS weight_per_derived_unit INTEGER;
+ALTER TABLE raw_material_types ADD COLUMN IF NOT EXISTS derived_value_per_base INTEGER;
+ALTER TABLE raw_material_types ADD COLUMN IF NOT EXISTS output_type VARCHAR(50);
+ALTER TABLE raw_material_types ADD COLUMN IF NOT EXISTS output_units_covered INTEGER;
+ALTER TABLE raw_material_types ADD COLUMN IF NOT EXISTS conversion_value INTEGER;
+ALTER TABLE raw_material_types ADD COLUMN IF NOT EXISTS loss_percent INTEGER DEFAULT 0;
+ALTER TABLE raw_material_types ADD COLUMN IF NOT EXISTS usable_units INTEGER;
+ALTER TABLE raw_material_types ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE raw_material_types ADD COLUMN IF NOT EXISTS is_active INTEGER DEFAULT 1;
+ALTER TABLE raw_material_types ADD COLUMN IF NOT EXISTS record_status INTEGER DEFAULT 1;
+ALTER TABLE raw_material_types ADD COLUMN IF NOT EXISTS created_by VARCHAR;
+ALTER TABLE raw_material_types ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE raw_material_types ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
+-- Auto-generate type_code for existing rows with null type_code
+DO $$
+DECLARE
+  rec RECORD;
+  counter INTEGER := 1;
+BEGIN
+  FOR rec IN SELECT id FROM raw_material_types WHERE type_code IS NULL ORDER BY created_at
+  LOOP
+    UPDATE raw_material_types 
+    SET type_code = 'RMT-' || LPAD(counter::TEXT, 3, '0')
+    WHERE id = rec.id;
+    counter := counter + 1;
+  END LOOP;
+END $$;
+
+-- Add constraints for raw_material_types
+DO $$
+BEGIN
+    -- Add unique constraint to type_code
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'raw_material_types_type_code_key') THEN
+        ALTER TABLE raw_material_types ADD CONSTRAINT raw_material_types_type_code_key UNIQUE (type_code);
+    END IF;
+    
+    -- Make type_code NOT NULL
+    ALTER TABLE raw_material_types ALTER COLUMN type_code SET NOT NULL;
+    
+    -- Make type_name NOT NULL if it has data
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'raw_material_types' AND column_name = 'type_name') THEN
+        UPDATE raw_material_types SET type_name = 'Unnamed Type' WHERE type_name IS NULL;
+        ALTER TABLE raw_material_types ALTER COLUMN type_name SET NOT NULL;
+    END IF;
+    
+    -- Add foreign key for created_by
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'raw_material_types_created_by_users_id_fk') THEN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'users') THEN
+            ALTER TABLE raw_material_types ADD CONSTRAINT raw_material_types_created_by_users_id_fk
+                FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL;
+        END IF;
+    END IF;
+EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'Some constraints already exist or cannot be added';
+END $$;
+
+-- =====================================================
+-- 5. PRODUCTS - Add Missing Columns
 -- =====================================================
 
 ALTER TABLE products ADD COLUMN IF NOT EXISTS product_code VARCHAR(50);
@@ -125,7 +193,7 @@ BEGIN
 END $$;
 
 -- =====================================================
--- 5. RAW_MATERIALS - Add Missing Columns
+-- 6. RAW_MATERIALS - Add Missing Columns
 -- =====================================================
 
 ALTER TABLE raw_materials ADD COLUMN IF NOT EXISTS weight_per_unit INTEGER;
@@ -176,19 +244,19 @@ END $$;
 ALTER TABLE raw_materials ALTER COLUMN uom_id DROP NOT NULL;
 
 -- =====================================================
--- 6. MACHINES - Add Missing Column
+-- 7. MACHINES - Add Missing Column
 -- =====================================================
 
 ALTER TABLE machines ADD COLUMN IF NOT EXISTS warmup_time_minutes INTEGER;
 
 -- =====================================================
--- 7. RAW_MATERIAL_ISSUANCE - Add Missing Column
+-- 8. RAW_MATERIAL_ISSUANCE - Add Missing Column
 -- =====================================================
 
 ALTER TABLE raw_material_issuance ADD COLUMN IF NOT EXISTS production_reference VARCHAR(255);
 
 -- =====================================================
--- 8. RAW_MATERIAL_ISSUANCE_ITEMS - Add Missing Columns
+-- 9. RAW_MATERIAL_ISSUANCE_ITEMS - Add Missing Columns
 -- =====================================================
 
 ALTER TABLE raw_material_issuance_items ADD COLUMN IF NOT EXISTS base_quantity INTEGER;
@@ -196,7 +264,7 @@ ALTER TABLE raw_material_issuance_items ADD COLUMN IF NOT EXISTS derived_quantit
 ALTER TABLE raw_material_issuance_items ADD COLUMN IF NOT EXISTS derived_unit VARCHAR(50);
 
 -- =====================================================
--- 9. GATEPASSES - Add Missing Columns
+-- 10. GATEPASSES - Add Missing Columns
 -- =====================================================
 
 ALTER TABLE gatepasses ADD COLUMN IF NOT EXISTS cases_count INTEGER;
@@ -243,11 +311,13 @@ BEGIN
 END $$;
 
 -- =====================================================
--- 10. CREATE INDEXES
+-- 11. CREATE INDEXES
 -- =====================================================
 
 CREATE INDEX IF NOT EXISTS product_categories_code_index ON product_categories(code);
 CREATE INDEX IF NOT EXISTS product_types_code_index ON product_types(code);
+CREATE INDEX IF NOT EXISTS raw_material_types_type_code_index ON raw_material_types(type_code);
+CREATE INDEX IF NOT EXISTS raw_material_types_conversion_method_index ON raw_material_types(conversion_method);
 CREATE INDEX IF NOT EXISTS products_product_code_index ON products(product_code);
 CREATE INDEX IF NOT EXISTS products_category_id_index ON products(category_id);
 CREATE INDEX IF NOT EXISTS products_type_id_index ON products(type_id);
@@ -268,6 +338,7 @@ BEGIN
     RAISE NOTICE '  ✓ product_categories: code, display_order';
     RAISE NOTICE '  ✓ product_types: code, display_order';
     RAISE NOTICE '  ✓ notification_config: smtp_from_name';
+    RAISE NOTICE '  ✓ raw_material_types: 19 columns (type_code, etc.)';
     RAISE NOTICE '  ✓ products: 14 columns';
     RAISE NOTICE '  ✓ raw_materials: 16 columns';
     RAISE NOTICE '  ✓ machines: warmup_time_minutes';
