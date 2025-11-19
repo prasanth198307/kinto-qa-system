@@ -313,7 +313,14 @@ You will help interpret operator responses for various checklist tasks. Each res
         }
       );
 
-      console.log('[COLLOKI FLOW] WhatsApp message sent successfully via Colloki Flow');
+      // Log the full response to understand what Colloki Flow returns
+      console.log('[COLLOKI FLOW] Full response:', JSON.stringify(response.data, null, 2));
+      
+      // Extract any message from response
+      const aiResponse = response.data.outputs?.[0]?.outputs?.[0]?.results?.message?.text;
+      console.log('[COLLOKI FLOW] AI Response Text:', aiResponse);
+
+      console.log('[COLLOKI FLOW] WhatsApp message request sent to Colloki Flow');
 
       return { success: true };
 
