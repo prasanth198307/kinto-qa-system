@@ -139,20 +139,22 @@ export function VerticalNavSidebar({
       {/* Mobile Sidebar Overlay */}
       {isMobileOpen && (
         <div
-          className="lg:hidden fixed inset-0 bg-black/50 z-40"
+          className="lg:hidden fixed inset-0 bg-black/50 z-30"
           onClick={onMobileClose}
+          data-testid="sidebar-overlay"
         />
       )}
 
       {/* Sidebar */}
       <div
         className={`
-          fixed top-0 left-0 bottom-0 w-72 bg-card border-r border-border z-30 pt-20 px-4 pb-4
+          fixed top-0 left-0 bottom-0 w-72 bg-card border-r border-border z-40 pt-20 px-4 pb-4
           transition-transform duration-300 ease-in-out
           flex flex-col
           ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
           lg:translate-x-0
         `}
+        data-testid="vertical-nav-sidebar"
       >
         {sidebarContent}
       </div>
