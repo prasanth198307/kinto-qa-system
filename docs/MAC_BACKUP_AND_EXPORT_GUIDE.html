@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mac Backup & Database Export Guide - KINTO Smart Ops</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #fff;
+            padding: 40px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: #0066cc;
+            border-bottom: 3px solid #0066cc;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            font-size: 32px;
+        }
+        
+        h2 {
+            color: #0066cc;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            font-size: 24px;
+            border-left: 4px solid #0066cc;
+            padding-left: 10px;
+        }
+        
+        h3 {
+            color: #004499;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        
+        h4 {
+            color: #004499;
+            margin-top: 15px;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+        
+        p {
+            margin-bottom: 12px;
+            text-align: justify;
+        }
+        
+        ul, ol {
+            margin-left: 20px;
+            margin-bottom: 12px;
+        }
+        
+        li {
+            margin-bottom: 8px;
+        }
+        
+        code {
+            background-color: #f4f4f4;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            padding: 2px 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: #333;
+        }
+        
+        pre {
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin-bottom: 15px;
+            border-left: 4px solid #0066cc;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        
+        pre code {
+            background-color: transparent;
+            border: none;
+            padding: 0;
+            color: #d4d4d4;
+        }
+        
+        .toc {
+            background-color: #f0f8ff;
+            border-left: 4px solid #0066cc;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 3px;
+        }
+        
+        .toc ul {
+            margin-bottom: 0;
+        }
+        
+        .note {
+            background-color: #fffbea;
+            border-left: 4px solid #ff9800;
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 3px;
+        }
+        
+        .warning {
+            background-color: #ffebee;
+            border-left: 4px solid #f44336;
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 3px;
+        }
+        
+        .success {
+            background-color: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 3px;
+        }
+        
+        hr {
+            border: none;
+            border-top: 2px solid #0066cc;
+            margin: 30px 0;
+        }
+        
+        @media print {
+            body {
+                padding: 20px;
+            }
+            
+            h1 {
+                page-break-after: avoid;
+            }
+            
+            h2 {
+                page-break-after: avoid;
+            }
+            
+            pre {
+                page-break-inside: avoid;
+            }
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            border-bottom: 3px solid #0066cc;
+            padding-bottom: 20px;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid #0066cc;
+            color: #666;
+            font-size: 12px;
+        }
+        
+        .step-box {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>Mac Backup & Database Export Guide</h1>
+    <h2 style="border: none; color: #666; margin: 10px 0;">KINTO Smart Ops</h2>
+    <p style="margin: 10px 0; color: #0066cc;"><strong>Complete Guide for Backing Up and Migrating to Oracle Linux 9</strong></p>
+</div>
+
+<h2>Overview</h2>
+<p>This guide covers backing up your KINTO Smart Ops application and exporting the PostgreSQL database from your development environment on Mac to import into Oracle Linux 9 production.</p>
+
+<hr>
+
+<h2>Table of Contents</h2>
+<div class="toc">
+    <ul>
+        <li><a href="#app-backup">Application Backup (Mac)</a></li>
+        <li><a href="#db-export">Database Export (Mac)</a></li>
+        <li><a href="#db-import">Database Import (Oracle Linux 9)</a></li>
+        <li><a href="#transfer">Transfer Backups to Linux Server</a></li>
+        <li><a href="#verify">Verify Data Integrity</a></li>
+        <li><a href="#troubleshooting">Troubleshooting</a></li>
+    </ul>
+</div>
+
+<hr>
+
+<h2 id="app-backup">Application Backup (Mac)</h2>
+
+<h3>1. Backup Application Files</h3>
+<pre><code>cd /path/to/kinto-smart-ops
+
+# Create backup directory
+mkdir -p ~/kinto-backups
+
+# Backup without node_modules (faster, smaller)
+tar -czf ~/kinto-backups/kinto-app-src-only-$(date +%Y%m%d_%H%M%S).tar.gz \
+  --exclude=node_modules \
+  --exclude=.git \
+  --exclude=.env \
+  /path/to/kinto-smart-ops</code></pre>
+
+<h3>2. Backup Configuration Files</h3>
+<pre><code># Backup .env file (IMPORTANT!)
+cp /path/to/kinto-smart-ops/.env ~/kinto-backups/.env.backup
+
+# Set secure permissions
+chmod 600 ~/kinto-backups/.env.backup
+chmod 600 ~/kinto-backups/*.tar.gz</code></pre>
+
+<h3>3. List Backups</h3>
+<pre><code>ls -lh ~/kinto-backups/</code></pre>
+
+<hr>
+
+<h2 id="db-export">Database Export (Mac)</h2>
+
+<h3>1. Install PostgreSQL Client (if needed)</h3>
+<div class="step-box">
+    <pre><code>brew install postgresql@15
+psql --version</code></pre>
+</div>
+
+<h3>2. Export Database from Replit</h3>
+
+<h4>Option A: SQL Format (Recommended)</h4>
+<pre><code>pg_dump -h pg-xxxxx.neon.tech \
+  -U kinto_user \
+  -d kinto_ops \
+  -W \
+  > ~/kinto-backups/kinto_db_replit_$(date +%Y%m%d_%H%M%S).sql</code></pre>
+
+<h4>Option B: Compressed Format (Faster Transfer)</h4>
+<pre><code>pg_dump -h pg-xxxxx.neon.tech \
+  -U kinto_user \
+  -d kinto_ops \
+  -W \
+  | gzip > ~/kinto-backups/kinto_db_replit_$(date +%Y%m%d_%H%M%S).sql.gz</code></pre>
+
+<h4>Option C: Custom Format (Best for Restore)</h4>
+<pre><code>pg_dump -h pg-xxxxx.neon.tech \
+  -U kinto_user \
+  -d kinto_ops \
+  -Fc \
+  -W \
+  > ~/kinto-backups/kinto_db_replit_$(date +%Y%m%d_%H%M%S).dump</code></pre>
+
+<div class="note">
+    <strong>Note:</strong> Replace <code>pg-xxxxx.neon.tech</code> with your actual Replit database host from DATABASE_URL in .env
+</div>
+
+<h3>3. Verify Export</h3>
+<pre><code>ls -lh ~/kinto-backups/
+du -sh ~/kinto-backups/</code></pre>
+
+<hr>
+
+<h2 id="db-import">Database Import (Oracle Linux 9)</h2>
+
+<h3>1. Prepare Oracle Linux Server</h3>
+<pre><code>ssh user@your-oracle-linux-server
+
+# Create backup directory
+sudo mkdir -p /var/backups/kinto
+sudo chown kinto:kinto /var/backups/kinto
+
+# Verify PostgreSQL is running
+sudo systemctl status postgresql-15</code></pre>
+
+<h3>2. Create Empty Database</h3>
+<pre><code>sudo su - postgres
+psql
+
+CREATE DATABASE kinto_ops;
+CREATE USER kinto_user WITH PASSWORD 'strong_password_here';
+GRANT ALL PRIVILEGES ON DATABASE kinto_ops TO kinto_user;
+
+\c kinto_ops
+GRANT ALL ON SCHEMA public TO kinto_user;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO kinto_user;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO kinto_user;
+
+exit  # Exit psql
+exit  # Exit postgres user</code></pre>
+
+<h3>3. Import Database</h3>
+
+<h4>From Custom Dump (.dump)</h4>
+<pre><code>sudo su - postgres
+pg_restore -d kinto_ops /tmp/kinto_db_replit_20240115_120000.dump
+exit</code></pre>
+
+<h4>From SQL Dump (.sql)</h4>
+<pre><code>sudo su - postgres
+psql -d kinto_ops -f /tmp/kinto_db_replit_20240115_120000.sql
+exit</code></pre>
+
+<h4>From Compressed SQL (.sql.gz)</h4>
+<pre><code>sudo su - postgres
+gunzip -c /tmp/kinto_db_replit_20240115_120000.sql.gz | psql -d kinto_ops
+exit</code></pre>
+
+<h3>4. Verify Import</h3>
+<pre><code>sudo su - postgres
+psql -d kinto_ops
+
+# Check tables
+\dt
+
+# Count records
+SELECT COUNT(*) FROM whatsapp_conversation_sessions;
+
+# Check database size
+SELECT pg_size_pretty(pg_database_size('kinto_ops'));
+
+exit  # Exit psql
+exit  # Exit postgres user</code></pre>
+
+<hr>
+
+<h2 id="transfer">Transfer Backups to Linux Server</h2>
+
+<h3>Method 1: Using SCP (Simple)</h3>
+<pre><code># From Mac
+scp ~/kinto-backups/*.dump user@oracle-linux-server:/tmp/</code></pre>
+
+<h3>Method 2: Using Rsync (Faster)</h3>
+<pre><code># From Mac
+rsync -avz --progress ~/kinto-backups/ \
+  user@oracle-linux-server:/tmp/kinto-backups/</code></pre>
+
+<h3>Method 3: Direct Transfer & Import</h3>
+<pre><code># Direct pipe from Mac to Linux (no local backup needed)
+pg_dump -h pg-xxxxx.neon.tech \
+  -U kinto_user \
+  -d kinto_ops \
+  -W \
+  | ssh user@oracle-linux-server 'sudo su - postgres -c "psql -d kinto_ops"'</code></pre>
+
+<hr>
+
+<h2 id="verify">Verify Data Integrity</h2>
+
+<h3>On Mac (After Export)</h3>
+<pre><code># Check dump file validity
+file ~/kinto-backups/kinto_db_*.dump
+
+# Get file size
+du -h ~/kinto-backups/kinto_db_*
+
+# Test restore on local copy (optional)
+createdb kinto_test
+pg_restore -d kinto_test ~/kinto-backups/kinto_db_*.dump
+dropdb kinto_test  # Cleanup after test</code></pre>
+
+<h3>On Oracle Linux (After Import)</h3>
+<pre><code>sudo su - postgres
+psql -d kinto_ops
+
+# Compare table counts
+SELECT table_name, COUNT(*) as rows 
+FROM information_schema.tables 
+WHERE table_schema = 'public';
+
+# Verify specific tables
+SELECT COUNT(*) FROM whatsapp_conversation_sessions;
+SELECT COUNT(*) FROM users;
+SELECT COUNT(*) FROM machines;
+
+exit
+exit</code></pre>
+
+<hr>
+
+<h2>Complete Backup Workflow</h2>
+
+<h3>Create Automated Backup Script</h3>
+<pre><code>#!/bin/bash
+# Save as ~/backup-kinto.sh
+
+BACKUP_DIR="$HOME/kinto-backups"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+
+mkdir -p $BACKUP_DIR
+
+echo "Starting KINTO backup at $TIMESTAMP..."
+
+# Backup application
+echo "Backing up application..."
+tar -czf $BACKUP_DIR/kinto-app-$TIMESTAMP.tar.gz \
+  --exclude=node_modules \
+  --exclude=.git \
+  --exclude=.env \
+  /path/to/kinto-smart-ops
+
+# Backup environment
+echo "Backing up environment..."
+cp /path/to/kinto-smart-ops/.env $BACKUP_DIR/.env.$TIMESTAMP
+chmod 600 $BACKUP_DIR/.env.$TIMESTAMP
+
+# Backup database
+echo "Backing up database..."
+pg_dump -h pg-xxxxx.neon.tech \
+  -U kinto_user \
+  -d kinto_ops \
+  -Fc \
+  -W \
+  > $BACKUP_DIR/kinto_db_$TIMESTAMP.dump
+
+echo "✅ Backup complete!"
+ls -lh $BACKUP_DIR/</code></pre>
+
+<h3>Run Backup</h3>
+<pre><code>chmod +x ~/backup-kinto.sh
+./backup-kinto.sh</code></pre>
+
+<hr>
+
+<h2>Automated Daily Backups (Mac)</h2>
+
+<h3>Using Cron</h3>
+<pre><code>crontab -e
+
+# Add lines (daily at 2 AM)
+0 2 * * * ~/backup-kinto.sh >> ~/kinto-backups/backup.log 2>&1
+0 3 * * * find ~/kinto-backups -name "*.dump" -mtime +7 -delete</code></pre>
+
+<hr>
+
+<h2 id="troubleshooting">Troubleshooting</h2>
+
+<h3>PostgreSQL Client Not Found</h3>
+<pre><code>brew install postgresql@15
+export PATH="/usr/local/opt/postgresql@15/bin:$PATH"
+echo 'export PATH="/usr/local/opt/postgresql@15/bin:$PATH"' >> ~/.bash_profile</code></pre>
+
+<h3>Connection Refused</h3>
+<pre><code># Verify database host and credentials
+grep DATABASE_URL /path/to/kinto-smart-ops/.env
+
+# Test connection
+telnet pg-xxxxx.neon.tech 5432</code></pre>
+
+<h3>Export Takes Too Long</h3>
+<pre><code># Use compressed format
+pg_dump -h host -U user -d db -Fc | gzip > backup.dump.gz
+
+# Or run in background
+nohup pg_dump -h host -U user -d db -Fc > backup.dump &</code></pre>
+
+<h3>Restore Fails on Linux</h3>
+<pre><code># Ensure file permissions
+sudo chown postgres:postgres /tmp/kinto_db_*.dump
+
+# Verify database exists
+sudo su - postgres
+psql -l | grep kinto_ops</code></pre>
+
+<hr>
+
+<h2>Security Best Practices</h2>
+
+<div class="warning">
+    <h4>Protect Backup Files</h4>
+    <pre><code>chmod 600 ~/kinto-backups/.env.backup
+chmod 600 ~/kinto-backups/*.dump
+
+# Encrypt sensitive backups
+openssl enc -aes-256-cbc -in backup.dump -out backup.dump.enc</code></pre>
+</div>
+
+<div class="success">
+    <h4>Backup Retention Policy</h4>
+    <ul>
+        <li>Daily backups: Keep 7 days</li>
+        <li>Weekly backups: Keep 4 weeks</li>
+        <li>Monthly backups: Keep 12 months</li>
+        <li>Store offsite for disaster recovery</li>
+    </ul>
+</div>
+
+<hr>
+
+<h2>Migration Checklist</h2>
+<div class="success">
+    <ul>
+        <li>☑ Installed PostgreSQL client on Mac</li>
+        <li>☑ Exported database from Replit</li>
+        <li>☑ Verified dump file integrity</li>
+        <li>☑ Backed up application source code</li>
+        <li>☑ Backed up .env file securely</li>
+        <li>☑ Created database on Oracle Linux</li>
+        <li>☑ Transferred dump file to Linux server</li>
+        <li>☑ Imported database successfully</li>
+        <li>☑ Verified all tables exist</li>
+        <li>☑ Compared row counts for validation</li>
+        <li>☑ Restored user privileges</li>
+        <li>☑ Tested application connection</li>
+        <li>☑ Archived backups securely</li>
+    </ul>
+</div>
+
+<hr>
+
+<div class="footer">
+    <p><strong>Mac Backup & Database Export Guide - KINTO Smart Ops</strong></p>
+    <p>Document Version: 1.0 | Last Updated: November 2024</p>
+    <p>For support, contact your DevOps/Infrastructure team</p>
+</div>
+
+</body>
+</html>

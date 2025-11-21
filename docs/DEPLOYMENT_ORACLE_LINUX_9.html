@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KINTO Smart Ops - Oracle Linux 9 Deployment Guide</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #fff;
+            padding: 40px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: #0066cc;
+            border-bottom: 3px solid #0066cc;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            font-size: 32px;
+        }
+        
+        h2 {
+            color: #0066cc;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            font-size: 24px;
+            border-left: 4px solid #0066cc;
+            padding-left: 10px;
+        }
+        
+        h3 {
+            color: #004499;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        
+        h4 {
+            color: #004499;
+            margin-top: 15px;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+        
+        p {
+            margin-bottom: 12px;
+            text-align: justify;
+        }
+        
+        ul, ol {
+            margin-left: 20px;
+            margin-bottom: 12px;
+        }
+        
+        li {
+            margin-bottom: 8px;
+        }
+        
+        code {
+            background-color: #f4f4f4;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            padding: 2px 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: #333;
+        }
+        
+        pre {
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin-bottom: 15px;
+            border-left: 4px solid #0066cc;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        
+        pre code {
+            background-color: transparent;
+            border: none;
+            padding: 0;
+            color: #d4d4d4;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+        
+        table th {
+            background-color: #0066cc;
+            color: white;
+            padding: 10px;
+            text-align: left;
+        }
+        
+        table td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        
+        .toc {
+            background-color: #f0f8ff;
+            border-left: 4px solid #0066cc;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 3px;
+        }
+        
+        .toc ul {
+            margin-bottom: 0;
+        }
+        
+        .note {
+            background-color: #fffbea;
+            border-left: 4px solid #ff9800;
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 3px;
+        }
+        
+        .warning {
+            background-color: #ffebee;
+            border-left: 4px solid #f44336;
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 3px;
+        }
+        
+        .success {
+            background-color: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 3px;
+        }
+        
+        .emoji {
+            font-size: 20px;
+            margin-right: 5px;
+        }
+        
+        hr {
+            border: none;
+            border-top: 2px solid #0066cc;
+            margin: 30px 0;
+        }
+        
+        @media print {
+            body {
+                padding: 20px;
+            }
+            
+            h1 {
+                page-break-after: avoid;
+            }
+            
+            h2 {
+                page-break-after: avoid;
+            }
+            
+            pre {
+                page-break-inside: avoid;
+            }
+            
+            table {
+                page-break-inside: avoid;
+            }
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            border-bottom: 3px solid #0066cc;
+            padding-bottom: 20px;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid #0066cc;
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>KINTO Smart Ops</h1>
+    <h2 style="border: none; color: #666; margin: 10px 0;">Oracle Linux 9 Deployment Guide</h2>
+    <p style="margin: 10px 0; color: #0066cc;"><strong>Comprehensive Production Deployment Instructions</strong></p>
+</div>
+
+<h2>Overview</h2>
+<p>This guide provides comprehensive instructions for deploying KINTO Smart Ops on Oracle Linux 9. The application is a full-stack Node.js + PostgreSQL manufacturing operations platform with WhatsApp integration.</p>
+
+<hr>
+
+<h2>Table of Contents</h2>
+<div class="toc">
+    <ul>
+        <li><a href="#prerequisites">Prerequisites</a></li>
+        <li><a href="#system-preparation">System Preparation</a></li>
+        <li><a href="#nodejs-npm">Node.js & npm Installation</a></li>
+        <li><a href="#postgresql">PostgreSQL Database Setup</a></li>
+        <li><a href="#application">Application Deployment</a></li>
+        <li><a href="#environment">Environment Configuration</a></li>
+        <li><a href="#ssl">SSL/TLS Setup</a></li>
+        <li><a href="#firewall">Firewall Configuration</a></li>
+        <li><a href="#systemd">Systemd Service Setup</a></li>
+        <li><a href="#whatsapp">WhatsApp Webhook Configuration</a></li>
+        <li><a href="#monitoring">Monitoring & Logging</a></li>
+        <li><a href="#troubleshooting">Troubleshooting</a></li>
+        <li><a href="#backup">Backup & Recovery</a></li>
+    </ul>
+</div>
+
+<hr>
+
+<h2 id="prerequisites">Prerequisites</h2>
+
+<h3>Hardware Requirements</h3>
+<ul>
+    <li><strong>CPU:</strong> 2+ cores minimum (4+ recommended)</li>
+    <li><strong>RAM:</strong> 4GB minimum (8GB recommended)</li>
+    <li><strong>Storage:</strong> 50GB+ SSD for application and database</li>
+    <li><strong>Network:</strong> Stable internet connection with fixed IP or domain</li>
+</ul>
+
+<h3>Software Requirements</h3>
+<ul>
+    <li>Oracle Linux 9 (UEK or RHEL-compatible kernel)</li>
+    <li>sudo privileges for system configuration</li>
+    <li>Git for repository cloning</li>
+    <li>Domain name pointing to your server (for SSL)</li>
+</ul>
+
+<h3>Accounts & Credentials Required</h3>
+<ul>
+    <li>PostgreSQL admin credentials</li>
+    <li>WhatsApp Business API credentials</li>
+    <li>Colloki Flow API key</li>
+    <li>SendGrid API key (optional, for email)</li>
+    <li>Domain registrar access (for DNS)</li>
+</ul>
+
+<hr>
+
+<h2 id="system-preparation">System Preparation</h2>
+
+<h3>1. Update System Packages</h3>
+<pre><code>sudo dnf update -y
+sudo dnf install -y wget curl git vim nano</code></pre>
+
+<h3>2. Create Application User</h3>
+<pre><code># Create dedicated user for the application
+sudo useradd -m -s /bin/bash kinto
+sudo usermod -aG wheel kinto  # Add to sudoers group
+
+# Switch to new user
+sudo su - kinto</code></pre>
+
+<hr>
+
+<h2 id="nodejs-npm">Node.js & npm Installation</h2>
+
+<h3>Install Node.js 20 LTS (Recommended)</h3>
+<pre><code>curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash -
+sudo dnf install -y nodejs
+
+# Verify installation
+node --version
+npm --version</code></pre>
+
+<hr>
+
+<h2 id="postgresql">PostgreSQL Database Setup</h2>
+
+<h3>1. Install PostgreSQL 15</h3>
+<pre><code>sudo dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+sudo dnf install -y postgresql15-server postgresql15-contrib
+
+# Initialize database
+sudo /usr/pgsql-15/bin/postgresql-15-setup initdb
+
+# Enable and start service
+sudo systemctl enable postgresql-15
+sudo systemctl start postgresql-15</code></pre>
+
+<h3>2. Configure PostgreSQL Access</h3>
+<pre><code>sudo su - postgres
+psql
+
+CREATE DATABASE kinto_ops;
+CREATE USER kinto_user WITH PASSWORD 'strong_password_here';
+GRANT ALL PRIVILEGES ON DATABASE kinto_ops TO kinto_user;
+
+\c kinto_ops
+GRANT ALL ON SCHEMA public TO kinto_user;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO kinto_user;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO kinto_user;
+
+\q
+exit</code></pre>
+
+<h3>3. Database Connection String</h3>
+<pre><code>postgresql://kinto_user:strong_password_here@localhost:5432/kinto_ops</code></pre>
+
+<hr>
+
+<h2 id="application">Application Deployment</h2>
+
+<h3>1. Clone Repository</h3>
+<pre><code>cd /home/kinto
+git clone https://github.com/your-org/kinto-smart-ops.git
+cd kinto-smart-ops</code></pre>
+
+<h3>2. Install Dependencies</h3>
+<pre><code>npm install</code></pre>
+
+<h3>3. Run Database Migrations</h3>
+<pre><code>npm run db:push</code></pre>
+
+<hr>
+
+<h2 id="environment">Environment Configuration</h2>
+
+<h3>1. Create .env File</h3>
+<pre><code>cat > .env << 'EOF'
+NODE_ENV=production
+PORT=5000
+
+DATABASE_URL=postgresql://kinto_user:strong_password_here@localhost:5432/kinto_ops
+SESSION_SECRET=your-secure-random-session-secret-here-min-32-chars
+
+WHATSAPP_PHONE_NUMBER_ID=your_phone_number_id
+WHATSAPP_ACCESS_TOKEN=your_whatsapp_access_token
+WHATSAPP_VERIFY_TOKEN=your_webhook_verification_token
+
+COLLOKI_FLOW_API_KEY=sk-your-colloki-api-key-here
+
+REPLIT_DEPLOYMENT=false
+VITE_API_URL=https://yourdomain.com
+EOF
+
+chmod 600 .env</code></pre>
+
+<hr>
+
+<h2 id="ssl">SSL/TLS Setup</h2>
+
+<h3>Using Let's Encrypt (Recommended)</h3>
+<pre><code>sudo dnf install -y certbot python3-certbot-nginx
+sudo certbot certonly --standalone -d yourdomain.com</code></pre>
+
+<h3>Nginx Configuration</h3>
+<pre><code>sudo tee /etc/nginx/conf.d/kinto.conf > /dev/null << 'EOF'
+upstream kinto_app {
+    server 127.0.0.1:5000;
+}
+
+server {
+    listen 80;
+    server_name yourdomain.com;
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name yourdomain.com;
+    
+    ssl_certificate /etc/letsencrypt/live/yourdomain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/yourdomain.com/privkey.pem;
+    
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+    
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    
+    location / {
+        proxy_pass http://kinto_app;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+}
+EOF
+
+sudo nginx -t
+sudo systemctl enable nginx
+sudo systemctl start nginx</code></pre>
+
+<hr>
+
+<h2 id="firewall">Firewall Configuration</h2>
+
+<pre><code>sudo systemctl enable firewalld
+sudo systemctl start firewalld
+
+sudo firewall-cmd --permanent --add-service=ssh
+sudo firewall-cmd --permanent --add-service=http
+sudo firewall-cmd --permanent --add-service=https
+sudo firewall-cmd --permanent --add-port=5000/tcp
+
+sudo firewall-cmd --reload
+sudo firewall-cmd --list-all</code></pre>
+
+<hr>
+
+<h2 id="systemd">Systemd Service Setup</h2>
+
+<h3>1. Create Service File</h3>
+<pre><code>sudo tee /etc/systemd/system/kinto.service > /dev/null << 'EOF'
+[Unit]
+Description=KINTO Smart Ops Application
+After=network.target postgresql-15.service
+
+[Service]
+Type=simple
+User=kinto
+WorkingDirectory=/home/kinto/kinto-smart-ops
+EnvironmentFile=/home/kinto/kinto-smart-ops/.env
+ExecStart=/usr/bin/npm run prod
+Restart=on-failure
+RestartSec=10s
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=kinto
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload</code></pre>
+
+<h3>2. Enable and Start Service</h3>
+<pre><code>sudo systemctl enable kinto
+sudo systemctl start kinto
+sudo systemctl status kinto</code></pre>
+
+<h3>3. View Logs</h3>
+<pre><code>sudo journalctl -u kinto -f</code></pre>
+
+<hr>
+
+<h2 id="whatsapp">WhatsApp Webhook Configuration</h2>
+
+<h3>Configure in Meta Dashboard</h3>
+<div class="note">
+    <strong>Important:</strong> Two webhooks must be configured in Meta Dashboard:
+</div>
+
+<h4>1. WhatsApp Business API Webhook</h4>
+<ul>
+    <li><strong>Callback URL:</strong> <code>https://yourdomain.com/api/whatsapp/webhook</code></li>
+    <li><strong>Verify Token:</strong> Value from <code>WHATSAPP_VERIFY_TOKEN</code></li>
+    <li><strong>Subscribe to:</strong> messages field</li>
+</ul>
+
+<h4>2. Colloki Flow Webhook</h4>
+<ul>
+    <li><strong>URL:</strong> <code>https://yourdomain.com/api/colloki/callback</code></li>
+    <li><strong>Authorization:</strong> Bearer KINTO_COLLOKI_WEBHOOK_SECRET_2025</li>
+</ul>
+
+<h3>Phone Number Format for Colloki</h3>
+<div class="warning">
+    <strong>IMPORTANT:</strong> Colloki Flow requires phone numbers WITHOUT "+"
+    <ul>
+        <li>✅ Correct: 919000151199</li>
+        <li>❌ Wrong: +919000151199</li>
+    </ul>
+</div>
+
+<hr>
+
+<h2 id="monitoring">Monitoring & Logging</h2>
+
+<h3>View Application Logs</h3>
+<pre><code>sudo journalctl -u kinto -n 100
+sudo journalctl -u kinto -f  # Follow in real-time</code></pre>
+
+<h3>Monitor System Resources</h3>
+<pre><code>top
+df -h
+sudo ss -tlnp | grep 5000</code></pre>
+
+<hr>
+
+<h2 id="troubleshooting">Troubleshooting</h2>
+
+<h3>Application Won't Start</h3>
+<pre><code>sudo journalctl -u kinto -n 50
+sudo systemctl status kinto
+cd /home/kinto/kinto-smart-ops && npm run dev</code></pre>
+
+<h3>Database Connection Issues</h3>
+<pre><code>sudo systemctl status postgresql-15
+PGPASSWORD=password psql -h localhost -U kinto_user -d kinto_ops -c "SELECT version();"</code></pre>
+
+<h3>WhatsApp Webhook Not Working</h3>
+<pre><code>curl -v https://yourdomain.com/api/whatsapp/webhook
+sudo tail -f /var/log/nginx/error.log</code></pre>
+
+<hr>
+
+<h2 id="backup">Backup & Recovery</h2>
+
+<h3>Database Backup</h3>
+<pre><code>sudo su - postgres
+pg_dump -Fc kinto_ops > /backup/kinto_ops_$(date +%Y%m%d_%H%M%S).dump</code></pre>
+
+<h3>Database Recovery</h3>
+<pre><code>sudo su - postgres
+pg_restore -d kinto_ops /backup/kinto_ops_20240115_023000.dump</code></pre>
+
+<h3>Setup Automated Daily Backups</h3>
+<pre><code>sudo tee /usr/local/bin/backup-kinto-db.sh > /dev/null << 'EOF'
+#!/bin/bash
+BACKUP_DIR="/var/backups/kinto"
+mkdir -p $BACKUP_DIR
+sudo su - postgres -c "pg_dump -Fc kinto_ops > $BACKUP_DIR/kinto_ops_$(date +\%Y\%m\%d_\%H\%M\%S).dump"
+find $BACKUP_DIR -name "*.dump" -mtime +7 -delete
+EOF
+
+sudo chmod +x /usr/local/bin/backup-kinto-db.sh
+# Add to crontab: 0 2 * * * /usr/local/bin/backup-kinto-db.sh</code></pre>
+
+<hr>
+
+<h2>Production Deployment Checklist</h2>
+<div class="success">
+    <ul>
+        <li>☑ Oracle Linux 9 system updated</li>
+        <li>☑ Node.js 20 LTS installed</li>
+        <li>☑ PostgreSQL 15 installed and running</li>
+        <li>☑ Database created with secure credentials</li>
+        <li>☑ Application cloned and dependencies installed</li>
+        <li>☑ .env file created with all variables</li>
+        <li>☑ Database migrations applied</li>
+        <li>☑ SSL certificate obtained (Let's Encrypt)</li>
+        <li>☑ Nginx configured as reverse proxy</li>
+        <li>☑ Firewall rules configured</li>
+        <li>☑ Systemd service created and enabled</li>
+        <li>☑ WhatsApp webhook configured</li>
+        <li>☑ Colloki Flow webhook configured</li>
+        <li>☑ Application logs verified</li>
+        <li>☑ Database backups configured</li>
+        <li>☑ SSL auto-renewal enabled</li>
+    </ul>
+</div>
+
+<hr>
+
+<div class="footer">
+    <p><strong>KINTO Smart Ops - Oracle Linux 9 Deployment Guide</strong></p>
+    <p>Document Version: 1.0 | Last Updated: November 2024</p>
+    <p>For support, contact your DevOps/Infrastructure team</p>
+</div>
+
+</body>
+</html>
