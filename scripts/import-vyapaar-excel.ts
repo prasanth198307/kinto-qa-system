@@ -566,7 +566,7 @@ for (const sale of sales) {
       // Create invoice within transaction
       const [invoice] = await tx.insert(invoices).values({
         invoiceNumber: invoiceNo,
-        invoiceDate: invoiceDate,
+        invoiceDate: invoiceDate.toISOString(),
         buyerName: customer.vendorName,
         buyerAddress: customer.address || '',
         buyerGstin: customer.gstNumber || '',
@@ -626,7 +626,7 @@ for (const sale of sales) {
           
           await tx.insert(invoicePayments).values({
             invoiceId: invoice.id,
-            paymentDate: invoiceDate,
+            paymentDate: invoiceDate.toISOString(),
             amount: amountReceivedInPaise,
             paymentMethod: paymentMethod,
             paymentType: paymentType,

@@ -21,7 +21,7 @@ export const sessions = pgTable(
   {
     sid: varchar("sid").primaryKey(),
     sess: jsonb("sess").notNull(),
-    expire: timestamp("expire").notNull(),
+    expire: timestamp("expire", { mode: 'string' }).notNull(),
   },
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
@@ -33,8 +33,8 @@ export const roles = pgTable("roles", {
   description: text("description"),
   permissions: text("permissions").array(),
   recordStatus: integer("record_status").default(1).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
 // Role Permissions table - defines which screens each role can access
@@ -47,8 +47,8 @@ export const rolePermissions = pgTable("role_permissions", {
   canEdit: integer("can_edit").default(0).notNull(),
   canDelete: integer("can_delete").default(0).notNull(),
   recordStatus: integer("record_status").default(1).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertRoleSchema = createInsertSchema(roles).omit({
@@ -83,10 +83,10 @@ export const users = pgTable("users", {
   profileImageUrl: varchar("profile_image_url"),
   roleId: varchar("role_id").references(() => roles.id),
   resetToken: varchar("reset_token", { length: 255 }),
-  resetTokenExpiry: timestamp("reset_token_expiry"),
+  resetTokenExpiry: timestamp("reset_token_expiry", { mode: 'string' }),
   recordStatus: integer("record_status").default(1).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertUserSchema = createInsertSchema(users, {
@@ -113,12 +113,12 @@ export const machines = pgTable("machines", {
   location: varchar("location", { length: 255 }),
   status: varchar("status", { length: 50 }).default('active'),
   warmupTimeMinutes: integer("warmup_time_minutes").default(0),
-  installationDate: timestamp("installation_date"),
-  lastMaintenance: timestamp("last_maintenance"),
-  nextPmDue: timestamp("next_pm_due"),
+  installationDate: timestamp("installation_date", { mode: 'string' }),
+  lastMaintenance: timestamp("last_maintenance", { mode: 'string' }),
+  nextPmDue: timestamp("next_pm_due", { mode: 'string' }),
   recordStatus: integer("record_status").default(1).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertMachineSchema = createInsertSchema(machines).omit({
@@ -140,8 +140,8 @@ export const checklistTemplates = pgTable("checklist_templates", {
   createdBy: varchar("created_by").references(() => users.id),
   isActive: varchar("is_active").default('true'),
   recordStatus: integer("record_status").default(1).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertChecklistTemplateSchema = createInsertSchema(checklistTemplates).omit({
@@ -161,7 +161,7 @@ export const templateTasks = pgTable("template_tasks", {
   taskName: varchar("task_name", { length: 255 }).notNull(),
   verificationCriteria: text("verification_criteria"),
   orderIndex: integer("order_index"),
-  createdAt: timestamp("created_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertTemplateTaskSchema = createInsertSchema(templateTasks).omit({
@@ -181,22 +181,22 @@ export const checklistAssignments = pgTable("checklist_assignments", {
   reviewerId: varchar("reviewer_id").references(() => users.id),
   assignedDate: date("assigned_date").notNull(),
   shift: varchar("shift", { length: 50 }),
-  dueDateTime: timestamp("due_date_time"),
+  dueDateTime: timestamp("due_date_time", { mode: 'string' }),
   status: varchar("status", { length: 50 }).default('pending'),
   submissionId: varchar("submission_id").references(() => checklistSubmissions.id),
   assignedBy: varchar("assigned_by").references(() => users.id).notNull(),
   notes: text("notes"),
   missedNotificationSent: integer("missed_notification_sent").default(0).notNull(),
-  missedNotificationSentAt: timestamp("missed_notification_sent_at"),
+  missedNotificationSentAt: timestamp("missed_notification_sent_at", { mode: 'string' }),
   whatsappEnabled: integer("whatsapp_enabled").default(0).notNull(),
   taskReferenceId: varchar("task_reference_id", { length: 50 }),
   whatsappNotificationSent: integer("whatsapp_notification_sent").default(0).notNull(),
-  whatsappNotificationSentAt: timestamp("whatsapp_notification_sent_at"),
+  whatsappNotificationSentAt: timestamp("whatsapp_notification_sent_at", { mode: 'string' }),
   operatorResponse: text("operator_response"),
-  operatorResponseTime: timestamp("operator_response_time"),
+  operatorResponseTime: timestamp("operator_response_time", { mode: 'string' }),
   recordStatus: integer("record_status").default(1).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertChecklistAssignmentSchema = createInsertSchema(checklistAssignments, {
@@ -225,9 +225,9 @@ export const partialTaskAnswers = pgTable("partial_task_answers", {
   sparePartRequestText: text("spare_part_request_text"), // Operator's raw spare part request
   waitingForPhoto: integer("waiting_for_photo").default(0), // 1 = waiting for photo upload
   waitingForSparePart: integer("waiting_for_spare_part").default(0), // 1 = waiting for spare part response
-  answeredAt: timestamp("answered_at").defaultNow().notNull(),
+  answeredAt: timestamp("answered_at", { mode: 'string' }).defaultNow().notNull(),
   answeredBy: varchar("answered_by").references(() => users.id).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertPartialTaskAnswerSchema = createInsertSchema(partialTaskAnswers).omit({
@@ -247,15 +247,15 @@ export const checklistSubmissions = pgTable("checklist_submissions", {
   reviewerId: varchar("reviewer_id").references(() => users.id),
   managerId: varchar("manager_id").references(() => users.id),
   status: varchar("status", { length: 50 }).default('pending'),
-  date: timestamp("date").notNull(),
+  date: timestamp("date", { mode: 'string' }).notNull(),
   shift: varchar("shift", { length: 50 }),
   supervisorName: varchar("supervisor_name", { length: 255 }),
   generalRemarks: text("general_remarks"),
   signatureData: text("signature_data"),
-  submittedAt: timestamp("submitted_at"),
-  reviewedAt: timestamp("reviewed_at"),
-  approvedAt: timestamp("approved_at"),
-  createdAt: timestamp("created_at").defaultNow(),
+  submittedAt: timestamp("submitted_at", { mode: 'string' }),
+  reviewedAt: timestamp("reviewed_at", { mode: 'string' }),
+  approvedAt: timestamp("approved_at", { mode: 'string' }),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 });
 
 export type ChecklistSubmission = typeof checklistSubmissions.$inferSelect;
@@ -270,7 +270,7 @@ export const submissionTasks = pgTable("submission_tasks", {
   photoUrl: varchar("photo_url", { length: 500 }),
   verifiedByName: varchar("verified_by_name", { length: 255 }),
   verifiedSignature: text("verified_signature"),
-  createdAt: timestamp("created_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 });
 
 export type SubmissionTask = typeof submissionTasks.$inferSelect;
@@ -290,10 +290,10 @@ export const whatsappConversationSessions = pgTable("whatsapp_conversation_sessi
   answers: jsonb("answers").default('[]'),
   pendingPhotoUrl: text("pending_photo_url"), // Store photo received before text answer
   aiSessionId: varchar("ai_session_id", { length: 255 }), // Colloki Flow AI session ID for context
-  lastMessageAt: timestamp("last_message_at").defaultNow(),
-  startedAt: timestamp("started_at").defaultNow(),
-  completedAt: timestamp("completed_at"),
-  expiresAt: timestamp("expires_at").notNull(),
+  lastMessageAt: timestamp("last_message_at", { mode: 'string' }).defaultNow(),
+  startedAt: timestamp("started_at", { mode: 'string' }).defaultNow(),
+  completedAt: timestamp("completed_at", { mode: 'string' }),
+  expiresAt: timestamp("expires_at", { mode: 'string' }).notNull(),
 });
 
 export const insertWhatsAppConversationSessionSchema = createInsertSchema(whatsappConversationSessions).omit({
@@ -315,8 +315,8 @@ export const sparePartsCatalog = pgTable("spare_parts_catalog", {
   reorderThreshold: integer("reorder_threshold"),
   currentStock: integer("current_stock").default(0),
   recordStatus: integer("record_status").default(1).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertSparePartSchema = createInsertSchema(sparePartsCatalog).omit({
@@ -340,9 +340,9 @@ export const requiredSpares = pgTable("required_spares", {
   urgency: varchar("urgency", { length: 50 }).notNull().default('medium'),
   status: varchar("status", { length: 50 }).default('pending'), // pending, approved, rejected
   approvedBy: varchar("approved_by").references(() => users.id), // Manager who approved
-  approvedAt: timestamp("approved_at"),
+  approvedAt: timestamp("approved_at", { mode: 'string' }),
   rejectionReason: text("rejection_reason"),
-  createdAt: timestamp("created_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 });
 
 export type RequiredSpare = typeof requiredSpares.$inferSelect;
@@ -357,8 +357,8 @@ export const pmTaskListTemplates = pgTable("pm_task_list_templates", {
   isActive: varchar("is_active").default('true'),
   recordStatus: integer("record_status").default(1).notNull(),
   createdBy: varchar("created_by").references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertPMTaskListTemplateSchema = createInsertSchema(pmTaskListTemplates).omit({
@@ -380,7 +380,7 @@ export const pmTemplateTasks = pgTable("pm_template_tasks", {
   verificationCriteria: text("verification_criteria"),
   orderIndex: integer("order_index"),
   requiresPhoto: varchar("requires_photo").default('false'),
-  createdAt: timestamp("created_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertPMTemplateTaskSchema = createInsertSchema(pmTemplateTasks).omit({
@@ -399,13 +399,13 @@ export const maintenancePlans = pgTable("maintenance_plans", {
   planName: varchar("plan_name", { length: 255 }).notNull(),
   planType: varchar("plan_type", { length: 100 }).notNull(),
   frequency: varchar("frequency", { length: 50 }).notNull(),
-  nextDueDate: timestamp("next_due_date"),
+  nextDueDate: timestamp("next_due_date", { mode: 'string' }),
   taskListTemplateId: varchar("task_list_template_id").references(() => pmTaskListTemplates.id),
   assignedTo: varchar("assigned_to").references(() => users.id),
   isActive: varchar("is_active").default('true'),
   recordStatus: integer("record_status").default(1).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertMaintenancePlanSchema = createInsertSchema(maintenancePlans).omit({
@@ -425,13 +425,13 @@ export const pmExecutions = pgTable("pm_executions", {
   machineId: varchar("machine_id").references(() => machines.id).notNull(),
   taskListTemplateId: varchar("task_list_template_id").references(() => pmTaskListTemplates.id),
   completedBy: varchar("completed_by").references(() => users.id).notNull(),
-  completedAt: timestamp("completed_at").notNull(),
+  completedAt: timestamp("completed_at", { mode: 'string' }).notNull(),
   status: varchar("status", { length: 50 }).default('completed'),
   overallResult: varchar("overall_result", { length: 50 }),
   remarks: text("remarks"),
   downtimeHours: integer("downtime_hours"),
   sparePartsUsed: text("spare_parts_used"),
-  createdAt: timestamp("created_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertPMExecutionSchema = createInsertSchema(pmExecutions).omit({
@@ -452,7 +452,7 @@ export const pmExecutionTasks = pgTable("pm_execution_tasks", {
   remarks: text("remarks"),
   photoUrl: varchar("photo_url", { length: 500 }),
   orderIndex: integer("order_index"),
-  createdAt: timestamp("created_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertPMExecutionTaskSchema = createInsertSchema(pmExecutionTasks).omit({
@@ -469,14 +469,14 @@ export const maintenanceHistory = pgTable("maintenance_history", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   machineId: varchar("machine_id").references(() => machines.id),
   planId: varchar("plan_id").references(() => maintenancePlans.id),
-  performedDate: timestamp("performed_date").notNull(),
+  performedDate: timestamp("performed_date", { mode: 'string' }).notNull(),
   performedBy: varchar("performed_by").references(() => users.id),
   type: varchar("type", { length: 100 }).notNull(),
   description: text("description"),
   sparePartsUsed: text("spare_parts_used"),
   downtimeHours: integer("downtime_hours"),
   cost: integer("cost"),
-  createdAt: timestamp("created_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 });
 
 export type MaintenanceHistory = typeof maintenanceHistory.$inferSelect;
@@ -488,8 +488,8 @@ export const userAssignments = pgTable("user_assignments", {
   reviewerId: varchar("reviewer_id").references(() => users.id),
   managerId: varchar("manager_id").references(() => users.id),
   machineIds: text("machine_ids").array(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
 export type UserAssignment = typeof userAssignments.$inferSelect;
@@ -501,8 +501,8 @@ export const machineTypes = pgTable("machine_types", {
   description: text("description"),
   isActive: varchar("is_active", { length: 10 }).default('true'),
   recordStatus: integer("record_status").default(1).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertMachineTypeSchema = createInsertSchema(machineTypes).omit({
@@ -521,7 +521,7 @@ export const machineSpares = pgTable("machine_spares", {
   machineId: varchar("machine_id").references(() => machines.id).notNull(),
   sparePartId: varchar("spare_part_id").references(() => sparePartsCatalog.id).notNull(),
   recommendedQuantity: integer("recommended_quantity").default(1),
-  createdAt: timestamp("created_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertMachineSpareSchema = createInsertSchema(machineSpares).omit({
@@ -544,12 +544,12 @@ export const purchaseOrders = pgTable("purchase_orders", {
   approvedBy: varchar("approved_by").references(() => users.id),
   supplier: varchar("supplier", { length: 255 }),
   estimatedCost: integer("estimated_cost"),
-  expectedDeliveryDate: timestamp("expected_delivery_date"),
-  actualDeliveryDate: timestamp("actual_delivery_date"),
+  expectedDeliveryDate: timestamp("expected_delivery_date", { mode: 'string' }),
+  actualDeliveryDate: timestamp("actual_delivery_date", { mode: 'string' }),
   remarks: text("remarks"),
   recordStatus: integer("record_status").default(1).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertPurchaseOrderSchema = createInsertSchema(purchaseOrders).omit({
@@ -571,8 +571,8 @@ export const uom = pgTable("uom", {
   description: text("description"),
   isActive: varchar("is_active").default('true'),
   recordStatus: integer("record_status").default(1).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertUomSchema = createInsertSchema(uom).omit({
@@ -594,8 +594,8 @@ export const productCategories = pgTable("product_categories", {
   displayOrder: integer("display_order"),
   isActive: varchar("is_active").default('true'),
   recordStatus: integer("record_status").default(1).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertProductCategorySchema = createInsertSchema(productCategories).omit({
@@ -617,8 +617,8 @@ export const productTypes = pgTable("product_types", {
   displayOrder: integer("display_order"),
   isActive: varchar("is_active").default('true'),
   recordStatus: integer("record_status").default(1).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertProductTypeSchema = createInsertSchema(productTypes).omit({
@@ -671,8 +671,8 @@ export const products = pgTable("products", {
   isActive: varchar("is_active").default('true'),
   recordStatus: integer("record_status").default(1).notNull(),
   createdBy: varchar("created_by").references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertProductSchema = createInsertSchema(products).omit({
@@ -708,8 +708,8 @@ export const productBom = pgTable("product_bom", {
   uom: varchar("uom", { length: 50 }), // Unit of measure (kg, pcs, etc.)
   notes: text("notes"),
   recordStatus: integer("record_status").default(1).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 }, (table) => ({
   productIdIdx: index("product_bom_product_id_idx").on(table.productId),
   rawMaterialIdIdx: index("product_bom_raw_material_id_idx").on(table.rawMaterialId),
@@ -764,8 +764,8 @@ export const vendors = pgTable("vendors", {
   isActive: varchar("is_active").default('true'),
   recordStatus: integer("record_status").default(1).notNull(),
   createdBy: varchar("created_by").references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertVendorSchema = createInsertSchema(vendors, {
@@ -812,8 +812,8 @@ export const rawMaterialTypes = pgTable("raw_material_types", {
   isActive: integer("is_active").default(1).notNull(), // 1 = Active, 0 = Inactive
   recordStatus: integer("record_status").default(1).notNull(),
   createdBy: varchar("created_by").references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
 // Base schema with common fields
@@ -920,8 +920,8 @@ export const rawMaterials = pgTable("raw_materials", {
   isActive: varchar("is_active").default('true'),
   recordStatus: integer("record_status").default(1).notNull(),
   createdBy: varchar("created_by").references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertRawMaterialSchema = createInsertSchema(rawMaterials, {
@@ -958,7 +958,7 @@ export const rawMaterialTransactions = pgTable("raw_material_transactions", {
   reference: varchar("reference", { length: 255 }),
   remarks: text("remarks"),
   performedBy: varchar("performed_by").references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertRawMaterialTransactionSchema = createInsertSchema(rawMaterialTransactions).omit({
@@ -974,20 +974,20 @@ export const finishedGoods = pgTable("finished_goods", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   productId: varchar("product_id").references(() => products.id).notNull(),
   batchNumber: varchar("batch_number", { length: 100 }).notNull(),
-  productionDate: timestamp("production_date").notNull(),
+  productionDate: timestamp("production_date", { mode: 'string' }).notNull(),
   quantity: integer("quantity").notNull(),
   uomId: varchar("uom_id").references(() => uom.id),
   qualityStatus: varchar("quality_status", { length: 50 }).default('pending'),
   machineId: varchar("machine_id").references(() => machines.id),
   operatorId: varchar("operator_id").references(() => users.id),
   inspectedBy: varchar("inspected_by").references(() => users.id),
-  inspectionDate: timestamp("inspection_date"),
+  inspectionDate: timestamp("inspection_date", { mode: 'string' }),
   storageLocation: varchar("storage_location", { length: 255 }),
   remarks: text("remarks"),
   recordStatus: integer("record_status").default(1).notNull(),
   createdBy: varchar("created_by").references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertFinishedGoodSchema = createInsertSchema(finishedGoods, {
@@ -1022,7 +1022,7 @@ export type FinishedGood = typeof finishedGoods.$inferSelect;
 export const rawMaterialIssuance = pgTable("raw_material_issuance", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   issuanceNumber: varchar("issuance_number", { length: 100 }).notNull().unique(),
-  issuanceDate: timestamp("issuance_date").notNull(),
+  issuanceDate: timestamp("issuance_date", { mode: 'string' }).notNull(),
   issuedTo: varchar("issued_to", { length: 255 }),
   productId: varchar("product_id").references(() => products.id), // Product being manufactured
   productionReference: varchar("production_reference", { length: 255 }), // Batch ID / FG Name / Shift No
@@ -1030,8 +1030,8 @@ export const rawMaterialIssuance = pgTable("raw_material_issuance", {
   remarks: text("remarks"),
   recordStatus: integer("record_status").default(1).notNull(),
   issuedBy: varchar("issued_by").references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertRawMaterialIssuanceSchema = createInsertSchema(rawMaterialIssuance, {
@@ -1080,8 +1080,8 @@ export const rawMaterialIssuanceItems = pgTable("raw_material_issuance_items", {
   uomId: varchar("uom_id").references(() => uom.id),
   remarks: text("remarks"),
   recordStatus: integer("record_status").default(1).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertRawMaterialIssuanceItemSchema = createInsertSchema(rawMaterialIssuanceItems, {
@@ -1123,7 +1123,7 @@ export type RawMaterialIssuanceItem = typeof rawMaterialIssuanceItems.$inferSele
 export const productionEntries = pgTable("production_entries", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   issuanceId: varchar("issuance_id").references(() => rawMaterialIssuance.id).notNull(), // Link to raw material issuance
-  productionDate: timestamp("production_date").notNull(),
+  productionDate: timestamp("production_date", { mode: 'string' }).notNull(),
   shift: varchar("shift", { length: 20 }).notNull(), // A, B, or General
   producedQuantity: numeric("produced_quantity", { precision: 12, scale: 2 }).notNull(), // Actual output
   rejectedQuantity: numeric("rejected_quantity", { precision: 12, scale: 2 }).default('0'),
@@ -1134,8 +1134,8 @@ export const productionEntries = pgTable("production_entries", {
   remarks: text("remarks"),
   recordStatus: integer("record_status").default(1).notNull(),
   createdBy: varchar("created_by").references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 }, (table) => [
   // Unique constraint: one production entry per issuance per date per shift
   unique().on(table.issuanceId, table.productionDate, table.shift),
@@ -1220,7 +1220,7 @@ export type ProductionEntry = typeof productionEntries.$inferSelect;
 export const gatepasses = pgTable("gatepasses", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   gatepassNumber: varchar("gatepass_number", { length: 100 }).notNull().unique(),
-  gatepassDate: timestamp("gatepass_date").notNull(),
+  gatepassDate: timestamp("gatepass_date", { mode: 'string' }).notNull(),
   vehicleNumber: varchar("vehicle_number", { length: 50 }).notNull(),
   driverName: varchar("driver_name", { length: 255 }).notNull(),
   driverContact: varchar("driver_contact", { length: 50 }),
@@ -1238,20 +1238,20 @@ export const gatepasses = pgTable("gatepasses", {
   
   // Status Tracking & Vehicle Exit/Entry
   status: varchar("status", { length: 50 }).default("generated").notNull(), // generated, vehicle_out, delivered, completed
-  outTime: timestamp("out_time"), // When vehicle left the plant
-  inTime: timestamp("in_time"), // When vehicle/empty crates returned
+  outTime: timestamp("out_time", { mode: 'string' }), // When vehicle left the plant
+  inTime: timestamp("in_time", { mode: 'string' }), // When vehicle/empty crates returned
   verifiedBy: varchar("verified_by", { length: 255 }), // Security person who verified exit
   
   // Proof of Delivery (POD)
   podReceivedBy: varchar("pod_received_by", { length: 255 }), // Customer name/signature
-  podDate: timestamp("pod_date"), // Actual delivery date/time
+  podDate: timestamp("pod_date", { mode: 'string' }), // Actual delivery date/time
   podRemarks: text("pod_remarks"), // Delivery issues (breakage, short delivery, etc.)
   podSignature: text("pod_signature"), // Base64 encoded signature image
   
   recordStatus: integer("record_status").default(1).notNull(),
   issuedBy: varchar("issued_by").references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertGatepassSchema = createInsertSchema(gatepasses, {
@@ -1285,8 +1285,8 @@ export const gatepassItems = pgTable("gatepass_items", {
   uomId: varchar("uom_id").references(() => uom.id),
   remarks: text("remarks"),
   recordStatus: integer("record_status").default(1).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertGatepassItemSchema = createInsertSchema(gatepassItems).omit({
@@ -1329,8 +1329,8 @@ export const invoiceTemplates = pgTable("invoice_templates", {
   
   recordStatus: integer("record_status").default(1).notNull(),
   createdBy: varchar("created_by").references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertInvoiceTemplateSchema = createInsertSchema(invoiceTemplates).omit({
@@ -1358,8 +1358,8 @@ export const termsConditions = pgTable("terms_conditions", {
   
   recordStatus: integer("record_status").default(1).notNull(),
   createdBy: varchar("created_by").references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertTermsConditionsSchema = createInsertSchema(termsConditions).omit({
@@ -1376,7 +1376,7 @@ export type TermsConditions = typeof termsConditions.$inferSelect;
 export const invoices = pgTable("invoices", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   invoiceNumber: varchar("invoice_number", { length: 100 }).notNull().unique(),
-  invoiceDate: timestamp("invoice_date").notNull(),
+  invoiceDate: timestamp("invoice_date", { mode: 'string' }).notNull(),
   
   // Template and T&C References
   templateId: varchar("template_id").references(() => invoiceTemplates.id),
@@ -1431,21 +1431,21 @@ export const invoices = pgTable("invoices", {
   reverseCharge: integer("reverse_charge").default(0).notNull(),
   transportMode: varchar("transport_mode", { length: 50 }),
   vehicleNumber: varchar("vehicle_number", { length: 50 }),
-  dateOfSupply: timestamp("date_of_supply"),
+  dateOfSupply: timestamp("date_of_supply", { mode: 'string' }),
   
   remarks: text("remarks"),
   
   // Status Tracking (Invoice→Gate Pass→Dispatch→POD Flow)
   status: varchar("status", { length: 50 }).default("draft").notNull(), // draft, ready_for_gatepass, dispatched, delivered
-  dispatchDate: timestamp("dispatch_date"),
-  deliveryDate: timestamp("delivery_date"),
+  dispatchDate: timestamp("dispatch_date", { mode: 'string' }),
+  deliveryDate: timestamp("delivery_date", { mode: 'string' }),
   receivedBy: varchar("received_by", { length: 255 }), // POD: Who received the goods
   podRemarks: text("pod_remarks"), // POD: Delivery remarks (breakage, short delivery, etc.)
   
   recordStatus: integer("record_status").default(1).notNull(),
   generatedBy: varchar("generated_by").references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertInvoiceSchema = createInsertSchema(invoices, {
@@ -1504,8 +1504,8 @@ export const invoiceItems = pgTable("invoice_items", {
   totalAmount: integer("total_amount").notNull(), // Total for this line item (in paise)
   remarks: text("remarks"),
   recordStatus: integer("record_status").default(1).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertInvoiceItemSchema = createInsertSchema(invoiceItems).omit({
@@ -1563,7 +1563,7 @@ export type GSTReportRequest = z.infer<typeof gstReportRequestSchema>;
 export const invoicePayments = pgTable("invoice_payments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   invoiceId: varchar("invoice_id").references(() => invoices.id).notNull(),
-  paymentDate: timestamp("payment_date").notNull(),
+  paymentDate: timestamp("payment_date", { mode: 'string' }).notNull(),
   amount: integer("amount").notNull(), // Payment amount (in paise)
   paymentMethod: varchar("payment_method", { length: 50 }).notNull(), // Cash, Cheque, NEFT, UPI, etc.
   referenceNumber: varchar("reference_number", { length: 100 }), // Transaction ID, Cheque number, etc.
@@ -1572,8 +1572,8 @@ export const invoicePayments = pgTable("invoice_payments", {
   remarks: text("remarks"),
   recordedBy: varchar("recorded_by").references(() => users.id),
   recordStatus: integer("record_status").default(1).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertInvoicePaymentSchema = createInsertSchema(invoicePayments).omit({
@@ -1598,8 +1598,8 @@ export const banks = pgTable("banks", {
   upiId: varchar("upi_id", { length: 100 }),
   isDefault: integer("is_default").default(0).notNull(), // 1 if default account
   recordStatus: integer("record_status").default(1).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertBankSchema = createInsertSchema(banks).omit({
@@ -1616,7 +1616,7 @@ export type Bank = typeof banks.$inferSelect;
 export const salesReturns = pgTable("sales_returns", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   returnNumber: varchar("return_number", { length: 100 }).notNull().unique(),
-  returnDate: timestamp("return_date").notNull(),
+  returnDate: timestamp("return_date", { mode: 'string' }).notNull(),
   
   // Links to original transaction
   invoiceId: varchar("invoice_id").references(() => invoices.id).notNull(),
@@ -1628,13 +1628,13 @@ export const salesReturns = pgTable("sales_returns", {
   
   // Status tracking
   status: varchar("status", { length: 50 }).default("pending_receipt").notNull(), // pending_receipt, received, inspected, completed
-  receivedDate: timestamp("received_date"),
-  inspectedDate: timestamp("inspected_date"),
+  receivedDate: timestamp("received_date", { mode: 'string' }),
+  inspectedDate: timestamp("inspected_date", { mode: 'string' }),
   inspectedBy: varchar("inspected_by").references(() => users.id),
   
   // Financial
   creditNoteNumber: varchar("credit_note_number", { length: 100 }),
-  creditNoteDate: timestamp("credit_note_date"),
+  creditNoteDate: timestamp("credit_note_date", { mode: 'string' }),
   totalCreditAmount: integer("total_credit_amount").default(0).notNull(), // Credit amount in paise
   
   // Credit note status tracking (for same-month auto vs >1 month manual)
@@ -1643,8 +1643,8 @@ export const salesReturns = pgTable("sales_returns", {
   remarks: text("remarks"),
   recordStatus: integer("record_status").default(1).notNull(),
   createdBy: varchar("created_by").references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertSalesReturnSchema = createInsertSchema(salesReturns, {
@@ -1713,8 +1713,8 @@ export const salesReturnItems = pgTable("sales_return_items", {
   
   remarks: text("remarks"),
   recordStatus: integer("record_status").default(1).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertSalesReturnItemSchema = createInsertSchema(salesReturnItems).omit({
@@ -1754,8 +1754,8 @@ export const creditNotes = pgTable("credit_notes", {
   notes: text("notes"),
   
   recordStatus: integer("record_status").default(1).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertCreditNoteSchema = createInsertSchema(creditNotes, {
@@ -1797,8 +1797,8 @@ export const creditNoteItems = pgTable("credit_note_items", {
   totalAmount: integer("total_amount").notNull(), // taxableValue + GST amounts
   
   recordStatus: integer("record_status").default(1).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertCreditNoteItemSchema = createInsertSchema(creditNoteItems).omit({
@@ -1819,7 +1819,7 @@ export const manualCreditNoteRequests = pgTable("manual_credit_note_requests", {
   // Request details
   reasonCode: varchar("reason_code", { length: 50 }).notNull(), // old_return, gst_compliance, etc
   requestedBy: varchar("requested_by").references(() => users.id).notNull(),
-  requestedAt: timestamp("requested_at").defaultNow().notNull(),
+  requestedAt: timestamp("requested_at", { mode: 'string' }).defaultNow().notNull(),
   
   // Processing workflow
   status: varchar("status", { length: 30 }).default("pending").notNull(), // pending, in_progress, completed, rejected
@@ -1827,18 +1827,18 @@ export const manualCreditNoteRequests = pgTable("manual_credit_note_requests", {
   priority: varchar("priority", { length: 20 }).default("normal").notNull(), // low, normal, high, urgent
   
   // Completion tracking
-  completedAt: timestamp("completed_at"),
+  completedAt: timestamp("completed_at", { mode: 'string' }),
   completedBy: varchar("completed_by").references(() => users.id),
   externalCreditNoteNumber: varchar("external_credit_note_number", { length: 100 }), // Manually created credit note reference
-  externalCreditNoteDate: timestamp("external_credit_note_date"),
+  externalCreditNoteDate: timestamp("external_credit_note_date", { mode: 'string' }),
   
   // Notes and documentation
   notes: text("notes"),
   processingNotes: text("processing_notes"), // Internal notes during processing
   
   recordStatus: integer("record_status").default(1).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertManualCreditNoteRequestSchema = createInsertSchema(manualCreditNoteRequests).omit({
@@ -1856,11 +1856,11 @@ export const machineStartupTasks = pgTable("machine_startup_tasks", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   machineId: varchar("machine_id").references(() => machines.id).notNull(),
   assignedUserId: varchar("assigned_user_id").references(() => users.id).notNull(),
-  scheduledStartTime: timestamp("scheduled_start_time").notNull(), // When machine should be started
+  scheduledStartTime: timestamp("scheduled_start_time", { mode: 'string' }).notNull(), // When machine should be started
   reminderBeforeMinutes: integer("reminder_before_minutes").default(30).notNull(), // How many minutes before to send reminder
   status: varchar("status", { length: 50 }).default('pending').notNull(), // pending, notified, completed, cancelled
-  notificationSentAt: timestamp("notification_sent_at"),
-  machineStartedAt: timestamp("machine_started_at"), // When user marked machine as started
+  notificationSentAt: timestamp("notification_sent_at", { mode: 'string' }),
+  machineStartedAt: timestamp("machine_started_at", { mode: 'string' }), // When user marked machine as started
   whatsappEnabled: integer("whatsapp_enabled").default(1).notNull(), // 1 = enabled, 0 = disabled
   emailEnabled: integer("email_enabled").default(1).notNull(), // 1 = enabled, 0 = disabled
   whatsappSent: integer("whatsapp_sent").default(0).notNull(), // 0 = not sent, 1 = sent
@@ -1870,12 +1870,12 @@ export const machineStartupTasks = pgTable("machine_startup_tasks", {
   notes: text("notes"),
   taskReferenceId: varchar("task_reference_id", { length: 50 }).unique(), // Unique ref like "MST-12345" for WhatsApp replies
   operatorResponse: text("operator_response"), // WhatsApp reply from operator
-  operatorResponseTime: timestamp("operator_response_time"), // When operator replied via WhatsApp
+  operatorResponseTime: timestamp("operator_response_time", { mode: 'string' }), // When operator replied via WhatsApp
   responseStatus: varchar("response_status", { length: 20 }).default('no_response'), // on_time, late, no_response
   createdBy: varchar("created_by").references(() => users.id),
   recordStatus: integer("record_status").default(1).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertMachineStartupTaskSchema = createInsertSchema(machineStartupTasks, {
@@ -1915,8 +1915,8 @@ export const notificationConfig = pgTable("notification_config", {
   // General Settings
   testMode: integer("test_mode").default(1).notNull(), // 1 = console logging only, 0 = real sending
   recordStatus: integer("record_status").default(1).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertNotificationConfigSchema = createInsertSchema(notificationConfig).omit({
@@ -1933,7 +1933,7 @@ export type NotificationConfig = typeof notificationConfig.$inferSelect;
 export const productionReconciliations = pgTable("production_reconciliations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   reconciliationNumber: varchar("reconciliation_number", { length: 100 }).notNull().unique(),
-  reconciliationDate: timestamp("reconciliation_date").notNull(),
+  reconciliationDate: timestamp("reconciliation_date", { mode: 'string' }).notNull(),
   shift: varchar("shift", { length: 20 }).notNull(), // A, B, General
   
   // Links to source documents (FK with cascading rules)
@@ -1952,13 +1952,13 @@ export const productionReconciliations = pgTable("production_reconciliations", {
   // Edit tracking for role-based limits
   editCount: integer("edit_count").default(0).notNull(), // Track number of edits
   lastEditedBy: varchar("last_edited_by").references(() => users.id),
-  lastEditedAt: timestamp("last_edited_at"),
+  lastEditedAt: timestamp("last_edited_at", { mode: 'string' }),
   
   remarks: text("remarks"),
   recordStatus: integer("record_status").default(1).notNull(),
   createdBy: varchar("created_by").references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 }, (table) => [
   // Composite unique index: prevent duplicate reconciliations for same issuance + shift
   uniqueIndex("production_reconciliations_issuance_shift_idx").on(table.issuanceId, table.shift),
@@ -2008,8 +2008,8 @@ export const productionReconciliationItems = pgTable("production_reconciliation_
   
   remarks: text("remarks"),
   recordStatus: integer("record_status").default(1).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
 export const insertProductionReconciliationItemSchema = createInsertSchema(productionReconciliationItems).omit({
