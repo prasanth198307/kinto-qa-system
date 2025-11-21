@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, salesReturns, salesReturnItems, creditNotes, creditNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, salesReturns, salesReturnItems, creditNotes, creditNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions } from "@shared/schema";
 import { format } from "date-fns";
 import { z } from "zod";
 import path from "path";
@@ -1355,6 +1355,109 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Vendor Type API
+  app.get('/api/vendor-types', isAuthenticated, async (req: any, res) => {
+    try {
+      const types = await storage.getAllVendorTypes();
+      res.json(types);
+    } catch (error) {
+      console.error("Error fetching vendor types:", error);
+      res.status(500).json({ message: "Failed to fetch vendor types" });
+    }
+  });
+
+  app.post('/api/vendor-types', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const validatedData = insertVendorTypeSchema.parse(req.body);
+      const created = await storage.createVendorType(validatedData);
+      res.json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error creating vendor type:", error);
+      res.status(500).json({ message: "Failed to create vendor type" });
+    }
+  });
+
+  app.get('/api/vendor-types/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const type = await storage.getVendorType(id);
+      if (!type) {
+        return res.status(404).json({ message: "Vendor type not found" });
+      }
+      res.json(type);
+    } catch (error) {
+      console.error("Error fetching vendor type:", error);
+      res.status(500).json({ message: "Failed to fetch vendor type" });
+    }
+  });
+
+  app.patch('/api/vendor-types/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertVendorTypeSchema.partial().parse(req.body);
+      const updated = await storage.updateVendorType(id, validatedData);
+      if (!updated) {
+        return res.status(404).json({ message: "Vendor type not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error updating vendor type:", error);
+      res.status(500).json({ message: "Failed to update vendor type" });
+    }
+  });
+
+  app.delete('/api/vendor-types/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteVendorType(id);
+      res.json({ message: "Vendor type deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting vendor type:", error);
+      res.status(500).json({ message: "Failed to delete vendor type" });
+    }
+  });
+
+  // Vendor-VendorType Assignment API
+  app.post('/api/vendors/:vendorId/types/:vendorTypeId', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { vendorId, vendorTypeId } = req.params;
+      const { isPrimary = false } = req.body;
+      const assignment = await storage.assignVendorType(vendorId, vendorTypeId, isPrimary);
+      res.json(assignment);
+    } catch (error) {
+      console.error("Error assigning vendor type:", error);
+      res.status(500).json({ message: "Failed to assign vendor type" });
+    }
+  });
+
+  app.get('/api/vendors/:vendorId/types', isAuthenticated, async (req: any, res) => {
+    try {
+      const { vendorId } = req.params;
+      const types = await storage.getVendorTypes(vendorId);
+      res.json(types);
+    } catch (error) {
+      console.error("Error fetching vendor types:", error);
+      res.status(500).json({ message: "Failed to fetch vendor types" });
+    }
+  });
+
+  app.delete('/api/vendors/:vendorId/types/:vendorTypeId', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { vendorId, vendorTypeId } = req.params;
+      await storage.removeVendorType(vendorId, vendorTypeId);
+      res.json({ message: "Vendor type removed successfully" });
+    } catch (error) {
+      console.error("Error removing vendor type:", error);
+      res.status(500).json({ message: "Failed to remove vendor type" });
+    }
+  });
+
   // Products API
   app.get('/api/products', isAuthenticated, async (req: any, res) => {
     try {
@@ -1487,7 +1590,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Validate all items BEFORE any database operations
         const bomItemSchema = insertProductBomSchema.omit({ productId: true });
-        const validatedItems = req.body.map((item, index) => {
+        const validatedItems = req.body.map((item: any, index: any) => {
           try {
             return bomItemSchema.parse(item);
           } catch (error) {
@@ -2067,6 +2170,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const issuanceNumber = `ISS-${Date.now()}`;
       const issuanceData = {
         ...validatedHeader,
+        issuanceDate: validatedHeader.issuanceDate ? new Date(validatedHeader.issuanceDate).toISOString() : new Date().toISOString(),
         issuanceNumber,
         issuedBy: req.user?.id,
       };
@@ -2074,7 +2178,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Wrap everything in a transaction for atomicity
       const result = await db.transaction(async (tx) => {
         // Create issuance header
-        const [issuance] = await tx.insert(rawMaterialIssuance).values(issuanceData).returning();
+        const [issuance] = await tx.insert(rawMaterialIssuance).values([issuanceData]).returning();
         
         // Create items and deduct inventory for each
         for (const item of items) {
@@ -2086,7 +2190,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           };
           
           // Validate item with issuanceId included
-          const validatedItem = insertRawMaterialIssuanceItemSchema.parse(cleanedItem);
+          const validatedItem = insertRawMaterialIssuanceItemSchema.parse({
+            ...cleanedItem,
+            quantityIssued: cleanedItem.quantityIssued?.toString() || '0',
+          });
           
           // Get current material stock with row lock to prevent race conditions
           const [material] = await tx.select().from(rawMaterials)
@@ -2098,7 +2205,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           
           // Create issuance item
-          await tx.insert(rawMaterialIssuanceItems).values(validatedItem);
+          await tx.insert(rawMaterialIssuanceItems).values([validatedItem]);
           
           // Only deduct stock if material is in Ongoing Inventory mode (isOpeningStockOnly = 0 or false)
           // Handle both integer (0/1) and boolean (false/true) representations
@@ -2112,7 +2219,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             // Deduct from inventory
             await tx.update(rawMaterials)
-              .set({ currentStock: newQuantity, updatedAt: new Date() })
+              .set({ currentStock: newQuantity, updatedAt: new Date().toISOString() })
               .where(eq(rawMaterials.id, validatedItem.rawMaterialId));
             
             // Create transaction record for audit trail
@@ -2378,12 +2485,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Wrap everything in a transaction for atomicity
       const result = await db.transaction(async (tx) => {
         // Create reconciliation header
-        const [reconciliation] = await tx.insert(productionReconciliations).values({
+        const [reconciliation] = await tx.insert(productionReconciliations).values([{
           ...validatedHeader,
+          reconciliationDate: validatedHeader.reconciliationDate ? new Date(validatedHeader.reconciliationDate).toISOString() : new Date().toISOString(),
           reconciliationNumber,
           editCount: 0,
           createdBy: req.user?.id,
-        }).returning();
+        }]).returning();
         
         // Create items and update raw material inventory for returned materials
         for (const item of items) {
@@ -2404,7 +2512,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (material) {
               const newStock = (material.currentStock || 0) + Number(validatedItem.quantityReturned);
               await tx.update(rawMaterials)
-                .set({ currentStock: newStock, updatedAt: new Date() })
+                .set({ currentStock: newStock, updatedAt: new Date().toISOString() })
                 .where(eq(rawMaterials.id, validatedItem.rawMaterialId));
               
               // Create transaction record for audit trail
@@ -2483,12 +2591,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Update header if provided
         if (header) {
           const validatedHeader = insertProductionReconciliationSchema.partial().parse(header);
+          const updateData: any = {
+            ...validatedHeader,
+            editCount: newEditCount,
+            updatedAt: new Date().toISOString(),
+          };
+          // Convert reconciliationDate to ISO string if present
+          if (validatedHeader.reconciliationDate) {
+            updateData.reconciliationDate = new Date(validatedHeader.reconciliationDate).toISOString();
+          }
           await tx.update(productionReconciliations)
-            .set({ 
-              ...validatedHeader, 
-              editCount: newEditCount,
-              updatedAt: new Date() 
-            })
+            .set(updateData)
             .where(eq(productionReconciliations.id, id));
         }
         
@@ -2517,7 +2630,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   if (material) {
                     const newStock = (material.currentStock || 0) + delta;
                     await tx.update(rawMaterials)
-                      .set({ currentStock: newStock, updatedAt: new Date() })
+                      .set({ currentStock: newStock, updatedAt: new Date().toISOString() })
                       .where(eq(rawMaterials.id, oldItem.rawMaterialId));
                     
                     // Create transaction record
@@ -2536,7 +2649,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
               
               await tx.update(productionReconciliationItems)
-                .set({ ...validatedItem, updatedAt: new Date() })
+                .set({ ...validatedItem, updatedAt: new Date().toISOString() })
                 .where(eq(productionReconciliationItems.id, item.id));
             }
           }
@@ -2581,10 +2694,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const conditions = [eq(productionReconciliations.recordStatus, 1)];
       
       if (dateFrom) {
-        conditions.push(gte(productionReconciliations.reconciliationDate, new Date(dateFrom as string)));
+        conditions.push(gte(productionReconciliations.reconciliationDate, new Date(dateFrom as string).toISOString()));
       }
       if (dateTo) {
-        conditions.push(lte(productionReconciliations.reconciliationDate, new Date(dateTo as string)));
+        conditions.push(lte(productionReconciliations.reconciliationDate, new Date(dateTo as string).toISOString()));
       }
       if (shift && shift !== 'all') {
         conditions.push(eq(productionReconciliations.shift, shift as string));
@@ -2738,8 +2851,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(
           and(
             eq(productionReconciliations.recordStatus, 1),
-            gte(productionReconciliations.reconciliationDate, new Date(currentYear, 0, 1)),
-            lte(productionReconciliations.reconciliationDate, new Date(currentYear, 11, 31, 23, 59, 59))
+            gte(productionReconciliations.reconciliationDate, new Date(currentYear, 0, 1).toISOString()),
+            lte(productionReconciliations.reconciliationDate, new Date(currentYear, 11, 31, 23, 59, 59).toISOString())
           )
         )
         .orderBy(productionReconciliations.reconciliationDate);
@@ -2779,14 +2892,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       // Helper function to get ISO week number
-      function getISOWeek(date: Date) {
+      const getISOWeek = (date: Date) => {
         const target = new Date(date.valueOf());
         const dayNr = (date.getDay() + 6) % 7;
         target.setDate(target.getDate() - dayNr + 3);
         const jan4 = new Date(target.getFullYear(), 0, 4);
         const dayDiff = (target.getTime() - jan4.getTime()) / 86400000;
         return 1 + Math.ceil(dayDiff / 7);
-      }
+      };
 
       // Aggregate data by period
       const periodData: Record<string, {
@@ -2820,16 +2933,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const data = periodData[periodInfo.key];
         data.reconciliationCount += 1;
-        data.totalEfficiency += r.reconciliation.efficiency ? parseFloat(r.reconciliation.efficiency) : 0;
-        data.totalYield += r.reconciliation.yieldPercent ? parseFloat(r.reconciliation.yieldPercent) : 0;
+        // Note: efficiency and yieldPercent are calculated values, not stored in reconciliation table
+        // These would need to be calculated from related production data if needed
 
         // Get items for this reconciliation and calculate variance
         const reconciliationItems = allItems.filter(i => i.item.reconciliationId === r.reconciliation.id);
         let maxVariancePercent = 0;
 
         reconciliationItems.forEach(i => {
-          const variancePercent = i.item.variancePercent ? parseFloat(i.item.variancePercent) : 0;
-          const variance = i.item.variance ? parseFloat(i.item.variance) : 0;
+          // Note: variancePercent and variance are calculated values, not stored in reconciliation_items table
+          // Calculate variance: (quantityUsed - quantityIssued) / quantityIssued * 100
+          const quantityIssued = i.item.quantityIssued || 0;
+          const quantityUsed = i.item.quantityUsed || 0;
+          const variance = quantityUsed - quantityIssued;
+          const variancePercent = quantityIssued > 0 ? (variance / quantityIssued) * 100 : 0;
           const absVariancePercent = Math.abs(variancePercent);
           
           if (absVariancePercent > maxVariancePercent) {
@@ -2989,6 +3106,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const gatepassNumber = `GP-${Date.now()}`;
       const gatepassData = {
         ...validatedHeader,
+        gatepassDate: validatedHeader.gatepassDate ? new Date(validatedHeader.gatepassDate).toISOString() : new Date().toISOString(),
         gatepassNumber,
         issuedBy: req.user?.id,
       };
@@ -2996,7 +3114,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Wrap everything in a transaction for atomicity
       const result = await db.transaction(async (tx) => {
         // Create gatepass header
-        const [gatepass] = await tx.insert(gatepasses).values(gatepassData).returning();
+        const [gatepass] = await tx.insert(gatepasses).values([gatepassData]).returning();
         
         // If gatepass is linked to an invoice, update invoice status to "dispatched"
         if (gatepass.invoiceId) {
@@ -3032,7 +3150,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Deduct from inventory
           await tx.update(finishedGoods)
-            .set({ quantity: newQuantity, updatedAt: new Date() })
+            .set({ quantity: newQuantity, updatedAt: new Date().toISOString() })
             .where(eq(finishedGoods.id, validatedItem.finishedGoodId));
         }
         
@@ -3131,7 +3249,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             await db.update(finishedGoods)
               .set({ 
                 quantity: (finishedGood.quantity || 0) + (item.quantityDispatched || 0),
-                updatedAt: new Date()
+                updatedAt: new Date().toISOString()
               })
               .where(eq(finishedGoods.id, item.finishedGoodId));
           }
@@ -3199,7 +3317,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Update gatepass ONLY if status is still "generated"
           const updatedGatepasses = await tx.update(gatepasses)
             .set({
-              outTime: new Date(outTime),
+              outTime: new Date(outTime).toISOString(),
               verifiedBy,
               status: 'vehicle_out'
             })
@@ -3223,7 +3341,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const updatedInvoices = await tx.update(invoices)
               .set({
                 status: 'dispatched',
-                dispatchDate: new Date(outTime),
+                dispatchDate: new Date(outTime).toISOString(),
                 vehicleNumber: gatepass.vehicleNumber,
                 transportMode: 'Road'
               })
@@ -3314,7 +3432,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const [updated] = await db.update(gatepasses)
         .set({
           podReceivedBy,
-          podDate: new Date(podDate),
+          podDate: new Date(podDate).toISOString(),
           podRemarks: podRemarks || null,
           podSignature: podSignature || null,
           status: 'delivered'
@@ -3343,7 +3461,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await db.update(invoices)
           .set({
             status: 'delivered',
-            deliveryDate: new Date(podDate),
+            deliveryDate: new Date(podDate).toISOString(),
             receivedBy: podReceivedBy,
             podRemarks: podRemarks || null
           })
@@ -3622,6 +3740,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const invoiceNumber = `INV-${Date.now()}`;
       const invoiceData = {
         ...validatedHeader,
+        invoiceDate: validatedHeader.invoiceDate ? new Date(validatedHeader.invoiceDate).toISOString() : new Date().toISOString(),
         invoiceNumber,
         generatedBy: req.user?.id,
       };
@@ -3629,7 +3748,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Wrap in transaction
       const result = await db.transaction(async (tx) => {
         // Create invoice header
-        const [invoice] = await tx.insert(invoices).values(invoiceData).returning();
+        const [invoice] = await tx.insert(invoices).values([invoiceData]).returning();
         
         // Create invoice items
         for (const item of items) {
@@ -4102,7 +4221,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .set({
               conditionOnReceipt: inspection.condition,
               disposition: inspection.disposition,
-              updatedAt: new Date(),
+              updatedAt: new Date().toISOString(),
             })
             .where(eq(salesReturnItems.id, inspection.itemId));
           
@@ -4120,25 +4239,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             if (product) {
               // Create new finished good record for returned items
-              await tx.insert(finishedGoods).values({
+              await tx.insert(finishedGoods).values([{
                 productId: item.productId,
                 batchNumber: `${item.batchNumber}-RETURNED`,
                 quantity: item.quantityReturned,
                 qualityStatus: 'approved',
                 remarks: `Returned goods from sales return - Good condition`,
                 createdBy: req.user?.id,
-              });
+              }]);
             }
           } else if (inspection.disposition === 'scrap' || inspection.condition === 'damaged') {
             // Create damaged inventory record
-            await tx.insert(finishedGoods).values({
+            await tx.insert(finishedGoods).values([{
               productId: item.productId,
               batchNumber: `${item.batchNumber}-DAMAGED`,
               quantity: item.quantityReturned,
               qualityStatus: 'rejected',
               remarks: `Returned goods - Damaged/Scrapped`,
               createdBy: req.user?.id,
-            });
+            }]);
           }
         }
         
@@ -4150,10 +4269,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await tx.update(salesReturns)
           .set({
             status: 'inspected',
-            inspectedDate: new Date(),
+            inspectedDate: new Date().toISOString(),
             inspectedBy: req.user?.id,
             creditNoteStatus: shouldAutoGenerateCreditNote ? 'auto_created' : 'manual_required',
-            updatedAt: new Date(),
+            updatedAt: new Date().toISOString(),
           })
           .where(eq(salesReturns.id, id));
         
