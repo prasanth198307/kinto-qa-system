@@ -67,11 +67,11 @@ function normalize(str: string | undefined): string {
   return (str || '').trim().toLowerCase();
 }
 
-// Helper function to parse date from DD/MM/YYYY format
-function parseDate(dateStr: string): Date {
-  if (!dateStr) return new Date();
+// Helper function to parse date from DD/MM/YYYY format and return ISO string
+function parseDate(dateStr: string): string {
+  if (!dateStr) return new Date().toISOString();
   const [day, month, year] = dateStr.split('/');
-  return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+  return new Date(parseInt(year), parseInt(month) - 1, parseInt(day)).toISOString();
 }
 
 // Helper function to generate unique codes
@@ -566,7 +566,7 @@ for (const sale of sales) {
       // Create invoice within transaction
       const [invoice] = await tx.insert(invoices).values({
         invoiceNumber: invoiceNo,
-        invoiceDate: invoiceDate.toISOString(),
+        invoiceDate: invoiceDate,
         buyerName: customer.vendorName,
         buyerAddress: customer.address || '',
         buyerGstin: customer.gstNumber || '',
@@ -626,7 +626,7 @@ for (const sale of sales) {
           
           await tx.insert(invoicePayments).values({
             invoiceId: invoice.id,
-            paymentDate: invoiceDate.toISOString(),
+            paymentDate: invoiceDate,
             amount: amountReceivedInPaise,
             paymentMethod: paymentMethod,
             paymentType: paymentType,
