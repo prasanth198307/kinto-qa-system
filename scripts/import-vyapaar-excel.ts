@@ -6,6 +6,8 @@ import {
   products,
   invoices,
   invoiceItems,
+  uom,
+  productTypes,
 } from '../shared/schema.js';
 import { sql } from 'drizzle-orm';
 
@@ -120,10 +122,14 @@ console.log('🔍 Preloading existing data from database...');
 const existingCategories = await db.select().from(productCategories);
 const existingVendors = await db.select().from(vendors);
 const existingProducts = await db.select().from(products);
+const existingUOMs = await db.select().from(uom);
+const existingProductTypes = await db.select().from(productTypes);
 
 const categoryCodes = new Set(existingCategories.map(c => c.code));
 const vendorCodes = new Set(existingVendors.map(v => v.vendorCode));
 const productCodes = new Set(existingProducts.map(p => p.productCode));
+const uomCodes = new Set(existingUOMs.map(u => u.code));
+const productTypeCodes = new Set(existingProductTypes.map(pt => pt.code));
 
 // Create normalized lookup maps
 const categoryMap = new Map<string, string>(); // normalized name -> id
@@ -142,9 +148,23 @@ existingProducts.forEach(p => {
   productMap.set(normalize(p.productName), p.id);
 });
 
+// Create UOM mapping (normalized unit name -> id)
+const uomMap = new Map<string, string>();
+existingUOMs.forEach(u => {
+  uomMap.set(normalize(u.name), u.id);
+});
+
+// Create product type mapping (normalized type name -> id)
+const productTypeMap = new Map<string, string>();
+existingProductTypes.forEach(pt => {
+  productTypeMap.set(normalize(pt.name), pt.id);
+});
+
 console.log(`✓ Loaded ${existingCategories.length} existing categories`);
 console.log(`✓ Loaded ${existingVendors.length} existing vendors`);
-console.log(`✓ Loaded ${existingProducts.length} existing products\n`);
+console.log(`✓ Loaded ${existingProducts.length} existing products`);
+console.log(`✓ Loaded ${existingUOMs.length} existing UOMs`);
+console.log(`✓ Loaded ${existingProductTypes.length} existing product types\n`);
 
 // ============================================================
 // STEP 1: Auto-create Product Categories
@@ -191,6 +211,80 @@ for (const categoryName of uniqueCategories) {
 }
 
 console.log(`✅ Created ${newCategoryCount} new categories (Total: ${categoryMap.size})\n`);
+
+// ============================================================
+// STEP 1.5: Auto-create UOMs and ensure default Product Type exists
+// ============================================================
+console.log('📏 Step 1.5: Auto-creating UOMs...');
+
+// Extract unique units from items
+const uniqueUnits = new Set<string>();
+items.forEach(item => {
+  const unit = item.__EMPTY_10?.trim();
+  if (unit) {
+    uniqueUnits.add(unit);
+  }
+});
+
+let newUOMCount = 0;
+
+for (const unitName of uniqueUnits) {
+  const normalizedUnit = normalize(unitName);
+  
+  // Skip if already exists
+  if (uomMap.has(normalizedUnit)) {
+    continue;
+  }
+  
+  const uomCode = generateCode('UOM', uomCodes);
+  
+  try {
+    const [newUOM] = await db.insert(uom).values({
+      code: uomCode,
+      name: unitName,
+      description: `Auto-imported from Vyapaar`,
+      isActive: 'true',
+    }).returning();
+    
+    uomMap.set(normalizedUnit, newUOM.id);
+    newUOMCount++;
+    console.log(`  ✓ Created UOM: ${unitName} (${uomCode})`);
+  } catch (err: any) {
+    console.error(`  ❌ Error creating UOM ${unitName}:`, err.message);
+  }
+}
+
+console.log(`✅ Created ${newUOMCount} new UOMs (Total: ${uomMap.size})`);
+
+// Ensure a default "Finished Goods" product type exists
+let defaultProductTypeId = productTypeMap.get(normalize('Finished Goods'));
+if (!defaultProductTypeId) {
+  defaultProductTypeId = productTypeMap.get(normalize('Sold Items'));
+}
+if (!defaultProductTypeId && productTypeMap.size > 0) {
+  // Use the first available product type
+  defaultProductTypeId = productTypeMap.values().next().value;
+}
+
+if (!defaultProductTypeId) {
+  // Create a default product type
+  const typeCode = generateCode('TYPE', productTypeCodes);
+  try {
+    const [newType] = await db.insert(productTypes).values({
+      code: typeCode,
+      name: 'Sold Items',
+      description: 'Auto-created for Vyapaar imported products',
+      isActive: 'true',
+    }).returning();
+    defaultProductTypeId = newType.id;
+    productTypeMap.set(normalize('Sold Items'), newType.id);
+    console.log(`✓ Created default product type: Sold Items (${typeCode})\n`);
+  } catch (err: any) {
+    console.error(`❌ Error creating default product type:`, err.message);
+  }
+} else {
+  console.log(`✓ Using existing product type for imported products\n`);
+}
 
 // ============================================================
 // STEP 2: Auto-create Customers from Party Report
@@ -263,6 +357,10 @@ for (const [productName, itemData] of uniqueProducts) {
     categoryId = categoryMap.values().next().value;
   }
   
+  // Get UOM ID from the unit string
+  const baseUnitStr = itemData.__EMPTY_10 || 'pcs';
+  const uomId = uomMap.get(normalize(baseUnitStr));
+  
   // Convert price from rupees to paise (and round to avoid float precision issues)
   const unitPriceInPaise = Math.round((itemData.__EMPTY_11 || 0) * 100);
   
@@ -275,7 +373,9 @@ for (const [productName, itemData] of uniqueProducts) {
       productName: productName,
       skuCode: itemData.__EMPTY_3 || productCode,
       categoryId: categoryId,
-      baseUnit: itemData.__EMPTY_10 || 'pcs',
+      typeId: defaultProductTypeId, // Set product type
+      baseUnit: baseUnitStr,
+      uomId: uomId, // Set UOM reference
       basePrice: unitPriceInPaise,
       gstPercent: gstPercent.toString(),
       hsnCode: itemData.__EMPTY_4 || '',
@@ -342,7 +442,7 @@ for (const sale of sales) {
   }
   
   // Determine if inter-state or intra-state based on GSTIN
-  const buyerState = getStateFromGSTIN(customer.gstNumber);
+  const buyerState = getStateFromGSTIN(customer.gstNumber || undefined);
   const isInterState = buyerState && buyerState !== COMPANY_STATE;
   
   try {
