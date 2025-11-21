@@ -9,10 +9,13 @@ The KINTO Smart Ops system includes a **fully automated Excel import tool** that
 The import script automatically creates:
 
 1. **Product Categories** - Extracted from item details
-2. **Customers** - From your Party Report (all 177 parties)
-3. **Products** - From your Sales transactions (auto-generated from items)
-4. **Invoices** - All 339 sales transactions with complete line items
-5. **Invoice Line Items** - All 566 product entries linked to invoices
+2. **UOMs (Units of Measure)** - Auto-created from unique units in your data
+3. **Product Types** - Auto-created default "Sold Items" type if needed
+4. **Customers** - From your Party Report (all 177 parties)
+5. **Products** - From your Sales transactions with proper UOM and type references
+6. **Invoices** - All 339 sales transactions with complete line items
+7. **Invoice Line Items** - All 566 product entries linked to invoices
+8. **Payment Records** - Automatically created for invoices with received amounts
 
 ## Enhanced Features
 
@@ -41,6 +44,21 @@ The import script includes several production-ready features:
 - Handles extra spaces and formatting differences
 - Prevents orphaned invoices from name mismatches
 - Uses database IDs instead of string matching
+
+### 💰 Automatic Payment Tracking
+- Creates payment records for invoices with received amounts
+- Automatically determines payment type (Full/Partial) using persisted invoice total
+- Links payments to invoices for accurate outstanding balance tracking
+- Preserves exact Vyapaar payment method field (defaults to "Cash" only if empty)
+- Prevents duplicate payment records on re-runs (idempotent)
+- Enables Pending Payments Dashboard to show accurate data
+
+### ✅ Data Integrity Validation
+- Validates UOM exists before creating products
+- Validates product type exists before creating products
+- Fails fast with clear error messages if validation fails
+- Ensures fallback UOM 'pcs' always exists
+- Prevents NULL references in product master data
 
 ## Prerequisites
 
@@ -100,8 +118,17 @@ NODE_ENV=development tsx scripts/import-vyapaar-excel.ts
 - Creates invoices with proper GST calculations
 - Links invoice items to products
 - Calculates CGST/SGST (for same-state) or IGST (for inter-state)
-- Handles payment status (Paid/Unpaid)
+- Sets invoice status to 'delivered' (all Vyapaar imports are historical sales)
 - **Result**: 325 invoices with line items created
+
+### Step 5: Payment Records Auto-Creation
+- Creates payment records for invoices with received amounts > 0
+- Automatically determines payment type (Full or Partial) using persisted invoice total
+- Uses invoice date as payment date
+- Preserves exact Vyapaar payment method field (defaults to "Cash" only if empty)
+- Links payments to invoices for pending payments tracking
+- Prevents duplicate payments on re-runs (idempotent)
+- **Result**: Payment records created for all paid invoices
 
 ## Data Mapping
 
@@ -124,9 +151,19 @@ NODE_ENV=development tsx scripts/import-vyapaar-excel.ts
 | Date | invoiceDate |
 | Party Name | buyerName |
 | Total Amount | totalAmount (in paise) |
-| Received Amount | amountReceived |
-| Payment Status | status |
+| Received Amount | Used to create payment records |
+| Payment Status | _(Not used - all imports set to 'delivered')_ |
 | Vehicle No | vehicleNumber |
+
+### Sale Report → Payment Records
+
+| Vyapaar Field | KINTO Field | Notes |
+|---------------|-------------|-------|
+| Received Amount | amount (in paise) | Only creates record if > 0 |
+| Date | paymentDate | Uses invoice date |
+| Payment Type | paymentMethod | Preserves exact Vyapaar value; defaults to "Cash" if empty |
+| Received Amount vs Total | paymentType | Auto-calculated: "Full" or "Partial" based on persisted invoice total |
+| _(System)_ | remarks | "Payment imported from Vyapaar" |
 
 ### Item Details → Products & Invoice Items
 

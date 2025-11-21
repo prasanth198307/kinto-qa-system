@@ -10,7 +10,7 @@ import {
   uom,
   productTypes,
 } from '../shared/schema.js';
-import { sql } from 'drizzle-orm';
+import { sql, eq, and } from 'drizzle-orm';
 
 interface PartyData {
   Name: string;
@@ -591,17 +591,40 @@ for (const sale of sales) {
       
       // Create payment record if any amount was received
       if (amountReceivedInPaise > 0) {
-        const paymentType = amountReceivedInPaise >= totalAmountInPaise ? 'Full' : 'Partial';
-        await tx.insert(invoicePayments).values({
-          invoiceId: invoice.id,
-          paymentDate: invoiceDate,
-          amount: amountReceivedInPaise,
-          paymentMethod: 'Cash', // Default to Cash (Vyapaar doesn't track payment method)
-          paymentType: paymentType,
-          remarks: 'Payment imported from Vyapaar',
-          recordedBy: null, // System import
-        });
-        console.log(`    💰 Recorded ${paymentType.toLowerCase()} payment: ₹${(amountReceivedInPaise / 100).toFixed(2)}`);
+        // Check if payment already exists to prevent duplicates on re-run
+        const existingPayment = await tx
+          .select()
+          .from(invoicePayments)
+          .where(and(
+            eq(invoicePayments.invoiceId, invoice.id),
+            eq(invoicePayments.amount, amountReceivedInPaise),
+            eq(invoicePayments.recordStatus, 1)
+          ))
+          .limit(1);
+        
+        if (existingPayment.length === 0) {
+          // Use persisted invoice.totalAmount for accurate payment type classification
+          // Both values are in paise: amountReceivedInPaise (converted at line 560) and invoice.totalAmount (persisted)
+          // This ensures we compare against the final persisted total (including all GST/discounts)
+          const paymentType = amountReceivedInPaise >= invoice.totalAmount ? 'Full' : 'Partial';
+          
+          // Preserve exact Vyapaar Payment Type field when present
+          const vyapaarPaymentType = (sale.__EMPTY_6 || '').trim();
+          let paymentMethod = vyapaarPaymentType || 'Cash'; // Use original value, default to Cash only if empty
+          
+          await tx.insert(invoicePayments).values({
+            invoiceId: invoice.id,
+            paymentDate: invoiceDate,
+            amount: amountReceivedInPaise,
+            paymentMethod: paymentMethod,
+            paymentType: paymentType,
+            remarks: 'Payment imported from Vyapaar',
+            recordedBy: null, // System import
+          });
+          console.log(`    💰 Recorded ${paymentType.toLowerCase()} payment: ₹${(amountReceivedInPaise / 100).toFixed(2)} via ${paymentMethod}`);
+        } else {
+          console.log(`    ⚠️  Payment already exists for this invoice, skipping...`);
+        }
       }
       
       console.log(`  ✓ Created invoice: ${invoiceNo} (${lineItems.length} items, ${isInterState ? 'IGST' : 'CGST+SGST'}, ₹${(totalAmountInPaise / 100).toFixed(2)})`);
