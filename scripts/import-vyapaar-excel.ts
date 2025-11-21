@@ -556,8 +556,12 @@ for (const sale of sales) {
         });
       }
       
-      const totalAmountInPaise = subtotalInPaise + cgstTotalInPaise + sgstTotalInPaise + igstTotalInPaise;
+      // Use Vyapaar's Total Amount to ensure exact matching with payment records
+      // This prevents mismatches due to rounding differences in our calculations
+      const vyapaarTotalInPaise = Math.round((sale.__EMPTY_5 || 0) * 100);
+      const totalAmountInPaise = vyapaarTotalInPaise || (subtotalInPaise + cgstTotalInPaise + sgstTotalInPaise + igstTotalInPaise);
       const amountReceivedInPaise = Math.round((sale.__EMPTY_7 || 0) * 100);
+      const balanceDueInPaise = Math.round((sale.__EMPTY_8 || 0) * 100);
       
       // Create invoice within transaction
       const [invoice] = await tx.insert(invoices).values({
@@ -589,6 +593,15 @@ for (const sale of sales) {
         });
       }
       
+      // Verify payment calculation matches Vyapaar data
+      const expectedBalance = totalAmountInPaise - amountReceivedInPaise;
+      if (Math.abs(expectedBalance - balanceDueInPaise) > 100) { // Allow 1 rupee rounding difference
+        console.log(`    ⚠️  Warning: Balance mismatch for ${invoiceNo}`);
+        console.log(`       Vyapaar Balance Due: ₹${(balanceDueInPaise / 100).toFixed(2)}`);
+        console.log(`       Calculated Balance: ₹${(expectedBalance / 100).toFixed(2)}`);
+        console.log(`       Invoice Total: ₹${(totalAmountInPaise / 100).toFixed(2)}, Received: ₹${(amountReceivedInPaise / 100).toFixed(2)}`);
+      }
+      
       // Create payment record if any amount was received
       if (amountReceivedInPaise > 0) {
         // Check if payment already exists to prevent duplicates on re-run
@@ -604,8 +617,7 @@ for (const sale of sales) {
         
         if (existingPayment.length === 0) {
           // Use persisted invoice.totalAmount for accurate payment type classification
-          // Both values are in paise: amountReceivedInPaise (converted at line 560) and invoice.totalAmount (persisted)
-          // This ensures we compare against the final persisted total (including all GST/discounts)
+          // Both values are in paise: amountReceivedInPaise and invoice.totalAmount (persisted)
           const paymentType = amountReceivedInPaise >= invoice.totalAmount ? 'Full' : 'Partial';
           
           // Preserve exact Vyapaar Payment Type field when present
@@ -621,9 +633,16 @@ for (const sale of sales) {
             remarks: 'Payment imported from Vyapaar',
             recordedBy: null, // System import
           });
-          console.log(`    💰 Recorded ${paymentType.toLowerCase()} payment: ₹${(amountReceivedInPaise / 100).toFixed(2)} via ${paymentMethod}`);
+          
+          const balanceStatus = balanceDueInPaise === 0 ? '✓ PAID' : `₹${(balanceDueInPaise / 100).toFixed(2)} pending`;
+          console.log(`    💰 Recorded ${paymentType.toLowerCase()} payment: ₹${(amountReceivedInPaise / 100).toFixed(2)} via ${paymentMethod} (${balanceStatus})`);
         } else {
           console.log(`    ⚠️  Payment already exists for this invoice, skipping...`);
+        }
+      } else {
+        // No payment received yet
+        if (balanceDueInPaise > 0) {
+          console.log(`    📋 No payment received - Balance due: ₹${(balanceDueInPaise / 100).toFixed(2)}`);
         }
       }
       
