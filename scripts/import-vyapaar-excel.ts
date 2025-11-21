@@ -6,6 +6,7 @@ import {
   products,
   invoices,
   invoiceItems,
+  invoicePayments,
   uom,
   productTypes,
 } from '../shared/schema.js';
@@ -586,6 +587,21 @@ for (const sale of sales) {
           invoiceId: invoice.id,
           ...itemData,
         });
+      }
+      
+      // Create payment record if any amount was received
+      if (amountReceivedInPaise > 0) {
+        const paymentType = amountReceivedInPaise >= totalAmountInPaise ? 'Full' : 'Partial';
+        await tx.insert(invoicePayments).values({
+          invoiceId: invoice.id,
+          paymentDate: invoiceDate,
+          amount: amountReceivedInPaise,
+          paymentMethod: 'Cash', // Default to Cash (Vyapaar doesn't track payment method)
+          paymentType: paymentType,
+          remarks: 'Payment imported from Vyapaar',
+          recordedBy: null, // System import
+        });
+        console.log(`    💰 Recorded ${paymentType.toLowerCase()} payment: ₹${(amountReceivedInPaise / 100).toFixed(2)}`);
       }
       
       console.log(`  ✓ Created invoice: ${invoiceNo} (${lineItems.length} items, ${isInterState ? 'IGST' : 'CGST+SGST'}, ₹${(totalAmountInPaise / 100).toFixed(2)})`);
