@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How to Upload Vyapaar CSV Files to KINTO</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { 
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background: #fff;
+    padding: 40px;
+    max-width: 900px;
+    margin: 0 auto;
+}
+h1 { 
+    color: #0066cc;
+    border-bottom: 3px solid #0066cc;
+    padding-bottom: 15px;
+    margin-bottom: 10px;
+    page-break-after: avoid;
+    font-size: 28px;
+}
+h2 { 
+    color: #0066cc;
+    border-left: 4px solid #0066cc;
+    padding-left: 10px;
+    margin-top: 30px;
+    margin-bottom: 15px;
+    page-break-after: avoid;
+    font-size: 20px;
+}
+h3 {
+    color: #004499;
+    margin-top: 20px;
+    margin-bottom: 10px;
+    page-break-after: avoid;
+    font-size: 16px;
+}
+p { margin-bottom: 12px; }
+ul, ol { margin-left: 25px; margin-bottom: 12px; }
+li { margin-bottom: 8px; }
+pre {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 15px;
+    border-radius: 5px;
+    border-left: 4px solid #0066cc;
+    overflow-x: auto;
+    margin-bottom: 15px;
+    page-break-inside: avoid;
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    line-height: 1.4;
+}
+code {
+    background: #f4f4f4;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    color: #333;
+}
+.option-box {
+    background: #e3f2fd;
+    border-left: 4px solid #0066cc;
+    padding: 15px;
+    margin: 15px 0;
+    border-radius: 5px;
+}
+.success {
+    background: #e8f5e9;
+    border-left: 4px solid #4caf50;
+    padding: 12px;
+    margin: 15px 0;
+    border-radius: 3px;
+}
+.warning {
+    background: #fff3e0;
+    border-left: 4px solid #ff9800;
+    padding: 12px;
+    margin: 15px 0;
+    border-radius: 3px;
+}
+.header {
+    text-align: center;
+    margin-bottom: 30px;
+    border-bottom: 2px solid #0066cc;
+    padding-bottom: 20px;
+}
+.header h1 { border-bottom: none; padding-bottom: 0; margin-bottom: 5px; }
+.meta { font-size: 12px; color: #666; margin-top: 10px; }
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 15px 0;
+    page-break-inside: avoid;
+    font-size: 13px;
+}
+table th {
+    background: #0066cc;
+    color: white;
+    padding: 10px;
+    text-align: left;
+    font-weight: bold;
+}
+table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid #ddd;
+}
+table tr:nth-child(even) {
+    background: #f9f9f9;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+<h1>How to Upload Vyapaar CSV Files to KINTO</h1>
+<p style="font-size: 16px; color: #666; margin: 10px 0;">Step-by-Step Guide for Data Upload & Import</p>
+<div class="meta">
+<p><strong>Domain:</strong> ops.kintowwater.com | <strong>Timeline:</strong> 30-60 minutes | <strong>Version:</strong> 1.0</p>
+</div>
+</div>
+
+<h2>Overview: 3 Upload Options</h2>
+
+<div class="option-box">
+<h3>Option A: Direct UI Upload (Easiest)</h3>
+<p>If KINTO has admin import feature built-in:</p>
+<ul>
+<li>Go to KINTO Admin → Data Import</li>
+<li>Upload CSV files one by one</li>
+<li>System handles the rest</li>
+<li><strong>Time:</strong> 15 minutes</li>
+</ul>
+</div>
+
+<div class="option-box">
+<h3>Option B: SCP Upload (Recommended for OCI)</h3>
+<p>Upload files using secure copy from Mac to OCI instance:</p>
+<ul>
+<li>Export CSV from Vyapaar</li>
+<li>Upload via SCP command</li>
+<li>Run import scripts</li>
+<li><strong>Time:</strong> 45-60 minutes</li>
+<li><strong>Best for:</strong> OCI deployment</li>
+</ul>
+</div>
+
+<div class="option-box">
+<h3>Option C: Automated Script (Fastest)</h3>
+<p>Everything automated with one script:</p>
+<ul>
+<li>Upload CSV files</li>
+<li>Run automated import script</li>
+<li>Get instant results</li>
+<li><strong>Time:</strong> 30-45 minutes</li>
+<li><strong>Best for:</strong> Large data sets</li>
+</ul>
+</div>
+
+---
+
+<h2>Detailed Steps: Option B (SCP - Recommended)</h2>
+
+<h3>Step 1: Export from Vyapaar</h3>
+
+<p><strong>On your Mac, create export folder:</strong></p>
+<pre>mkdir ~/vyapaar-export</pre>
+
+<p><strong>Export from Vyapaar:</strong></p>
+<pre>Vyapaar → Reports → Export Data → Select Report → Download CSV/Excel
+
+Create these files in ~/vyapaar-export/:
+□ Customers.csv
+□ Vendors.csv
+□ Products.csv
+□ RawMaterials.csv
+□ Invoices.csv
+□ PurchaseOrders.csv
+□ StockLedger.csv</pre>
+
+<h3>Step 2: Prepare SSH Key</h3>
+
+<pre># Set SSH key permissions
+chmod 600 ~/.ssh/kinto-instance.key
+
+# Verify key exists
+ls -la ~/.ssh/kinto-instance.key</pre>
+
+<h3>Step 3: Upload CSV Files to OCI</h3>
+
+<pre># Replace YOUR_PUBLIC_IP with your OCI instance IP
+scp -i ~/.ssh/kinto-instance.key ~/vyapaar-export/*.csv \
+  opc@YOUR_PUBLIC_IP:/home/kinto/kinto-smart-ops/data/
+
+# Example with actual IP:
+scp -i ~/.ssh/kinto-instance.key ~/vyapaar-export/*.csv \
+  opc@152.70.123.45:/home/kinto/kinto-smart-ops/data/</pre>
+
+<div class="success">
+<strong>✅ Success:</strong> All CSV files uploaded to OCI instance
+</div>
+
+<h3>Step 4: Verify Files on OCI</h3>
+
+<pre># SSH into OCI instance
+ssh -i ~/.ssh/kinto-instance.key opc@YOUR_PUBLIC_IP
+
+# Check files are there
+ls -lah /home/kinto/kinto-smart-ops/data/
+
+# Should show:
+# Customers.csv
+# Vendors.csv
+# Products.csv
+# ... etc</pre>
+
+<h3>Step 5: Run Import Scripts</h3>
+
+<pre># Switch to kinto user
+sudo su - kinto
+
+# Navigate to app
+cd /home/kinto/kinto-smart-ops
+
+# IMPORTANT: Create data folder if not exists
+mkdir -p data
+
+# Run imports in THIS order:
+
+# 1. Import Customers
+node scripts/import-customers.js data/Customers.csv
+
+# 2. Import Vendors  
+node scripts/import-vendors.js data/Vendors.csv
+
+# 3. Get Category ID first
+psql -h localhost -U kinto_user -d kinto_ops \
+  -c "SELECT id, name FROM product_categories;"
+
+# Then import products with that ID (replace CATEGORY_ID):
+node scripts/import-products.js data/Products.csv CATEGORY_ID
+
+# 4. Import Raw Materials
+node scripts/import-raw-materials.js data/RawMaterials.csv
+
+# 5. Import Invoices
+node scripts/import-invoices.js data/Invoices.csv
+
+# 6. Import Purchase Orders
+node scripts/import-purchase-orders.js data/PurchaseOrders.csv
+
+# 7. Import Stock Ledger
+node scripts/import-stock-ledger.js data/StockLedger.csv</pre>
+
+<div class="success">
+<strong>✅ Watch the output:</strong> Each command should show success message with record count
+</div>
+
+<h3>Step 6: Verify Import Completed</h3>
+
+<pre>psql -h localhost -U kinto_user -d kinto_ops
+
+# Check all counts:
+SELECT COUNT(*) as customers FROM customers;
+SELECT COUNT(*) as vendors FROM vendors;
+SELECT COUNT(*) as products FROM products;
+SELECT COUNT(*) as raw_materials FROM raw_materials;
+SELECT COUNT(*) as invoices FROM invoices;
+SELECT COUNT(*) as purchase_orders FROM purchase_orders;
+
+\q</pre>
+
+---
+
+<h2>CSV File Format (Must Match Exactly)</h2>
+
+<h3>Customers.csv</h3>
+<pre>Customer Name,Email,Phone,GST Number,Address,Credit Limit
+ABC Industries,info@abc.com,9876543210,27AABCU1234M1Z5,Mumbai,50000
+XYZ Supplies,contact@xyz.com,9876543211,27XYZS5678M1Z5,Delhi,30000</pre>
+
+<h3>Vendors.csv</h3>
+<pre>Vendor Name,Email,Phone,GST Number,Address
+Global Supplies,sales@global.com,9876543210,27GLOBS1234M1Z5,Bangalore
+Tech Imports,inquiry@tech.com,9876543211,27TECHI5678M1Z5,Chennai</pre>
+
+<h3>Products.csv</h3>
+<pre>Product Name,SKU,Unit,HSN Code,Tax Rate,Description
+Widget A,WID-001,pcs,84439900,18,Standard widget
+Widget B,WID-002,kg,84439900,5,Premium widget</pre>
+
+<h3>RawMaterials.csv</h3>
+<pre>Material Name,Unit,Opening Stock,Current Stock
+Steel Sheet,kg,1000,950
+Plastic Resin,kg,500,450</pre>
+
+<h3>Invoices.csv</h3>
+<pre>Invoice Number,Date,Customer Name,Amount,Tax
+INV-001,2024-01-15,ABC Industries,50000,9000
+INV-002,2024-01-20,XYZ Supplies,30000,5400</pre>
+
+<h3>PurchaseOrders.csv</h3>
+<pre>PO Number,Date,Vendor Name,Amount,Tax
+PO-001,2024-01-10,Global Supplies,25000,4500
+PO-002,2024-01-12,Tech Imports,15000,2700</pre>
+
+<h3>StockLedger.csv</h3>
+<pre>Transaction Type,Date,Product Name,Quantity,Reference
+purchase,2024-01-10,Widget A,100,PO-001
+sale,2024-01-15,Widget A,50,INV-001</pre>
+
+---
+
+<h2>Common Issues & Solutions</h2>
+
+<table>
+<tr>
+<th>Problem</th>
+<th>Solution</th>
+</tr>
+<tr>
+<td>SCP: Command not found</td>
+<td>Make sure you're in Mac terminal (not Docker). If missing: <code>brew install openssh</code></td>
+</tr>
+<tr>
+<td>Permission denied (publickey)</td>
+<td>Fix key permissions: <code>chmod 600 ~/.ssh/kinto-instance.key</code></td>
+</tr>
+<tr>
+<td>File not found on OCI</td>
+<td>Check upload was successful: <code>ls /home/kinto/kinto-smart-ops/data/</code></td>
+</tr>
+<tr>
+<td>"Customer not found" error</td>
+<td>Customer names in invoices CSV must exactly match customer master names</td>
+</tr>
+<tr>
+<td>Date format error</td>
+<td>Ensure dates are YYYY-MM-DD format (2024-01-15, not 1/15/2024)</td>
+</tr>
+<tr>
+<td>Import script fails</td>
+<td>Install csv-parser: <code>npm install csv-parser</code></td>
+</tr>
+</table>
+
+---
+
+<h2>Quick Timeline</h2>
+
+<table>
+<tr>
+<th>Step</th>
+<th>Action</th>
+<th>Time</th>
+</tr>
+<tr>
+<td>1</td>
+<td>Export from Vyapaar</td>
+<td>10 min</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Upload via SCP</td>
+<td>5-10 min</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Run import scripts</td>
+<td>10-15 min</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Verify data</td>
+<td>5-10 min</td>
+</tr>
+<tr>
+<td colspan="2"><strong>Total Time</strong></td>
+<td><strong>30-45 minutes</strong></td>
+</tr>
+</table>
+
+---
+
+<h2>After Upload: Next Steps</h2>
+
+<div class="success">
+<h3>Post-Import Setup</h3>
+<ol>
+<li>Create users in KINTO Admin (5 users max)</li>
+<li>Set up roles and permissions</li>
+<li>Create checklist templates</li>
+<li>Configure production settings</li>
+<li>Set up WhatsApp integration</li>
+<li>Train your team</li>
+</ol>
+<p>Refer to: <code>VYAPAAR_TO_KINTO_MIGRATION_GUIDE.md</code> for complete post-migration setup</p>
+</div>
+
+---
+
+<h2>Security Checklist</h2>
+
+<div class="warning">
+<p><strong>Always:</strong></p>
+<ul>
+<li>✅ Use SSH key authentication (not passwords)</li>
+<li>✅ Keep SSH keys secure (chmod 600)</li>
+<li>✅ Delete CSV files after import</li>
+<li>✅ Verify file integrity before upload</li>
+<li>✅ Never upload from untrusted networks</li>
+</ul>
+
+<p><strong>Never:</strong></p>
+<ul>
+<li>❌ Share SSH keys with anyone</li>
+<li>❌ Upload sensitive files via email</li>
+<li>❌ Store CSV files in version control</li>
+<li>❌ Use password-based SSH</li>
+</ul>
+</div>
+
+---
+
+<h2>Support</h2>
+
+<p>If you encounter issues:</p>
+
+<ol>
+<li>Check "Common Issues" section above</li>
+<li>Review import script output for errors</li>
+<li>Verify CSV file format matches examples</li>
+<li>Check database connection:
+<pre>psql -h localhost -U kinto_user -d kinto_ops -c "SELECT 1;"</pre>
+</li>
+<li>Contact KINTO support with:
+<ul>
+<li>CSV file sample (first 5 rows)</li>
+<li>Error message</li>
+<li>Import script output</li>
+</ul>
+</li>
+</ol>
+
+---
+
+<p style="text-align: center; margin-top: 40px; color: #666; font-size: 12px;">
+Document Version 1.0 | November 2024<br>
+For KINTO Smart Ops Vyapaar Data Migration
+</p>
+
+</body>
+</html>
