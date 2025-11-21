@@ -45,6 +45,7 @@ import WhatsAppAnalytics from "@/pages/WhatsAppAnalytics";
 import TemplateManagement from "@/pages/template-management";
 import ProductCategories from "@/pages/product-categories";
 import ProductTypes from "@/pages/product-types";
+import VendorTypes from "@/pages/vendor-types";
 import PendingPayments from "@/pages/pending-payments";
 import CreditNotes from "@/pages/credit-notes";
 import InventorySummaryDashboard from "@/components/InventorySummaryDashboard";
@@ -301,6 +302,7 @@ function ManagerDashboard() {
       items: [
         { id: "uom", label: "Unit of Measurement", icon: Layers },
         { id: "vendors", label: "Vendor Master", icon: Building2 },
+        { id: "vendor-types", label: "Vendor Types", icon: Shield },
         { id: "raw-material-types", label: "Raw Material Types", icon: Archive },
       ],
       quickActions: [
@@ -530,6 +532,7 @@ function AdminDashboard() {
         { id: "template-management", label: "Invoice Templates", icon: FileStack },
         { id: "uom", label: "Unit of Measurement", icon: Layers },
         { id: "vendors", label: "Vendor Master", icon: Building2 },
+        { id: "vendor-types", label: "Vendor Types", icon: Shield },
         { id: "raw-material-types", label: "Raw Material Types", icon: Archive },
         { id: "notification-settings", label: "Notification Settings", icon: Bell },
       ],
@@ -764,6 +767,8 @@ function AdminDashboard() {
         return <ProductCategories />;
       case 'product-types':
         return <ProductTypes />;
+      case 'vendor-types':
+        return <VendorTypes />;
       case 'raw-material-types':
         return <RawMaterialTypeMaster />;
       case 'raw-material-issuance':

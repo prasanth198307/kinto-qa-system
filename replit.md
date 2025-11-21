@@ -33,6 +33,7 @@ The backend is an Express.js application built with TypeScript and Node.js, usin
 - **Pending Payments Tracking Dashboard:** Dedicated financial tracking page displaying outstanding invoice payments, outstanding balances, total paid amounts, payment history, and overdue indicators.
 - **Credit Notes Viewing System:** Complete credit note management interface for viewing GST-compliant credit notes generated from sales returns.
 - **Complete Admin Navigation System (36 Screens):** Organized admin dashboard navigation across 6 logical sections with relevant quick actions and icons.
+- **Vendor Type Classification System:** Three-tier vendor classification system (Kinto, HPPani, Purejal) based on product brands purchased. Features many-to-many vendor-type relationships with optional primary type designation, complete CRUD API endpoints, and dedicated master data management UI. Designed for automatic type detection during Vyapaar data import based on invoice line item products.
 
 ### System Design Choices
 - **Authentication:** Users can log in with username or email.
