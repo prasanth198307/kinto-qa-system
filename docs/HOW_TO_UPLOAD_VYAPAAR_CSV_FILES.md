@@ -288,6 +288,26 @@ production,2024-01-25,Widget A,25,PROD-001
 
 ---
 
+## IMPORTANT: What Gets Created Automatically vs Manual
+
+### ✅ Auto-Created by Upload Scripts
+- Customers (from CSV)
+- Vendors (from CSV)
+- Products (from CSV)
+- Raw Materials (from CSV)
+- Invoices (from CSV)
+- Purchase Orders (from CSV)
+- Payments (from CSV)
+
+### ⚠️ MUST Create MANUALLY FIRST in KINTO UI
+1. **Product Categories** (required before product upload)
+2. User Accounts (5 max)
+3. User Roles & Permissions
+4. Checklist Templates
+5. Production Settings/Shifts
+
+---
+
 ## Step-by-Step: From Vyapaar to KINTO
 
 ### Week 1: Preparation

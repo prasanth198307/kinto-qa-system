@@ -163,7 +163,62 @@ table tr:nth-child(even) {
 
 ---
 
+<h2>CRITICAL: What Gets Created Automatically vs Manual</h2>
+
+<div class="success">
+<h3>✅ Auto-Created During Upload</h3>
+<ul>
+<li>Customers (from Customers.csv)</li>
+<li>Vendors (from Vendors.csv)</li>
+<li>Products (from Products.csv)</li>
+<li>Raw Materials (from RawMaterials.csv)</li>
+<li>Invoices (from Invoices.csv)</li>
+<li>Purchase Orders (from PurchaseOrders.csv)</li>
+<li>Payments (from Payments.csv)</li>
+</ul>
+</div>
+
+<div class="warning">
+<h3>⚠️ MUST Create MANUALLY FIRST in KINTO UI</h3>
+<p><strong>Before uploading any CSV files:</strong></p>
+<ol>
+<li><strong>Product Categories</strong> (REQUIRED - needed for product upload)</li>
+<li>User Accounts (5 max)</li>
+<li>User Roles & Permissions</li>
+<li>Checklist Templates</li>
+<li>Production Settings/Shifts</li>
+</ol>
+</div>
+
+---
+
 <h2>Detailed Steps: Option B (SCP - Recommended)</h2>
+
+<h3>Step 0: Create Product Categories (Manual - FIRST!)</h3>
+
+<p><strong>In KINTO Admin Panel:</strong></p>
+<ol>
+<li>Go to: https://ops.kintowwater.com → Admin → Product Categories</li>
+<li>Create categories your products belong to:
+   <ul>
+   <li>"Raw Materials"</li>
+   <li>"Finished Goods"</li>
+   <li>"Components"</li>
+   </ul>
+</li>
+<li>Click each category and note down the Category ID</li>
+<li>You'll need these IDs when importing products</li>
+</ol>
+
+<div class="warning">
+<p><strong>Example:</strong></p>
+<pre>Category ID 1: Raw Materials
+Category ID 2: Finished Goods
+Category ID 3: Components</pre>
+<p>When importing products, you'll specify which category they belong to.</p>
+</div>
+
+---
 
 <h3>Step 1: Export from Vyapaar</h3>
 
