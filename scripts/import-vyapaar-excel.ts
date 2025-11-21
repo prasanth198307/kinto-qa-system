@@ -300,8 +300,9 @@ console.log('📄 Step 4: Auto-creating Invoices with Transactions...');
 let invoiceCount = 0;
 let skippedInvoices = 0;
 
-// Assume company state is Andhra Pradesh (37) - update this based on your company GSTIN
-const COMPANY_STATE = '37';
+// Get company state from environment or default to Andhra Pradesh (37)
+// This is used to determine intra-state (CGST+SGST) vs inter-state (IGST) transactions
+const COMPANY_STATE = process.env.COMPANY_GST_STATE_CODE || '37';
 
 for (const sale of sales) {
   const invoiceNo = sale.__EMPTY_1?.trim();
