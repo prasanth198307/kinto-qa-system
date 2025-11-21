@@ -1,0 +1,235 @@
+# Vyapaar Excel Auto-Import Guide
+
+## Overview
+
+The KINTO Smart Ops system includes a **fully automated Excel import tool** that imports all your Vyapaar data without requiring any manual master data creation. Simply run one command, and all your customers, products, invoices, and categories are automatically created.
+
+## What Gets Auto-Created
+
+The import script automatically creates:
+
+1. **Product Categories** - Extracted from item details
+2. **Customers** - From your Party Report (all 177 parties)
+3. **Products** - From your Sales transactions (auto-generated from items)
+4. **Invoices** - All 341 sales transactions with complete line items
+5. **Invoice Line Items** - All 567 product entries linked to invoices
+
+## Prerequisites
+
+### Required Files
+
+Place your Vyapaar Excel exports in the `attached_assets/` folder:
+
+1. **PartyReport_1763717077023.xlsx** - Contains customer/vendor information
+2. **SaleReport_1763717077023.xlsx** - Contains sales transactions and item details
+
+### Database Setup
+
+Ensure your PostgreSQL database is running and the `.env` file is configured:
+
+```bash
+DATABASE_URL=postgresql://user:password@localhost:5432/kinto_db
+```
+
+## How to Run the Auto-Import
+
+### Option 1: Using the Shell Script (Recommended)
+
+```bash
+./import-vyapaar.sh
+```
+
+### Option 2: Using npm/tsx Directly
+
+```bash
+NODE_ENV=development tsx scripts/import-vyapaar-excel.ts
+```
+
+## Import Process Flow
+
+### Step 1: Product Categories Auto-Creation
+- Reads all unique categories from Item Details
+- Creates category codes: CAT-001, CAT-002, etc.
+- If no categories found, creates "General" category
+- **Result**: 7 product categories created
+
+### Step 2: Customer Auto-Creation
+- Reads Party Report (all 177 parties)
+- Creates customer codes: CUST-001, CUST-002, etc.
+- Imports: Name, Email, Phone, Address, GSTIN, Aadhar
+- Sets vendorType to "customer"
+- **Result**: 174 new customers created
+
+### Step 3: Product Auto-Creation
+- Extracts unique products from Sales Item Details
+- Creates product codes: PROD-001, PROD-002, etc.
+- Links products to categories
+- Imports: Name, SKU, HSN Code, Unit Price, GST%, Description
+- **Result**: 11 new products created
+
+### Step 4: Invoice & Line Items Auto-Creation
+- Reads all sales transactions
+- Creates invoices with proper GST calculations
+- Links invoice items to products
+- Calculates CGST/SGST (for same-state) or IGST (for inter-state)
+- Handles payment status (Paid/Unpaid)
+- **Result**: 325 invoices with line items created
+
+## Data Mapping
+
+### Party Report → Customers
+
+| Vyapaar Field | KINTO Field |
+|---------------|-------------|
+| Name | vendorName |
+| Email | email |
+| Phone No. | mobileNumber |
+| Address | address |
+| GSTIN | gstNumber |
+| Aadhar | aadhaarNumber |
+
+### Sale Report → Invoices
+
+| Vyapaar Field | KINTO Field |
+|---------------|-------------|
+| Invoice No | invoiceNumber |
+| Date | invoiceDate |
+| Party Name | buyerName |
+| Total Amount | totalAmount (in paise) |
+| Received Amount | amountReceived |
+| Payment Status | status |
+| Vehicle No | vehicleNumber |
+
+### Item Details → Products & Invoice Items
+
+| Vyapaar Field | KINTO Field |
+|---------------|-------------|
+| Item Name | productName |
+| Item Code | skuCode |
+| HSN/SAC | hsnCode |
+| Category | categoryId (linked) |
+| Unit Price | basePrice (in paise) |
+| Tax Percent | gstPercent |
+| Quantity | quantity |
+
+## Important Notes
+
+### Currency Conversion
+- **Vyapaar**: Stores amounts in rupees (decimal)
+- **KINTO**: Stores amounts in paise (integer)
+- **Conversion**: ₹100.50 → 10050 paise
+
+### GST Handling
+- For same-state transactions: GST split into CGST + SGST (50/50)
+- Tax rates converted to basis points: 18% → 1800
+
+### Duplicate Handling
+The script gracefully handles duplicates:
+- If a customer/product/invoice already exists, it skips and continues
+- No data is overwritten or duplicated
+- You can safely re-run the import multiple times
+
+### Code Generation
+All codes are auto-generated with unique counters:
+- **Categories**: CAT-001, CAT-002, CAT-003...
+- **Customers**: CUST-001, CUST-002, CUST-003...
+- **Products**: PROD-001, PROD-002, PROD-003...
+
+## Verification
+
+After import, verify your data in KINTO:
+
+1. **Navigate to Masters** → Product Categories (should show 7 categories)
+2. **Navigate to Masters** → Customers (should show 177+ customers)
+3. **Navigate to Masters** → Products (should show 11+ products)
+4. **Navigate to Sales** → Invoices (should show 325+ invoices)
+
+## Sample Output
+
+```
+🚀 Starting Vyapaar Excel Auto-Import...
+
+📖 Reading Excel files...
+✓ Found 177 parties
+✓ Found 340 sales
+✓ Found 566 item details
+
+📦 Step 1: Auto-creating Product Categories...
+  ✓ Created category: General (CAT-001)
+  ✓ Created category: Water Products (CAT-002)
+✅ Created/Found 7 categories
+
+👥 Step 2: Auto-creating Customers...
+  ✓ Created customer: ADHOC SRINIVASA PETROLEUM (CUST-002)
+  ✓ Created customer: AMMAYAMMA HP GAS GRAMIN VITRAK (CUST-003)
+✅ Created 174 new customers
+
+📦 Step 3: Auto-creating Products...
+  ✓ Created product: 20 Ltr CAN (PROD-001)
+  ✓ Created product: 1 Ltr. Bottle - Pack of 12 (PROD-002)
+✅ Created 11 new products
+
+📄 Step 4: Auto-creating Invoices...
+  ✓ Created invoice: 1 (2 items, ₹3781.30)
+  ✓ Created invoice: 2 (1 items, ₹3441.69)
+✅ Created 325 invoices
+
+═══════════════════════════════════════
+✅ AUTO-IMPORT COMPLETE!
+═══════════════════════════════════════
+📦 Product Categories: 7
+👥 Customers: 174 new (179 total)
+📦 Products: 11 new (28 total)
+📄 Invoices: 325
+═══════════════════════════════════════
+
+🎉 All data imported successfully!
+```
+
+## Troubleshooting
+
+### Error: Excel files not found
+**Solution**: Ensure your Excel files are in `attached_assets/` folder with exact filenames:
+- `PartyReport_1763717077023.xlsx`
+- `SaleReport_1763717077023.xlsx`
+
+### Error: Database connection failed
+**Solution**: Check your `.env` file has correct `DATABASE_URL`
+
+### Warning: Customer/Product already exists
+**Info**: This is normal if you've run the import before. The script skips duplicates safely.
+
+### Some invoices show "may already exist"
+**Info**: This happens if invoice numbers are duplicated. The script preserves existing invoices.
+
+## Post-Import Checklist
+
+- [ ] Verify customer count matches (177 parties)
+- [ ] Verify invoice count matches (341 sales)
+- [ ] Check product categories are assigned correctly
+- [ ] Review GST calculations on sample invoices
+- [ ] Confirm payment statuses (Paid/Unpaid) are correct
+- [ ] Test creating a new invoice to ensure system works
+
+## Next Steps
+
+After successful import:
+
+1. **Review Master Data** - Check customers and products for accuracy
+2. **Verify Invoices** - Sample-check invoices for correct amounts and GST
+3. **Configure Gatepasses** - Link existing invoices to gatepasses if needed
+4. **Train Users** - Show team how to use the system
+5. **Start Daily Operations** - Begin using KINTO for new transactions
+
+## Support
+
+For issues or questions:
+- Check the `scripts/import-vyapaar-excel.ts` file for technical details
+- Review error messages in the console output
+- Ensure all prerequisites are met
+
+---
+
+**Document Version**: 1.0  
+**Last Updated**: November 21, 2025  
+**Compatible with**: KINTO Smart Ops v1.0

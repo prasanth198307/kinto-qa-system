@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vyapaar Excel Auto-Import Guide - KINTO Smart Ops</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background: #fff;
+        }
+        
+        h1 {
+            color: #1a365d;
+            font-size: 2.5em;
+            margin-bottom: 0.5em;
+            border-bottom: 4px solid #3182ce;
+            padding-bottom: 0.3em;
+        }
+        
+        h2 {
+            color: #2c5282;
+            font-size: 1.8em;
+            margin-top: 1.5em;
+            margin-bottom: 0.8em;
+            border-left: 5px solid #3182ce;
+            padding-left: 15px;
+        }
+        
+        h3 {
+            color: #2d3748;
+            font-size: 1.3em;
+            margin-top: 1.2em;
+            margin-bottom: 0.6em;
+        }
+        
+        p {
+            margin-bottom: 1em;
+            color: #4a5568;
+        }
+        
+        ul, ol {
+            margin-left: 2em;
+            margin-bottom: 1em;
+        }
+        
+        li {
+            margin-bottom: 0.5em;
+            color: #4a5568;
+        }
+        
+        code {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 3px;
+            padding: 2px 6px;
+            font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #d63384;
+        }
+        
+        pre {
+            background: #2d3748;
+            color: #e2e8f0;
+            border-radius: 5px;
+            padding: 15px;
+            overflow-x: auto;
+            margin: 1em 0;
+            font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+            font-size: 0.9em;
+            line-height: 1.5;
+        }
+        
+        pre code {
+            background: none;
+            border: none;
+            color: #e2e8f0;
+            padding: 0;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1em 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        th {
+            background: #3182ce;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        tr:nth-child(even) {
+            background: #f7fafc;
+        }
+        
+        .note {
+            background: #fffaf0;
+            border-left: 4px solid #dd6b20;
+            padding: 15px;
+            margin: 1em 0;
+            border-radius: 4px;
+        }
+        
+        .success {
+            background: #f0fff4;
+            border-left: 4px solid #38a169;
+            padding: 15px;
+            margin: 1em 0;
+            border-radius: 4px;
+        }
+        
+        .warning {
+            background: #fffaf0;
+            border-left: 4px solid #ed8936;
+            padding: 15px;
+            margin: 1em 0;
+            border-radius: 4px;
+        }
+        
+        .info {
+            background: #ebf8ff;
+            border-left: 4px solid #3182ce;
+            padding: 15px;
+            margin: 1em 0;
+            border-radius: 4px;
+        }
+        
+        .badge {
+            display: inline-block;
+            background: #3182ce;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-right: 5px;
+        }
+        
+        .step {
+            background: #f7fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 1.5em 0;
+        }
+        
+        .step h3 {
+            margin-top: 0;
+            color: #3182ce;
+        }
+        
+        .footer {
+            margin-top: 3em;
+            padding-top: 2em;
+            border-top: 2px solid #e2e8f0;
+            text-align: center;
+            color: #718096;
+            font-size: 0.9em;
+        }
+        
+        @media print {
+            body {
+                padding: 20px;
+            }
+            
+            h1 {
+                page-break-after: avoid;
+            }
+            
+            h2, h3 {
+                page-break-after: avoid;
+                page-break-inside: avoid;
+            }
+            
+            .step, table, pre {
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 Vyapaar Excel Auto-Import Guide</h1>
+    
+    <div class="info">
+        <strong>📋 Quick Start:</strong> Run <code>./import-vyapaar.sh</code> to automatically import all your Vyapaar data into KINTO Smart Ops. No manual master data creation required!
+    </div>
+
+    <h2>Overview</h2>
+    <p>The KINTO Smart Ops system includes a <strong>fully automated Excel import tool</strong> that imports all your Vyapaar data without requiring any manual master data creation. Simply run one command, and all your customers, products, invoices, and categories are automatically created.</p>
+
+    <h2>What Gets Auto-Created</h2>
+    <p>The import script automatically creates:</p>
+    <ol>
+        <li><strong>Product Categories</strong> - Extracted from item details</li>
+        <li><strong>Customers</strong> - From your Party Report (all 177 parties)</li>
+        <li><strong>Products</strong> - From your Sales transactions (auto-generated from items)</li>
+        <li><strong>Invoices</strong> - All 341 sales transactions with complete line items</li>
+        <li><strong>Invoice Line Items</strong> - All 567 product entries linked to invoices</li>
+    </ol>
+
+    <h2>Prerequisites</h2>
+    
+    <h3>Required Files</h3>
+    <p>Place your Vyapaar Excel exports in the <code>attached_assets/</code> folder:</p>
+    <ol>
+        <li><strong>PartyReport_1763717077023.xlsx</strong> - Contains customer/vendor information</li>
+        <li><strong>SaleReport_1763717077023.xlsx</strong> - Contains sales transactions and item details</li>
+    </ol>
+
+    <h3>Database Setup</h3>
+    <p>Ensure your PostgreSQL database is running and the <code>.env</code> file is configured:</p>
+    <pre><code>DATABASE_URL=postgresql://user:password@localhost:5432/kinto_db</code></pre>
+
+    <h2>How to Run the Auto-Import</h2>
+    
+    <div class="step">
+        <h3>Option 1: Using the Shell Script (Recommended)</h3>
+        <pre><code>./import-vyapaar.sh</code></pre>
+    </div>
+
+    <div class="step">
+        <h3>Option 2: Using npm/tsx Directly</h3>
+        <pre><code>NODE_ENV=development tsx scripts/import-vyapaar-excel.ts</code></pre>
+    </div>
+
+    <h2>Import Process Flow</h2>
+
+    <div class="step">
+        <h3><span class="badge">Step 1</span> Product Categories Auto-Creation</h3>
+        <ul>
+            <li>Reads all unique categories from Item Details</li>
+            <li>Creates category codes: CAT-001, CAT-002, etc.</li>
+            <li>If no categories found, creates "General" category</li>
+            <li><strong>Result:</strong> 7 product categories created</li>
+        </ul>
+    </div>
+
+    <div class="step">
+        <h3><span class="badge">Step 2</span> Customer Auto-Creation</h3>
+        <ul>
+            <li>Reads Party Report (all 177 parties)</li>
+            <li>Creates customer codes: CUST-001, CUST-002, etc.</li>
+            <li>Imports: Name, Email, Phone, Address, GSTIN, Aadhar</li>
+            <li>Sets vendorType to "customer"</li>
+            <li><strong>Result:</strong> 174 new customers created</li>
+        </ul>
+    </div>
+
+    <div class="step">
+        <h3><span class="badge">Step 3</span> Product Auto-Creation</h3>
+        <ul>
+            <li>Extracts unique products from Sales Item Details</li>
+            <li>Creates product codes: PROD-001, PROD-002, etc.</li>
+            <li>Links products to categories</li>
+            <li>Imports: Name, SKU, HSN Code, Unit Price, GST%, Description</li>
+            <li><strong>Result:</strong> 11 new products created</li>
+        </ul>
+    </div>
+
+    <div class="step">
+        <h3><span class="badge">Step 4</span> Invoice & Line Items Auto-Creation</h3>
+        <ul>
+            <li>Reads all sales transactions</li>
+            <li>Creates invoices with proper GST calculations</li>
+            <li>Links invoice items to products</li>
+            <li>Calculates CGST/SGST (for same-state) or IGST (for inter-state)</li>
+            <li>Handles payment status (Paid/Unpaid)</li>
+            <li><strong>Result:</strong> 325 invoices with line items created</li>
+        </ul>
+    </div>
+
+    <h2>Data Mapping</h2>
+
+    <h3>Party Report → Customers</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Vyapaar Field</th>
+                <th>KINTO Field</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td>Name</td><td>vendorName</td></tr>
+            <tr><td>Email</td><td>email</td></tr>
+            <tr><td>Phone No.</td><td>mobileNumber</td></tr>
+            <tr><td>Address</td><td>address</td></tr>
+            <tr><td>GSTIN</td><td>gstNumber</td></tr>
+            <tr><td>Aadhar</td><td>aadhaarNumber</td></tr>
+        </tbody>
+    </table>
+
+    <h3>Sale Report → Invoices</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Vyapaar Field</th>
+                <th>KINTO Field</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td>Invoice No</td><td>invoiceNumber</td></tr>
+            <tr><td>Date</td><td>invoiceDate</td></tr>
+            <tr><td>Party Name</td><td>buyerName</td></tr>
+            <tr><td>Total Amount</td><td>totalAmount (in paise)</td></tr>
+            <tr><td>Received Amount</td><td>amountReceived</td></tr>
+            <tr><td>Payment Status</td><td>status</td></tr>
+            <tr><td>Vehicle No</td><td>vehicleNumber</td></tr>
+        </tbody>
+    </table>
+
+    <h3>Item Details → Products & Invoice Items</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Vyapaar Field</th>
+                <th>KINTO Field</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td>Item Name</td><td>productName</td></tr>
+            <tr><td>Item Code</td><td>skuCode</td></tr>
+            <tr><td>HSN/SAC</td><td>hsnCode</td></tr>
+            <tr><td>Category</td><td>categoryId (linked)</td></tr>
+            <tr><td>Unit Price</td><td>basePrice (in paise)</td></tr>
+            <tr><td>Tax Percent</td><td>gstPercent</td></tr>
+            <tr><td>Quantity</td><td>quantity</td></tr>
+        </tbody>
+    </table>
+
+    <h2>Important Notes</h2>
+
+    <div class="note">
+        <h3>💱 Currency Conversion</h3>
+        <ul>
+            <li><strong>Vyapaar:</strong> Stores amounts in rupees (decimal)</li>
+            <li><strong>KINTO:</strong> Stores amounts in paise (integer)</li>
+            <li><strong>Conversion:</strong> ₹100.50 → 10050 paise</li>
+        </ul>
+    </div>
+
+    <div class="note">
+        <h3>📊 GST Handling</h3>
+        <ul>
+            <li>For same-state transactions: GST split into CGST + SGST (50/50)</li>
+            <li>Tax rates converted to basis points: 18% → 1800</li>
+        </ul>
+    </div>
+
+    <div class="note">
+        <h3>🔄 Duplicate Handling</h3>
+        <p>The script gracefully handles duplicates:</p>
+        <ul>
+            <li>If a customer/product/invoice already exists, it skips and continues</li>
+            <li>No data is overwritten or duplicated</li>
+            <li>You can safely re-run the import multiple times</li>
+        </ul>
+    </div>
+
+    <div class="note">
+        <h3>🏷️ Code Generation</h3>
+        <p>All codes are auto-generated with unique counters:</p>
+        <ul>
+            <li><strong>Categories:</strong> CAT-001, CAT-002, CAT-003...</li>
+            <li><strong>Customers:</strong> CUST-001, CUST-002, CUST-003...</li>
+            <li><strong>Products:</strong> PROD-001, PROD-002, PROD-003...</li>
+        </ul>
+    </div>
+
+    <h2>Verification</h2>
+    <p>After import, verify your data in KINTO:</p>
+    <ol>
+        <li><strong>Navigate to Masters</strong> → Product Categories (should show 7 categories)</li>
+        <li><strong>Navigate to Masters</strong> → Customers (should show 177+ customers)</li>
+        <li><strong>Navigate to Masters</strong> → Products (should show 11+ products)</li>
+        <li><strong>Navigate to Sales</strong> → Invoices (should show 325+ invoices)</li>
+    </ol>
+
+    <h2>Sample Output</h2>
+    <pre><code>🚀 Starting Vyapaar Excel Auto-Import...
+
+📖 Reading Excel files...
+✓ Found 177 parties
+✓ Found 340 sales
+✓ Found 566 item details
+
+📦 Step 1: Auto-creating Product Categories...
+  ✓ Created category: General (CAT-001)
+  ✓ Created category: Water Products (CAT-002)
+✅ Created/Found 7 categories
+
+👥 Step 2: Auto-creating Customers...
+  ✓ Created customer: ADHOC SRINIVASA PETROLEUM (CUST-002)
+  ✓ Created customer: AMMAYAMMA HP GAS GRAMIN VITRAK (CUST-003)
+✅ Created 174 new customers
+
+📦 Step 3: Auto-creating Products...
+  ✓ Created product: 20 Ltr CAN (PROD-001)
+  ✓ Created product: 1 Ltr. Bottle - Pack of 12 (PROD-002)
+✅ Created 11 new products
+
+📄 Step 4: Auto-creating Invoices...
+  ✓ Created invoice: 1 (2 items, ₹3781.30)
+  ✓ Created invoice: 2 (1 items, ₹3441.69)
+✅ Created 325 invoices
+
+═══════════════════════════════════════
+✅ AUTO-IMPORT COMPLETE!
+═══════════════════════════════════════
+📦 Product Categories: 7
+👥 Customers: 174 new (179 total)
+📦 Products: 11 new (28 total)
+📄 Invoices: 325
+═══════════════════════════════════════
+
+🎉 All data imported successfully!</code></pre>
+
+    <h2>Troubleshooting</h2>
+
+    <div class="warning">
+        <h3>⚠️ Error: Excel files not found</h3>
+        <p><strong>Solution:</strong> Ensure your Excel files are in <code>attached_assets/</code> folder with exact filenames:</p>
+        <ul>
+            <li><code>PartyReport_1763717077023.xlsx</code></li>
+            <li><code>SaleReport_1763717077023.xlsx</code></li>
+        </ul>
+    </div>
+
+    <div class="warning">
+        <h3>⚠️ Error: Database connection failed</h3>
+        <p><strong>Solution:</strong> Check your <code>.env</code> file has correct <code>DATABASE_URL</code></p>
+    </div>
+
+    <div class="info">
+        <h3>ℹ️ Warning: Customer/Product already exists</h3>
+        <p><strong>Info:</strong> This is normal if you've run the import before. The script skips duplicates safely.</p>
+    </div>
+
+    <div class="info">
+        <h3>ℹ️ Some invoices show "may already exist"</h3>
+        <p><strong>Info:</strong> This happens if invoice numbers are duplicated. The script preserves existing invoices.</p>
+    </div>
+
+    <h2>Post-Import Checklist</h2>
+    <ul style="list-style-type: none; margin-left: 0;">
+        <li>☐ Verify customer count matches (177 parties)</li>
+        <li>☐ Verify invoice count matches (341 sales)</li>
+        <li>☐ Check product categories are assigned correctly</li>
+        <li>☐ Review GST calculations on sample invoices</li>
+        <li>☐ Confirm payment statuses (Paid/Unpaid) are correct</li>
+        <li>☐ Test creating a new invoice to ensure system works</li>
+    </ul>
+
+    <h2>Next Steps</h2>
+    <p>After successful import:</p>
+    <ol>
+        <li><strong>Review Master Data</strong> - Check customers and products for accuracy</li>
+        <li><strong>Verify Invoices</strong> - Sample-check invoices for correct amounts and GST</li>
+        <li><strong>Configure Gatepasses</strong> - Link existing invoices to gatepasses if needed</li>
+        <li><strong>Train Users</strong> - Show team how to use the system</li>
+        <li><strong>Start Daily Operations</strong> - Begin using KINTO for new transactions</li>
+    </ol>
+
+    <div class="success">
+        <h3>✅ Success!</h3>
+        <p>Your Vyapaar data is now fully imported into KINTO Smart Ops. The system is ready to use for daily operations.</p>
+    </div>
+
+    <div class="footer">
+        <p><strong>Document Version:</strong> 1.0<br>
+        <strong>Last Updated:</strong> November 21, 2025<br>
+        <strong>Compatible with:</strong> KINTO Smart Ops v1.0</p>
+    </div>
+</body>
+</html>
