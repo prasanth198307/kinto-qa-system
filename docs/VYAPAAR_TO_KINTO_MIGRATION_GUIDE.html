@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vyapaar to KINTO Smart Ops - Data Migration Guide</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { 
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background: #fff;
+    padding: 40px;
+    max-width: 900px;
+    margin: 0 auto;
+}
+h1 { 
+    color: #0066cc;
+    border-bottom: 3px solid #0066cc;
+    padding-bottom: 15px;
+    margin-bottom: 10px;
+    page-break-after: avoid;
+    font-size: 28px;
+}
+h2 { 
+    color: #0066cc;
+    border-left: 4px solid #0066cc;
+    padding-left: 10px;
+    margin-top: 30px;
+    margin-bottom: 15px;
+    page-break-after: avoid;
+    font-size: 20px;
+}
+h3 {
+    color: #004499;
+    margin-top: 20px;
+    margin-bottom: 10px;
+    page-break-after: avoid;
+    font-size: 16px;
+}
+p { margin-bottom: 12px; }
+ul, ol { margin-left: 25px; margin-bottom: 12px; }
+li { margin-bottom: 8px; }
+pre {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 15px;
+    border-radius: 5px;
+    border-left: 4px solid #0066cc;
+    overflow-x: auto;
+    margin-bottom: 15px;
+    page-break-inside: avoid;
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    line-height: 1.4;
+}
+code {
+    background: #f4f4f4;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    color: #333;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 15px 0;
+    page-break-inside: avoid;
+    font-size: 13px;
+}
+table th {
+    background: #0066cc;
+    color: white;
+    padding: 10px;
+    text-align: left;
+    font-weight: bold;
+}
+table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid #ddd;
+}
+table tr:nth-child(even) {
+    background: #f9f9f9;
+}
+.note {
+    background: #fffbea;
+    border-left: 4px solid #ff9800;
+    padding: 12px;
+    margin: 15px 0;
+    border-radius: 3px;
+}
+.warning {
+    background: #ffebee;
+    border-left: 4px solid #f44336;
+    padding: 12px;
+    margin: 15px 0;
+    border-radius: 3px;
+}
+.success {
+    background: #e8f5e9;
+    border-left: 4px solid #4caf50;
+    padding: 12px;
+    margin: 15px 0;
+    border-radius: 3px;
+}
+.header {
+    text-align: center;
+    margin-bottom: 30px;
+    border-bottom: 2px solid #0066cc;
+    padding-bottom: 20px;
+}
+.header h1 { border-bottom: none; padding-bottom: 0; margin-bottom: 5px; }
+.meta { font-size: 12px; color: #666; margin-top: 10px; }
+.toc {
+    background: #f0f8ff;
+    border: 1px solid #0066cc;
+    padding: 15px;
+    margin: 20px 0;
+    border-radius: 5px;
+    page-break-inside: avoid;
+}
+.toc h3 { margin-top: 0; }
+@media print {
+    body { padding: 20px; }
+    h1 { page-break-before: always; page-break-after: avoid; }
+    h2 { page-break-after: avoid; }
+    pre { page-break-inside: avoid; }
+    table { page-break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+<h1>Vyapaar to KINTO Smart Ops</h1>
+<h2 style="border-left: none; color: #666; margin: 10px 0; padding: 0; font-size: 18px;">Data Migration Guide</h2>
+<div class="meta">
+<p><strong>From:</strong> Vyapaar (Accounting & Inventory) | <strong>To:</strong> KINTO Smart Ops (Manufacturing)</p>
+<p>Timeline: 6-8 hours | Version: 1.0 | November 2024</p>
+</div>
+</div>
+
+<div class="toc">
+<h3>Table of Contents</h3>
+<ul>
+<li>Overview & Data Mapping</li>
+<li>Pre-Migration Checklist</li>
+<li>Step-by-Step Migration</li>
+<li>Data Validation</li>
+<li>Post-Migration Setup</li>
+<li>Troubleshooting & Rollback</li>
+</ul>
+</div>
+
+<h2>Overview</h2>
+
+<h3>What Gets Migrated</h3>
+<ul>
+<li>✅ Customers/Parties → Customers & Vendors</li>
+<li>✅ Products → Products with BOM</li>
+<li>✅ Inventory → Raw Materials & Finished Goods</li>
+<li>✅ Invoices → Invoices & Gatepasses</li>
+<li>✅ Purchases → Purchase Orders</li>
+<li>✅ Payments → Payment Records</li>
+<li>✅ Stock Ledger → Inventory Transactions</li>
+</ul>
+
+<h3>What Requires Setup in KINTO</h3>
+<ul>
+<li>User Roles (must create manually - 5 users max)</li>
+<li>Checklist Templates (create in UI)</li>
+<li>Quality Settings (admin configuration)</li>
+<li>Production Shifts (define in settings)</li>
+</ul>
+
+<h2>Data Mapping Reference</h2>
+
+<h3>1. Customers Mapping</h3>
+<table>
+<tr><th>Vyapaar Field</th><th>KINTO Field</th><th>Type</th><th>Notes</th></tr>
+<tr><td>Customer Name</td><td>name</td><td>text</td><td>Required</td></tr>
+<tr><td>Phone</td><td>phone</td><td>text</td><td>Required</td></tr>
+<tr><td>Email</td><td>email</td><td>text</td><td>Optional</td></tr>
+<tr><td>GST Number</td><td>gstNumber</td><td>text</td><td>Required for invoicing</td></tr>
+<tr><td>Address</td><td>address</td><td>text</td><td>Optional</td></tr>
+<tr><td>Credit Limit</td><td>creditLimit</td><td>decimal</td><td>For credit control</td></tr>
+</table>
+
+<h3>2. Vendors Mapping</h3>
+<table>
+<tr><th>Vyapaar Field</th><th>KINTO Field</th><th>Type</th></tr>
+<tr><td>Supplier Name</td><td>name</td><td>text</td></tr>
+<tr><td>Phone</td><td>phone</td><td>text</td></tr>
+<tr><td>Email</td><td>email</td><td>text</td></tr>
+<tr><td>GST Number</td><td>gstNumber</td><td>text</td></tr>
+<tr><td>Address</td><td>address</td><td>text</td></tr>
+</table>
+
+<h3>3. Products Mapping</h3>
+<table>
+<tr><th>Vyapaar Field</th><th>KINTO Field</th><th>Type</th></tr>
+<tr><td>Product Name</td><td>name</td><td>text</td></tr>
+<tr><td>SKU</td><td>sku</td><td>text</td></tr>
+<tr><td>Unit</td><td>unit</td><td>text</td></tr>
+<tr><td>HSN Code</td><td>hsn</td><td>text</td></tr>
+<tr><td>Tax Rate</td><td>taxRate</td><td>decimal</td></tr>
+</table>
+
+<h2>Pre-Migration Checklist</h2>
+
+<h3>Step 1: Export Data from Vyapaar</h3>
+<pre>Vyapaar → Reports → Export Data → Select Report Type → Download CSV/Excel
+
+Export all:
+☐ Customers (with GST, address, phone)
+☐ Vendors (with GST, address, phone)
+☐ Products (with SKU, unit, HSN, tax rate)
+☐ Raw Materials (with unit, opening stock)
+☐ Invoices (with customer, dates, amounts)
+☐ Purchase Orders (with vendor, dates, amounts)
+☐ Stock Ledger (with all transactions)
+☐ Payments (if available)</pre>
+
+<h3>Step 2: Validate CSV Files</h3>
+<pre>Checklist for each file:
+☐ All dates in YYYY-MM-DD format
+☐ All amounts are numbers (no currency symbols)
+☐ Customer/Vendor names filled
+☐ Product names and units filled
+☐ GST numbers formatted correctly
+☐ No special characters in critical fields</pre>
+
+<h3>Step 3: Prepare KINTO Environment</h3>
+<pre>npm run db:push
+psql -h localhost -U kinto_user -d kinto_ops -c "SELECT version();"</pre>
+
+<h2>Step-by-Step Migration</h2>
+
+<h3>Phase 1: Product Categories</h3>
+<p><strong>In KINTO UI:</strong></p>
+<ol>
+<li>Go to Admin → Product Categories</li>
+<li>Create categories:
+   <ul>
+   <li>"Raw Materials"</li>
+   <li>"Finished Goods"</li>
+   <li>"Components"</li>
+   </ul>
+</li>
+<li>Note down the Category IDs (you'll need them)</li>
+</ol>
+
+<h3>Phase 2: Import Customers</h3>
+<pre>Create CSV file: vyapaar-customers.csv
+Format:
+Customer Name,Email,Phone,GST Number,Address,Credit Limit
+
+Example:
+ABC Industries,info@abc.com,9876543210,27AABCU1234,Mumbai,50000
+XYZ Supplies,contact@xyz.com,9876543211,27XYZS5678,Delhi,30000</pre>
+
+<h3>Phase 3: Import Vendors</h3>
+<pre>Create CSV file: vyapaar-vendors.csv
+Format:
+Vendor Name,Email,Phone,GST Number,Address
+
+Example:
+Global Supplies,sales@global.com,9876543210,27GLOBS1234,Bangalore
+Tech Imports,inquiry@tech.com,9876543211,27TECHI5678,Chennai</pre>
+
+<h3>Phase 4: Import Products</h3>
+<pre>Create CSV file: vyapaar-products.csv
+Format:
+Product Name,SKU,Unit,HSN Code,Tax Rate
+
+Example:
+Widget A,WID-001,pcs,84439900,18
+Widget B,WID-002,kg,84439900,5</pre>
+
+<h3>Phase 5: Import Raw Materials</h3>
+<pre>Create CSV file: vyapaar-raw-materials.csv
+Format:
+Material Name,Unit,Opening Stock,Current Stock
+
+Example:
+Steel Sheet,kg,1000,950
+Plastic Resin,kg,500,450</pre>
+
+<h3>Phase 6: Import Invoices</h3>
+<pre>Create CSV file: vyapaar-invoices.csv
+Format:
+Invoice Number,Date,Customer Name,Amount,Tax
+
+Example:
+INV-001,2024-01-15,ABC Industries,50000,9000
+INV-002,2024-01-20,XYZ Supplies,30000,5400</pre>
+
+<h3>Phase 7: Import Purchase Orders</h3>
+<pre>Create CSV file: vyapaar-purchase-orders.csv
+Format:
+PO Number,Date,Vendor Name,Amount,Tax
+
+Example:
+PO-001,2024-01-10,Global Supplies,25000,4500
+PO-002,2024-01-12,Tech Imports,15000,2700</pre>
+
+<h3>Phase 8: Import Stock Ledger</h3>
+<pre>Create CSV file: vyapaar-stock-ledger.csv
+Format:
+Transaction Type,Date,Product Name,Quantity,Reference
+
+Example:
+purchase,2024-01-10,Widget A,100,PO-001
+sale,2024-01-15,Widget A,50,INV-001
+adjustment,2024-01-20,Widget B,5,ADJ-001</pre>
+
+<h2>Data Validation</h2>
+
+<h3>Step 1: Verify Record Counts</h3>
+<pre>Database commands:
+psql -h localhost -U kinto_user -d kinto_ops
+
+SELECT COUNT(*) as customers FROM customers;
+SELECT COUNT(*) as vendors FROM vendors;
+SELECT COUNT(*) as products FROM products;
+SELECT COUNT(*) as invoices FROM invoices;</pre>
+
+<h3>Step 2: Compare with Vyapaar</h3>
+<table>
+<tr><th>Data Type</th><th>Vyapaar Count</th><th>KINTO Count</th><th>Match</th></tr>
+<tr><td>Customers</td><td>_______</td><td>_______</td><td>☐</td></tr>
+<tr><td>Vendors</td><td>_______</td><td>_______</td><td>☐</td></tr>
+<tr><td>Products</td><td>_______</td><td>_______</td><td>☐</td></tr>
+<tr><td>Invoices</td><td>_______</td><td>_______</td><td>☐</td></tr>
+<tr><td>Raw Materials</td><td>_______</td><td>_______</td><td>☐</td></tr>
+</table>
+
+<h3>Step 3: Spot-Check Sample Records</h3>
+<pre>SELECT * FROM customers WHERE id = 1;
+SELECT * FROM products WHERE id = 1;
+SELECT * FROM invoices WHERE id = 1;
+
+Verify:
+☐ Names match Vyapaar
+☐ Amounts match Vyapaar
+☐ Dates are correct
+☐ GST numbers are present</pre>
+
+<h3>Step 4: Check Data Integrity</h3>
+<pre>-- Check for orphaned records
+SELECT * FROM invoices WHERE "customerId" NOT IN 
+  (SELECT id FROM customers);
+
+-- Check for duplicates
+SELECT name, COUNT(*) FROM products 
+  GROUP BY name HAVING COUNT(*) > 1;
+
+-- Verify future dates
+SELECT * FROM invoices WHERE "invoiceDate" > NOW();</pre>
+
+<h2>Post-Migration Setup</h2>
+
+<h3>Step 1: Create Users (Max 5)</h3>
+<ol>
+<li>Go to Admin → User Management</li>
+<li>Create these users:
+   <ul>
+   <li>Admin (full access)</li>
+   <li>Production Manager (manage production)</li>
+   <li>Quality Inspector (quality checks)</li>
+   <li>Inventory Manager (inventory control)</li>
+   <li>Operator (basic operations)</li>
+   </ul>
+</li>
+</ol>
+
+<h3>Step 2: Configure Roles & Permissions</h3>
+<ol>
+<li>Admin → Role Management</li>
+<li>Define permissions for each role</li>
+<li>Test with sample user account</li>
+</ol>
+
+<h3>Step 3: Set Up Production Settings</h3>
+<ol>
+<li>Admin → Production Settings</li>
+<li>Define shifts:
+   <ul>
+   <li>Morning: 6:00 AM - 2:00 PM</li>
+   <li>Evening: 2:00 PM - 10:00 PM</li>
+   <li>Night: 10:00 PM - 6:00 AM</li>
+   </ul>
+</li>
+</ol>
+
+<h3>Step 4: Create Checklist Templates</h3>
+<ol>
+<li>Admin → Checklist Templates</li>
+<li>Create templates:
+   <ul>
+   <li>Machine Startup Checklist</li>
+   <li>Quality Check Checklist</li>
+   <li>Production Completion Checklist</li>
+   <li>Shift Closure Checklist</li>
+   </ul>
+</li>
+</ol>
+
+<h3>Step 5: Configure WhatsApp</h3>
+<ol>
+<li>Set up WhatsApp Business Account</li>
+<li>Configure Colloki Flow API</li>
+<li>Test message flow</li>
+<li>Train operators on WhatsApp commands</li>
+</ol>
+
+<h2>Timeline Estimate</h2>
+
+<table>
+<tr><th>Phase</th><th>Task</th><th>Duration</th></tr>
+<tr><td>1</td><td>Export & Validate Vyapaar Data</td><td>1-2 hours</td></tr>
+<tr><td>2</td><td>Create Product Categories</td><td>30 min</td></tr>
+<tr><td>3</td><td>Import Master Data (Customers, Vendors, Products)</td><td>1.5 hours</td></tr>
+<tr><td>4</td><td>Import Transactional Data (Invoices, POs, Ledger)</td><td>1.5 hours</td></tr>
+<tr><td>5</td><td>Data Validation & Verification</td><td>1-2 hours</td></tr>
+<tr><td>6</td><td>Post-Migration Setup (Users, Roles, Checklists)</td><td>2-3 hours</td></tr>
+<tr><td colspan="2"><strong>Total Migration Time</strong></td><td><strong>6-8 hours</strong></td></tr>
+</table>
+
+<h2>Complete Migration Checklist</h2>
+
+<div class="success">
+<h3>Before Migration</h3>
+<ul>
+<li>☐ Vyapaar data exported to CSV/Excel</li>
+<li>☐ All CSV files validated</li>
+<li>☐ KINTO database created</li>
+<li>☐ Database connection verified</li>
+</ul>
+
+<h3>During Migration</h3>
+<ul>
+<li>☐ Product categories created</li>
+<li>☐ Customers imported</li>
+<li>☐ Vendors imported</li>
+<li>☐ Products imported</li>
+<li>☐ Raw materials imported</li>
+<li>☐ Invoices imported</li>
+<li>☐ Purchase orders imported</li>
+<li>☐ Stock ledger imported</li>
+<li>☐ Payments imported</li>
+</ul>
+
+<h3>Data Validation</h3>
+<ul>
+<li>☐ Record counts verified</li>
+<li>☐ Sample data spot-checked</li>
+<li>☐ Data integrity validated</li>
+<li>☐ No duplicate records</li>
+<li>☐ No orphaned records</li>
+</ul>
+
+<h3>Post-Migration</h3>
+<ul>
+<li>☐ Users created (5 max)</li>
+<li>☐ Roles configured</li>
+<li>☐ Permissions assigned</li>
+<li>☐ Production settings configured</li>
+<li>☐ Checklist templates created</li>
+<li>☐ WhatsApp integration tested</li>
+<li>☐ User testing completed</li>
+</ul>
+</div>
+
+<h2>Troubleshooting</h2>
+
+<table>
+<tr><th>Issue</th><th>Solution</th></tr>
+<tr><td>"Customer not found" error</td><td>Check if customer names in invoices CSV exactly match customer master names</td></tr>
+<tr><td>Date format error</td><td>Ensure all dates are YYYY-MM-DD format (2024-01-15)</td></tr>
+<tr><td>Amount precision issues</td><td>Use parseFloat for all decimal amounts, check decimal places</td></tr>
+<tr><td>Duplicate customer names</td><td>Edit CSV to add suffixes (Customer A, Customer A-2)</td></tr>
+<tr><td>Import script fails</td><td>Check if csv-parser is installed: npm install csv-parser</td></tr>
+<tr><td>Database connection error</td><td>Run npm run db:push and verify DATABASE_URL in .env</td></tr>
+</table>
+
+<h2>Rollback Plan</h2>
+
+<p>If migration fails, rollback using:</p>
+
+<pre>Option 1: Restore from backup
+npm run db:reset
+
+Option 2: Delete imported data
+DELETE FROM invoices;
+DELETE FROM customers;
+DELETE FROM products;
+
+Option 3: Restore database backup
+pg_restore -d kinto_ops /var/backups/kinto_ops_backup.dump</pre>
+
+<h2>Best Practices</h2>
+
+<div class="success">
+<h3>Do:</h3>
+<ul>
+<li>Create user accounts before going live</li>
+<li>Test all reports in production</li>
+<li>Verify payment reconciliation</li>
+<li>Set up automated backups</li>
+<li>Train users on KINTO interface</li>
+<li>Run parallel testing with Vyapaar for 1-2 weeks</li>
+<li>Keep Vyapaar running for reference</li>
+</ul>
+</div>
+
+<div class="warning">
+<h3>Don't:</h3>
+<ul>
+<li>Delete Vyapaar data immediately</li>
+<li>Go live without testing</li>
+<li>Skip validation steps</li>
+<li>Ignore duplicate records</li>
+<li>Forget to set up WhatsApp</li>
+<li>Change critical data after migration</li>
+</ul>
+</div>
+
+<h2>Support Resources</h2>
+
+<p><strong>If you encounter issues:</strong></p>
+<ol>
+<li>Check the Troubleshooting section above</li>
+<li>Review import scripts logs</li>
+<li>Verify CSV file format</li>
+<li>Check database logs:</li>
+</ol>
+
+<pre>sudo journalctl -u postgresql-15 -n 50</pre>
+
+<p>Contact KINTO support with:</p>
+<ul>
+<li>CSV file sample (first 5 rows)</li>
+<li>Exact error message</li>
+<li>Import script output</li>
+<li>Database query results</li>
+</ul>
+
+</body>
+</html>
