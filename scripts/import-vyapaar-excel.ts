@@ -575,7 +575,7 @@ for (const sale of sales) {
         roundOff: 0,
         totalAmount: totalAmountInPaise,
         amountReceived: amountReceivedInPaise,
-        status: sale.__EMPTY_9 === 'Paid' ? 'ready_for_gatepass' : 'draft',
+        status: 'delivered', // All Vyapaar imports are historical/completed sales
         vehicleNumber: sale.__EMPTY_11 || '',
         remarks: sale.__EMPTY_10 || '',
       }).returning();
