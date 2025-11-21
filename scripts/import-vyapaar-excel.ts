@@ -256,6 +256,30 @@ for (const unitName of uniqueUnits) {
 
 console.log(`✅ Created ${newUOMCount} new UOMs (Total: ${uomMap.size})`);
 
+// Ensure fallback UOM 'pcs' exists (used as default when unit is missing)
+let fallbackUOMId = uomMap.get(normalize('pcs'));
+if (!fallbackUOMId) {
+  const fallbackCode = generateCode('UOM', uomCodes);
+  try {
+    const [fallbackUOM] = await db.insert(uom).values({
+      code: fallbackCode,
+      name: 'pcs',
+      description: 'Auto-created fallback unit for products without specified unit',
+      isActive: 'true',
+    }).returning();
+    fallbackUOMId = fallbackUOM.id;
+    uomMap.set(normalize('pcs'), fallbackUOM.id);
+    console.log(`✓ Created fallback UOM: pcs (${fallbackCode})`);
+  } catch (err: any) {
+    console.error(`❌ Error creating fallback UOM:`, err.message);
+    throw new Error('Failed to create fallback UOM - cannot continue');
+  }
+} else {
+  console.log(`✓ Fallback UOM 'pcs' exists`);
+}
+
+console.log(); // Empty line for readability
+
 // Ensure a default "Finished Goods" product type exists
 let defaultProductTypeId = productTypeMap.get(normalize('Finished Goods'));
 if (!defaultProductTypeId) {
@@ -281,6 +305,7 @@ if (!defaultProductTypeId) {
     console.log(`✓ Created default product type: Sold Items (${typeCode})\n`);
   } catch (err: any) {
     console.error(`❌ Error creating default product type:`, err.message);
+    throw new Error('Failed to create default product type - cannot continue');
   }
 } else {
   console.log(`✓ Using existing product type for imported products\n`);
@@ -361,6 +386,18 @@ for (const [productName, itemData] of uniqueProducts) {
   const baseUnitStr = itemData.__EMPTY_10 || 'pcs';
   const uomId = uomMap.get(normalize(baseUnitStr));
   
+  // VALIDATION: Fail fast if UOM or product type is missing
+  if (!uomId) {
+    console.error(`  ❌ FATAL: No UOM found for unit '${baseUnitStr}' in product ${productName}`);
+    console.error(`     This should never happen - the UOM should have been auto-created in Step 1.5`);
+    throw new Error(`Missing UOM for unit '${baseUnitStr}' - data integrity check failed`);
+  }
+  
+  if (!defaultProductTypeId) {
+    console.error(`  ❌ FATAL: No default product type available for product ${productName}`);
+    throw new Error('Missing default product type - data integrity check failed');
+  }
+  
   // Convert price from rupees to paise (and round to avoid float precision issues)
   const unitPriceInPaise = Math.round((itemData.__EMPTY_11 || 0) * 100);
   
@@ -373,9 +410,9 @@ for (const [productName, itemData] of uniqueProducts) {
       productName: productName,
       skuCode: itemData.__EMPTY_3 || productCode,
       categoryId: categoryId,
-      typeId: defaultProductTypeId, // Set product type
+      typeId: defaultProductTypeId, // Set product type (validated above)
       baseUnit: baseUnitStr,
-      uomId: uomId, // Set UOM reference
+      uomId: uomId, // Set UOM reference (validated above)
       basePrice: unitPriceInPaise,
       gstPercent: gstPercent.toString(),
       hsnCode: itemData.__EMPTY_4 || '',
