@@ -20,6 +20,8 @@ import {
   products,
   productBom,
   vendors,
+  vendorTypes,
+  vendorVendorTypes,
   rawMaterialTypes,
   rawMaterials,
   rawMaterialTransactions,
@@ -86,6 +88,10 @@ import {
   type InsertProductBom,
   type Vendor,
   type InsertVendor,
+  type VendorType,
+  type InsertVendorType,
+  type VendorVendorType,
+  type InsertVendorVendorType,
   type RawMaterialType,
   type InsertRawMaterialType,
   type RawMaterial,
@@ -277,6 +283,18 @@ export interface IStorage {
   getVendor(id: string): Promise<Vendor | undefined>;
   updateVendor(id: string, vendor: Partial<InsertVendor>): Promise<Vendor | undefined>;
   deleteVendor(id: string): Promise<void>;
+  
+  // Vendor Type Master
+  createVendorType(vendorType: InsertVendorType): Promise<VendorType>;
+  getAllVendorTypes(): Promise<VendorType[]>;
+  getVendorType(id: string): Promise<VendorType | undefined>;
+  updateVendorType(id: string, vendorType: Partial<InsertVendorType>): Promise<VendorType | undefined>;
+  deleteVendorType(id: string): Promise<void>;
+  
+  // Vendor-VendorType Assignments
+  assignVendorType(vendorId: string, vendorTypeId: string, isPrimary?: boolean): Promise<VendorVendorType>;
+  getVendorTypes(vendorId: string): Promise<VendorType[]>;
+  removeVendorType(vendorId: string, vendorTypeId: string): Promise<void>;
   
   // Raw Material Type Master
   createRawMaterialType(type: InsertRawMaterialType): Promise<RawMaterialType>;
@@ -560,7 +578,7 @@ export class DatabaseStorage implements IStorage {
         target: users.id,
         set: {
           ...userData,
-          updatedAt: new Date(),
+          updatedAt: new Date().toISOString(),
         },
       })
       .returning();
@@ -570,7 +588,7 @@ export class DatabaseStorage implements IStorage {
   async updateUserRole(id: string, roleId: string): Promise<User | undefined> {
     const [user] = await db
       .update(users)
-      .set({ roleId, updatedAt: new Date() })
+      .set({ roleId, updatedAt: new Date().toISOString() })
       .where(eq(users.id, id))
       .returning();
     return user;
@@ -579,7 +597,7 @@ export class DatabaseStorage implements IStorage {
   async updateUser(id: string, data: { firstName?: string; lastName?: string; email?: string; password?: string }): Promise<User | undefined> {
     const updateData: any = {
       ...data,
-      updatedAt: new Date()
+      updatedAt: new Date().toISOString()
     };
     const [user] = await db
       .update(users)
@@ -616,7 +634,7 @@ export class DatabaseStorage implements IStorage {
   async deleteUser(id: string): Promise<void> {
     await db
       .update(users)
-      .set({ recordStatus: 0, updatedAt: new Date() })
+      .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
       .where(eq(users.id, id));
   }
 
@@ -633,7 +651,7 @@ export class DatabaseStorage implements IStorage {
   async setPasswordResetToken(userId: string, token: string, expiry: Date): Promise<void> {
     await db
       .update(users)
-      .set({ resetToken: token, resetTokenExpiry: expiry, updatedAt: new Date() })
+      .set({ resetToken: token, resetTokenExpiry: expiry.toISOString(), updatedAt: new Date().toISOString() })
       .where(eq(users.id, userId));
   }
 
@@ -644,7 +662,7 @@ export class DatabaseStorage implements IStorage {
         password: hashedPassword, 
         resetToken: null, 
         resetTokenExpiry: null,
-        updatedAt: new Date() 
+        updatedAt: new Date().toISOString() 
       })
       .where(eq(users.id, userId));
   }
@@ -682,7 +700,7 @@ export class DatabaseStorage implements IStorage {
   async updateMachine(id: string, machine: Partial<InsertMachine>): Promise<Machine | undefined> {
     const [updated] = await db
       .update(machines)
-      .set({ ...machine, updatedAt: new Date() })
+      .set({ ...machine, updatedAt: new Date().toISOString() })
       .where(and(eq(machines.id, id), eq(machines.recordStatus, 1)))
       .returning();
     return updated;
@@ -691,7 +709,7 @@ export class DatabaseStorage implements IStorage {
   async deleteMachine(id: string): Promise<void> {
     await db
       .update(machines)
-      .set({ recordStatus: 0, updatedAt: new Date() })
+      .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
       .where(eq(machines.id, id));
   }
 
@@ -737,7 +755,7 @@ export class DatabaseStorage implements IStorage {
   async deleteChecklistTemplate(id: string): Promise<void> {
     await db
       .update(checklistTemplates)
-      .set({ recordStatus: 0, updatedAt: new Date() })
+      .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
       .where(eq(checklistTemplates.id, id));
   }
 
@@ -758,7 +776,7 @@ export class DatabaseStorage implements IStorage {
   async updateSparePart(id: string, sparePart: Partial<{ partName: string; partNumber?: string; category?: string; machineId?: string; unitPrice?: number; reorderThreshold?: number; currentStock?: number }>): Promise<SparePartCatalog | undefined> {
     const [updated] = await db
       .update(sparePartsCatalog)
-      .set({ ...sparePart, updatedAt: new Date() })
+      .set({ ...sparePart, updatedAt: new Date().toISOString() })
       .where(and(eq(sparePartsCatalog.id, id), eq(sparePartsCatalog.recordStatus, 1)))
       .returning();
     return updated;
@@ -767,7 +785,7 @@ export class DatabaseStorage implements IStorage {
   async deleteSparePart(id: string): Promise<void> {
     await db
       .update(sparePartsCatalog)
-      .set({ recordStatus: 0, updatedAt: new Date() })
+      .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
       .where(eq(sparePartsCatalog.id, id));
   }
 
@@ -797,7 +815,7 @@ export class DatabaseStorage implements IStorage {
   async updateMachineType(id: string, machineType: Partial<InsertMachineType>): Promise<MachineType | undefined> {
     const [updated] = await db
       .update(machineTypes)
-      .set({ ...machineType, updatedAt: new Date() })
+      .set({ ...machineType, updatedAt: new Date().toISOString() })
       .where(and(eq(machineTypes.id, id), eq(machineTypes.recordStatus, 1)))
       .returning();
     return updated;
@@ -806,7 +824,7 @@ export class DatabaseStorage implements IStorage {
   async deleteMachineType(id: string): Promise<void> {
     await db
       .update(machineTypes)
-      .set({ recordStatus: 0, updatedAt: new Date() })
+      .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
       .where(eq(machineTypes.id, id));
   }
 
@@ -870,7 +888,7 @@ export class DatabaseStorage implements IStorage {
   async updatePurchaseOrder(id: string, purchaseOrder: Partial<InsertPurchaseOrder>): Promise<PurchaseOrder | undefined> {
     const [updated] = await db
       .update(purchaseOrders)
-      .set({ ...purchaseOrder, updatedAt: new Date() })
+      .set({ ...purchaseOrder, updatedAt: new Date().toISOString() })
       .where(and(eq(purchaseOrders.id, id), eq(purchaseOrders.recordStatus, 1)))
       .returning();
     return updated;
@@ -879,7 +897,7 @@ export class DatabaseStorage implements IStorage {
   async deletePurchaseOrder(id: string): Promise<void> {
     await db
       .update(purchaseOrders)
-      .set({ recordStatus: 0, updatedAt: new Date() })
+      .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
       .where(eq(purchaseOrders.id, id));
   }
 
@@ -900,7 +918,7 @@ export class DatabaseStorage implements IStorage {
   async updateMaintenancePlan(id: string, plan: Partial<InsertMaintenancePlan>): Promise<MaintenancePlan | undefined> {
     const [updated] = await db
       .update(maintenancePlans)
-      .set({ ...plan, updatedAt: new Date() })
+      .set({ ...plan, updatedAt: new Date().toISOString() })
       .where(and(eq(maintenancePlans.id, id), eq(maintenancePlans.recordStatus, 1)))
       .returning();
     return updated;
@@ -909,7 +927,7 @@ export class DatabaseStorage implements IStorage {
   async deleteMaintenancePlan(id: string): Promise<void> {
     await db
       .update(maintenancePlans)
-      .set({ recordStatus: 0, updatedAt: new Date() })
+      .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
       .where(eq(maintenancePlans.id, id));
   }
 
@@ -944,7 +962,7 @@ export class DatabaseStorage implements IStorage {
   async updatePMTaskListTemplate(id: string, template: Partial<InsertPMTaskListTemplate>): Promise<PMTaskListTemplate | undefined> {
     const [updated] = await db
       .update(pmTaskListTemplates)
-      .set({ ...template, updatedAt: new Date() })
+      .set({ ...template, updatedAt: new Date().toISOString() })
       .where(and(eq(pmTaskListTemplates.id, id), eq(pmTaskListTemplates.recordStatus, 1)))
       .returning();
     return updated;
@@ -953,7 +971,7 @@ export class DatabaseStorage implements IStorage {
   async deletePMTaskListTemplate(id: string): Promise<void> {
     await db
       .update(pmTaskListTemplates)
-      .set({ recordStatus: 0, updatedAt: new Date() })
+      .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
       .where(eq(pmTaskListTemplates.id, id));
   }
 
@@ -1007,7 +1025,7 @@ export class DatabaseStorage implements IStorage {
   async updateUom(id: string, uomData: Partial<InsertUom>): Promise<Uom | undefined> {
     const [updated] = await db
       .update(uom)
-      .set({ ...uomData, updatedAt: new Date() })
+      .set({ ...uomData, updatedAt: new Date().toISOString() })
       .where(and(eq(uom.id, id), eq(uom.recordStatus, 1)))
       .returning();
     return updated;
@@ -1016,7 +1034,7 @@ export class DatabaseStorage implements IStorage {
   async deleteUom(id: string): Promise<void> {
     await db
       .update(uom)
-      .set({ recordStatus: 0, updatedAt: new Date() })
+      .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
       .where(eq(uom.id, id));
   }
 
@@ -1038,7 +1056,7 @@ export class DatabaseStorage implements IStorage {
   async updateProductCategory(id: string, categoryData: Partial<InsertProductCategory>): Promise<ProductCategory | undefined> {
     const [updated] = await db
       .update(productCategories)
-      .set({ ...categoryData, updatedAt: new Date() })
+      .set({ ...categoryData, updatedAt: new Date().toISOString() })
       .where(and(eq(productCategories.id, id), eq(productCategories.recordStatus, 1)))
       .returning();
     return updated;
@@ -1047,7 +1065,7 @@ export class DatabaseStorage implements IStorage {
   async deleteProductCategory(id: string): Promise<void> {
     await db
       .update(productCategories)
-      .set({ recordStatus: 0, updatedAt: new Date() })
+      .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
       .where(eq(productCategories.id, id));
   }
 
@@ -1069,7 +1087,7 @@ export class DatabaseStorage implements IStorage {
   async updateProductType(id: string, typeData: Partial<InsertProductType>): Promise<ProductType | undefined> {
     const [updated] = await db
       .update(productTypes)
-      .set({ ...typeData, updatedAt: new Date() })
+      .set({ ...typeData, updatedAt: new Date().toISOString() })
       .where(and(eq(productTypes.id, id), eq(productTypes.recordStatus, 1)))
       .returning();
     return updated;
@@ -1078,13 +1096,18 @@ export class DatabaseStorage implements IStorage {
   async deleteProductType(id: string): Promise<void> {
     await db
       .update(productTypes)
-      .set({ recordStatus: 0, updatedAt: new Date() })
+      .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
       .where(eq(productTypes.id, id));
   }
 
   // Product Master
   async createProduct(product: InsertProduct): Promise<Product> {
-    const [created] = await db.insert(products).values(product).returning();
+    const productData = {
+      ...product,
+      defaultLossPercent: product.defaultLossPercent !== undefined ? product.defaultLossPercent?.toString() : undefined,
+      usableDerivedUnits: product.usableDerivedUnits !== undefined ? product.usableDerivedUnits?.toString() : undefined,
+    };
+    const [created] = await db.insert(products).values([productData]).returning();
     return created;
   }
 
@@ -1100,7 +1123,12 @@ export class DatabaseStorage implements IStorage {
   async updateProduct(id: string, productData: Partial<InsertProduct>): Promise<Product | undefined> {
     const [updated] = await db
       .update(products)
-      .set({ ...productData, updatedAt: new Date() })
+      .set({ 
+        ...productData, 
+        defaultLossPercent: productData.defaultLossPercent !== undefined ? productData.defaultLossPercent?.toString() : undefined,
+        usableDerivedUnits: productData.usableDerivedUnits !== undefined ? productData.usableDerivedUnits?.toString() : undefined,
+        updatedAt: new Date().toISOString() 
+      })
       .where(and(eq(products.id, id), eq(products.recordStatus, 1)))
       .returning();
     return updated;
@@ -1109,7 +1137,7 @@ export class DatabaseStorage implements IStorage {
   async deleteProduct(id: string): Promise<void> {
     await db
       .update(products)
-      .set({ recordStatus: 0, updatedAt: new Date() })
+      .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
       .where(eq(products.id, id));
   }
 
@@ -1200,8 +1228,8 @@ export class DatabaseStorage implements IStorage {
 
     // Transform into structured format with effective UOM ID resolution
     const items = bomItems.map(item => {
-      // Resolve effective UOM ID: material.uomId (primary) → type.uomId (fallback) → null
-      const effectiveUomId = item.raw_materials?.uomId || item.raw_material_types?.uomId || null;
+      // Resolve effective UOM ID from type (raw materials don't have direct uomId)
+      const effectiveUomId = item.raw_material_types?.uomId || null;
       
       return {
         bom: item.product_bom,
@@ -1213,7 +1241,10 @@ export class DatabaseStorage implements IStorage {
 
     // Get latest update timestamp from BOM items
     const lastUpdatedAt = bomItems.length > 0
-      ? new Date(Math.max(...bomItems.map(i => new Date(i.product_bom.updatedAt || i.product_bom.createdAt).getTime())))
+      ? new Date(Math.max(...bomItems.map(i => {
+          const dateStr = i.product_bom.updatedAt || i.product_bom.createdAt;
+          return dateStr ? new Date(dateStr).getTime() : 0;
+        })))
       : null;
 
     return {
@@ -1250,7 +1281,7 @@ export class DatabaseStorage implements IStorage {
     
     const [updated] = await db
       .update(productBom)
-      .set({ ...bomItemData, updatedAt: new Date() })
+      .set({ ...bomItemData, updatedAt: new Date().toISOString() })
       .where(and(eq(productBom.id, id), eq(productBom.recordStatus, 1)))
       .returning();
     return updated;
@@ -1259,7 +1290,7 @@ export class DatabaseStorage implements IStorage {
   async deleteProductBomItem(id: string): Promise<void> {
     await db
       .update(productBom)
-      .set({ recordStatus: 0, updatedAt: new Date() })
+      .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
       .where(eq(productBom.id, id));
   }
 
@@ -1291,7 +1322,7 @@ export class DatabaseStorage implements IStorage {
       // Step 1: Delete all existing BOM items for this product
       await tx
         .update(productBom)
-        .set({ recordStatus: 0, updatedAt: new Date() })
+        .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
         .where(eq(productBom.productId, productId));
 
       // Step 2: Insert all new BOM items
@@ -1325,7 +1356,7 @@ export class DatabaseStorage implements IStorage {
       // Delete existing BOM items for this product
       await tx
         .update(productBom)
-        .set({ recordStatus: 0, updatedAt: new Date() })
+        .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
         .where(eq(productBom.productId, productId));
       
       // Insert new BOM items
@@ -1356,7 +1387,7 @@ export class DatabaseStorage implements IStorage {
   async updateVendor(id: string, vendorData: Partial<InsertVendor>): Promise<Vendor | undefined> {
     const [updated] = await db
       .update(vendors)
-      .set({ ...vendorData, updatedAt: new Date() })
+      .set({ ...vendorData, updatedAt: new Date().toISOString() })
       .where(and(eq(vendors.id, id), eq(vendors.recordStatus, 1)))
       .returning();
     return updated;
@@ -1365,13 +1396,80 @@ export class DatabaseStorage implements IStorage {
   async deleteVendor(id: string): Promise<void> {
     await db
       .update(vendors)
-      .set({ recordStatus: 0, updatedAt: new Date() })
+      .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
       .where(eq(vendors.id, id));
+  }
+
+  // Vendor Type Master
+  async createVendorType(vendorType: InsertVendorType): Promise<VendorType> {
+    const [created] = await db.insert(vendorTypes).values(vendorType).returning();
+    return created;
+  }
+
+  async getAllVendorTypes(): Promise<VendorType[]> {
+    return await db.select().from(vendorTypes).where(eq(vendorTypes.recordStatus, 1));
+  }
+
+  async getVendorType(id: string): Promise<VendorType | undefined> {
+    const [type] = await db.select().from(vendorTypes).where(and(eq(vendorTypes.id, id), eq(vendorTypes.recordStatus, 1)));
+    return type;
+  }
+
+  async updateVendorType(id: string, vendorTypeData: Partial<InsertVendorType>): Promise<VendorType | undefined> {
+    const [updated] = await db
+      .update(vendorTypes)
+      .set({ ...vendorTypeData, updatedAt: new Date().toISOString() })
+      .where(and(eq(vendorTypes.id, id), eq(vendorTypes.recordStatus, 1)))
+      .returning();
+    return updated;
+  }
+
+  async deleteVendorType(id: string): Promise<void> {
+    await db
+      .update(vendorTypes)
+      .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
+      .where(eq(vendorTypes.id, id));
+  }
+
+  // Vendor-VendorType Assignments
+  async assignVendorType(vendorId: string, vendorTypeId: string, isPrimary: boolean = false): Promise<VendorVendorType> {
+    const [created] = await db.insert(vendorVendorTypes).values({
+      vendorId,
+      vendorTypeId,
+      isPrimary: isPrimary ? 1 : 0,
+    }).returning();
+    return created;
+  }
+
+  async getVendorTypes(vendorId: string): Promise<VendorType[]> {
+    const results = await db
+      .select({
+        vendorType: vendorTypes,
+      })
+      .from(vendorVendorTypes)
+      .innerJoin(vendorTypes, eq(vendorVendorTypes.vendorTypeId, vendorTypes.id))
+      .where(and(
+        eq(vendorVendorTypes.vendorId, vendorId),
+        eq(vendorVendorTypes.recordStatus, 1),
+        eq(vendorTypes.recordStatus, 1)
+      ));
+    
+    return results.map(r => r.vendorType);
+  }
+
+  async removeVendorType(vendorId: string, vendorTypeId: string): Promise<void> {
+    await db
+      .update(vendorVendorTypes)
+      .set({ recordStatus: 0 })
+      .where(and(
+        eq(vendorVendorTypes.vendorId, vendorId),
+        eq(vendorVendorTypes.vendorTypeId, vendorTypeId)
+      ));
   }
 
   // Raw Material Type Master
   async createRawMaterialType(type: InsertRawMaterialType): Promise<RawMaterialType> {
-    const [created] = await db.insert(rawMaterialTypes).values(type).returning();
+    const [created] = await db.insert(rawMaterialTypes).values([type]).returning();
     return created;
   }
 
@@ -1387,7 +1485,7 @@ export class DatabaseStorage implements IStorage {
   async updateRawMaterialType(id: string, typeData: Partial<InsertRawMaterialType>): Promise<RawMaterialType | undefined> {
     const [updated] = await db
       .update(rawMaterialTypes)
-      .set({ ...typeData, updatedAt: new Date() })
+      .set({ ...typeData, updatedAt: new Date().toISOString() })
       .where(and(eq(rawMaterialTypes.id, id), eq(rawMaterialTypes.recordStatus, 1)))
       .returning();
     return updated;
@@ -1396,13 +1494,13 @@ export class DatabaseStorage implements IStorage {
   async deleteRawMaterialType(id: string): Promise<void> {
     await db
       .update(rawMaterialTypes)
-      .set({ recordStatus: 0, updatedAt: new Date() })
+      .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
       .where(eq(rawMaterialTypes.id, id));
   }
 
   // Raw Materials/Inventory
   async createRawMaterial(material: InsertRawMaterial): Promise<RawMaterial> {
-    const [created] = await db.insert(rawMaterials).values(material).returning();
+    const [created] = await db.insert(rawMaterials).values([material]).returning();
     return created;
   }
 
@@ -1418,7 +1516,7 @@ export class DatabaseStorage implements IStorage {
   async updateRawMaterial(id: string, materialData: Partial<InsertRawMaterial>): Promise<RawMaterial | undefined> {
     const [updated] = await db
       .update(rawMaterials)
-      .set({ ...materialData, updatedAt: new Date() })
+      .set({ ...materialData, updatedAt: new Date().toISOString() })
       .where(and(eq(rawMaterials.id, id), eq(rawMaterials.recordStatus, 1)))
       .returning();
     return updated;
@@ -1427,7 +1525,7 @@ export class DatabaseStorage implements IStorage {
   async deleteRawMaterial(id: string): Promise<void> {
     await db
       .update(rawMaterials)
-      .set({ recordStatus: 0, updatedAt: new Date() })
+      .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
       .where(eq(rawMaterials.id, id));
   }
 
@@ -1454,7 +1552,11 @@ export class DatabaseStorage implements IStorage {
 
   // Finished Goods
   async createFinishedGood(finishedGood: InsertFinishedGood): Promise<FinishedGood> {
-    const [created] = await db.insert(finishedGoods).values(finishedGood).returning();
+    const finishedGoodData = {
+      ...finishedGood,
+      productionDate: finishedGood.productionDate ? new Date(finishedGood.productionDate).toISOString() : finishedGood.productionDate,
+    };
+    const [created] = await db.insert(finishedGoods).values([finishedGoodData]).returning();
     return created;
   }
 
@@ -1470,7 +1572,12 @@ export class DatabaseStorage implements IStorage {
   async updateFinishedGood(id: string, finishedGoodData: Partial<InsertFinishedGood>): Promise<FinishedGood | undefined> {
     const [updated] = await db
       .update(finishedGoods)
-      .set({ ...finishedGoodData, updatedAt: new Date() })
+      .set({ 
+        ...finishedGoodData, 
+        productionDate: finishedGoodData.productionDate ? new Date(finishedGoodData.productionDate).toISOString() : undefined,
+        inspectionDate: finishedGoodData.inspectionDate ? new Date(finishedGoodData.inspectionDate).toISOString() : undefined,
+        updatedAt: new Date().toISOString() 
+      })
       .where(and(eq(finishedGoods.id, id), eq(finishedGoods.recordStatus, 1)))
       .returning();
     return updated;
@@ -1479,7 +1586,7 @@ export class DatabaseStorage implements IStorage {
   async deleteFinishedGood(id: string): Promise<void> {
     await db
       .update(finishedGoods)
-      .set({ recordStatus: 0, updatedAt: new Date() })
+      .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
       .where(eq(finishedGoods.id, id));
   }
 
@@ -1489,7 +1596,7 @@ export class DatabaseStorage implements IStorage {
 
   // Raw Material Issuance
   async createRawMaterialIssuance(issuance: InsertRawMaterialIssuance): Promise<RawMaterialIssuance> {
-    const [created] = await db.insert(rawMaterialIssuance).values(issuance).returning();
+    const [created] = await db.insert(rawMaterialIssuance).values([issuance]).returning();
     return created;
   }
 
@@ -1503,7 +1610,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateRawMaterialIssuance(id: string, updates: Partial<InsertRawMaterialIssuance>): Promise<RawMaterialIssuance | undefined> {
-    const [updated] = await db.update(rawMaterialIssuance).set(updates).where(and(eq(rawMaterialIssuance.id, id), eq(rawMaterialIssuance.recordStatus, 1))).returning();
+    const [updated] = await db.update(rawMaterialIssuance).set({
+      ...updates,
+      issuanceDate: updates.issuanceDate ? new Date(updates.issuanceDate).toISOString() : undefined,
+      plannedOutput: updates.plannedOutput !== undefined ? updates.plannedOutput?.toString() : undefined,
+    }).where(and(eq(rawMaterialIssuance.id, id), eq(rawMaterialIssuance.recordStatus, 1))).returning();
     return updated;
   }
 
@@ -1523,7 +1634,7 @@ export class DatabaseStorage implements IStorage {
 
   // Gatepasses
   async createGatepass(gatepass: InsertGatepass): Promise<Gatepass> {
-    const [created] = await db.insert(gatepasses).values(gatepass).returning();
+    const [created] = await db.insert(gatepasses).values([gatepass]).returning();
     return created;
   }
 
@@ -1537,7 +1648,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateGatepass(id: string, updates: Partial<InsertGatepass>): Promise<Gatepass | undefined> {
-    const [updated] = await db.update(gatepasses).set(updates).where(and(eq(gatepasses.id, id), eq(gatepasses.recordStatus, 1))).returning();
+    const [updated] = await db.update(gatepasses).set({
+      ...updates,
+      gatepassDate: updates.gatepassDate ? new Date(updates.gatepassDate).toISOString() : undefined
+    }).where(and(eq(gatepasses.id, id), eq(gatepasses.recordStatus, 1))).returning();
     return updated;
   }
 
@@ -1562,7 +1676,12 @@ export class DatabaseStorage implements IStorage {
 
   // Raw Material Issuance Items
   async createRawMaterialIssuanceItem(item: InsertRawMaterialIssuanceItem): Promise<RawMaterialIssuanceItem> {
-    const [created] = await db.insert(rawMaterialIssuanceItems).values(item).returning();
+    const itemData = {
+      ...item,
+      quantityIssued: item.quantityIssued.toString(),
+      suggestedQuantity: item.suggestedQuantity !== undefined ? item.suggestedQuantity?.toString() : undefined,
+    };
+    const [created] = await db.insert(rawMaterialIssuanceItems).values([itemData]).returning();
     return created;
   }
 
@@ -1578,19 +1697,28 @@ export class DatabaseStorage implements IStorage {
   async updateRawMaterialIssuanceItem(id: string, updates: Partial<InsertRawMaterialIssuanceItem>): Promise<RawMaterialIssuanceItem | undefined> {
     const [updated] = await db
       .update(rawMaterialIssuanceItems)
-      .set({ ...updates, updatedAt: new Date() })
+      .set({ 
+        ...updates, 
+        quantityIssued: updates.quantityIssued !== undefined ? updates.quantityIssued?.toString() : undefined,
+        suggestedQuantity: updates.suggestedQuantity !== undefined ? updates.suggestedQuantity?.toString() : undefined,
+        updatedAt: new Date().toISOString() 
+      })
       .where(and(eq(rawMaterialIssuanceItems.id, id), eq(rawMaterialIssuanceItems.recordStatus, 1)))
       .returning();
     return updated;
   }
 
   async deleteRawMaterialIssuanceItem(id: string): Promise<void> {
-    await db.update(rawMaterialIssuanceItems).set({ recordStatus: 0, updatedAt: new Date() }).where(eq(rawMaterialIssuanceItems.id, id));
+    await db.update(rawMaterialIssuanceItems).set({ recordStatus: 0, updatedAt: new Date().toISOString() }).where(eq(rawMaterialIssuanceItems.id, id));
   }
 
   // Production Entries
   async createProductionEntry(entry: InsertProductionEntry): Promise<ProductionEntry> {
-    const [created] = await db.insert(productionEntries).values(entry).returning();
+    const entryData = {
+      ...entry,
+      productionDate: entry.productionDate ? new Date(entry.productionDate).toISOString() : entry.productionDate,
+    };
+    const [created] = await db.insert(productionEntries).values([entryData]).returning();
     return created;
   }
 
@@ -1636,19 +1764,29 @@ export class DatabaseStorage implements IStorage {
   async updateProductionEntry(id: string, updates: Partial<InsertProductionEntry>): Promise<ProductionEntry | undefined> {
     const [updated] = await db
       .update(productionEntries)
-      .set({ ...updates, updatedAt: new Date() })
+      .set({ 
+        ...updates, 
+        productionDate: updates.productionDate ? new Date(updates.productionDate).toISOString() : undefined,
+        producedQuantity: updates.producedQuantity !== undefined ? updates.producedQuantity?.toString() : undefined,
+        rejectedQuantity: updates.rejectedQuantity !== undefined ? updates.rejectedQuantity?.toString() : undefined,
+        emptyBottlesProduced: updates.emptyBottlesProduced !== undefined ? updates.emptyBottlesProduced?.toString() : undefined,
+        emptyBottlesUsed: updates.emptyBottlesUsed !== undefined ? updates.emptyBottlesUsed?.toString() : undefined,
+        emptyBottlesPending: updates.emptyBottlesPending !== undefined ? updates.emptyBottlesPending?.toString() : undefined,
+        derivedUnits: updates.derivedUnits !== undefined ? updates.derivedUnits?.toString() : undefined,
+        updatedAt: new Date().toISOString() 
+      })
       .where(and(eq(productionEntries.id, id), eq(productionEntries.recordStatus, 1)))
       .returning();
     return updated;
   }
 
   async deleteProductionEntry(id: string): Promise<void> {
-    await db.update(productionEntries).set({ recordStatus: 0, updatedAt: new Date() }).where(eq(productionEntries.id, id));
+    await db.update(productionEntries).set({ recordStatus: 0, updatedAt: new Date().toISOString() }).where(eq(productionEntries.id, id));
   }
 
   // Production Reconciliations
   async createProductionReconciliation(reconciliation: InsertProductionReconciliation): Promise<ProductionReconciliation> {
-    const [created] = await db.insert(productionReconciliations).values(reconciliation).returning();
+    const [created] = await db.insert(productionReconciliations).values([reconciliation]).returning();
     return created;
   }
 
@@ -1687,14 +1825,18 @@ export class DatabaseStorage implements IStorage {
   async updateProductionReconciliation(id: string, updates: Partial<InsertProductionReconciliation>): Promise<ProductionReconciliation | undefined> {
     const [updated] = await db
       .update(productionReconciliations)
-      .set({ ...updates, updatedAt: new Date() })
+      .set({ 
+        ...updates, 
+        reconciliationDate: updates.reconciliationDate ? new Date(updates.reconciliationDate).toISOString() : undefined,
+        updatedAt: new Date().toISOString() 
+      })
       .where(and(eq(productionReconciliations.id, id), eq(productionReconciliations.recordStatus, 1)))
       .returning();
     return updated;
   }
 
   async deleteProductionReconciliation(id: string): Promise<void> {
-    await db.update(productionReconciliations).set({ recordStatus: 0, updatedAt: new Date() }).where(eq(productionReconciliations.id, id));
+    await db.update(productionReconciliations).set({ recordStatus: 0, updatedAt: new Date().toISOString() }).where(eq(productionReconciliations.id, id));
   }
 
   // Production Reconciliation Items
@@ -1715,14 +1857,14 @@ export class DatabaseStorage implements IStorage {
   async updateProductionReconciliationItem(id: string, updates: Partial<InsertProductionReconciliationItem>): Promise<ProductionReconciliationItem | undefined> {
     const [updated] = await db
       .update(productionReconciliationItems)
-      .set({ ...updates, updatedAt: new Date() })
+      .set({ ...updates, updatedAt: new Date().toISOString() })
       .where(and(eq(productionReconciliationItems.id, id), eq(productionReconciliationItems.recordStatus, 1)))
       .returning();
     return updated;
   }
 
   async deleteProductionReconciliationItem(id: string): Promise<void> {
-    await db.update(productionReconciliationItems).set({ recordStatus: 0, updatedAt: new Date() }).where(eq(productionReconciliationItems.id, id));
+    await db.update(productionReconciliationItems).set({ recordStatus: 0, updatedAt: new Date().toISOString() }).where(eq(productionReconciliationItems.id, id));
   }
 
   // Gatepass Items
@@ -1743,14 +1885,14 @@ export class DatabaseStorage implements IStorage {
   async updateGatepassItem(id: string, updates: Partial<InsertGatepassItem>): Promise<GatepassItem | undefined> {
     const [updated] = await db
       .update(gatepassItems)
-      .set({ ...updates, updatedAt: new Date() })
+      .set({ ...updates, updatedAt: new Date().toISOString() })
       .where(and(eq(gatepassItems.id, id), eq(gatepassItems.recordStatus, 1)))
       .returning();
     return updated;
   }
 
   async deleteGatepassItem(id: string): Promise<void> {
-    await db.update(gatepassItems).set({ recordStatus: 0, updatedAt: new Date() }).where(eq(gatepassItems.id, id));
+    await db.update(gatepassItems).set({ recordStatus: 0, updatedAt: new Date().toISOString() }).where(eq(gatepassItems.id, id));
   }
 
   // Invoice Templates
@@ -1788,19 +1930,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateInvoiceTemplate(id: string, updates: Partial<InsertInvoiceTemplate>): Promise<InvoiceTemplate | undefined> {
-    const [updated] = await db.update(invoiceTemplates).set({ ...updates, updatedAt: new Date() }).where(eq(invoiceTemplates.id, id)).returning();
+    const [updated] = await db.update(invoiceTemplates).set({ ...updates, updatedAt: new Date().toISOString() }).where(eq(invoiceTemplates.id, id)).returning();
     return updated;
   }
 
   async deleteInvoiceTemplate(id: string): Promise<void> {
-    await db.update(invoiceTemplates).set({ recordStatus: 0, updatedAt: new Date() }).where(eq(invoiceTemplates.id, id));
+    await db.update(invoiceTemplates).set({ recordStatus: 0, updatedAt: new Date().toISOString() }).where(eq(invoiceTemplates.id, id));
   }
 
   async setDefaultInvoiceTemplate(id: string): Promise<void> {
     // First, unset all defaults
-    await db.update(invoiceTemplates).set({ isDefault: 0, updatedAt: new Date() });
+    await db.update(invoiceTemplates).set({ isDefault: 0, updatedAt: new Date().toISOString() });
     // Then set the new default
-    await db.update(invoiceTemplates).set({ isDefault: 1, updatedAt: new Date() }).where(eq(invoiceTemplates.id, id));
+    await db.update(invoiceTemplates).set({ isDefault: 1, updatedAt: new Date().toISOString() }).where(eq(invoiceTemplates.id, id));
   }
 
   // Terms & Conditions
@@ -1838,19 +1980,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateTermsConditions(id: string, updates: Partial<InsertTermsConditions>): Promise<TermsConditions | undefined> {
-    const [updated] = await db.update(termsConditions).set({ ...updates, updatedAt: new Date() }).where(eq(termsConditions.id, id)).returning();
+    const [updated] = await db.update(termsConditions).set({ ...updates, updatedAt: new Date().toISOString() }).where(eq(termsConditions.id, id)).returning();
     return updated;
   }
 
   async deleteTermsConditions(id: string): Promise<void> {
-    await db.update(termsConditions).set({ recordStatus: 0, updatedAt: new Date() }).where(eq(termsConditions.id, id));
+    await db.update(termsConditions).set({ recordStatus: 0, updatedAt: new Date().toISOString() }).where(eq(termsConditions.id, id));
   }
 
   async setDefaultTermsConditions(id: string): Promise<void> {
     // First, unset all defaults
-    await db.update(termsConditions).set({ isDefault: 0, updatedAt: new Date() });
+    await db.update(termsConditions).set({ isDefault: 0, updatedAt: new Date().toISOString() });
     // Then set the new default
-    await db.update(termsConditions).set({ isDefault: 1, updatedAt: new Date() }).where(eq(termsConditions.id, id));
+    await db.update(termsConditions).set({ isDefault: 1, updatedAt: new Date().toISOString() }).where(eq(termsConditions.id, id));
   }
 
   // Invoices
@@ -1907,12 +2049,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateInvoice(id: string, updates: Partial<InsertInvoice>): Promise<Invoice | undefined> {
-    const [updated] = await db.update(invoices).set({ ...updates, updatedAt: new Date() }).where(eq(invoices.id, id)).returning();
+    const [updated] = await db.update(invoices).set({ ...updates, updatedAt: new Date().toISOString() }).where(eq(invoices.id, id)).returning();
     return updated;
   }
 
   async deleteInvoice(id: string): Promise<void> {
-    await db.update(invoices).set({ recordStatus: 0, updatedAt: new Date() }).where(eq(invoices.id, id));
+    await db.update(invoices).set({ recordStatus: 0, updatedAt: new Date().toISOString() }).where(eq(invoices.id, id));
   }
 
   async getInvoicesByDate(date: Date): Promise<Invoice[]> {
@@ -1946,12 +2088,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateInvoiceItem(id: string, updates: Partial<InsertInvoiceItem>): Promise<InvoiceItem | undefined> {
-    const [updated] = await db.update(invoiceItems).set({ ...updates, updatedAt: new Date() }).where(eq(invoiceItems.id, id)).returning();
+    const [updated] = await db.update(invoiceItems).set({ ...updates, updatedAt: new Date().toISOString() }).where(eq(invoiceItems.id, id)).returning();
     return updated;
   }
 
   async deleteInvoiceItem(id: string): Promise<void> {
-    await db.update(invoiceItems).set({ recordStatus: 0, updatedAt: new Date() }).where(eq(invoiceItems.id, id));
+    await db.update(invoiceItems).set({ recordStatus: 0, updatedAt: new Date().toISOString() }).where(eq(invoiceItems.id, id));
   }
 
   // GST Reports
@@ -1994,12 +2136,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateBank(id: string, updates: Partial<InsertBank>): Promise<Bank | undefined> {
-    const [updated] = await db.update(banks).set({ ...updates, updatedAt: new Date() }).where(eq(banks.id, id)).returning();
+    const [updated] = await db.update(banks).set({ ...updates, updatedAt: new Date().toISOString() }).where(eq(banks.id, id)).returning();
     return updated;
   }
 
   async deleteBank(id: string): Promise<void> {
-    await db.update(banks).set({ recordStatus: 0, updatedAt: new Date() }).where(eq(banks.id, id));
+    await db.update(banks).set({ recordStatus: 0, updatedAt: new Date().toISOString() }).where(eq(banks.id, id));
   }
 
   async getDefaultBank(): Promise<Bank | undefined> {
@@ -2009,9 +2151,9 @@ export class DatabaseStorage implements IStorage {
 
   async setDefaultBank(id: string): Promise<void> {
     // Reset all banks to non-default
-    await db.update(banks).set({ isDefault: 0, updatedAt: new Date() }).where(eq(banks.recordStatus, 1));
+    await db.update(banks).set({ isDefault: 0, updatedAt: new Date().toISOString() }).where(eq(banks.recordStatus, 1));
     // Set the selected bank as default
-    await db.update(banks).set({ isDefault: 1, updatedAt: new Date() }).where(eq(banks.id, id));
+    await db.update(banks).set({ isDefault: 1, updatedAt: new Date().toISOString() }).where(eq(banks.id, id));
   }
 
   // Invoice Payments
@@ -2061,7 +2203,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deletePayment(id: string): Promise<void> {
-    await db.update(invoicePayments).set({ recordStatus: 0, updatedAt: new Date() }).where(eq(invoicePayments.id, id));
+    await db.update(invoicePayments).set({ recordStatus: 0, updatedAt: new Date().toISOString() }).where(eq(invoicePayments.id, id));
   }
 
   // Sales Returns
@@ -2155,14 +2297,14 @@ export class DatabaseStorage implements IStorage {
   async updateSalesReturn(id: string, updates: Partial<InsertSalesReturn>): Promise<SalesReturn | undefined> {
     const [updated] = await db
       .update(salesReturns)
-      .set({ ...updates, updatedAt: new Date() })
+      .set({ ...updates, updatedAt: new Date().toISOString() })
       .where(and(eq(salesReturns.id, id), eq(salesReturns.recordStatus, 1)))
       .returning();
     return updated;
   }
 
   async deleteSalesReturn(id: string): Promise<void> {
-    await db.update(salesReturns).set({ recordStatus: 0, updatedAt: new Date() }).where(eq(salesReturns.id, id));
+    await db.update(salesReturns).set({ recordStatus: 0, updatedAt: new Date().toISOString() }).where(eq(salesReturns.id, id));
   }
 
   // Sales Return Items
@@ -2183,14 +2325,14 @@ export class DatabaseStorage implements IStorage {
   async updateSalesReturnItem(id: string, updates: Partial<InsertSalesReturnItem>): Promise<SalesReturnItem | undefined> {
     const [updated] = await db
       .update(salesReturnItems)
-      .set({ ...updates, updatedAt: new Date() })
+      .set({ ...updates, updatedAt: new Date().toISOString() })
       .where(and(eq(salesReturnItems.id, id), eq(salesReturnItems.recordStatus, 1)))
       .returning();
     return updated;
   }
 
   async deleteSalesReturnItem(id: string): Promise<void> {
-    await db.update(salesReturnItems).set({ recordStatus: 0, updatedAt: new Date() }).where(eq(salesReturnItems.id, id));
+    await db.update(salesReturnItems).set({ recordStatus: 0, updatedAt: new Date().toISOString() }).where(eq(salesReturnItems.id, id));
   }
 
   // Credit Notes
@@ -2225,14 +2367,14 @@ export class DatabaseStorage implements IStorage {
   async updateCreditNote(id: string, updates: Partial<InsertCreditNote>): Promise<CreditNote | undefined> {
     const [updated] = await db
       .update(creditNotes)
-      .set({ ...updates, updatedAt: new Date() })
+      .set({ ...updates, updatedAt: new Date().toISOString() })
       .where(and(eq(creditNotes.id, id), eq(creditNotes.recordStatus, 1)))
       .returning();
     return updated;
   }
 
   async deleteCreditNote(id: string): Promise<void> {
-    await db.update(creditNotes).set({ recordStatus: 0, updatedAt: new Date() }).where(eq(creditNotes.id, id));
+    await db.update(creditNotes).set({ recordStatus: 0, updatedAt: new Date().toISOString() }).where(eq(creditNotes.id, id));
   }
 
   // Credit Note Items
@@ -2253,14 +2395,14 @@ export class DatabaseStorage implements IStorage {
   async updateCreditNoteItem(id: string, updates: Partial<InsertCreditNoteItem>): Promise<CreditNoteItem | undefined> {
     const [updated] = await db
       .update(creditNoteItems)
-      .set({ ...updates, updatedAt: new Date() })
+      .set({ ...updates, updatedAt: new Date().toISOString() })
       .where(and(eq(creditNoteItems.id, id), eq(creditNoteItems.recordStatus, 1)))
       .returning();
     return updated;
   }
 
   async deleteCreditNoteItem(id: string): Promise<void> {
-    await db.update(creditNoteItems).set({ recordStatus: 0, updatedAt: new Date() }).where(eq(creditNoteItems.id, id));
+    await db.update(creditNoteItems).set({ recordStatus: 0, updatedAt: new Date().toISOString() }).where(eq(creditNoteItems.id, id));
   }
 
   // Role Management
@@ -2281,7 +2423,7 @@ export class DatabaseStorage implements IStorage {
   async updateRole(id: string, roleData: Partial<InsertRole>): Promise<Role | undefined> {
     const [updated] = await db
       .update(roles)
-      .set({ ...roleData, updatedAt: new Date() })
+      .set({ ...roleData, updatedAt: new Date().toISOString() })
       .where(and(eq(roles.id, id), eq(roles.recordStatus, 1)))
       .returning();
     return updated;
@@ -2290,7 +2432,7 @@ export class DatabaseStorage implements IStorage {
   async deleteRole(id: string): Promise<void> {
     await db
       .update(roles)
-      .set({ recordStatus: 0, updatedAt: new Date() })
+      .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
       .where(eq(roles.id, id));
   }
 
@@ -2311,7 +2453,7 @@ export class DatabaseStorage implements IStorage {
   async updateRolePermission(id: string, permissionData: Partial<InsertRolePermission>): Promise<RolePermission | undefined> {
     const [updated] = await db
       .update(rolePermissions)
-      .set({ ...permissionData, updatedAt: new Date() })
+      .set({ ...permissionData, updatedAt: new Date().toISOString() })
       .where(and(eq(rolePermissions.id, id), eq(rolePermissions.recordStatus, 1)))
       .returning();
     return updated;
@@ -2320,7 +2462,7 @@ export class DatabaseStorage implements IStorage {
   async deleteRolePermission(id: string): Promise<void> {
     await db
       .update(rolePermissions)
-      .set({ recordStatus: 0, updatedAt: new Date() })
+      .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
       .where(eq(rolePermissions.id, id));
   }
 
@@ -2328,7 +2470,7 @@ export class DatabaseStorage implements IStorage {
     // Soft delete existing permissions for this role
     await db
       .update(rolePermissions)
-      .set({ recordStatus: 0, updatedAt: new Date() })
+      .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
       .where(eq(rolePermissions.roleId, roleId));
     
     // Insert new permissions
@@ -2365,7 +2507,7 @@ export class DatabaseStorage implements IStorage {
   async updateChecklistAssignment(id: string, updates: Partial<InsertChecklistAssignment>): Promise<ChecklistAssignment | undefined> {
     const [updated] = await db
       .update(checklistAssignments)
-      .set({ ...updates, updatedAt: new Date() })
+      .set({ ...updates, updatedAt: new Date().toISOString() })
       .where(and(eq(checklistAssignments.id, id), eq(checklistAssignments.recordStatus, 1)))
       .returning();
     return updated;
@@ -2374,7 +2516,7 @@ export class DatabaseStorage implements IStorage {
   async deleteChecklistAssignment(id: string): Promise<void> {
     await db
       .update(checklistAssignments)
-      .set({ recordStatus: 0, updatedAt: new Date() })
+      .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
       .where(eq(checklistAssignments.id, id));
   }
 
@@ -2653,7 +2795,7 @@ export class DatabaseStorage implements IStorage {
 
     const [updated] = await db
       .update(machineStartupTasks)
-      .set({ ...updates, updatedAt: new Date() })
+      .set({ ...updates, updatedAt: new Date().toISOString() })
       .where(and(...conditions))
       .returning();
     return updated;
@@ -2662,7 +2804,7 @@ export class DatabaseStorage implements IStorage {
   async deleteMachineStartupTask(id: string): Promise<void> {
     await db
       .update(machineStartupTasks)
-      .set({ recordStatus: 0, updatedAt: new Date() })
+      .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
       .where(eq(machineStartupTasks.id, id));
   }
 
@@ -2681,7 +2823,7 @@ export class DatabaseStorage implements IStorage {
   async updateNotificationConfig(id: string, updates: Partial<InsertNotificationConfig>): Promise<NotificationConfig | undefined> {
     const [updated] = await db
       .update(notificationConfig)
-      .set({ ...updates, updatedAt: new Date() })
+      .set({ ...updates, updatedAt: new Date().toISOString() })
       .where(and(eq(notificationConfig.id, id), eq(notificationConfig.recordStatus, 1)))
       .returning();
     return updated;
