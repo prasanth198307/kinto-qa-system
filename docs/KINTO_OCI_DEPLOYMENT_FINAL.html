@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KINTO Smart Ops - OCI Complete Deployment Guide</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { 
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background: #fff;
+    padding: 40px;
+    max-width: 900px;
+    margin: 0 auto;
+}
+h1 { 
+    color: #0066cc;
+    border-bottom: 3px solid #0066cc;
+    padding-bottom: 15px;
+    margin-bottom: 10px;
+    page-break-after: avoid;
+    font-size: 28px;
+}
+h2 { 
+    color: #0066cc;
+    border-left: 4px solid #0066cc;
+    padding-left: 10px;
+    margin-top: 30px;
+    margin-bottom: 15px;
+    page-break-after: avoid;
+    font-size: 20px;
+}
+h3 {
+    color: #004499;
+    margin-top: 20px;
+    margin-bottom: 10px;
+    page-break-after: avoid;
+    font-size: 16px;
+}
+p { margin-bottom: 12px; }
+ul, ol { margin-left: 25px; margin-bottom: 12px; }
+li { margin-bottom: 8px; }
+pre {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 15px;
+    border-radius: 5px;
+    border-left: 4px solid #0066cc;
+    overflow-x: auto;
+    margin-bottom: 15px;
+    page-break-inside: avoid;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    line-height: 1.4;
+}
+code {
+    background: #f4f4f4;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    color: #333;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 15px 0;
+    page-break-inside: avoid;
+}
+table th {
+    background: #0066cc;
+    color: white;
+    padding: 12px;
+    text-align: left;
+    font-weight: bold;
+}
+table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #ddd;
+}
+table tr:nth-child(even) {
+    background: #f9f9f9;
+}
+.note {
+    background: #fffbea;
+    border-left: 4px solid #ff9800;
+    padding: 12px;
+    margin: 15px 0;
+    border-radius: 3px;
+}
+.warning {
+    background: #ffebee;
+    border-left: 4px solid #f44336;
+    padding: 12px;
+    margin: 15px 0;
+    border-radius: 3px;
+}
+.success {
+    background: #e8f5e9;
+    border-left: 4px solid #4caf50;
+    padding: 12px;
+    margin: 15px 0;
+    border-radius: 3px;
+}
+.header {
+    text-align: center;
+    margin-bottom: 30px;
+    border-bottom: 2px solid #0066cc;
+    padding-bottom: 20px;
+}
+.header h1 { border-bottom: none; padding-bottom: 0; margin-bottom: 5px; }
+.meta { font-size: 12px; color: #666; margin-top: 10px; }
+.toc {
+    background: #f0f8ff;
+    border: 1px solid #0066cc;
+    padding: 15px;
+    margin: 20px 0;
+    border-radius: 5px;
+    page-break-inside: avoid;
+}
+.toc h3 { margin-top: 0; }
+@media print {
+    body { padding: 20px; }
+    h1 { page-break-before: always; page-break-after: avoid; }
+    h2 { page-break-after: avoid; }
+    pre { page-break-inside: avoid; }
+    table { page-break-inside: avoid; }
+    .toc { page-break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+<h1>KINTO Smart Ops</h1>
+<h2 style="border-left: none; color: #666; margin: 10px 0; padding: 0; font-size: 18px;">OCI Complete Deployment Guide</h2>
+<div class="meta">
+<p><strong>Domain:</strong> ops.kintowwater.com</p>
+<p><strong>Port:</strong> 5050 | <strong>Instance:</strong> OCI E2.1 (1 OCPU + 8GB) | <strong>Users:</strong> 5 | <strong>Cost:</strong> $0/month</p>
+<p>Generated: November 2024</p>
+</div>
+</div>
+
+<div class="toc">
+<h3>Table of Contents</h3>
+<ul>
+<li>Pre-Deployment Setup</li>
+<li>SSH Access</li>
+<li>System Installation</li>
+<li>PostgreSQL Database</li>
+<li>Application Deployment</li>
+<li>Environment Configuration</li>
+<li>SSL Certificate</li>
+<li>Nginx Reverse Proxy</li>
+<li>Systemd Service</li>
+<li>WhatsApp Webhooks</li>
+<li>Verification & Testing</li>
+<li>Database Backup</li>
+<li>Troubleshooting</li>
+</ul>
+</div>
+
+<h2>Pre-Deployment Setup</h2>
+
+<h3>1. DNS Configuration</h3>
+<p>Point your domain to OCI instance:</p>
+<pre>Domain Registrar (GoDaddy, Namecheap, etc.)
+→ DNS A Record
+→ ops.kintowwater.com → YOUR_OCI_PUBLIC_IP
+→ Wait 5-10 minutes for propagation</pre>
+
+<h3>2. Get OCI Instance Public IP</h3>
+<pre>OCI Console → Compute → Instances → Your Instance
+Copy: Public IP Address (e.g., 152.70.xxx.xxx)</pre>
+
+<h2>SSH Access</h2>
+
+<h3>Connect from Mac</h3>
+<pre>chmod 600 ~/.ssh/kinto-instance.key
+ssh -i ~/.ssh/kinto-instance.key opc@YOUR_PUBLIC_IP</pre>
+
+<h3>Create Kinto User</h3>
+<pre>sudo useradd -m -s /bin/bash kinto
+sudo usermod -aG wheel kinto
+sudo su - kinto
+whoami  # Should output: kinto</pre>
+
+<h2>System Installation</h2>
+
+<h3>Update & Install Base Packages</h3>
+<pre>sudo dnf update -y
+sudo dnf install -y curl git wget vim nano htop nginx</pre>
+
+<h3>Install Node.js 20 LTS</h3>
+<pre>curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash -
+sudo dnf install -y nodejs
+node --version   # v20.x.x
+npm --version    # 10.x.x</pre>
+
+<h3>Install PostgreSQL 15</h3>
+<pre>sudo dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+sudo dnf install -y postgresql15-server postgresql15-contrib
+sudo /usr/pgsql-15/bin/postgresql-15-setup initdb
+sudo systemctl enable postgresql-15
+sudo systemctl start postgresql-15
+sudo systemctl status postgresql-15</pre>
+
+<h2>PostgreSQL Database</h2>
+
+<h3>Create Database & User</h3>
+<pre>sudo su - postgres
+psql
+
+CREATE DATABASE kinto_ops;
+CREATE USER kinto_user WITH PASSWORD 'your_strong_password_here_min_16_chars';
+GRANT ALL PRIVILEGES ON DATABASE kinto_ops TO kinto_user;
+
+\c kinto_ops
+GRANT ALL ON SCHEMA public TO kinto_user;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO kinto_user;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO kinto_user;
+
+\q
+exit
+exit</pre>
+
+<div class="note">
+<strong>Connection String:</strong><br>
+postgresql://kinto_user:your_strong_password_here_min_16_chars@localhost:5432/kinto_ops
+</div>
+
+<h2>Application Deployment</h2>
+
+<h3>Clone Repository</h3>
+<pre>cd /home/kinto
+git clone https://github.com/your-org/kinto-smart-ops.git
+cd kinto-smart-ops</pre>
+
+<h3>Install Dependencies</h3>
+<pre>npm install</pre>
+
+<h3>Run Database Migrations</h3>
+<pre>npm run db:push</pre>
+
+<h2>Environment Configuration</h2>
+
+<h3>Create .env File</h3>
+<pre>cat > /home/kinto/kinto-smart-ops/.env << 'EOF'
+NODE_ENV=production
+PORT=5050
+
+DATABASE_URL=postgresql://kinto_user:password@localhost:5432/kinto_ops
+SESSION_SECRET=your-secure-random-session-secret-min-32-chars
+
+WHATSAPP_PHONE_NUMBER_ID=your_phone_number_id
+WHATSAPP_ACCESS_TOKEN=your_whatsapp_access_token
+WHATSAPP_VERIFY_TOKEN=your_webhook_verification_token
+
+COLLOKI_FLOW_API_KEY=sk-your-colloki-api-key-here
+
+REPLIT_DEPLOYMENT=false
+VITE_API_URL=https://ops.kintowwater.com
+EOF
+
+chmod 600 /home/kinto/kinto-smart-ops/.env</pre>
+
+<h3>Generate Secure Session Secret</h3>
+<pre>openssl rand -base64 32</pre>
+
+<h2>SSL Certificate</h2>
+
+<h3>Install Certbot</h3>
+<pre>sudo dnf install -y certbot python3-certbot-nginx</pre>
+
+<h3>Request Certificate</h3>
+<pre>sudo certbot certonly --standalone -d ops.kintowwater.com</pre>
+
+<h3>Enable Auto-Renewal</h3>
+<pre>sudo systemctl enable certbot-renew.timer
+sudo systemctl start certbot-renew.timer
+sudo certbot renew --dry-run</pre>
+
+<h2>Nginx Reverse Proxy</h2>
+
+<h3>Create Configuration</h3>
+<pre>sudo tee /etc/nginx/conf.d/kinto.conf > /dev/null << 'EOF'
+upstream kinto_app {
+    server 127.0.0.1:5050;
+}
+
+server {
+    listen 80;
+    server_name ops.kintowwater.com;
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name ops.kintowwater.com;
+    
+    ssl_certificate /etc/letsencrypt/live/ops.kintowwater.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/ops.kintowwater.com/privkey.pem;
+    
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+    
+    location / {
+        proxy_pass http://kinto_app;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+EOF
+
+sudo nginx -t
+sudo systemctl enable nginx
+sudo systemctl start nginx</pre>
+
+<h2>Systemd Service</h2>
+
+<h3>Create Service File</h3>
+<pre>sudo tee /etc/systemd/system/kinto.service > /dev/null << 'EOF'
+[Unit]
+Description=KINTO Smart Ops Application
+After=network.target postgresql-15.service
+
+[Service]
+Type=simple
+User=kinto
+WorkingDirectory=/home/kinto/kinto-smart-ops
+EnvironmentFile=/home/kinto/kinto-smart-ops/.env
+ExecStart=/usr/bin/npm run prod
+Restart=on-failure
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable kinto
+sudo systemctl start kinto
+sudo systemctl status kinto</pre>
+
+<h2>WhatsApp Webhooks</h2>
+
+<h3>1. WhatsApp Business API Webhook</h3>
+<pre>Meta App Dashboard → WhatsApp → Configuration
+
+Callback URL: https://ops.kintowwater.com/api/whatsapp/webhook
+Verify Token: (from .env WHATSAPP_VERIFY_TOKEN)
+Subscribe to: messages
+Click: Verify and Save</pre>
+
+<h3>2. Colloki Flow Webhook</h3>
+<pre>Colloki Dashboard:
+
+URL: https://ops.kintowwater.com/api/colloki/callback
+Authorization: Bearer KINTO_COLLOKI_WEBHOOK_SECRET_2025</pre>
+
+<h2>Verification & Testing</h2>
+
+<h3>Check Services</h3>
+<pre>sudo systemctl status nginx
+sudo systemctl status kinto
+sudo systemctl status postgresql-15</pre>
+
+<h3>View Logs</h3>
+<pre>sudo journalctl -u kinto -f
+sudo journalctl -u kinto -n 50
+sudo tail -f /var/log/nginx/error.log</pre>
+
+<h3>Test HTTPS</h3>
+<pre>curl https://ops.kintowwater.com</pre>
+
+<h2>Database Backup</h2>
+
+<h3>Create Manual Backup</h3>
+<pre>sudo su - postgres
+pg_dump -Fc kinto_ops > /var/backups/kinto/kinto_ops_$(date +%Y%m%d_%H%M%S).dump
+exit</pre>
+
+<h3>Download to Mac</h3>
+<pre>scp -i ~/.ssh/kinto-instance.key \
+  opc@YOUR_PUBLIC_IP:/var/backups/kinto/kinto_ops_*.dump \
+  ~/kinto-backups/</pre>
+
+<h2>Troubleshooting</h2>
+
+<table>
+<tr><th>Issue</th><th>Solution</th></tr>
+<tr><td>SSH connection refused</td><td>Check security list, public IP correct, firewall enabled</td></tr>
+<tr><td>App won't start</td><td>sudo journalctl -u kinto -n 100</td></tr>
+<tr><td>Database error</td><td>sudo systemctl status postgresql-15</td></tr>
+<tr><td>Nginx 502 error</td><td>sudo ss -tlnp | grep 5050</td></tr>
+<tr><td>SSL certificate error</td><td>Domain must point to public IP</td></tr>
+<tr><td>Webhook not working</td><td>curl -v https://ops.kintowwater.com/api/whatsapp/webhook</td></tr>
+</table>
+
+<h2>Deployment Checklist</h2>
+
+<div class="success">
+<ul>
+<li>☑ DNS A record updated (ops.kintowwater.com → Public IP)</li>
+<li>☑ SSH access verified</li>
+<li>☑ Node.js 20 installed</li>
+<li>☑ PostgreSQL 15 installed</li>
+<li>☑ Database kinto_ops created</li>
+<li>☑ Application cloned and deployed</li>
+<li>☑ .env file configured (port 5050)</li>
+<li>☑ SSL certificate obtained</li>
+<li>☑ Nginx configured with port 5050</li>
+<li>☑ Systemd service enabled</li>
+<li>☑ HTTPS endpoint working</li>
+<li>☑ WhatsApp webhooks configured</li>
+<li>☑ Database backup tested</li>
+</ul>
+</div>
+
+<h2>Key Configuration Summary</h2>
+
+<table>
+<tr><th>Parameter</th><th>Value</th></tr>
+<tr><td>Domain</td><td>ops.kintowwater.com</td></tr>
+<tr><td>Application Port</td><td>5050</td></tr>
+<tr><td>Database Name</td><td>kinto_ops</td></tr>
+<tr><td>Database User</td><td>kinto_user</td></tr>
+<tr><td>Database Port</td><td>5432</td></tr>
+<tr><td>Node.js Version</td><td>20 LTS</td></tr>
+<tr><td>PostgreSQL Version</td><td>15</td></tr>
+<tr><td>SSL Provider</td><td>Let's Encrypt</td></tr>
+<tr><td>Instance Type</td><td>OCI E2.1 (1 OCPU + 8GB)</td></tr>
+<tr><td>Max Users</td><td>5</td></tr>
+<tr><td>Monthly Cost</td><td>$0 (Always Free)</td></tr>
+</table>
+
+<div class="success">
+<h2>Deployment Complete! 🎉</h2>
+<p><strong>Your KINTO Smart Ops application is now ready:</strong></p>
+<ul>
+<li>✅ Running on <strong>https://ops.kintowwater.com</strong></li>
+<li>✅ Application port: <strong>5050</strong></li>
+<li>✅ Connected to PostgreSQL database</li>
+<li>✅ HTTPS/SSL enabled</li>
+<li>✅ Auto-restart on failure</li>
+<li>✅ Daily backups configured</li>
+<li>✅ Supports 5 users</li>
+<li>✅ Cost: <strong>$0/month</strong> (Always Free)</li>
+</ul>
+</div>
+
+</body>
+</html>
