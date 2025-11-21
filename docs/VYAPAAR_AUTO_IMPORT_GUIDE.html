@@ -214,9 +214,52 @@
         <li><strong>Product Categories</strong> - Extracted from item details</li>
         <li><strong>Customers</strong> - From your Party Report (all 177 parties)</li>
         <li><strong>Products</strong> - From your Sales transactions (auto-generated from items)</li>
-        <li><strong>Invoices</strong> - All 341 sales transactions with complete line items</li>
-        <li><strong>Invoice Line Items</strong> - All 567 product entries linked to invoices</li>
+        <li><strong>Invoices</strong> - All 339 sales transactions with complete line items</li>
+        <li><strong>Invoice Line Items</strong> - All 566 product entries linked to invoices</li>
     </ol>
+
+    <h2>Enhanced Features</h2>
+    <p>The import script includes several production-ready features:</p>
+
+    <div class="step">
+        <h3>🔄 Smart Duplicate Handling</h3>
+        <ul>
+            <li>Pre-loads existing data before importing</li>
+            <li>Skips duplicates without errors</li>
+            <li>Safe to re-run multiple times</li>
+            <li>Continues from last successful import</li>
+        </ul>
+    </div>
+
+    <div class="step">
+        <h3>🔐 Database Transactions</h3>
+        <ul>
+            <li>Each invoice + items wrapped in atomic transaction</li>
+            <li>If any item fails, entire invoice is rolled back</li>
+            <li>Prevents partial/corrupted invoice data</li>
+            <li>Ensures data integrity</li>
+        </ul>
+    </div>
+
+    <div class="step">
+        <h3>🌍 Intelligent GST Handling</h3>
+        <ul>
+            <li>Auto-detects intra-state vs inter-state transactions</li>
+            <li>Intra-state: Splits GST into CGST + SGST (50/50)</li>
+            <li>Inter-state: Uses IGST</li>
+            <li>Stores tax rates in basis points (18% → 1800)</li>
+        </ul>
+    </div>
+
+    <div class="step">
+        <h3>🔍 Normalized Matching</h3>
+        <ul>
+            <li>Case-insensitive customer/product lookups</li>
+            <li>Handles extra spaces and formatting differences</li>
+            <li>Prevents orphaned invoices from name mismatches</li>
+            <li>Uses database IDs instead of string matching</li>
+        </ul>
+    </div>
 
     <h2>Prerequisites</h2>
     
@@ -390,9 +433,9 @@
     <p>After import, verify your data in KINTO:</p>
     <ol>
         <li><strong>Navigate to Masters</strong> → Product Categories (should show 7 categories)</li>
-        <li><strong>Navigate to Masters</strong> → Customers (should show 177+ customers)</li>
-        <li><strong>Navigate to Masters</strong> → Products (should show 11+ products)</li>
-        <li><strong>Navigate to Sales</strong> → Invoices (should show 325+ invoices)</li>
+        <li><strong>Navigate to Masters</strong> → Customers (should show 177 customers)</li>
+        <li><strong>Navigate to Masters</strong> → Products (should show 11 products)</li>
+        <li><strong>Navigate to Sales</strong> → Invoices (should show 339 invoices)</li>
     </ol>
 
     <h2>Sample Output</h2>
@@ -400,39 +443,49 @@
 
 📖 Reading Excel files...
 ✓ Found 177 parties
-✓ Found 340 sales
+✓ Found 339 sales
 ✓ Found 566 item details
+
+🔍 Preloading existing data from database...
+✓ Loaded 0 existing categories
+✓ Loaded 0 existing vendors
+✓ Loaded 0 existing products
 
 📦 Step 1: Auto-creating Product Categories...
   ✓ Created category: General (CAT-001)
   ✓ Created category: Water Products (CAT-002)
-✅ Created/Found 7 categories
+✅ Created 7 new categories (Total: 7)
 
 👥 Step 2: Auto-creating Customers...
-  ✓ Created customer: ADHOC SRINIVASA PETROLEUM (CUST-002)
-  ✓ Created customer: AMMAYAMMA HP GAS GRAMIN VITRAK (CUST-003)
-✅ Created 174 new customers
+  ✓ Created customer: ADHOC SRINIVASA PETROLEUM (CUST-001)
+  ✓ Created customer: AMMAYAMMA HP GAS GRAMIN VITRAK (CUST-002)
+  ... (175 more customers)
+✅ Created 177 new customers (Total: 177)
 
 📦 Step 3: Auto-creating Products...
   ✓ Created product: 20 Ltr CAN (PROD-001)
   ✓ Created product: 1 Ltr. Bottle - Pack of 12 (PROD-002)
-✅ Created 11 new products
+  ... (9 more products)
+✅ Created 11 new products (Total: 11)
 
-📄 Step 4: Auto-creating Invoices...
-  ✓ Created invoice: 1 (2 items, ₹3781.30)
-  ✓ Created invoice: 2 (1 items, ₹3441.69)
-✅ Created 325 invoices
+📄 Step 4: Auto-creating Invoices with Transactions...
+  ✓ Created invoice: 1 (2 items, CGST+SGST, ₹3781.30)
+  ✓ Created invoice: 2 (1 items, CGST+SGST, ₹3441.69)
+  ✓ Created invoice: 3 (1 items, IGST, ₹5000.00)
+  ... (336 more invoices)
+✅ Created 339 invoices (Skipped: 0)
 
 ═══════════════════════════════════════
 ✅ AUTO-IMPORT COMPLETE!
 ═══════════════════════════════════════
-📦 Product Categories: 7
-👥 Customers: 174 new (179 total)
-📦 Products: 11 new (28 total)
-📄 Invoices: 325
+📦 Product Categories: 7 new (7 total)
+👥 Customers: 177 new (177 total)
+📦 Products: 11 new (11 total)
+📄 Invoices: 339 (Skipped: 0)
 ═══════════════════════════════════════
 
-🎉 All data imported successfully!</code></pre>
+🎉 All data imported successfully!
+📊 You can now view your data in KINTO Smart Ops</code></pre>
 
     <h2>Troubleshooting</h2>
 

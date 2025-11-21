@@ -11,8 +11,36 @@ The import script automatically creates:
 1. **Product Categories** - Extracted from item details
 2. **Customers** - From your Party Report (all 177 parties)
 3. **Products** - From your Sales transactions (auto-generated from items)
-4. **Invoices** - All 341 sales transactions with complete line items
-5. **Invoice Line Items** - All 567 product entries linked to invoices
+4. **Invoices** - All 339 sales transactions with complete line items
+5. **Invoice Line Items** - All 566 product entries linked to invoices
+
+## Enhanced Features
+
+The import script includes several production-ready features:
+
+### 🔄 Smart Duplicate Handling
+- Pre-loads existing data before importing
+- Skips duplicates without errors
+- Safe to re-run multiple times
+- Continues from last successful import
+
+### 🔐 Database Transactions
+- Each invoice + items wrapped in atomic transaction
+- If any item fails, entire invoice is rolled back
+- Prevents partial/corrupted invoice data
+- Ensures data integrity
+
+### 🌍 Intelligent GST Handling
+- Auto-detects intra-state vs inter-state transactions
+- Intra-state: Splits GST into CGST + SGST (50/50)
+- Inter-state: Uses IGST
+- Stores tax rates in basis points (18% → 1800)
+
+### 🔍 Normalized Matching
+- Case-insensitive customer/product lookups
+- Handles extra spaces and formatting differences
+- Prevents orphaned invoices from name mismatches
+- Uses database IDs instead of string matching
 
 ## Prerequisites
 
@@ -140,9 +168,9 @@ All codes are auto-generated with unique counters:
 After import, verify your data in KINTO:
 
 1. **Navigate to Masters** → Product Categories (should show 7 categories)
-2. **Navigate to Masters** → Customers (should show 177+ customers)
-3. **Navigate to Masters** → Products (should show 11+ products)
-4. **Navigate to Sales** → Invoices (should show 325+ invoices)
+2. **Navigate to Masters** → Customers (should show 177 customers)
+3. **Navigate to Masters** → Products (should show 11 products)
+4. **Navigate to Sales** → Invoices (should show 339 invoices)
 
 ## Sample Output
 
@@ -151,39 +179,49 @@ After import, verify your data in KINTO:
 
 📖 Reading Excel files...
 ✓ Found 177 parties
-✓ Found 340 sales
+✓ Found 339 sales
 ✓ Found 566 item details
+
+🔍 Preloading existing data from database...
+✓ Loaded 0 existing categories
+✓ Loaded 0 existing vendors
+✓ Loaded 0 existing products
 
 📦 Step 1: Auto-creating Product Categories...
   ✓ Created category: General (CAT-001)
   ✓ Created category: Water Products (CAT-002)
-✅ Created/Found 7 categories
+✅ Created 7 new categories (Total: 7)
 
 👥 Step 2: Auto-creating Customers...
-  ✓ Created customer: ADHOC SRINIVASA PETROLEUM (CUST-002)
-  ✓ Created customer: AMMAYAMMA HP GAS GRAMIN VITRAK (CUST-003)
-✅ Created 174 new customers
+  ✓ Created customer: ADHOC SRINIVASA PETROLEUM (CUST-001)
+  ✓ Created customer: AMMAYAMMA HP GAS GRAMIN VITRAK (CUST-002)
+  ... (175 more customers)
+✅ Created 177 new customers (Total: 177)
 
 📦 Step 3: Auto-creating Products...
   ✓ Created product: 20 Ltr CAN (PROD-001)
   ✓ Created product: 1 Ltr. Bottle - Pack of 12 (PROD-002)
-✅ Created 11 new products
+  ... (9 more products)
+✅ Created 11 new products (Total: 11)
 
-📄 Step 4: Auto-creating Invoices...
-  ✓ Created invoice: 1 (2 items, ₹3781.30)
-  ✓ Created invoice: 2 (1 items, ₹3441.69)
-✅ Created 325 invoices
+📄 Step 4: Auto-creating Invoices with Transactions...
+  ✓ Created invoice: 1 (2 items, CGST+SGST, ₹3781.30)
+  ✓ Created invoice: 2 (1 items, CGST+SGST, ₹3441.69)
+  ✓ Created invoice: 3 (1 items, IGST, ₹5000.00)
+  ... (336 more invoices)
+✅ Created 339 invoices (Skipped: 0)
 
 ═══════════════════════════════════════
 ✅ AUTO-IMPORT COMPLETE!
 ═══════════════════════════════════════
-📦 Product Categories: 7
-👥 Customers: 174 new (179 total)
-📦 Products: 11 new (28 total)
-📄 Invoices: 325
+📦 Product Categories: 7 new (7 total)
+👥 Customers: 177 new (177 total)
+📦 Products: 11 new (11 total)
+📄 Invoices: 339 (Skipped: 0)
 ═══════════════════════════════════════
 
 🎉 All data imported successfully!
+📊 You can now view your data in KINTO Smart Ops
 ```
 
 ## Troubleshooting
