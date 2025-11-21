@@ -51,6 +51,9 @@ The import script includes several production-ready features:
 - Links payments to invoices for accurate outstanding balance tracking
 - Preserves exact Vyapaar payment method field (defaults to "Cash" only if empty)
 - Prevents duplicate payment records on re-runs (idempotent)
+- **Uses Vyapaar's Total Amount** to ensure exact matching (prevents rounding mismatches)
+- **Verifies Balance Due** - Warns if calculated balance doesn't match Vyapaar (>₹1 difference)
+- **Enhanced logging** shows payment status: "✓ PAID", "pending amount", or "No payment received"
 - Enables Pending Payments Dashboard to show accurate data
 
 ### ✅ Data Integrity Validation
@@ -116,8 +119,10 @@ NODE_ENV=development tsx scripts/import-vyapaar-excel.ts
 ### Step 4: Invoice & Line Items Auto-Creation
 - Reads all sales transactions
 - Creates invoices with proper GST calculations
+- **Uses Vyapaar's Total Amount** to ensure exact matching (prevents rounding mismatches)
 - Links invoice items to products
 - Calculates CGST/SGST (for same-state) or IGST (for inter-state)
+- Verifies invoice balance matches Vyapaar's Balance Due
 - Sets invoice status to 'delivered' (all Vyapaar imports are historical sales)
 - **Result**: 325 invoices with line items created
 
@@ -145,13 +150,14 @@ NODE_ENV=development tsx scripts/import-vyapaar-excel.ts
 
 ### Sale Report → Invoices
 
-| Vyapaar Field | KINTO Field |
-|---------------|-------------|
+| Vyapaar Field | KINTO Field | Notes |
+|---------------|-------------|-------|
 | Invoice No | invoiceNumber |
 | Date | invoiceDate |
 | Party Name | buyerName |
-| Total Amount | totalAmount (in paise) |
+| **Total Amount** | **totalAmount (in paise)** | **Primary source - ensures exact matching with payments** |
 | Received Amount | Used to create payment records |
+| **Balance Due** | _(Verification only)_ | **Cross-checked to detect data mismatches** |
 | Payment Status | _(Not used - all imports set to 'delivered')_ |
 | Vehicle No | vehicleNumber |
 
