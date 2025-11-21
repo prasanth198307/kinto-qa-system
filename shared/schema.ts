@@ -781,6 +781,55 @@ export const insertVendorSchema = createInsertSchema(vendors, {
 export type InsertVendor = z.infer<typeof insertVendorSchema>;
 export type Vendor = typeof vendors.$inferSelect;
 
+// Vendor Type Master - Classifies vendors by brand they purchase (Kinto, HPPani, Purejal)
+export const vendorTypes = pgTable("vendor_types", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  code: varchar("code", { length: 50 }).notNull().unique(),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+  isActive: integer("is_active").default(1).notNull(),
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
+}, (table) => ({
+  codeIdx: index("vendor_types_code_idx").on(table.code),
+  isActiveIdx: index("vendor_types_is_active_idx").on(table.isActive),
+}));
+
+export const insertVendorTypeSchema = createInsertSchema(vendorTypes).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertVendorType = z.infer<typeof insertVendorTypeSchema>;
+export type VendorType = typeof vendorTypes.$inferSelect;
+
+// Vendor-VendorType Junction Table (Many-to-Many) - Vendors can buy multiple brands
+export const vendorVendorTypes = pgTable("vendor_vendor_types", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  vendorId: varchar("vendor_id").references(() => vendors.id, { onDelete: 'cascade' }).notNull(),
+  vendorTypeId: varchar("vendor_type_id").references(() => vendorTypes.id, { onDelete: 'cascade' }).notNull(),
+  isPrimary: integer("is_primary").default(0).notNull(), // 1 = Primary type for this vendor
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+}, (table) => ({
+  vendorIdIdx: index("vendor_vendor_types_vendor_id_idx").on(table.vendorId),
+  vendorTypeIdIdx: index("vendor_vendor_types_vendor_type_id_idx").on(table.vendorTypeId),
+  uniqueVendorType: index("vendor_vendor_types_unique_idx").on(table.vendorId, table.vendorTypeId),
+}));
+
+export const insertVendorVendorTypeSchema = createInsertSchema(vendorVendorTypes).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+});
+
+export type InsertVendorVendorType = z.infer<typeof insertVendorVendorTypeSchema>;
+export type VendorVendorType = typeof vendorVendorTypes.$inferSelect;
+
 // Raw Material Type Master - Defines types of raw materials with conversion methods
 export const rawMaterialTypes = pgTable("raw_material_types", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
