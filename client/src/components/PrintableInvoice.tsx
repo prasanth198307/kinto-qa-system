@@ -358,12 +358,9 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
 
         <!-- Footer Signature -->
         <div class="signature-section">
-          <div>For <strong>${invoice.sellerName || 'KINTO Manufacturing Pvt Ltd'}:</strong></div>
-          <div class="signature-box">
-            <div class="signature-space"></div>
-            ${invoice.authorizedSignatoryName ? `<div class="signatory-name">${invoice.authorizedSignatoryName}</div>` : ''}
-            <div>Authorized Signatory</div>
-          </div>
+          <div class="company-for-line">For <strong>${invoice.sellerName || 'KINTO Manufacturing Pvt Ltd'}:</strong></div>
+          <div class="signature-space"></div>
+          <div class="signatory-label">Authorized Signatory</div>
         </div>
 
         <!-- Declaration -->
@@ -693,21 +690,17 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
               font-size: 9px;
             }
 
-            .signature-box {
-              display: inline-block;
-              text-align: center;
-              min-width: 180px;
-              margin-top: 5px;
+            .company-for-line {
+              margin-bottom: 5px;
             }
 
             .signature-space {
-              height: 40px;
+              height: 60px;
               margin: 10px 0;
             }
 
-            .signatory-name {
-              font-weight: bold;
-              margin-bottom: 2px;
+            .signatory-label {
+              text-align: right;
             }
 
             /* Declaration */
