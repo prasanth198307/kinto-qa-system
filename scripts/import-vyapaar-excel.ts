@@ -202,7 +202,7 @@ for (const categoryName of uniqueCategories) {
       code: categoryCode,
       name: categoryName,
       description: `Auto-imported from Vyapaar`,
-      isActive: 'true',
+      isActive: 1,
     }).returning();
     
     categoryMap.set(normalizedName, category.id);
@@ -246,7 +246,7 @@ for (const unitName of uniqueUnits) {
       code: uomCode,
       name: unitName,
       description: `Auto-imported from Vyapaar`,
-      isActive: 'true',
+      isActive: 1,
     }).returning();
     
     uomMap.set(normalizedUnit, newUOM.id);
@@ -268,7 +268,7 @@ if (!fallbackUOMId) {
       code: fallbackCode,
       name: 'pcs',
       description: 'Auto-created fallback unit for products without specified unit',
-      isActive: 'true',
+      isActive: 1,
     }).returning();
     fallbackUOMId = fallbackUOM.id;
     uomMap.set(normalize('pcs'), fallbackUOM.id);
@@ -301,7 +301,7 @@ if (!defaultProductTypeId) {
       code: typeCode,
       name: 'Sold Items',
       description: 'Auto-created for Vyapaar imported products',
-      isActive: 'true',
+      isActive: 1,
     }).returning();
     defaultProductTypeId = newType.id;
     productTypeMap.set(normalize('Sold Items'), newType.id);
@@ -342,7 +342,7 @@ for (const party of parties) {
       gstNumber: party.GSTIN || '',
       aadhaarNumber: party.Aadhar || '',
       vendorType: 'customer',
-      isActive: 'true',
+      isActive: 1,
     }).returning();
     
     partyMap.set(normalizedName, vendor.id);
@@ -420,7 +420,7 @@ for (const [productName, itemData] of uniqueProducts) {
       gstPercent: gstPercent.toString(),
       hsnCode: itemData.__EMPTY_4 || '',
       description: itemData.__EMPTY_7 || '',
-      isActive: 'true',
+      isActive: 1,
     }).returning();
     
     productMap.set(normalizedName, product.id);
@@ -675,6 +675,14 @@ const vendorTypeMap = new Map(allVendorTypes.map(vt => [vt.code.toLowerCase(), v
 
 console.log(`Found ${allVendorTypes.length} vendor types: ${allVendorTypes.map(vt => vt.name).join(', ')}`);
 
+// Query ALL vendors from database (includes both newly created and existing vendors)
+const allVendors = await db.select().from(vendors);
+const vendorNameToId = new Map(
+  allVendors.map(v => [normalize(v.vendorName), v.id])
+);
+
+console.log(`Found ${allVendors.length} total vendors in database`);
+
 // Get all invoices with their items
 const allInvoices = await db.select().from(invoices);
 const allInvoiceItems = await db.select().from(invoiceItems);
@@ -704,9 +712,9 @@ for (const invoice of allInvoices) {
     }
     
     if (detectedBrand) {
-      // Get vendor ID from invoice
-      const vendorName = invoice.buyerName.toLowerCase();
-      const vendorId = Array.from(partyMap.entries()).find(([name, _]) => name === vendorName)?.[1];
+      // Get vendor ID from database using normalized name
+      const normalizedBuyerName = normalize(invoice.buyerName);
+      const vendorId = vendorNameToId.get(normalizedBuyerName);
       
       if (vendorId) {
         if (!vendorBrandCounts.has(vendorId)) {

@@ -47,11 +47,14 @@ import type { Vendor } from "@shared/schema";
 
 interface VendorType {
   id: string;
-  typeCode: string;
-  typeName: string;
+  code: string;
+  name: string;
   description: string | null;
-  displayOrder: number | null;
-  isActive: string;
+  isActive: number;
+  recordStatus: number;
+  createdBy: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
 }
 
 interface VendorVendorType {
@@ -62,20 +65,7 @@ interface VendorVendorType {
   vendorType?: VendorType;
 }
 
-function VendorTypesBadges({ vendorId }: { vendorId: string }) {
-  const { data: vendorTypes = [], isLoading } = useQuery<VendorVendorType[]>({
-    queryKey: ['/api/vendors', vendorId, 'types'],
-    queryFn: async () => {
-      const response = await fetch(`/api/vendors/${vendorId}/types`);
-      if (!response.ok) return [];
-      return response.json();
-    },
-  });
-
-  if (isLoading) {
-    return <span className="text-xs text-muted-foreground">Loading...</span>;
-  }
-
+function VendorTypesBadges({ vendorId, vendorTypes = [] }: { vendorId: string; vendorTypes?: VendorVendorType[] }) {
   if (vendorTypes.length === 0) {
     return <span className="text-xs text-muted-foreground">-</span>;
   }
@@ -90,7 +80,7 @@ function VendorTypesBadges({ vendorId }: { vendorId: string }) {
           data-testid={`vendor-type-badge-${vt.vendorTypeId}`}
         >
           {vt.isPrimary === 1 && <Star className="h-2 w-2 mr-1 fill-current" />}
-          {vt.vendorType?.typeName || vt.vendorType?.typeCode || 'Unknown'}
+          {vt.vendorType?.name || vt.vendorType?.code || 'Unknown'}
         </Badge>
       ))}
     </div>
@@ -113,6 +103,20 @@ export default function VendorManagement() {
   const { data: vendorTypes = [] } = useQuery<VendorType[]>({
     queryKey: ['/api/vendor-types'],
   });
+
+  // Batch fetch all vendor-type assignments to avoid N+1 queries
+  const { data: allVendorTypeAssignments = [] } = useQuery<VendorVendorType[]>({
+    queryKey: ['/api/vendor-vendor-types/batch'],
+  });
+
+  // Group vendor types by vendorId for quick lookup
+  const vendorTypesMap = allVendorTypeAssignments.reduce((acc, assignment) => {
+    if (!acc[assignment.vendorId]) {
+      acc[assignment.vendorId] = [];
+    }
+    acc[assignment.vendorId].push(assignment);
+    return acc;
+  }, {} as Record<string, VendorVendorType[]>);
 
   const { data: currentVendorTypes = [] } = useQuery<VendorVendorType[]>({
     queryKey: ['/api/vendors', editingVendor?.id, 'types'],
@@ -161,6 +165,7 @@ export default function VendorManagement() {
         await syncVendorTypes(vendor.id);
       }
       queryClient.invalidateQueries({ queryKey: ["/api/vendors"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/vendor-vendor-types/batch"] });
       toast({ title: "Vendor created successfully" });
       setIsDialogOpen(false);
       setSelectedVendorTypes([]);
@@ -183,6 +188,7 @@ export default function VendorManagement() {
       await syncVendorTypes(variables.id);
       queryClient.invalidateQueries({ queryKey: ["/api/vendors"] });
       queryClient.invalidateQueries({ queryKey: ["/api/vendors", variables.id, "types"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/vendor-vendor-types/batch"] });
       toast({ title: "Vendor updated successfully" });
       setIsDialogOpen(false);
       setEditingVendor(null);
@@ -431,15 +437,15 @@ export default function VendorManagement() {
                 <p className="text-sm text-muted-foreground">
                   Select vendor types based on product brands purchased. Mark one as primary.
                 </p>
-                {vendorTypes.filter(vt => vt.isActive === 'true').length === 0 ? (
+                {vendorTypes.filter(vt => vt.isActive === 1).length === 0 ? (
                   <div className="text-sm text-muted-foreground p-3 border rounded">
                     No vendor types available. Create them in Master Data → Vendor Types.
                   </div>
                 ) : (
                   <div className="space-y-2 border rounded-md p-4">
                     {vendorTypes
-                      .filter(vt => vt.isActive === 'true')
-                      .sort((a, b) => (a.displayOrder || 999) - (b.displayOrder || 999))
+                      .filter(vt => vt.isActive === 1)
+                      .sort((a, b) => a.name.localeCompare(b.name))
                       .map((type) => (
                         <div
                           key={type.id}
@@ -466,8 +472,8 @@ export default function VendorManagement() {
                               data-testid={`checkbox-vendor-type-${type.id}`}
                             />
                             <Label htmlFor={`vendor-type-${type.id}`} className="cursor-pointer flex-1">
-                              <span className="font-medium">{type.typeName}</span>
-                              <span className="text-sm text-muted-foreground ml-2">({type.typeCode})</span>
+                              <span className="font-medium">{type.name}</span>
+                              <span className="text-sm text-muted-foreground ml-2">({type.code})</span>
                             </Label>
                           </div>
                           {selectedVendorTypes.includes(type.id) && (
@@ -575,7 +581,7 @@ export default function VendorManagement() {
                     <TableCell>{vendor.city || "-"}</TableCell>
                     <TableCell>{vendor.vendorType || "-"}</TableCell>
                     <TableCell>
-                      <VendorTypesBadges vendorId={vendor.id} />
+                      <VendorTypesBadges vendorId={vendor.id} vendorTypes={vendorTypesMap[vendor.id] || []} />
                     </TableCell>
                     <TableCell>
                       {vendor.isCluster === 1 ? (

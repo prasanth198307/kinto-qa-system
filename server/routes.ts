@@ -1424,6 +1424,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Vendor-VendorType Assignment API
+  
+  // Batch endpoint to get all vendor-type assignments (avoids N+1 queries)
+  app.get('/api/vendor-vendor-types/batch', isAuthenticated, async (req: any, res) => {
+    try {
+      const rawAssignments = await db
+        .select({
+          id: vendorVendorTypes.id,
+          vendorId: vendorVendorTypes.vendorId,
+          vendorTypeId: vendorVendorTypes.vendorTypeId,
+          isPrimary: vendorVendorTypes.isPrimary,
+          vendorTypeCode: vendorTypes.code,
+          vendorTypeName: vendorTypes.name,
+          vendorTypeDescription: vendorTypes.description,
+          vendorTypeIsActive: vendorTypes.isActive,
+        })
+        .from(vendorVendorTypes)
+        .innerJoin(vendorTypes, eq(vendorVendorTypes.vendorTypeId, vendorTypes.id))
+        .where(eq(vendorTypes.isActive, 1));
+      
+      // Transform to match expected frontend structure
+      const assignments = rawAssignments.map(a => ({
+        id: a.id,
+        vendorId: a.vendorId,
+        vendorTypeId: a.vendorTypeId,
+        isPrimary: a.isPrimary,
+        vendorType: {
+          id: a.vendorTypeId,
+          code: a.vendorTypeCode,
+          name: a.vendorTypeName,
+          description: a.vendorTypeDescription,
+          isActive: a.vendorTypeIsActive,
+        }
+      }));
+      
+      res.json(assignments);
+    } catch (error) {
+      console.error("Error fetching vendor-type batch:", error);
+      res.status(500).json({ message: "Failed to fetch vendor types" });
+    }
+  });
+  
   app.post('/api/vendors/:vendorId/types/:vendorTypeId', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const { vendorId, vendorTypeId } = req.params;

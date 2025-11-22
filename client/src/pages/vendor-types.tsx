@@ -56,8 +56,8 @@ export default function VendorTypes() {
       const message = error.message || "Failed to create vendor type";
       if (message.includes("unique") || message.includes("duplicate") || message.includes("already exists")) {
         setValidationErrors({ 
-          typeCode: "This type code already exists",
-          typeName: "This type name already exists"
+          code: "This type code already exists",
+          name: "This type name already exists"
         });
       }
       toast({ 
@@ -80,8 +80,8 @@ export default function VendorTypes() {
       const message = error.message || "Failed to update vendor type";
       if (message.includes("unique") || message.includes("duplicate") || message.includes("already exists")) {
         setValidationErrors({ 
-          typeCode: "This type code already exists",
-          typeName: "This type name already exists"
+          code: "This type code already exists",
+          name: "This type name already exists"
         });
       }
       toast({ 
@@ -116,10 +116,9 @@ export default function VendorTypes() {
 
   const resetForm = () => {
     setFormData({
-      typeCode: "",
-      typeName: "",
+      code: "",
+      name: "",
       description: "",
-      displayOrder: "",
       isActive: true,
     });
     setEditingType(null);
@@ -163,22 +162,20 @@ export default function VendorTypes() {
     if (!validateForm()) return;
 
     createMutation.mutate({
-      typeCode: formData.typeCode.trim(),
-      typeName: formData.typeName.trim(),
+      code: formData.code.trim(),
+      name: formData.name.trim(),
       description: formData.description.trim() || null,
-      displayOrder: formData.displayOrder ? parseInt(formData.displayOrder) : null,
-      isActive: formData.isActive ? 'true' : 'false',
+      isActive: formData.isActive ? 1 : 0,
     });
   };
 
   const handleEdit = (type: VendorType) => {
     setEditingType(type);
     setFormData({
-      typeCode: type.typeCode,
-      typeName: type.typeName,
+      code: type.code,
+      name: type.name,
       description: type.description || "",
-      displayOrder: type.displayOrder?.toString() || "",
-      isActive: type.isActive === 'true',
+      isActive: type.isActive === 1,
     });
     setIsEditOpen(true);
   };
@@ -190,11 +187,10 @@ export default function VendorTypes() {
     updateMutation.mutate({
       id: editingType.id,
       data: {
-        typeCode: formData.typeCode.trim(),
-        typeName: formData.typeName.trim(),
+        code: formData.code.trim(),
+        name: formData.name.trim(),
         description: formData.description.trim() || null,
-        displayOrder: formData.displayOrder ? parseInt(formData.displayOrder) : null,
-        isActive: formData.isActive ? 'true' : 'false',
+        isActive: formData.isActive ? 1 : 0,
       }
     });
   };
@@ -243,7 +239,7 @@ export default function VendorTypes() {
             ) : (
               <div className="space-y-2">
                 {types
-                  .sort((a, b) => (a.displayOrder || 999) - (b.displayOrder || 999))
+                  .sort((a, b) => a.name.localeCompare(b.name))
                   .map((type) => (
                     <div
                       key={type.id}
@@ -252,8 +248,8 @@ export default function VendorTypes() {
                     >
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
-                          <h3 className="font-medium">{type.typeName}</h3>
-                          <span className="text-sm text-muted-foreground">({type.typeCode})</span>
+                          <h3 className="font-medium">{type.name}</h3>
+                          <span className="text-sm text-muted-foreground">({type.code})</span>
                         </div>
                         {type.description && (
                           <p className="text-sm text-muted-foreground mt-1">
@@ -261,9 +257,8 @@ export default function VendorTypes() {
                           </p>
                         )}
                         <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                          <span>Order: {type.displayOrder || 'N/A'}</span>
-                          <span className={type.isActive === 'true' ? "text-green-600" : "text-red-600"}>
-                            {type.isActive === 'true' ? "Active" : "Inactive"}
+                          <span className={type.isActive === 1 ? "text-green-600" : "text-red-600"}>
+                            {type.isActive === 1 ? "Active" : "Inactive"}
                           </span>
                         </div>
                       </div>
@@ -302,42 +297,42 @@ export default function VendorTypes() {
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="typeCode">Type Code *</Label>
+                <Label htmlFor="code">Type Code *</Label>
                 <Input
-                  id="typeCode"
-                  value={formData.typeCode}
+                  id="code"
+                  value={formData.code}
                   onChange={(e) => {
-                    setFormData({ ...formData, typeCode: e.target.value });
-                    setValidationErrors({ ...validationErrors, typeCode: "" });
+                    setFormData({ ...formData, code: e.target.value });
+                    setValidationErrors({ ...validationErrors, code: "" });
                   }}
                   placeholder="e.g., KINTO, HPPANI, PUREJAL"
-                  className={validationErrors.typeCode ? "border-destructive" : ""}
+                  className={validationErrors.code ? "border-destructive" : ""}
                   data-testid="input-vendor-type-code"
                 />
-                {validationErrors.typeCode && (
+                {validationErrors.code && (
                   <div className="flex items-center gap-1 text-sm text-destructive" data-testid="error-vendor-type-code">
                     <AlertCircle className="h-3 w-3" />
-                    <span>{validationErrors.typeCode}</span>
+                    <span>{validationErrors.code}</span>
                   </div>
                 )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="typeName">Type Name *</Label>
+                <Label htmlFor="name">Type Name *</Label>
                 <Input
-                  id="typeName"
-                  value={formData.typeName}
+                  id="name"
+                  value={formData.name}
                   onChange={(e) => {
-                    setFormData({ ...formData, typeName: e.target.value });
-                    setValidationErrors({ ...validationErrors, typeName: "" });
+                    setFormData({ ...formData, name: e.target.value });
+                    setValidationErrors({ ...validationErrors, name: "" });
                   }}
                   placeholder="e.g., Kinto, HPPani, Purejal"
-                  className={validationErrors.typeName ? "border-destructive" : ""}
+                  className={validationErrors.name ? "border-destructive" : ""}
                   data-testid="input-vendor-type-name"
                 />
-                {validationErrors.typeName && (
+                {validationErrors.name && (
                   <div className="flex items-center gap-1 text-sm text-destructive" data-testid="error-vendor-type-name">
                     <AlertCircle className="h-3 w-3" />
-                    <span>{validationErrors.typeName}</span>
+                    <span>{validationErrors.name}</span>
                   </div>
                 )}
               </div>
@@ -349,17 +344,6 @@ export default function VendorTypes() {
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Describe this vendor classification"
                   data-testid="input-vendor-type-description"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="displayOrder">Display Order</Label>
-                <Input
-                  id="displayOrder"
-                  type="number"
-                  value={formData.displayOrder}
-                  onChange={(e) => setFormData({ ...formData, displayOrder: e.target.value })}
-                  placeholder="Order number for sorting"
-                  data-testid="input-vendor-type-display-order"
                 />
               </div>
               <div className="flex items-center justify-between">
@@ -378,7 +362,7 @@ export default function VendorTypes() {
               </Button>
               <Button
                 onClick={handleCreate}
-                disabled={!formData.typeCode || !formData.typeName || createMutation.isPending}
+                disabled={!formData.code || !formData.name || createMutation.isPending}
                 data-testid="button-save-vendor-type"
               >
                 {createMutation.isPending ? "Creating..." : "Create"}
@@ -397,40 +381,40 @@ export default function VendorTypes() {
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-typeCode">Type Code *</Label>
+                <Label htmlFor="edit-code">Type Code *</Label>
                 <Input
-                  id="edit-typeCode"
-                  value={formData.typeCode}
+                  id="edit-code"
+                  value={formData.code}
                   onChange={(e) => {
-                    setFormData({ ...formData, typeCode: e.target.value });
-                    setValidationErrors({ ...validationErrors, typeCode: "" });
+                    setFormData({ ...formData, code: e.target.value });
+                    setValidationErrors({ ...validationErrors, code: "" });
                   }}
-                  className={validationErrors.typeCode ? "border-destructive" : ""}
+                  className={validationErrors.code ? "border-destructive" : ""}
                   data-testid="input-edit-vendor-type-code"
                 />
-                {validationErrors.typeCode && (
+                {validationErrors.code && (
                   <div className="flex items-center gap-1 text-sm text-destructive" data-testid="error-edit-vendor-type-code">
                     <AlertCircle className="h-3 w-3" />
-                    <span>{validationErrors.typeCode}</span>
+                    <span>{validationErrors.code}</span>
                   </div>
                 )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-typeName">Type Name *</Label>
+                <Label htmlFor="edit-name">Type Name *</Label>
                 <Input
-                  id="edit-typeName"
-                  value={formData.typeName}
+                  id="edit-name"
+                  value={formData.name}
                   onChange={(e) => {
-                    setFormData({ ...formData, typeName: e.target.value });
-                    setValidationErrors({ ...validationErrors, typeName: "" });
+                    setFormData({ ...formData, name: e.target.value });
+                    setValidationErrors({ ...validationErrors, name: "" });
                   }}
-                  className={validationErrors.typeName ? "border-destructive" : ""}
+                  className={validationErrors.name ? "border-destructive" : ""}
                   data-testid="input-edit-vendor-type-name"
                 />
-                {validationErrors.typeName && (
+                {validationErrors.name && (
                   <div className="flex items-center gap-1 text-sm text-destructive" data-testid="error-edit-vendor-type-name">
                     <AlertCircle className="h-3 w-3" />
-                    <span>{validationErrors.typeName}</span>
+                    <span>{validationErrors.name}</span>
                   </div>
                 )}
               </div>
@@ -441,16 +425,6 @@ export default function VendorTypes() {
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   data-testid="input-edit-vendor-type-description"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-displayOrder">Display Order</Label>
-                <Input
-                  id="edit-displayOrder"
-                  type="number"
-                  value={formData.displayOrder}
-                  onChange={(e) => setFormData({ ...formData, displayOrder: e.target.value })}
-                  data-testid="input-edit-vendor-type-display-order"
                 />
               </div>
               <div className="flex items-center justify-between">
@@ -469,7 +443,7 @@ export default function VendorTypes() {
               </Button>
               <Button
                 onClick={handleUpdate}
-                disabled={!formData.typeCode || !formData.typeName || updateMutation.isPending}
+                disabled={!formData.code || !formData.name || updateMutation.isPending}
                 data-testid="button-update-vendor-type"
               >
                 {updateMutation.isPending ? "Updating..." : "Update"}
@@ -483,7 +457,7 @@ export default function VendorTypes() {
             <AlertDialogHeader>
               <AlertDialogTitle>Deactivate Vendor Type?</AlertDialogTitle>
               <AlertDialogDescription>
-                This will mark "{typeToDelete?.typeName}" as inactive (soft delete). 
+                This will mark "{typeToDelete?.name}" as inactive (soft delete). 
                 The vendor type will not be permanently deleted and can be reactivated later 
                 by editing it and toggling the Active switch.
               </AlertDialogDescription>
