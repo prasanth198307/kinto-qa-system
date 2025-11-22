@@ -12,7 +12,8 @@ INSERT INTO roles (id, name, description, record_status) VALUES
 ('role-manager', 'Manager', 'Operations management access', 1),
 ('role-operator', 'Operator', 'Data entry and checklist operations', 1),
 ('role-reviewer', 'Reviewer', 'Review and approval access', 1)
-ON CONFLICT (name) DO UPDATE SET
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
   description = EXCLUDED.description,
   record_status = EXCLUDED.record_status;
 
