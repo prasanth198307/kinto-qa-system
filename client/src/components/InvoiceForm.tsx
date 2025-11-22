@@ -96,12 +96,14 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
     queryKey: ['/api/vendors'],
   });
 
-  const { data: vendorTypes = [] } = useQuery<VendorType[]>({
+  const { data: vendorTypes = [], isLoading: isLoadingVendorTypes } = useQuery<VendorType[]>({
     queryKey: ['/api/vendor-types'],
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 
-  const { data: vendorVendorTypes = [] } = useQuery<VendorVendorType[]>({
+  const { data: vendorVendorTypes = [], isLoading: isLoadingVendorVendorTypes } = useQuery<VendorVendorType[]>({
     queryKey: ['/api/vendor-vendor-types'],
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes  
   });
 
   const { data: banks = [] } = useQuery<Bank[]>({
@@ -141,19 +143,21 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
 
   // Filter vendors based on vendor type
   const filteredVendors = useMemo(() => {
+    const activeVendors = vendors.filter(v => v.isActive === 'true');
+    
     if (vendorTypeFilter === 'all') {
-      return vendors.filter(v => v.isActive === 'true');
+      return activeVendors;
     }
     
-    // Get vendor IDs that have the selected vendor type
-    const vendorIdsWithType = vendorVendorTypes
-      .filter(vvt => vvt.vendorTypeId === vendorTypeFilter)
-      .map(vvt => vvt.vendorId);
-    
-    // Filter vendors by type and active status
-    return vendors.filter(v => 
-      v.isActive === 'true' && vendorIdsWithType.includes(v.id)
+    // Get vendor IDs that have the selected vendor type (use Set for O(1) lookup)
+    const vendorIdsWithType = new Set(
+      vendorVendorTypes
+        .filter(vvt => vvt.vendorTypeId === vendorTypeFilter)
+        .map(vvt => vvt.vendorId)
     );
+    
+    // Filter vendors by type using Set for faster lookup
+    return activeVendors.filter(v => vendorIdsWithType.has(v.id));
   }, [vendors, vendorTypeFilter, vendorVendorTypes]);
 
   const form = useForm<InvoiceFormData>({
@@ -772,14 +776,18 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Types</SelectItem>
-                  {vendorTypes
-                    .filter(vt => vt.isActive === 1)
-                    .sort((a, b) => a.name.localeCompare(b.name))
-                    .map((type) => (
-                      <SelectItem key={type.id} value={type.id} data-testid={`vendor-type-option-${type.id}`}>
-                        {type.name}
-                      </SelectItem>
-                    ))}
+                  {isLoadingVendorTypes ? (
+                    <SelectItem value="_loading" disabled>Loading types...</SelectItem>
+                  ) : (
+                    vendorTypes
+                      .filter(vt => vt.isActive === 1)
+                      .sort((a, b) => a.name.localeCompare(b.name))
+                      .map((type) => (
+                        <SelectItem key={type.id} value={type.id} data-testid={`vendor-type-option-${type.id}`}>
+                          {type.name}
+                        </SelectItem>
+                      ))
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -808,32 +816,40 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
                       placeholder="Search vendors by name or GST..." 
                       data-testid="input-vendor-search"
                     />
-                    <CommandEmpty>No vendor found.</CommandEmpty>
+                    <CommandEmpty>
+                      {isLoadingVendorVendorTypes ? "Loading vendors..." : "No vendor found."}
+                    </CommandEmpty>
                     <CommandGroup className="max-h-[300px] overflow-y-auto">
-                      {filteredVendors.map((vendor) => (
-                        <CommandItem
-                          key={vendor.id}
-                          value={`${vendor.vendorName} ${vendor.gstNumber || ''}`}
-                          onSelect={() => {
-                            handleVendorChange(vendor.id);
-                            setVendorSearchOpen(false);
-                          }}
-                          data-testid={`vendor-option-${vendor.id}`}
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              selectedVendorId === vendor.id ? "opacity-100" : "opacity-0"
-                            )}
-                          />
-                          <div className="flex flex-col">
-                            <span className="font-medium">{vendor.vendorName}</span>
-                            {vendor.gstNumber && (
-                              <span className="text-xs text-muted-foreground">{vendor.gstNumber}</span>
-                            )}
-                          </div>
-                        </CommandItem>
-                      ))}
+                      {isLoadingVendorVendorTypes ? (
+                        <div className="p-4 text-center text-sm text-muted-foreground">
+                          Loading vendor data...
+                        </div>
+                      ) : (
+                        filteredVendors.map((vendor) => (
+                          <CommandItem
+                            key={vendor.id}
+                            value={`${vendor.vendorName} ${vendor.gstNumber || ''}`}
+                            onSelect={() => {
+                              handleVendorChange(vendor.id);
+                              setVendorSearchOpen(false);
+                            }}
+                            data-testid={`vendor-option-${vendor.id}`}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedVendorId === vendor.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            <div className="flex flex-col">
+                              <span className="font-medium">{vendor.vendorName}</span>
+                              {vendor.gstNumber && (
+                                <span className="text-xs text-muted-foreground">{vendor.gstNumber}</span>
+                              )}
+                            </div>
+                          </CommandItem>
+                        ))
+                      )}
                     </CommandGroup>
                   </Command>
                 </PopoverContent>
