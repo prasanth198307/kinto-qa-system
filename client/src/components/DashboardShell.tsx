@@ -33,7 +33,7 @@ export function DashboardShell({
         onMobileMenuClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
       />
       
-      <div className="flex min-h-screen bg-background">
+      <div className="flex min-h-screen bg-background overflow-x-hidden">
         <VerticalNavSidebar
           sections={navSections}
           activeItem={activeView}
@@ -43,7 +43,7 @@ export function DashboardShell({
           onMobileClose={() => setIsMobileMenuOpen(false)}
         />
         
-        <div className="flex-1 pt-16">
+        <div className="flex-1 pt-16 overflow-x-auto min-w-0">
           {children}
         </div>
       </div>
