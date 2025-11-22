@@ -5,6 +5,7 @@ import { Printer } from "lucide-react";
 import { format } from "date-fns";
 import { amountToWords } from "@/lib/number-to-words";
 import { useToast } from "@/hooks/use-toast";
+import QRCode from "qrcode";
 
 interface PrintableInvoiceProps {
   invoice: Invoice;
@@ -60,7 +61,7 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
 
   const isIntrastate = invoice.sellerStateCode === invoice.buyerStateCode;
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
     console.log('🖨️ Print button clicked!', { invoiceId: invoice.id, hasTemplate: !!invoice.templateId, isLoading: isLoadingTemplate });
 
     // Wait for template to load if templateId exists
@@ -105,6 +106,23 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
 
     const amountReceived = invoice.amountReceived || 0;
     const balanceDue = invoice.totalAmount - amountReceived;
+
+    let upiQRCodeDataUrl = '';
+    if (invoice.upiId) {
+      try {
+        const upiString = `upi://pay?pa=${encodeURIComponent(invoice.upiId)}&pn=${encodeURIComponent(invoice.accountHolderName || invoice.sellerName || 'KINTO')}&cu=INR`;
+        upiQRCodeDataUrl = await QRCode.toDataURL(upiString, {
+          width: 150,
+          margin: 1,
+          color: {
+            dark: '#000000',
+            light: '#FFFFFF'
+          }
+        });
+      } catch (error) {
+        console.error('Failed to generate UPI QR code:', error);
+      }
+    }
 
     const generateInvoiceHTML = (copyType: string) => `
       <div class="page">
@@ -315,16 +333,24 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
           Total Invoice Amount in words: <strong>${amountToWords(invoice.totalAmount)}</strong>
         </div>
 
-        <!-- Bank Details -->
+        <!-- Bank Details and UPI QR Code -->
         ${invoice.bankName || invoice.upiId ? `
-          <div class="bank-details">
-            <div class="bank-label">Company's Bank Details</div>
-            ${invoice.bankName ? `<div>Bank Name: <strong>${invoice.bankName}</strong></div>` : ''}
-            ${invoice.accountHolderName ? `<div>A/c Name: ${invoice.accountHolderName}</div>` : ''}
-            ${invoice.bankAccountNumber ? `<div>A/c No: ${invoice.bankAccountNumber}</div>` : ''}
-            ${invoice.bankIfscCode ? `<div>IFSC Code: ${invoice.bankIfscCode}</div>` : ''}
-            ${invoice.branchName ? `<div>Branch: ${invoice.branchName}</div>` : ''}
-            ${invoice.upiId ? `<div>UPI ID: ${invoice.upiId}</div>` : ''}
+          <div class="bank-details-container">
+            <div class="bank-details">
+              <div class="bank-label">Bank Details:</div>
+              ${invoice.bankName ? `<div>Name: <strong>${invoice.bankName}</strong></div>` : ''}
+              ${invoice.accountHolderName ? `<div>Account holder's name: ${invoice.accountHolderName}</div>` : ''}
+              ${invoice.bankAccountNumber ? `<div>Account No.: ${invoice.bankAccountNumber}</div>` : ''}
+              ${invoice.bankIfscCode ? `<div>IFSC code: ${invoice.bankIfscCode}</div>` : ''}
+              ${invoice.branchName ? `<div>Branch: ${invoice.branchName}</div>` : ''}
+              ${invoice.upiId ? `<div>UPI ID: ${invoice.upiId}</div>` : ''}
+            </div>
+            ${upiQRCodeDataUrl ? `
+              <div class="qr-code-section">
+                <div class="qr-label">Scan to Pay</div>
+                <img src="${upiQRCodeDataUrl}" alt="UPI QR Code" class="qr-code" />
+              </div>
+            ` : ''}
           </div>
         ` : ''}
 
@@ -332,9 +358,10 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
 
         <!-- Footer Signature -->
         <div class="signature-section">
+          <div>For <strong>${invoice.sellerName || 'KINTO Manufacturing Pvt Ltd'}:</strong></div>
           <div class="signature-box">
-            <div>for <strong>${invoice.sellerName || 'KINTO Manufacturing Pvt Ltd'}</strong></div>
             <div class="signature-space"></div>
+            ${invoice.authorizedSignatoryName ? `<div class="signatory-name">${invoice.authorizedSignatoryName}</div>` : ''}
             <div>Authorized Signatory</div>
           </div>
         </div>
@@ -588,11 +615,19 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
               background: #fafafa;
             }
 
-            /* Bank Details */
-            .bank-details {
+            /* Bank Details Container */
+            .bank-details-container {
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-start;
               border: 1px solid #000;
               padding: 8px;
               margin-bottom: 10px;
+              gap: 10px;
+            }
+
+            .bank-details {
+              flex: 1;
               font-size: 9px;
             }
 
@@ -603,6 +638,23 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
 
             .bank-details div {
               margin-bottom: 2px;
+            }
+
+            .qr-code-section {
+              text-align: center;
+              flex-shrink: 0;
+            }
+
+            .qr-label {
+              font-size: 9px;
+              font-weight: bold;
+              margin-bottom: 4px;
+            }
+
+            .qr-code {
+              width: 100px;
+              height: 100px;
+              border: 2px solid #000;
             }
 
             /* Terms Section */
@@ -638,18 +690,24 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
             .signature-section {
               text-align: right;
               margin-bottom: 10px;
+              font-size: 9px;
             }
 
             .signature-box {
               display: inline-block;
               text-align: center;
               min-width: 180px;
-              font-size: 9px;
+              margin-top: 5px;
             }
 
             .signature-space {
-              height: 50px;
+              height: 40px;
               margin: 10px 0;
+            }
+
+            .signatory-name {
+              font-weight: bold;
+              margin-bottom: 2px;
             }
 
             /* Declaration */

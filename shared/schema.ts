@@ -1474,6 +1474,7 @@ export const invoices = pgTable("invoices", {
   accountHolderName: varchar("account_holder_name", { length: 255 }),
   branchName: varchar("branch_name", { length: 255 }),
   upiId: varchar("upi_id", { length: 100 }),
+  authorizedSignatoryName: varchar("authorized_signatory_name", { length: 255 }),
   
   // Other Details
   placeOfSupply: varchar("place_of_supply", { length: 100 }),
