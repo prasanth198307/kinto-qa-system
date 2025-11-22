@@ -6346,13 +6346,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     { name: 'itemDetails', maxCount: 1 }
   ]), async (req: any, res: Response) => {
     try {
+      const XLSX = require('xlsx');
       const files = req.files as {
         partyReport?: Express.Multer.File[];
         saleReport?: Express.Multer.File[];
         itemDetails?: Express.Multer.File[];
       };
 
-      if (!files?.partyReport?.[0] || !files?.saleReport?.[0] || !files?.itemDetails?.[0]) {
+      // Check if Party Report and Sale Report are provided
+      if (!files?.partyReport?.[0] || !files?.saleReport?.[0]) {
+        return res.status(400).json({ 
+          success: false,
+          error: 'Party Report and Sale Report files are required'
+        });
+      }
+
+      // Handle two file upload formats:
+      // 1. Three separate files (partyReport, saleReport, itemDetails)
+      // 2. Two files where SaleReport contains "Item Details" sheet
+      let itemDetailsPath: string;
+      
+      if (files?.itemDetails?.[0]) {
+        // Format 1: Separate item details file
+        itemDetailsPath = files.itemDetails[0].path;
+      } else {
+        // Format 2: Extract "Item Details" sheet from SaleReport
+        const saleReportPath = files.saleReport[0].path;
+        const workbook = XLSX.readFile(saleReportPath);
+        
+        // Check if "Item Details" sheet exists
+        if (!workbook.SheetNames.includes('Item Details')) {
+          return res.status(400).json({ 
+            success: false,
+            error: 'Sale Report must contain an "Item Details" sheet, or provide a separate Item Details file'
+          });
+        }
+        
+        // Create a new workbook with just the Item Details sheet
+        const itemDetailsSheet = workbook.Sheets['Item Details'];
+        const newWorkbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(newWorkbook, itemDetailsSheet, 'Sheet1');
+        
+        // Save to temporary file
+        itemDetailsPath = path.join(path.dirname(saleReportPath), `temp_itemdetails_${Date.now()}.xlsx`);
+        XLSX.writeFile(newWorkbook, itemDetailsPath);
+      }
+
+      if (!files?.partyReport?.[0] || !files?.saleReport?.[0] || !itemDetailsPath) {
         return res.status(400).json({ 
           success: false,
           message: 'All three files are required: partyReport, saleReport, and itemDetails' 
@@ -6373,7 +6413,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       fs.writeFileSync(partyPath, files.partyReport[0].buffer);
       fs.writeFileSync(salePath, files.saleReport[0].buffer);
-      fs.writeFileSync(itemPath, files.itemDetails[0].buffer);
+      
+      // If itemDetailsPath is a temp file we created, copy it; otherwise write from buffer
+      if (files?.itemDetails?.[0]) {
+        fs.writeFileSync(itemPath, files.itemDetails[0].buffer);
+      } else {
+        // Copy the extracted temp file
+        fs.copyFileSync(itemDetailsPath, itemPath);
+      }
 
       console.log('[DATA IMPORT] Starting import from uploaded files');
       
@@ -6381,10 +6428,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await importVyapaarData(partyPath, salePath, itemPath);
 
       // Clean up temporary files
+      const filesToCleanup = [partyPath, salePath, itemPath];
+      // Also clean up the extracted temp file if we created one
+      if (!files?.itemDetails?.[0]) {
+        filesToCleanup.push(itemDetailsPath);
+      }
+      
       try {
-        fs.unlinkSync(partyPath);
-        fs.unlinkSync(salePath);
-        fs.unlinkSync(itemPath);
+        for (const file of filesToCleanup) {
+          if (fs.existsSync(file)) {
+            fs.unlinkSync(file);
+          }
+        }
       } catch (cleanupError) {
         console.error('[DATA IMPORT] Failed to cleanup temp files:', cleanupError);
       }

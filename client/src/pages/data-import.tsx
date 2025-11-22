@@ -78,10 +78,10 @@ export default function DataImport() {
   });
 
   const handleImport = () => {
-    if (!partyFile || !saleFile || !itemFile) {
+    if (!partyFile || !saleFile) {
       toast({
         title: "Missing Files",
-        description: "Please upload all three required Excel files",
+        description: "Please upload at least Party Report and Sale Report files",
         variant: "destructive",
       });
       return;
@@ -90,7 +90,9 @@ export default function DataImport() {
     const formData = new FormData();
     formData.append('partyReport', partyFile);
     formData.append('saleReport', saleFile);
-    formData.append('itemDetails', itemFile);
+    if (itemFile) {
+      formData.append('itemDetails', itemFile);
+    }
 
     setImportResult(null);
     importMutation.mutate(formData);
@@ -110,7 +112,8 @@ export default function DataImport() {
         <AlertTitle>Important Information</AlertTitle>
         <AlertDescription>
           This will clear existing data and import fresh data from Vyapaar Excel files. 
-          Make sure you have the latest Party Report, Sale Report, and Item Details exports.
+          You can either upload 3 separate files (Party Report, Sale Report, Item Details) 
+          OR 2 files if your Sale Report contains an "Item Details" sheet.
         </AlertDescription>
       </Alert>
 
@@ -118,7 +121,7 @@ export default function DataImport() {
         <CardHeader>
           <CardTitle data-testid="title-upload-files">Upload Excel Files</CardTitle>
           <CardDescription data-testid="description-upload-files">
-            Select the three required Excel exports from Vyapaar
+            Select the Excel exports from Vyapaar (Item Details is optional if included in Sale Report)
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -172,8 +175,11 @@ export default function DataImport() {
 
           <div className="space-y-2">
             <Label htmlFor="item-file" data-testid="label-item-file">
-              Item Details Report (Products)
+              Item Details Report (Products) - Optional
             </Label>
+            <p className="text-xs text-muted-foreground">
+              Only needed if not included as a sheet in Sale Report
+            </p>
             <div className="flex items-center gap-2">
               <Input
                 id="item-file"
@@ -197,7 +203,7 @@ export default function DataImport() {
           <div className="flex gap-2">
             <Button
               onClick={handleImport}
-              disabled={!partyFile || !saleFile || !itemFile || importMutation.isPending || importSuccessful}
+              disabled={!partyFile || !saleFile || importMutation.isPending || importSuccessful}
               className="flex-1 gap-2"
               data-testid="button-start-import"
             >
