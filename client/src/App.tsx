@@ -58,6 +58,7 @@ import { OperatorAssignedChecklists } from "@/components/OperatorAssignedCheckli
 import { VerticalNavSidebar, type NavSection } from "@/components/VerticalNavSidebar";
 import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard } from "lucide-react";
 import SalesDashboard from "@/components/SalesDashboard";
+import VendorAnalytics from "@/pages/vendor-analytics";
 import ReviewerDashboardPage from "@/pages/ReviewerDashboard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -513,6 +514,11 @@ function AdminDashboard() {
           icon: TrendingUp,
         },
         {
+          id: "vendor-analytics",
+          label: "Vendor Analytics",
+          icon: Building2,
+        },
+        {
           id: "reports",
           label: "Reports",
           icon: FileText,
@@ -803,6 +809,8 @@ function AdminDashboard() {
             <SalesDashboard />
           </div>
         );
+      case 'vendor-analytics':
+        return <VendorAnalytics />;
       case 'reports':
         return <Reports showHeader={false} />;
       default:
