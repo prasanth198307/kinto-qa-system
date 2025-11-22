@@ -164,10 +164,38 @@ export async function importVyapaarData(
       const itemWorkbook = XLSX.readFile(itemFilePath);
       
       const partyData: PartyData[] = XLSX.utils.sheet_to_json(partyWorkbook.Sheets[partyWorkbook.SheetNames[0]]);
-      const saleData: SaleData[] = XLSX.utils.sheet_to_json(saleWorkbook.Sheets[saleWorkbook.SheetNames[0]]);
-      const itemData: ItemData[] = XLSX.utils.sheet_to_json(itemWorkbook.Sheets[itemWorkbook.SheetNames[0]]);
+      let saleData: SaleData[] = XLSX.utils.sheet_to_json(saleWorkbook.Sheets[saleWorkbook.SheetNames[0]]);
+      let itemData: ItemData[] = XLSX.utils.sheet_to_json(itemWorkbook.Sheets[itemWorkbook.SheetNames[0]]);
       
-      console.log(`Read ${partyData.length} parties, ${saleData.length} sales, ${itemData.length} items`);
+      console.log(`Read raw data: ${partyData.length} parties, ${saleData.length} sales (before filtering), ${itemData.length} items (before filtering)`);
+      
+      // Filter out header rows (where invoice number is "Invoice No" or "Date" in date column)
+      const filteredSales = saleData.filter(sale => 
+        sale.__EMPTY_1 && 
+        sale.__EMPTY_1 !== 'Invoice No' && 
+        String(sale.__EMPTY_1).trim() !== ''
+      );
+      
+      const filteredItems = itemData.filter(item => 
+        item.__EMPTY && 
+        item.__EMPTY !== 'Invoice No' && 
+        String(item.__EMPTY).trim() !== ''
+      );
+      
+      // Log what was filtered out
+      const removedSales = saleData.length - filteredSales.length;
+      const removedItems = itemData.length - filteredItems.length;
+      if (removedSales > 0) {
+        console.log(`Filtered out ${removedSales} header/empty sale rows`);
+      }
+      if (removedItems > 0) {
+        console.log(`Filtered out ${removedItems} header/empty item rows`);
+      }
+      
+      saleData = filteredSales;
+      itemData = filteredItems;
+      
+      console.log(`After filtering: ${partyData.length} parties, ${saleData.length} sales, ${itemData.length} items`);
       
       // Find the dynamic date column (starts with "Generated on")
       const dateColumn = saleData.length > 0 
@@ -324,22 +352,18 @@ export async function importVyapaarData(
       }
       
       const invoiceItemsData = itemData.filter(item => item.__EMPTY === invoiceNumber);
-      if (invoiceItemsData.length === 0) {
-        console.log(`Skipping invoice ${invoiceNumber}: no items`);
-        skippedCount++;
-        continue;
-      }
       
-      // Pre-validate items to ensure at least one valid item exists
+      // Pre-validate items to find valid products (but allow invoices with no items for cancelled invoices)
       const validItems = invoiceItemsData.filter(item => {
         const productId = productMap.get(normalize(item.__EMPTY_2));
         return !!productId;
       });
       
-      if (validItems.length === 0) {
-        console.warn(`Skipping invoice ${invoiceNumber}: no valid products found for any items`);
-        skippedCount++;
-        continue;
+      // Log if this is a cancelled invoice (no items)
+      if (invoiceItemsData.length === 0) {
+        console.log(`Importing cancelled invoice ${invoiceNumber}: no items`);
+      } else if (validItems.length === 0) {
+        console.log(`Importing invoice ${invoiceNumber} with unmatched products - creating without line items`);
       }
       
         // Use the dynamically detected date column
