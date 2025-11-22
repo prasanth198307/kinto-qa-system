@@ -1,0 +1,272 @@
+rl',  'roleId',
+  'role',             'resetToken',
+  'resetTokenExpiry', 'createdAt',
+  'updatedAt'
+]
+✅ Login successful for admin
+✅ Session regenerated and saved
+   User: admin
+   Session ID: 6wkIlDLPHmZD8aaWrHWMPml42rlENn6e
+   Cookie will be: connect.sid=6wkIlDLPHmZD8aaWrHWMPml42rlENn6e
+4:46:52 AM [express] POST /api/login 200 in 118ms :: {"id":"user-admin","username":"admin","password…
+🔹 Request: GET /api/machines
+   Cookie header: connect.sid=s%3A6wkIlDLPHmZD8aaWrHWMPml42rlENn6e.c4WaTCiH5AGdci7TMU5Wqko4Av09mPQTJO9%2BDUgInNs
+   Session ID: 6wkIlDLPHmZD8aaWrHWMPml42rlENn6e
+   Authenticated: true
+4:46:52 AM [express] GET /api/machines 304 in 5ms :: [{"id":"80649cc4-2677-493d-a712-63f0833ae39d","…
+🔹 Request: GET /api/users
+   Cookie header: connect.sid=s%3A6wkIlDLPHmZD8aaWrHWMPml42rlENn6e.c4WaTCiH5AGdci7TMU5Wqko4Av09mPQTJO9%2BDUgInNs
+   Session ID: 6wkIlDLPHmZD8aaWrHWMPml42rlENn6e
+   Authenticated: true
+🔹 Request: GET /api/invoices
+   Cookie header: connect.sid=s%3A6wkIlDLPHmZD8aaWrHWMPml42rlENn6e.c4WaTCiH5AGdci7TMU5Wqko4Av09mPQTJO9%2BDUgInNs
+   Session ID: 6wkIlDLPHmZD8aaWrHWMPml42rlENn6e
+   Authenticated: true
+4:46:52 AM [express] GET /api/users 304 in 7ms :: [{"id":"3c0cd496-588c-4b91-bf4c-85b956a83f0c","use…
+4:46:52 AM [express] GET /api/invoices 304 in 9ms :: [{"id":"6db04d1a-34f1-4676-b0ff-4bfe4a3b20a5","…
+🔹 Request: GET /api/finished-goods
+   Cookie header: connect.sid=s%3A6wkIlDLPHmZD8aaWrHWMPml42rlENn6e.c4WaTCiH5AGdci7TMU5Wqko4Av09mPQTJO9%2BDUgInNs
+   Session ID: 6wkIlDLPHmZD8aaWrHWMPml42rlENn6e
+   Authenticated: true
+🔹 Request: GET /api/products
+   Cookie header: connect.sid=s%3A6wkIlDLPHmZD8aaWrHWMPml42rlENn6e.c4WaTCiH5AGdci7TMU5Wqko4Av09mPQTJO9%2BDUgInNs
+   Session ID: 6wkIlDLPHmZD8aaWrHWMPml42rlENn6e
+   Authenticated: true
+4:46:52 AM [express] GET /api/finished-goods 304 in 9ms :: [{"id":"988602b4-2926-4921-b67e-a31238dc5…
+🔹 Request: GET /api/maintenance-plans
+   Cookie header: connect.sid=s%3A6wkIlDLPHmZD8aaWrHWMPml42rlENn6e.c4WaTCiH5AGdci7TMU5Wqko4Av09mPQTJO9%2BDUgInNs
+   Session ID: 6wkIlDLPHmZD8aaWrHWMPml42rlENn6e
+   Authenticated: true
+🔹 Request: GET /api/spare-parts
+   Cookie header: connect.sid=s%3A6wkIlDLPHmZD8aaWrHWMPml42rlENn6e.c4WaTCiH5AGdci7TMU5Wqko4Av09mPQTJO9%2BDUgInNs
+   Session ID: 6wkIlDLPHmZD8aaWrHWMPml42rlENn6e
+   Authenticated: true
+🔹 Request: GET /api/checklist-templates
+   Cookie header: connect.sid=s%3A6wkIlDLPHmZD8aaWrHWMPml42rlENn6e.c4WaTCiH5AGdci7TMU5Wqko4Av09mPQTJO9%2BDUgInNs
+   Session ID: 6wkIlDLPHmZD8aaWrHWMPml42rlENn6e
+   Authenticated: true
+🔹 Request: GET /api/stats/today
+   Cookie header: connect.sid=s%3A6wkIlDLPHmZD8aaWrHWMPml42rlENn6e.c4WaTCiH5AGdci7TMU5Wqko4Av09mPQTJO9%2BDUgInNs
+   Session ID: 6wkIlDLPHmZD8aaWrHWMPml42rlENn6e
+   Authenticated: true
+4:46:52 AM [express] GET /api/products 304 in 7ms :: [{"id":"871415b7-ccbb-4194-8444-b77188a2782a","…
+4:46:52 AM [express] GET /api/maintenance-plans 304 in 19ms :: []
+4:46:52 AM [express] GET /api/spare-parts 304 in 19ms :: [{"id":"66d39383-d0c9-4f4f-92fa-86487dfd485…
+🔹 Request: GET /api/invoice-payments
+   Cookie header: connect.sid=s%3A6wkIlDLPHmZD8aaWrHWMPml42rlENn6e.c4WaTCiH5AGdci7TMU5Wqko4Av09mPQTJO9%2BDUgInNs
+   Session ID: 6wkIlDLPHmZD8aaWrHWMPml42rlENn6e
+   Authenticated: true
+4:46:52 AM [express] GET /api/checklist-templates 304 in 20ms :: []
+4:46:52 AM [express] GET /api/invoice-payments 304 in 5ms :: []
+🔹 Request: GET /api/pm-task-list-templates
+   Cookie header: connect.sid=s%3A6wkIlDLPHmZD8aaWrHWMPml42rlENn6e.c4WaTCiH5AGdci7TMU5Wqko4Av09mPQTJO9%2BDUgInNs
+   Session ID: 6wkIlDLPHmZD8aaWrHWMPml42rlENn6e
+   Authenticated: true
+🔹 Request: GET /api/raw-materials
+   Cookie header: connect.sid=s%3A6wkIlDLPHmZD8aaWrHWMPml42rlENn6e.c4WaTCiH5AGdci7TMU5Wqko4Av09mPQTJO9%2BDUgInNs
+   Session ID: 6wkIlDLPHmZD8aaWrHWMPml42rlENn6e
+   Authenticated: true
+4:46:52 AM [express] GET /api/stats/today 304 in 23ms :: {"rawMaterialIssuancesCount":0,"gatepassesC…
+4:46:52 AM [express] GET /api/pm-task-list-templates 304 in 2ms :: []
+4:46:52 AM [express] GET /api/raw-materials 304 in 3ms :: [{"id":"69898f7e-c760-4b3e-9333-666921606e…
+🔹 Request: GET /api/uom
+   Cookie header: connect.sid=s%3A6wkIlDLPHmZD8aaWrHWMPml42rlENn6e.c4WaTCiH5AGdci7TMU5Wqko4Av09mPQTJO9%2BDUgInNs
+   Session ID: 6wkIlDLPHmZD8aaWrHWMPml42rlENn6e
+   Authenticated: true
+4:46:56 AM [express] GET /api/uom 304 in 8ms :: [{"id":"c874da8d-88f2-43a4-b301-303b3ac07f6f","code"…
+🔹 Request: GET /api/analytics/variance
+   Cookie header: connect.sid=s%3A6wkIlDLPHmZD8aaWrHWMPml42rlENn6e.c4WaTCiH5AGdci7TMU5Wqko4Av09mPQTJO9%2BDUgInNs
+   Session ID: 6wkIlDLPHmZD8aaWrHWMPml42rlENn6e
+   Authenticated: true
+Error generating variance analytics: error: column production_reconciliations.produced_cases does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:8144:35 {
+  length: 140,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '283',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+4:47:00 AM [express] GET /api/analytics/variance 500 in 17ms :: {"message":"Failed to generate varia…
+🔹 Request: GET /api/production-entries
+   Cookie header: connect.sid=s%3A6wkIlDLPHmZD8aaWrHWMPml42rlENn6e.c4WaTCiH5AGdci7TMU5Wqko4Av09mPQTJO9%2BDUgInNs
+   Session ID: 6wkIlDLPHmZD8aaWrHWMPml42rlENn6e
+   Authenticated: true
+Error fetching production entries: error: column production_entries.rejected_quantity does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllProductionEntries (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:2801:25)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:7800:23 {
+  length: 135,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '226',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+4:47:01 AM [express] GET /api/production-entries 500 in 8ms :: {"message":"Failed to fetch productio…
+🔹 Request: GET /api/machine-startup-tasks
+   Cookie header: connect.sid=s%3A6wkIlDLPHmZD8aaWrHWMPml42rlENn6e.c4WaTCiH5AGdci7TMU5Wqko4Av09mPQTJO9%2BDUgInNs
+   Session ID: 6wkIlDLPHmZD8aaWrHWMPml42rlENn6e
+   Authenticated: true
+4:47:02 AM [express] GET /api/machine-startup-tasks 304 in 11ms :: []
+🔹 Request: GET /api/gatepasses
+   Cookie header: connect.sid=s%3A6wkIlDLPHmZD8aaWrHWMPml42rlENn6e.c4WaTCiH5AGdci7TMU5Wqko4Av09mPQTJO9%2BDUgInNs
+   Session ID: 6wkIlDLPHmZD8aaWrHWMPml42rlENn6e
+   Authenticated: true
+4:47:03 AM [express] GET /api/gatepasses 304 in 8ms :: []
+🔹 Request: GET /api/invoice-items/6db04d1a-34f1-4676-b0ff-4bfe4a3b20a5
+   Cookie header: connect.sid=s%3A6wkIlDLPHmZD8aaWrHWMPml42rlENn6e.c4WaTCiH5AGdci7TMU5Wqko4Av09mPQTJO9%2BDUgInNs
+   Session ID: 6wkIlDLPHmZD8aaWrHWMPml42rlENn6e
+   Authenticated: true
+4:47:03 AM [express] GET /api/invoice-items/6db04d1a-34f1-4676-b0ff-4bfe4a3b20a5 304 in 8ms :: [{"id…
+🔹 Request: GET /api/raw-material-issuances
+   Cookie header: connect.sid=s%3A6wkIlDLPHmZD8aaWrHWMPml42rlENn6e.c4WaTCiH5AGdci7TMU5Wqko4Av09mPQTJO9%2BDUgInNs
+   Session ID: 6wkIlDLPHmZD8aaWrHWMPml42rlENn6e
+   Authenticated: true
+4:47:05 AM [express] GET /api/raw-material-issuances 304 in 8ms :: []
+🔹 Request: GET /api/vendors
+   Cookie header: connect.sid=s%3A6wkIlDLPHmZD8aaWrHWMPml42rlENn6e.c4WaTCiH5AGdci7TMU5Wqko4Av09mPQTJO9%2BDUgInNs
+   Session ID: 6wkIlDLPHmZD8aaWrHWMPml42rlENn6e
+   Authenticated: true
+4:47:05 AM [express] GET /api/vendors 304 in 25ms :: [{"id":"8175fd79-9d36-4c2f-bb18-db1d5e644ee4","…
+🔹 Request: GET /api/production-reconciliations
+   Cookie header: connect.sid=s%3A6wkIlDLPHmZD8aaWrHWMPml42rlENn6e.c4WaTCiH5AGdci7TMU5Wqko4Av09mPQTJO9%2BDUgInNs
+   Session ID: 6wkIlDLPHmZD8aaWrHWMPml42rlENn6e
+   Authenticated: true
+🔹 Request: GET /api/production-entries
+   Cookie header: connect.sid=s%3A6wkIlDLPHmZD8aaWrHWMPml42rlENn6e.c4WaTCiH5AGdci7TMU5Wqko4Av09mPQTJO9%2BDUgInNs
+   Session ID: 6wkIlDLPHmZD8aaWrHWMPml42rlENn6e
+   Authenticated: true
+Error fetching production reconciliations: error: column "produced_cases" does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllProductionReconciliations (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:2854:16)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:7865:31 {
+  length: 115,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '109',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+Error fetching production entries: error: column production_entries.rejected_quantity does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllProductionEntries (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:2801:25)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:7800:23 {
+  length: 135,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '226',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+4:47:05 AM [express] GET /api/production-reconciliations 500 in 20ms :: {"message":"Failed to fetch …
+4:47:05 AM [express] GET /api/production-entries 500 in 20ms :: {"message":"Failed to fetch producti…
+🔹 Request: GET /api/production-entries
+   Cookie header: connect.sid=s%3A6wkIlDLPHmZD8aaWrHWMPml42rlENn6e.c4WaTCiH5AGdci7TMU5Wqko4Av09mPQTJO9%2BDUgInNs
+   Session ID: 6wkIlDLPHmZD8aaWrHWMPml42rlENn6e
+   Authenticated: true
+Error fetching production entries: error: column production_entries.rejected_quantity does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllProductionEntries (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:2801:25)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:7800:23 {
+  length: 135,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '226',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+4:47:06 AM [express] GET /api/production-entries 500 in 17ms :: {"message":"Failed to fetch producti…
+🔹 Request: GET /api/sales-returns
+   Cookie header: connect.sid=s%3A6wkIlDLPHmZD8aaWrHWMPml42rlENn6e.c4WaTCiH5AGdci7TMU5Wqko4Av09mPQTJO9%2BDUgInNs
+   Session ID: 6wkIlDLPHmZD8aaWrHWMPml42rlENn6e
+   Authenticated: true
+Error fetching sales returns: error: column sales_returns.gatepass_id does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllSalesReturns (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:3180:25)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:9115:23 {
+  length: 124,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '124',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
