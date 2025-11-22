@@ -140,9 +140,16 @@ export async function importVyapaarData(
       
       console.log(`Read ${partyData.length} parties, ${saleData.length} sales, ${itemData.length} items`);
       
-      // Find the invoice date column - use the first non-__EMPTY column that's not "Generated on"
-      // Vyapaar exports have the date in __EMPTY column (first column after party name)
-      console.log('Sale data sample columns:', saleData.length > 0 ? Object.keys(saleData[0]) : 'no data');
+      // Find the dynamic date column (starts with "Generated on")
+      const dateColumn = saleData.length > 0 
+        ? Object.keys(saleData[0]).find(key => key.startsWith('Generated on'))
+        : undefined;
+      
+      if (!dateColumn) {
+        throw new Error('Could not find date column in Sale Report. Expected column starting with "Generated on"');
+      }
+      
+      console.log(`Using date column: ${dateColumn}`);
       
       // Create UOM if they don't exist (preserve existing master data)
       const existingUoms = await tx.select().from(uom);
@@ -306,8 +313,8 @@ export async function importVyapaarData(
         continue;
       }
       
-        // Vyapaar exports use __EMPTY for invoice date (column after invoice number)
-        const invoiceDateStr = sale.__EMPTY;
+        // Use the dynamically detected date column
+        const invoiceDateStr = sale[dateColumn];
         let invoiceDate: Date;
         
         if (!invoiceDateStr || invoiceDateStr === '') {
@@ -317,7 +324,19 @@ export async function importVyapaarData(
         }
         
         try {
-          invoiceDate = new Date(invoiceDateStr);
+          // Vyapaar exports dates in DD/MM/YYYY format, convert to YYYY-MM-DD for parsing
+          const dateStr = String(invoiceDateStr).trim();
+          const parts = dateStr.split('/');
+          
+          if (parts.length === 3) {
+            // Convert DD/MM/YYYY to YYYY-MM-DD
+            const isoDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+            invoiceDate = new Date(isoDate);
+          } else {
+            // Fallback to direct parsing
+            invoiceDate = new Date(dateStr);
+          }
+          
           if (isNaN(invoiceDate.getTime())) {
             throw new Error('Invalid date');
           }
@@ -350,11 +369,11 @@ export async function importVyapaarData(
         invoiceDate: invoiceDate.toISOString(),
         buyerName: vendorName,
         buyerId: vendorId,
-        subtotalAmount: Math.round(subtotal * 100),
-        cgst: Math.round(cgstTotal * 100),
-        sgst: Math.round(sgstTotal * 100),
-        igst: Math.round(igstTotal * 100),
-        roundOffAmount: 0,
+        subtotal: Math.round(subtotal * 100),
+        cgstAmount: Math.round(cgstTotal * 100),
+        sgstAmount: Math.round(sgstTotal * 100),
+        igstAmount: Math.round(igstTotal * 100),
+        roundOff: 0,
         totalAmount: Math.round(grandTotal * 100),
         remarks: sale.__EMPTY_10 || null,
         vehicleNumber: sale.__EMPTY_11 || null,
