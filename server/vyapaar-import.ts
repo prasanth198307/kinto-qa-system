@@ -77,12 +77,41 @@ function fuzzyMatch(str1: string, str2: string): boolean {
   const n1 = normalize(str1);
   const n2 = normalize(str2);
   
+  // Exact match
   if (n1 === n2) return true;
   
-  const clean = (s: string) => s.replace(/[()]/g, '').trim();
-  if (clean(n1) === clean(n2)) return true;
+  // Extract parts before and inside parentheses
+  const getVariants = (s: string): string[] => {
+    const variants = [s];
+    
+    // Add version without parentheses
+    variants.push(s.replace(/[()]/g, ' ').replace(/\s+/g, ' ').trim());
+    
+    // Add text before first parenthesis
+    const beforeParen = s.split('(')[0].trim();
+    if (beforeParen && beforeParen !== s) {
+      variants.push(beforeParen);
+    }
+    
+    // Add text inside last parenthesis
+    const parenMatch = s.match(/\(([^)]+)\)$/);
+    if (parenMatch && parenMatch[1]) {
+      variants.push(parenMatch[1].trim());
+    }
+    
+    return variants.filter(v => v.length > 0);
+  };
   
-  if (n1.includes(n2) || n2.includes(n1)) return true;
+  const variants1 = getVariants(n1);
+  const variants2 = getVariants(n2);
+  
+  // Check if any variant matches
+  for (const v1 of variants1) {
+    for (const v2 of variants2) {
+      if (v1 === v2) return true;
+      if (v1.includes(v2) || v2.includes(v1)) return true;
+    }
+  }
   
   return false;
 }
