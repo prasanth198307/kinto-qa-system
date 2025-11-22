@@ -56,6 +56,37 @@ The backend is an Express.js application built with TypeScript and Node.js, usin
 - **Build & Deployment:** Uses Vite for frontend, `tsx` for Express development, and `esbuild` for backend production. Drizzle Kit manages database schema.
 - **Environment Handling:** Automatically detects Replit environment for cross-origin cookie settings.
 
+## Production Deployment
+
+### Database Setup
+The system uses a production-ready database setup with TypeScript-based migrations and seed scripts:
+- **Migration System:** Baseline SQL migration (`migrations/0000_curly_silk_fever.sql`, 1080 lines) defines complete schema
+- **Seed Script:** Idempotent TypeScript seed script (`scripts/db/seed.ts`) for reference data initialization
+- **Deployment Documentation:** Comprehensive guide (`PRODUCTION_DEPLOYMENT.md`) with step-by-step setup instructions
+
+### Seed Script Characteristics
+- **Idempotent:** Safe to run multiple times without data duplication
+- **Sequential Operations:** Runs without transaction wrapping - each DB operation is individually atomic
+- **Partial Failure Handling:** Can be safely re-run to complete if interrupted
+- **Security Features:** Preserves existing admin passwords, warns about soft-deleted account reactivation
+- **Additive Permissions:** Only adds/updates role permissions - does not remove obsolete ones (manual cleanup required)
+- **Reference Data Coverage:** Seeds 4 roles, 62 permissions, 8 UOMs, 5 machine types, 3 vendor types, 4 product categories, 5 product types
+
+### Default Credentials
+- **Admin Username:** `admin`
+- **Admin Password:** `Admin@123` (must be changed after first login)
+- **Security Note:** If admin account was previously soft-deleted, seed script reactivates it with existing credentials
+
+### Deployment Checklist
+1. Set up `DATABASE_URL` environment variable for production PostgreSQL database
+2. Run migrations: `npx drizzle-kit migrate`
+3. Seed reference data: `npx tsx scripts/db/seed.ts`
+4. Remove test users: `DELETE FROM users WHERE username LIKE '%_test'`
+5. Change admin password on first login
+6. Manually clean up obsolete permissions if needed
+
+See `PRODUCTION_DEPLOYMENT.md` for detailed instructions and troubleshooting.
+
 ## External Dependencies
 
 ### Database
