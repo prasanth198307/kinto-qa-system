@@ -4639,6 +4639,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Vendor Analytics - Get aggregated vendor sales and payment data
+  app.get('/api/vendor-analytics', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      // Fetch all vendors, invoices, invoice items, payments, and vendor types
+      const allVendors = await storage.getAllVendors();
+      const allInvoices = await storage.getAllInvoices();
+      const allPayments = await db.select().from(invoicePayments).where(eq(invoicePayments.recordStatus, 1));
+      const allVendorTypes = await storage.getAllVendorTypes();
+      const vendorTypeLinks = await db.select().from(vendorVendorTypes).where(eq(vendorVendorTypes.recordStatus, 1));
+
+      // Get all invoice items for quantity calculations
+      const allItems = await db.select().from(invoiceItems).where(eq(invoiceItems.recordStatus, 1));
+
+      // Calculate analytics for each vendor
+      const vendorAnalytics = await Promise.all(allVendors.map(async (vendor) => {
+        // Find invoices for this vendor (where buyerName matches vendorName)
+        const vendorInvoices = allInvoices.filter(inv => 
+          inv.buyerName === vendor.vendorName && inv.recordStatus === 1
+        );
+
+        // Calculate total revenue, quantity, and orders
+        const totalRevenue = vendorInvoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
+        const totalOrders = vendorInvoices.length;
+
+        // Calculate total quantity from invoice items
+        const invoiceIds = new Set(vendorInvoices.map(inv => inv.id));
+        const vendorItems = allItems.filter(item => invoiceIds.has(item.invoiceId));
+        const totalQuantity = vendorItems.reduce((sum, item) => sum + item.quantity, 0);
+
+        // Calculate payments and outstanding balance
+        const vendorPayments = allPayments.filter(payment => 
+          vendorInvoices.some(inv => inv.id === payment.invoiceId)
+        );
+        const totalPaid = vendorPayments.reduce((sum, p) => sum + p.amount, 0);
+        const outstandingBalance = totalRevenue - totalPaid;
+
+        // Get vendor types for this vendor
+        const vendorTypeIds = vendorTypeLinks
+          .filter(link => link.vendorId === vendor.id)
+          .map(link => link.vendorTypeId);
+        const types = allVendorTypes.filter(type => vendorTypeIds.includes(type.id));
+        const primaryType = types.find(type => 
+          vendorTypeLinks.find(link => link.vendorId === vendor.id && link.vendorTypeId === type.id)?.isPrimary === 1
+        );
+
+        return {
+          vendorId: vendor.id,
+          vendorCode: vendor.vendorCode,
+          vendorName: vendor.vendorName,
+          city: vendor.city,
+          state: vendor.state,
+          mobileNumber: vendor.mobileNumber,
+          primaryType: primaryType?.name || null,
+          allTypes: types.map(t => t.name),
+          totalRevenue,
+          totalQuantity,
+          totalOrders,
+          totalPaid,
+          outstandingBalance,
+          avgOrderValue: totalOrders > 0 ? totalRevenue / totalOrders : 0,
+        };
+      }));
+
+      // Sort by total revenue descending
+      vendorAnalytics.sort((a, b) => b.totalRevenue - a.totalRevenue);
+
+      // Calculate summary statistics
+      const summary = {
+        totalVendors: vendorAnalytics.length,
+        activeVendors: vendorAnalytics.filter(v => v.totalOrders > 0).length,
+        totalRevenue: vendorAnalytics.reduce((sum, v) => sum + v.totalRevenue, 0),
+        totalOutstanding: vendorAnalytics.reduce((sum, v) => sum + v.outstandingBalance, 0),
+        totalOrders: vendorAnalytics.reduce((sum, v) => sum + v.totalOrders, 0),
+      };
+
+      // Vendor type breakdown
+      const typeBreakdown: Record<string, { count: number; revenue: number }> = {};
+      vendorAnalytics.forEach(vendor => {
+        if (vendor.primaryType) {
+          if (!typeBreakdown[vendor.primaryType]) {
+            typeBreakdown[vendor.primaryType] = { count: 0, revenue: 0 };
+          }
+          typeBreakdown[vendor.primaryType].count += 1;
+          typeBreakdown[vendor.primaryType].revenue += vendor.totalRevenue;
+        }
+      });
+
+      res.json({ 
+        vendors: vendorAnalytics, 
+        summary,
+        typeBreakdown: Object.entries(typeBreakdown).map(([type, data]) => ({
+          type,
+          count: data.count,
+          revenue: data.revenue,
+        })),
+      });
+    } catch (error) {
+      console.error("Error fetching vendor analytics:", error);
+      res.status(500).json({ message: "Failed to fetch vendor analytics" });
+    }
+  });
+
   // FIFO Payment Allocation - Allocate one payment across multiple outstanding invoices
   app.post('/api/invoice-payments/allocate-fifo', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
