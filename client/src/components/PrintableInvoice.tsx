@@ -333,34 +333,34 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
           Total Invoice Amount in words: <strong>${amountToWords(invoice.totalAmount)}</strong>
         </div>
 
-        <!-- Bank Details and UPI QR Code -->
-        ${invoice.bankName || invoice.upiId ? `
-          <div class="bank-details-container">
-            <div class="bank-details">
-              <div class="bank-label">Bank Details:</div>
-              ${invoice.bankName ? `<div>Name: <strong>${invoice.bankName}</strong></div>` : ''}
-              ${invoice.accountHolderName ? `<div>Account holder's name: ${invoice.accountHolderName}</div>` : ''}
-              ${invoice.bankAccountNumber ? `<div>Account No.: ${invoice.bankAccountNumber}</div>` : ''}
-              ${invoice.bankIfscCode ? `<div>IFSC code: ${invoice.bankIfscCode}</div>` : ''}
-              ${invoice.branchName ? `<div>Branch: ${invoice.branchName}</div>` : ''}
-              ${invoice.upiId ? `<div>UPI ID: ${invoice.upiId}</div>` : ''}
-            </div>
-            ${upiQRCodeDataUrl ? `
-              <div class="qr-code-section">
-                <div class="qr-label">Scan to Pay</div>
-                <img src="${upiQRCodeDataUrl}" alt="UPI QR Code" class="qr-code" />
-              </div>
-            ` : ''}
-          </div>
-        ` : ''}
-
         ${invoice.remarks ? `<div class="remarks">Note: ${invoice.remarks}</div>` : ''}
 
-        <!-- Footer Signature -->
-        <div class="signature-section">
-          <div class="company-for-line">For <strong>${invoice.sellerName || 'KINTO Manufacturing Pvt Ltd'}:</strong></div>
-          <div class="signature-space"></div>
-          <div class="signatory-label">Authorized Signatory</div>
+        <!-- Bank Details and Signature Section (Side by Side) -->
+        <div class="bank-signature-grid">
+          <!-- Bank Details (Left) -->
+          ${invoice.bankName || invoice.upiId ? `
+            <div class="bank-details-container">
+              <div class="bank-details">
+                <div class="bank-label">Bank Details:</div>
+                ${invoice.bankName ? `<div>Name : <strong>${invoice.bankName}</strong></div>` : ''}
+                ${invoice.bankAccountNumber ? `<div>Account No. : ${invoice.bankAccountNumber}</div>` : ''}
+                ${invoice.bankIfscCode ? `<div>IFSC code : ${invoice.bankIfscCode}</div>` : ''}
+                ${invoice.accountHolderName ? `<div>Account holder's name : ${invoice.accountHolderName}</div>` : ''}
+              </div>
+              ${upiQRCodeDataUrl ? `
+                <div class="qr-code-section">
+                  <img src="${upiQRCodeDataUrl}" alt="UPI QR Code" class="qr-code" />
+                </div>
+              ` : ''}
+            </div>
+          ` : '<div></div>'}
+          
+          <!-- Signature Section (Right) -->
+          <div class="signature-section">
+            <div class="company-for-line">For <strong>${invoice.sellerName || 'KINTO Manufacturing Pvt Ltd'}:</strong></div>
+            <div class="signature-space"></div>
+            <div class="signatory-label">Authorized Signatory</div>
+          </div>
         </div>
 
         <!-- Declaration -->
@@ -612,6 +612,14 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
               background: #fafafa;
             }
 
+            /* Bank and Signature Grid (Two Columns) */
+            .bank-signature-grid {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 10px;
+              margin-bottom: 10px;
+            }
+
             /* Bank Details Container */
             .bank-details-container {
               display: flex;
@@ -619,7 +627,6 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
               align-items: flex-start;
               border: 1px solid #000;
               padding: 8px;
-              margin-bottom: 10px;
               gap: 10px;
             }
 
@@ -642,16 +649,10 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
               flex-shrink: 0;
             }
 
-            .qr-label {
-              font-size: 9px;
-              font-weight: bold;
-              margin-bottom: 4px;
-            }
-
             .qr-code {
-              width: 100px;
-              height: 100px;
-              border: 2px solid #000;
+              width: 80px;
+              height: 80px;
+              border: 1px solid #000;
             }
 
             /* Terms Section */
@@ -686,21 +687,23 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
             /* Signature Section */
             .signature-section {
               text-align: right;
-              margin-bottom: 10px;
+              border: 1px solid #000;
+              padding: 8px;
               font-size: 9px;
             }
 
             .company-for-line {
               margin-bottom: 5px;
+              text-align: left;
             }
 
             .signature-space {
-              height: 60px;
-              margin: 10px 0;
+              height: 50px;
+              margin: 5px 0;
             }
 
             .signatory-label {
-              text-align: right;
+              text-align: center;
             }
 
             /* Declaration */
