@@ -43,7 +43,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Star, Search, X, Check, ChevronsUpDown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import type { Vendor } from "@shared/schema";
@@ -115,9 +115,10 @@ export default function VendorManagement() {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  // Filter active vendor types (isActive is an integer: 1 = active, 0 = inactive)
+  // Filter active vendor types (isActive: 1 = active, 0 = inactive)
+  // Handle both number and string by coercing to number
   const activeVendorTypes = useMemo(() => {
-    return vendorTypes.filter(vt => vt.isActive === 1);
+    return vendorTypes.filter(vt => Number(vt.isActive) === 1);
   }, [vendorTypes]);
 
   // Batch fetch all vendor-type assignments to avoid N+1 queries
@@ -549,46 +550,49 @@ export default function VendorManagement() {
                         <Command>
                           <CommandInput placeholder="Search vendor types..." data-testid="input-search-vendor-types" />
                           <CommandEmpty>No vendor type found.</CommandEmpty>
-                          <CommandGroup className="max-h-64 overflow-auto">
-                            {activeVendorTypes
-                              .sort((a, b) => a.name.localeCompare(b.name))
-                              .map((type) => (
-                                <CommandItem
-                                  key={type.id}
-                                  value={`${type.name} ${type.code}`}
-                                  onSelect={() => {
-                                    const isSelected = selectedVendorTypes.includes(type.id);
-                                    if (isSelected) {
-                                      const newSelected = selectedVendorTypes.filter(id => id !== type.id);
-                                      setSelectedVendorTypes(newSelected);
-                                      // Clear primary if it was the removed type
-                                      if (primaryVendorTypeId === type.id) {
-                                        setPrimaryVendorTypeId(newSelected.length > 0 ? newSelected[0] : null);
+                          <CommandList className="max-h-64 overflow-auto">
+                            <CommandGroup>
+                              {activeVendorTypes
+                                .sort((a, b) => a.name.localeCompare(b.name))
+                                .map((type) => (
+                                  <CommandItem
+                                    key={type.id}
+                                    value={type.name}
+                                    keywords={[type.code]}
+                                    onSelect={() => {
+                                      const isSelected = selectedVendorTypes.includes(type.id);
+                                      if (isSelected) {
+                                        const newSelected = selectedVendorTypes.filter(id => id !== type.id);
+                                        setSelectedVendorTypes(newSelected);
+                                        // Clear primary if it was the removed type
+                                        if (primaryVendorTypeId === type.id) {
+                                          setPrimaryVendorTypeId(newSelected.length > 0 ? newSelected[0] : null);
+                                        }
+                                      } else {
+                                        const newSelected = [...selectedVendorTypes, type.id];
+                                        setSelectedVendorTypes(newSelected);
+                                        // Auto-set primary if first type being added
+                                        if (selectedVendorTypes.length === 0) {
+                                          setPrimaryVendorTypeId(type.id);
+                                        }
                                       }
-                                    } else {
-                                      const newSelected = [...selectedVendorTypes, type.id];
-                                      setSelectedVendorTypes(newSelected);
-                                      // Auto-set primary if first type being added
-                                      if (selectedVendorTypes.length === 0) {
-                                        setPrimaryVendorTypeId(type.id);
-                                      }
-                                    }
-                                  }}
-                                  data-testid={`vendor-type-option-${type.id}`}
-                                >
-                                  <Check
-                                    className={cn(
-                                      "mr-2 h-4 w-4",
-                                      selectedVendorTypes.includes(type.id) ? "opacity-100" : "opacity-0"
-                                    )}
-                                  />
-                                  <div className="flex-1">
-                                    <span className="font-medium">{type.name}</span>
-                                    <span className="text-sm text-muted-foreground ml-2">({type.code})</span>
-                                  </div>
-                                </CommandItem>
-                              ))}
-                          </CommandGroup>
+                                    }}
+                                    data-testid={`vendor-type-option-${type.id}`}
+                                    className="flex items-center gap-2 px-2 py-1.5"
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "h-4 w-4 shrink-0",
+                                        selectedVendorTypes.includes(type.id) ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    <span className="flex-1">
+                                      {type.name} <span className="text-muted-foreground">({type.code})</span>
+                                    </span>
+                                  </CommandItem>
+                                ))}
+                            </CommandGroup>
+                          </CommandList>
                         </Command>
                       </PopoverContent>
                     </Popover>
