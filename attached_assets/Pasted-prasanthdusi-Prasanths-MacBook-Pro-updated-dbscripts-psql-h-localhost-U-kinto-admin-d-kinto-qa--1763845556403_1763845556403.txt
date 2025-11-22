@@ -1,0 +1,59 @@
+prasanthdusi@Prasanths-MacBook-Pro updated_dbscripts % psql -h localhost -U kinto_admin -d kinto_qa_db -f 02_seed_data.sql
+INSERT 0 4
+psql:02_seed_data.sql:50: ERROR:  null value in column "mobile_number" of relation "users" violates not-null constraint
+DETAIL:  Failing row contains (afe31053-182b-441c-8a87-0bf9fa04bf87, admin, c2NyeXB0AA4AAAAIAAAAAadJYXN5oD8WoKP8Vp7xvHVJiS7xvqU3gOGjR0iC3xVN..., admin@kinto.com, System, Administrator, null, role-admin, null, null, 1, 2025-11-23 02:34:33.409421, 2025-11-23 02:34:33.409421, null).
+psql:02_seed_data.sql:131: ERROR:  column "can_view" is of type integer but expression is of type boolean
+LINE 3: ('role-admin', 'dashboard', true, false, false, false, 1),
+                                    ^
+HINT:  You will need to rewrite or cast the expression.
+INSERT 0 8
+INSERT 0 5
+psql:02_seed_data.sql:176: ERROR:  relation "vendor_types" does not exist
+LINE 1: INSERT INTO vendor_types (code, name, description, record_st...
+                    ^
+psql:02_seed_data.sql:189: ERROR:  null value in column "code" of relation "product_categories" violates not-null constraint
+DETAIL:  Failing row contains (4afe97b0-a7cd-4b7b-89d2-a5075138ba46, Bottles, Water bottles of various sizes, true, null, 1, 2025-11-23 02:34:33.41401, 2025-11-23 02:34:33.41401, null).
+psql:02_seed_data.sql:203: ERROR:  null value in column "code" of relation "product_types" violates not-null constraint
+DETAIL:  Failing row contains (c1eecd63-e646-41c2-8551-a5390ad0e234, 500ML, 500 milliliter capacity products, true, null, 1, 2025-11-23 02:34:33.414339, 2025-11-23 02:34:33.414339, null).
+             status             
+--------------------------------
+ Seed data loaded successfully!
+(1 row)
+
+ ?column? 
+----------
+ Roles: 6
+(1 row)
+
+ ?column? 
+----------
+ Users: 1
+(1 row)
+
+     ?column?     
+------------------
+ Permissions: 197
+(1 row)
+
+ ?column? 
+----------
+ UOM: 22
+(1 row)
+
+     ?column?     
+------------------
+ Machine Types: 6
+(1 row)
+
+psql:02_seed_data.sql:216: ERROR:  relation "vendor_types" does not exist
+LINE 1: SELECT 'Vendor Types: ' || COUNT(*) FROM vendor_types;
+                                                 ^
+       ?column?        
+-----------------------
+ Product Categories: 0
+(1 row)
+
+     ?column?     
+------------------
+ Product Types: 0
+(1 row)
