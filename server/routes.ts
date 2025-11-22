@@ -1359,9 +1359,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/vendor-types', isAuthenticated, async (req: any, res) => {
     try {
       const types = await storage.getAllVendorTypes();
-      console.log('📦 Vendor Types API Response:', JSON.stringify(types, null, 2));
-      console.log('📦 Total vendor types:', types.length);
-      types.forEach(t => console.log(`📦   - ${t.name}: isActive=${t.isActive} (type: ${typeof t.isActive})`));
       res.json(types);
     } catch (error) {
       console.error("Error fetching vendor types:", error);

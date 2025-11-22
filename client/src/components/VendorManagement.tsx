@@ -116,14 +116,7 @@ export default function VendorManagement() {
 
   // Filter active vendor types (handle both number and string)
   const activeVendorTypes = useMemo(() => {
-    console.log('🔍 VendorTypes raw data:', vendorTypes);
-    console.log('🔍 First vendor type:', vendorTypes[0]);
-    const filtered = vendorTypes.filter(vt => {
-      console.log(`🔍 Checking vendor type: ${vt.name}, isActive=${vt.isActive}, type=${typeof vt.isActive}`);
-      return vt.isActive === 1 || vt.isActive === '1' as any;
-    });
-    console.log('🔍 Filtered active vendor types:', filtered);
-    return filtered;
+    return vendorTypes.filter(vt => vt.isActive === 1 || vt.isActive === '1' as any);
   }, [vendorTypes]);
 
   // Batch fetch all vendor-type assignments to avoid N+1 queries
