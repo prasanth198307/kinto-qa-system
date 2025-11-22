@@ -7,11 +7,13 @@ import { format } from "date-fns";
 import { z } from "zod";
 import path from "path";
 import fs from "fs";
+import multer from "multer";
 import { db } from "./db";
 import { whatsappService } from "./whatsappService";
 import { whatsappWebhookRouter } from "./whatsappWebhook";
 import { whatsappConversationService } from "./whatsappConversationService";
 import { calculateBOMSuggestions } from "@shared/calculations";
+import { importVyapaarData } from "./vyapaar-import";
 
 // Simple audit logging function
 async function logAudit(userId: string | undefined, action: string, table: string, recordId: string, description: string) {
@@ -6327,6 +6329,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: false,
         error: 'Internal Server Error',
         message: 'Failed to process callback'
+      });
+    }
+  });
+
+  // Configure multer for file uploads (store in memory temporarily)
+  const upload = multer({ 
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+  });
+
+  // Vyapaar data import endpoint
+  app.post('/api/import-vyapaar', isAuthenticated, requireRole('admin'), upload.fields([
+    { name: 'partyReport', maxCount: 1 },
+    { name: 'saleReport', maxCount: 1 },
+    { name: 'itemDetails', maxCount: 1 }
+  ]), async (req: any, res: Response) => {
+    try {
+      const files = req.files as {
+        partyReport?: Express.Multer.File[];
+        saleReport?: Express.Multer.File[];
+        itemDetails?: Express.Multer.File[];
+      };
+
+      if (!files?.partyReport?.[0] || !files?.saleReport?.[0] || !files?.itemDetails?.[0]) {
+        return res.status(400).json({ 
+          success: false,
+          message: 'All three files are required: partyReport, saleReport, and itemDetails' 
+        });
+      }
+
+      // Create temporary directory
+      const tmpDir = path.join(process.cwd(), 'tmp', 'uploads');
+      if (!fs.existsSync(tmpDir)) {
+        fs.mkdirSync(tmpDir, { recursive: true });
+      }
+
+      // Save files temporarily
+      const timestamp = Date.now();
+      const partyPath = path.join(tmpDir, `party-${timestamp}.xlsx`);
+      const salePath = path.join(tmpDir, `sale-${timestamp}.xlsx`);
+      const itemPath = path.join(tmpDir, `item-${timestamp}.xlsx`);
+
+      fs.writeFileSync(partyPath, files.partyReport[0].buffer);
+      fs.writeFileSync(salePath, files.saleReport[0].buffer);
+      fs.writeFileSync(itemPath, files.itemDetails[0].buffer);
+
+      console.log('[DATA IMPORT] Starting import from uploaded files');
+      
+      // Run import
+      const result = await importVyapaarData(partyPath, salePath, itemPath);
+
+      // Clean up temporary files
+      try {
+        fs.unlinkSync(partyPath);
+        fs.unlinkSync(salePath);
+        fs.unlinkSync(itemPath);
+      } catch (cleanupError) {
+        console.error('[DATA IMPORT] Failed to cleanup temp files:', cleanupError);
+      }
+
+      console.log('[DATA IMPORT] Import completed:', result);
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error('[DATA IMPORT] Error:', error);
+      res.status(500).json({ 
+        success: false,
+        message: error.message || 'Import failed'
       });
     }
   });

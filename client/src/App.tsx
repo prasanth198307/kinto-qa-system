@@ -56,7 +56,7 @@ import { ManagerChecklistAssignment } from "@/components/ManagerChecklistAssignm
 import PendingPaymentsDashboard from "@/components/PendingPaymentsDashboard";
 import { OperatorAssignedChecklists } from "@/components/OperatorAssignedChecklists";
 import { VerticalNavSidebar, type NavSection } from "@/components/VerticalNavSidebar";
-import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard } from "lucide-react";
+import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload } from "lucide-react";
 import SalesDashboard from "@/components/SalesDashboard";
 import VendorAnalytics from "@/pages/vendor-analytics";
 import ReviewerDashboardPage from "@/pages/ReviewerDashboard";
@@ -68,6 +68,7 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import InvoiceDetail from "@/pages/invoice-detail";
 import DispatchTracking from "@/pages/dispatch-tracking";
 import ChecklistsPage from "@/pages/checklists";
+import DataImport from "@/pages/data-import";
 
 type Role = 'admin' | 'operator' | 'reviewer' | 'manager';
 
@@ -541,6 +542,7 @@ function AdminDashboard() {
         { id: "vendor-types", label: "Vendor Types", icon: Shield },
         { id: "raw-material-types", label: "Raw Material Types", icon: Archive },
         { id: "notification-settings", label: "Notification Settings", icon: Bell },
+        { id: "data-import", label: "Data Import", icon: Upload },
       ],
       quickActions: [
         {
@@ -803,6 +805,8 @@ function AdminDashboard() {
         return <WhatsAppAnalytics />;
       case 'notification-settings':
         return <NotificationSettings />;
+      case 'data-import':
+        return <DataImport />;
       case 'sales-dashboard':
         return (
           <div className="p-4">
