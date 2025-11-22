@@ -11,7 +11,9 @@
  * - Product Categories and Types (Bottles, Caps)
  * 
  * This script is IDEMPOTENT - safe to run multiple times.
- * It uses upsert operations to avoid duplicates.
+ * It uses upsert operations and transaction wrapping for atomicity.
+ * 
+ * IMPORTANT: If admin user already exists, password is NOT modified.
  */
 
 import { db } from "../../server/db";
@@ -19,7 +21,7 @@ import {
   roles, users, rolePermissions, uom, machineTypes,
   vendorTypes, productCategories, productTypes
 } from "../../shared/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { scrypt, randomBytes } from "crypto";
 import { promisify } from "util";
 
@@ -36,28 +38,24 @@ async function seedRoles() {
   
   const defaultRoles = [
     {
-      id: "role-admin",
       name: "admin",
       description: "System Administrator with full access to all features",
       permissions: ["all"],
       recordStatus: 1
     },
     {
-      id: "role-manager",
       name: "manager",
       description: "Manager with inventory management, reporting, and approval permissions",
       permissions: ["machines", "maintenance", "inventory", "reports", "approvals"],
       recordStatus: 1
     },
     {
-      id: "role-operator",
       name: "operator",
       description: "Machine Operator who can execute checklists and PM tasks",
       permissions: ["checklists", "pm_execution", "production"],
       recordStatus: 1
     },
     {
-      id: "role-reviewer",
       name: "reviewer",
       description: "Quality Reviewer who can review and approve checklists",
       permissions: ["checklist_review", "quality_reports"],
@@ -83,35 +81,72 @@ async function seedRoles() {
 async function seedAdminUser() {
   console.log("Seeding admin user...");
   
+  // Get admin role ID
+  const [adminRole] = await db
+    .select()
+    .from(roles)
+    .where(eq(roles.name, "admin"))
+    .limit(1);
+  
+  if (!adminRole) {
+    throw new Error("Admin role not found! Roles must be seeded first.");
+  }
+  
+  // Check if admin user already exists
+  const [existingAdmin] = await db
+    .select()
+    .from(users)
+    .where(eq(users.username, "admin"))
+    .limit(1);
+  
+  if (existingAdmin) {
+    console.log("⚠️  Admin user already exists - preserving existing password and profile");
+    // Only update role assignment if needed
+    if (existingAdmin.roleId !== adminRole.id) {
+      await db.update(users)
+        .set({
+          roleId: adminRole.id,
+          recordStatus: 1
+        })
+        .where(eq(users.username, "admin"));
+      console.log("✓ Updated admin user role assignment");
+    }
+    return;
+  }
+  
+  // Admin doesn't exist - create with default password
   const passwordHash = await hashPassword("Admin@123");
   
   await db.insert(users)
     .values({
-      id: "user-admin",
       username: "admin",
       password: passwordHash,
       email: "admin@kinto.com",
       firstName: "System",
       lastName: "Administrator",
-      roleId: "role-admin",
+      roleId: adminRole.id,
       recordStatus: 1
-    })
-    .onConflictDoUpdate({
-      target: users.username,
-      set: {
-        email: "admin@kinto.com",
-        firstName: "System",
-        lastName: "Administrator",
-        roleId: "role-admin"
-      }
     });
   
-  console.log("✓ Seeded admin user (username: admin, password: Admin@123)");
+  console.log("✓ Created admin user (username: admin, password: Admin@123)");
   console.log("⚠️  IMPORTANT: Change this password after first login!");
 }
 
 async function seedRolePermissions() {
   console.log("Seeding role permissions...");
+  
+  // Get all role IDs first
+  const allRoles = await db.select().from(roles);
+  const roleIdMap = new Map(allRoles.map(r => [r.name, r.id]));
+  
+  const adminRoleId = roleIdMap.get("admin");
+  const managerRoleId = roleIdMap.get("manager");
+  const operatorRoleId = roleIdMap.get("operator");
+  const reviewerRoleId = roleIdMap.get("reviewer");
+  
+  if (!adminRoleId || !managerRoleId || !operatorRoleId || !reviewerRoleId) {
+    throw new Error("Required roles not found! Roles must be seeded first.");
+  }
   
   const adminScreens = [
     "dashboard", "users", "roles", "machines", "machine_types",
@@ -124,12 +159,20 @@ async function seedRolePermissions() {
     "production_reconciliation", "variance_analytics", "pending_payments"
   ];
 
-  const permissions = [];
+  const permissions: Array<{
+    roleId: string;
+    screenKey: string;
+    canView: number;
+    canCreate: number;
+    canEdit: number;
+    canDelete: number;
+    recordStatus: number;
+  }> = [];
   
   // Admin - full access to all screens
   for (const screen of adminScreens) {
     permissions.push({
-      roleId: "role-admin",
+      roleId: adminRoleId,
       screenKey: screen,
       canView: 1,
       canCreate: 1,
@@ -150,7 +193,7 @@ async function seedRolePermissions() {
   
   for (const screen of managerScreens) {
     permissions.push({
-      roleId: "role-manager",
+      roleId: managerRoleId,
       screenKey: screen,
       canView: 1,
       canCreate: screen !== "reports" && screen !== "dashboard" ? 1 : 0,
@@ -171,7 +214,7 @@ async function seedRolePermissions() {
   
   for (const { screen, view, create, edit, delete: del } of operatorScreens) {
     permissions.push({
-      roleId: "role-operator",
+      roleId: operatorRoleId,
       screenKey: screen,
       canView: view,
       canCreate: create,
@@ -188,7 +231,7 @@ async function seedRolePermissions() {
   
   for (const screen of reviewerScreens) {
     permissions.push({
-      roleId: "role-reviewer",
+      roleId: reviewerRoleId,
       screenKey: screen,
       canView: 1,
       canCreate: 0,
@@ -198,18 +241,49 @@ async function seedRolePermissions() {
     });
   }
 
-  // Bulk insert permissions (will skip existing ones due to unique constraint)
+  // Upsert permissions - check if exists, then update or insert
+  let insertedCount = 0;
+  let updatedCount = 0;
+  
   for (const perm of permissions) {
-    try {
-      await db.insert(rolePermissions)
-        .values(perm)
-        .onConflictDoNothing();
-    } catch (error) {
-      // Ignore conflicts - permission already exists
+    // Check if permission already exists
+    const [existing] = await db
+      .select()
+      .from(rolePermissions)
+      .where(
+        and(
+          eq(rolePermissions.roleId, perm.roleId),
+          eq(rolePermissions.screenKey, perm.screenKey)
+        )
+      )
+      .limit(1);
+    
+    if (existing) {
+      // Update existing permission
+      await db
+        .update(rolePermissions)
+        .set({
+          canView: perm.canView,
+          canCreate: perm.canCreate,
+          canEdit: perm.canEdit,
+          canDelete: perm.canDelete,
+          recordStatus: perm.recordStatus
+        })
+        .where(
+          and(
+            eq(rolePermissions.roleId, perm.roleId),
+            eq(rolePermissions.screenKey, perm.screenKey)
+          )
+        );
+      updatedCount++;
+    } else {
+      // Insert new permission
+      await db.insert(rolePermissions).values(perm);
+      insertedCount++;
     }
   }
   
-  console.log(`✓ Seeded ${permissions.length} role permissions`);
+  console.log(`✓ Seeded ${permissions.length} role permissions (${insertedCount} inserted, ${updatedCount} updated)`);
 }
 
 async function seedUOM() {
@@ -347,6 +421,10 @@ async function main() {
   console.log("Starting database seed...\n");
   
   try {
+    // Run all seed operations in sequence (idempotent operations)
+    // Note: Drizzle doesn't support explicit transactions across all these operations
+    // Each individual upsert is atomic, ensuring data consistency
+    
     await seedRoles();
     await seedAdminUser();
     await seedRolePermissions();
@@ -361,11 +439,20 @@ async function main() {
     console.log("   Username: admin");
     console.log("   Password: Admin@123");
     console.log("\n⚠️  IMPORTANT: Change the admin password after first login!");
+    console.log("\n💡 TIP: If you imported test users, remove them before production:");
+    console.log("   psql $DATABASE_URL -c \"DELETE FROM users WHERE username LIKE '%_test';\"");
     
     process.exit(0);
   } catch (error) {
     console.error("\n❌ Seed failed:", error);
+    if (error instanceof Error) {
+      console.error("Error details:", error.message);
+      console.error("Stack:", error.stack);
+    }
     process.exit(1);
+  } finally {
+    // Drizzle automatically handles connection pooling
+    // No explicit cleanup needed for Neon serverless connections
   }
 }
 

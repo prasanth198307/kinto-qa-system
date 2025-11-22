@@ -21,13 +21,30 @@ Complete guide for deploying KINTO Smart Ops to production with database setup.
 - **npm** or **yarn** package manager
 
 ### Required Environment Variables
+
+**IMPORTANT:** Export `DATABASE_URL` to your shell before running database commands:
+
 ```bash
+# Export for current session
+export DATABASE_URL="postgresql://user:password@host:port/database"
+
+# Verify it's set
+echo $DATABASE_URL
+```
+
+**Complete Environment Variables:**
+```bash
+# Database Configuration (REQUIRED)
 DATABASE_URL=postgresql://user:password@host:port/database
+
+# Session Security (REQUIRED)
 SESSION_SECRET=your-secure-random-secret
-COLLOKI_FLOW_API_KEY=your-colloki-api-key (if using WhatsApp features)
-WHATSAPP_ACCESS_TOKEN=your-whatsapp-token (optional)
-WHATSAPP_PHONE_NUMBER_ID=your-phone-number-id (optional)
-WHATSAPP_VERIFY_TOKEN=your-verify-token (optional)
+
+# WhatsApp Integration (Optional - for checklist notifications)
+COLLOKI_FLOW_API_KEY=your-colloki-api-key
+WHATSAPP_ACCESS_TOKEN=your-whatsapp-token
+WHATSAPP_PHONE_NUMBER_ID=your-phone-number-id
+WHATSAPP_VERIFY_TOKEN=your-verify-token
 ```
 
 ---
@@ -199,14 +216,28 @@ psql $DATABASE_URL -c "\dt"
    - Password: `Admin@123`
 3. **IMMEDIATELY change the password** in User Settings
 
-### 3. Create Additional Users
+### 3. Remove Test Users (If Legacy SQL Was Used)
+
+⚠️ **CRITICAL FOR PRODUCTION:** If you used the legacy SQL scripts (`database_scripts/03_test_users.sql`), remove test users:
+
+```bash
+# Remove all test users
+psql $DATABASE_URL -c "DELETE FROM users WHERE username LIKE '%_test';"
+
+# Verify removal
+psql $DATABASE_URL -c "SELECT username, email FROM users WHERE record_status = 1;"
+```
+
+Test users should NEVER exist in production for security reasons.
+
+### 4. Create Additional Users
 
 Navigate to `/users` in the admin panel and create users for your team:
 - **Managers** - Inventory, reporting, approvals
 - **Operators** - Production, checklists, PM execution
 - **Reviewers** - Quality review and approval
 
-### 4. Configure Master Data
+### 5. Configure Master Data
 
 Set up your specific business data:
 - **Vendors** - Add your suppliers and customers
@@ -293,9 +324,11 @@ psql postgresql://user:pass@host:port/kinto_new < kinto_backup.sql
 
 ---
 
-## NPM Scripts (Manual Addition Required)
+## NPM Scripts Setup
 
-Add these scripts to `package.json` for easier database management:
+### Recommended NPM Scripts
+
+For easier database management, you can add these scripts to `package.json`:
 
 ```json
 {
@@ -308,11 +341,44 @@ Add these scripts to `package.json` for easier database management:
 }
 ```
 
-Then you can use:
+### How to Add Scripts Safely
+
+**Option 1: Using Replit Workflows (Recommended)**
+If deploying on Replit:
+1. Use the workflow configuration tool to add custom commands
+2. Or manually run commands using `npx` (see below)
+
+**Option 2: Direct Commands (No package.json Edit)**
+You can always run these commands directly without modifying package.json:
+
 ```bash
-npm run db:setup    # Complete database initialization
-npm run db:seed     # Re-run seed data only
-npm run db:migrate  # Run migrations only
+# Complete database setup
+npx drizzle-kit migrate && npx tsx scripts/db/seed.ts
+
+# Re-run seed data only
+npx tsx scripts/db/seed.ts
+
+# Run migrations only
+npx drizzle-kit migrate
+
+# Generate new migration
+npx drizzle-kit generate
+```
+
+**Option 3: Create Shell Aliases**
+Add to your `~/.bashrc` or `~/.zshrc`:
+
+```bash
+alias db:setup='npx drizzle-kit migrate && npx tsx scripts/db/seed.ts'
+alias db:seed='npx tsx scripts/db/seed.ts'
+alias db:migrate='npx drizzle-kit migrate'
+```
+
+Then use:
+```bash
+db:setup    # Complete database initialization
+db:seed     # Re-run seed data only
+db:migrate  # Run migrations only
 ```
 
 ---
