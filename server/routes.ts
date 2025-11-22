@@ -1465,6 +1465,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Batch sync vendor types - efficient single-transaction operation
+  app.post('/api/vendors/:vendorId/types/sync', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { vendorId } = req.params;
+      const { vendorTypeIds, primaryVendorTypeId } = req.body;
+      
+      if (!Array.isArray(vendorTypeIds)) {
+        return res.status(400).json({ message: "vendorTypeIds must be an array" });
+      }
+      
+      // Use transaction to ensure atomicity
+      await db.transaction(async (tx) => {
+        // 1. Delete all existing vendor type assignments
+        await tx.delete(vendorVendorTypes).where(eq(vendorVendorTypes.vendorId, vendorId));
+        
+        // 2. Insert new assignments
+        if (vendorTypeIds.length > 0) {
+          const assignments = vendorTypeIds.map((typeId: string) => ({
+            vendorId,
+            vendorTypeId: typeId,
+            isPrimary: typeId === primaryVendorTypeId ? 1 : 0,
+          }));
+          
+          await tx.insert(vendorVendorTypes).values(assignments);
+        }
+      });
+      
+      res.json({ success: true, message: "Vendor types synced successfully" });
+    } catch (error) {
+      console.error("Error syncing vendor types:", error);
+      res.status(500).json({ message: "Failed to sync vendor types" });
+    }
+  });
+
   app.post('/api/vendors/:vendorId/types/:vendorTypeId', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const { vendorId, vendorTypeId } = req.params;

@@ -144,14 +144,11 @@ export default function VendorManagement() {
 
   const syncVendorTypes = async (vendorId: string) => {
     try {
-      for (const typeId of selectedVendorTypes) {
-        const isPrimary = typeId === primaryVendorTypeId;
-        await apiRequest('POST', `/api/vendors/${vendorId}/types/${typeId}`, { isPrimary });
-      }
-      const typesToRemove = currentVendorTypes.filter(vt => !selectedVendorTypes.includes(vt.vendorTypeId));
-      for (const vt of typesToRemove) {
-        await apiRequest('DELETE', `/api/vendors/${vendorId}/types/${vt.vendorTypeId}`);
-      }
+      // Use batch sync endpoint - single transaction, handles primary flag clearing
+      await apiRequest('POST', `/api/vendors/${vendorId}/types/sync`, {
+        vendorTypeIds: selectedVendorTypes,
+        primaryVendorTypeId: primaryVendorTypeId,
+      });
     } catch (error: any) {
       console.error('Error syncing vendor types:', error);
       throw error;

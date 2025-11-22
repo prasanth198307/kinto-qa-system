@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Edit, Mail, FileText, Printer } from "lucide-react";
+import { ArrowLeft, Edit, Mail, FileText, Printer, Star } from "lucide-react";
 import type { Invoice, InvoiceItem, Product, Gatepass } from "@shared/schema";
 import PrintableInvoice from "@/components/PrintableInvoice";
 import { format } from "date-fns";
@@ -12,6 +12,30 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { GlobalHeader } from "@/components/GlobalHeader";
+
+interface Vendor {
+  id: string;
+  vendorCode: string;
+  vendorName: string;
+  vendorType: string;
+  [key: string]: any;
+}
+
+interface VendorType {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  isActive: number;
+}
+
+interface VendorVendorType {
+  id: string;
+  vendorId: string;
+  vendorTypeId: string;
+  isPrimary: number;
+  vendorType?: VendorType;
+}
 
 export default function InvoiceDetail() {
   const { id } = useParams<{ id: string }>();
@@ -35,6 +59,30 @@ export default function InvoiceDetail() {
   const { data: gatepasses = [] } = useQuery<Gatepass[]>({
     queryKey: ['/api/gatepasses'],
   });
+
+  // Fetch all vendors to find the one matching this invoice's buyer
+  // Note: This may fail for non-admin users, which is acceptable - they just won't see vendor type badges
+  const { data: vendors = [] } = useQuery<Vendor[]>({
+    queryKey: ['/api/vendors'],
+    retry: false,
+    throwOnError: false,
+  });
+
+  // Fetch all vendor-type assignments
+  // Note: This may fail for non-admin users, which is acceptable
+  const { data: allVendorTypeAssignments = [] } = useQuery<VendorVendorType[]>({
+    queryKey: ['/api/vendor-vendor-types/batch'],
+    retry: false,
+    throwOnError: false,
+  });
+
+  // Find the vendor matching the buyer name
+  const matchingVendor = vendors.find(v => v.vendorName === invoice?.buyerName);
+  
+  // Get vendor types for this vendor
+  const vendorTypes = matchingVendor 
+    ? allVendorTypeAssignments.filter(a => a.vendorId === matchingVendor.id)
+    : [];
 
   if (isLoadingInvoice) {
     return (
@@ -207,6 +255,24 @@ export default function InvoiceDetail() {
               <span className="text-muted-foreground">Name:</span>
               <span className="font-medium">{invoice.buyerName}</span>
             </div>
+            {vendorTypes.length > 0 && (
+              <div className="flex justify-between items-start">
+                <span className="text-muted-foreground">Classifications:</span>
+                <div className="flex gap-1 flex-wrap justify-end" data-testid="vendor-types-badges">
+                  {vendorTypes.map((vt) => (
+                    <Badge
+                      key={vt.id}
+                      variant={vt.isPrimary === 1 ? "default" : "secondary"}
+                      className="text-xs"
+                      data-testid={`vendor-type-badge-${vt.vendorTypeId}`}
+                    >
+                      {vt.isPrimary === 1 && <Star className="h-2 w-2 mr-1 fill-current" />}
+                      {vt.vendorType?.name || vt.vendorType?.code || 'Unknown'}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
             {invoice.buyerGstin && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">GSTIN:</span>
