@@ -469,6 +469,11 @@ function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSea
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const itemsPerPage = 10;
 
+  // Filter states
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+
   const { data: products = [], isLoading } = useQuery<Product[]>({
     queryKey: ['/api/products'],
   });
@@ -591,10 +596,59 @@ function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSea
     },
   });
 
-  const filteredItems = products.filter(item =>
-    item.productCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.productName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Compute unique values for filters
+  const uniqueCategories = useMemo(() => {
+    const categories = products
+      .map(p => p.category)
+      .filter((cat): cat is string => Boolean(cat));
+    return Array.from(new Set(categories)).sort();
+  }, [products]);
+
+  const uniqueTypes = useMemo(() => {
+    const types = products
+      .map(p => p.type)
+      .filter((type): type is string => Boolean(type));
+    return Array.from(new Set(types)).sort();
+  }, [products]);
+
+  // Comprehensive filtering logic
+  const filteredItems = useMemo(() => {
+    return products.filter(item => {
+      // Search filter
+      const matchesSearch = 
+        item.productCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.productName.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      // Category filter
+      const matchesCategory = 
+        categoryFilter === 'all' || 
+        item.category === categoryFilter;
+      
+      // Type filter
+      const matchesType = 
+        typeFilter === 'all' || 
+        item.type === typeFilter;
+      
+      // Status filter
+      const matchesStatus = 
+        statusFilter === 'all' || 
+        item.isActive === statusFilter;
+      
+      return matchesSearch && matchesCategory && matchesType && matchesStatus;
+    });
+  }, [products, searchTerm, categoryFilter, typeFilter, statusFilter]);
+
+  // Clear filters function
+  const clearFilters = () => {
+    onSearchChange('');
+    setCategoryFilter('all');
+    setTypeFilter('all');
+    setStatusFilter('all');
+    setCurrentPage(1);
+  };
+
+  // Check if any filters are active
+  const hasActiveFilters = searchTerm !== '' || categoryFilter !== 'all' || typeFilter !== 'all' || statusFilter !== 'all';
 
   const paginatedItems = filteredItems.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
   const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
@@ -647,6 +701,86 @@ function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSea
         </Button>
       </div>
 
+      {/* Filters */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-col gap-4">
+            <div className="flex gap-2 items-center justify-between">
+              <span className="text-sm font-medium">Filters</span>
+              {hasActiveFilters && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={clearFilters}
+                  data-testid="button-clear-product-filters"
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Clear Filters
+                </Button>
+              )}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Category Filter */}
+              <div>
+                <Label htmlFor="category-filter" className="text-sm font-medium mb-1.5 block">
+                  Category
+                </Label>
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <SelectTrigger id="category-filter" data-testid="select-category-filter">
+                    <SelectValue placeholder="All Categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {uniqueCategories.map((category) => (
+                      <SelectItem key={category} value={category}>
+                        {category}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Type Filter */}
+              <div>
+                <Label htmlFor="type-filter" className="text-sm font-medium mb-1.5 block">
+                  Type
+                </Label>
+                <Select value={typeFilter} onValueChange={setTypeFilter}>
+                  <SelectTrigger id="type-filter" data-testid="select-type-filter">
+                    <SelectValue placeholder="All Types" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    {uniqueTypes.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Status Filter */}
+              <div>
+                <Label htmlFor="status-filter" className="text-sm font-medium mb-1.5 block">
+                  Status
+                </Label>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger id="status-filter" data-testid="select-status-filter">
+                    <SelectValue placeholder="All Statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="true">Active</SelectItem>
+                    <SelectItem value="false">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <div className="overflow-x-auto">
           <Table>
@@ -677,7 +811,9 @@ function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSea
               ) : paginatedItems.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    No products found
+                    {products.length === 0 
+                      ? "No products found. Add your first product to get started."
+                      : "No products match your search criteria. Try adjusting your filters."}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -1645,12 +1781,21 @@ function RawMaterialsTab({ searchTerm, onSearchChange }: { searchTerm: string; o
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const itemsPerPage = 10;
 
+  // Filter states
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [stockModeFilter, setStockModeFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+
   const { data: materials = [], isLoading } = useQuery<RawMaterial[]>({
     queryKey: ['/api/raw-materials'],
   });
 
   const { data: uoms = [] } = useQuery<Uom[]>({
     queryKey: ['/api/uom'],
+  });
+
+  const { data: materialTypes = [] } = useQuery<RawMaterialType[]>({
+    queryKey: ['/api/raw-material-types'],
   });
 
   const createMutation = useMutation({
@@ -1695,10 +1840,45 @@ function RawMaterialsTab({ searchTerm, onSearchChange }: { searchTerm: string; o
     },
   });
 
-  const filteredItems = materials.filter(item =>
-    item.materialCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.materialName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Comprehensive filtering logic
+  const filteredItems = useMemo(() => {
+    return materials.filter(item => {
+      // Search filter
+      const matchesSearch = 
+        item.materialCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.materialName.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      // Type filter
+      const matchesType = 
+        typeFilter === 'all' || 
+        item.typeId === typeFilter;
+      
+      // Stock mode filter
+      const matchesStockMode = 
+        stockModeFilter === 'all' || 
+        (stockModeFilter === 'opening' && item.isOpeningStockOnly === 1) ||
+        (stockModeFilter === 'ongoing' && item.isOpeningStockOnly === 0);
+      
+      // Status filter
+      const matchesStatus = 
+        statusFilter === 'all' || 
+        item.isActive === statusFilter;
+      
+      return matchesSearch && matchesType && matchesStockMode && matchesStatus;
+    });
+  }, [materials, searchTerm, typeFilter, stockModeFilter, statusFilter]);
+
+  // Clear filters function
+  const clearFilters = () => {
+    onSearchChange('');
+    setTypeFilter('all');
+    setStockModeFilter('all');
+    setStatusFilter('all');
+    setCurrentPage(1);
+  };
+
+  // Check if any filters are active
+  const hasActiveFilters = searchTerm !== '' || typeFilter !== 'all' || stockModeFilter !== 'all' || statusFilter !== 'all';
 
   const paginatedItems = filteredItems.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
   const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
@@ -1732,6 +1912,12 @@ function RawMaterialsTab({ searchTerm, onSearchChange }: { searchTerm: string; o
     return uom ? uom.name : '-';
   };
 
+  const getTypeName = (typeId: string | null) => {
+    if (!typeId) return '-';
+    const type = materialTypes.find(t => t.id === typeId);
+    return type ? `${type.code} - ${type.name}` : '-';
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
@@ -1750,6 +1936,83 @@ function RawMaterialsTab({ searchTerm, onSearchChange }: { searchTerm: string; o
           Add Raw Material
         </Button>
       </div>
+
+      {/* Filters */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-col gap-4">
+            <div className="flex gap-2 items-center justify-between">
+              <span className="text-sm font-medium">Filters</span>
+              {hasActiveFilters && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={clearFilters}
+                  data-testid="button-clear-material-filters"
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Clear Filters
+                </Button>
+              )}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Type Filter */}
+              <div>
+                <Label htmlFor="type-filter-material" className="text-sm font-medium mb-1.5 block">
+                  Material Type
+                </Label>
+                <Select value={typeFilter} onValueChange={setTypeFilter}>
+                  <SelectTrigger id="type-filter-material" data-testid="select-type-filter-material">
+                    <SelectValue placeholder="All Types" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    {materialTypes.map((type) => (
+                      <SelectItem key={type.id} value={type.id}>
+                        {type.code} - {type.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Stock Mode Filter */}
+              <div>
+                <Label htmlFor="stock-mode-filter" className="text-sm font-medium mb-1.5 block">
+                  Stock Mode
+                </Label>
+                <Select value={stockModeFilter} onValueChange={setStockModeFilter}>
+                  <SelectTrigger id="stock-mode-filter" data-testid="select-stock-mode-filter">
+                    <SelectValue placeholder="All Stock Modes" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Stock Modes</SelectItem>
+                    <SelectItem value="opening">Opening Stock Only</SelectItem>
+                    <SelectItem value="ongoing">Ongoing Inventory</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Status Filter */}
+              <div>
+                <Label htmlFor="status-filter-material" className="text-sm font-medium mb-1.5 block">
+                  Status
+                </Label>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger id="status-filter-material" data-testid="select-status-filter-material">
+                    <SelectValue placeholder="All Statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="true">Active</SelectItem>
+                    <SelectItem value="false">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <div className="overflow-x-auto">
@@ -1783,7 +2046,9 @@ function RawMaterialsTab({ searchTerm, onSearchChange }: { searchTerm: string; o
               ) : paginatedItems.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                    No raw materials found
+                    {materials.length === 0 
+                      ? "No raw materials found. Add your first raw material to get started."
+                      : "No raw materials match your search criteria. Try adjusting your filters."}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -2437,6 +2702,14 @@ function FinishedGoodsTab({ searchTerm, onSearchChange }: { searchTerm: string; 
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const itemsPerPage = 10;
 
+  // Filter states
+  const [qualityStatusFilter, setQualityStatusFilter] = useState<string>('all');
+  const [dateFilterType, setDateFilterType] = useState<'all' | 'range' | 'month' | 'year'>('all');
+  const [dateFrom, setDateFrom] = useState<Date | undefined>();
+  const [dateTo, setDateTo] = useState<Date | undefined>();
+  const [selectedMonth, setSelectedMonth] = useState<string>('');
+  const [selectedYear, setSelectedYear] = useState<string>('');
+
   const { data: goods = [], isLoading } = useQuery<FinishedGood[]>({
     queryKey: ['/api/finished-goods'],
   });
@@ -2520,9 +2793,60 @@ function FinishedGoodsTab({ searchTerm, onSearchChange }: { searchTerm: string; 
     },
   });
 
-  const filteredItems = goods.filter(item =>
-    item.batchNumber.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Helper to get product name
+  const getProductNameById = (productId: string) => {
+    const product = products.find(p => p.id === productId);
+    return product ? product.productName.toLowerCase() : '';
+  };
+
+  // Comprehensive filtering logic
+  const filteredItems = useMemo(() => {
+    return goods.filter(item => {
+      // Search filter (batch number or product name)
+      const productName = getProductNameById(item.productId);
+      const matchesSearch = 
+        item.batchNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        productName.includes(searchTerm.toLowerCase());
+      
+      // Quality status filter
+      const itemQualityStatus = item.qualityStatus || 'pending';
+      const matchesQualityStatus = 
+        qualityStatusFilter === 'all' || 
+        itemQualityStatus === qualityStatusFilter;
+      
+      // Date filter
+      let matchesDate = true;
+      if (dateFilterType !== 'all') {
+        const itemDate = parseISO(item.productionDate);
+        
+        if (dateFilterType === 'range' && dateFrom && dateTo) {
+          matchesDate = isWithinInterval(itemDate, { start: dateFrom, end: dateTo });
+        } else if (dateFilterType === 'month' && selectedMonth) {
+          const [year, month] = selectedMonth.split('-');
+          matchesDate = format(itemDate, 'yyyy-MM') === `${year}-${month}`;
+        } else if (dateFilterType === 'year' && selectedYear) {
+          matchesDate = format(itemDate, 'yyyy') === selectedYear;
+        }
+      }
+      
+      return matchesSearch && matchesQualityStatus && matchesDate;
+    });
+  }, [goods, products, searchTerm, qualityStatusFilter, dateFilterType, dateFrom, dateTo, selectedMonth, selectedYear]);
+
+  // Clear filters function
+  const clearFilters = () => {
+    onSearchChange('');
+    setQualityStatusFilter('all');
+    setDateFilterType('all');
+    setDateFrom(undefined);
+    setDateTo(undefined);
+    setSelectedMonth('');
+    setSelectedYear('');
+    setCurrentPage(1);
+  };
+
+  // Check if any filters are active
+  const hasActiveFilters = searchTerm !== '' || qualityStatusFilter !== 'all' || dateFilterType !== 'all';
 
   const paginatedItems = filteredItems.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
   const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
@@ -2587,7 +2911,7 @@ function FinishedGoodsTab({ searchTerm, onSearchChange }: { searchTerm: string; 
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by batch number..."
+            placeholder="Search by batch number or product..."
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
             className="pl-9"
@@ -2599,6 +2923,154 @@ function FinishedGoodsTab({ searchTerm, onSearchChange }: { searchTerm: string; 
           Add Finished Good
         </Button>
       </div>
+
+      {/* Filters */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-col gap-4">
+            <div className="flex gap-2 items-center justify-between">
+              <span className="text-sm font-medium">Filters</span>
+              {hasActiveFilters && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={clearFilters}
+                  data-testid="button-clear-good-filters"
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Clear Filters
+                </Button>
+              )}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Quality Status Filter */}
+              <div>
+                <Label htmlFor="quality-status-filter" className="text-sm font-medium mb-1.5 block">
+                  Quality Status
+                </Label>
+                <Select value={qualityStatusFilter} onValueChange={setQualityStatusFilter}>
+                  <SelectTrigger id="quality-status-filter" data-testid="select-quality-status-filter">
+                    <SelectValue placeholder="All Statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="approved">Approved</SelectItem>
+                    <SelectItem value="rejected">Rejected</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Date Filter Type */}
+              <div>
+                <Label htmlFor="date-filter-type-good" className="text-sm font-medium mb-1.5 block">
+                  Date Filter
+                </Label>
+                <Select value={dateFilterType} onValueChange={(value: 'all' | 'range' | 'month' | 'year') => setDateFilterType(value)}>
+                  <SelectTrigger id="date-filter-type-good" data-testid="select-date-filter-type-good">
+                    <SelectValue placeholder="All Dates" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Dates</SelectItem>
+                    <SelectItem value="range">Date Range</SelectItem>
+                    <SelectItem value="month">Month</SelectItem>
+                    <SelectItem value="year">Year</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Conditional date inputs based on filter type */}
+              {dateFilterType === 'range' && (
+                <>
+                  <div>
+                    <Label htmlFor="date-from-good" className="text-sm font-medium mb-1.5 block">
+                      From Date
+                    </Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start text-left font-normal"
+                          data-testid="button-date-from-good"
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {dateFrom ? format(dateFrom, "PPP") : "Pick a date"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={dateFrom}
+                          onSelect={setDateFrom}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <div>
+                    <Label htmlFor="date-to-good" className="text-sm font-medium mb-1.5 block">
+                      To Date
+                    </Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start text-left font-normal"
+                          data-testid="button-date-to-good"
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {dateTo ? format(dateTo, "PPP") : "Pick a date"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={dateTo}
+                          onSelect={setDateTo}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </>
+              )}
+
+              {dateFilterType === 'month' && (
+                <div>
+                  <Label htmlFor="month-filter-good" className="text-sm font-medium mb-1.5 block">
+                    Select Month
+                  </Label>
+                  <Input
+                    id="month-filter-good"
+                    type="month"
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    data-testid="input-month-filter-good"
+                  />
+                </div>
+              )}
+
+              {dateFilterType === 'year' && (
+                <div>
+                  <Label htmlFor="year-filter-good" className="text-sm font-medium mb-1.5 block">
+                    Select Year
+                  </Label>
+                  <Input
+                    id="year-filter-good"
+                    type="number"
+                    min="2000"
+                    max="2099"
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(e.target.value)}
+                    placeholder="YYYY"
+                    data-testid="input-year-filter-good"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <div className="overflow-x-auto">
@@ -2632,7 +3104,9 @@ function FinishedGoodsTab({ searchTerm, onSearchChange }: { searchTerm: string; 
               ) : paginatedItems.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                    No finished goods found
+                    {goods.length === 0 
+                      ? "No finished goods found. Add your first finished good to get started."
+                      : "No finished goods match your search criteria. Try adjusting your filters."}
                   </TableCell>
                 </TableRow>
               ) : (
