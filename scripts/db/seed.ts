@@ -10,8 +10,17 @@
  * - Vendor Types (Kinto, HPPani, Purejal)
  * - Product Categories and Types (Bottles, Caps)
  * 
- * This script is IDEMPOTENT - safe to run multiple times.
- * It uses upsert operations and transaction wrapping for atomicity.
+ * IDEMPOTENCY & ATOMICITY:
+ * - IDEMPOTENT: Safe to run multiple times (upsert operations)
+ * - NOT ATOMIC: Operations run sequentially without transaction wrapping
+ * - Mid-run failures may leave partial state - safe to re-run to complete
+ * - Each individual operation (insert/update) is atomic at database level
+ * 
+ * SECURITY NOTES:
+ * - If admin user exists (even soft-deleted), preserves existing password
+ * - Soft-deleted admin users are REACTIVATED with existing credentials
+ * - Only ADDS/UPDATES permissions - does not remove obsolete permissions
+ *   (Manual cleanup required: DELETE FROM role_permissions WHERE screen_key = 'obsolete_screen')
  * 
  * IMPORTANT: If admin user already exists, password is NOT modified.
  */
@@ -92,7 +101,7 @@ async function seedAdminUser() {
     throw new Error("Admin role not found! Roles must be seeded first.");
   }
   
-  // Check if admin user already exists
+  // Check if admin user already exists (including soft-deleted)
   const [existingAdmin] = await db
     .select()
     .from(users)
@@ -100,15 +109,27 @@ async function seedAdminUser() {
     .limit(1);
   
   if (existingAdmin) {
-    console.log("⚠️  Admin user already exists - preserving existing password and profile");
-    // Only update role assignment if needed
-    if (existingAdmin.roleId !== adminRole.id) {
-      await db.update(users)
-        .set({
-          roleId: adminRole.id,
-          recordStatus: 1
-        })
-        .where(eq(users.username, "admin"));
+    const wasDeactivated = existingAdmin.recordStatus === 0;
+    
+    console.log("⚠️  Admin user already exists - preserving existing password");
+    
+    if (wasDeactivated) {
+      console.log("⚠️  WARNING: Default admin account was previously deactivated");
+      console.log("⚠️  This script will REACTIVATE it with existing credentials");
+      console.log("⚠️  If deactivation was intentional, manually disable after seed completes");
+    }
+    
+    // Update role assignment and reactivate if needed
+    await db.update(users)
+      .set({
+        roleId: adminRole.id,
+        recordStatus: 1
+      })
+      .where(eq(users.username, "admin"));
+    
+    if (wasDeactivated) {
+      console.log("✓ Reactivated admin user with existing password");
+    } else {
       console.log("✓ Updated admin user role assignment");
     }
     return;
@@ -419,11 +440,13 @@ async function seedProductTypes() {
 
 async function main() {
   console.log("Starting database seed...\n");
+  console.log("⚠️  NOTE: Operations run sequentially without transaction wrapping.");
+  console.log("   If interrupted, safe to re-run to complete seeding.\n");
   
   try {
-    // Run all seed operations in sequence (idempotent operations)
-    // Note: Drizzle doesn't support explicit transactions across all these operations
-    // Each individual upsert is atomic, ensuring data consistency
+    // Run seed operations sequentially
+    // Each operation is idempotent and can be safely re-run
+    // Individual inserts/updates are atomic, but no cross-operation transaction
     
     await seedRoles();
     await seedAdminUser();
@@ -439,6 +462,10 @@ async function main() {
     console.log("   Username: admin");
     console.log("   Password: Admin@123");
     console.log("\n⚠️  IMPORTANT: Change the admin password after first login!");
+    console.log("\n⚠️  NOTE: This script only ADDS/UPDATES reference data.");
+    console.log("   Obsolete permissions are NOT removed automatically.");
+    console.log("   To remove obsolete permissions:");
+    console.log("   psql $DATABASE_URL -c \"DELETE FROM role_permissions WHERE screen_key = 'obsolete_screen';\"");
     console.log("\n💡 TIP: If you imported test users, remove them before production:");
     console.log("   psql $DATABASE_URL -c \"DELETE FROM users WHERE username LIKE '%_test';\"");
     
@@ -449,6 +476,7 @@ async function main() {
       console.error("Error details:", error.message);
       console.error("Stack:", error.stack);
     }
+    console.error("\n💡 TIP: Safe to re-run this script to complete seeding.");
     process.exit(1);
   } finally {
     // Drizzle automatically handles connection pooling
