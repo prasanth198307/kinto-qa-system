@@ -335,10 +335,19 @@ export async function importVyapaarData(
       let invoiceNumber = sale.__EMPTY_1;
       if (!invoiceNumber) continue;
       
-      // Handle duplicates
-      if (usedNumbers.has(invoiceNumber)) {
-        invoiceNumber = `${invoiceNumber}-DUP2`;
+      // Handle duplicates - keep incrementing suffix until unique
+      const originalInvoiceNumber = invoiceNumber;
+      let dupSuffix = 2;
+      while (usedNumbers.has(invoiceNumber)) {
+        invoiceNumber = `${originalInvoiceNumber}-DUP${dupSuffix}`;
+        dupSuffix++;
       }
+      
+      // Log if this was a duplicate
+      if (invoiceNumber !== originalInvoiceNumber) {
+        console.log(`Duplicate invoice number detected: ${originalInvoiceNumber} → ${invoiceNumber}`);
+      }
+      
       usedNumbers.add(invoiceNumber);
       
       const vendorName = sale.__EMPTY_2;
