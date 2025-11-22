@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Plus, Trash2, X, Printer, FileText } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -819,38 +819,42 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
                     <CommandEmpty>
                       {isLoadingVendorVendorTypes ? "Loading vendors..." : "No vendor found."}
                     </CommandEmpty>
-                    <CommandGroup className="max-h-[300px] overflow-y-auto">
-                      {isLoadingVendorVendorTypes ? (
-                        <div className="p-4 text-center text-sm text-muted-foreground">
-                          Loading vendor data...
-                        </div>
-                      ) : (
-                        filteredVendors.map((vendor) => (
-                          <CommandItem
-                            key={vendor.id}
-                            value={`${vendor.vendorName} ${vendor.gstNumber || ''}`}
-                            onSelect={() => {
-                              handleVendorChange(vendor.id);
-                              setVendorSearchOpen(false);
-                            }}
-                            data-testid={`vendor-option-${vendor.id}`}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                selectedVendorId === vendor.id ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            <div className="flex flex-col">
-                              <span className="font-medium">{vendor.vendorName}</span>
-                              {vendor.gstNumber && (
-                                <span className="text-xs text-muted-foreground">{vendor.gstNumber}</span>
-                              )}
-                            </div>
-                          </CommandItem>
-                        ))
-                      )}
-                    </CommandGroup>
+                    <CommandList className="max-h-[300px] overflow-y-auto">
+                      <CommandGroup>
+                        {isLoadingVendorVendorTypes ? (
+                          <div className="p-4 text-center text-sm text-muted-foreground">
+                            Loading vendor data...
+                          </div>
+                        ) : (
+                          filteredVendors.map((vendor) => (
+                            <CommandItem
+                              key={vendor.id}
+                              value={vendor.vendorName}
+                              keywords={[vendor.gstNumber || '', vendor.vendorCode || '']}
+                              onSelect={() => {
+                                handleVendorChange(vendor.id);
+                                setVendorSearchOpen(false);
+                              }}
+                              data-testid={`vendor-option-${vendor.id}`}
+                              className="flex items-center gap-2 px-2 py-1.5"
+                            >
+                              <Check
+                                className={cn(
+                                  "h-4 w-4 shrink-0",
+                                  selectedVendorId === vendor.id ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              <span className="flex-1 flex flex-col">
+                                <span className="font-medium">{vendor.vendorName}</span>
+                                {vendor.gstNumber && (
+                                  <span className="text-xs text-muted-foreground">{vendor.gstNumber}</span>
+                                )}
+                              </span>
+                            </CommandItem>
+                          ))
+                        )}
+                      </CommandGroup>
+                    </CommandList>
                   </Command>
                 </PopoverContent>
               </Popover>
