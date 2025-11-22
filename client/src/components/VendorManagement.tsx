@@ -41,8 +41,11 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Star, Search, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Star, Search, X, Check, ChevronsUpDown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import type { Vendor } from "@shared/schema";
 
 interface VendorType {
@@ -95,6 +98,7 @@ export default function VendorManagement() {
   const [vendorToDelete, setVendorToDelete] = useState<string | null>(null);
   const [selectedVendorTypes, setSelectedVendorTypes] = useState<string[]>([]);
   const [primaryVendorTypeId, setPrimaryVendorTypeId] = useState<string | null>(null);
+  const [vendorTypePopoverOpen, setVendorTypePopoverOpen] = useState(false);
 
   // Search and filter states
   const [searchQuery, setSearchQuery] = useState("");
@@ -182,7 +186,7 @@ export default function VendorManagement() {
 
   const hasActiveFilters = searchQuery || cityFilter !== "all" || stateFilter !== "all" || activeStatusFilter !== "all";
 
-  const { data: currentVendorTypes = [] } = useQuery<VendorVendorType[]>({
+  const { data: currentVendorTypes = [], isLoading: isLoadingVendorTypes } = useQuery<VendorVendorType[]>({
     queryKey: ['/api/vendors', editingVendor?.id, 'types'],
     enabled: !!editingVendor?.id,
     queryFn: async () => {
@@ -194,6 +198,9 @@ export default function VendorManagement() {
   });
 
   useEffect(() => {
+    // Don't update state while query is loading to avoid clearing existing selections
+    if (isLoadingVendorTypes) return;
+    
     if (editingVendor && currentVendorTypes.length > 0) {
       setSelectedVendorTypes(currentVendorTypes.map(vt => vt.vendorTypeId));
       const primary = currentVendorTypes.find(vt => vt.isPrimary === 1);
@@ -202,7 +209,7 @@ export default function VendorManagement() {
       setSelectedVendorTypes([]);
       setPrimaryVendorTypeId(null);
     }
-  }, [editingVendor, currentVendorTypes]);
+  }, [editingVendor, currentVendorTypes, isLoadingVendorTypes]);
 
   const syncVendorTypes = async (vendorId: string) => {
     try {
@@ -311,6 +318,11 @@ export default function VendorManagement() {
 
   const handleEdit = (vendor: Vendor) => {
     setEditingVendor(vendor);
+    // Pre-seed vendor types from cached data to avoid UI flicker
+    const existingTypes = vendorTypesMap[vendor.id] || [];
+    setSelectedVendorTypes(existingTypes.map(vt => vt.vendorTypeId));
+    const primary = existingTypes.find(vt => vt.isPrimary === 1);
+    setPrimaryVendorTypeId(primary?.vendorTypeId || null);
     setIsDialogOpen(true);
   };
 
@@ -510,54 +522,132 @@ export default function VendorManagement() {
                     No vendor types available. Create them in Master Data → Vendor Types.
                   </div>
                 ) : (
-                  <div className="space-y-2 border rounded-md p-4">
-                    {vendorTypes
-                      .filter(vt => vt.isActive === 1)
-                      .sort((a, b) => a.name.localeCompare(b.name))
-                      .map((type) => (
-                        <div
-                          key={type.id}
-                          className="flex items-center justify-between gap-3 p-2 hover-elevate rounded"
-                          data-testid={`vendor-type-option-${type.id}`}
+                  <div className="space-y-3">
+                    <Popover open={vendorTypePopoverOpen} onOpenChange={setVendorTypePopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={vendorTypePopoverOpen}
+                          className="w-full justify-between"
+                          data-testid="button-select-vendor-types"
                         >
-                          <div className="flex items-center gap-3 flex-1">
-                            <Checkbox
-                              id={`vendor-type-${type.id}`}
-                              checked={selectedVendorTypes.includes(type.id)}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setSelectedVendorTypes([...selectedVendorTypes, type.id]);
-                                  if (selectedVendorTypes.length === 0) {
-                                    setPrimaryVendorTypeId(type.id);
-                                  }
-                                } else {
-                                  setSelectedVendorTypes(selectedVendorTypes.filter(id => id !== type.id));
-                                  if (primaryVendorTypeId === type.id) {
-                                    setPrimaryVendorTypeId(selectedVendorTypes.find(id => id !== type.id) || null);
-                                  }
-                                }
-                              }}
-                              data-testid={`checkbox-vendor-type-${type.id}`}
-                            />
-                            <Label htmlFor={`vendor-type-${type.id}`} className="cursor-pointer flex-1">
-                              <span className="font-medium">{type.name}</span>
-                              <span className="text-sm text-muted-foreground ml-2">({type.code})</span>
-                            </Label>
-                          </div>
-                          {selectedVendorTypes.includes(type.id) && (
-                            <Button
-                              type="button"
-                              variant={primaryVendorTypeId === type.id ? "default" : "ghost"}
-                              size="sm"
-                              onClick={() => setPrimaryVendorTypeId(type.id)}
-                              data-testid={`button-primary-vendor-type-${type.id}`}
+                          {selectedVendorTypes.length > 0
+                            ? `${selectedVendorTypes.length} type${selectedVendorTypes.length > 1 ? 's' : ''} selected`
+                            : "Select vendor types..."}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[400px] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Search vendor types..." data-testid="input-search-vendor-types" />
+                          <CommandEmpty>No vendor type found.</CommandEmpty>
+                          <CommandGroup className="max-h-64 overflow-auto">
+                            {vendorTypes
+                              .filter(vt => vt.isActive === 1)
+                              .sort((a, b) => a.name.localeCompare(b.name))
+                              .map((type) => (
+                                <CommandItem
+                                  key={type.id}
+                                  value={`${type.name} ${type.code}`}
+                                  onSelect={() => {
+                                    const isSelected = selectedVendorTypes.includes(type.id);
+                                    if (isSelected) {
+                                      const newSelected = selectedVendorTypes.filter(id => id !== type.id);
+                                      setSelectedVendorTypes(newSelected);
+                                      // Clear primary if it was the removed type
+                                      if (primaryVendorTypeId === type.id) {
+                                        setPrimaryVendorTypeId(newSelected.length > 0 ? newSelected[0] : null);
+                                      }
+                                    } else {
+                                      const newSelected = [...selectedVendorTypes, type.id];
+                                      setSelectedVendorTypes(newSelected);
+                                      // Auto-set primary if first type being added
+                                      if (selectedVendorTypes.length === 0) {
+                                        setPrimaryVendorTypeId(type.id);
+                                      }
+                                    }
+                                  }}
+                                  data-testid={`vendor-type-option-${type.id}`}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      selectedVendorTypes.includes(type.id) ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  <div className="flex-1">
+                                    <span className="font-medium">{type.name}</span>
+                                    <span className="text-sm text-muted-foreground ml-2">({type.code})</span>
+                                  </div>
+                                </CommandItem>
+                              ))}
+                          </CommandGroup>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+
+                    {/* Display selected types as removable badges */}
+                    {selectedVendorTypes.length > 0 && (
+                      <div className="flex flex-wrap gap-2" data-testid="selected-vendor-types-container">
+                        {selectedVendorTypes.map((typeId) => {
+                          const type = vendorTypes.find(vt => vt.id === typeId);
+                          if (!type) return null;
+                          return (
+                            <Badge
+                              key={typeId}
+                              variant={primaryVendorTypeId === typeId ? "default" : "secondary"}
+                              className="text-xs pl-2 pr-1"
+                              data-testid={`selected-vendor-type-${typeId}`}
                             >
-                              <Star className={`h-3 w-3 mr-1 ${primaryVendorTypeId === type.id ? 'fill-current' : ''}`} />
-                              {primaryVendorTypeId === type.id ? 'Primary' : 'Set Primary'}
-                            </Button>
-                          )}
-                        </div>
-                      ))}
+                              {primaryVendorTypeId === typeId && <Star className="h-2 w-2 mr-1 fill-current" />}
+                              {type.name}
+                              <button
+                                type="button"
+                                className="ml-1 hover:bg-accent/20 rounded-sm p-0.5"
+                                onClick={() => {
+                                  const newSelected = selectedVendorTypes.filter(id => id !== typeId);
+                                  setSelectedVendorTypes(newSelected);
+                                  if (primaryVendorTypeId === typeId) {
+                                    setPrimaryVendorTypeId(newSelected.length > 0 ? newSelected[0] : null);
+                                  }
+                                }}
+                                data-testid={`button-remove-vendor-type-${typeId}`}
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </Badge>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Primary type selection - only shown when multiple types are selected */}
+                    {selectedVendorTypes.length > 1 && (
+                      <div className="space-y-2">
+                        <Label>Primary Type</Label>
+                        <Select
+                          value={primaryVendorTypeId || undefined}
+                          onValueChange={setPrimaryVendorTypeId}
+                        >
+                          <SelectTrigger data-testid="select-primary-vendor-type">
+                            <SelectValue placeholder="Select primary type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {selectedVendorTypes.map((typeId) => {
+                              const type = vendorTypes.find(vt => vt.id === typeId);
+                              if (!type) return null;
+                              return (
+                                <SelectItem key={typeId} value={typeId} data-testid={`primary-option-${typeId}`}>
+                                  {type.name} ({type.code})
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
