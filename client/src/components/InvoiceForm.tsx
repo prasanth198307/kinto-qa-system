@@ -710,9 +710,9 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
   const formatCurrency = (amountInPaise: number) => `₹${(amountInPaise / 100).toFixed(2)}`;
 
   return (
-    <Card className="p-6 max-h-[90vh] overflow-y-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-semibold">Generate GST Invoice</h2>
+    <Card className="p-4 max-h-[90vh] overflow-y-auto">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-lg font-semibold">Generate GST Invoice</h2>
         <div className="flex gap-2">
           <Button 
             variant="outline" 
@@ -730,7 +730,7 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
         </div>
       </div>
 
-      <form onSubmit={handleFormSubmit} className="space-y-6">
+      <form onSubmit={handleFormSubmit} className="space-y-4">
         {/* System automatically uses default template and terms & conditions */}
         {/* Hidden info display */}
         {defaultTemplate && (
@@ -758,8 +758,8 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
         </div>
 
         {/* Vendor/Customer Selection */}
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
             {/* Vendor Type Filter */}
             <div>
               <Label htmlFor="vendorTypeFilter">Filter by Vendor Type</Label>
@@ -915,9 +915,9 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
 
         {/* Ship-To Address (Conditional) */}
         {shipToDifferentAddress && (
-          <div className="space-y-4">
+          <div className="space-y-3">
             <h3 className="font-semibold text-lg">Ship-To Address</h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="shipToName">Ship-To Name</Label>
                 <Input
@@ -965,9 +965,9 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
         )}
 
         {/* Seller Details */}
-        <div className="space-y-4">
+        <div className="space-y-3">
           <h3 className="font-semibold text-lg">Seller Details</h3>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <Label htmlFor="sellerName">Seller Name</Label>
               <Input
@@ -1034,7 +1034,7 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
         </div>
 
         {/* Items - Single Line Layout */}
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div className="flex justify-between items-center">
             <h3 className="font-semibold text-lg">Invoice Items</h3>
             <Button
@@ -1061,7 +1061,7 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
 
           {/* Items */}
           {fields.map((field, index) => (
-            <div key={field.id} className="grid grid-cols-12 gap-2 items-start p-2 border rounded-md hover-elevate">
+            <div key={field.id} className="grid grid-cols-12 gap-2 items-start p-1.5 border rounded-md hover-elevate">
               {/* Product */}
               <div className="col-span-3">
                 <Select
@@ -1221,9 +1221,9 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
         </div>
 
         {/* Tax Summary */}
-        <Card className="p-4 bg-muted">
-          <h3 className="font-semibold mb-3">Tax Summary ({isIntrastateSupply ? "Intrastate" : "Interstate"} Supply)</h3>
-          <div className="space-y-2">
+        <Card className="p-3 bg-muted">
+          <h3 className="font-semibold text-sm mb-2">Tax Summary ({isIntrastateSupply ? "Intrastate" : "Interstate"} Supply)</h3>
+          <div className="space-y-1.5">
             <div className="flex justify-between">
               <span>Subtotal:</span>
               <span className="font-semibold">{formatCurrency(taxes.subtotal)}</span>
@@ -1245,7 +1245,7 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
                 <span>{formatCurrency(taxes.igstAmount)}</span>
               </div>
             )}
-            <div className="flex justify-between text-lg font-bold border-t pt-2">
+            <div className="flex justify-between text-base font-bold border-t pt-1.5">
               <span>Total Amount:</span>
               <span>{formatCurrency(taxes.totalAmount)}</span>
             </div>
@@ -1253,9 +1253,9 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
         </Card>
 
         {/* Payment Details */}
-        <div className="space-y-4">
+        <div className="space-y-3">
           <h3 className="font-semibold text-lg">Payment Details</h3>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
               <Label>Select Bank Account</Label>
               <Select
@@ -1327,7 +1327,7 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
         </div>
 
         {/* Form Actions */}
-        <div className="flex justify-end gap-3 pt-4">
+        <div className="flex justify-end gap-2 pt-3">
           <Button type="button" variant="outline" onClick={onClose} data-testid="button-cancel">
             Cancel
           </Button>

@@ -68,13 +68,13 @@ export function VerticalNavSidebar({
       <Button
         key={item.id}
         variant={isActive ? "default" : "ghost"}
-        className={`w-full justify-start text-left min-h-11 h-auto py-2.5 ${
+        className={`w-full justify-start text-left min-h-10 h-auto py-2 ${
           isActive ? "bg-primary text-primary-foreground" : "text-muted-foreground hover-elevate"
         }`}
         onClick={() => handleItemClick(item)}
         data-testid={`nav-${item.id}`}
       >
-        <Icon className="w-5 h-5 mr-3 flex-shrink-0" />
+        <Icon className="w-4 h-4 mr-2 flex-shrink-0" />
         <span className="flex-1 text-sm leading-tight break-words">{item.label}</span>
       </Button>
     );
@@ -90,11 +90,11 @@ export function VerticalNavSidebar({
         touchAction: 'pan-y'
       }}
     >
-      <div className="space-y-6">
+      <div className="space-y-4">
         {sections.map((section, index) => (
           <div key={section.id}>
             {section.label && (
-              <div className="flex items-center justify-between mb-2 px-2">
+              <div className="flex items-center justify-between mb-1.5 px-2">
                 <div className="text-xs font-semibold text-muted-foreground uppercase">
                   {section.label}
                 </div>
