@@ -1111,13 +1111,9 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
                       if (product.hsnCode) {
                         form.setValue(`items.${index}.hsnCode`, product.hsnCode);
                       }
-                      // Auto-fill GST rate if available
-                      if (product.gstRate) {
-                        form.setValue(`items.${index}.gstRate`, product.gstRate);
-                      }
                       toast({
                         title: "Stock Available",
-                        description: `Available: ${totalAvailable} units | Price: ₹${(product.basePrice / 100).toFixed(2)}`,
+                        description: `Available: ${totalAvailable} units${product.basePrice ? ` | Price: ₹${(product.basePrice / 100).toFixed(2)}` : ''}`,
                       });
                     }
                   }}
