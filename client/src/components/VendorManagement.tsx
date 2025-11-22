@@ -114,6 +114,11 @@ export default function VendorManagement() {
     queryKey: ['/api/vendor-types'],
   });
 
+  // Filter active vendor types (handle both number and string)
+  const activeVendorTypes = useMemo(() => {
+    return vendorTypes.filter(vt => vt.isActive === 1 || vt.isActive === '1' as any);
+  }, [vendorTypes]);
+
   // Batch fetch all vendor-type assignments to avoid N+1 queries
   const { data: allVendorTypeAssignments = [] } = useQuery<VendorVendorType[]>({
     queryKey: ['/api/vendor-vendor-types/batch'],
@@ -517,7 +522,7 @@ export default function VendorManagement() {
                 <p className="text-sm text-muted-foreground">
                   Select vendor types based on product brands purchased. Mark one as primary.
                 </p>
-                {vendorTypes.filter(vt => vt.isActive === 1).length === 0 ? (
+                {activeVendorTypes.length === 0 ? (
                   <div className="text-sm text-muted-foreground p-3 border rounded">
                     No vendor types available. Create them in Master Data → Vendor Types.
                   </div>
@@ -544,8 +549,7 @@ export default function VendorManagement() {
                           <CommandInput placeholder="Search vendor types..." data-testid="input-search-vendor-types" />
                           <CommandEmpty>No vendor type found.</CommandEmpty>
                           <CommandGroup className="max-h-64 overflow-auto">
-                            {vendorTypes
-                              .filter(vt => vt.isActive === 1)
+                            {activeVendorTypes
                               .sort((a, b) => a.name.localeCompare(b.name))
                               .map((type) => (
                                 <CommandItem
