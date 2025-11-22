@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { Building2, TrendingUp, DollarSign, Users, FileSpreadsheet } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import * as XLSX from 'xlsx';
 
 interface VendorAnalytic {
   vendorId: string;
@@ -57,7 +56,7 @@ export default function VendorAnalytics() {
   };
 
   // Export to Excel function
-  const handleExportToExcel = () => {
+  const handleExportToExcel = async () => {
     if (!analyticsData || !analyticsData.vendors || analyticsData.vendors.length === 0) {
       toast({
         title: "No Data to Export",
@@ -66,6 +65,9 @@ export default function VendorAnalytics() {
       });
       return;
     }
+
+    // Dynamic import for Mac compatibility
+    const XLSX = await import('xlsx');
 
     // Prepare data for Excel
     const excelData = analyticsData.vendors.map(vendor => ({

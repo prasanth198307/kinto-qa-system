@@ -9,7 +9,6 @@ import { Label } from "@/components/ui/label";
 import { TrendingUp, Package, DollarSign, ShoppingCart, Calendar, FileSpreadsheet } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import * as XLSX from 'xlsx';
 
 interface PeriodAnalytics {
   period: string;
@@ -69,7 +68,7 @@ export default function SalesDashboard() {
   };
 
   // Export to Excel function
-  const handleExportToExcel = () => {
+  const handleExportToExcel = async () => {
     if (!salesData || !salesData.analytics || salesData.analytics.length === 0) {
       toast({
         title: "No Data to Export",
@@ -78,6 +77,9 @@ export default function SalesDashboard() {
       });
       return;
     }
+
+    // Dynamic import for Mac compatibility
+    const XLSX = await import('xlsx');
 
     // Prepare data for Excel
     const excelData = salesData.analytics.map(period => ({

@@ -8,7 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FileSpreadsheet, FileDown, Calendar } from "lucide-react";
 import { format } from "date-fns";
-import * as XLSX from 'xlsx';
 
 interface MaterialDetail {
   rawMaterialId: string;
@@ -71,11 +70,14 @@ export default function ProductionReconciliationReport() {
     setReportGenerated(true);
   };
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     if (reportData.length === 0) {
       alert("No data to export. Please generate a report first.");
       return;
     }
+
+    // Dynamic import for Mac compatibility
+    const XLSX = await import('xlsx');
 
     // Create workbook
     const wb = XLSX.utils.book_new();
