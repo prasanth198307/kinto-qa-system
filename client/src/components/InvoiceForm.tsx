@@ -102,7 +102,7 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
   });
 
   const { data: vendorVendorTypes = [], isLoading: isLoadingVendorVendorTypes } = useQuery<VendorVendorType[]>({
-    queryKey: ['/api/vendor-vendor-types'],
+    queryKey: ['/api/vendor-vendor-types/batch'],
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes  
   });
 
