@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Plus, Edit, Trash2, Tag } from "lucide-react";
+import { Plus, Edit, Trash2, Tag, AlertCircle } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 
 interface VendorType {
@@ -27,6 +28,9 @@ export default function VendorTypes() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingType, setEditingType] = useState<VendorType | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [typeToDelete, setTypeToDelete] = useState<VendorType | null>(null);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   const [formData, setFormData] = useState({
     typeCode: "",
@@ -48,8 +52,19 @@ export default function VendorTypes() {
       setIsCreateOpen(false);
       resetForm();
     },
-    onError: () => {
-      toast({ title: "Failed to create vendor type", variant: "destructive" });
+    onError: (error: any) => {
+      const message = error.message || "Failed to create vendor type";
+      if (message.includes("unique") || message.includes("duplicate") || message.includes("already exists")) {
+        setValidationErrors({ 
+          typeCode: "This type code already exists",
+          typeName: "This type name already exists"
+        });
+      }
+      toast({ 
+        title: "Failed to create vendor type", 
+        description: message,
+        variant: "destructive" 
+      });
     }
   });
 
@@ -61,8 +76,19 @@ export default function VendorTypes() {
       setIsEditOpen(false);
       resetForm();
     },
-    onError: () => {
-      toast({ title: "Failed to update vendor type", variant: "destructive" });
+    onError: (error: any) => {
+      const message = error.message || "Failed to update vendor type";
+      if (message.includes("unique") || message.includes("duplicate") || message.includes("already exists")) {
+        setValidationErrors({ 
+          typeCode: "This type code already exists",
+          typeName: "This type name already exists"
+        });
+      }
+      toast({ 
+        title: "Failed to update vendor type", 
+        description: message,
+        variant: "destructive" 
+      });
     }
   });
 
@@ -70,10 +96,21 @@ export default function VendorTypes() {
     mutationFn: (id: string) => apiRequest('DELETE', `/api/vendor-types/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/vendor-types'] });
-      toast({ title: "Vendor type deleted successfully" });
+      toast({ 
+        title: "Vendor type deactivated", 
+        description: "The vendor type has been marked as inactive" 
+      });
+      setDeleteConfirmOpen(false);
+      setTypeToDelete(null);
     },
-    onError: () => {
-      toast({ title: "Failed to delete vendor type", variant: "destructive" });
+    onError: (error: any) => {
+      toast({ 
+        title: "Failed to deactivate vendor type", 
+        description: error.message || "An error occurred",
+        variant: "destructive" 
+      });
+      setDeleteConfirmOpen(false);
+      setTypeToDelete(null);
     }
   });
 
@@ -86,13 +123,49 @@ export default function VendorTypes() {
       isActive: true,
     });
     setEditingType(null);
+    setValidationErrors({});
+  };
+
+  const validateForm = () => {
+    const errors: Record<string, string> = {};
+    const trimmedCode = formData.typeCode.trim();
+    const trimmedName = formData.typeName.trim();
+
+    if (!trimmedCode) {
+      errors.typeCode = "Type code is required";
+    } else if (types) {
+      const duplicate = types.find(
+        (t) => t.typeCode.toLowerCase() === trimmedCode.toLowerCase() && 
+               (!editingType || t.id !== editingType.id)
+      );
+      if (duplicate) {
+        errors.typeCode = "This type code already exists";
+      }
+    }
+
+    if (!trimmedName) {
+      errors.typeName = "Type name is required";
+    } else if (types) {
+      const duplicate = types.find(
+        (t) => t.typeName.toLowerCase() === trimmedName.toLowerCase() && 
+               (!editingType || t.id !== editingType.id)
+      );
+      if (duplicate) {
+        errors.typeName = "This type name already exists";
+      }
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleCreate = () => {
+    if (!validateForm()) return;
+
     createMutation.mutate({
-      typeCode: formData.typeCode,
-      typeName: formData.typeName,
-      description: formData.description || null,
+      typeCode: formData.typeCode.trim(),
+      typeName: formData.typeName.trim(),
+      description: formData.description.trim() || null,
       displayOrder: formData.displayOrder ? parseInt(formData.displayOrder) : null,
       isActive: formData.isActive ? 'true' : 'false',
     });
@@ -112,21 +185,28 @@ export default function VendorTypes() {
 
   const handleUpdate = () => {
     if (!editingType) return;
+    if (!validateForm()) return;
+
     updateMutation.mutate({
       id: editingType.id,
       data: {
-        typeCode: formData.typeCode,
-        typeName: formData.typeName,
-        description: formData.description || null,
+        typeCode: formData.typeCode.trim(),
+        typeName: formData.typeName.trim(),
+        description: formData.description.trim() || null,
         displayOrder: formData.displayOrder ? parseInt(formData.displayOrder) : null,
         isActive: formData.isActive ? 'true' : 'false',
       }
     });
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this vendor type?")) {
-      deleteMutation.mutate(id);
+  const handleDeleteClick = (type: VendorType) => {
+    setTypeToDelete(type);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (typeToDelete) {
+      deleteMutation.mutate(typeToDelete.id);
     }
   };
 
@@ -199,7 +279,7 @@ export default function VendorTypes() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleDelete(type.id)}
+                          onClick={() => handleDeleteClick(type)}
                           data-testid={`button-delete-vendor-type-${type.id}`}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
@@ -226,20 +306,40 @@ export default function VendorTypes() {
                 <Input
                   id="typeCode"
                   value={formData.typeCode}
-                  onChange={(e) => setFormData({ ...formData, typeCode: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, typeCode: e.target.value });
+                    setValidationErrors({ ...validationErrors, typeCode: "" });
+                  }}
                   placeholder="e.g., KINTO, HPPANI, PUREJAL"
+                  className={validationErrors.typeCode ? "border-destructive" : ""}
                   data-testid="input-vendor-type-code"
                 />
+                {validationErrors.typeCode && (
+                  <div className="flex items-center gap-1 text-sm text-destructive" data-testid="error-vendor-type-code">
+                    <AlertCircle className="h-3 w-3" />
+                    <span>{validationErrors.typeCode}</span>
+                  </div>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="typeName">Type Name *</Label>
                 <Input
                   id="typeName"
                   value={formData.typeName}
-                  onChange={(e) => setFormData({ ...formData, typeName: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, typeName: e.target.value });
+                    setValidationErrors({ ...validationErrors, typeName: "" });
+                  }}
                   placeholder="e.g., Kinto, HPPani, Purejal"
+                  className={validationErrors.typeName ? "border-destructive" : ""}
                   data-testid="input-vendor-type-name"
                 />
+                {validationErrors.typeName && (
+                  <div className="flex items-center gap-1 text-sm text-destructive" data-testid="error-vendor-type-name">
+                    <AlertCircle className="h-3 w-3" />
+                    <span>{validationErrors.typeName}</span>
+                  </div>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
@@ -301,18 +401,38 @@ export default function VendorTypes() {
                 <Input
                   id="edit-typeCode"
                   value={formData.typeCode}
-                  onChange={(e) => setFormData({ ...formData, typeCode: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, typeCode: e.target.value });
+                    setValidationErrors({ ...validationErrors, typeCode: "" });
+                  }}
+                  className={validationErrors.typeCode ? "border-destructive" : ""}
                   data-testid="input-edit-vendor-type-code"
                 />
+                {validationErrors.typeCode && (
+                  <div className="flex items-center gap-1 text-sm text-destructive" data-testid="error-edit-vendor-type-code">
+                    <AlertCircle className="h-3 w-3" />
+                    <span>{validationErrors.typeCode}</span>
+                  </div>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-typeName">Type Name *</Label>
                 <Input
                   id="edit-typeName"
                   value={formData.typeName}
-                  onChange={(e) => setFormData({ ...formData, typeName: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, typeName: e.target.value });
+                    setValidationErrors({ ...validationErrors, typeName: "" });
+                  }}
+                  className={validationErrors.typeName ? "border-destructive" : ""}
                   data-testid="input-edit-vendor-type-name"
                 />
+                {validationErrors.typeName && (
+                  <div className="flex items-center gap-1 text-sm text-destructive" data-testid="error-edit-vendor-type-name">
+                    <AlertCircle className="h-3 w-3" />
+                    <span>{validationErrors.typeName}</span>
+                  </div>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-description">Description</Label>
@@ -357,6 +477,29 @@ export default function VendorTypes() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+          <AlertDialogContent data-testid="dialog-confirm-delete-vendor-type">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Deactivate Vendor Type?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will mark "{typeToDelete?.typeName}" as inactive (soft delete). 
+                The vendor type will not be permanently deleted and can be reactivated later 
+                by editing it and toggling the Active switch.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid="button-cancel-delete-vendor-type">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteConfirm}
+                className="bg-destructive hover-elevate"
+                data-testid="button-confirm-delete-vendor-type"
+              >
+                Deactivate
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );
