@@ -1,0 +1,80 @@
+CRITICAL FIX FOR MAC - Database Column Issue
+=============================================
+
+YOUR ERROR:
+-----------
+Error: column "authorized_signatory_name" does not exist
+
+
+THE PROBLEM:
+------------
+Your Mac database is MISSING the column!
+
+When you ran setup_mac.sh, it created the database schema.
+But the column IS in the schema file (line 407).
+
+This means PostgreSQL didn't execute that part correctly,
+OR you're connecting to a DIFFERENT database.
+
+
+SOLUTION - CHECK DATABASE CONNECTION:
+--------------------------------------
+
+1. Check which database you're connected to:
+   
+   echo $DATABASE_URL
+
+   It should be: postgresql://localhost/kinto_ops
+
+
+2. Verify the column exists in YOUR database:
+
+   psql kinto_ops -c "\d invoices" | grep authorized
+
+
+3. If column is MISSING, add it manually:
+
+   psql kinto_ops -c "ALTER TABLE invoices ADD COLUMN authorized_signatory_name VARCHAR(255);"
+
+
+4. Add other missing columns:
+
+   psql kinto_ops -c "ALTER TABLE production_entries ADD COLUMN produced_quantity NUMERIC(12,2) NOT NULL DEFAULT 0;"
+
+   psql kinto_ops -c "ALTER TABLE production_reconciliations ADD COLUMN production_entry_id VARCHAR;"
+
+
+5. Restart your app:
+
+   npm start
+
+
+ALTERNATIVE - FRESH INSTALL:
+-----------------------------
+
+If above doesn't work, DROP and recreate database:
+
+1. Drop existing database:
+   dropdb kinto_ops
+
+2. Create fresh database:
+   createdb kinto_ops
+
+3. Run setup script again:
+   cd updated_dbscripts
+   bash setup_mac.sh
+
+4. Rebuild app:
+   cd ..
+   npm run build
+   npm start
+
+
+VERIFY THE FIX:
+---------------
+
+After adding columns, verify:
+
+psql kinto_ops -c "SELECT column_name FROM information_schema.columns WHERE table_name='invoices' AND column_name='authorized_signatory_name';"
+
+Should return: authorized_signatory_name
