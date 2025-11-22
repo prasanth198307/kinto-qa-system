@@ -50,6 +50,23 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
   const [selectedMonth, setSelectedMonth] = useState("");
   const [selectedYear, setSelectedYear] = useState("");
   
+  // Gatepass filters
+  const [gatepassSearchQuery, setGatepassSearchQuery] = useState("");
+  const [gatepassStatusFilter, setGatepassStatusFilter] = useState<string>("all");
+  const [gatepassDateFilterType, setGatepassDateFilterType] = useState<string>("all");
+  const [gatepassDateFrom, setGatepassDateFrom] = useState("");
+  const [gatepassDateTo, setGatepassDateTo] = useState("");
+  const [gatepassSelectedMonth, setGatepassSelectedMonth] = useState("");
+  const [gatepassSelectedYear, setGatepassSelectedYear] = useState("");
+  
+  // Raw Material Issuance filters
+  const [issuanceSearchQuery, setIssuanceSearchQuery] = useState("");
+  const [issuanceDateFilterType, setIssuanceDateFilterType] = useState<string>("all");
+  const [issuanceDateFrom, setIssuanceDateFrom] = useState("");
+  const [issuanceDateTo, setIssuanceDateTo] = useState("");
+  const [issuanceSelectedMonth, setIssuanceSelectedMonth] = useState("");
+  const [issuanceSelectedYear, setIssuanceSelectedYear] = useState("");
+  
   const { toast } = useToast();
   const { logoutMutation } = useAuth();
 
@@ -129,6 +146,100 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
     // Sort by date (newest first)
     return filtered.sort((a, b) => new Date(b.invoiceDate).getTime() - new Date(a.invoiceDate).getTime());
   }, [invoices, invoiceSearchQuery, selectedVendor, dateFilterType, dateFrom, dateTo, selectedMonth, selectedYear]);
+
+  // Filtered gatepasses based on search and filters
+  const filteredGatepasses = useMemo(() => {
+    let filtered = [...gatepasses];
+
+    // Search by gatepass number, vehicle number, or driver name
+    if (gatepassSearchQuery.trim()) {
+      const query = gatepassSearchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (gp) =>
+          gp.gatepassNumber.toLowerCase().includes(query) ||
+          (gp.vehicleNumber && gp.vehicleNumber.toLowerCase().includes(query)) ||
+          (gp.driverName && gp.driverName.toLowerCase().includes(query)) ||
+          (gp.customerName && gp.customerName.toLowerCase().includes(query))
+      );
+    }
+
+    // Filter by status
+    if (gatepassStatusFilter !== "all") {
+      filtered = filtered.filter((gp) => gp.status === gatepassStatusFilter);
+    }
+
+    // Filter by date
+    if (gatepassDateFilterType === "range" && gatepassDateFrom && gatepassDateTo) {
+      const fromDate = new Date(gatepassDateFrom);
+      const toDate = new Date(gatepassDateTo);
+      filtered = filtered.filter((gp) => {
+        const gpDate = new Date(gp.gatepassDate);
+        return isWithinInterval(gpDate, { start: fromDate, end: toDate });
+      });
+    } else if (gatepassDateFilterType === "month" && gatepassSelectedMonth) {
+      const [year, month] = gatepassSelectedMonth.split("-");
+      const monthStart = startOfMonth(new Date(parseInt(year), parseInt(month) - 1));
+      const monthEnd = endOfMonth(new Date(parseInt(year), parseInt(month) - 1));
+      filtered = filtered.filter((gp) => {
+        const gpDate = new Date(gp.gatepassDate);
+        return isWithinInterval(gpDate, { start: monthStart, end: monthEnd });
+      });
+    } else if (gatepassDateFilterType === "year" && gatepassSelectedYear) {
+      const yearStart = startOfYear(new Date(parseInt(gatepassSelectedYear), 0));
+      const yearEnd = endOfYear(new Date(parseInt(gatepassSelectedYear), 0));
+      filtered = filtered.filter((gp) => {
+        const gpDate = new Date(gp.gatepassDate);
+        return isWithinInterval(gpDate, { start: yearStart, end: yearEnd });
+      });
+    }
+
+    // Sort by date (newest first)
+    return filtered.sort((a, b) => new Date(b.gatepassDate).getTime() - new Date(a.gatepassDate).getTime());
+  }, [gatepasses, gatepassSearchQuery, gatepassStatusFilter, gatepassDateFilterType, gatepassDateFrom, gatepassDateTo, gatepassSelectedMonth, gatepassSelectedYear]);
+
+  // Filtered raw material issuances based on search and filters
+  const filteredIssuances = useMemo(() => {
+    let filtered = [...issuances];
+
+    // Search by issuance number, product, or issued to
+    if (issuanceSearchQuery.trim()) {
+      const query = issuanceSearchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (iss) =>
+          iss.issuanceNumber.toLowerCase().includes(query) ||
+          (iss.issuedTo && iss.issuedTo.toLowerCase().includes(query)) ||
+          (iss.remarks && iss.remarks.toLowerCase().includes(query))
+      );
+    }
+
+    // Filter by date
+    if (issuanceDateFilterType === "range" && issuanceDateFrom && issuanceDateTo) {
+      const fromDate = new Date(issuanceDateFrom);
+      const toDate = new Date(issuanceDateTo);
+      filtered = filtered.filter((iss) => {
+        const issDate = new Date(iss.issuanceDate);
+        return isWithinInterval(issDate, { start: fromDate, end: toDate });
+      });
+    } else if (issuanceDateFilterType === "month" && issuanceSelectedMonth) {
+      const [year, month] = issuanceSelectedMonth.split("-");
+      const monthStart = startOfMonth(new Date(parseInt(year), parseInt(month) - 1));
+      const monthEnd = endOfMonth(new Date(parseInt(year), parseInt(month) - 1));
+      filtered = filtered.filter((iss) => {
+        const issDate = new Date(iss.issuanceDate);
+        return isWithinInterval(issDate, { start: monthStart, end: monthEnd });
+      });
+    } else if (issuanceDateFilterType === "year" && issuanceSelectedYear) {
+      const yearStart = startOfYear(new Date(parseInt(issuanceSelectedYear), 0));
+      const yearEnd = endOfYear(new Date(parseInt(issuanceSelectedYear), 0));
+      filtered = filtered.filter((iss) => {
+        const issDate = new Date(iss.issuanceDate);
+        return isWithinInterval(issDate, { start: yearStart, end: yearEnd });
+      });
+    }
+
+    // Sort by date (newest first)
+    return filtered.sort((a, b) => new Date(b.issuanceDate).getTime() - new Date(a.issuanceDate).getTime());
+  }, [issuances, issuanceSearchQuery, issuanceDateFilterType, issuanceDateFrom, issuanceDateTo, issuanceSelectedMonth, issuanceSelectedYear]);
 
   const deleteIssuanceMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -256,7 +367,7 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
     setSelectedInvoiceForPayment(null);
   };
 
-  const clearFilters = () => {
+  const clearInvoiceFilters = () => {
     setInvoiceSearchQuery("");
     setSelectedVendor("all");
     setDateFilterType("all");
@@ -266,84 +377,408 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
     setSelectedYear("");
   };
 
-  const hasActiveFilters = invoiceSearchQuery || selectedVendor !== "all" || dateFilterType !== "all";
+  const clearGatepassFilters = () => {
+    setGatepassSearchQuery("");
+    setGatepassStatusFilter("all");
+    setGatepassDateFilterType("all");
+    setGatepassDateFrom("");
+    setGatepassDateTo("");
+    setGatepassSelectedMonth("");
+    setGatepassSelectedYear("");
+  };
+
+  const clearIssuanceFilters = () => {
+    setIssuanceSearchQuery("");
+    setIssuanceDateFilterType("all");
+    setIssuanceDateFrom("");
+    setIssuanceDateTo("");
+    setIssuanceSelectedMonth("");
+    setIssuanceSelectedYear("");
+  };
+
+  const hasActiveInvoiceFilters = invoiceSearchQuery || selectedVendor !== "all" || dateFilterType !== "all";
+  const hasActiveGatepassFilters = gatepassSearchQuery || gatepassStatusFilter !== "all" || gatepassDateFilterType !== "all";
+  const hasActiveIssuanceFilters = issuanceSearchQuery || issuanceDateFilterType !== "all";
 
   const renderContent = () => {
     switch (activeTab) {
       case 'raw-material-issuance':
         return (
-          <Card className="p-4">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold">Raw Material Issuance</h2>
-              <Button 
-                onClick={() => setShowIssuanceForm(true)} 
-                size="sm"
-                data-testid="button-add-issuance"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Issue Material
-              </Button>
-            </div>
+          <div className="space-y-4">
+            {/* Header */}
+            <Card className="p-4">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-lg font-semibold">Raw Material Issuance</h2>
+                  <p className="text-sm text-muted-foreground">
+                    {filteredIssuances.length} of {issuances.length} issuances
+                  </p>
+                </div>
+                <Button 
+                  onClick={() => setShowIssuanceForm(true)} 
+                  size="sm"
+                  data-testid="button-add-issuance"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Issue Material
+                </Button>
+              </div>
+            </Card>
 
+            {/* Filters */}
+            <Card className="p-4">
+              <div className="space-y-4">
+                {/* Search */}
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1">
+                    <Label htmlFor="issuance-search" className="text-sm font-medium mb-1.5 block">
+                      Search Issuance
+                    </Label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        id="issuance-search"
+                        placeholder="Search by issuance number, issued to, or remarks..."
+                        value={issuanceSearchQuery}
+                        onChange={(e) => setIssuanceSearchQuery(e.target.value)}
+                        className="pl-9"
+                        data-testid="input-issuance-search"
+                      />
+                    </div>
+                  </div>
+                  {hasActiveIssuanceFilters && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={clearIssuanceFilters}
+                      data-testid="button-clear-issuance-filters"
+                    >
+                      <X className="w-4 h-4 mr-2" />
+                      Clear Filters
+                    </Button>
+                  )}
+                </div>
+
+                {/* Filters Row */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  {/* Date Filter Type */}
+                  <div>
+                    <Label htmlFor="issuance-date-filter-type" className="text-sm font-medium mb-1.5 block">
+                      Date Filter
+                    </Label>
+                    <Select value={issuanceDateFilterType} onValueChange={(val) => {
+                      setIssuanceDateFilterType(val);
+                      if (val === "all") {
+                        setIssuanceDateFrom("");
+                        setIssuanceDateTo("");
+                        setIssuanceSelectedMonth("");
+                        setIssuanceSelectedYear("");
+                      }
+                    }}>
+                      <SelectTrigger id="issuance-date-filter-type" data-testid="select-issuance-date-filter-type">
+                        <SelectValue placeholder="All Time" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Time</SelectItem>
+                        <SelectItem value="range">Date Range</SelectItem>
+                        <SelectItem value="month">By Month</SelectItem>
+                        <SelectItem value="year">By Year</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Conditional Date Inputs */}
+                  {issuanceDateFilterType === "range" && (
+                    <>
+                      <div>
+                        <Label htmlFor="issuance-date-from" className="text-sm font-medium mb-1.5 block">
+                          From Date
+                        </Label>
+                        <Input
+                          id="issuance-date-from"
+                          type="date"
+                          value={issuanceDateFrom}
+                          onChange={(e) => setIssuanceDateFrom(e.target.value)}
+                          data-testid="input-issuance-date-from"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="issuance-date-to" className="text-sm font-medium mb-1.5 block">
+                          To Date
+                        </Label>
+                        <Input
+                          id="issuance-date-to"
+                          type="date"
+                          value={issuanceDateTo}
+                          onChange={(e) => setIssuanceDateTo(e.target.value)}
+                          data-testid="input-issuance-date-to"
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {issuanceDateFilterType === "month" && (
+                    <div>
+                      <Label htmlFor="issuance-month-filter" className="text-sm font-medium mb-1.5 block">
+                        Select Month
+                      </Label>
+                      <Input
+                        id="issuance-month-filter"
+                        type="month"
+                        value={issuanceSelectedMonth}
+                        onChange={(e) => setIssuanceSelectedMonth(e.target.value)}
+                        data-testid="input-issuance-month-filter"
+                      />
+                    </div>
+                  )}
+
+                  {issuanceDateFilterType === "year" && (
+                    <div>
+                      <Label htmlFor="issuance-year-filter" className="text-sm font-medium mb-1.5 block">
+                        Select Year
+                      </Label>
+                      <Select value={issuanceSelectedYear} onValueChange={setIssuanceSelectedYear}>
+                        <SelectTrigger id="issuance-year-filter" data-testid="select-issuance-year-filter">
+                          <SelectValue placeholder="Select Year" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map((year) => (
+                            <SelectItem key={year} value={year.toString()}>
+                              {year}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </Card>
+
+            {/* Issuance Form */}
             {showIssuanceForm && (
-              <div className="mb-4">
+              <Card className="p-4">
                 <RawMaterialIssuanceForm
                   issuance={editingIssuance}
                   onClose={handleIssuanceFormClose}
                 />
-              </div>
+              </Card>
             )}
 
-            <RawMaterialIssuanceTable
-              issuances={issuances}
-              isLoading={isLoadingIssuances}
-              onEdit={handleEditIssuance}
-              onDelete={handleDeleteIssuance}
-            />
-          </Card>
+            {/* Issuance Table */}
+            <Card className="p-4">
+              <RawMaterialIssuanceTable
+                issuances={filteredIssuances}
+                isLoading={isLoadingIssuances}
+                onEdit={handleEditIssuance}
+                onDelete={handleDeleteIssuance}
+              />
+            </Card>
+          </div>
         );
       case 'gatepasses':
         return (
-          <Card className="p-4">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold">Gatepasses</h2>
-              <Button 
-                onClick={() => setShowGatepassForm(true)} 
-                size="sm"
-                data-testid="button-add-gatepass"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Issue Gatepass
-              </Button>
-            </div>
+          <div className="space-y-4">
+            {/* Header */}
+            <Card className="p-4">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-lg font-semibold">Gatepasses</h2>
+                  <p className="text-sm text-muted-foreground">
+                    {filteredGatepasses.length} of {gatepasses.length} gatepasses
+                  </p>
+                </div>
+                <Button 
+                  onClick={() => setShowGatepassForm(true)} 
+                  size="sm"
+                  data-testid="button-add-gatepass"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Issue Gatepass
+                </Button>
+              </div>
+            </Card>
 
+            {/* Filters */}
+            <Card className="p-4">
+              <div className="space-y-4">
+                {/* Search */}
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1">
+                    <Label htmlFor="gatepass-search" className="text-sm font-medium mb-1.5 block">
+                      Search Gatepass
+                    </Label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        id="gatepass-search"
+                        placeholder="Search by GP number, vehicle, driver, or customer..."
+                        value={gatepassSearchQuery}
+                        onChange={(e) => setGatepassSearchQuery(e.target.value)}
+                        className="pl-9"
+                        data-testid="input-gatepass-search"
+                      />
+                    </div>
+                  </div>
+                  {hasActiveGatepassFilters && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={clearGatepassFilters}
+                      data-testid="button-clear-gatepass-filters"
+                    >
+                      <X className="w-4 h-4 mr-2" />
+                      Clear Filters
+                    </Button>
+                  )}
+                </div>
+
+                {/* Filters Row */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  {/* Status Filter */}
+                  <div>
+                    <Label htmlFor="gatepass-status-filter" className="text-sm font-medium mb-1.5 block">
+                      Status
+                    </Label>
+                    <Select value={gatepassStatusFilter} onValueChange={setGatepassStatusFilter}>
+                      <SelectTrigger id="gatepass-status-filter" data-testid="select-gatepass-status-filter">
+                        <SelectValue placeholder="All Statuses" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Statuses</SelectItem>
+                        <SelectItem value="generated">Generated</SelectItem>
+                        <SelectItem value="vehicle_out">Vehicle Out</SelectItem>
+                        <SelectItem value="delivered">Delivered</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Date Filter Type */}
+                  <div>
+                    <Label htmlFor="gatepass-date-filter-type" className="text-sm font-medium mb-1.5 block">
+                      Date Filter
+                    </Label>
+                    <Select value={gatepassDateFilterType} onValueChange={(val) => {
+                      setGatepassDateFilterType(val);
+                      if (val === "all") {
+                        setGatepassDateFrom("");
+                        setGatepassDateTo("");
+                        setGatepassSelectedMonth("");
+                        setGatepassSelectedYear("");
+                      }
+                    }}>
+                      <SelectTrigger id="gatepass-date-filter-type" data-testid="select-gatepass-date-filter-type">
+                        <SelectValue placeholder="All Time" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Time</SelectItem>
+                        <SelectItem value="range">Date Range</SelectItem>
+                        <SelectItem value="month">By Month</SelectItem>
+                        <SelectItem value="year">By Year</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Conditional Date Inputs */}
+                  {gatepassDateFilterType === "range" && (
+                    <>
+                      <div>
+                        <Label htmlFor="gatepass-date-from" className="text-sm font-medium mb-1.5 block">
+                          From Date
+                        </Label>
+                        <Input
+                          id="gatepass-date-from"
+                          type="date"
+                          value={gatepassDateFrom}
+                          onChange={(e) => setGatepassDateFrom(e.target.value)}
+                          data-testid="input-gatepass-date-from"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="gatepass-date-to" className="text-sm font-medium mb-1.5 block">
+                          To Date
+                        </Label>
+                        <Input
+                          id="gatepass-date-to"
+                          type="date"
+                          value={gatepassDateTo}
+                          onChange={(e) => setGatepassDateTo(e.target.value)}
+                          data-testid="input-gatepass-date-to"
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {gatepassDateFilterType === "month" && (
+                    <div>
+                      <Label htmlFor="gatepass-month-filter" className="text-sm font-medium mb-1.5 block">
+                        Select Month
+                      </Label>
+                      <Input
+                        id="gatepass-month-filter"
+                        type="month"
+                        value={gatepassSelectedMonth}
+                        onChange={(e) => setGatepassSelectedMonth(e.target.value)}
+                        data-testid="input-gatepass-month-filter"
+                      />
+                    </div>
+                  )}
+
+                  {gatepassDateFilterType === "year" && (
+                    <div>
+                      <Label htmlFor="gatepass-year-filter" className="text-sm font-medium mb-1.5 block">
+                        Select Year
+                      </Label>
+                      <Select value={gatepassSelectedYear} onValueChange={setGatepassSelectedYear}>
+                        <SelectTrigger id="gatepass-year-filter" data-testid="select-gatepass-year-filter">
+                          <SelectValue placeholder="Select Year" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map((year) => (
+                            <SelectItem key={year} value={year.toString()}>
+                              {year}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </Card>
+
+            {/* Gatepass Forms */}
             {showGatepassForm && (
-              <div className="mb-4">
+              <Card className="p-4">
                 <GatepassForm
                   gatepass={editingGatepass}
                   onClose={handleGatepassFormClose}
                 />
-              </div>
+              </Card>
             )}
 
             {showInvoiceForm && (
-              <div className="mb-4">
+              <Card className="p-4">
                 <InvoiceForm
                   gatepass={selectedGatepassForInvoice || undefined}
                   invoice={editingInvoice || undefined}
                   onClose={handleInvoiceFormClose}
                 />
-              </div>
+              </Card>
             )}
 
-            <GatepassTable
-              gatepasses={gatepasses}
-              isLoading={isLoadingGatepasses}
-              onEdit={handleEditGatepass}
-              onDelete={handleDeleteGatepass}
-              onGenerateInvoice={handleGenerateInvoice}
-            />
-          </Card>
+            {/* Gatepass Table */}
+            <Card className="p-4">
+              <GatepassTable
+                gatepasses={filteredGatepasses}
+                isLoading={isLoadingGatepasses}
+                onEdit={handleEditGatepass}
+                onDelete={handleDeleteGatepass}
+                onGenerateInvoice={handleGenerateInvoice}
+              />
+            </Card>
+          </div>
         );
       case 'invoices':
         return (
@@ -400,11 +835,11 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
                       />
                     </div>
                   </div>
-                  {hasActiveFilters && (
+                  {hasActiveInvoiceFilters && (
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={clearFilters}
+                      onClick={clearInvoiceFilters}
                       data-testid="button-clear-filters"
                     >
                       <X className="w-4 h-4 mr-2" />

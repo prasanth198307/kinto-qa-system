@@ -41,7 +41,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Star } from "lucide-react";
+import { Plus, Pencil, Trash2, Star, Search, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Vendor } from "@shared/schema";
 
@@ -96,6 +96,12 @@ export default function VendorManagement() {
   const [selectedVendorTypes, setSelectedVendorTypes] = useState<string[]>([]);
   const [primaryVendorTypeId, setPrimaryVendorTypeId] = useState<string | null>(null);
 
+  // Search and filter states
+  const [searchQuery, setSearchQuery] = useState("");
+  const [cityFilter, setCityFilter] = useState<string>("all");
+  const [stateFilter, setStateFilter] = useState<string>("all");
+  const [activeStatusFilter, setActiveStatusFilter] = useState<string>("all");
+
   const { data: vendors = [], isLoading } = useQuery<Vendor[]>({
     queryKey: ["/api/vendors"],
   });
@@ -119,6 +125,62 @@ export default function VendorManagement() {
       return acc;
     }, {} as Record<string, VendorVendorType[]>);
   }, [allVendorTypeAssignments]);
+
+  // Get unique cities and states for filters
+  const uniqueCities = useMemo(() => {
+    const cities = new Set(vendors.filter(v => v.city).map(v => v.city!));
+    return Array.from(cities).sort();
+  }, [vendors]);
+
+  const uniqueStates = useMemo(() => {
+    const states = new Set(vendors.filter(v => v.state).map(v => v.state!));
+    return Array.from(states).sort();
+  }, [vendors]);
+
+  // Filtered vendors based on search and filters
+  const filteredVendors = useMemo(() => {
+    let filtered = [...vendors];
+
+    // Search by vendor name, code, or GST number
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (v) =>
+          v.vendorName.toLowerCase().includes(query) ||
+          v.vendorCode.toLowerCase().includes(query) ||
+          (v.gstNumber && v.gstNumber.toLowerCase().includes(query)) ||
+          (v.aadhaarNumber && v.aadhaarNumber.toLowerCase().includes(query)) ||
+          (v.mobileNumber && v.mobileNumber.includes(query))
+      );
+    }
+
+    // Filter by city
+    if (cityFilter !== "all") {
+      filtered = filtered.filter((v) => v.city === cityFilter);
+    }
+
+    // Filter by state
+    if (stateFilter !== "all") {
+      filtered = filtered.filter((v) => v.state === stateFilter);
+    }
+
+    // Filter by active status
+    if (activeStatusFilter !== "all") {
+      filtered = filtered.filter((v) => v.isActive === activeStatusFilter);
+    }
+
+    // Sort by vendor code
+    return filtered.sort((a, b) => a.vendorCode.localeCompare(b.vendorCode));
+  }, [vendors, searchQuery, cityFilter, stateFilter, activeStatusFilter]);
+
+  const clearFilters = () => {
+    setSearchQuery("");
+    setCityFilter("all");
+    setStateFilter("all");
+    setActiveStatusFilter("all");
+  };
+
+  const hasActiveFilters = searchQuery || cityFilter !== "all" || stateFilter !== "all" || activeStatusFilter !== "all";
 
   const { data: currentVendorTypes = [] } = useQuery<VendorVendorType[]>({
     queryKey: ['/api/vendors', editingVendor?.id, 'types'],
@@ -274,10 +336,17 @@ export default function VendorManagement() {
 
   return (
     <>
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between gap-2">
-        <CardTitle>Vendor Master</CardTitle>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+    <div className="space-y-4">
+      {/* Header Card */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-2">
+          <div>
+            <CardTitle>Vendor Master</CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              {filteredVendors.length} of {vendors.length} vendors
+            </p>
+          </div>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button size="sm" data-testid="button-add-vendor">
               <Plus className="w-4 h-4 mr-2" />
@@ -544,12 +613,116 @@ export default function VendorManagement() {
           </DialogContent>
         </Dialog>
       </CardHeader>
-      <CardContent>
+    </Card>
+
+    {/* Filters Card */}
+    <Card>
+      <CardContent className="pt-6">
+        <div className="space-y-4">
+          {/* Search */}
+          <div className="flex gap-2 items-end">
+            <div className="flex-1">
+              <Label htmlFor="vendor-search" className="text-sm font-medium mb-1.5 block">
+                Search Vendor
+              </Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  id="vendor-search"
+                  placeholder="Search by name, code, GST number, or mobile..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                  data-testid="input-vendor-search"
+                />
+              </div>
+            </div>
+            {hasActiveFilters && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={clearFilters}
+                data-testid="button-clear-vendor-filters"
+              >
+                <X className="w-4 h-4 mr-2" />
+                Clear Filters
+              </Button>
+            )}
+          </div>
+
+          {/* Filters Row */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* City Filter */}
+            <div>
+              <Label htmlFor="city-filter" className="text-sm font-medium mb-1.5 block">
+                City
+              </Label>
+              <Select value={cityFilter} onValueChange={setCityFilter}>
+                <SelectTrigger id="city-filter" data-testid="select-city-filter">
+                  <SelectValue placeholder="All Cities" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Cities</SelectItem>
+                  {uniqueCities.map((city) => (
+                    <SelectItem key={city} value={city}>
+                      {city}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* State Filter */}
+            <div>
+              <Label htmlFor="state-filter" className="text-sm font-medium mb-1.5 block">
+                State
+              </Label>
+              <Select value={stateFilter} onValueChange={setStateFilter}>
+                <SelectTrigger id="state-filter" data-testid="select-state-filter">
+                  <SelectValue placeholder="All States" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All States</SelectItem>
+                  {uniqueStates.map((state) => (
+                    <SelectItem key={state} value={state}>
+                      {state}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Active Status Filter */}
+            <div>
+              <Label htmlFor="active-status-filter" className="text-sm font-medium mb-1.5 block">
+                Status
+              </Label>
+              <Select value={activeStatusFilter} onValueChange={setActiveStatusFilter}>
+                <SelectTrigger id="active-status-filter" data-testid="select-active-status-filter">
+                  <SelectValue placeholder="All Statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="true">Active</SelectItem>
+                  <SelectItem value="false">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+
+    {/* Vendor Table Card */}
+    <Card>
+      <CardContent className="pt-6">
         {isLoading ? (
           <div className="text-center py-8">Loading vendors...</div>
-        ) : vendors.length === 0 ? (
+        ) : filteredVendors.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
-            No vendors found. Add your first vendor to get started.
+            {vendors.length === 0 
+              ? "No vendors found. Add your first vendor to get started." 
+              : "No vendors match your search criteria. Try adjusting your filters."}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -569,7 +742,7 @@ export default function VendorManagement() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {vendors.map((vendor) => (
+                {filteredVendors.map((vendor) => (
                   <TableRow key={vendor.id} data-testid={`row-vendor-${vendor.id}`}>
                     <TableCell className="font-medium">{vendor.vendorCode}</TableCell>
                     <TableCell>{vendor.vendorName}</TableCell>
@@ -653,6 +826,7 @@ export default function VendorManagement() {
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+    </div>
     </>
   );
 }
