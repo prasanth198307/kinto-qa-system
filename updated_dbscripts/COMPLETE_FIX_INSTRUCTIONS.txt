@@ -1,0 +1,133 @@
+COMPLETE FIX FOR ALL MAC ERRORS
+================================
+
+PROBLEM 1: Missing Database Columns
+------------------------------------
+Error: column "authorized_signatory_name" does not exist
+
+FIX: Add missing columns manually
+
+psql kinto_ops << 'EOF'
+ALTER TABLE invoices 
+  ADD COLUMN IF NOT EXISTS authorized_signatory_name VARCHAR(255);
+
+ALTER TABLE production_entries 
+  ADD COLUMN IF NOT EXISTS produced_quantity NUMERIC(12,2) NOT NULL DEFAULT 0;
+
+ALTER TABLE production_reconciliations 
+  ADD COLUMN IF NOT EXISTS production_entry_id VARCHAR 
+  REFERENCES production_entries(id);
+EOF
+
+
+PROBLEM 2: XLSX Import Error
+-----------------------------
+Error: Import XLSX with dynamic import
+
+FIX: Already fixed in latest code! Just rebuild:
+
+cd /Users/prasanthdusi/kinto-qa-system/kinto-qa-system
+npm run build
+npm start
+
+
+COMPLETE STEP-BY-STEP SOLUTION:
+================================
+
+1. Add missing database columns:
+
+psql kinto_ops << 'EOF'
+ALTER TABLE invoices 
+  ADD COLUMN IF NOT EXISTS authorized_signatory_name VARCHAR(255);
+
+ALTER TABLE production_entries 
+  ADD COLUMN IF NOT EXISTS produced_quantity NUMERIC(12,2) NOT NULL DEFAULT 0;
+
+ALTER TABLE production_reconciliations 
+  ADD COLUMN IF NOT EXISTS production_entry_id VARCHAR 
+  REFERENCES production_entries(id);
+EOF
+
+
+2. Rebuild application with fixed XLSX imports:
+
+cd /Users/prasanthdusi/kinto-qa-system/kinto-qa-system
+npm run build
+
+
+3. Start application:
+
+npm start
+
+
+4. Verify it works:
+
+Open browser to: http://localhost:5000
+Login with: admin / Admin@123
+Check Invoices page loads without errors
+
+
+ALTERNATIVE: Fresh Install
+===========================
+
+If above doesn't work, do a complete fresh install:
+
+1. Drop database:
+   dropdb kinto_ops
+
+2. Create fresh database:
+   createdb kinto_ops
+
+3. Install schema and seed data:
+   cd updated_dbscripts
+   bash setup_mac.sh
+
+4. Rebuild app:
+   cd ..
+   npm run build
+
+5. Start app:
+   npm start
+
+
+VERIFICATION COMMANDS:
+======================
+
+Check columns exist:
+psql kinto_ops -c "\d invoices" | grep authorized
+psql kinto_ops -c "\d production_entries" | grep produced
+psql kinto_ops -c "\d production_reconciliations" | grep production_entry
+
+
+Check vendor types loaded:
+psql kinto_ops -c "SELECT code, name FROM vendor_types;"
+
+Expected output:
+  code   |  name   
+---------+---------
+ KINTO   | Kinto
+ HPPANI  | HPPani
+ PUREJAL | Purejal
+
+
+WHAT GOT FIXED:
+===============
+✅ XLSX now uses dynamic import (Mac compatible)
+✅ Added missing database columns
+✅ Schema regenerated with all 57 tables
+✅ Seed data includes all vendor types
+✅ No duplicate key errors
+
+
+RUN THIS ON YOUR MAC:
+======================
+
+psql kinto_ops << 'EOF'
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS authorized_signatory_name VARCHAR(255);
+ALTER TABLE production_entries ADD COLUMN IF NOT EXISTS produced_quantity NUMERIC(12,2) NOT NULL DEFAULT 0;
+ALTER TABLE production_reconciliations ADD COLUMN IF NOT EXISTS production_entry_id VARCHAR REFERENCES production_entries(id);
+EOF
+
+cd /Users/prasanthdusi/kinto-qa-system/kinto-qa-system
+npm run build
+npm start

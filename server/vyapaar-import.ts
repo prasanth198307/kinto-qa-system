@@ -1,4 +1,3 @@
-import XLSX from 'xlsx';
 import { db } from './db';
 import {
   productCategories,
@@ -158,6 +157,9 @@ export async function importVyapaarData(
       await tx.execute(sql`DELETE FROM vendors`);
       await tx.execute(sql`DELETE FROM products`);
     
+      // Dynamically import XLSX for Mac compatibility
+      const XLSX = await import('xlsx');
+      
       // Read Excel files
       const partyWorkbook = XLSX.readFile(partyFilePath);
       const saleWorkbook = XLSX.readFile(saleFilePath);
