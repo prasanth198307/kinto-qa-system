@@ -1,0 +1,637 @@
+✅ Login successful for admin
+✅ Session regenerated and saved
+   User: admin
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Cookie will be: connect.sid=DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+3:02:57 AM [express] POST /api/login 200 in 109ms :: {"id":"user-admin","username":"admin","password…
+🔹 Request: GET /api/machines
+   Cookie header: connect.sid=s%3ADI0laz-12gJFdYvWGMDivA4ucM7-9r0E.0a29SaYMRNZSsSGptfeG8yrBExKUTXlOcjsMA%2Fm6bK4
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Authenticated: true
+3:02:57 AM [express] GET /api/machines 200 in 6ms :: [{"id":"80649cc4-2677-493d-a712-63f0833ae39d","…
+🔹 Request: GET /api/invoice-payments
+   Cookie header: connect.sid=s%3ADI0laz-12gJFdYvWGMDivA4ucM7-9r0E.0a29SaYMRNZSsSGptfeG8yrBExKUTXlOcjsMA%2Fm6bK4
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Authenticated: true
+3:02:57 AM [express] GET /api/invoice-payments 304 in 5ms :: []
+🔹 Request: GET /api/stats/today
+   Cookie header: connect.sid=s%3ADI0laz-12gJFdYvWGMDivA4ucM7-9r0E.0a29SaYMRNZSsSGptfeG8yrBExKUTXlOcjsMA%2Fm6bK4
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Authenticated: true
+🔹 Request: GET /api/spare-parts
+   Cookie header: connect.sid=s%3ADI0laz-12gJFdYvWGMDivA4ucM7-9r0E.0a29SaYMRNZSsSGptfeG8yrBExKUTXlOcjsMA%2Fm6bK4
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Authenticated: true
+🔹 Request: GET /api/users
+   Cookie header: connect.sid=s%3ADI0laz-12gJFdYvWGMDivA4ucM7-9r0E.0a29SaYMRNZSsSGptfeG8yrBExKUTXlOcjsMA%2Fm6bK4
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Authenticated: true
+🔹 Request: GET /api/checklist-templates
+   Cookie header: connect.sid=s%3ADI0laz-12gJFdYvWGMDivA4ucM7-9r0E.0a29SaYMRNZSsSGptfeG8yrBExKUTXlOcjsMA%2Fm6bK4
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Authenticated: true
+🔹 Request: GET /api/maintenance-plans
+   Cookie header: connect.sid=s%3ADI0laz-12gJFdYvWGMDivA4ucM7-9r0E.0a29SaYMRNZSsSGptfeG8yrBExKUTXlOcjsMA%2Fm6bK4
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Authenticated: true
+3:02:57 AM [express] GET /api/spare-parts 200 in 16ms :: [{"id":"66d39383-d0c9-4f4f-92fa-86487dfd485…
+3:02:57 AM [express] GET /api/users 200 in 16ms :: [{"id":"3c0cd496-588c-4b91-bf4c-85b956a83f0c","us…
+🔹 Request: GET /api/finished-goods
+   Cookie header: connect.sid=s%3ADI0laz-12gJFdYvWGMDivA4ucM7-9r0E.0a29SaYMRNZSsSGptfeG8yrBExKUTXlOcjsMA%2Fm6bK4
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Authenticated: true
+3:02:57 AM [express] GET /api/checklist-templates 304 in 17ms :: []
+3:02:57 AM [express] GET /api/maintenance-plans 304 in 18ms :: []
+🔹 Request: GET /api/invoices
+   Cookie header: connect.sid=s%3ADI0laz-12gJFdYvWGMDivA4ucM7-9r0E.0a29SaYMRNZSsSGptfeG8yrBExKUTXlOcjsMA%2Fm6bK4
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Authenticated: true
+3:02:57 AM [express] GET /api/finished-goods 200 in 22ms :: [{"id":"988602b4-2926-4921-b67e-a31238dc…
+🔹 Request: GET /api/raw-materials
+   Cookie header: connect.sid=s%3ADI0laz-12gJFdYvWGMDivA4ucM7-9r0E.0a29SaYMRNZSsSGptfeG8yrBExKUTXlOcjsMA%2Fm6bK4
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Authenticated: true
+3:02:57 AM [express] GET /api/stats/today 304 in 13ms :: {"rawMaterialIssuancesCount":0,"gatepassesC…
+Error fetching invoices: error: column "authorized_signatory_name" does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllInvoices (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:3017:16)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:8767:27 {
+  length: 126,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '642',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+🔹 Request: GET /api/products
+   Cookie header: connect.sid=s%3ADI0laz-12gJFdYvWGMDivA4ucM7-9r0E.0a29SaYMRNZSsSGptfeG8yrBExKUTXlOcjsMA%2Fm6bK4
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Authenticated: true
+🔹 Request: GET /api/pm-task-list-templates
+   Cookie header: connect.sid=s%3ADI0laz-12gJFdYvWGMDivA4ucM7-9r0E.0a29SaYMRNZSsSGptfeG8yrBExKUTXlOcjsMA%2Fm6bK4
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Authenticated: true
+3:02:57 AM [express] GET /api/raw-materials 200 in 7ms :: [{"id":"69898f7e-c760-4b3e-9333-666921606e…
+3:02:57 AM [express] GET /api/invoices 500 in 8ms :: {"message":"Failed to fetch invoices"}
+3:02:57 AM [express] GET /api/pm-task-list-templates 304 in 7ms :: []
+3:02:57 AM [express] GET /api/products 200 in 7ms :: [{"id":"871415b7-ccbb-4194-8444-b77188a2782a","…
+🔹 Request: GET /api/vendor-types
+   Cookie header: connect.sid=s%3ADI0laz-12gJFdYvWGMDivA4ucM7-9r0E.0a29SaYMRNZSsSGptfeG8yrBExKUTXlOcjsMA%2Fm6bK4
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Authenticated: true
+3:03:01 AM [express] GET /api/vendor-types 200 in 10ms :: [{"id":"a736800f-c4da-43a6-91ad-65eed3612b…
+🔹 Request: GET /api/vendor-vendor-types/batch
+   Cookie header: connect.sid=s%3ADI0laz-12gJFdYvWGMDivA4ucM7-9r0E.0a29SaYMRNZSsSGptfeG8yrBExKUTXlOcjsMA%2Fm6bK4
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Authenticated: true
+🔹 Request: GET /api/vendors
+   Cookie header: connect.sid=s%3ADI0laz-12gJFdYvWGMDivA4ucM7-9r0E.0a29SaYMRNZSsSGptfeG8yrBExKUTXlOcjsMA%2Fm6bK4
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Authenticated: true
+3:03:03 AM [express] GET /api/vendor-vendor-types/batch 200 in 8ms :: []
+3:03:03 AM [express] GET /api/vendors 200 in 7ms :: [{"id":"8175fd79-9d36-4c2f-bb18-db1d5e644ee4","v…
+🔹 Request: GET /api/raw-material-types
+   Cookie header: connect.sid=s%3ADI0laz-12gJFdYvWGMDivA4ucM7-9r0E.0a29SaYMRNZSsSGptfeG8yrBExKUTXlOcjsMA%2Fm6bK4
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Authenticated: true
+3:03:14 AM [express] GET /api/raw-material-types 200 in 22ms :: []
+🔹 Request: GET /api/invoices
+   Cookie header: connect.sid=s%3ADI0laz-12gJFdYvWGMDivA4ucM7-9r0E.0a29SaYMRNZSsSGptfeG8yrBExKUTXlOcjsMA%2Fm6bK4
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Authenticated: true
+Error fetching invoices: error: column "authorized_signatory_name" does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllInvoices (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:3017:16)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:8767:27 {
+  length: 126,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '642',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+🔹 Request: GET /api/gatepasses
+   Cookie header: connect.sid=s%3ADI0laz-12gJFdYvWGMDivA4ucM7-9r0E.0a29SaYMRNZSsSGptfeG8yrBExKUTXlOcjsMA%2Fm6bK4
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Authenticated: true
+3:03:20 AM [express] GET /api/invoices 500 in 16ms :: {"message":"Failed to fetch invoices"}
+3:03:20 AM [express] GET /api/gatepasses 304 in 18ms :: []
+🔹 Request: GET /api/machine-startup-tasks
+   Cookie header: connect.sid=s%3ADI0laz-12gJFdYvWGMDivA4ucM7-9r0E.0a29SaYMRNZSsSGptfeG8yrBExKUTXlOcjsMA%2Fm6bK4
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Authenticated: true
+3:03:22 AM [express] GET /api/machine-startup-tasks 304 in 12ms :: []
+🔹 Request: GET /api/invoices
+   Cookie header: connect.sid=s%3ADI0laz-12gJFdYvWGMDivA4ucM7-9r0E.0a29SaYMRNZSsSGptfeG8yrBExKUTXlOcjsMA%2Fm6bK4
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Authenticated: true
+Error fetching invoices: error: column "authorized_signatory_name" does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllInvoices (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:3017:16)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:8767:27 {
+  length: 126,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '642',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+🔹 Request: GET /api/raw-material-issuances
+   Cookie header: connect.sid=s%3ADI0laz-12gJFdYvWGMDivA4ucM7-9r0E.0a29SaYMRNZSsSGptfeG8yrBExKUTXlOcjsMA%2Fm6bK4
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Authenticated: true
+3:03:23 AM [express] GET /api/raw-material-issuances 304 in 11ms :: []
+3:03:23 AM [express] GET /api/invoices 500 in 14ms :: {"message":"Failed to fetch invoices"}
+🔹 Request: GET /api/production-entries
+   Cookie header: connect.sid=s%3ADI0laz-12gJFdYvWGMDivA4ucM7-9r0E.0a29SaYMRNZSsSGptfeG8yrBExKUTXlOcjsMA%2Fm6bK4
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Authenticated: true
+🔹 Request: GET /api/production-reconciliations
+   Cookie header: connect.sid=s%3ADI0laz-12gJFdYvWGMDivA4ucM7-9r0E.0a29SaYMRNZSsSGptfeG8yrBExKUTXlOcjsMA%2Fm6bK4
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Authenticated: true
+Error fetching production entries: error: column production_entries.produced_quantity does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllProductionEntries (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:2801:25)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:7800:23 {
+  length: 135,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '184',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+Error fetching production reconciliations: error: column "production_entry_id" does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllProductionReconciliations (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:2854:16)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:7865:31 {
+  length: 119,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '86',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+3:03:24 AM [express] GET /api/production-reconciliations 500 in 22ms :: {"message":"Failed to fetch …
+3:03:24 AM [express] GET /api/production-entries 500 in 21ms :: {"message":"Failed to fetch producti…
+🔹 Request: GET /api/production-entries
+   Cookie header: connect.sid=s%3ADI0laz-12gJFdYvWGMDivA4ucM7-9r0E.0a29SaYMRNZSsSGptfeG8yrBExKUTXlOcjsMA%2Fm6bK4
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Authenticated: true
+Error fetching production entries: error: column production_entries.produced_quantity does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllProductionEntries (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:2801:25)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:7800:23 {
+  length: 135,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '184',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+3:03:26 AM [express] GET /api/production-entries 500 in 13ms :: {"message":"Failed to fetch producti…
+🔹 Request: GET /api/invoices
+   Cookie header: connect.sid=s%3ADI0laz-12gJFdYvWGMDivA4ucM7-9r0E.0a29SaYMRNZSsSGptfeG8yrBExKUTXlOcjsMA%2Fm6bK4
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Authenticated: true
+Error fetching invoices: error: column "authorized_signatory_name" does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllInvoices (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:3017:16)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:8767:27 {
+  length: 126,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '642',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+3:03:27 AM [express] GET /api/invoices 500 in 20ms :: {"message":"Failed to fetch invoices"}
+🔹 Request: GET /api/sales-analytics
+   Cookie header: connect.sid=s%3ADI0laz-12gJFdYvWGMDivA4ucM7-9r0E.0a29SaYMRNZSsSGptfeG8yrBExKUTXlOcjsMA%2Fm6bK4
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Authenticated: true
+Error fetching sales analytics: error: column "authorized_signatory_name" does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllInvoices (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:3017:16)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:9384:27 {
+  length: 126,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '642',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+3:03:32 AM [express] GET /api/sales-analytics 500 in 25ms :: {"message":"Failed to fetch sales analy…
+🔹 Request: GET /api/vendor-analytics
+   Cookie header: connect.sid=s%3ADI0laz-12gJFdYvWGMDivA4ucM7-9r0E.0a29SaYMRNZSsSGptfeG8yrBExKUTXlOcjsMA%2Fm6bK4
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Authenticated: true
+Error fetching vendor analytics: error: column "authorized_signatory_name" does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllInvoices (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:3017:16)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:9468:27 {
+  length: 126,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '642',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+3:03:34 AM [express] GET /api/vendor-analytics 500 in 27ms :: {"message":"Failed to fetch vendor ana…
+🔹 Request: GET /api/purchase-orders
+   Cookie header: connect.sid=s%3ADI0laz-12gJFdYvWGMDivA4ucM7-9r0E.0a29SaYMRNZSsSGptfeG8yrBExKUTXlOcjsMA%2Fm6bK4
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Authenticated: true
+3:03:35 AM [express] GET /api/purchase-orders 200 in 16ms :: []
+🔹 Request: GET /api/pm-executions
+   Cookie header: connect.sid=s%3ADI0laz-12gJFdYvWGMDivA4ucM7-9r0E.0a29SaYMRNZSsSGptfeG8yrBExKUTXlOcjsMA%2Fm6bK4
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Authenticated: true
+🔹 Request: GET /api/invoices
+   Cookie header: connect.sid=s%3ADI0laz-12gJFdYvWGMDivA4ucM7-9r0E.0a29SaYMRNZSsSGptfeG8yrBExKUTXlOcjsMA%2Fm6bK4
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Authenticated: true
+Error fetching invoices: error: column "authorized_signatory_name" does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllInvoices (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:3017:16)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:8767:27 {
+  length: 126,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '642',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+3:03:35 AM [express] GET /api/pm-executions 200 in 20ms :: []
+3:03:35 AM [express] GET /api/invoices 500 in 19ms :: {"message":"Failed to fetch invoices"}
+🔹 Request: GET /api/sales-analytics
+   Cookie header: connect.sid=s%3ADI0laz-12gJFdYvWGMDivA4ucM7-9r0E.0a29SaYMRNZSsSGptfeG8yrBExKUTXlOcjsMA%2Fm6bK4
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Authenticated: true
+Error fetching sales analytics: error: column "authorized_signatory_name" does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllInvoices (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:3017:16)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:9384:27 {
+  length: 126,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '642',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+3:03:40 AM [express] GET /api/sales-analytics 500 in 9ms :: {"message":"Failed to fetch sales analyt…
+🔹 Request: GET /api/invoices
+   Cookie header: connect.sid=s%3ADI0laz-12gJFdYvWGMDivA4ucM7-9r0E.0a29SaYMRNZSsSGptfeG8yrBExKUTXlOcjsMA%2Fm6bK4
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Authenticated: true
+Error fetching invoices: error: column "authorized_signatory_name" does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllInvoices (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:3017:16)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:8767:27 {
+  length: 126,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '642',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+3:03:45 AM [express] GET /api/invoices 500 in 14ms :: {"message":"Failed to fetch invoices"}
+🔹 Request: GET /api/invoice-templates
+   Cookie header: connect.sid=s%3ADI0laz-12gJFdYvWGMDivA4ucM7-9r0E.0a29SaYMRNZSsSGptfeG8yrBExKUTXlOcjsMA%2Fm6bK4
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Authenticated: true
+3:03:53 AM [express] GET /api/invoice-templates 200 in 19ms :: [{"id":"a4aa4cb6-1ab3-44fb-bb4a-464a5…
+🔹 Request: GET /api/invoices
+   Cookie header: connect.sid=s%3ADI0laz-12gJFdYvWGMDivA4ucM7-9r0E.0a29SaYMRNZSsSGptfeG8yrBExKUTXlOcjsMA%2Fm6bK4
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Authenticated: true
+Error fetching invoices: error: column "authorized_signatory_name" does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllInvoices (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:3017:16)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:8767:27 {
+  length: 126,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '642',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+3:03:59 AM [express] GET /api/invoices 500 in 16ms :: {"message":"Failed to fetch invoices"}
+🔹 Request: GET /api/invoices
+   Cookie header: connect.sid=s%3ADI0laz-12gJFdYvWGMDivA4ucM7-9r0E.0a29SaYMRNZSsSGptfeG8yrBExKUTXlOcjsMA%2Fm6bK4
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Authenticated: true
+Error fetching invoices: error: column "authorized_signatory_name" does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllInvoices (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:3017:16)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:8767:27 {
+  length: 126,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '642',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+3:04:04 AM [express] GET /api/invoices 500 in 18ms :: {"message":"Failed to fetch invoices"}
+🔹 Request: GET /api/invoices
+   Cookie header: connect.sid=s%3ADI0laz-12gJFdYvWGMDivA4ucM7-9r0E.0a29SaYMRNZSsSGptfeG8yrBExKUTXlOcjsMA%2Fm6bK4
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Authenticated: true
+Error fetching invoices: error: column "authorized_signatory_name" does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllInvoices (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:3017:16)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:8767:27 {
+  length: 126,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '642',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+3:04:09 AM [express] GET /api/invoices 500 in 21ms :: {"message":"Failed to fetch invoices"}
+🔹 Request: GET /api/vendor-analytics
+   Cookie header: connect.sid=s%3ADI0laz-12gJFdYvWGMDivA4ucM7-9r0E.0a29SaYMRNZSsSGptfeG8yrBExKUTXlOcjsMA%2Fm6bK4
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Authenticated: true
+Error fetching vendor analytics: error: column "authorized_signatory_name" does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllInvoices (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:3017:16)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:9468:27 {
+  length: 126,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '642',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+3:04:11 AM [express] GET /api/vendor-analytics 500 in 30ms :: {"message":"Failed to fetch vendor ana…
+🔹 Request: GET /api/sales-analytics
+   Cookie header: connect.sid=s%3ADI0laz-12gJFdYvWGMDivA4ucM7-9r0E.0a29SaYMRNZSsSGptfeG8yrBExKUTXlOcjsMA%2Fm6bK4
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Authenticated: true
+Error fetching sales analytics: error: column "authorized_signatory_name" does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllInvoices (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:3017:16)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:9384:27 {
+  length: 126,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '642',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+3:04:12 AM [express] GET /api/sales-analytics 500 in 20ms :: {"message":"Failed to fetch sales analy…
+🔹 Request: GET /api/invoices
+   Cookie header: connect.sid=s%3ADI0laz-12gJFdYvWGMDivA4ucM7-9r0E.0a29SaYMRNZSsSGptfeG8yrBExKUTXlOcjsMA%2Fm6bK4
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Authenticated: true
+Error fetching invoices: error: column "authorized_signatory_name" does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllInvoices (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:3017:16)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:8767:27 {
+  length: 126,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '642',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+3:04:13 AM [express] GET /api/invoices 500 in 17ms :: {"message":"Failed to fetch invoices"}
+🔹 Request: GET /api/uom
+   Cookie header: connect.sid=s%3ADI0laz-12gJFdYvWGMDivA4ucM7-9r0E.0a29SaYMRNZSsSGptfeG8yrBExKUTXlOcjsMA%2Fm6bK4
+   Session ID: DI0laz-12gJFdYvWGMDivA4ucM7-9r0E
+   Authenticated: true

@@ -1,19 +1,23 @@
-KINTO Smart Ops - FIXED Database Scripts for Mac
-=================================================
+KINTO Smart Ops - COMPLETE Database Scripts for Mac
+====================================================
 
-✅ CORRECTED ISSUES:
+✅ ALL SCHEMA ISSUES FIXED (v2):
+- ✓ invoices: Added authorized_signatory_name field
+- ✓ production_entries: Added produced_quantity field
+- ✓ production_reconciliations: Added production_entry_id field
 - ✓ users table: Added mobile_number field
-- ✓ role_permissions: Fixed to use INTEGER (0/1) instead of BOOLEAN
-- ✓ vendor_types table: NOW INCLUDED! (was missing before)
-- ✓ product_categories: Added required 'code' field
-- ✓ product_types: Added required 'code' field
+- ✓ role_permissions: Fixed to use INTEGER (0/1) not BOOLEAN
+- ✓ vendor_types table: Included
+- ✓ product_categories: Added 'code' field
+- ✓ product_types: Added 'code' field
 
-📦 4 FILES:
+📦 4 FILES (COMPLETE SCHEMA):
 
-1. 01_complete_schema.sql (71 KB)
-   - Complete database schema from YOUR current dev database
-   - Includes vendor_types, product_categories, product_types
-   - All 27 tables with correct structure
+1. 01_complete_schema.sql (101 KB) ⬅ UPDATED!
+   - FRESH export from current dev database
+   - ALL 57 tables with COMPLETE structure
+   - Includes ALL latest columns
+   - No missing fields!
 
 2. 02_seed_data.sql (9 KB)
    - Vendor Types: Kinto, HPPani, Purejal
@@ -22,6 +26,7 @@ KINTO Smart Ops - FIXED Database Scripts for Mac
    - 4 Roles + 62 Permissions (using 0/1 not true/false)
    - 8 UOMs, 5 Machine Types
    - Admin user with mobile: 9999999999
+   - Fixed: No duplicate key errors
 
 3. setup_mac.sh
    - Automated installation script
@@ -52,4 +57,5 @@ Username: admin
 Password: Admin@123
 Mobile: 9999999999
 
-✅ ALL ERRORS FIXED - READY TO USE!
+✅ COMPLETE SCHEMA - ALL COLUMNS INCLUDED!
+Run setup_mac.sh to install fresh database.

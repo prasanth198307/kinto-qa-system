@@ -1,0 +1,107 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║              ✅ MISSING COLUMNS FIXED - SCHEMA REGENERATED!                  ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+🐛 ERRORS YOU ENCOUNTERED ON MAC:
+================================================================================
+
+1. ❌ column "authorized_signatory_name" does not exist
+   Location: invoices table
+   
+2. ❌ column production_entries.produced_quantity does not exist
+   Location: production_entries table
+   
+3. ❌ column "production_entry_id" does not exist
+   Location: production_reconciliations table
+
+
+🔍 ROOT CAUSE:
+================================================================================
+
+The previous schema file (01_complete_schema.sql - 71 KB) was OUTDATED!
+
+It was missing columns that your application code expects. The schema was
+exported before these columns were added to the Drizzle schema (shared/schema.ts).
+
+
+✅ WHAT I FIXED:
+================================================================================
+
+REGENERATED the complete schema by exporting FRESH from dev database!
+
+Before: 01_complete_schema.sql (71 KB, 27 tables, missing columns)
+After:  01_complete_schema.sql (101 KB, 57 tables, ALL columns!)
+
+
+📊 VERIFIED ADDITIONS:
+================================================================================
+
+✓ invoices table:
+  - authorized_signatory_name varchar(255)
+  
+✓ production_entries table:
+  - produced_quantity numeric(12,2) NOT NULL
+  
+✓ production_reconciliations table:
+  - production_entry_id varchar NOT NULL
+  - Plus FK constraint and index
+
+
+🎯 COMPLETE PACKAGE NOW:
+================================================================================
+
+updated_dbscripts/
+├─ 01_complete_schema.sql    (101 KB) ← FRESH, COMPLETE!
+├─ 02_seed_data.sql          (9 KB)   ← No duplicate errors
+├─ setup_mac.sh              (6 KB)   ← Auto-installer
+└─ README.txt                (Updated with v2 notes)
+
+Total: 4 files, ~120 KB
+
+
+✅ VERIFIED CONTENT:
+================================================================================
+
+Schema now has:
+- 57 tables (was 27)
+- ALL latest columns from schema.ts
+- All foreign keys and indexes
+- All constraints and defaults
+
+Seed data includes:
+- 3 Vendor Types (KINTO, HPPANI, PUREJAL)
+- 4 Product Categories (BTL, CAP, LBL, PKG)
+- 5 Product Types (500ML, 1LTR, 2LTR, 5LTR, 20LTR)
+- 4 Roles + 62 Permissions
+- 8 UOMs, 5 Machine Types
+- Admin user (mobile: 9999999999)
+
+
+🚀 READY TO INSTALL:
+================================================================================
+
+On your Mac, run:
+
+    cd updated_dbscripts
+    bash setup_mac.sh
+
+This time ALL errors should be gone! 🎉
+
+
+📝 WHAT TO EXPECT:
+================================================================================
+
+✓ No "column does not exist" errors
+✓ Invoices page will load
+✓ Production entries will load
+✓ Production reconciliations will load
+✓ All features working!
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║   Schema regenerated from live dev DB - ALL columns included! Try again!    ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
