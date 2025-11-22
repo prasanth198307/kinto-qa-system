@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -12,8 +12,21 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
-import { IndianRupee, AlertCircle, Eye } from "lucide-react";
+import { IndianRupee, AlertCircle, Eye, XCircle } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface Invoice {
   id: string;
@@ -40,12 +53,37 @@ interface InvoiceWithBalance extends Invoice {
 const MAX_DISPLAY_INVOICES = 20;
 
 export default function PendingPaymentsDashboard() {
+  const { toast } = useToast();
   const { data: invoices = [], isLoading: isLoadingInvoices } = useQuery<Invoice[]>({
     queryKey: ['/api/invoices'],
   });
 
   const { data: allPayments = [], isLoading: isLoadingPayments } = useQuery<Payment[]>({
     queryKey: ['/api/invoice-payments'],
+  });
+
+  const writeOffMutation = useMutation({
+    mutationFn: async (invoiceId: string) => {
+      return await apiRequest('POST', '/api/invoice-payments/write-off', {
+        invoiceId,
+        remarks: 'Outstanding balance written off from Pending Payments dashboard',
+      });
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/invoice-payments'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
+      toast({
+        title: "Payment Written Off",
+        description: data.message,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Write-off Failed",
+        description: error.message || "Failed to write off payment",
+        variant: "destructive",
+      });
+    },
   });
 
   const isLoading = isLoadingInvoices || isLoadingPayments;
@@ -192,15 +230,59 @@ export default function PendingPaymentsDashboard() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-center">
-                        <Link href={`/invoice/${invoice.id}`}>
-                          <Button 
-                            size="sm" 
-                            variant="ghost"
-                            data-testid={`button-view-invoice-${invoice.id}`}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </Link>
+                        <div className="flex items-center justify-center gap-2">
+                          <Link href={`/invoice/${invoice.id}`}>
+                            <Button 
+                              size="sm" 
+                              variant="ghost"
+                              data-testid={`button-view-invoice-${invoice.id}`}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </Link>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                disabled={writeOffMutation.isPending}
+                                data-testid={`button-write-off-${invoice.id}`}
+                                title="Write off outstanding balance"
+                              >
+                                <XCircle className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Write Off Outstanding Balance?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will create a write-off payment entry for{" "}
+                                  <strong>₹{(invoice.outstandingBalance / 100).toFixed(2)}</strong>{" "}
+                                  on invoice <strong>{invoice.invoiceNumber}</strong> from{" "}
+                                  <strong>{invoice.buyerName}</strong>.
+                                  <br /><br />
+                                  This action cannot be undone. The invoice will be marked as fully paid.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel 
+                                  data-testid="button-cancel-write-off"
+                                  disabled={writeOffMutation.isPending}
+                                >
+                                  Cancel
+                                </AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => writeOffMutation.mutate(invoice.id)}
+                                  data-testid="button-confirm-write-off"
+                                  className="bg-destructive hover:bg-destructive/90"
+                                  disabled={writeOffMutation.isPending}
+                                >
+                                  {writeOffMutation.isPending ? 'Writing off...' : 'Confirm Write-off'}
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );

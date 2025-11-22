@@ -4151,6 +4151,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Write off outstanding balance for an invoice
+  app.post('/api/invoice-payments/write-off', requireRole('admin'), async (req: any, res) => {
+    try {
+      // Validate input
+      const schema = z.object({
+        invoiceId: z.string().min(1, 'Invoice ID is required'),
+        remarks: z.string().optional(),
+      });
+
+      const validatedData = schema.parse(req.body);
+      const { invoiceId, remarks } = validatedData;
+
+      // Use transaction to prevent race conditions
+      const result = await db.transaction(async (tx) => {
+        // Get invoice with lock to prevent concurrent write-offs
+        const [invoice] = await tx
+          .select()
+          .from(invoices)
+          .where(eq(invoices.id, invoiceId))
+          .for('update');
+
+        if (!invoice) {
+          throw new Error('Invoice not found');
+        }
+
+        // Calculate outstanding balance within transaction
+        const existingPayments = await tx
+          .select()
+          .from(invoicePayments)
+          .where(and(
+            eq(invoicePayments.invoiceId, invoiceId),
+            eq(invoicePayments.recordStatus, 1)
+          ));
+
+        const totalPaid = existingPayments.reduce((sum, p) => sum + p.amount, 0);
+        const outstandingBalance = invoice.totalAmount - totalPaid;
+
+        if (outstandingBalance <= 0) {
+          throw new Error('No outstanding balance to write off');
+        }
+
+        // Create write-off payment
+        const [writeOffPayment] = await tx.insert(invoicePayments).values({
+          invoiceId,
+          paymentDate: new Date().toISOString(),
+          amount: outstandingBalance,
+          paymentMethod: 'Write-off',
+          paymentType: 'Write-off',
+          referenceNumber: null,
+          bankName: null,
+          remarks: remarks || 'Outstanding balance written off',
+          recordedBy: req.user?.id,
+        }).returning();
+
+        return { writeOffPayment, invoice, outstandingBalance };
+      });
+
+      await logAudit(
+        req.user?.id,
+        'CREATE',
+        'invoice_payments',
+        result.writeOffPayment.id,
+        `Wrote off outstanding balance of ₹${(result.outstandingBalance / 100).toFixed(2)} for invoice ${result.invoice.invoiceNumber}`
+      );
+
+      res.json({ 
+        payment: result.writeOffPayment, 
+        message: `Successfully wrote off ₹${(result.outstandingBalance / 100).toFixed(2)}` 
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      if (error instanceof Error && (error.message.includes('not found') || error.message.includes('No outstanding'))) {
+        return res.status(400).json({ message: error.message });
+      }
+      console.error("Error writing off payment:", error);
+      res.status(500).json({ message: "Failed to write off payment" });
+    }
+  });
+
   // Delete a payment
   app.delete('/api/invoice-payments/:id', requireRole('admin'), async (req: any, res) => {
     try {
