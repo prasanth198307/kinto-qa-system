@@ -1,0 +1,53 @@
+IMPORTANT: REBUILD APP AFTER INSTALL
+=====================================
+
+WHY YOU'RE STILL GETTING ERRORS:
+---------------------------------
+
+You installed the NEW database schema - GOOD!
+But you're running OLD compiled application code - BAD!
+
+Your Mac application was compiled BEFORE the schema was complete!
+
+
+SOLUTION - REBUILD THE APPLICATION:
+------------------------------------
+
+After running setup_mac.sh, you MUST rebuild the application!
+
+STEP 1: Install the database (you already did this)
+    cd updated_dbscripts
+    bash setup_mac.sh
+
+STEP 2: Rebuild the application (DO THIS NOW!)
+    cd ..                    # Go back to project root
+    npm run build            # Rebuild the backend
+
+STEP 3: Restart the application
+    npm start                # Or however you start your app
+
+
+WHAT THIS DOES:
+----------------
+
+npm run build:
+- Recompiles server/index.ts to dist/index.js
+- Uses the LATEST code that expects the NEW schema
+- Matches the database you just installed
+
+
+EXPECTED RESULT:
+----------------
+
+After rebuilding, ALL errors should disappear:
+- Invoices page will load
+- Production entries will load  
+- Production reconciliations will load
+- No "column does not exist" errors
+
+
+RUN THIS COMMAND ON YOUR MAC:
+------------------------------
+    npm run build
+
+(in the project root directory)
