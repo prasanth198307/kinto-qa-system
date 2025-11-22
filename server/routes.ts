@@ -2248,6 +2248,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         issuanceDate: validatedHeader.issuanceDate ? new Date(validatedHeader.issuanceDate).toISOString() : new Date().toISOString(),
         issuanceNumber,
         issuedBy: req.user?.id,
+        plannedOutput: validatedHeader.plannedOutput?.toString(),
       };
       
       // Wrap everything in a transaction for atomicity
@@ -2264,11 +2265,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             issuanceId: issuance.id
           };
           
-          // Validate item with issuanceId included
-          const validatedItem = insertRawMaterialIssuanceItemSchema.parse({
-            ...cleanedItem,
-            quantityIssued: cleanedItem.quantityIssued?.toString() || '0',
-          });
+          // Validate item with issuanceId included - keep as number for calculations
+          const validatedItem = insertRawMaterialIssuanceItemSchema.parse(cleanedItem);
           
           // Get current material stock with row lock to prevent race conditions
           const [material] = await tx.select().from(rawMaterials)
@@ -2279,8 +2277,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             throw new Error(`Raw material ${validatedItem.rawMaterialId} not found`);
           }
           
-          // Create issuance item
-          await tx.insert(rawMaterialIssuanceItems).values([validatedItem]);
+          // Create issuance item - convert quantity to string for DB
+          await tx.insert(rawMaterialIssuanceItems).values([{
+            ...validatedItem,
+            quantityIssued: validatedItem.quantityIssued.toString()
+          }]);
           
           // Only deduct stock if material is in Ongoing Inventory mode (isOpeningStockOnly = 0 or false)
           // Handle both integer (0/1) and boolean (false/true) representations
@@ -3816,6 +3817,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const invoiceData = {
         ...validatedHeader,
         invoiceDate: validatedHeader.invoiceDate ? new Date(validatedHeader.invoiceDate).toISOString() : new Date().toISOString(),
+        dateOfSupply: validatedHeader.dateOfSupply ? new Date(validatedHeader.dateOfSupply).toISOString() : null,
         invoiceNumber,
         generatedBy: req.user?.id,
       };
