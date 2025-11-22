@@ -115,12 +115,9 @@ export default function VendorManagement() {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  // Filter active vendor types (handle boolean, number, and string)
+  // Filter active vendor types (isActive is an integer: 1 = active, 0 = inactive)
   const activeVendorTypes = useMemo(() => {
-    return vendorTypes.filter(vt => {
-      // Handle true/false boolean, 1/0 number, '1'/'0' string, 'true'/'false' string
-      return vt.isActive === true || vt.isActive === 'true' || Number(vt.isActive) === 1;
-    });
+    return vendorTypes.filter(vt => vt.isActive === 1);
   }, [vendorTypes]);
 
   // Batch fetch all vendor-type assignments to avoid N+1 queries
