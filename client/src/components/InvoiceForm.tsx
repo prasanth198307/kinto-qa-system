@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -11,7 +11,11 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Plus, Trash2, X, Printer, FileText } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { Gatepass, Product, Vendor, GatepassItem, FinishedGood, Bank, Invoice, InvoiceTemplate, TermsConditions } from "@shared/schema";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { Gatepass, Product, Vendor, GatepassItem, FinishedGood, Bank, Invoice, InvoiceTemplate, TermsConditions, VendorType, VendorVendorType } from "@shared/schema";
 
 const invoiceFormSchema = z.object({
   gatepassId: z.string().optional(),
@@ -79,6 +83,10 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(invoice?.templateId || "");
   const [selectedVendorId, setSelectedVendorId] = useState<string>("");
   const [shipToDifferentAddress, setShipToDifferentAddress] = useState(false);
+  
+  // Vendor filtering state
+  const [vendorTypeFilter, setVendorTypeFilter] = useState<string>('all');
+  const [vendorSearchOpen, setVendorSearchOpen] = useState(false);
 
   const { data: products = [] } = useQuery<Product[]>({
     queryKey: ['/api/products'],
@@ -86,6 +94,14 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
 
   const { data: vendors = [] } = useQuery<Vendor[]>({
     queryKey: ['/api/vendors'],
+  });
+
+  const { data: vendorTypes = [] } = useQuery<VendorType[]>({
+    queryKey: ['/api/vendor-types'],
+  });
+
+  const { data: vendorVendorTypes = [] } = useQuery<VendorVendorType[]>({
+    queryKey: ['/api/vendor-vendor-types'],
   });
 
   const { data: banks = [] } = useQuery<Bank[]>({
@@ -122,6 +138,23 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
     queryKey: invoice ? [`/api/invoice-items/${invoice.id}`] : [],
     enabled: !!invoice,
   });
+
+  // Filter vendors based on vendor type
+  const filteredVendors = useMemo(() => {
+    if (vendorTypeFilter === 'all') {
+      return vendors.filter(v => v.isActive === 'true');
+    }
+    
+    // Get vendor IDs that have the selected vendor type
+    const vendorIdsWithType = vendorVendorTypes
+      .filter(vvt => vvt.vendorTypeId === vendorTypeFilter)
+      .map(vvt => vvt.vendorId);
+    
+    // Filter vendors by type and active status
+    return vendors.filter(v => 
+      v.isActive === 'true' && vendorIdsWithType.includes(v.id)
+    );
+  }, [vendors, vendorTypeFilter, vendorVendorTypes]);
 
   const form = useForm<InvoiceFormData>({
     resolver: zodResolver(invoiceFormSchema),
@@ -290,11 +323,26 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
 
   const handleVendorChange = (vendorId: string) => {
     setSelectedVendorId(vendorId);
-    const vendor = vendors.find(v => v.id === vendorId);
+    // Look up vendor in filteredVendors to ensure it matches current filter
+    const vendor = filteredVendors.find(v => v.id === vendorId);
     if (vendor) {
       populateBuyerFromVendor(vendor);
     }
   };
+
+  // Clear selected vendor when filter changes if vendor is no longer in filtered list
+  useEffect(() => {
+    if (selectedVendorId && !filteredVendors.find(v => v.id === selectedVendorId)) {
+      setSelectedVendorId('');
+      // Clear buyer details when vendor selection is cleared
+      form.setValue("buyerName", "");
+      form.setValue("buyerGstin", "");
+      form.setValue("buyerAddress", "");
+      form.setValue("buyerState", "Karnataka");
+      form.setValue("buyerStateCode", "29");
+      form.setValue("isCluster", 0);
+    }
+  }, [vendorTypeFilter, filteredVendors, selectedVendorId, form]);
 
   // Pre-populate invoice items from gatepass items or existing invoice
   useEffect(() => {
@@ -710,25 +758,90 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
         </div>
 
         {/* Vendor/Customer Selection */}
-        <div>
-          <Label htmlFor="vendorSelect">Select Customer/Vendor</Label>
-          <Select 
-            value={selectedVendorId} 
-            onValueChange={handleVendorChange}
-          >
-            <SelectTrigger data-testid="select-vendor">
-              <SelectValue placeholder="Select a customer/vendor" />
-            </SelectTrigger>
-            <SelectContent>
-              {vendors.map((vendor) => (
-                <SelectItem key={vendor.id} value={vendor.id} data-testid={`vendor-option-${vendor.id}`}>
-                  {vendor.vendorName} {vendor.gstNumber && `(${vendor.gstNumber})`}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground mt-1">
-            Auto-fills buyer details from selected vendor
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            {/* Vendor Type Filter */}
+            <div>
+              <Label htmlFor="vendorTypeFilter">Filter by Vendor Type</Label>
+              <Select 
+                value={vendorTypeFilter} 
+                onValueChange={setVendorTypeFilter}
+              >
+                <SelectTrigger data-testid="select-vendor-type-filter">
+                  <SelectValue placeholder="All Types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  {vendorTypes
+                    .filter(vt => vt.isActive === 1)
+                    .sort((a, b) => a.name.localeCompare(b.name))
+                    .map((type) => (
+                      <SelectItem key={type.id} value={type.id} data-testid={`vendor-type-option-${type.id}`}>
+                        {type.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Vendor Search with Combobox */}
+            <div>
+              <Label htmlFor="vendorSelect">Select Customer/Vendor</Label>
+              <Popover open={vendorSearchOpen} onOpenChange={setVendorSearchOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={vendorSearchOpen}
+                    className="w-full justify-between"
+                    data-testid="button-vendor-combobox"
+                  >
+                    {selectedVendorId
+                      ? filteredVendors.find((vendor) => vendor.id === selectedVendorId)?.vendorName
+                      : "Search and select vendor..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[400px] p-0">
+                  <Command>
+                    <CommandInput 
+                      placeholder="Search vendors by name or GST..." 
+                      data-testid="input-vendor-search"
+                    />
+                    <CommandEmpty>No vendor found.</CommandEmpty>
+                    <CommandGroup className="max-h-[300px] overflow-y-auto">
+                      {filteredVendors.map((vendor) => (
+                        <CommandItem
+                          key={vendor.id}
+                          value={`${vendor.vendorName} ${vendor.gstNumber || ''}`}
+                          onSelect={() => {
+                            handleVendorChange(vendor.id);
+                            setVendorSearchOpen(false);
+                          }}
+                          data-testid={`vendor-option-${vendor.id}`}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              selectedVendorId === vendor.id ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          <div className="flex flex-col">
+                            <span className="font-medium">{vendor.vendorName}</span>
+                            {vendor.gstNumber && (
+                              <span className="text-xs text-muted-foreground">{vendor.gstNumber}</span>
+                            )}
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Filter by vendor type and search by name or GST. Auto-fills buyer details from selected vendor.
           </p>
         </div>
 
