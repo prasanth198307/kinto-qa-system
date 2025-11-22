@@ -145,10 +145,6 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
   const filteredVendors = useMemo(() => {
     const activeVendors = vendors.filter(v => v.isActive === 'true');
     
-    console.log('🔍 Invoice Form - Total active vendors:', activeVendors.length);
-    console.log('🔍 Invoice Form - Selected vendor type filter:', vendorTypeFilter);
-    console.log('🔍 Invoice Form - vendorVendorTypes:', vendorVendorTypes);
-    
     if (vendorTypeFilter === 'all') {
       return activeVendors;
     }
@@ -156,20 +152,12 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
     // Get vendor IDs that have the selected vendor type (use Set for O(1) lookup)
     const vendorIdsWithType = new Set(
       vendorVendorTypes
-        .filter(vvt => {
-          const matches = vvt.vendorTypeId === vendorTypeFilter;
-          console.log(`🔍 Checking vvt: vendorId=${vvt.vendorId}, vendorTypeId=${vvt.vendorTypeId}, matches=${matches}`);
-          return matches;
-        })
+        .filter(vvt => vvt.vendorTypeId === vendorTypeFilter)
         .map(vvt => vvt.vendorId)
     );
     
-    console.log('🔍 Invoice Form - Vendor IDs with selected type:', Array.from(vendorIdsWithType));
-    
     // Filter vendors by type using Set for faster lookup
-    const filtered = activeVendors.filter(v => vendorIdsWithType.has(v.id));
-    console.log('🔍 Invoice Form - Filtered vendors:', filtered);
-    return filtered;
+    return activeVendors.filter(v => vendorIdsWithType.has(v.id));
   }, [vendors, vendorTypeFilter, vendorVendorTypes]);
 
   const form = useForm<InvoiceFormData>({
