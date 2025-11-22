@@ -4530,15 +4530,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Sales Analytics - Get aggregated sales data by time period
   app.get('/api/sales-analytics', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
-      const { period = 'monthly', year } = req.query;
-      const currentYear = year ? parseInt(year as string) : new Date().getFullYear();
-
-      // Fetch all invoices and invoice items for the specified year
+      const { period = 'monthly', year, dateFrom, dateTo } = req.query;
+      
+      // Fetch all invoices
       const allInvoices = await storage.getAllInvoices();
-      const yearInvoices = allInvoices.filter(inv => {
-        const invYear = new Date(inv.invoiceDate).getFullYear();
-        return invYear === currentYear && inv.recordStatus === 1;
-      });
+      
+      // Filter invoices based on period type
+      let yearInvoices;
+      let currentYear: number;
+      
+      if (period === 'custom' && dateFrom && dateTo) {
+        // Custom date range
+        const fromDate = new Date(dateFrom as string);
+        const toDate = new Date(dateTo as string);
+        toDate.setHours(23, 59, 59, 999); // Include full end date
+        
+        yearInvoices = allInvoices.filter(inv => {
+          const invDate = new Date(inv.invoiceDate);
+          return invDate >= fromDate && invDate <= toDate && inv.recordStatus === 1;
+        });
+        currentYear = fromDate.getFullYear(); // Use start year for display
+      } else {
+        // Year-based periods (monthly, quarterly, half-yearly, yearly)
+        currentYear = year ? parseInt(year as string) : new Date().getFullYear();
+        
+        yearInvoices = allInvoices.filter(inv => {
+          const invYear = new Date(inv.invoiceDate).getFullYear();
+          return invYear === currentYear && inv.recordStatus === 1;
+        });
+      }
 
       // Fetch all invoice items in bulk to avoid N+1 queries
       const invoiceIds = new Set(yearInvoices.map(inv => inv.id));
@@ -4548,16 +4568,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Helper function to get period key and index from date
       const getPeriodInfo = (date: Date, periodType: string) => {
         const month = date.getMonth() + 1; // 1-12
-        if (periodType === 'monthly') {
-          return { key: `${currentYear}-${month.toString().padStart(2, '0')}`, index: month };
+        const invoiceYear = date.getFullYear();
+        
+        if (periodType === 'custom') {
+          // For custom range, group by date
+          return { 
+            key: date.toISOString().split('T')[0], // YYYY-MM-DD
+            index: date.getTime() 
+          };
+        } else if (periodType === 'monthly') {
+          return { key: `${invoiceYear}-${month.toString().padStart(2, '0')}`, index: month };
         } else if (periodType === 'quarterly') {
           const quarter = Math.ceil(month / 3);
-          return { key: `Q${quarter} ${currentYear}`, index: quarter };
+          return { key: `Q${quarter} ${invoiceYear}`, index: quarter };
         } else if (periodType === 'half-yearly') {
           const half = month <= 6 ? 1 : 2;
-          return { key: `${half === 1 ? 'H1' : 'H2'} ${currentYear}`, index: half };
+          return { key: `${half === 1 ? 'H1' : 'H2'} ${invoiceYear}`, index: half };
         } else { // yearly
-          return { key: `${currentYear}`, index: 1 };
+          return { key: `${invoiceYear}`, index: 1 };
         }
       };
 
