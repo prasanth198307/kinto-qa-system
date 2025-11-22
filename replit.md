@@ -34,6 +34,14 @@ The backend is an Express.js application built with TypeScript and Node.js, usin
 - **Credit Notes Viewing System:** Complete credit note management interface for viewing GST-compliant credit notes generated from sales returns.
 - **Complete Admin Navigation System (36 Screens):** Organized admin dashboard navigation across 6 logical sections with relevant quick actions and icons.
 - **Vendor Type Classification System:** Three-tier vendor classification system (Kinto, HPPani, Purejal) based on product brands purchased. Features many-to-many vendor-type relationships with optional primary type designation, complete CRUD API endpoints, and dedicated master data management UI. Designed for automatic type detection during Vyapaar data import based on invoice line item products.
+- **Comprehensive Search & Filter System:** Advanced search and filtering capabilities across all major data screens with consistent UX patterns. Features include:
+  - **Gatepasses**: Multi-field search (gatepass number, vehicle, driver) with date range/month/year filters and status filters
+  - **Raw Material Issuances**: Multi-field search (issuance number, product, issued to) with flexible date filtering (range/month/year)
+  - **Inventory Management - Vendors**: Multi-field search (name, code, GST number) with unique value filters for city, state, and active status
+  - **Inventory Management - Products**: Dual search (product name, code) with dynamically computed category and type filters from existing data, plus active status filtering
+  - **Inventory Management - Raw Materials**: Dual search (material name, code) with material type filters (from master data), stock mode filters (opening stock vs ongoing inventory), and active status
+  - **Inventory Management - Finished Goods**: Enhanced search (batch number, product name) with quality status filters (pending/approved/rejected) and comprehensive date filtering (range/month/year) on production date
+  - All implementations use `useMemo` for performance optimization, provide "Clear Filters" buttons when filters are active, display smart empty states differentiating "no data" from "filtered out", and maintain consistent responsive UI patterns with proper data-testid attributes for testing
 
 ### System Design Choices
 - **Authentication:** Users can log in with username or email.
