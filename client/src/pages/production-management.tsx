@@ -748,26 +748,6 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
               </div>
             </Card>
 
-            {/* Gatepass Forms */}
-            {showGatepassForm && (
-              <Card className="p-4">
-                <GatepassForm
-                  gatepass={editingGatepass}
-                  onClose={handleGatepassFormClose}
-                />
-              </Card>
-            )}
-
-            {showInvoiceForm && (
-              <Card className="p-4">
-                <InvoiceForm
-                  gatepass={selectedGatepassForInvoice || undefined}
-                  invoice={editingInvoice || undefined}
-                  onClose={handleInvoiceFormClose}
-                />
-              </Card>
-            )}
-
             {/* Gatepass Table */}
             <Card className="p-4">
               <GatepassTable
@@ -778,6 +758,41 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
                 onGenerateInvoice={handleGenerateInvoice}
               />
             </Card>
+
+            {/* Gatepass Form Dialog */}
+            <Dialog open={showGatepassForm} onOpenChange={(open) => {
+              if (!open) {
+                handleGatepassFormClose();
+              }
+            }}>
+              <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>{editingGatepass ? 'Edit Gatepass' : 'Create Gatepass'}</DialogTitle>
+                </DialogHeader>
+                <GatepassForm
+                  gatepass={editingGatepass}
+                  onClose={handleGatepassFormClose}
+                />
+              </DialogContent>
+            </Dialog>
+
+            {/* Invoice Form Dialog (from Gatepass) */}
+            <Dialog open={showInvoiceForm} onOpenChange={(open) => {
+              if (!open) {
+                handleInvoiceFormClose();
+              }
+            }}>
+              <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Generate Invoice from Gatepass</DialogTitle>
+                </DialogHeader>
+                <InvoiceForm
+                  gatepass={selectedGatepassForInvoice || undefined}
+                  invoice={editingInvoice || undefined}
+                  onClose={handleInvoiceFormClose}
+                />
+              </DialogContent>
+            </Dialog>
           </div>
         );
       case 'invoices':
@@ -964,17 +979,6 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
               </div>
             </Card>
 
-            {/* Invoice Form */}
-            {showInvoiceForm && (
-              <Card className="p-4">
-                <InvoiceForm
-                  gatepass={selectedGatepassForInvoice || undefined}
-                  invoice={editingInvoice || undefined}
-                  onClose={handleInvoiceFormClose}
-                />
-              </Card>
-            )}
-
             {/* Invoice Table */}
             <Card className="p-4">
               <InvoiceTable
@@ -985,6 +989,24 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
                 onPayment={handlePayment}
               />
             </Card>
+
+            {/* Invoice Form Dialog */}
+            <Dialog open={showInvoiceForm} onOpenChange={(open) => {
+              if (!open) {
+                handleInvoiceFormClose();
+              }
+            }}>
+              <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>{editingInvoice ? 'Edit Invoice' : 'Create Invoice'}</DialogTitle>
+                </DialogHeader>
+                <InvoiceForm
+                  gatepass={selectedGatepassForInvoice || undefined}
+                  invoice={editingInvoice || undefined}
+                  onClose={handleInvoiceFormClose}
+                />
+              </DialogContent>
+            </Dialog>
           </div>
         );
       default:

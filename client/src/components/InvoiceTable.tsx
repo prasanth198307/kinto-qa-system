@@ -63,18 +63,18 @@ export default function InvoiceTable({ invoices, isLoading, onEdit, onDelete, on
   };
 
   return (
-    <div className="border rounded-md">
+    <div className="border rounded-md overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead data-testid="header-invoice-number">Invoice #</TableHead>
-            <TableHead data-testid="header-date">Date</TableHead>
-            <TableHead data-testid="header-buyer">Buyer Name</TableHead>
-            <TableHead data-testid="header-status">Status</TableHead>
-            <TableHead data-testid="header-total">Total</TableHead>
-            <TableHead data-testid="header-paid">Paid</TableHead>
-            <TableHead data-testid="header-outstanding">Outstanding</TableHead>
-            <TableHead data-testid="header-actions">Actions</TableHead>
+            <TableHead data-testid="header-invoice-number" className="min-w-[100px]">Invoice #</TableHead>
+            <TableHead data-testid="header-date" className="min-w-[100px]">Date</TableHead>
+            <TableHead data-testid="header-buyer" className="min-w-[150px]">Buyer Name</TableHead>
+            <TableHead data-testid="header-status" className="min-w-[120px]">Status</TableHead>
+            <TableHead data-testid="header-total" className="min-w-[100px]">Total</TableHead>
+            <TableHead data-testid="header-paid" className="min-w-[100px]">Paid</TableHead>
+            <TableHead data-testid="header-outstanding" className="min-w-[120px]">Outstanding</TableHead>
+            <TableHead data-testid="header-actions" className="min-w-[200px]">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -111,7 +111,7 @@ export default function InvoiceTable({ invoices, isLoading, onEdit, onDelete, on
                   </span>
                 </TableCell>
                 <TableCell data-testid={`actions-${invoice.id}`}>
-                  <div className="flex gap-1">
+                  <div className="flex gap-1 flex-nowrap">
                     <Link href={`/invoice/${invoice.id}`}>
                       <Button
                         variant="ghost"
