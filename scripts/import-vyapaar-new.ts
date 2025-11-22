@@ -528,6 +528,9 @@ let skippedCount = 0;
 // Track vendor types based on purchased products
 const vendorProductTypes = new Map<string, Set<string>>(); // vendorId -> Set of vendor type names
 
+// Track used invoice numbers to handle duplicates
+const usedInvoiceNumbers = new Set<string>();
+
 for (const sale of sales) {
   const partyName = sale.__EMPTY_2?.trim();
   if (!partyName) {
@@ -543,7 +546,7 @@ for (const sale of sales) {
     continue;
   }
   
-  const invoiceNo = sale.__EMPTY_1?.trim();
+  let invoiceNo = sale.__EMPTY_1?.trim();
   if (!invoiceNo) {
     skippedCount++;
     continue;
@@ -557,6 +560,19 @@ for (const sale of sales) {
     continue;
   }
   
+  // Handle duplicate invoice numbers by adding suffix
+  let finalInvoiceNo = invoiceNo;
+  if (usedInvoiceNumbers.has(invoiceNo)) {
+    let dupCounter = 2;
+    finalInvoiceNo = `${invoiceNo}-DUP${dupCounter}`;
+    while (usedInvoiceNumbers.has(finalInvoiceNo)) {
+      dupCounter++;
+      finalInvoiceNo = `${invoiceNo}-DUP${dupCounter}`;
+    }
+    console.log(`  ℹ️  Duplicate invoice #${invoiceNo} for ${partyName} - renaming to ${finalInvoiceNo}`);
+  }
+  usedInvoiceNumbers.add(finalInvoiceNo);
+  
   try {
     await db.transaction(async (tx) => {
       // Convert invoice totals to paise
@@ -566,7 +582,7 @@ for (const sale of sales) {
       
       // Create invoice
       const [invoice] = await tx.insert(invoices).values({
-        invoiceNumber: invoiceNo,
+        invoiceNumber: finalInvoiceNo,
         invoiceDate: parseDate(sale['Generated on Nov 22, 2025 at 5:56 pm']),
         buyerName: partyName,
         buyerGstin: '',
@@ -664,15 +680,15 @@ for (const sale of sales) {
           paymentDate: parseDate(sale['Generated on Nov 22, 2025 at 5:56 pm']),
           paymentMethod: sale.__EMPTY_6 || 'Cash',
           paymentType: paymentType,
-          referenceNumber: invoiceNo,
+          referenceNumber: finalInvoiceNo,
         });
       }
     });
     
     invoiceCount++;
-    console.log(`  ✓ Created invoice: ${invoiceNo} for ${partyName}`);
+    console.log(`  ✓ Created invoice: ${finalInvoiceNo} for ${partyName}`);
   } catch (err: any) {
-    console.error(`  ❌ Error creating invoice ${invoiceNo}:`, err.message);
+    console.error(`  ❌ Error creating invoice ${finalInvoiceNo}:`, err.message);
     skippedCount++;
   }
 }
