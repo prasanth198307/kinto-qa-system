@@ -8,6 +8,7 @@ import { z } from "zod";
 import path from "path";
 import fs from "fs";
 import multer from "multer";
+import XLSX from "xlsx";
 import { db } from "./db";
 import { whatsappService } from "./whatsappService";
 import { whatsappWebhookRouter } from "./whatsappWebhook";
@@ -6346,7 +6347,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     { name: 'itemDetails', maxCount: 1 }
   ]), async (req: any, res: Response) => {
     try {
-      const XLSX = require('xlsx');
       const files = req.files as {
         partyReport?: Express.Multer.File[];
         saleReport?: Express.Multer.File[];
@@ -6361,18 +6361,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Create temporary directory first
+      const tmpDir = path.join(process.cwd(), 'tmp', 'uploads');
+      if (!fs.existsSync(tmpDir)) {
+        fs.mkdirSync(tmpDir, { recursive: true });
+      }
+
       // Handle two file upload formats:
       // 1. Three separate files (partyReport, saleReport, itemDetails)
       // 2. Two files where SaleReport contains "Item Details" sheet
-      let itemDetailsPath: string;
+      let itemDetailsBuffer: Buffer;
       
       if (files?.itemDetails?.[0]) {
         // Format 1: Separate item details file
-        itemDetailsPath = files.itemDetails[0].path;
+        itemDetailsBuffer = files.itemDetails[0].buffer;
       } else {
         // Format 2: Extract "Item Details" sheet from SaleReport
-        const saleReportPath = files.saleReport[0].path;
-        const workbook = XLSX.readFile(saleReportPath);
+        // Read from buffer since multer uses memory storage
+        const workbook = XLSX.read(files.saleReport[0].buffer, { type: 'buffer' });
         
         // Check if "Item Details" sheet exists
         if (!workbook.SheetNames.includes('Item Details')) {
@@ -6387,22 +6393,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const newWorkbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(newWorkbook, itemDetailsSheet, 'Sheet1');
         
-        // Save to temporary file
-        itemDetailsPath = path.join(path.dirname(saleReportPath), `temp_itemdetails_${Date.now()}.xlsx`);
-        XLSX.writeFile(newWorkbook, itemDetailsPath);
-      }
-
-      if (!files?.partyReport?.[0] || !files?.saleReport?.[0] || !itemDetailsPath) {
-        return res.status(400).json({ 
-          success: false,
-          message: 'All three files are required: partyReport, saleReport, and itemDetails' 
-        });
-      }
-
-      // Create temporary directory
-      const tmpDir = path.join(process.cwd(), 'tmp', 'uploads');
-      if (!fs.existsSync(tmpDir)) {
-        fs.mkdirSync(tmpDir, { recursive: true });
+        // Convert to buffer
+        itemDetailsBuffer = XLSX.write(newWorkbook, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
       }
 
       // Save files temporarily
@@ -6413,14 +6405,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       fs.writeFileSync(partyPath, files.partyReport[0].buffer);
       fs.writeFileSync(salePath, files.saleReport[0].buffer);
-      
-      // If itemDetailsPath is a temp file we created, copy it; otherwise write from buffer
-      if (files?.itemDetails?.[0]) {
-        fs.writeFileSync(itemPath, files.itemDetails[0].buffer);
-      } else {
-        // Copy the extracted temp file
-        fs.copyFileSync(itemDetailsPath, itemPath);
-      }
+      fs.writeFileSync(itemPath, itemDetailsBuffer);
 
       console.log('[DATA IMPORT] Starting import from uploaded files');
       
@@ -6428,18 +6413,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await importVyapaarData(partyPath, salePath, itemPath);
 
       // Clean up temporary files
-      const filesToCleanup = [partyPath, salePath, itemPath];
-      // Also clean up the extracted temp file if we created one
-      if (!files?.itemDetails?.[0]) {
-        filesToCleanup.push(itemDetailsPath);
-      }
-      
       try {
-        for (const file of filesToCleanup) {
-          if (fs.existsSync(file)) {
-            fs.unlinkSync(file);
-          }
-        }
+        fs.unlinkSync(partyPath);
+        fs.unlinkSync(salePath);
+        fs.unlinkSync(itemPath);
       } catch (cleanupError) {
         console.error('[DATA IMPORT] Failed to cleanup temp files:', cleanupError);
       }
