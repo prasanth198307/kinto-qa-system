@@ -1,0 +1,149 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║                      KINTO Smart Ops - Database Scripts                      ║
+║                         Complete Package for Mac                             ║
+║                            November 2025 Edition                             ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+📦 WHAT YOU HAVE
+================================================================================
+
+✓ Complete Database Schema (27 tables, all latest updates)
+✓ Vendor Types: Kinto, HPPani, Purejal ⭐
+✓ Product Categories & Types ⭐
+✓ All Reference Data (roles, permissions, UOMs, etc.)
+✓ Default Admin User (ready to use)
+✓ Automated Setup Script (one command!)
+
+Total Files: 7
+Total Size: 116 KB
+Schema Version: 1.0.0 (Latest)
+
+
+🚀 INSTALLATION - CHOOSE YOUR METHOD
+================================================================================
+
+METHOD 1: Automated Setup (EASIEST - Recommended!)
+---------------------------------------------------
+
+Just run ONE command:
+
+    cd updated_dbscripts
+    bash setup_mac.sh
+
+That's it! The script does everything:
+✓ Checks PostgreSQL
+✓ Creates database
+✓ Sets up all tables
+✓ Loads all data
+✓ Verifies installation
+
+Takes 2-3 minutes. Done!
+
+
+METHOD 2: Manual Setup (If you prefer)
+---------------------------------------
+
+1. Install PostgreSQL:
+   brew install postgresql@15
+   brew services start postgresql@15
+
+2. Create database:
+   createdb kinto_ops
+
+3. Set environment:
+   export DATABASE_URL="postgresql://localhost/kinto_ops"
+
+4. Run scripts:
+   psql $DATABASE_URL -f 01_complete_schema.sql
+   psql $DATABASE_URL -f 02_seed_data.sql
+
+
+✅ VERIFY IT WORKED
+================================================================================
+
+Check vendor types are installed (should show 3 rows):
+
+    psql kinto_ops -c "SELECT code, name FROM vendor_types;"
+
+Expected output:
+    code   |  name   
+  ---------+---------
+   HPPANI  | HPPani  
+   KINTO   | Kinto   
+   PUREJAL | Purejal
+
+
+🔐 LOGIN CREDENTIALS
+================================================================================
+
+Username: admin
+Password: Admin@123
+
+⚠️  Change this password after first login!
+
+
+📚 DOCUMENTATION
+================================================================================
+
+QUICK_START.txt      - Fast setup guide (read this first!)
+README_MAC.md        - Detailed guide with troubleshooting
+INDEX.md             - Complete file and table listing
+PACKAGE_INFO.txt     - Full package description
+
+
+🎯 WHAT GETS INSTALLED
+================================================================================
+
+Database Tables: 27 tables
+├─ Vendors & Products (with types and categories)
+├─ Purchase Orders & Invoices
+├─ Inventory Management (raw materials + finished goods)
+├─ Production & Quality Control
+├─ Sales Returns & Credit Notes
+├─ Dispatch Tracking & Gatepasses
+└─ User Management & Permissions
+
+Reference Data:
+├─ 4 Roles (Admin, Manager, Operator, Reviewer)
+├─ 62 Permissions (36 screens, granular access)
+├─ 3 Vendor Types (Kinto, HPPani, Purejal) ⭐
+├─ 4 Product Categories ⭐
+├─ 5 Product Types ⭐
+├─ 8 Units of Measurement
+└─ 5 Machine Types
+
+
+🆘 NEED HELP?
+================================================================================
+
+PostgreSQL not installed?
+→ brew install postgresql@15
+
+Script says "command not found"?
+→ Make sure you're in the updated_dbscripts folder
+
+Database connection error?
+→ Check PostgreSQL is running: brew services list
+
+Still stuck?
+→ See README_MAC.md for detailed troubleshooting
+
+
+🎉 NEXT STEPS AFTER INSTALLATION
+================================================================================
+
+1. Login with admin credentials
+2. Change admin password  
+3. Create your vendors and assign vendor types
+4. Add products with categories and types
+5. Set up your production workflow
+6. Start managing operations!
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║                   Ready to Install? Run: bash setup_mac.sh                   ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
