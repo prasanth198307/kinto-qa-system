@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -109,14 +109,16 @@ export default function VendorManagement() {
     queryKey: ['/api/vendor-vendor-types/batch'],
   });
 
-  // Group vendor types by vendorId for quick lookup
-  const vendorTypesMap = allVendorTypeAssignments.reduce((acc, assignment) => {
-    if (!acc[assignment.vendorId]) {
-      acc[assignment.vendorId] = [];
-    }
-    acc[assignment.vendorId].push(assignment);
-    return acc;
-  }, {} as Record<string, VendorVendorType[]>);
+  // Group vendor types by vendorId for quick lookup (memoized to prevent infinite loops)
+  const vendorTypesMap = useMemo(() => {
+    return allVendorTypeAssignments.reduce((acc, assignment) => {
+      if (!acc[assignment.vendorId]) {
+        acc[assignment.vendorId] = [];
+      }
+      acc[assignment.vendorId].push(assignment);
+      return acc;
+    }, {} as Record<string, VendorVendorType[]>);
+  }, [allVendorTypeAssignments]);
 
   const { data: currentVendorTypes = [] } = useQuery<VendorVendorType[]>({
     queryKey: ['/api/vendors', editingVendor?.id, 'types'],

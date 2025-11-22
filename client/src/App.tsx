@@ -916,6 +916,7 @@ function Router() {
       <Route path="/auth" component={AuthPage} />
       <ProtectedRoute path="/checklists" component={ChecklistsPage} />
       <ProtectedRoute path="/reviewer-dashboard" component={ReviewerDashboardPage} />
+      <ProtectedRoute path="/vendor-types" component={VendorTypes} />
       <ProtectedRoute path="/invoice/:id" component={InvoiceDetail} />
       <ProtectedRoute path="/dispatch-tracking" component={DispatchTracking} />
       <ProtectedRoute path="/sales-returns" component={SalesReturns} />
