@@ -14,12 +14,13 @@ import { Switch } from "@/components/ui/switch";
 
 interface VendorType {
   id: string;
-  typeCode: string;
-  typeName: string;
+  code: string;
+  name: string;
   description: string | null;
-  displayOrder: number | null;
-  isActive: string;
-  createdAt: string;
+  isActive: number;
+  recordStatus: number;
+  createdBy: string | null;
+  createdAt: string | null;
   updatedAt: string | null;
 }
 
@@ -33,10 +34,9 @@ export default function VendorTypes() {
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   const [formData, setFormData] = useState({
-    typeCode: "",
-    typeName: "",
+    code: "",
+    name: "",
     description: "",
-    displayOrder: "",
     isActive: true,
   });
 
@@ -128,30 +128,30 @@ export default function VendorTypes() {
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
-    const trimmedCode = formData.typeCode.trim();
-    const trimmedName = formData.typeName.trim();
+    const trimmedCode = formData.code.trim();
+    const trimmedName = formData.name.trim();
 
     if (!trimmedCode) {
-      errors.typeCode = "Type code is required";
+      errors.code = "Type code is required";
     } else if (types) {
       const duplicate = types.find(
-        (t) => t.typeCode.toLowerCase() === trimmedCode.toLowerCase() && 
+        (t) => t.code.toLowerCase() === trimmedCode.toLowerCase() && 
                (!editingType || t.id !== editingType.id)
       );
       if (duplicate) {
-        errors.typeCode = "This type code already exists";
+        errors.code = "This type code already exists";
       }
     }
 
     if (!trimmedName) {
-      errors.typeName = "Type name is required";
+      errors.name = "Type name is required";
     } else if (types) {
       const duplicate = types.find(
-        (t) => t.typeName.toLowerCase() === trimmedName.toLowerCase() && 
+        (t) => t.name.toLowerCase() === trimmedName.toLowerCase() && 
                (!editingType || t.id !== editingType.id)
       );
       if (duplicate) {
-        errors.typeName = "This type name already exists";
+        errors.name = "This type name already exists";
       }
     }
 

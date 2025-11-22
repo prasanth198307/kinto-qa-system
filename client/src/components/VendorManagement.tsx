@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
   SelectContent,
@@ -38,10 +39,63 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Star } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Vendor } from "@shared/schema";
+
+interface VendorType {
+  id: string;
+  typeCode: string;
+  typeName: string;
+  description: string | null;
+  displayOrder: number | null;
+  isActive: string;
+}
+
+interface VendorVendorType {
+  id: string;
+  vendorId: string;
+  vendorTypeId: string;
+  isPrimary: number;
+  vendorType?: VendorType;
+}
+
+function VendorTypesBadges({ vendorId }: { vendorId: string }) {
+  const { data: vendorTypes = [], isLoading } = useQuery<VendorVendorType[]>({
+    queryKey: ['/api/vendors', vendorId, 'types'],
+    queryFn: async () => {
+      const response = await fetch(`/api/vendors/${vendorId}/types`);
+      if (!response.ok) return [];
+      return response.json();
+    },
+  });
+
+  if (isLoading) {
+    return <span className="text-xs text-muted-foreground">Loading...</span>;
+  }
+
+  if (vendorTypes.length === 0) {
+    return <span className="text-xs text-muted-foreground">-</span>;
+  }
+
+  return (
+    <div className="flex gap-1 flex-wrap" data-testid={`vendor-types-${vendorId}`}>
+      {vendorTypes.map((vt: any) => (
+        <Badge
+          key={vt.id}
+          variant={vt.isPrimary === 1 ? "default" : "secondary"}
+          className="text-xs"
+          data-testid={`vendor-type-badge-${vt.vendorTypeId}`}
+        >
+          {vt.isPrimary === 1 && <Star className="h-2 w-2 mr-1 fill-current" />}
+          {vt.vendorType?.typeName || vt.vendorType?.typeCode || 'Unknown'}
+        </Badge>
+      ))}
+    </div>
+  );
+}
 
 export default function VendorManagement() {
   const { toast } = useToast();
@@ -49,19 +103,68 @@ export default function VendorManagement() {
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [vendorToDelete, setVendorToDelete] = useState<string | null>(null);
+  const [selectedVendorTypes, setSelectedVendorTypes] = useState<string[]>([]);
+  const [primaryVendorTypeId, setPrimaryVendorTypeId] = useState<string | null>(null);
 
   const { data: vendors = [], isLoading } = useQuery<Vendor[]>({
     queryKey: ["/api/vendors"],
   });
 
+  const { data: vendorTypes = [] } = useQuery<VendorType[]>({
+    queryKey: ['/api/vendor-types'],
+  });
+
+  const { data: currentVendorTypes = [] } = useQuery<VendorVendorType[]>({
+    queryKey: ['/api/vendors', editingVendor?.id, 'types'],
+    enabled: !!editingVendor?.id,
+    queryFn: async () => {
+      if (!editingVendor?.id) return [];
+      const response = await fetch(`/api/vendors/${editingVendor.id}/types`);
+      if (!response.ok) throw new Error('Failed to fetch vendor types');
+      return response.json();
+    },
+  });
+
+  useEffect(() => {
+    if (editingVendor && currentVendorTypes.length > 0) {
+      setSelectedVendorTypes(currentVendorTypes.map(vt => vt.vendorTypeId));
+      const primary = currentVendorTypes.find(vt => vt.isPrimary === 1);
+      setPrimaryVendorTypeId(primary?.vendorTypeId || null);
+    } else if (!editingVendor) {
+      setSelectedVendorTypes([]);
+      setPrimaryVendorTypeId(null);
+    }
+  }, [editingVendor, currentVendorTypes]);
+
+  const syncVendorTypes = async (vendorId: string) => {
+    try {
+      for (const typeId of selectedVendorTypes) {
+        const isPrimary = typeId === primaryVendorTypeId;
+        await apiRequest('POST', `/api/vendors/${vendorId}/types/${typeId}`, { isPrimary });
+      }
+      const typesToRemove = currentVendorTypes.filter(vt => !selectedVendorTypes.includes(vt.vendorTypeId));
+      for (const vt of typesToRemove) {
+        await apiRequest('DELETE', `/api/vendors/${vendorId}/types/${vt.vendorTypeId}`);
+      }
+    } catch (error: any) {
+      console.error('Error syncing vendor types:', error);
+      throw error;
+    }
+  };
+
   const createMutation = useMutation({
     mutationFn: async (data: Partial<Vendor>) => {
       return apiRequest("POST", "/api/vendors", data);
     },
-    onSuccess: () => {
+    onSuccess: async (vendor: any) => {
+      if (selectedVendorTypes.length > 0) {
+        await syncVendorTypes(vendor.id);
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/vendors"] });
       toast({ title: "Vendor created successfully" });
       setIsDialogOpen(false);
+      setSelectedVendorTypes([]);
+      setPrimaryVendorTypeId(null);
     },
     onError: (error: any) => {
       toast({
@@ -76,11 +179,15 @@ export default function VendorManagement() {
     mutationFn: async ({ id, data }: { id: string; data: Partial<Vendor> }) => {
       return apiRequest("PATCH", `/api/vendors/${id}`, data);
     },
-    onSuccess: () => {
+    onSuccess: async (_data: any, variables: any) => {
+      await syncVendorTypes(variables.id);
       queryClient.invalidateQueries({ queryKey: ["/api/vendors"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/vendors", variables.id, "types"] });
       toast({ title: "Vendor updated successfully" });
       setIsDialogOpen(false);
       setEditingVendor(null);
+      setSelectedVendorTypes([]);
+      setPrimaryVendorTypeId(null);
     },
     onError: (error: any) => {
       toast({
@@ -156,6 +263,8 @@ export default function VendorManagement() {
   const handleDialogClose = () => {
     setIsDialogOpen(false);
     setEditingVendor(null);
+    setSelectedVendorTypes([]);
+    setPrimaryVendorTypeId(null);
   };
 
   return (
@@ -288,18 +397,19 @@ export default function VendorManagement() {
                 </div>
               </div>
 
+              <div>
+                <Label htmlFor="contactPerson">Contact Person</Label>
+                <Input
+                  id="contactPerson"
+                  name="contactPerson"
+                  defaultValue={editingVendor?.contactPerson || ""}
+                  data-testid="input-contact-person"
+                />
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="contactPerson">Contact Person</Label>
-                  <Input
-                    id="contactPerson"
-                    name="contactPerson"
-                    defaultValue={editingVendor?.contactPerson || ""}
-                    data-testid="input-contact-person"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="vendorType">Vendor Type</Label>
+                  <Label htmlFor="vendorType">Vendor Type (Legacy)</Label>
                   <Select
                     name="vendorType"
                     defaultValue={editingVendor?.vendorType || ""}
@@ -314,6 +424,68 @@ export default function VendorManagement() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              <div className="space-y-3">
+                <Label>Vendor Classifications</Label>
+                <p className="text-sm text-muted-foreground">
+                  Select vendor types based on product brands purchased. Mark one as primary.
+                </p>
+                {vendorTypes.filter(vt => vt.isActive === 'true').length === 0 ? (
+                  <div className="text-sm text-muted-foreground p-3 border rounded">
+                    No vendor types available. Create them in Master Data → Vendor Types.
+                  </div>
+                ) : (
+                  <div className="space-y-2 border rounded-md p-4">
+                    {vendorTypes
+                      .filter(vt => vt.isActive === 'true')
+                      .sort((a, b) => (a.displayOrder || 999) - (b.displayOrder || 999))
+                      .map((type) => (
+                        <div
+                          key={type.id}
+                          className="flex items-center justify-between gap-3 p-2 hover-elevate rounded"
+                          data-testid={`vendor-type-option-${type.id}`}
+                        >
+                          <div className="flex items-center gap-3 flex-1">
+                            <Checkbox
+                              id={`vendor-type-${type.id}`}
+                              checked={selectedVendorTypes.includes(type.id)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setSelectedVendorTypes([...selectedVendorTypes, type.id]);
+                                  if (selectedVendorTypes.length === 0) {
+                                    setPrimaryVendorTypeId(type.id);
+                                  }
+                                } else {
+                                  setSelectedVendorTypes(selectedVendorTypes.filter(id => id !== type.id));
+                                  if (primaryVendorTypeId === type.id) {
+                                    setPrimaryVendorTypeId(selectedVendorTypes.find(id => id !== type.id) || null);
+                                  }
+                                }
+                              }}
+                              data-testid={`checkbox-vendor-type-${type.id}`}
+                            />
+                            <Label htmlFor={`vendor-type-${type.id}`} className="cursor-pointer flex-1">
+                              <span className="font-medium">{type.typeName}</span>
+                              <span className="text-sm text-muted-foreground ml-2">({type.typeCode})</span>
+                            </Label>
+                          </div>
+                          {selectedVendorTypes.includes(type.id) && (
+                            <Button
+                              type="button"
+                              variant={primaryVendorTypeId === type.id ? "default" : "ghost"}
+                              size="sm"
+                              onClick={() => setPrimaryVendorTypeId(type.id)}
+                              data-testid={`button-primary-vendor-type-${type.id}`}
+                            >
+                              <Star className={`h-3 w-3 mr-1 ${primaryVendorTypeId === type.id ? 'fill-current' : ''}`} />
+                              {primaryVendorTypeId === type.id ? 'Primary' : 'Set Primary'}
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -385,6 +557,7 @@ export default function VendorManagement() {
                   <TableHead>GST/Aadhaar</TableHead>
                   <TableHead>City</TableHead>
                   <TableHead>Type</TableHead>
+                  <TableHead>Classifications</TableHead>
                   <TableHead>Cluster</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -401,6 +574,9 @@ export default function VendorManagement() {
                     </TableCell>
                     <TableCell>{vendor.city || "-"}</TableCell>
                     <TableCell>{vendor.vendorType || "-"}</TableCell>
+                    <TableCell>
+                      <VendorTypesBadges vendorId={vendor.id} />
+                    </TableCell>
                     <TableCell>
                       {vendor.isCluster === 1 ? (
                         <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-700">

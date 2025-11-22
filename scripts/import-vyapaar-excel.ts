@@ -9,6 +9,8 @@ import {
   invoicePayments,
   uom,
   productTypes,
+  vendorTypes,
+  vendorVendorTypes,
 } from '../shared/schema.js';
 import { sql, eq, and } from 'drizzle-orm';
 
@@ -661,6 +663,117 @@ for (const sale of sales) {
 }
 
 console.log(`✅ Created ${invoiceCount} invoices (Skipped: ${skippedInvoices})\n`);
+
+// ============================================================
+// STEP 5: Auto-detect and Assign Vendor Types based on Product Brands
+// ============================================================
+console.log('🏷️  Step 5: Auto-detecting Vendor Types based on Product Brands...');
+
+// Load vendor types (Kinto, HPPani, Purejal)
+const allVendorTypes = await db.select().from(vendorTypes);
+const vendorTypeMap = new Map(allVendorTypes.map(vt => [vt.code.toLowerCase(), vt.id]));
+
+console.log(`Found ${allVendorTypes.length} vendor types: ${allVendorTypes.map(vt => vt.name).join(', ')}`);
+
+// Get all invoices with their items
+const allInvoices = await db.select().from(invoices);
+const allInvoiceItems = await db.select().from(invoiceItems);
+const allProducts = await db.select().from(products);
+
+// Build product ID to product name map
+const productIdToName = new Map(allProducts.map(p => [p.id, p.productName.toLowerCase()]));
+
+// Track vendor -> brand purchases
+const vendorBrandCounts: Map<string, Map<string, number>> = new Map();
+
+// Analyze each invoice
+for (const invoice of allInvoices) {
+  const items = allInvoiceItems.filter(item => item.invoiceId === invoice.id);
+  
+  for (const item of items) {
+    const productName = productIdToName.get(item.productId) || '';
+    
+    // Detect brand from product name
+    let detectedBrand: string | null = null;
+    if (productName.includes('kinto')) {
+      detectedBrand = 'kinto';
+    } else if (productName.includes('hp') && productName.includes('pani')) {
+      detectedBrand = 'hppani';
+    } else if (productName.includes('purejal')) {
+      detectedBrand = 'purejal';
+    }
+    
+    if (detectedBrand) {
+      // Get vendor ID from invoice
+      const vendorName = invoice.buyerName.toLowerCase();
+      const vendorId = Array.from(partyMap.entries()).find(([name, _]) => name === vendorName)?.[1];
+      
+      if (vendorId) {
+        if (!vendorBrandCounts.has(vendorId)) {
+          vendorBrandCounts.set(vendorId, new Map());
+        }
+        const brandCounts = vendorBrandCounts.get(vendorId)!;
+        brandCounts.set(detectedBrand, (brandCounts.get(detectedBrand) || 0) + 1);
+      }
+    }
+  }
+}
+
+// Assign vendor types to vendors
+let vendorTypesAssigned = 0;
+for (const [vendorId, brandCounts] of vendorBrandCounts.entries()) {
+  const brands = Array.from(brandCounts.entries())
+    .sort((a, b) => b[1] - a[1]); // Sort by count descending
+  
+  if (brands.length === 0) continue;
+  
+  // Primary brand is the most purchased one
+  const primaryBrand = brands[0][0];
+  const primaryVendorTypeId = vendorTypeMap.get(primaryBrand);
+  
+  if (!primaryVendorTypeId) {
+    console.log(`  ⚠️  Vendor type not found for brand: ${primaryBrand}`);
+    continue;
+  }
+  
+  try {
+    // Assign vendor types
+    for (const [brand, count] of brands) {
+      const vendorTypeId = vendorTypeMap.get(brand);
+      if (!vendorTypeId) continue;
+      
+      const isPrimary = brand === primaryBrand ? 1 : 0;
+      
+      // Check if already exists
+      const existing = await db.select()
+        .from(vendorVendorTypes)
+        .where(and(
+          eq(vendorVendorTypes.vendorId, vendorId),
+          eq(vendorVendorTypes.vendorTypeId, vendorTypeId)
+        ))
+        .limit(1);
+      
+      if (existing.length === 0) {
+        await db.insert(vendorVendorTypes).values({
+          vendorId,
+          vendorTypeId,
+          isPrimary,
+          recordStatus: 1,
+        });
+      }
+    }
+    
+    const vendor = await db.select().from(vendors).where(eq(vendors.id, vendorId)).limit(1);
+    const vendorName = vendor[0]?.vendorName || 'Unknown';
+    const brandList = brands.map(([b, c]) => `${b}(${c})`).join(', ');
+    console.log(`  ✓ Assigned vendor types to ${vendorName}: ${brandList} (primary: ${primaryBrand})`);
+    vendorTypesAssigned++;
+  } catch (err: any) {
+    console.error(`  ❌ Error assigning vendor types to vendor ${vendorId}:`, err.message);
+  }
+}
+
+console.log(`✅ Assigned vendor types to ${vendorTypesAssigned} vendors\n`);
 
 // ============================================================
 // FINAL SUMMARY
