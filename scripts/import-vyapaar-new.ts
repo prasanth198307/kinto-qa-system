@@ -122,6 +122,39 @@ function classifyVendorTypeByProduct(productName: string): string[] {
   return types;
 }
 
+// Helper function to find vendor by name (handles name variations)
+function findVendorByName(partyName: string, partyMap: Map<string, string>): string | undefined {
+  // Try exact normalized match first
+  let vendorId = partyMap.get(normalize(partyName));
+  if (vendorId) return vendorId;
+  
+  // Try matching against the part before parentheses
+  const mainName = partyName.split('(')[0].trim();
+  vendorId = partyMap.get(normalize(mainName));
+  if (vendorId) return vendorId;
+  
+  // Try matching against the part inside parentheses
+  const altName = partyName.match(/\(([^)]+)\)/)?.[1];
+  if (altName) {
+    vendorId = partyMap.get(normalize(altName));
+    if (vendorId) return vendorId;
+  }
+  
+  // Try fuzzy match - find vendors that contain key words from the party name
+  const normalizedName = normalize(partyName);
+  const words = normalizedName.split(/\s+/).filter(w => w.length > 3); // Only significant words
+  
+  for (const [key, id] of partyMap.entries()) {
+    // Check if the vendor name contains most of the significant words
+    const matchCount = words.filter(word => key.includes(word)).length;
+    if (matchCount >= Math.min(3, words.length - 1)) { // Match at least 3 words or all but one
+      return id;
+    }
+  }
+  
+  return undefined;
+}
+
 console.log('🚀 Starting Vyapaar Excel Auto-Import WITH VENDOR TYPE CLASSIFICATION...\n');
 
 // ============================================================
@@ -502,7 +535,8 @@ for (const sale of sales) {
     continue;
   }
   
-  const vendorId = partyMap.get(normalize(partyName));
+  // Use smart vendor lookup that handles name variations
+  const vendorId = findVendorByName(partyName, partyMap);
   if (!vendorId) {
     console.log(`  ⚠️  Skipping invoice - vendor not found: ${partyName}`);
     skippedCount++;
