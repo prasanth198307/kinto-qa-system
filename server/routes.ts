@@ -3812,6 +3812,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Slice data for current page
         const paginatedData = allInvoices.slice(startIndex, endIndex);
         
+        // Calculate aggregate statistics across ALL invoices (not just current page)
+        const aggregateStats = {
+          draft: allInvoices.filter(i => i.status === 'draft').length,
+          ready_for_gatepass: allInvoices.filter(i => i.status === 'ready_for_gatepass').length,
+          dispatched: allInvoices.filter(i => i.status === 'dispatched').length,
+          delivered: allInvoices.filter(i => i.status === 'delivered').length,
+        };
+        
         return res.json({
           data: paginatedData,
           meta: {
@@ -3821,6 +3829,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             totalPages,
             hasNextPage: paginationParams.page < totalPages,
             hasPreviousPage: paginationParams.page > 1,
+            aggregateStats, // Include aggregate statistics for dashboard cards
           },
         });
       }

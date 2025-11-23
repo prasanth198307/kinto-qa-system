@@ -8,6 +8,15 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (November 23, 2025)
 
+### Comprehensive Pagination System Implementation
+- **Server-side pagination infrastructure:** Created shared `PaginationRequest` and `PaginationMeta` schemas with page, pageSize, sortBy, sortOrder
+- **Reusable DataTablePagination component:** Prev/Next/First/Last buttons, page size selector (25/50/100), record count display
+- **Invoice pagination (Dispatch Tracking):** Implemented as pilot with URL-based state management, backward compatible API
+- **Aggregate statistics:** Server calculates status counts across ALL invoices, not just current page, for accurate dashboard metrics
+- **Query param preservation:** Pagination state changes preserve all existing URL parameters (deep links, filters)
+- **Default settings:** 25 records per page, supports 25/50/100 options
+- **Next:** Roll out to Payments, Vendors, Products, Gatepasses, Vendor Analytics screens
+
 ### Vendor Analytics Customer Filter & Duplicate Prevention
 - **Fixed Vendor Analytics customer filter:** Outstanding amount links now pass vendor name as URL parameter to filter Pending Payments page
 - **Pending Payments customer filtering:** Page now reads `?customer=` query parameter and filters invoices to show only that customer's outstanding balances

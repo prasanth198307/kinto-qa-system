@@ -1,19 +1,20 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useSearch } from "wouter";
+import { useSearch, useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FileText, Package, Truck, CheckCircle, Clock } from "lucide-react";
 import { format } from "date-fns";
-import type { Invoice, Gatepass } from "@shared/schema";
+import type { Invoice, Gatepass, PaginatedResponse } from "@shared/schema";
 import PrintableInvoice from "@/components/PrintableInvoice";
 import PrintableGatepass from "@/components/PrintableGatepass";
 import ProofOfDelivery from "@/components/ProofOfDelivery";
 import GatepassForm from "@/components/GatepassForm";
 import { GlobalHeader } from "@/components/GlobalHeader";
 import { useAuth } from "@/hooks/use-auth";
+import { DataTablePagination } from "@/components/DataTablePagination";
 
 const statusConfig = {
   // Invoice statuses
@@ -33,17 +34,26 @@ interface DispatchTrackingProps {
 
 export default function DispatchTracking({ showHeader = true }: DispatchTrackingProps = {}) {
   const search = useSearch();
+  const [, setLocation] = useLocation();
   const { logoutMutation } = useAuth();
   const [showGatepassForm, setShowGatepassForm] = useState(false);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
   
-  const { data: invoices = [], isLoading: invoicesLoading } = useQuery<Invoice[]>({
-    queryKey: ['/api/invoices'],
+  // Parse pagination params from URL
+  const params = useMemo(() => new URLSearchParams(search), [search]);
+  const currentPage = parseInt(params.get('page') || '1');
+  const currentPageSize = parseInt(params.get('pageSize') || '25');
+  
+  const { data: invoiceData, isLoading: invoicesLoading } = useQuery<PaginatedResponse<Invoice>>({
+    queryKey: ['/api/invoices', { page: currentPage, pageSize: currentPageSize }],
   });
 
   const { data: gatepasses = [], isLoading: gatepassesLoading } = useQuery<Gatepass[]>({
     queryKey: ['/api/gatepasses'],
   });
+  
+  const invoices = invoiceData?.data || [];
+  const paginationMeta = invoiceData?.meta;
 
   // Detect invoice parameter in URL and auto-open gatepass form
   useEffect(() => {
@@ -54,6 +64,25 @@ export default function DispatchTracking({ showHeader = true }: DispatchTracking
       setShowGatepassForm(true);
     }
   }, [search]);
+  
+  // Pagination handlers - preserve existing query params
+  const handlePageChange = (newPage: number) => {
+    const newParams = new URLSearchParams(search);
+    newParams.set('page', newPage.toString());
+    // Preserve pageSize if it exists
+    if (!newParams.has('pageSize')) {
+      newParams.set('pageSize', currentPageSize.toString());
+    }
+    setLocation(`?${newParams.toString()}`);
+  };
+  
+  const handlePageSizeChange = (newPageSize: number) => {
+    const newParams = new URLSearchParams(search);
+    newParams.set('page', '1'); // Reset to page 1 when changing page size
+    newParams.set('pageSize', newPageSize.toString());
+    // All other params like 'invoice' are automatically preserved by URLSearchParams
+    setLocation(`?${newParams.toString()}`);
+  };
 
   const getStatusBadge = (status: string) => {
     const config = statusConfig[status as keyof typeof statusConfig];
@@ -80,13 +109,13 @@ export default function DispatchTracking({ showHeader = true }: DispatchTracking
     }
   };
 
-  // Statistics
+  // Statistics (use aggregate stats from API for accurate totals across all pages)
   const invoiceStats = {
-    total: invoices.length,
-    draft: invoices.filter(i => i.status === 'draft').length,
-    readyForGatepass: invoices.filter(i => i.status === 'ready_for_gatepass').length,
-    dispatched: invoices.filter(i => i.status === 'dispatched').length,
-    delivered: invoices.filter(i => i.status === 'delivered').length,
+    total: paginationMeta?.totalItems || invoices.length,
+    draft: (paginationMeta as any)?.aggregateStats?.draft || invoices.filter(i => i.status === 'draft').length,
+    readyForGatepass: (paginationMeta as any)?.aggregateStats?.ready_for_gatepass || invoices.filter(i => i.status === 'ready_for_gatepass').length,
+    dispatched: (paginationMeta as any)?.aggregateStats?.dispatched || invoices.filter(i => i.status === 'dispatched').length,
+    delivered: (paginationMeta as any)?.aggregateStats?.delivered || invoices.filter(i => i.status === 'delivered').length,
   };
 
   const gatepassStats = {
@@ -217,6 +246,14 @@ export default function DispatchTracking({ showHeader = true }: DispatchTracking
                   </tbody>
                 </table>
               </div>
+              
+              {paginationMeta && (
+                <DataTablePagination
+                  meta={paginationMeta}
+                  onPageChange={handlePageChange}
+                  onPageSizeChange={handlePageSizeChange}
+                />
+              )}
             </CardContent>
           </Card>
         </TabsContent>
