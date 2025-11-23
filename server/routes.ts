@@ -1539,8 +1539,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Products API
   app.get('/api/products', isAuthenticated, async (req: any, res) => {
     try {
-      const products = await storage.getAllProducts();
-      res.json(products);
+      const { page, pageSize, searchQuery, category, type, activeStatus } = req.query;
+      
+      // TODO: Optimize with database-level pagination (LIMIT/OFFSET) and WHERE clauses for better scalability
+      // Get all products once (loads all data into memory)
+      const allProductsUnfiltered = await storage.getAllProducts();
+      
+      // Compute filter metadata from unfiltered list (for dropdowns)
+      const uniqueCategories = Array.from(new Set(allProductsUnfiltered.filter(p => p.productCategoryId).map(p => p.productCategoryId!))).sort();
+      const uniqueTypes = Array.from(new Set(allProductsUnfiltered.filter(p => p.productTypeId).map(p => p.productTypeId!))).sort();
+      
+      // Apply filters to create filtered list
+      let allProducts = allProductsUnfiltered;
+      
+      if (searchQuery) {
+        const query = (searchQuery as string).toLowerCase();
+        allProducts = allProducts.filter(p =>
+          p.productName.toLowerCase().includes(query) ||
+          p.productCode.toLowerCase().includes(query) ||
+          (p.hsn && p.hsn.toLowerCase().includes(query))
+        );
+      }
+      
+      if (category && category !== 'all') {
+        allProducts = allProducts.filter(p => p.productCategoryId === category);
+      }
+      
+      if (type && type !== 'all') {
+        allProducts = allProducts.filter(p => p.productTypeId === type);
+      }
+      
+      if (activeStatus && activeStatus !== 'all') {
+        const isActive = activeStatus === 'active' ? 1 : 0;
+        allProducts = allProducts.filter(p => p.isActive === isActive);
+      }
+      
+      // If pagination params exist, paginate the results
+      if (page !== undefined && pageSize !== undefined) {
+        const { paginationRequestSchema } = await import('@shared/schema');
+        const paginationParams = paginationRequestSchema.parse({ page, pageSize });
+        
+        const totalItems = allProducts.length;
+        const totalPages = Math.ceil(totalItems / paginationParams.pageSize);
+        const startIndex = (paginationParams.page - 1) * paginationParams.pageSize;
+        const endIndex = startIndex + paginationParams.pageSize;
+        const paginatedProducts = allProducts.slice(startIndex, endIndex);
+        
+        return res.json({
+          data: paginatedProducts,
+          meta: {
+            page: paginationParams.page,
+            pageSize: paginationParams.pageSize,
+            totalItems,
+            totalPages,
+            hasNextPage: paginationParams.page < totalPages,
+            hasPreviousPage: paginationParams.page > 1,
+            filters: {
+              categories: uniqueCategories,
+              types: uniqueTypes,
+            },
+          },
+        });
+      }
+      
+      // Backward compatibility: return plain array if no pagination params
+      res.json(allProducts);
     } catch (error) {
       console.error("Error fetching products:", error);
       res.status(500).json({ message: "Failed to fetch products" });

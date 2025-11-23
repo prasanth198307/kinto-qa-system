@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useLocation } from "wouter";
 import { 
   insertUomSchema, 
   insertProductSchema,
@@ -50,6 +51,7 @@ import { Plus, Pencil, Trash2, Search, Package, Layers, Box, CheckCircle, Users,
 import VendorManagement from "@/components/VendorManagement";
 import BankManagement from "@/components/BankManagement";
 import { GlobalHeader } from "@/components/GlobalHeader";
+import { DataTablePagination } from "@/components/DataTablePagination";
 
 interface InventoryManagementProps {
   activeTab?: string;
@@ -461,23 +463,76 @@ function UOMDialog({
   );
 }
 
+interface PaginatedProductResponse {
+  data: Product[];
+  meta: {
+    page: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+    filters?: {
+      categories: string[];
+      types: string[];
+    };
+  };
+}
+
 function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSearchChange: (value: string) => void }) {
   const { toast } = useToast();
+  const [location, setLocation] = useLocation();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Product | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
-  const itemsPerPage = 10;
 
-  // Filter states
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [typeFilter, setTypeFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  // Get pathname and search params separately
+  const pathname = location.split('?')[0];
+  const searchParams = useMemo(() => new URLSearchParams(location.split('?')[1] || ''), [location]);
+  const page = parseInt(searchParams.get('page') || '1', 10);
+  const pageSize = parseInt(searchParams.get('pageSize') || '25', 10);
+  const categoryFilter = searchParams.get('category') || 'all';
+  const typeFilter = searchParams.get('type') || 'all';
+  const activeStatusFilter = searchParams.get('activeStatus') || 'all';
 
-  const { data: products = [], isLoading } = useQuery<Product[]>({
-    queryKey: ['/api/products'],
+  // Update URL params helper
+  const updateUrlParams = (updates: Record<string, string | number>) => {
+    const newParams = new URLSearchParams(searchParams);
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === '' || value === 'all') {
+        newParams.delete(key);
+      } else {
+        newParams.set(key, String(value));
+      }
+    });
+    const newSearch = newParams.toString();
+    setLocation(`${pathname}${newSearch ? `?${newSearch}` : ''}`);
+  };
+
+  // Fetch paginated products
+  const { data: productsResponse, isLoading } = useQuery<PaginatedProductResponse | Product[]>({
+    queryKey: ["/api/products", page, pageSize, searchTerm, categoryFilter, typeFilter, activeStatusFilter],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        page: String(page),
+        pageSize: String(pageSize),
+      });
+      if (searchTerm) params.set('searchQuery', searchTerm);
+      if (categoryFilter !== 'all') params.set('category', categoryFilter);
+      if (typeFilter !== 'all') params.set('type', typeFilter);
+      if (activeStatusFilter !== 'all') params.set('activeStatus', activeStatusFilter);
+      
+      const response = await fetch(`/api/products?${params.toString()}`);
+      if (!response.ok) throw new Error('Failed to fetch products');
+      return response.json();
+    },
   });
+
+  // Handle both paginated and legacy array responses
+  const isPaginatedResponse = productsResponse && typeof productsResponse === 'object' && 'data' in productsResponse && 'meta' in productsResponse;
+  const products = isPaginatedResponse ? productsResponse.data : (Array.isArray(productsResponse) ? productsResponse : []);
+  const paginationMeta = isPaginatedResponse ? productsResponse.meta : undefined;
 
   const { data: uoms = [] } = useQuery<Uom[]>({
     queryKey: ['/api/uom'],
@@ -490,6 +545,28 @@ function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSea
   const { data: productTypes = [] } = useQuery<any[]>({
     queryKey: ['/api/product-types'],
   });
+
+  // Get category ID to name mapping
+  const getCategoryName = (id: string) => {
+    const cat = productCategories.find(c => c.id === id);
+    return cat?.name || id;
+  };
+
+  // Get type ID to name mapping
+  const getTypeName = (id: string) => {
+    const typ = productTypes.find(t => t.id === id);
+    return typ?.name || id;
+  };
+
+  // Always show ALL categories and types in filter dropdowns (not just those on current page)
+  // This ensures filters remain usable even when current page has limited data
+  const allCategoryIds = useMemo(() => {
+    return productCategories.map(c => c.id);
+  }, [productCategories]);
+
+  const allTypeIds = useMemo(() => {
+    return productTypes.map(t => t.id);
+  }, [productTypes]);
 
   const saveProductWithBomMutation = useMutation({
     mutationFn: async ({ mode, id, data }: { mode: 'create' | 'update'; id?: string; data: ProductFormData }) => {
@@ -597,62 +674,18 @@ function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSea
     },
   });
 
-  // Compute unique values for filters
-  const uniqueCategories = useMemo(() => {
-    const categories = products
-      .map(p => p.category)
-      .filter((cat): cat is string => Boolean(cat));
-    return Array.from(new Set(categories)).sort();
-  }, [products]);
-
-  const uniqueTypes = useMemo(() => {
-    const types = products
-      .map(p => p.type)
-      .filter((type): type is string => Boolean(type));
-    return Array.from(new Set(types)).sort();
-  }, [products]);
-
-  // Comprehensive filtering logic
-  const filteredItems = useMemo(() => {
-    return products.filter(item => {
-      // Search filter
-      const matchesSearch = 
-        item.productCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.productName.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      // Category filter
-      const matchesCategory = 
-        categoryFilter === 'all' || 
-        item.category === categoryFilter;
-      
-      // Type filter
-      const matchesType = 
-        typeFilter === 'all' || 
-        item.type === typeFilter;
-      
-      // Status filter
-      const matchesStatus = 
-        statusFilter === 'all' || 
-        item.isActive === statusFilter;
-      
-      return matchesSearch && matchesCategory && matchesType && matchesStatus;
-    });
-  }, [products, searchTerm, categoryFilter, typeFilter, statusFilter]);
-
-  // Clear filters function
   const clearFilters = () => {
     onSearchChange('');
-    setCategoryFilter('all');
-    setTypeFilter('all');
-    setStatusFilter('all');
-    setCurrentPage(1);
+    updateUrlParams({
+      category: 'all',
+      type: 'all',
+      activeStatus: 'all',
+      page: 1,
+    });
   };
 
   // Check if any filters are active
-  const hasActiveFilters = searchTerm !== '' || categoryFilter !== 'all' || typeFilter !== 'all' || statusFilter !== 'all';
-
-  const paginatedItems = filteredItems.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-  const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+  const hasActiveFilters = searchTerm !== '' || categoryFilter !== 'all' || typeFilter !== 'all' || activeStatusFilter !== 'all';
 
   const handleAdd = () => {
     setEditingItem(null);
@@ -726,15 +759,15 @@ function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSea
                 <Label htmlFor="category-filter" className="text-sm font-medium mb-1.5 block">
                   Category
                 </Label>
-                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <Select value={categoryFilter} onValueChange={(value) => updateUrlParams({ category: value, page: 1 })}>
                   <SelectTrigger id="category-filter" data-testid="select-category-filter">
                     <SelectValue placeholder="All Categories" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Categories</SelectItem>
-                    {uniqueCategories.map((category) => (
-                      <SelectItem key={category} value={category}>
-                        {category}
+                    {allCategoryIds.map((id) => (
+                      <SelectItem key={id} value={id}>
+                        {getCategoryName(id)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -746,15 +779,15 @@ function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSea
                 <Label htmlFor="type-filter" className="text-sm font-medium mb-1.5 block">
                   Type
                 </Label>
-                <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <Select value={typeFilter} onValueChange={(value) => updateUrlParams({ type: value, page: 1 })}>
                   <SelectTrigger id="type-filter" data-testid="select-type-filter">
                     <SelectValue placeholder="All Types" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Types</SelectItem>
-                    {uniqueTypes.map((type) => (
-                      <SelectItem key={type} value={type}>
-                        {type}
+                    {allTypeIds.map((id) => (
+                      <SelectItem key={id} value={id}>
+                        {getTypeName(id)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -766,14 +799,14 @@ function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSea
                 <Label htmlFor="status-filter" className="text-sm font-medium mb-1.5 block">
                   Status
                 </Label>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <Select value={activeStatusFilter} onValueChange={(value) => updateUrlParams({ activeStatus: value, page: 1 })}>
                   <SelectTrigger id="status-filter" data-testid="select-status-filter">
                     <SelectValue placeholder="All Statuses" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Statuses</SelectItem>
-                    <SelectItem value="true">Active</SelectItem>
-                    <SelectItem value="false">Inactive</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -809,16 +842,16 @@ function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSea
                     <TableCell><Skeleton className="h-4 w-24 ml-auto" /></TableCell>
                   </TableRow>
                 ))
-              ) : paginatedItems.length === 0 ? (
+              ) : products.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    {products.length === 0 
-                      ? "No products found. Add your first product to get started."
+                    {isLoading 
+                      ? "Loading products..."
                       : "No products match your search criteria. Try adjusting your filters."}
                   </TableCell>
                 </TableRow>
               ) : (
-                paginatedItems.map((item) => (
+                products.map((item) => (
                   <TableRow key={item.id} data-testid={`row-product-${item.id}`}>
                     <TableCell className="font-medium" data-testid={`text-code-${item.id}`}>{item.productCode}</TableCell>
                     <TableCell data-testid={`text-name-${item.id}`}>{item.productName}</TableCell>
@@ -862,28 +895,12 @@ function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSea
         </div>
       </Card>
 
-      {totalPages > 1 && (
-        <div className="flex justify-center gap-2">
-          <Button
-            variant="outline"
-            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-            disabled={currentPage === 1}
-            data-testid="button-prev-page"
-          >
-            Previous
-          </Button>
-          <span className="flex items-center px-4 text-sm text-muted-foreground">
-            Page {currentPage} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-            disabled={currentPage === totalPages}
-            data-testid="button-next-page"
-          >
-            Next
-          </Button>
-        </div>
+      {paginationMeta && (
+        <DataTablePagination
+          meta={paginationMeta}
+          onPageChange={(newPage) => updateUrlParams({ page: newPage })}
+          onPageSizeChange={(newSize) => updateUrlParams({ pageSize: newSize, page: 1 })}
+        />
       )}
 
       <ProductDialog
