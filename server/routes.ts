@@ -4370,35 +4370,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalOutstanding = pendingInvoices.reduce((sum, inv) => sum + inv.outstandingBalance, 0);
       const totalCount = pendingInvoices.length;
       
-      // If pagination params exist, paginate the results
-      if (page !== undefined && pageSize !== undefined) {
-        const { paginationRequestSchema } = await import('@shared/schema');
-        const paginationParams = paginationRequestSchema.parse({ page, pageSize });
-        
-        const totalPages = Math.ceil(totalCount / paginationParams.pageSize);
-        const startIndex = (paginationParams.page - 1) * paginationParams.pageSize;
-        const endIndex = startIndex + paginationParams.pageSize;
-        const paginatedData = pendingInvoices.slice(startIndex, endIndex);
-        
-        return res.json({
-          data: paginatedData,
-          meta: {
-            page: paginationParams.page,
-            pageSize: paginationParams.pageSize,
-            totalItems: totalCount,
-            totalPages,
-            hasNextPage: paginationParams.page < totalPages,
-            hasPreviousPage: paginationParams.page > 1,
-            aggregateStats: {
-              totalOutstanding,
-              totalCount,
-            },
-          },
-        });
-      }
+      // Parse pagination params or use defaults to always return consistent format
+      const { paginationRequestSchema } = await import('@shared/schema');
+      const paginationParams = paginationRequestSchema.parse({ 
+        page: page || 1, 
+        pageSize: pageSize || 1000 
+      });
       
-      // No pagination - return all pending invoices (backward compatible)
-      res.json(pendingInvoices);
+      const totalPages = Math.ceil(totalCount / paginationParams.pageSize);
+      const startIndex = (paginationParams.page - 1) * paginationParams.pageSize;
+      const endIndex = startIndex + paginationParams.pageSize;
+      const paginatedData = pendingInvoices.slice(startIndex, endIndex);
+      
+      res.json({
+        data: paginatedData,
+        meta: {
+          page: paginationParams.page,
+          pageSize: paginationParams.pageSize,
+          totalItems: totalCount,
+          totalPages,
+          hasNextPage: paginationParams.page < totalPages,
+          hasPreviousPage: paginationParams.page > 1,
+          aggregateStats: {
+            totalOutstanding,
+            totalCount,
+          },
+        },
+      });
     } catch (error) {
       console.error("Error fetching pending payments:", error);
       res.status(500).json({ message: "Failed to fetch pending payments" });

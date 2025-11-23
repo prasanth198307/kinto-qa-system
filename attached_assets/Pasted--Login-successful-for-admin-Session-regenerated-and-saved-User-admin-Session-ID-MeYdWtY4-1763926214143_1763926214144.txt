@@ -1,0 +1,68 @@
+
+✅ Login successful for admin
+✅ Session regenerated and saved
+   User: admin
+   Session ID: MeYdWtY4d_7UY5i7ou706RFoFysxLZMS
+   Cookie will be: connect.sid=MeYdWtY4d_7UY5i7ou706RFoFysxLZMS
+12:59:24 AM [express] POST /api/login 200 in 107ms :: {"id":"user-admin","username":"admin","password…
+🔹 Request: GET /api/machines
+   Cookie header: connect.sid=s%3AMeYdWtY4d_7UY5i7ou706RFoFysxLZMS.EACjqv3R7%2F2%2BezIOAp3X9yTOjSNkppX%2Ffl82N1lz%2BoQ
+   Session ID: MeYdWtY4d_7UY5i7ou706RFoFysxLZMS
+   Authenticated: true
+12:59:24 AM [express] GET /api/machines 304 in 5ms :: [{"id":"80649cc4-2677-493d-a712-63f0833ae39d","…
+🔹 Request: GET /api/finished-goods
+   Cookie header: connect.sid=s%3AMeYdWtY4d_7UY5i7ou706RFoFysxLZMS.EACjqv3R7%2F2%2BezIOAp3X9yTOjSNkppX%2Ffl82N1lz%2BoQ
+   Session ID: MeYdWtY4d_7UY5i7ou706RFoFysxLZMS
+   Authenticated: true
+12:59:24 AM [express] GET /api/finished-goods 304 in 5ms :: []
+🔹 Request: GET /api/raw-materials
+   Cookie header: connect.sid=s%3AMeYdWtY4d_7UY5i7ou706RFoFysxLZMS.EACjqv3R7%2F2%2BezIOAp3X9yTOjSNkppX%2Ffl82N1lz%2BoQ
+   Session ID: MeYdWtY4d_7UY5i7ou706RFoFysxLZMS
+   Authenticated: true
+🔹 Request: GET /api/users
+   Cookie header: connect.sid=s%3AMeYdWtY4d_7UY5i7ou706RFoFysxLZMS.EACjqv3R7%2F2%2BezIOAp3X9yTOjSNkppX%2Ffl82N1lz%2BoQ
+   Session ID: MeYdWtY4d_7UY5i7ou706RFoFysxLZMS
+   Authenticated: true
+12:59:24 AM [express] GET /api/raw-materials 304 in 5ms :: [{"id":"69898f7e-c760-4b3e-9333-666921606e…
+🔹 Request: GET /api/maintenance-plans
+   Cookie header: connect.sid=s%3AMeYdWtY4d_7UY5i7ou706RFoFysxLZMS.EACjqv3R7%2F2%2BezIOAp3X9yTOjSNkppX%2Ffl82N1lz%2BoQ
+   Session ID: MeYdWtY4d_7UY5i7ou706RFoFysxLZMS
+   Authenticated: true
+🔹 Request: GET /api/spare-parts
+   Cookie header: connect.sid=s%3AMeYdWtY4d_7UY5i7ou706RFoFysxLZMS.EACjqv3R7%2F2%2BezIOAp3X9yTOjSNkppX%2Ffl82N1lz%2BoQ
+   Session ID: MeYdWtY4d_7UY5i7ou706RFoFysxLZMS
+   Authenticated: true
+12:59:24 AM [express] GET /api/users 304 in 15ms :: [{"id":"3c0cd496-588c-4b91-bf4c-85b956a83f0c","us…
+🔹 Request: GET /api/checklist-templates
+   Cookie header: connect.sid=s%3AMeYdWtY4d_7UY5i7ou706RFoFysxLZMS.EACjqv3R7%2F2%2BezIOAp3X9yTOjSNkppX%2Ffl82N1lz%2BoQ
+   Session ID: MeYdWtY4d_7UY5i7ou706RFoFysxLZMS
+   Authenticated: true
+🔹 Request: GET /api/stats/today
+   Cookie header: connect.sid=s%3AMeYdWtY4d_7UY5i7ou706RFoFysxLZMS.EACjqv3R7%2F2%2BezIOAp3X9yTOjSNkppX%2Ffl82N1lz%2BoQ
+   Session ID: MeYdWtY4d_7UY5i7ou706RFoFysxLZMS
+   Authenticated: true
+12:59:24 AM [express] GET /api/spare-parts 304 in 14ms :: [{"id":"66d39383-d0c9-4f4f-92fa-86487dfd485…
+12:59:24 AM [express] GET /api/maintenance-plans 304 in 16ms :: []
+🔹 Request: GET /api/products
+   Cookie header: connect.sid=s%3AMeYdWtY4d_7UY5i7ou706RFoFysxLZMS.EACjqv3R7%2F2%2BezIOAp3X9yTOjSNkppX%2Ffl82N1lz%2BoQ
+   Session ID: MeYdWtY4d_7UY5i7ou706RFoFysxLZMS
+   Authenticated: true
+12:59:24 AM [express] GET /api/checklist-templates 304 in 15ms :: []
+🔹 Request: GET /api/pm-task-list-templates
+   Cookie header: connect.sid=s%3AMeYdWtY4d_7UY5i7ou706RFoFysxLZMS.EACjqv3R7%2F2%2BezIOAp3X9yTOjSNkppX%2Ffl82N1lz%2BoQ
+   Session ID: MeYdWtY4d_7UY5i7ou706RFoFysxLZMS
+   Authenticated: true
+12:59:24 AM [express] GET /api/products 304 in 7ms :: [{"id":"ed730c92-e7df-4086-9722-13389d276e90","…
+🔹 Request: GET /api/pending-payments
+   Cookie header: connect.sid=s%3AMeYdWtY4d_7UY5i7ou706RFoFysxLZMS.EACjqv3R7%2F2%2BezIOAp3X9yTOjSNkppX%2Ffl82N1lz%2BoQ
+   Session ID: MeYdWtY4d_7UY5i7ou706RFoFysxLZMS
+   Authenticated: true
+12:59:24 AM [express] GET /api/pm-task-list-templates 304 in 7ms :: []
+🔹 Request: GET /api/invoices
+   Cookie header: connect.sid=s%3AMeYdWtY4d_7UY5i7ou706RFoFysxLZMS.EACjqv3R7%2F2%2BezIOAp3X9yTOjSNkppX%2Ffl82N1lz%2BoQ
+   Session ID: MeYdWtY4d_7UY5i7ou706RFoFysxLZMS
+   Authenticated: true
+12:59:24 AM [express] GET /api/stats/today 304 in 23ms :: {"rawMaterialIssuancesCount":0,"gatepassesC…
+12:59:24 AM [express] GET /api/invoices 304 in 18ms :: [{"id":"2e20c711-75eb-474b-a669-1a353d69ee5f",…
+12:59:24 AM [express] GET /api/pending-payments 304 in 19ms :: {"data":[{"id":"2e20c711-75eb-474b-a66…
+
