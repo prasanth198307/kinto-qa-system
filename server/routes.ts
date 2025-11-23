@@ -4924,6 +4924,125 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Payment History - Get all payments with linked invoice and vendor details
+  app.get('/api/invoice-payments/history', isAuthenticated, async (req: any, res) => {
+    try {
+      const payments = await db.select({
+        id: invoicePayments.id,
+        invoiceId: invoicePayments.invoiceId,
+        paymentDate: invoicePayments.paymentDate,
+        amount: invoicePayments.amount,
+        paymentMethod: invoicePayments.paymentMethod,
+        referenceNumber: invoicePayments.referenceNumber,
+        paymentType: invoicePayments.paymentType,
+        bankName: invoicePayments.bankName,
+        remarks: invoicePayments.remarks,
+        cancelledAt: invoicePayments.cancelledAt,
+        cancellationRemarks: invoicePayments.cancellationRemarks,
+        invoiceNumber: invoices.invoiceNumber,
+        invoiceDate: invoices.invoiceDate,
+        vendorId: vendors.id,
+        vendorName: vendors.vendorName,
+      })
+      .from(invoicePayments)
+      .leftJoin(invoices, eq(invoicePayments.invoiceId, invoices.id))
+      .leftJoin(vendors, eq(invoices.buyerName, vendors.vendorName))
+      .where(eq(invoicePayments.recordStatus, 1))
+      .orderBy(sql`${invoicePayments.paymentDate} DESC`);
+
+      res.json(payments);
+    } catch (error) {
+      console.error("Error fetching payment history:", error);
+      res.status(500).json({ message: "Failed to fetch payment history" });
+    }
+  });
+
+  // Cancel Payment - Reverse payment allocation and restore invoice outstanding balance
+  app.patch('/api/invoice-payments/:id/cancel', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { cancellationRemarks } = req.body;
+
+      if (!cancellationRemarks || !cancellationRemarks.trim()) {
+        return res.status(400).json({ message: "Cancellation remarks are required" });
+      }
+
+      // Get the payment to verify it exists and is not already cancelled
+      const [payment] = await db.select().from(invoicePayments).where(eq(invoicePayments.id, id));
+      
+      if (!payment) {
+        return res.status(404).json({ message: "Payment not found" });
+      }
+
+      if (payment.cancelledAt) {
+        return res.status(400).json({ message: "Payment is already cancelled" });
+      }
+
+      // Don't allow cancelling write-offs
+      if (payment.paymentType === 'Write-off') {
+        return res.status(400).json({ message: "Write-off payments cannot be cancelled. Please contact admin." });
+      }
+
+      // Get the linked invoice
+      const [invoice] = await db.select().from(invoices).where(eq(invoices.id, payment.invoiceId));
+      
+      if (!invoice) {
+        return res.status(404).json({ message: "Linked invoice not found" });
+      }
+
+      // Mark payment as cancelled
+      await db.update(invoicePayments)
+        .set({
+          cancelledAt: new Date().toISOString(),
+          cancellationRemarks: cancellationRemarks.trim(),
+          cancelledBy: req.user?.id,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(invoicePayments.id, id));
+
+      // Recalculate invoice amountReceived (excluding cancelled payments)
+      const activePayments = await db.select()
+        .from(invoicePayments)
+        .where(
+          and(
+            eq(invoicePayments.invoiceId, payment.invoiceId),
+            eq(invoicePayments.recordStatus, 1),
+            sql`${invoicePayments.cancelledAt} IS NULL`
+          )
+        );
+
+      const newAmountReceived = activePayments.reduce((sum, p) => sum + p.amount, 0);
+
+      await db.update(invoices)
+        .set({
+          amountReceived: newAmountReceived,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(invoices.id, payment.invoiceId));
+
+      await logAudit(
+        req.user?.id,
+        'UPDATE',
+        'invoice_payments',
+        id,
+        `Payment cancelled: ₹${(payment.amount / 100).toFixed(2)} for invoice ${invoice.invoiceNumber}. Reason: ${cancellationRemarks}`
+      );
+
+      res.json({ 
+        message: "Payment cancelled successfully",
+        payment: {
+          ...payment,
+          cancelledAt: new Date().toISOString(),
+          cancellationRemarks,
+          cancelledBy: req.user?.id,
+        },
+      });
+    } catch (error) {
+      console.error("Error cancelling payment:", error);
+      res.status(500).json({ message: "Failed to cancel payment" });
+    }
+  });
+
   // Dashboard stats for today
   app.get('/api/stats/today', isAuthenticated, async (req: any, res) => {
     try {

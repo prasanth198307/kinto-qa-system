@@ -1617,9 +1617,15 @@ export const invoicePayments = pgTable("invoice_payments", {
   amount: integer("amount").notNull(), // Payment amount (in paise)
   paymentMethod: varchar("payment_method", { length: 50 }).notNull(), // Cash, Cheque, NEFT, UPI, etc.
   referenceNumber: varchar("reference_number", { length: 100 }), // Transaction ID, Cheque number, etc.
-  paymentType: varchar("payment_type", { length: 50 }).notNull(), // Advance, Partial, Full
+  paymentType: varchar("payment_type", { length: 50 }).notNull(), // Advance, Partial, Full, Write-off
   bankName: varchar("bank_name", { length: 255 }), // Bank name for cheque/transfer
   remarks: text("remarks"),
+  
+  // Payment Cancellation fields
+  cancelledAt: timestamp("cancelled_at", { mode: 'string' }),
+  cancellationRemarks: text("cancellation_remarks"),
+  cancelledBy: varchar("cancelled_by").references(() => users.id),
+  
   recordedBy: varchar("recorded_by").references(() => users.id),
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),

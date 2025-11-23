@@ -47,6 +47,7 @@ import ProductCategories from "@/pages/product-categories";
 import ProductTypes from "@/pages/product-types";
 import VendorTypes from "@/pages/vendor-types";
 import PendingPayments from "@/pages/pending-payments";
+import PaymentManagement from "@/pages/payment-management";
 import CreditNotes from "@/pages/credit-notes";
 import InventorySummaryDashboard from "@/components/InventorySummaryDashboard";
 import TodayProductionStats from "@/components/TodayProductionStats";
@@ -632,7 +633,8 @@ function AdminDashboard() {
       items: [
         { id: "invoices", label: "Sales Invoices", icon: Receipt },
         { id: "pending-payments", label: "Pending Payments", icon: IndianRupee },
-        { id: "credit-notes", label: "Credit Notes", icon: CreditCard },
+        { id: "payment-management", label: "Payment Management", icon: CreditCard },
+        { id: "credit-notes", label: "Credit Notes", icon: FileText },
         { id: "sales-returns", label: "Sales Returns", icon: Package },
       ],
       quickActions: [
@@ -934,6 +936,7 @@ function Router() {
       <ProtectedRoute path="/sales-returns" component={SalesReturns} />
       <ProtectedRoute path="/credit-notes" component={CreditNotes} />
       <ProtectedRoute path="/pending-payments" component={PendingPayments} />
+      <ProtectedRoute path="/payment-management" component={PaymentManagement} />
       <ProtectedRoute path="/reports/production-reconciliation" component={ProductionReconciliationReport} />
       <ProtectedRoute path="/" component={AuthenticatedApp} />
       <Route component={NotFound} />
