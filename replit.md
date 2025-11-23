@@ -21,11 +21,26 @@ Preferred communication style: Simple, everyday language.
   - **Client-side fallbacks:** Cities/states computed from vendors when metadata unavailable (legacy mode)
   - **Filter metadata:** Backend returns unique cities/states for filter dropdowns from unfiltered dataset
   - **Backward compatibility:** Legacy requests (no pagination params) work seamlessly with existing filtering
+- **Gatepass Pagination (Production Management):** ✅ ARCHITECT APPROVED - Production-ready implementation with:
+  - **Backend endpoint:** `/api/gatepasses` enforces strict `{data, meta}` response structure (no legacy arrays)
+  - **Complex filtering:** Search, status, and advanced date filtering (range/month/year) via `deriveGatepassDateRange` helper
+  - **URL-based state:** All filters preserved as `?gatepassPage=1&gatepassPageSize=25&gatepassSearch=...&gatepassStatus=...`
+  - **Filter metadata:** Status options computed from full unfiltered dataset
+  - **Frontend validation:** Runtime metadata presence validation in queryFn, throws error if missing
+  - **Standalone route:** Added `/production-management` route to App.tsx for direct access
+  - **DataTablePagination:** Full integration with prev/next/first/last navigation, page size selector, record count display
+- **Vendor Analytics Pagination:** Production-ready detailed transaction table with:
+  - **Backend endpoint:** `/api/vendor-analytics` with server-side search, sorting, and pagination
+  - **Sort capabilities:** Revenue, outstanding amount, order count, average order value (ascending/descending)
+  - **Summary stats:** Computed from full dataset before filtering for accurate totals
+  - **Type breakdown:** Vendor type distribution maintained across filtered results
+  - **URL state management:** `?vendorPage=1&vendorPageSize=25&vendorSearch=...&vendorSort=revenue&vendorSortDir=desc`
+  - **Frontend integration:** DataTablePagination with sort controls, metadata validation, type-safe responses
 - **Query param preservation:** URLSearchParams-based state management preserves all existing filters during pagination navigation
 - **Default settings:** 25 records per page, supports 25/50/100 options
-- **Pattern:** Backward compatible (returns plain array if no pagination params, {data, meta} if paginated), aggregate stats in metadata for accurate totals
-- **Architect approved:** VendorManagement pagination reviewed and approved for production deployment
-- **Next:** Roll out to Product Master, Gatepasses, Vendor Analytics screens
+- **Pagination contract:** ALL endpoints now enforce `{data, meta}` structure - no backward compatibility with legacy arrays (per architect requirement)
+- **Pattern:** Frontend validates metadata presence and throws error if missing, ensuring consistent pagination behavior across all screens
+- **Architect approved:** VendorManagement and Gatepass pagination reviewed and approved for production deployment
 - **Future optimization:** Migrate to database-level LIMIT/OFFSET when datasets exceed 500-1000 records
 
 ### Vendor Analytics Customer Filter & Duplicate Prevention
