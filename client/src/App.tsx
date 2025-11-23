@@ -797,6 +797,8 @@ function AdminDashboard() {
         return <SalesReturns />;
       case 'pending-payments':
         return <PendingPayments />;
+      case 'payment-management':
+        return <PaymentManagement />;
       case 'credit-notes':
         return <CreditNotes />;
       case 'dispatch-tracking':
