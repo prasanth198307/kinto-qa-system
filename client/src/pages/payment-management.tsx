@@ -577,25 +577,25 @@ export default function PaymentManagement() {
                 </DialogFooter>
               </form>
             </Form>
-          ) : (
+          ) : allocationPreview && allocationPreview.allocations ? (
             <div className="space-y-4">
               <div className="grid grid-cols-3 gap-4 p-4 rounded-md border bg-muted/30">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Payment</p>
                   <p className="text-lg font-semibold">
-                    ₹{(allocationPreview.totalAmount / 100).toFixed(2)}
+                    ₹{((allocationPreview.totalAmount || 0) / 100).toFixed(2)}
                   </p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Allocated</p>
                   <p className="text-lg font-semibold text-green-600">
-                    ₹{(allocationPreview.allocated / 100).toFixed(2)}
+                    ₹{((allocationPreview.allocated || 0) / 100).toFixed(2)}
                   </p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Remaining</p>
                   <p className="text-lg font-semibold text-destructive">
-                    ₹{(allocationPreview.remaining / 100).toFixed(2)}
+                    ₹{((allocationPreview.remaining || 0) / 100).toFixed(2)}
                   </p>
                 </div>
               </div>
@@ -644,6 +644,11 @@ export default function PaymentManagement() {
                   Close
                 </Button>
               </DialogFooter>
+            </div>
+          ) : (
+            <div className="p-4 text-center text-muted-foreground">
+              <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+              <p>Processing payment allocation...</p>
             </div>
           )}
         </DialogContent>
