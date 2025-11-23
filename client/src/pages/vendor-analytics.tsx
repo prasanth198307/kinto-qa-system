@@ -1,9 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { Link } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Building2, TrendingUp, DollarSign, Users, FileSpreadsheet } from "lucide-react";
+import { Building2, TrendingUp, DollarSign, Users, FileSpreadsheet, ExternalLink } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 
@@ -54,6 +56,12 @@ export default function VendorAnalytics() {
   const formatQuantity = (qty: number) => {
     return qty.toLocaleString('en-IN');
   };
+
+  // Sort vendors by outstanding balance (highest first)
+  const sortedVendors = useMemo(() => {
+    if (!analyticsData?.vendors) return [];
+    return [...analyticsData.vendors].sort((a, b) => b.outstandingBalance - a.outstandingBalance);
+  }, [analyticsData?.vendors]);
 
   // Export to Excel function
   const handleExportToExcel = async () => {
@@ -287,7 +295,7 @@ export default function VendorAnalytics() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {analyticsData.vendors.map((vendor) => (
+                  {sortedVendors.map((vendor) => (
                     <TableRow key={vendor.vendorId} data-testid={`row-vendor-${vendor.vendorId}`}>
                       <TableCell className="font-medium" data-testid={`cell-code-${vendor.vendorId}`}>
                         {vendor.vendorCode}
@@ -322,9 +330,18 @@ export default function VendorAnalytics() {
                         {formatCurrency(vendor.totalPaid)}
                       </TableCell>
                       <TableCell className="text-right" data-testid={`cell-outstanding-${vendor.vendorId}`}>
-                        <span className={vendor.outstandingBalance > 0 ? "text-orange-600 font-medium" : ""}>
-                          {formatCurrency(vendor.outstandingBalance)}
-                        </span>
+                        {vendor.outstandingBalance > 0 ? (
+                          <Link href="/pending-payments">
+                            <a className="text-orange-600 font-medium hover:text-orange-700 inline-flex items-center gap-1 hover:underline" data-testid={`link-outstanding-${vendor.vendorId}`}>
+                              {formatCurrency(vendor.outstandingBalance)}
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          </Link>
+                        ) : (
+                          <span className="text-muted-foreground">
+                            {formatCurrency(vendor.outstandingBalance)}
+                          </span>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
