@@ -5046,6 +5046,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Vendor Analytics - Get aggregated vendor sales and payment data
   app.get('/api/vendor-analytics', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
+      const { page, pageSize, searchQuery, sortBy } = req.query;
+      
       // Fetch all vendors, invoices, invoice items, payments, and vendor types
       const allVendors = await storage.getAllVendors();
       const allInvoices = await storage.getAllInvoices();
@@ -5106,10 +5108,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       }));
 
-      // Sort by total revenue descending
-      vendorAnalytics.sort((a, b) => b.totalRevenue - a.totalRevenue);
-
-      // Calculate summary statistics
+      // Calculate summary statistics (from full dataset)
       const summary = {
         totalVendors: vendorAnalytics.length,
         activeVendors: vendorAnalytics.filter(v => v.totalOrders > 0).length,
@@ -5118,7 +5117,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalOrders: vendorAnalytics.reduce((sum, v) => sum + v.totalOrders, 0),
       };
 
-      // Vendor type breakdown - count ALL vendor types (not just primary)
+      // Vendor type breakdown - count ALL vendor types (not just primary) from full dataset
       const typeBreakdown: Record<string, { count: Set<string>; revenue: number }> = {};
       vendorAnalytics.forEach(vendor => {
         // Count each vendor type the vendor is assigned to
@@ -5132,8 +5131,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       });
 
-      res.json({ 
-        vendors: vendorAnalytics, 
+      // Apply filters
+      let filteredVendors = [...vendorAnalytics];
+      
+      // Search filter (vendorCode, vendorName, city, state)
+      if (searchQuery && typeof searchQuery === 'string' && searchQuery.trim()) {
+        const query = searchQuery.toLowerCase().trim();
+        filteredVendors = filteredVendors.filter(v =>
+          v.vendorCode.toLowerCase().includes(query) ||
+          v.vendorName.toLowerCase().includes(query) ||
+          (v.city && v.city.toLowerCase().includes(query)) ||
+          (v.state && v.state.toLowerCase().includes(query))
+        );
+      }
+      
+      // Sort by specified field (default: outstanding balance descending)
+      const sortField = (sortBy as string) || 'outstandingBalance';
+      filteredVendors.sort((a, b) => {
+        switch (sortField) {
+          case 'revenue':
+            return b.totalRevenue - a.totalRevenue;
+          case 'orders':
+            return b.totalOrders - a.totalOrders;
+          case 'outstandingBalance':
+          default:
+            return b.outstandingBalance - a.outstandingBalance;
+        }
+      });
+
+      // Parse pagination parameters with defaults (always paginate)
+      const parsedPage = page ? parseInt(page as string) : 1;
+      const parsedPageSize = pageSize ? parseInt(pageSize as string) : 25;
+      
+      // Calculate pagination
+      const totalItems = filteredVendors.length;
+      const totalPages = Math.ceil(totalItems / parsedPageSize);
+      const startIndex = (parsedPage - 1) * parsedPageSize;
+      const endIndex = startIndex + parsedPageSize;
+      
+      // Slice data for current page
+      const paginatedData = filteredVendors.slice(startIndex, endIndex);
+
+      // ALWAYS return paginated response with metadata
+      res.json({
+        data: paginatedData,
+        meta: {
+          page: parsedPage,
+          pageSize: parsedPageSize,
+          totalItems,
+          totalPages,
+          hasNextPage: parsedPage < totalPages,
+          hasPreviousPage: parsedPage > 1,
+        },
         summary,
         typeBreakdown: Object.entries(typeBreakdown).map(([type, data]) => ({
           type,

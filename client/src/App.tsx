@@ -940,6 +940,7 @@ function Router() {
       <ProtectedRoute path="/pending-payments" component={PendingPayments} />
       <ProtectedRoute path="/payment-management" component={PaymentManagement} />
       <ProtectedRoute path="/vendor-analytics" component={VendorAnalytics} />
+      <ProtectedRoute path="/production-management" component={ProductionManagement} />
       <ProtectedRoute path="/reports/production-reconciliation" component={ProductionReconciliationReport} />
       <ProtectedRoute path="/" component={AuthenticatedApp} />
       <Route component={NotFound} />

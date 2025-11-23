@@ -1,13 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
-import { Link } from "wouter";
+import { useMemo, useState } from "react";
+import { Link, useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Building2, TrendingUp, DollarSign, Users, FileSpreadsheet, ExternalLink } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Building2, TrendingUp, DollarSign, Users, FileSpreadsheet, ExternalLink, Search, X } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { DataTablePagination } from "@/components/DataTablePagination";
+import type { PaginationMeta } from "@shared/schema";
 
 interface VendorAnalytic {
   vendorId: string;
@@ -27,7 +32,8 @@ interface VendorAnalytic {
 }
 
 interface VendorAnalyticsResponse {
-  vendors: VendorAnalytic[];
+  data: VendorAnalytic[];
+  meta: PaginationMeta;
   summary: {
     totalVendors: number;
     activeVendors: number;
@@ -44,9 +50,53 @@ interface VendorAnalyticsResponse {
 
 export default function VendorAnalytics() {
   const { toast } = useToast();
+  const [location, setLocation] = useLocation();
+  
+  // URL-based state for pagination and filters
+  const urlParams = new URLSearchParams(location.split('?')[1] || '');
+  const page = parseInt(urlParams.get('page') || '1');
+  const pageSize = parseInt(urlParams.get('pageSize') || '25');
+  const searchQuery = urlParams.get('search') || '';
+  const sortBy = urlParams.get('sortBy') || 'outstandingBalance';
+  
+  // Update URL params helper
+  const updateUrlParams = (updates: Record<string, string | number>) => {
+    const pathname = location.split('?')[0];
+    const params = new URLSearchParams(location.split('?')[1] || '');
+    
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === '' || value === null || value === undefined) {
+        params.delete(key);
+      } else {
+        params.set(key, String(value));
+      }
+    });
+    
+    const newSearch = params.toString();
+    setLocation(newSearch ? `${pathname}?${newSearch}` : pathname);
+  };
 
   const { data: analyticsData, isLoading } = useQuery<VendorAnalyticsResponse>({
-    queryKey: ['/api/vendor-analytics'],
+    queryKey: ['/api/vendor-analytics', page, pageSize, searchQuery, sortBy],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        pageSize: pageSize.toString()
+      });
+      if (searchQuery) params.set('searchQuery', searchQuery);
+      if (sortBy) params.set('sortBy', sortBy);
+      
+      const response = await fetch(`/api/vendor-analytics?${params.toString()}`);
+      if (!response.ok) throw new Error('Failed to fetch vendor analytics');
+      const data = await response.json();
+      
+      // Enforce structured response with metadata
+      if (!data.meta || !data.data) {
+        throw new Error('Invalid vendor analytics response: missing pagination metadata');
+      }
+      
+      return data;
+    }
   });
 
   const formatCurrency = (amountInPaise: number) => {
@@ -57,15 +107,16 @@ export default function VendorAnalytics() {
     return qty.toLocaleString('en-IN');
   };
 
-  // Sort vendors by outstanding balance (highest first)
-  const sortedVendors = useMemo(() => {
-    if (!analyticsData?.vendors) return [];
-    return [...analyticsData.vendors].sort((a, b) => b.outstandingBalance - a.outstandingBalance);
-  }, [analyticsData?.vendors]);
+  // Clear all filters
+  const clearFilters = () => {
+    updateUrlParams({ search: '', sortBy: 'outstandingBalance', page: 1 });
+  };
 
-  // Export to Excel function
+  const hasActiveFilters = searchQuery || sortBy !== 'outstandingBalance';
+
+  // Export to Excel function (exports all vendors, not just current page)
   const handleExportToExcel = async () => {
-    if (!analyticsData || !analyticsData.vendors || analyticsData.vendors.length === 0) {
+    if (!analyticsData || !analyticsData.data || analyticsData.data.length === 0) {
       toast({
         title: "No Data to Export",
         description: "There is no vendor data available to export.",
@@ -77,8 +128,9 @@ export default function VendorAnalytics() {
     // Dynamic import for Mac compatibility
     const XLSX = await import('xlsx');
 
-    // Prepare data for Excel
-    const excelData = analyticsData.vendors.map(vendor => ({
+    // Note: This exports only the current page. To export all data, 
+    // we'd need to fetch all vendors without pagination
+    const excelData = analyticsData.data.map(vendor => ({
       'Vendor Code': vendor.vendorCode,
       'Vendor Name': vendor.vendorName,
       'Primary Type': vendor.primaryType || 'N/A',
@@ -161,12 +213,14 @@ export default function VendorAnalytics() {
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-3xl font-bold" data-testid="heading-vendor-analytics">Vendor Analytics</h2>
-          <p className="text-muted-foreground" data-testid="description-vendor-analytics">Track vendor performance and sales</p>
+          <p className="text-muted-foreground" data-testid="description-vendor-analytics">
+            {analyticsData?.meta ? `${analyticsData.meta.totalItems} total vendors` : 'Track vendor performance and sales'}
+          </p>
         </div>
 
         <Button 
           onClick={handleExportToExcel}
-          disabled={!analyticsData || analyticsData.vendors.length === 0}
+          disabled={!analyticsData || analyticsData.data.length === 0}
           variant="outline"
           className="gap-2"
           data-testid="button-export-vendor-excel"
@@ -175,6 +229,59 @@ export default function VendorAnalytics() {
           Export to Excel
         </Button>
       </div>
+      
+      {/* Search and Sort Controls */}
+      <Card className="p-4">
+        <div className="space-y-4">
+          <div className="flex gap-2 items-end">
+            <div className="flex-1">
+              <Label htmlFor="vendor-search" className="text-sm font-medium mb-1.5 block">
+                Search Vendors
+              </Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  id="vendor-search"
+                  placeholder="Search by code, name, city, or state..."
+                  value={searchQuery}
+                  onChange={(e) => updateUrlParams({ search: e.target.value, page: 1 })}
+                  className="pl-10"
+                  data-testid="input-vendor-search"
+                />
+              </div>
+            </div>
+            
+            <div className="w-48">
+              <Label htmlFor="vendor-sort" className="text-sm font-medium mb-1.5 block">
+                Sort By
+              </Label>
+              <Select value={sortBy} onValueChange={(val) => updateUrlParams({ sortBy: val, page: 1 })}>
+                <SelectTrigger id="vendor-sort" data-testid="select-vendor-sort">
+                  <SelectValue placeholder="Sort by..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="outstandingBalance">Outstanding (High to Low)</SelectItem>
+                  <SelectItem value="revenue">Revenue (High to Low)</SelectItem>
+                  <SelectItem value="orders">Orders (High to Low)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearFilters}
+                className="gap-1"
+                data-testid="button-clear-vendor-filters"
+              >
+                <X className="h-4 w-4" />
+                Clear
+              </Button>
+            )}
+          </div>
+        </div>
+      </Card>
 
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -279,23 +386,24 @@ export default function VendorAnalytics() {
           <CardDescription data-testid="description-vendor-performance">Detailed vendor analytics and payment status</CardDescription>
         </CardHeader>
         <CardContent>
-          {analyticsData?.vendors && analyticsData.vendors.length > 0 ? (
-            <div className="border rounded-md">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead data-testid="header-vendor-code">Code</TableHead>
-                    <TableHead data-testid="header-vendor-name">Vendor Name</TableHead>
-                    <TableHead data-testid="header-type">Type</TableHead>
-                    <TableHead data-testid="header-location">Location</TableHead>
-                    <TableHead className="text-right" data-testid="header-orders">Orders</TableHead>
-                    <TableHead className="text-right" data-testid="header-vendor-revenue">Revenue</TableHead>
-                    <TableHead className="text-right" data-testid="header-paid">Paid</TableHead>
-                    <TableHead className="text-right" data-testid="header-vendor-outstanding">Outstanding</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sortedVendors.map((vendor) => (
+          {analyticsData?.data && analyticsData.data.length > 0 ? (
+            <>
+              <div className="border rounded-md">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead data-testid="header-vendor-code">Code</TableHead>
+                      <TableHead data-testid="header-vendor-name">Vendor Name</TableHead>
+                      <TableHead data-testid="header-type">Type</TableHead>
+                      <TableHead data-testid="header-location">Location</TableHead>
+                      <TableHead className="text-right" data-testid="header-orders">Orders</TableHead>
+                      <TableHead className="text-right" data-testid="header-vendor-revenue">Revenue</TableHead>
+                      <TableHead className="text-right" data-testid="header-paid">Paid</TableHead>
+                      <TableHead className="text-right" data-testid="header-vendor-outstanding">Outstanding</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {analyticsData.data.map((vendor) => (
                     <TableRow key={vendor.vendorId} data-testid={`row-vendor-${vendor.vendorId}`}>
                       <TableCell className="font-medium" data-testid={`cell-code-${vendor.vendorId}`}>
                         {vendor.vendorCode}
@@ -348,6 +456,17 @@ export default function VendorAnalytics() {
                 </TableBody>
               </Table>
             </div>
+            
+            {analyticsData.meta && (
+              <div className="mt-4">
+                <DataTablePagination
+                  meta={analyticsData.meta}
+                  onPageChange={(newPage) => updateUrlParams({ page: newPage })}
+                  onPageSizeChange={(newSize) => updateUrlParams({ pageSize: newSize, page: 1 })}
+                />
+              </div>
+            )}
+          </>
           ) : (
             <div className="text-center py-12 text-muted-foreground" data-testid="no-vendor-data">
               <Building2 className="h-12 w-12 mx-auto mb-4 opacity-50" data-testid="icon-no-vendor-data" />
