@@ -135,7 +135,7 @@ export default function PaymentManagement() {
       setAllocationPreview(data);
       toast({
         title: "Success",
-        description: `Payment allocated to ${data.allocations.length} invoice(s)`,
+        description: `Payment allocated to ${data?.allocations?.length || 0} invoice(s)`,
       });
     },
     onError: (error: Error) => {
