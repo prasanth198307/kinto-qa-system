@@ -25,10 +25,6 @@ export async function classifyAllVendors() {
     
     console.log(`✅ Found vendor types: Kinto (${kintoType.id}), HPPani (${hpPaniType.id}), Purejal (${purejalType.id})`);
     
-    // Clear existing vendor type assignments
-    await db.delete(vendorVendorTypes);
-    console.log('🗑️  Cleared existing vendor type assignments');
-    
     // Get all vendors
     const allVendors = await db.select().from(vendors);
     console.log(`📊 Found ${allVendors.length} total vendors`);
@@ -37,7 +33,7 @@ export async function classifyAllVendors() {
     let vendorsWithNoInvoices = 0;
     let totalAssignments = 0;
     
-    // Process each vendor
+    // Process each vendor in a transaction
     for (const vendor of allVendors) {
       // Find all invoices for this vendor (match by buyer_name)
       const vendorInvoices = await db
@@ -83,20 +79,32 @@ export async function classifyAllVendors() {
         p.productName.toLowerCase().includes('purejal')
       );
       
-      // Assign vendor types
+      // Assign vendor types using transaction for atomic update
       const typesToAssign = [];
       if (hasKinto) typesToAssign.push(kintoType.id);
       if (hasHPPani) typesToAssign.push(hpPaniType.id);
       if (hasPurejal) typesToAssign.push(purejalType.id);
       
       if (typesToAssign.length > 0) {
-        for (const typeId of typesToAssign) {
-          await db.insert(vendorVendorTypes).values({
-            vendorId: vendor.id,
-            vendorTypeId: typeId
-          });
-          totalAssignments++;
-        }
+        await db.transaction(async (tx) => {
+          // Delete existing assignments for this vendor only
+          await tx.delete(vendorVendorTypes).where(eq(vendorVendorTypes.vendorId, vendor.id));
+          
+          // Insert new assignments with conflict handling
+          for (const typeId of typesToAssign) {
+            await tx.insert(vendorVendorTypes)
+              .values({
+                vendorId: vendor.id,
+                vendorTypeId: typeId,
+                isPrimary: 0
+              })
+              .onConflictDoNothing({
+                target: [vendorVendorTypes.vendorId, vendorVendorTypes.vendorTypeId]
+              });
+            totalAssignments++;
+          }
+        });
+        
         vendorsClassified++;
         
         // Log sample vendors

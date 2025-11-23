@@ -818,7 +818,7 @@ export const vendorVendorTypes = pgTable("vendor_vendor_types", {
 }, (table) => ({
   vendorIdIdx: index("vendor_vendor_types_vendor_id_idx").on(table.vendorId),
   vendorTypeIdIdx: index("vendor_vendor_types_vendor_type_id_idx").on(table.vendorTypeId),
-  uniqueVendorType: index("vendor_vendor_types_unique_idx").on(table.vendorId, table.vendorTypeId),
+  uniqueVendorType: uniqueIndex("vendor_vendor_types_unique_idx").on(table.vendorId, table.vendorTypeId),
 }));
 
 export const insertVendorVendorTypeSchema = createInsertSchema(vendorVendorTypes).omit({

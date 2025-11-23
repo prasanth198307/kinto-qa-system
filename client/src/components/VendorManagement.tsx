@@ -127,12 +127,22 @@ export default function VendorManagement() {
   });
 
   // Group vendor types by vendorId for quick lookup (memoized to prevent infinite loops)
+  // Deduplicate to handle React Query dev-mode double-fetch edge cases
   const vendorTypesMap = useMemo(() => {
     return allVendorTypeAssignments.reduce((acc, assignment) => {
       if (!acc[assignment.vendorId]) {
         acc[assignment.vendorId] = [];
       }
-      acc[assignment.vendorId].push(assignment);
+      
+      // Deduplicate: Only add if this vendorTypeId doesn't already exist for this vendor
+      const exists = acc[assignment.vendorId].some(
+        existing => existing.vendorTypeId === assignment.vendorTypeId
+      );
+      
+      if (!exists) {
+        acc[assignment.vendorId].push(assignment);
+      }
+      
       return acc;
     }, {} as Record<string, VendorVendorType[]>);
   }, [allVendorTypeAssignments]);
