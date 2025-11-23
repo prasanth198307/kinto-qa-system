@@ -8,6 +8,14 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (November 23, 2025)
 
+### Session Persistence Fix ✅ ARCHITECT APPROVED
+- **Problem:** Server cleared all sessions on startup, causing users to be logged out after every server restart during development
+- **Solution:** Made session clearing conditional - only clears in production, preserves sessions in development
+- **Implementation:** Added `if (process.env.NODE_ENV !== 'development')` guard around `clearAllSessions()` call
+- **Result:** Users now stay logged in during development server restarts, eliminating 401 errors after login
+- **Production behavior:** Unchanged - still clears sessions on startup for security
+- **Logging:** Added clear console messages indicating which mode is active
+
 ### Comprehensive Pagination System Implementation ✅ PRODUCTION-READY
 - **Server-side pagination infrastructure:** Created shared `PaginationRequest` and `PaginationMeta` schemas with z.coerce.number() for string-to-number query param handling
 - **Reusable DataTablePagination component:** Prev/Next/First/Last buttons, page size selector (25/50/100), record count display
