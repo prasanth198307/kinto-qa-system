@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -27,6 +27,8 @@ import { format } from "date-fns";
 import { IndianRupee, AlertCircle, Eye, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { DataTablePagination } from "@/components/DataTablePagination";
+import { PaginationMeta } from "@shared/schema";
 
 interface Invoice {
   id: string;
@@ -50,20 +52,37 @@ interface InvoiceWithBalance extends Invoice {
   isOverpaid: boolean;
 }
 
-const MAX_DISPLAY_INVOICES = 20;
-
 interface PendingPaymentsDashboardProps {
   customerFilter?: string | null;
 }
 
 export default function PendingPaymentsDashboard({ customerFilter }: PendingPaymentsDashboardProps) {
   const { toast } = useToast();
-  const { data: invoices = [], isLoading: isLoadingInvoices } = useQuery<Invoice[]>({
-    queryKey: ['/api/invoices'],
+  const search = useSearch();
+  const [, setLocation] = useLocation();
+  
+  // Extract pagination params from URL
+  const params = new URLSearchParams(search);
+  const currentPage = parseInt(params.get('page') || '1');
+  const currentPageSize = parseInt(params.get('pageSize') || '25');
+  
+  // Build query params including customer filter
+  const queryParams = new URLSearchParams({
+    page: currentPage.toString(),
+    pageSize: currentPageSize.toString(),
   });
-
-  const { data: allPayments = [], isLoading: isLoadingPayments } = useQuery<Payment[]>({
-    queryKey: ['/api/invoice-payments'],
+  if (customerFilter) {
+    queryParams.set('customer', customerFilter);
+  }
+  
+  // Fetch pending payments with pagination
+  const { data: pendingPaymentsData, isLoading } = useQuery<{ data: InvoiceWithBalance[], meta: PaginationMeta & { aggregateStats: { totalOutstanding: number, totalCount: number } } }>({
+    queryKey: ['/api/pending-payments', currentPage, currentPageSize, customerFilter],
+    queryFn: async () => {
+      const response = await fetch(`/api/pending-payments?${queryParams}`);
+      if (!response.ok) throw new Error('Failed to fetch pending payments');
+      return response.json();
+    },
   });
 
   const writeOffMutation = useMutation({
@@ -74,7 +93,7 @@ export default function PendingPaymentsDashboard({ customerFilter }: PendingPaym
       });
     },
     onSuccess: (data: any) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/invoice-payments'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/pending-payments'] });
       queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
       toast({
         title: "Payment Written Off",
@@ -89,51 +108,31 @@ export default function PendingPaymentsDashboard({ customerFilter }: PendingPaym
       });
     },
   });
+  
+  // Pagination handlers - preserve existing query params
+  const handlePageChange = (newPage: number) => {
+    const newParams = new URLSearchParams(search);
+    newParams.set('page', newPage.toString());
+    if (!newParams.has('pageSize')) {
+      newParams.set('pageSize', currentPageSize.toString());
+    }
+    setLocation(`?${newParams.toString()}`);
+  };
+  
+  const handlePageSizeChange = (newPageSize: number) => {
+    const newParams = new URLSearchParams(search);
+    newParams.set('page', '1');
+    newParams.set('pageSize', newPageSize.toString());
+    setLocation(`?${newParams.toString()}`);
+  };
 
-  const isLoading = isLoadingInvoices || isLoadingPayments;
-  const hasPartialData = (isLoadingInvoices && !isLoadingPayments) || (!isLoadingInvoices && isLoadingPayments);
+  // Extract data from paginated response
+  const pendingInvoices = pendingPaymentsData?.data || [];
+  const paginationMeta = pendingPaymentsData?.meta;
+  const totalOutstanding = paginationMeta?.aggregateStats?.totalOutstanding || 0;
+  const totalPendingCount = paginationMeta?.aggregateStats?.totalCount || 0;
 
-  // Calculate outstanding balances for each invoice
-  const invoicesWithBalances: InvoiceWithBalance[] = invoices.map(invoice => {
-    const payments = allPayments.filter(
-      p => p.invoiceId === invoice.id && p.recordStatus === 1
-    );
-    const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-    const rawOutstanding = invoice.totalAmount - totalPaid;
-    const isOverpaid = rawOutstanding < 0;
-    
-    // Clamp outstanding balance to zero (no negative values)
-    const outstandingBalance = Math.max(0, rawOutstanding);
-    
-    return {
-      ...invoice,
-      totalPaid,
-      outstandingBalance,
-      isOverpaid,
-    };
-  });
-
-  // Filter only invoices with outstanding balances and limit display
-  const pendingInvoices = invoicesWithBalances
-    .filter(inv => {
-      // Filter by outstanding balance
-      if (inv.outstandingBalance <= 0) return false;
-      
-      // Filter by customer if provided
-      if (customerFilter && inv.buyerName !== customerFilter) return false;
-      
-      return true;
-    })
-    .sort((a, b) => new Date(a.invoiceDate).getTime() - new Date(b.invoiceDate).getTime())
-    .slice(0, MAX_DISPLAY_INVOICES);
-
-  const totalOutstanding = invoicesWithBalances
-    .filter(inv => inv.outstandingBalance > 0)
-    .reduce((sum, inv) => sum + inv.outstandingBalance, 0);
-
-  const totalPendingCount = invoicesWithBalances.filter(inv => inv.outstandingBalance > 0).length;
-
-  if (isLoading || hasPartialData) {
+  if (isLoading) {
     return (
       <Card>
         <CardHeader>
@@ -173,8 +172,8 @@ export default function PendingPaymentsDashboard({ customerFilter }: PendingPaym
               Pending Payments
             </CardTitle>
             <CardDescription>
-              {totalPendingCount > MAX_DISPLAY_INVOICES 
-                ? `Showing ${MAX_DISPLAY_INVOICES} of ${totalPendingCount} invoices with outstanding payments`
+              {customerFilter 
+                ? `${totalPendingCount} invoice${totalPendingCount !== 1 ? 's' : ''} with outstanding payments for ${customerFilter}`
                 : `${totalPendingCount} invoice${totalPendingCount !== 1 ? 's' : ''} with outstanding payments`
               }
             </CardDescription>
@@ -301,6 +300,22 @@ export default function PendingPaymentsDashboard({ customerFilter }: PendingPaym
                 })}
               </TableBody>
             </Table>
+          </div>
+        )}
+        
+        {/* Pagination Controls */}
+        {paginationMeta && pendingInvoices.length > 0 && (
+          <div className="mt-4">
+            <DataTablePagination
+              currentPage={paginationMeta.page}
+              pageSize={paginationMeta.pageSize}
+              totalItems={paginationMeta.totalItems}
+              totalPages={paginationMeta.totalPages}
+              hasNextPage={paginationMeta.hasNextPage}
+              hasPreviousPage={paginationMeta.hasPreviousPage}
+              onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
+            />
           </div>
         )}
       </CardContent>

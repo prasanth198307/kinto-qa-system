@@ -1732,8 +1732,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Vendor Master API
   app.get('/api/vendors', isAuthenticated, async (req: any, res) => {
     try {
-      const vendors = await storage.getAllVendors();
-      res.json(vendors);
+      const { page, pageSize, searchQuery, city, state, activeStatus } = req.query;
+      
+      // TODO: Optimize with database-level pagination (LIMIT/OFFSET) and WHERE clauses for better scalability
+      // Get all vendors (loads all data into memory)
+      let allVendors = await storage.getAllVendors();
+      
+      // Apply filters if provided
+      if (searchQuery) {
+        const query = (searchQuery as string).toLowerCase();
+        allVendors = allVendors.filter(v =>
+          v.vendorName.toLowerCase().includes(query) ||
+          v.vendorCode.toLowerCase().includes(query) ||
+          (v.gstNumber && v.gstNumber.toLowerCase().includes(query)) ||
+          (v.aadhaarNumber && v.aadhaarNumber.toLowerCase().includes(query)) ||
+          (v.mobileNumber && v.mobileNumber.includes(query))
+        );
+      }
+      
+      if (city && city !== 'all') {
+        allVendors = allVendors.filter(v => v.city === city);
+      }
+      
+      if (state && state !== 'all') {
+        allVendors = allVendors.filter(v => v.state === state);
+      }
+      
+      if (activeStatus && activeStatus !== 'all') {
+        const isActive = activeStatus === 'active' ? 1 : 0;
+        allVendors = allVendors.filter(v => v.isActive === isActive);
+      }
+      
+      // If pagination params exist, paginate the results
+      if (page !== undefined && pageSize !== undefined) {
+        const { paginationRequestSchema } = await import('@shared/schema');
+        const paginationParams = paginationRequestSchema.parse({ page, pageSize });
+        
+        const totalItems = allVendors.length;
+        const totalPages = Math.ceil(totalItems / paginationParams.pageSize);
+        const startIndex = (paginationParams.page - 1) * paginationParams.pageSize;
+        const endIndex = startIndex + paginationParams.pageSize;
+        const paginatedData = allVendors.slice(startIndex, endIndex);
+        
+        return res.json({
+          data: paginatedData,
+          meta: {
+            page: paginationParams.page,
+            pageSize: paginationParams.pageSize,
+            totalItems,
+            totalPages,
+            hasNextPage: paginationParams.page < totalPages,
+            hasPreviousPage: paginationParams.page > 1,
+          },
+        });
+      }
+      
+      // No pagination - return all vendors (backward compatible)
+      res.json(allVendors);
     } catch (error) {
       console.error("Error fetching vendors:", error);
       res.status(500).json({ message: "Failed to fetch vendors" });
@@ -3786,11 +3841,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { page, pageSize, sortBy, sortOrder, ...filters } = req.query;
       
       // If pagination params exist, use paginated endpoint
-      if (page || pageSize) {
+      if (page !== undefined && pageSize !== undefined) {
         const { paginationRequestSchema } = await import('@shared/schema');
         const paginationParams = paginationRequestSchema.parse({ page, pageSize, sortBy, sortOrder });
         
-        // Get all invoices first (we'll add DB pagination later)
+        // TODO: Optimize with database-level LIMIT/OFFSET for better scalability
+        // Get all invoices first (loads all data into memory)
         let allInvoices = await storage.getAllInvoices();
         
         // Apply filters if any
@@ -4138,6 +4194,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Invoice Payment Tracking API
+  // Get pending payments (invoices with outstanding balance) - with pagination
+  // TODO: Optimize with database-level pagination (LIMIT/OFFSET) and JOIN queries for better scalability
+  // Current implementation loads all invoices/payments into memory then filters/slices
+  app.get('/api/pending-payments', isAuthenticated, async (req: any, res) => {
+    try {
+      const { page, pageSize, customer } = req.query;
+      
+      // Get all invoices and payments (NOTE: Not scalable for very large datasets)
+      const allInvoices = await storage.getAllInvoices();
+      const allPayments = await storage.getAllPayments();
+      
+      // Calculate outstanding balance for each invoice
+      const invoicesWithBalance = allInvoices.map(invoice => {
+        const payments = allPayments.filter(p => p.invoiceId === invoice.id);
+        const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+        const outstandingBalance = Math.max(0, invoice.totalAmount - totalPaid);
+        
+        return {
+          ...invoice,
+          totalPaid,
+          outstandingBalance,
+          isOverpaid: (invoice.totalAmount - totalPaid) < 0,
+        };
+      });
+      
+      // Filter to only pending invoices (outstanding > 0)
+      let pendingInvoices = invoicesWithBalance.filter(inv => inv.outstandingBalance > 0);
+      
+      // Apply customer filter if provided
+      if (customer) {
+        pendingInvoices = pendingInvoices.filter(inv => inv.buyerName === customer);
+      }
+      
+      // Sort by invoice date (oldest first)
+      pendingInvoices.sort((a, b) => new Date(a.invoiceDate).getTime() - new Date(b.invoiceDate).getTime());
+      
+      // Calculate aggregate statistics
+      const totalOutstanding = pendingInvoices.reduce((sum, inv) => sum + inv.outstandingBalance, 0);
+      const totalCount = pendingInvoices.length;
+      
+      // If pagination params exist, paginate the results
+      if (page !== undefined && pageSize !== undefined) {
+        const { paginationRequestSchema } = await import('@shared/schema');
+        const paginationParams = paginationRequestSchema.parse({ page, pageSize });
+        
+        const totalPages = Math.ceil(totalCount / paginationParams.pageSize);
+        const startIndex = (paginationParams.page - 1) * paginationParams.pageSize;
+        const endIndex = startIndex + paginationParams.pageSize;
+        const paginatedData = pendingInvoices.slice(startIndex, endIndex);
+        
+        return res.json({
+          data: paginatedData,
+          meta: {
+            page: paginationParams.page,
+            pageSize: paginationParams.pageSize,
+            totalItems: totalCount,
+            totalPages,
+            hasNextPage: paginationParams.page < totalPages,
+            hasPreviousPage: paginationParams.page > 1,
+            aggregateStats: {
+              totalOutstanding,
+              totalCount,
+            },
+          },
+        });
+      }
+      
+      // No pagination - return all pending invoices (backward compatible)
+      res.json(pendingInvoices);
+    } catch (error) {
+      console.error("Error fetching pending payments:", error);
+      res.status(500).json({ message: "Failed to fetch pending payments" });
+    }
+  });
+  
   // Get all payments (optionally filtered by invoice)
   app.get('/api/invoice-payments', isAuthenticated, async (req: any, res) => {
     try {

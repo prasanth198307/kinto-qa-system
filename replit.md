@@ -9,13 +9,15 @@ Preferred communication style: Simple, everyday language.
 ## Recent Changes (November 23, 2025)
 
 ### Comprehensive Pagination System Implementation
-- **Server-side pagination infrastructure:** Created shared `PaginationRequest` and `PaginationMeta` schemas with page, pageSize, sortBy, sortOrder
+- **Server-side pagination infrastructure:** Created shared `PaginationRequest` and `PaginationMeta` schemas with z.coerce.number() for string-to-number query param handling
 - **Reusable DataTablePagination component:** Prev/Next/First/Last buttons, page size selector (25/50/100), record count display
-- **Invoice pagination (Dispatch Tracking):** Implemented as pilot with URL-based state management, backward compatible API
-- **Aggregate statistics:** Server calculates status counts across ALL invoices, not just current page, for accurate dashboard metrics
-- **Query param preservation:** Pagination state changes preserve all existing URL parameters (deep links, filters)
+- **Invoice pagination (Dispatch Tracking):** URL-based state management, backward compatible API, aggregate status statistics across all data
+- **Pending Payments pagination:** Dedicated /api/pending-payments endpoint with server-side balance calculation, customer filtering, efficient N+1 query elimination
+- **Vendor Master pagination:** Server-side filtering (search, city, state, active status) with backward compatible /api/vendors endpoint for 161+ vendors
+- **Query param preservation:** URLSearchParams-based state management preserves all existing filters during pagination navigation
 - **Default settings:** 25 records per page, supports 25/50/100 options
-- **Next:** Roll out to Payments, Vendors, Products, Gatepasses, Vendor Analytics screens
+- **Pattern:** Backward compatible (returns plain array if no pagination params, {data, meta} if paginated), aggregate stats in metadata for accurate totals
+- **Next:** Roll out to Product Master, Gatepasses, Vendor Analytics, Payment Management screens
 
 ### Vendor Analytics Customer Filter & Duplicate Prevention
 - **Fixed Vendor Analytics customer filter:** Outstanding amount links now pass vendor name as URL parameter to filter Pending Payments page
