@@ -3783,6 +3783,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all invoices
   app.get('/api/invoices', isAuthenticated, async (req: any, res) => {
     try {
+      const { page, pageSize, sortBy, sortOrder, ...filters } = req.query;
+      
+      // If pagination params exist, use paginated endpoint
+      if (page || pageSize) {
+        const { paginationRequestSchema } = await import('@shared/schema');
+        const paginationParams = paginationRequestSchema.parse({ page, pageSize, sortBy, sortOrder });
+        
+        // Get all invoices first (we'll add DB pagination later)
+        let allInvoices = await storage.getAllInvoices();
+        
+        // Apply filters if any
+        if (filters.status) {
+          allInvoices = allInvoices.filter(inv => inv.status === filters.status);
+        }
+        if (filters.buyerName) {
+          allInvoices = allInvoices.filter(inv => 
+            inv.buyerName.toLowerCase().includes((filters.buyerName as string).toLowerCase())
+          );
+        }
+        
+        // Calculate pagination metadata
+        const totalItems = allInvoices.length;
+        const totalPages = Math.ceil(totalItems / paginationParams.pageSize);
+        const startIndex = (paginationParams.page - 1) * paginationParams.pageSize;
+        const endIndex = startIndex + paginationParams.pageSize;
+        
+        // Slice data for current page
+        const paginatedData = allInvoices.slice(startIndex, endIndex);
+        
+        return res.json({
+          data: paginatedData,
+          meta: {
+            page: paginationParams.page,
+            pageSize: paginationParams.pageSize,
+            totalItems,
+            totalPages,
+            hasNextPage: paginationParams.page < totalPages,
+            hasPreviousPage: paginationParams.page > 1,
+          },
+        });
+      }
+      
+      // No pagination - return all invoices (for backwards compatibility)
       const allInvoices = await storage.getAllInvoices();
       res.json(allInvoices);
     } catch (error) {
