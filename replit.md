@@ -8,6 +8,14 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (November 23, 2025)
 
+### Vendor Analytics Customer Filter & Duplicate Prevention
+- **Fixed Vendor Analytics customer filter:** Outstanding amount links now pass vendor name as URL parameter to filter Pending Payments page
+- **Pending Payments customer filtering:** Page now reads `?customer=` query parameter and filters invoices to show only that customer's outstanding balances
+- **Prevented duplicate vendor type badges:** Added composite unique constraint on `(vendorId, vendorTypeId)` to prevent duplicate assignments
+- **Updated classification script:** Now uses per-vendor transactions with `onConflictDoNothing` instead of global table truncation
+- **Frontend deduplication safeguard:** Added client-side deduplication in `vendorTypesMap` to handle React Query dev-mode double-fetch edge cases
+- **Result:** No more "Kinto Kinto" duplicate badges in Vendor Master, accurate vendor analytics counts
+
 ### Vyapaar Import - Vendor Classification Fixed
 - **Fixed critical vendor classification bug:** Previously only 7 out of 161 vendors were getting type assignments after import
 - **Implemented post-import classification:** New `classify-vendors.ts` script classifies ALL vendors based on products purchased from their invoices
