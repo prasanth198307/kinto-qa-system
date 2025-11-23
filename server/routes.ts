@@ -1735,10 +1735,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { page, pageSize, searchQuery, city, state, activeStatus } = req.query;
       
       // TODO: Optimize with database-level pagination (LIMIT/OFFSET) and WHERE clauses for better scalability
-      // Get all vendors (loads all data into memory)
-      let allVendors = await storage.getAllVendors();
+      // Get all vendors once (loads all data into memory)
+      const allVendorsUnfiltered = await storage.getAllVendors();
       
-      // Apply filters if provided
+      // Compute filter metadata from unfiltered list (for dropdowns)
+      const uniqueCities = Array.from(new Set(allVendorsUnfiltered.filter(v => v.city).map(v => v.city!))).sort();
+      const uniqueStates = Array.from(new Set(allVendorsUnfiltered.filter(v => v.state).map(v => v.state!))).sort();
+      
+      // Apply filters to create filtered list
+      let allVendors = allVendorsUnfiltered;
+      
       if (searchQuery) {
         const query = (searchQuery as string).toLowerCase();
         allVendors = allVendors.filter(v =>
@@ -1783,6 +1789,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             totalPages,
             hasNextPage: paginationParams.page < totalPages,
             hasPreviousPage: paginationParams.page > 1,
+            filters: {
+              cities: uniqueCities,
+              states: uniqueStates,
+            },
           },
         });
       }

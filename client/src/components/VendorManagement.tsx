@@ -1,7 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
+import { DataTablePagination } from "@/components/DataTablePagination";
 import {
   Dialog,
   DialogContent,
@@ -90,8 +92,25 @@ function VendorTypesBadges({ vendorId, vendorTypes = [] }: { vendorId: string; v
   );
 }
 
+interface PaginatedVendorResponse {
+  data: Vendor[];
+  meta: {
+    page: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+    filters?: {
+      cities: string[];
+      states: string[];
+    };
+  };
+}
+
 export default function VendorManagement() {
   const { toast } = useToast();
+  const [location, setLocation] = useLocation();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -100,15 +119,53 @@ export default function VendorManagement() {
   const [primaryVendorTypeId, setPrimaryVendorTypeId] = useState<string | null>(null);
   const [vendorTypePopoverOpen, setVendorTypePopoverOpen] = useState(false);
 
-  // Search and filter states
-  const [searchQuery, setSearchQuery] = useState("");
-  const [cityFilter, setCityFilter] = useState<string>("all");
-  const [stateFilter, setStateFilter] = useState<string>("all");
-  const [activeStatusFilter, setActiveStatusFilter] = useState<string>("all");
+  // Get pathname and search params separately
+  const pathname = location.split('?')[0];
+  const searchParams = useMemo(() => new URLSearchParams(location.split('?')[1] || ''), [location]);
+  const page = parseInt(searchParams.get('page') || '1', 10);
+  const pageSize = parseInt(searchParams.get('pageSize') || '25', 10);
+  const searchQuery = searchParams.get('searchQuery') || '';
+  const cityFilter = searchParams.get('city') || 'all';
+  const stateFilter = searchParams.get('state') || 'all';
+  const activeStatusFilter = searchParams.get('activeStatus') || 'all';
 
-  const { data: vendors = [], isLoading } = useQuery<Vendor[]>({
-    queryKey: ["/api/vendors"],
+  // Update URL params helper
+  const updateUrlParams = (updates: Record<string, string | number>) => {
+    const newParams = new URLSearchParams(searchParams);
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === '' || value === 'all') {
+        newParams.delete(key);
+      } else {
+        newParams.set(key, String(value));
+      }
+    });
+    const newSearch = newParams.toString();
+    setLocation(`${pathname}${newSearch ? `?${newSearch}` : ''}`);
+  };
+
+  // Fetch paginated vendors
+  const { data: vendorsResponse, isLoading } = useQuery<PaginatedVendorResponse | Vendor[]>({
+    queryKey: ["/api/vendors", page, pageSize, searchQuery, cityFilter, stateFilter, activeStatusFilter],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        page: String(page),
+        pageSize: String(pageSize),
+      });
+      if (searchQuery) params.set('searchQuery', searchQuery);
+      if (cityFilter !== 'all') params.set('city', cityFilter);
+      if (stateFilter !== 'all') params.set('state', stateFilter);
+      if (activeStatusFilter !== 'all') params.set('activeStatus', activeStatusFilter);
+      
+      const response = await fetch(`/api/vendors?${params.toString()}`);
+      if (!response.ok) throw new Error('Failed to fetch vendors');
+      return response.json();
+    },
   });
+
+  // Handle both paginated and legacy array responses
+  const isPaginatedResponse = vendorsResponse && typeof vendorsResponse === 'object' && 'data' in vendorsResponse && 'meta' in vendorsResponse;
+  const vendors = isPaginatedResponse ? vendorsResponse.data : (Array.isArray(vendorsResponse) ? vendorsResponse : []);
+  const paginationMeta = isPaginatedResponse ? vendorsResponse.meta : undefined;
 
   const { data: vendorTypes = [] } = useQuery<VendorType[]>({
     queryKey: ['/api/vendor-types'],
@@ -147,61 +204,53 @@ export default function VendorManagement() {
     }, {} as Record<string, VendorVendorType[]>);
   }, [allVendorTypeAssignments]);
 
-  // Get unique cities and states for filters
+  // Get unique cities and states from pagination metadata or compute from vendors
   const uniqueCities = useMemo(() => {
+    if (paginationMeta?.filters?.cities) {
+      return paginationMeta.filters.cities;
+    }
+    // Fallback for legacy array responses: compute from current vendors
     const cities = new Set(vendors.filter(v => v.city).map(v => v.city!));
     return Array.from(cities).sort();
-  }, [vendors]);
+  }, [paginationMeta, vendors]);
 
   const uniqueStates = useMemo(() => {
+    if (paginationMeta?.filters?.states) {
+      return paginationMeta.filters.states;
+    }
+    // Fallback for legacy array responses: compute from current vendors
     const states = new Set(vendors.filter(v => v.state).map(v => v.state!));
     return Array.from(states).sort();
-  }, [vendors]);
-
-  // Filtered vendors based on search and filters
-  const filteredVendors = useMemo(() => {
-    let filtered = [...vendors];
-
-    // Search by vendor name, code, or GST number
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (v) =>
-          v.vendorName.toLowerCase().includes(query) ||
-          v.vendorCode.toLowerCase().includes(query) ||
-          (v.gstNumber && v.gstNumber.toLowerCase().includes(query)) ||
-          (v.aadhaarNumber && v.aadhaarNumber.toLowerCase().includes(query)) ||
-          (v.mobileNumber && v.mobileNumber.includes(query))
-      );
-    }
-
-    // Filter by city
-    if (cityFilter !== "all") {
-      filtered = filtered.filter((v) => v.city === cityFilter);
-    }
-
-    // Filter by state
-    if (stateFilter !== "all") {
-      filtered = filtered.filter((v) => v.state === stateFilter);
-    }
-
-    // Filter by active status
-    if (activeStatusFilter !== "all") {
-      filtered = filtered.filter((v) => v.isActive === activeStatusFilter);
-    }
-
-    // Sort by vendor code
-    return filtered.sort((a, b) => a.vendorCode.localeCompare(b.vendorCode));
-  }, [vendors, searchQuery, cityFilter, stateFilter, activeStatusFilter]);
+  }, [paginationMeta, vendors]);
 
   const clearFilters = () => {
-    setSearchQuery("");
-    setCityFilter("all");
-    setStateFilter("all");
-    setActiveStatusFilter("all");
+    updateUrlParams({
+      searchQuery: '',
+      city: 'all',
+      state: 'all',
+      activeStatus: 'all',
+      page: 1,
+    });
   };
 
   const hasActiveFilters = searchQuery || cityFilter !== "all" || stateFilter !== "all" || activeStatusFilter !== "all";
+
+  // Handlers for filter updates
+  const handleSearchChange = (value: string) => {
+    updateUrlParams({ searchQuery: value, page: 1 });
+  };
+
+  const handleCityChange = (value: string) => {
+    updateUrlParams({ city: value, page: 1 });
+  };
+
+  const handleStateChange = (value: string) => {
+    updateUrlParams({ state: value, page: 1 });
+  };
+
+  const handleActiveStatusChange = (value: string) => {
+    updateUrlParams({ activeStatus: value, page: 1 });
+  };
 
   const { data: currentVendorTypes = [], isLoading: isLoadingVendorTypes } = useQuery<VendorVendorType[]>({
     queryKey: ['/api/vendors', editingVendor?.id, 'types'],
@@ -372,7 +421,7 @@ export default function VendorManagement() {
           <div>
             <CardTitle>Vendor Master</CardTitle>
             <p className="text-sm text-muted-foreground mt-1">
-              {filteredVendors.length} of {vendors.length} vendors
+              {paginationMeta ? `Showing ${vendors.length} of ${paginationMeta.totalItems} vendors` : `${vendors.length} vendors`}
             </p>
           </div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -740,7 +789,7 @@ export default function VendorManagement() {
                   id="vendor-search"
                   placeholder="Search by name, code, GST number, or mobile..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => handleSearchChange(e.target.value)}
                   className="pl-9"
                   data-testid="input-vendor-search"
                 />
@@ -766,13 +815,13 @@ export default function VendorManagement() {
               <Label htmlFor="city-filter" className="text-sm font-medium mb-1.5 block">
                 City
               </Label>
-              <Select value={cityFilter} onValueChange={setCityFilter}>
+              <Select value={cityFilter} onValueChange={handleCityChange}>
                 <SelectTrigger id="city-filter" data-testid="select-city-filter">
                   <SelectValue placeholder="All Cities" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Cities</SelectItem>
-                  {uniqueCities.map((city) => (
+                  {uniqueCities.map((city: string) => (
                     <SelectItem key={city} value={city}>
                       {city}
                     </SelectItem>
@@ -786,13 +835,13 @@ export default function VendorManagement() {
               <Label htmlFor="state-filter" className="text-sm font-medium mb-1.5 block">
                 State
               </Label>
-              <Select value={stateFilter} onValueChange={setStateFilter}>
+              <Select value={stateFilter} onValueChange={handleStateChange}>
                 <SelectTrigger id="state-filter" data-testid="select-state-filter">
                   <SelectValue placeholder="All States" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All States</SelectItem>
-                  {uniqueStates.map((state) => (
+                  {uniqueStates.map((state: string) => (
                     <SelectItem key={state} value={state}>
                       {state}
                     </SelectItem>
@@ -806,7 +855,7 @@ export default function VendorManagement() {
               <Label htmlFor="active-status-filter" className="text-sm font-medium mb-1.5 block">
                 Status
               </Label>
-              <Select value={activeStatusFilter} onValueChange={setActiveStatusFilter}>
+              <Select value={activeStatusFilter} onValueChange={handleActiveStatusChange}>
                 <SelectTrigger id="active-status-filter" data-testid="select-active-status-filter">
                   <SelectValue placeholder="All Statuses" />
                 </SelectTrigger>
@@ -827,13 +876,14 @@ export default function VendorManagement() {
       <CardContent className="pt-6">
         {isLoading ? (
           <div className="text-center py-8">Loading vendors...</div>
-        ) : filteredVendors.length === 0 ? (
+        ) : vendors.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
-            {vendors.length === 0 
+            {!hasActiveFilters 
               ? "No vendors found. Add your first vendor to get started." 
               : "No vendors match your search criteria. Try adjusting your filters."}
           </div>
         ) : (
+          <>
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -851,7 +901,7 @@ export default function VendorManagement() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredVendors.map((vendor) => (
+                {vendors.map((vendor: Vendor) => (
                   <TableRow key={vendor.id} data-testid={`row-vendor-${vendor.id}`}>
                     <TableCell className="font-medium">{vendor.vendorCode}</TableCell>
                     <TableCell>{vendor.vendorName}</TableCell>
@@ -911,6 +961,16 @@ export default function VendorManagement() {
               </TableBody>
             </Table>
           </div>
+          
+          {/* Pagination Controls */}
+          {paginationMeta && (
+            <DataTablePagination
+              meta={paginationMeta}
+              onPageChange={(newPage) => updateUrlParams({ page: newPage })}
+              onPageSizeChange={(newPageSize) => updateUrlParams({ pageSize: newPageSize, page: 1 })}
+            />
+          )}
+          </>
         )}
       </CardContent>
     </Card>
