@@ -194,7 +194,7 @@ export default function InvoiceDetail() {
             <Mail className="w-4 h-4 mr-2" />
             Email
           </Button>
-          {invoice.status === 'draft' && (
+          {!relatedGatepass && invoice.status !== 'delivered' && (
             <Button
               variant="default"
               size="sm"

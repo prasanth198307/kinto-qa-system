@@ -443,7 +443,7 @@ export async function importVyapaarData(
         remarks: sale.__EMPTY_10 || null,
         vehicleNumber: sale.__EMPTY_11 || null,
         placeOfSupply: null,
-        dispatchStatus: 'delivered',
+        status: 'delivered',
         }).returning();
         
         // Add only valid invoice items
