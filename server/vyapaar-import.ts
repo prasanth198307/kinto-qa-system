@@ -542,19 +542,44 @@ export async function importVyapaarData(
       }
       
       // Auto-classify vendor types
-      const vendorProductMap = new Map<string, Set<string>>();
-      for (const item of itemData) {
-      const vendorName = item.__EMPTY_1;
-      const productName = normalize(item.__EMPTY_2);
-      
-      const vendorId = Array.from(vendorMap.entries())
-        .find(([name, id]) => fuzzyMatch(name, vendorName))?.[1];
-      
-      if (vendorId) {
-        if (!vendorProductMap.has(vendorId)) {
-          vendorProductMap.set(vendorId, new Set());
+      // Build invoice -> vendor mapping from sale data
+      const invoiceVendorMap = new Map<string, string>();
+      for (const sale of saleData) {
+        const invoiceNumber = sale.__EMPTY_1;
+        const vendorName = sale.__EMPTY_2;
+        if (invoiceNumber && vendorName) {
+          const vendorId = Array.from(vendorMap.entries())
+            .find(([name, id]) => fuzzyMatch(name, vendorName))?.[1];
+          if (vendorId) {
+            invoiceVendorMap.set(invoiceNumber, vendorId);
+          }
         }
+      }
+      
+      // Map vendors to products they purchased
+      const vendorProductMap = new Map<string, Set<string>>();
+      console.log(`[CLASSIFICATION] Processing ${itemData.length} items, ${invoiceVendorMap.size} invoice-vendor mappings`);
+      
+      for (const item of itemData) {
+        const invoiceNumber = item.__EMPTY; // Invoice number is in __EMPTY column
+        const productName = normalize(item.__EMPTY_2);
+        
+        const vendorId = invoiceVendorMap.get(invoiceNumber);
+        
+        if (vendorId && productName) {
+          if (!vendorProductMap.has(vendorId)) {
+            vendorProductMap.set(vendorId, new Set());
+          }
           vendorProductMap.get(vendorId)!.add(productName);
+        }
+      }
+      
+      console.log(`[CLASSIFICATION] Built vendor-product map for ${vendorProductMap.size} vendors`);
+      // Sample first few vendors
+      let sampleCount = 0;
+      for (const [vendorId, products] of vendorProductMap.entries()) {
+        if (sampleCount++ < 3) {
+          console.log(`[CLASSIFICATION] Sample vendor ${vendorId}: ${[...products].join(', ')}`);
         }
       }
       
@@ -585,6 +610,10 @@ export async function importVyapaarData(
         if (hasHPPani && hppaniType) assignedTypes.push(hppaniType.id);
         if (hasPurejal && purejalType) assignedTypes.push(purejalType.id);
         
+        if (assignedTypes.length > 0 && vendorTypesAssigned < 5) {
+          console.log(`[CLASSIFICATION] Vendor ${vendorId} matched: ${hasKinto?'Kinto ':''} ${hasHPPani?'HPPani ':''}${hasPurejal?'Purejal':''} from products: ${productList.join(', ')}`);
+        }
+        
         for (let index = 0; index < assignedTypes.length; index++) {
           await tx.insert(vendorVendorTypes).values({
             vendorId,
@@ -594,6 +623,8 @@ export async function importVyapaarData(
           vendorTypesAssigned++;
         }
       }
+      
+      console.log(`[CLASSIFICATION] Assigned ${vendorTypesAssigned} vendor types total`);
       
       console.log('Import completed successfully');
       
