@@ -80,7 +80,7 @@ export async function classifyAllVendors() {
       );
       
       // Assign vendor types using transaction for atomic update
-      const typesToAssign = [];
+      const typesToAssign: string[] = [];
       if (hasKinto) typesToAssign.push(kintoType.id);
       if (hasHPPani) typesToAssign.push(hpPaniType.id);
       if (hasPurejal) typesToAssign.push(purejalType.id);
