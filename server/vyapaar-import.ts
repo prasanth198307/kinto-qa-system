@@ -149,7 +149,7 @@ export async function clearImportedData(): Promise<{
     
     return {
       success: true,
-      message: 'All imported data cleared successfully. Master data (UOMs, roles, permissions, users) preserved.'
+      message: 'All transaction data cleared successfully. Master data (UOMs, roles, permissions, users, vendor types, product categories) preserved.'
     };
   } catch (error) {
     console.error('Failed to clear imported data:', error);

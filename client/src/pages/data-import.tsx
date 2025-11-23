@@ -162,15 +162,17 @@ export default function DataImport() {
               data-testid="button-clear-data"
             >
               <Trash2 className="h-4 w-4 mr-2" />
-              Clear Imported Data
+              Clear All Data
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Clear All Imported Data?</AlertDialogTitle>
+              <AlertDialogTitle>Clear All Transaction Data?</AlertDialogTitle>
               <AlertDialogDescription>
-                This will permanently delete all imported vendors, products, invoices, and related data.
-                Master data (UOMs, roles, permissions, users) will be preserved.
+                This will permanently delete ALL vendors, products, invoices, gatepasses, production entries, and related transactional data.
+                Master data (UOMs, roles, permissions, users, vendor types, product categories) will be preserved.
+                <br /><br />
+                <strong>Warning:</strong> This clears ALL data, not just Vyapaar imports.
                 <br /><br />
                 This action cannot be undone.
               </AlertDialogDescription>
