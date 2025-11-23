@@ -4800,16 +4800,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalOrders: vendorAnalytics.reduce((sum, v) => sum + v.totalOrders, 0),
       };
 
-      // Vendor type breakdown
-      const typeBreakdown: Record<string, { count: number; revenue: number }> = {};
+      // Vendor type breakdown - count ALL vendor types (not just primary)
+      const typeBreakdown: Record<string, { count: Set<string>; revenue: number }> = {};
       vendorAnalytics.forEach(vendor => {
-        if (vendor.primaryType) {
-          if (!typeBreakdown[vendor.primaryType]) {
-            typeBreakdown[vendor.primaryType] = { count: 0, revenue: 0 };
+        // Count each vendor type the vendor is assigned to
+        vendor.allTypes.forEach(typeName => {
+          if (!typeBreakdown[typeName]) {
+            typeBreakdown[typeName] = { count: new Set(), revenue: 0 };
           }
-          typeBreakdown[vendor.primaryType].count += 1;
-          typeBreakdown[vendor.primaryType].revenue += vendor.totalRevenue;
-        }
+          // Use Set to avoid counting same vendor multiple times per type
+          typeBreakdown[typeName].count.add(vendor.vendorId);
+          typeBreakdown[typeName].revenue += vendor.totalRevenue;
+        });
       });
 
       res.json({ 
@@ -4817,7 +4819,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         summary,
         typeBreakdown: Object.entries(typeBreakdown).map(([type, data]) => ({
           type,
-          count: data.count,
+          count: data.count.size, // Convert Set to count
           revenue: data.revenue,
         })),
       });
