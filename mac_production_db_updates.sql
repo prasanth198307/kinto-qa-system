@@ -19,9 +19,19 @@ ALTER TABLE production_reconciliations
 ALTER TABLE sales_returns 
   ADD COLUMN IF NOT EXISTS gatepass_id VARCHAR REFERENCES gatepasses(id);
 
+-- 5. Add return_type to sales_returns table (if not already present)
+ALTER TABLE sales_returns 
+  ADD COLUMN IF NOT EXISTS return_type VARCHAR(20) NOT NULL DEFAULT 'partial';
+
 -- Verify the updates
 SELECT column_name, data_type 
 FROM information_schema.columns 
 WHERE table_name = 'invoice_payments' 
   AND column_name IN ('cancelled_at', 'cancellation_remarks', 'cancelled_by')
+ORDER BY column_name;
+
+SELECT column_name, data_type 
+FROM information_schema.columns 
+WHERE table_name = 'sales_returns' 
+  AND column_name IN ('gatepass_id', 'return_type')
 ORDER BY column_name;
