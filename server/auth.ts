@@ -71,7 +71,7 @@ export function setupAuth(app: Express) {
     cookie: {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       httpOnly: true,
-      secure: useSecure, // Disable in development to allow cookies in Vite dev server
+      secure: false, // Always false for localhost (both dev and prod)
       sameSite: "lax",
       path: "/",
     },
