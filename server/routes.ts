@@ -119,8 +119,14 @@ function calculateProductFields(data: any) {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Clear all sessions on server startup
-  await storage.clearAllSessions();
+  // Clear all sessions on server startup (only in production)
+  // In development, preserve sessions across server restarts for better DX
+  if (process.env.NODE_ENV !== 'development') {
+    await storage.clearAllSessions();
+    console.log('✅ All sessions cleared on server startup');
+  } else {
+    console.log('⚙️  Development mode: preserving sessions across restarts');
+  }
 
   // Serve deployment guide files
   app.get('/download.html', (req, res) => {
