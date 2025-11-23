@@ -3246,8 +3246,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Gatepass Routes
   app.get('/api/gatepasses', isAuthenticated, async (req: any, res) => {
     try {
-      const gatepasses = await storage.getAllGatepasses();
-      res.json(gatepasses);
+      const { page, pageSize, searchQuery, status, dateFrom, dateTo } = req.query;
+      
+      const allGatepasses = await storage.getAllGatepasses();
+      
+      // Get unique statuses for filter dropdown (from all data for consistency)
+      const uniqueStatuses = Array.from(new Set(allGatepasses.map(gp => gp.status))).filter(Boolean);
+      
+      // Parse pagination parameters with defaults (always paginate)
+      const parsedPage = page ? parseInt(page as string) : 1;
+      const parsedPageSize = pageSize ? parseInt(pageSize as string) : 25;
+      
+      // Apply filters
+      let filteredGatepasses = [...allGatepasses];
+      
+      // Search filter (gatepassNumber, vehicleNumber, driverName, customerName)
+      if (searchQuery && typeof searchQuery === 'string' && searchQuery.trim()) {
+        const query = searchQuery.toLowerCase().trim();
+        filteredGatepasses = filteredGatepasses.filter(gp =>
+          gp.gatepassNumber.toLowerCase().includes(query) ||
+          (gp.vehicleNumber && gp.vehicleNumber.toLowerCase().includes(query)) ||
+          (gp.driverName && gp.driverName.toLowerCase().includes(query)) ||
+          (gp.customerName && gp.customerName.toLowerCase().includes(query))
+        );
+      }
+      
+      // Status filter
+      if (status && status !== 'all') {
+        filteredGatepasses = filteredGatepasses.filter(gp => gp.status === status);
+      }
+      
+      // Date range filter
+      if (dateFrom && dateTo) {
+        const from = new Date(dateFrom as string);
+        const to = new Date(dateTo as string);
+        filteredGatepasses = filteredGatepasses.filter(gp => {
+          const gpDate = new Date(gp.gatepassDate);
+          return gpDate >= from && gpDate <= to;
+        });
+      }
+      
+      // Calculate pagination
+      const totalItems = filteredGatepasses.length;
+      const totalPages = Math.ceil(totalItems / parsedPageSize);
+      const startIndex = (parsedPage - 1) * parsedPageSize;
+      const endIndex = startIndex + parsedPageSize;
+      
+      // Slice data for current page
+      const paginatedData = filteredGatepasses.slice(startIndex, endIndex);
+      
+      // ALWAYS return paginated response with metadata
+      res.json({
+        data: paginatedData,
+        meta: {
+          page: parsedPage,
+          pageSize: parsedPageSize,
+          totalItems,
+          totalPages,
+          hasNextPage: parsedPage < totalPages,
+          hasPreviousPage: parsedPage > 1,
+          filters: {
+            statuses: uniqueStatuses
+          }
+        }
+      });
     } catch (error) {
       console.error("Error fetching gatepasses:", error);
       res.status(500).json({ message: "Failed to fetch gatepasses" });

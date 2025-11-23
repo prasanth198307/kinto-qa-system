@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +22,8 @@ import FIFOPaymentAllocation from "@/components/FIFOPaymentAllocation";
 import RawMaterialIssuanceTable from "@/components/RawMaterialIssuanceTable";
 import GatepassTable from "@/components/GatepassTable";
 import InvoiceTable from "@/components/InvoiceTable";
-import type { RawMaterialIssuance, Gatepass, Invoice, Vendor } from "@shared/schema";
+import { DataTablePagination } from "@/components/DataTablePagination";
+import type { RawMaterialIssuance, Gatepass, Invoice, Vendor, PaginationMeta } from "@shared/schema";
 import { format, parse, isWithinInterval, startOfMonth, endOfMonth, startOfYear, endOfYear } from "date-fns";
 
 interface ProductionManagementProps {
@@ -41,6 +43,8 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
   const [selectedGatepassForInvoice, setSelectedGatepassForInvoice] = useState<Gatepass | null>(null);
   const [selectedInvoiceForPayment, setSelectedInvoiceForPayment] = useState<Invoice | null>(null);
   
+  const [location, navigate] = useLocation();
+  
   // Invoice filters
   const [invoiceSearchQuery, setInvoiceSearchQuery] = useState("");
   const [selectedVendor, setSelectedVendor] = useState<string>("all");
@@ -50,14 +54,17 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
   const [selectedMonth, setSelectedMonth] = useState("");
   const [selectedYear, setSelectedYear] = useState("");
   
-  // Gatepass filters
-  const [gatepassSearchQuery, setGatepassSearchQuery] = useState("");
-  const [gatepassStatusFilter, setGatepassStatusFilter] = useState<string>("all");
-  const [gatepassDateFilterType, setGatepassDateFilterType] = useState<string>("all");
-  const [gatepassDateFrom, setGatepassDateFrom] = useState("");
-  const [gatepassDateTo, setGatepassDateTo] = useState("");
-  const [gatepassSelectedMonth, setGatepassSelectedMonth] = useState("");
-  const [gatepassSelectedYear, setGatepassSelectedYear] = useState("");
+  // Gatepass filters - URL-based state for pagination
+  const gatepassParams = new URLSearchParams(location.split('?')[1] || '');
+  const gatepassPage = parseInt(gatepassParams.get('gatepassPage') || '1');
+  const gatepassPageSize = parseInt(gatepassParams.get('gatepassPageSize') || '25');
+  const gatepassSearchQuery = gatepassParams.get('gatepassSearch') || '';
+  const gatepassStatusFilter = gatepassParams.get('gatepassStatus') || 'all';
+  const gatepassDateFilterType = gatepassParams.get('gatepassDateType') || 'all';
+  const gatepassDateFrom = gatepassParams.get('gatepassFrom') || '';
+  const gatepassDateTo = gatepassParams.get('gatepassTo') || '';
+  const gatepassSelectedMonth = gatepassParams.get('gatepassMonth') || '';
+  const gatepassSelectedYear = gatepassParams.get('gatepassYear') || '';
   
   // Raw Material Issuance filters
   const [issuanceSearchQuery, setIssuanceSearchQuery] = useState("");
@@ -69,6 +76,60 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
   
   const { toast } = useToast();
   const { logoutMutation } = useAuth();
+  
+  // Helper to derive date range from complex date filters (month/year/range)
+  const deriveGatepassDateRange = (dateType: string, dateFrom: string, dateTo: string, month: string, year: string): { from: string; to: string } => {
+    if (dateType === 'range' && dateFrom && dateTo) {
+      return { from: dateFrom, to: dateTo };
+    } else if (dateType === 'month' && month) {
+      const [y, m] = month.split("-");
+      const monthStart = startOfMonth(new Date(parseInt(y), parseInt(m) - 1));
+      const monthEnd = endOfMonth(new Date(parseInt(y), parseInt(m) - 1));
+      return { 
+        from: format(monthStart, 'yyyy-MM-dd'),
+        to: format(monthEnd, 'yyyy-MM-dd')
+      };
+    } else if (dateType === 'year' && year) {
+      const yearStart = startOfYear(new Date(parseInt(year), 0));
+      const yearEnd = endOfYear(new Date(parseInt(year), 0));
+      return { 
+        from: format(yearStart, 'yyyy-MM-dd'),
+        to: format(yearEnd, 'yyyy-MM-dd')
+      };
+    }
+    return { from: '', to: '' };
+  };
+  
+  // Helper to update gatepass URL parameters
+  const updateGatepassUrlParams = (updates: Record<string, string | number>) => {
+    const pathname = location.split('?')[0];
+    const params = new URLSearchParams(location.split('?')[1] || '');
+    
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === '' || value === 'all' || value === null || value === undefined) {
+        params.delete(key);
+      } else {
+        params.set(key, value.toString());
+      }
+    });
+    
+    const queryString = params.toString();
+    navigate(`${pathname}${queryString ? `?${queryString}` : ''}`, { replace: true });
+  };
+  
+  // Helper to clear gatepass filters
+  const clearGatepassFilters = () => {
+    updateGatepassUrlParams({
+      gatepassSearch: '',
+      gatepassStatus: 'all',
+      gatepassDateType: 'all',
+      gatepassFrom: '',
+      gatepassTo: '',
+      gatepassMonth: '',
+      gatepassYear: '',
+      gatepassPage: 1
+    });
+  };
 
   // Update activeTab when externalActiveTab changes
   useEffect(() => {
@@ -81,9 +142,50 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
     queryKey: ['/api/raw-material-issuances'],
   });
 
-  const { data: gatepasses = [], isLoading: isLoadingGatepasses } = useQuery<Gatepass[]>({
-    queryKey: ['/api/gatepasses'],
+  // Derive date range for backend API from complex date filters
+  const gatepassDateRange = useMemo(() => {
+    return deriveGatepassDateRange(gatepassDateFilterType, gatepassDateFrom, gatepassDateTo, gatepassSelectedMonth, gatepassSelectedYear);
+  }, [gatepassDateFilterType, gatepassDateFrom, gatepassDateTo, gatepassSelectedMonth, gatepassSelectedYear]);
+
+  // Fetch gatepasses with pagination
+  const gatepassQueryKey = [
+    '/api/gatepasses',
+    gatepassPage,
+    gatepassPageSize,
+    gatepassSearchQuery,
+    gatepassStatusFilter,
+    gatepassDateRange.from,
+    gatepassDateRange.to
+  ];
+
+  const { data: gatepassResponse, isLoading: isLoadingGatepasses } = useQuery({
+    queryKey: gatepassQueryKey,
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        page: gatepassPage.toString(),
+        pageSize: gatepassPageSize.toString()
+      });
+      if (gatepassSearchQuery) params.set('searchQuery', gatepassSearchQuery);
+      if (gatepassStatusFilter && gatepassStatusFilter !== 'all') params.set('status', gatepassStatusFilter);
+      if (gatepassDateRange.from) params.set('dateFrom', gatepassDateRange.from);
+      if (gatepassDateRange.to) params.set('dateTo', gatepassDateRange.to);
+      
+      const response = await fetch(`/api/gatepasses?${params.toString()}`);
+      if (!response.ok) throw new Error('Failed to fetch gatepasses');
+      const data = await response.json();
+      
+      // Enforce structured response with metadata
+      if (!data.meta || !data.data) {
+        throw new Error('Invalid gatepass response: missing pagination metadata');
+      }
+      
+      return data;
+    }
   });
+
+  // Extract data and metadata from structured response
+  const gatepasses = gatepassResponse?.data || [];
+  const gatepassMeta: PaginationMeta | undefined = gatepassResponse?.meta;
 
   const { data: invoices = [], isLoading: isLoadingInvoices } = useQuery<Invoice[]>({
     queryKey: ['/api/invoices'],
@@ -147,55 +249,7 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
     return filtered.sort((a, b) => new Date(b.invoiceDate).getTime() - new Date(a.invoiceDate).getTime());
   }, [invoices, invoiceSearchQuery, selectedVendor, dateFilterType, dateFrom, dateTo, selectedMonth, selectedYear]);
 
-  // Filtered gatepasses based on search and filters
-  const filteredGatepasses = useMemo(() => {
-    let filtered = [...gatepasses];
-
-    // Search by gatepass number, vehicle number, or driver name
-    if (gatepassSearchQuery.trim()) {
-      const query = gatepassSearchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (gp) =>
-          gp.gatepassNumber.toLowerCase().includes(query) ||
-          (gp.vehicleNumber && gp.vehicleNumber.toLowerCase().includes(query)) ||
-          (gp.driverName && gp.driverName.toLowerCase().includes(query)) ||
-          (gp.customerName && gp.customerName.toLowerCase().includes(query))
-      );
-    }
-
-    // Filter by status
-    if (gatepassStatusFilter !== "all") {
-      filtered = filtered.filter((gp) => gp.status === gatepassStatusFilter);
-    }
-
-    // Filter by date
-    if (gatepassDateFilterType === "range" && gatepassDateFrom && gatepassDateTo) {
-      const fromDate = new Date(gatepassDateFrom);
-      const toDate = new Date(gatepassDateTo);
-      filtered = filtered.filter((gp) => {
-        const gpDate = new Date(gp.gatepassDate);
-        return isWithinInterval(gpDate, { start: fromDate, end: toDate });
-      });
-    } else if (gatepassDateFilterType === "month" && gatepassSelectedMonth) {
-      const [year, month] = gatepassSelectedMonth.split("-");
-      const monthStart = startOfMonth(new Date(parseInt(year), parseInt(month) - 1));
-      const monthEnd = endOfMonth(new Date(parseInt(year), parseInt(month) - 1));
-      filtered = filtered.filter((gp) => {
-        const gpDate = new Date(gp.gatepassDate);
-        return isWithinInterval(gpDate, { start: monthStart, end: monthEnd });
-      });
-    } else if (gatepassDateFilterType === "year" && gatepassSelectedYear) {
-      const yearStart = startOfYear(new Date(parseInt(gatepassSelectedYear), 0));
-      const yearEnd = endOfYear(new Date(parseInt(gatepassSelectedYear), 0));
-      filtered = filtered.filter((gp) => {
-        const gpDate = new Date(gp.gatepassDate);
-        return isWithinInterval(gpDate, { start: yearStart, end: yearEnd });
-      });
-    }
-
-    // Sort by date (newest first)
-    return filtered.sort((a, b) => new Date(b.gatepassDate).getTime() - new Date(a.gatepassDate).getTime());
-  }, [gatepasses, gatepassSearchQuery, gatepassStatusFilter, gatepassDateFilterType, gatepassDateFrom, gatepassDateTo, gatepassSelectedMonth, gatepassSelectedYear]);
+  // Gatepasses are now filtered and paginated on the backend
 
   // Filtered raw material issuances based on search and filters
   const filteredIssuances = useMemo(() => {
@@ -375,16 +429,6 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
     setDateTo("");
     setSelectedMonth("");
     setSelectedYear("");
-  };
-
-  const clearGatepassFilters = () => {
-    setGatepassSearchQuery("");
-    setGatepassStatusFilter("all");
-    setGatepassDateFilterType("all");
-    setGatepassDateFrom("");
-    setGatepassDateTo("");
-    setGatepassSelectedMonth("");
-    setGatepassSelectedYear("");
   };
 
   const clearIssuanceFilters = () => {
@@ -585,7 +629,7 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
                 <div>
                   <h2 className="text-lg font-semibold">Gatepasses</h2>
                   <p className="text-sm text-muted-foreground">
-                    {filteredGatepasses.length} of {gatepasses.length} gatepasses
+                    {gatepassMeta ? `${gatepassMeta.totalItems} total gatepasses` : `${gatepasses.length} gatepasses`}
                   </p>
                 </div>
                 <Button 
@@ -614,7 +658,7 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
                         id="gatepass-search"
                         placeholder="Search by GP number, vehicle, driver, or customer..."
                         value={gatepassSearchQuery}
-                        onChange={(e) => setGatepassSearchQuery(e.target.value)}
+                        onChange={(e) => updateGatepassUrlParams({ gatepassSearch: e.target.value, gatepassPage: 1 })}
                         className="pl-9"
                         data-testid="input-gatepass-search"
                       />
@@ -640,7 +684,7 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
                     <Label htmlFor="gatepass-status-filter" className="text-sm font-medium mb-1.5 block">
                       Status
                     </Label>
-                    <Select value={gatepassStatusFilter} onValueChange={setGatepassStatusFilter}>
+                    <Select value={gatepassStatusFilter} onValueChange={(val) => updateGatepassUrlParams({ gatepassStatus: val, gatepassPage: 1 })}>
                       <SelectTrigger id="gatepass-status-filter" data-testid="select-gatepass-status-filter">
                         <SelectValue placeholder="All Statuses" />
                       </SelectTrigger>
@@ -660,12 +704,17 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
                       Date Filter
                     </Label>
                     <Select value={gatepassDateFilterType} onValueChange={(val) => {
-                      setGatepassDateFilterType(val);
                       if (val === "all") {
-                        setGatepassDateFrom("");
-                        setGatepassDateTo("");
-                        setGatepassSelectedMonth("");
-                        setGatepassSelectedYear("");
+                        updateGatepassUrlParams({ 
+                          gatepassDateType: val, 
+                          gatepassFrom: '', 
+                          gatepassTo: '', 
+                          gatepassMonth: '', 
+                          gatepassYear: '',
+                          gatepassPage: 1
+                        });
+                      } else {
+                        updateGatepassUrlParams({ gatepassDateType: val, gatepassPage: 1 });
                       }
                     }}>
                       <SelectTrigger id="gatepass-date-filter-type" data-testid="select-gatepass-date-filter-type">
@@ -691,7 +740,7 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
                           id="gatepass-date-from"
                           type="date"
                           value={gatepassDateFrom}
-                          onChange={(e) => setGatepassDateFrom(e.target.value)}
+                          onChange={(e) => updateGatepassUrlParams({ gatepassFrom: e.target.value, gatepassPage: 1 })}
                           data-testid="input-gatepass-date-from"
                         />
                       </div>
@@ -703,7 +752,7 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
                           id="gatepass-date-to"
                           type="date"
                           value={gatepassDateTo}
-                          onChange={(e) => setGatepassDateTo(e.target.value)}
+                          onChange={(e) => updateGatepassUrlParams({ gatepassTo: e.target.value, gatepassPage: 1 })}
                           data-testid="input-gatepass-date-to"
                         />
                       </div>
@@ -719,7 +768,7 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
                         id="gatepass-month-filter"
                         type="month"
                         value={gatepassSelectedMonth}
-                        onChange={(e) => setGatepassSelectedMonth(e.target.value)}
+                        onChange={(e) => updateGatepassUrlParams({ gatepassMonth: e.target.value, gatepassPage: 1 })}
                         data-testid="input-gatepass-month-filter"
                       />
                     </div>
@@ -730,7 +779,7 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
                       <Label htmlFor="gatepass-year-filter" className="text-sm font-medium mb-1.5 block">
                         Select Year
                       </Label>
-                      <Select value={gatepassSelectedYear} onValueChange={setGatepassSelectedYear}>
+                      <Select value={gatepassSelectedYear} onValueChange={(val) => updateGatepassUrlParams({ gatepassYear: val, gatepassPage: 1 })}>
                         <SelectTrigger id="gatepass-year-filter" data-testid="select-gatepass-year-filter">
                           <SelectValue placeholder="Select Year" />
                         </SelectTrigger>
@@ -751,12 +800,21 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
             {/* Gatepass Table */}
             <Card className="p-4">
               <GatepassTable
-                gatepasses={filteredGatepasses}
+                gatepasses={gatepasses}
                 isLoading={isLoadingGatepasses}
                 onEdit={handleEditGatepass}
                 onDelete={handleDeleteGatepass}
                 onGenerateInvoice={handleGenerateInvoice}
               />
+              {gatepassMeta && (
+                <div className="mt-4">
+                  <DataTablePagination
+                    meta={gatepassMeta}
+                    onPageChange={(newPage) => updateGatepassUrlParams({ gatepassPage: newPage })}
+                    onPageSizeChange={(newSize) => updateGatepassUrlParams({ gatepassPageSize: newSize, gatepassPage: 1 })}
+                  />
+                </div>
+              )}
             </Card>
 
             {/* Gatepass Form Dialog */}
