@@ -163,7 +163,7 @@ export async function clearImportedData(): Promise<{
 export async function importVyapaarData(
   partyFilePath: string,
   saleFilePath: string,
-  itemFilePath: string
+  itemFilePath?: string // Optional - if not provided, items are in saleFilePath (2-file format)
 ): Promise<{
   success: boolean;
   message: string;
@@ -208,11 +208,18 @@ export async function importVyapaarData(
       // Read Excel files
       const partyWorkbook = XLSX.readFile(partyFilePath);
       const saleWorkbook = XLSX.readFile(saleFilePath);
-      const itemWorkbook = XLSX.readFile(itemFilePath);
+      
+      // Support both 2-file and 3-file formats
+      // If itemFilePath is provided, use it; otherwise, items are in saleFilePath (second sheet or same sheet)
+      const itemWorkbook = itemFilePath ? XLSX.readFile(itemFilePath) : saleWorkbook;
       
       const partyData: PartyData[] = XLSX.utils.sheet_to_json(partyWorkbook.Sheets[partyWorkbook.SheetNames[0]]);
       let saleData: SaleData[] = XLSX.utils.sheet_to_json(saleWorkbook.Sheets[saleWorkbook.SheetNames[0]]);
-      let itemData: ItemData[] = XLSX.utils.sheet_to_json(itemWorkbook.Sheets[itemWorkbook.SheetNames[0]]);
+      
+      // For 2-file format, items might be in second sheet or same sheet with different columns
+      // Try second sheet first, fall back to first sheet
+      const itemSheetName = itemWorkbook.SheetNames[1] || itemWorkbook.SheetNames[0];
+      let itemData: ItemData[] = XLSX.utils.sheet_to_json(itemWorkbook.Sheets[itemSheetName]);
       
       console.log(`Read raw data: ${partyData.length} parties, ${saleData.length} sales (before filtering), ${itemData.length} items (before filtering)`);
       
