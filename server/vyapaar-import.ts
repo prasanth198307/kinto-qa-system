@@ -544,6 +544,8 @@ export async function importVyapaarData(
       // Auto-classify vendor types
       // Build invoice -> vendor mapping from sale data
       const invoiceVendorMap = new Map<string, string>();
+      console.log(`[CLASSIFICATION] Processing ${saleData.length} sales for invoice-vendor mapping`);
+      
       for (const sale of saleData) {
         const invoiceNumber = sale.__EMPTY_1;
         const vendorName = sale.__EMPTY_2;
@@ -551,17 +553,21 @@ export async function importVyapaarData(
           const vendorId = Array.from(vendorMap.entries())
             .find(([name, id]) => fuzzyMatch(name, vendorName))?.[1];
           if (vendorId) {
-            invoiceVendorMap.set(invoiceNumber, vendorId);
+            invoiceVendorMap.set(String(invoiceNumber).trim(), vendorId);
           }
         }
       }
+      console.log(`[CLASSIFICATION] Built ${invoiceVendorMap.size} invoice-vendor mappings`);
       
       // Map vendors to products they purchased
       const vendorProductMap = new Map<string, Set<string>>();
-      console.log(`[CLASSIFICATION] Processing ${itemData.length} items, ${invoiceVendorMap.size} invoice-vendor mappings`);
+      console.log(`[CLASSIFICATION] Processing ${itemData.length} items`);
+      
+      let matchedItems = 0;
+      let unmatchedItems = 0;
       
       for (const item of itemData) {
-        const invoiceNumber = item.__EMPTY; // Invoice number is in __EMPTY column
+        const invoiceNumber = String(item.__EMPTY || '').trim(); // Invoice number is in __EMPTY column
         const productName = normalize(item.__EMPTY_2);
         
         const vendorId = invoiceVendorMap.get(invoiceNumber);
@@ -571,8 +577,16 @@ export async function importVyapaarData(
             vendorProductMap.set(vendorId, new Set());
           }
           vendorProductMap.get(vendorId)!.add(productName);
+          matchedItems++;
+        } else {
+          unmatchedItems++;
+          if (unmatchedItems <= 3) {
+            console.log(`[CLASSIFICATION] Unmatched item - Invoice: "${invoiceNumber}", Product: "${productName}", VendorFound: ${!!vendorId}`);
+          }
         }
       }
+      
+      console.log(`[CLASSIFICATION] Matched ${matchedItems} items, Unmatched ${unmatchedItems} items`);
       
       console.log(`[CLASSIFICATION] Built vendor-product map for ${vendorProductMap.size} vendors`);
       // Sample first few vendors
