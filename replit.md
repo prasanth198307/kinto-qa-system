@@ -9,12 +9,12 @@ Preferred communication style: Simple, everyday language.
 ## Recent Changes (November 23, 2025)
 
 ### Session Persistence Fix ✅ ARCHITECT APPROVED
-- **Problem:** Server cleared all sessions on startup, causing users to be logged out after every server restart during development
-- **Solution:** Made session clearing conditional - only clears in production, preserves sessions in development
-- **Implementation:** Added `if (process.env.NODE_ENV !== 'development')` guard around `clearAllSessions()` call
-- **Result:** Users now stay logged in during development server restarts, eliminating 401 errors after login
-- **Production behavior:** Unchanged - still clears sessions on startup for security
-- **Logging:** Added clear console messages indicating which mode is active
+- **Problem:** Server cleared all sessions on startup, causing users to be logged out after every server restart
+- **Solution:** Completely removed session clearing on startup - sessions now expire naturally based on TTL (7 days)
+- **Implementation:** Removed `clearAllSessions()` call from server startup
+- **Result:** Users stay logged in across server restarts in both development and production
+- **Security:** Sessions still expire after 7 days of inactivity via cookie maxAge setting
+- **Deployment:** Works on both Replit (development) and Mac production deployments
 
 ### Comprehensive Pagination System Implementation ✅ PRODUCTION-READY
 - **Server-side pagination infrastructure:** Created shared `PaginationRequest` and `PaginationMeta` schemas with z.coerce.number() for string-to-number query param handling

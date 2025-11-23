@@ -119,14 +119,9 @@ function calculateProductFields(data: any) {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Clear all sessions on server startup (only in production)
-  // In development, preserve sessions across server restarts for better DX
-  if (process.env.NODE_ENV !== 'development') {
-    await storage.clearAllSessions();
-    console.log('✅ All sessions cleared on server startup');
-  } else {
-    console.log('⚙️  Development mode: preserving sessions across restarts');
-  }
+  // Sessions are preserved across restarts and expire naturally based on TTL (7 days)
+  // This prevents users from being logged out during development or after deployments
+  console.log('✅ Session persistence enabled - sessions expire after 7 days of inactivity');
 
   // Serve deployment guide files
   app.get('/download.html', (req, res) => {
