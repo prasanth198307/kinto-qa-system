@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

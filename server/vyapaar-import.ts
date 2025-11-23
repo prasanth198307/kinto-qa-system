@@ -541,107 +541,9 @@ export async function importVyapaarData(
         invoiceCount++;
       }
       
-      // Auto-classify vendor types
-      // Build invoice -> vendor mapping from sale data
-      const invoiceVendorMap = new Map<string, string>();
-      console.log(`[CLASSIFICATION] Processing ${saleData.length} sales for invoice-vendor mapping`);
+      console.log('Import transaction completed successfully');
       
-      for (const sale of saleData) {
-        const invoiceNumber = sale.__EMPTY_1;
-        const vendorName = sale.__EMPTY_2;
-        if (invoiceNumber && vendorName) {
-          const vendorId = Array.from(vendorMap.entries())
-            .find(([name, id]) => fuzzyMatch(name, vendorName))?.[1];
-          if (vendorId) {
-            invoiceVendorMap.set(String(invoiceNumber).trim(), vendorId);
-          }
-        }
-      }
-      console.log(`[CLASSIFICATION] Built ${invoiceVendorMap.size} invoice-vendor mappings`);
-      
-      // Map vendors to products they purchased
-      const vendorProductMap = new Map<string, Set<string>>();
-      console.log(`[CLASSIFICATION] Processing ${itemData.length} items`);
-      
-      let matchedItems = 0;
-      let unmatchedItems = 0;
-      
-      for (const item of itemData) {
-        const invoiceNumber = String(item.__EMPTY || '').trim(); // Invoice number is in __EMPTY column
-        const productName = normalize(item.__EMPTY_2);
-        
-        const vendorId = invoiceVendorMap.get(invoiceNumber);
-        
-        if (vendorId && productName) {
-          if (!vendorProductMap.has(vendorId)) {
-            vendorProductMap.set(vendorId, new Set());
-          }
-          vendorProductMap.get(vendorId)!.add(productName);
-          matchedItems++;
-        } else {
-          unmatchedItems++;
-          if (unmatchedItems <= 3) {
-            console.log(`[CLASSIFICATION] Unmatched item - Invoice: "${invoiceNumber}", Product: "${productName}", VendorFound: ${!!vendorId}`);
-          }
-        }
-      }
-      
-      console.log(`[CLASSIFICATION] Matched ${matchedItems} items, Unmatched ${unmatchedItems} items`);
-      
-      console.log(`[CLASSIFICATION] Built vendor-product map for ${vendorProductMap.size} vendors`);
-      // Sample first few vendors
-      let sampleCount = 0;
-      for (const [vendorId, products] of vendorProductMap.entries()) {
-        if (sampleCount++ < 3) {
-          console.log(`[CLASSIFICATION] Sample vendor ${vendorId}: ${[...products].join(', ')}`);
-        }
-      }
-      
-      // Get vendor types
-      const allVendorTypes = await tx.select().from(vendorTypes);
-      const kintoType = allVendorTypes.find(vt => vt.code === 'KINTO');
-      const hppaniType = allVendorTypes.find(vt => vt.code === 'HPPANI');
-      const purejalType = allVendorTypes.find(vt => vt.code === 'PUREJAL');
-      
-      let vendorTypesAssigned = 0;
-      
-      // Process vendor type assignments synchronously to avoid transaction issues
-      for (const [vendorId, productSet] of Array.from(vendorProductMap.entries())) {
-        const productList: string[] = [...productSet];
-        const assignedTypes: string[] = [];
-        
-        const hasKinto = productList.some((p: string) => 
-          p.includes('blue') || p.includes('kinto')
-        );
-        const hasHPPani = productList.some((p: string) => 
-          p.includes('red') || p.includes('hppani') || p.includes('hp')
-        );
-        const hasPurejal = productList.some((p: string) => 
-          p.includes('green') || p.includes('purejal')
-        );
-        
-        if (hasKinto && kintoType) assignedTypes.push(kintoType.id);
-        if (hasHPPani && hppaniType) assignedTypes.push(hppaniType.id);
-        if (hasPurejal && purejalType) assignedTypes.push(purejalType.id);
-        
-        if (assignedTypes.length > 0 && vendorTypesAssigned < 5) {
-          console.log(`[CLASSIFICATION] Vendor ${vendorId} matched: ${hasKinto?'Kinto ':''} ${hasHPPani?'HPPani ':''}${hasPurejal?'Purejal':''} from products: ${productList.join(', ')}`);
-        }
-        
-        for (let index = 0; index < assignedTypes.length; index++) {
-          await tx.insert(vendorVendorTypes).values({
-            vendorId,
-            vendorTypeId: assignedTypes[index],
-            isPrimary: index === 0 ? 1 : 0,
-          });
-          vendorTypesAssigned++;
-        }
-      }
-      
-      console.log(`[CLASSIFICATION] Assigned ${vendorTypesAssigned} vendor types total`);
-      
-      console.log('Import completed successfully');
-      
+      // Return stats (classification will happen after transaction commits)
       return {
         success: true,
         message: 'Data imported successfully',
@@ -649,7 +551,7 @@ export async function importVyapaarData(
           vendors: vendorMap.size,
           products: productMap.size,
           invoices: invoiceCount,
-          vendorTypes: vendorTypesAssigned,
+          vendorTypes: 0, // Will be updated after classification
           skipped: skippedCount,
         },
       };
@@ -658,6 +560,25 @@ export async function importVyapaarData(
       // Transaction will automatically rollback
       throw error;
     }
+  }).then(async (result) => {
+    // If import succeeded, run vendor classification based on imported data
+    if (result.success) {
+      try {
+        console.log('\n🔄 Running post-import vendor classification...');
+        const { classifyAllVendors } = await import('./classify-vendors');
+        await classifyAllVendors();
+        
+        // Get the actual count of vendor type assignments
+        const typeCount = await db.select().from(vendorVendorTypes);
+        result.stats.vendorTypes = typeCount.length;
+        
+        console.log(`✅ Classified ${result.stats.vendorTypes} vendor-type assignments\n`);
+      } catch (classifyError: any) {
+        console.error('⚠️  Vendor classification failed (import succeeded):', classifyError);
+        // Don't fail the entire import if classification fails
+      }
+    }
+    return result;
   }).catch((error: any) => {
     console.error('Import transaction failed:', error);
     return {

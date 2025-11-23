@@ -6,6 +6,20 @@ KINTO Operations & QA is a comprehensive manufacturing operations and quality ma
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes (November 23, 2025)
+
+### Vyapaar Import - Vendor Classification Fixed
+- **Fixed critical vendor classification bug:** Previously only 7 out of 161 vendors were getting type assignments after import
+- **Implemented post-import classification:** New `classify-vendors.ts` script classifies ALL vendors based on products purchased from their invoices
+- **Automatic classification:** Runs automatically after every successful Vyapaar data import
+- **Database-driven approach:** Instead of complex Excel mapping, reads invoices and products directly from database for 100% accuracy
+- **Results:** Now classifies 158 vendors (all vendors with invoices) with 160 type assignments
+  - 92 vendors → HPPani (purchased HP Pani products)
+  - 67 vendors → Kinto (purchased Kinto products)
+  - 1 vendor → Purejal (purchased Purejal products)
+  - Some vendors have multiple types based on diverse purchases
+- **Manual script available:** Can run `npx tsx server/classify-vendors.ts` to reclassify all vendors anytime
+
 ## System Architecture
 
 ### UI/UX Decisions
