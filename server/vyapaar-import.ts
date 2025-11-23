@@ -115,6 +115,51 @@ function fuzzyMatch(str1: string, str2: string): boolean {
   return false;
 }
 
+// Exported function to clear all imported Vyapaar data
+export async function clearImportedData(): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  try {
+    await db.transaction(async (tx) => {
+      console.log('Clearing all imported data...');
+      
+      // Delete in correct order to avoid foreign key violations
+      await tx.execute(sql`DELETE FROM production_reconciliation_items`);
+      await tx.execute(sql`DELETE FROM production_reconciliations`);
+      await tx.execute(sql`DELETE FROM production_entries`);
+      await tx.execute(sql`DELETE FROM credit_note_items`);
+      await tx.execute(sql`DELETE FROM credit_notes`);
+      await tx.execute(sql`DELETE FROM sales_return_items`);
+      await tx.execute(sql`DELETE FROM sales_returns`);
+      await tx.execute(sql`DELETE FROM gatepass_items`);
+      await tx.execute(sql`DELETE FROM gatepasses`);
+      await tx.execute(sql`DELETE FROM finished_goods`);
+      await tx.execute(sql`DELETE FROM raw_material_issuance_items`);
+      await tx.execute(sql`DELETE FROM raw_material_issuance`);
+      await tx.execute(sql`DELETE FROM invoice_payments`);
+      await tx.execute(sql`DELETE FROM invoice_items`);
+      await tx.execute(sql`DELETE FROM invoices`);
+      await tx.execute(sql`DELETE FROM vendor_vendor_types`);
+      await tx.execute(sql`DELETE FROM vendors`);
+      await tx.execute(sql`DELETE FROM products`);
+      
+      console.log('All imported data cleared successfully');
+    });
+    
+    return {
+      success: true,
+      message: 'All imported data cleared successfully. Master data (UOMs, roles, permissions, users) preserved.'
+    };
+  } catch (error) {
+    console.error('Failed to clear imported data:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to clear imported data'
+    };
+  }
+}
+
 export async function importVyapaarData(
   partyFilePath: string,
   saleFilePath: string,

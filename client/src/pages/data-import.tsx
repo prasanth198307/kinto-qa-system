@@ -6,8 +6,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
-import { Upload, FileSpreadsheet, CheckCircle2, AlertCircle, Info } from "lucide-react";
+import { Upload, FileSpreadsheet, CheckCircle2, AlertCircle, Info, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface ImportResult {
   success: boolean;
@@ -28,6 +39,7 @@ export default function DataImport() {
   const [itemFile, setItemFile] = useState<File | null>(null);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [importSuccessful, setImportSuccessful] = useState(false);
+  const [showClearDialog, setShowClearDialog] = useState(false);
 
   const importMutation = useMutation({
     mutationFn: async (formData: FormData) => {
@@ -77,6 +89,36 @@ export default function DataImport() {
     },
   });
 
+  const clearDataMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch('/api/clear-imported-data', {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to clear data');
+      }
+
+      return await response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Data Cleared",
+        description: data.message,
+      });
+      setShowClearDialog(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Clear Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleImport = () => {
     if (!partyFile || !saleFile) {
       toast({
@@ -98,13 +140,53 @@ export default function DataImport() {
     importMutation.mutate(formData);
   };
 
+  const handleClearData = () => {
+    clearDataMutation.mutate();
+  };
+
   return (
     <div className="p-6 space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold" data-testid="heading-data-import">Vyapaar Data Import</h2>
-        <p className="text-muted-foreground" data-testid="description-data-import">
-          Upload Excel files from Vyapaar to migrate your data
-        </p>
+      <div className="flex justify-between items-start">
+        <div>
+          <h2 className="text-3xl font-bold" data-testid="heading-data-import">Vyapaar Data Import</h2>
+          <p className="text-muted-foreground" data-testid="description-data-import">
+            Upload Excel files from Vyapaar to migrate your data
+          </p>
+        </div>
+        <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
+          <AlertDialogTrigger asChild>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={clearDataMutation.isPending}
+              data-testid="button-clear-data"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Clear Imported Data
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Clear All Imported Data?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete all imported vendors, products, invoices, and related data.
+                Master data (UOMs, roles, permissions, users) will be preserved.
+                <br /><br />
+                This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid="button-cancel-clear">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleClearData}
+                className="bg-destructive hover:bg-destructive/90"
+                data-testid="button-confirm-clear"
+              >
+                {clearDataMutation.isPending ? 'Clearing...' : 'Clear Data'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
 
       <Alert data-testid="alert-import-info">

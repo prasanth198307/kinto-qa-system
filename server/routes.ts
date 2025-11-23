@@ -14,7 +14,7 @@ import { whatsappService } from "./whatsappService";
 import { whatsappWebhookRouter } from "./whatsappWebhook";
 import { whatsappConversationService } from "./whatsappConversationService";
 import { calculateBOMSuggestions } from "@shared/calculations";
-import { importVyapaarData } from "./vyapaar-import";
+import { importVyapaarData, clearImportedData } from "./vyapaar-import";
 
 // Simple audit logging function
 async function logAudit(userId: string | undefined, action: string, table: string, recordId: string, description: string) {
@@ -6629,6 +6629,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false,
         message: error.message || 'Import failed'
+      });
+    }
+  });
+
+  // Clear imported Vyapaar data endpoint
+  app.post('/api/clear-imported-data', isAuthenticated, requireRole('admin'), async (req: Request, res: Response) => {
+    try {
+      console.log('[DATA CLEAR] Clearing all imported data...');
+      
+      const result = await clearImportedData();
+      
+      console.log('[DATA CLEAR] Clear completed:', result);
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error('[DATA CLEAR] Error:', error);
+      res.status(500).json({ 
+        success: false,
+        message: error.message || 'Failed to clear imported data'
       });
     }
   });
