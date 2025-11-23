@@ -1,0 +1,74 @@
+p.7Jx%2BbVDcIKqAyq3cmpgGi7E7QCQV4X9Zqf9W%2FmeT8Jo
+   Session ID: -vhE_ypKJ7UfBykwt-pLdBQxsxeX4uRp
+   Authenticated: true
+[DATA IMPORT] Starting import from uploaded files
+Starting Vyapaar data import...
+Clearing vendor and product data...
+Import failed within transaction: TypeError: XLSX2.readFile is not a function
+    at file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:4931:35
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NodePgSession.transaction (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:142:22)
+    at async importVyapaarData (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:4908:10)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:10834:22
+Import transaction failed: TypeError: XLSX2.readFile is not a function
+    at file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:4931:35
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NodePgSession.transaction (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:142:22)
+    at async importVyapaarData (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:4908:10)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:10834:22
+[DATA IMPORT] Import completed: {
+  success: false,
+  message: 'XLSX2.readFile is not a function',
+  stats: { vendors: 0, products: 0, invoices: 0, vendorTypes: 0, skipped: 0 }
+}
+8:20:43 PM [express] POST /api/import-vyapaar 200 in 161ms :: {"success":false,"message":"XLSX2.read…
+🔹 Request: POST /api/import-vyapaar
+   Cookie header: connect.sid=s%3A-vhE_ypKJ7UfBykwt-pLdBQxsxeX4uRp.7Jx%2BbVDcIKqAyq3cmpgGi7E7QCQV4X9Zqf9W%2FmeT8Jo
+   Session ID: -vhE_ypKJ7UfBykwt-pLdBQxsxeX4uRp
+   Authenticated: true
+[DATA IMPORT] Starting import from uploaded files
+Starting Vyapaar data import...
+Clearing vendor and product data...
+Import failed within transaction: TypeError: XLSX2.readFile is not a function
+    at file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:4931:35
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NodePgSession.transaction (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:142:22)
+    at async importVyapaarData (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:4908:10)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:10834:22
+Import transaction failed: TypeError: XLSX2.readFile is not a function
+    at file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:4931:35
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NodePgSession.transaction (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:142:22)
+    at async importVyapaarData (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:4908:10)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:10834:22
+[DATA IMPORT] Import completed: {
+  success: false,
+  message: 'XLSX2.readFile is not a function',
+  stats: { vendors: 0, products: 0, invoices: 0, vendorTypes: 0, skipped: 0 }
+}
+8:20:49 PM [express] POST /api/import-vyapaar 200 in 84ms :: {"success":false,"message":"XLSX2.readF…
+🔹 Request: POST /api/import-vyapaar
+   Cookie header: connect.sid=s%3A-vhE_ypKJ7UfBykwt-pLdBQxsxeX4uRp.7Jx%2BbVDcIKqAyq3cmpgGi7E7QCQV4X9Zqf9W%2FmeT8Jo
+   Session ID: -vhE_ypKJ7UfBykwt-pLdBQxsxeX4uRp
+   Authenticated: true
+[DATA IMPORT] Starting import from uploaded files
+Starting Vyapaar data import...
+Clearing vendor and product data...
+Import failed within transaction: TypeError: XLSX2.readFile is not a function
+    at file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:4931:35
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NodePgSession.transaction (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:142:22)
+    at async importVyapaarData (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:4908:10)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:10834:22
+Import transaction failed: TypeError: XLSX2.readFile is not a function
+    at file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:4931:35
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NodePgSession.transaction (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:142:22)
+    at async importVyapaarData (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:4908:10)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:10834:22
+[DATA IMPORT] Import completed: {
+  success: false,
+  message: 'XLSX2.readFile is not a function',
+  stats: { vendors: 0, products: 0, invoices: 0, vendorTypes: 0, skipped: 0 }
+}
+8:20:57 PM [express] POST /api/import-vyapaar 200 in 88ms :: {"success":false,"message":"XLSX2.readF…

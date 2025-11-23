@@ -158,7 +158,7 @@ export async function importVyapaarData(
       await tx.execute(sql`DELETE FROM products`);
     
       // Dynamically import XLSX for Mac compatibility
-      const XLSX = await import('xlsx');
+      const { default: XLSX } = await import('xlsx');
       
       // Read Excel files
       const partyWorkbook = XLSX.readFile(partyFilePath);
