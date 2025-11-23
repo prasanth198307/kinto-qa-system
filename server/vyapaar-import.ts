@@ -215,6 +215,7 @@ export async function importVyapaarData(
       const uomCodes = new Set(existingUoms.map(u => u.code));
       
       const uomsToCreate = [
+        { code: 'CASES', name: 'Cases' },
         { code: 'PCS', name: 'Pieces' },
         { code: 'L', name: 'Liters' },
         { code: 'KG', name: 'Kilograms' },
@@ -283,11 +284,11 @@ export async function importVyapaarData(
         }).returning();
       }
       
-      // Get UOM IDs for products - PCS must exist
-      const pcsUom = await tx.select().from(uom).where(eq(uom.code, 'PCS')).limit(1).then(rows => rows[0]);
+      // Get UOM IDs for products - CASES must exist for imported products
+      const casesUom = await tx.select().from(uom).where(eq(uom.code, 'CASES')).limit(1).then(rows => rows[0]);
       
-      if (!pcsUom) {
-        throw new Error('PCS UOM not found. Cannot import products without valid UOM.');
+      if (!casesUom) {
+        throw new Error('CASES UOM not found. Cannot import products without valid UOM.');
       }
       
       // Import products with unique codes
@@ -319,7 +320,7 @@ export async function importVyapaarData(
         categoryId: category.id,
         typeId: productType.id,
         hsnCode: item.__EMPTY_4 || null,
-        uomId: pcsUom.id, // PCS UOM is required and validated above
+        uomId: casesUom.id, // CASES UOM for all imported products
         sellingPrice: Math.round((item.__EMPTY_11 || 0) * 100),
         description: item.__EMPTY_7 || null,
         }).returning();
