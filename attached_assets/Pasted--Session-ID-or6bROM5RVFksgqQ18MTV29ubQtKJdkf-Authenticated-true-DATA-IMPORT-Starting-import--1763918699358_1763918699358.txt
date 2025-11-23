@@ -1,0 +1,59 @@
+  Session ID: or6bROM5RVFksgqQ18MTV29ubQtKJdkf
+   Authenticated: true
+[DATA IMPORT] Starting import from uploaded files
+Starting Vyapaar data import...
+Clearing vendor and product data...
+Read raw data: 177 parties, 341 sales (before filtering), 567 items (before filtering)
+Filtered out 2 header/empty sale rows
+After filtering: 177 parties, 339 sales, 567 items
+Using date column: Generated on Nov 21, 2025 at 2:51 pm
+Importing cancelled invoice 28: no items
+Duplicate invoice number detected: 1 → 1-DUP2
+Importing cancelled invoice 1-DUP2: no items
+Duplicate invoice number detected: 2 → 2-DUP2
+Importing cancelled invoice 2-DUP2: no items
+Importing cancelled invoice 300: no items
+Duplicate invoice number detected: 3 → 3-DUP2
+Importing cancelled invoice 3-DUP2: no items
+Duplicate invoice number detected: 4 → 4-DUP2
+Importing cancelled invoice 4-DUP2: no items
+Import transaction completed successfully
+
+🔄 Running post-import vendor classification...
+🔄 Starting vendor classification...
+🔄 Starting vendor classification...
+✅ Found vendor types: Kinto (a736800f-c4da-43a6-91ad-65eed3612b77), HPPani (301a89a8-5def-4021-b6d7-2720e765ae95), Purejal (31fddda5-3341-482e-b2b9-bd51c33e5517)
+🗑️  Cleared existing vendor type assignments
+📊 Found 176 total vendors
+✅ Found vendor types: Kinto (a736800f-c4da-43a6-91ad-65eed3612b77), HPPani (301a89a8-5def-4021-b6d7-2720e765ae95), Purejal (31fddda5-3341-482e-b2b9-bd51c33e5517)
+🗑️  Cleared existing vendor type assignments
+  ✓ ADADA SIVAJI: Kinto
+📊 Found 176 total vendors
+  ✓ ADHOC SRINIVASA PETROLEUM: HPPani
+  ✓ AMMAYAMMA HP GAS GRAMIN VITRAK: HPPani
+  ✓ ADADA SIVAJI: Kinto
+  ✓ ANUPAMA GUEST HOUSE: Kinto
+  ✓ ADHOC SRINIVASA PETROLEUM: HPPani
+  ✓ ARNEPALLI ATCHUTHA RAO: Kinto
+  ✓ AMMAYAMMA HP GAS GRAMIN VITRAK: HPPani
+  ✓ ASR MURTHY VISAKH: HPPani
+  ✓ ANUPAMA GUEST HOUSE: Kinto
+  ✓ Basava Srinivasa Rao: Kinto
+  ✓ ARNEPALLI ATCHUTHA RAO: Kinto
+  ✓ Beemarasetty Satya Siva Kumar: Kinto
+  ✓ ASR MURTHY VISAKH: HPPani
+  ✓ BHSR HIGHWAY SER STN VAD: HPPani
+  ✓ Basava Srinivasa Rao: Kinto
+  ✓ Bhuvaneswari Agencies: Kinto
+  ✓ Beemarasetty Satya Siva Kumar: Kinto
+  ✓ BHSR HIGHWAY SER STN VAD: HPPani
+  ✓ Bhuvaneswari Agencies: Kinto
+
+📊 Classification Summary:
+  ✅ Total vendors: 176
+  ✅ Vendors classified: 158
+  ℹ️  Vendors with no invoices: 18
+  ✅ Total type assignments: 160
+
+✨ Vendor classification completed successfully!
+✅ Script completed successfully

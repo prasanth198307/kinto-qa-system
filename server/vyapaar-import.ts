@@ -565,17 +565,20 @@ export async function importVyapaarData(
     if (result.success) {
       try {
         console.log('\n🔄 Running post-import vendor classification...');
-        const { classifyAllVendors } = await import('./classify-vendors');
-        await classifyAllVendors();
+        
+        // Import and run classification (fresh import each time to avoid caching issues)
+        const classifyModule = await import('./classify-vendors?t=' + Date.now());
+        await classifyModule.classifyAllVendors();
         
         // Get the actual count of vendor type assignments
         const typeCount = await db.select().from(vendorVendorTypes);
         result.stats.vendorTypes = typeCount.length;
         
-        console.log(`✅ Classified ${result.stats.vendorTypes} vendor-type assignments\n`);
+        console.log(`✅ Post-import classification complete: ${result.stats.vendorTypes} vendor-type assignments\n`);
       } catch (classifyError: any) {
         console.error('⚠️  Vendor classification failed (import succeeded):', classifyError);
         // Don't fail the entire import if classification fails
+        result.stats.vendorTypes = 0;
       }
     }
     return result;
