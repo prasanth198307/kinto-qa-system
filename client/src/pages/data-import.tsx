@@ -73,6 +73,14 @@ export default function DataImport() {
       setImportResult(data);
       setImportSuccessful(true);
       const stats = data.stats;
+      
+      // Invalidate all caches so UI refreshes with imported data
+      queryClient.invalidateQueries({ queryKey: ['/api/vendors'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/products'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/invoice-payments'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/vendor-types'] });
+      
       toast({
         title: "Import Successful",
         description: `Imported ${stats.vendors} vendors, ${stats.products} products, and ${stats.invoices} invoices`,
@@ -104,6 +112,12 @@ export default function DataImport() {
       return await response.json();
     },
     onSuccess: (data) => {
+      // Invalidate all caches after clearing data
+      queryClient.invalidateQueries({ queryKey: ['/api/vendors'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/products'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/invoice-payments'] });
+      
       toast({
         title: "Data Cleared",
         description: data.message,
