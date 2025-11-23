@@ -52,7 +52,11 @@ interface InvoiceWithBalance extends Invoice {
 
 const MAX_DISPLAY_INVOICES = 20;
 
-export default function PendingPaymentsDashboard() {
+interface PendingPaymentsDashboardProps {
+  customerFilter?: string | null;
+}
+
+export default function PendingPaymentsDashboard({ customerFilter }: PendingPaymentsDashboardProps) {
   const { toast } = useToast();
   const { data: invoices = [], isLoading: isLoadingInvoices } = useQuery<Invoice[]>({
     queryKey: ['/api/invoices'],
@@ -111,7 +115,15 @@ export default function PendingPaymentsDashboard() {
 
   // Filter only invoices with outstanding balances and limit display
   const pendingInvoices = invoicesWithBalances
-    .filter(inv => inv.outstandingBalance > 0)
+    .filter(inv => {
+      // Filter by outstanding balance
+      if (inv.outstandingBalance <= 0) return false;
+      
+      // Filter by customer if provided
+      if (customerFilter && inv.buyerName !== customerFilter) return false;
+      
+      return true;
+    })
     .sort((a, b) => new Date(a.invoiceDate).getTime() - new Date(b.invoiceDate).getTime())
     .slice(0, MAX_DISPLAY_INVOICES);
 
