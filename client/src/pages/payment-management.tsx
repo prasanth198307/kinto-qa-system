@@ -56,9 +56,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2, Plus, X, FileText, Search, Filter } from "lucide-react";
+import { Loader2, Plus, X, FileText, Search, Filter, Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const fifoPaymentSchema = z.object({
   vendorId: z.string().min(1, "Please select a vendor"),
@@ -78,6 +81,7 @@ export default function PaymentManagement() {
   const [allocationPreview, setAllocationPreview] = useState<any>(null);
   const [cancelPaymentId, setCancelPaymentId] = useState<string | null>(null);
   const [cancellationRemarks, setCancellationRemarks] = useState("");
+  const [vendorPopoverOpen, setVendorPopoverOpen] = useState(false);
   
   // Filters for payment history
   const [searchTerm, setSearchTerm] = useState("");
@@ -387,22 +391,64 @@ export default function PaymentManagement() {
                     control={form.control}
                     name="vendorId"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className="flex flex-col">
                         <FormLabel>Vendor</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger data-testid="select-vendor">
-                              <SelectValue placeholder="Select vendor" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {vendors.map((vendor: any) => (
-                              <SelectItem key={vendor.id} value={vendor.id}>
-                                {vendor.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <Popover open={vendorPopoverOpen} onOpenChange={setVendorPopoverOpen}>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={vendorPopoverOpen}
+                                className={cn(
+                                  "w-full justify-between",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                                data-testid="select-vendor"
+                              >
+                                {field.value
+                                  ? vendors.find((vendor: any) => vendor.id === field.value)?.vendorName || "Select vendor"
+                                  : "Select vendor"}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[400px] p-0" align="start">
+                            <Command>
+                              <CommandInput placeholder="Search vendors..." data-testid="input-search-vendor" />
+                              <CommandEmpty>No vendor found.</CommandEmpty>
+                              <CommandList className="max-h-64 overflow-auto">
+                                <CommandGroup>
+                                  {vendors.map((vendor: any) => (
+                                    <CommandItem
+                                      key={vendor.id}
+                                      value={vendor.vendorName}
+                                      keywords={[vendor.vendorCode, vendor.mobileNumber || '']}
+                                      onSelect={() => {
+                                        form.setValue("vendorId", vendor.id);
+                                        setVendorPopoverOpen(false);
+                                      }}
+                                      data-testid={`vendor-option-${vendor.vendorCode}`}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          field.value === vendor.id ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                      <div className="flex flex-col">
+                                        <span className="font-medium">{vendor.vendorName}</span>
+                                        <span className="text-xs text-muted-foreground">
+                                          {vendor.vendorCode} {vendor.mobileNumber && `• ${vendor.mobileNumber}`}
+                                        </span>
+                                      </div>
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
                         <FormMessage />
                       </FormItem>
                     )}
