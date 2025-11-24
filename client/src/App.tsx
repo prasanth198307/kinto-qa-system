@@ -932,20 +932,53 @@ function AuthenticatedApp() {
   );
 }
 
-// Wrapper component for Vendor Management with navigation
+// Wrapper component for Vendor Management with full admin navigation
 function VendorManagementPage() {
-  const { user, logoutMutation } = useAuth();
+  const { logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
   const [activeView, setActiveView] = useState('vendors');
   
-  const navSections = [
+  const navSections: NavSection[] = [
     {
-      id: 'navigation',
-      title: 'Navigation',
+      id: "main",
       items: [
-        { id: 'back', label: 'Back to Dashboard', icon: LayoutDashboard, onClick: () => setLocation('/') }
-      ]
-    }
+        { id: "overview", label: "Overview Dashboard", icon: LayoutDashboard, onClick: () => setLocation('/') },
+        { id: "sales-dashboard", label: "Sales Dashboard", icon: TrendingUp },
+        { id: "vendor-analytics", label: "Vendor Analytics", icon: Building2, onClick: () => setLocation('/vendor-analytics') },
+        { id: "reports", label: "Reports", icon: FileText },
+      ],
+    },
+    {
+      id: "config-section",
+      label: "Configuration",
+      items: [
+        { id: "users", label: "Users", icon: Users },
+        { id: "role-permissions", label: "Role Permissions", icon: Shield },
+        { id: "machines", label: "Machines", icon: Settings },
+        { id: "machine-types", label: "Machine Types", icon: Layers },
+        { id: "spare-parts", label: "Spare Parts", icon: Package },
+        { id: "pm-templates", label: "PM Templates", icon: ListChecks },
+        { id: "template-management", label: "Invoice Templates", icon: FileStack },
+        { id: "uom", label: "Unit of Measurement", icon: Layers },
+        { id: "vendors", label: "Vendor Master", icon: Building2, onClick: () => setLocation('/vendor-management') },
+        { id: "vendor-types", label: "Vendor Types", icon: Shield },
+        { id: "raw-material-types", label: "Raw Material Types", icon: Archive },
+        { id: "notification-settings", label: "Notification Settings", icon: Bell },
+        { id: "data-import", label: "Data Import", icon: Upload },
+      ],
+    },
+    {
+      id: "production-section",
+      label: "Production",
+      items: [
+        { id: "products", label: "Product Master", icon: Package },
+        { id: "product-categories", label: "Product Categories", icon: Layers },
+        { id: "product-types", label: "Product Types", icon: Archive },
+        { id: "checklists", label: "Checklist Builder", icon: FileText },
+        { id: "raw-materials", label: "Raw Materials", icon: Box },
+        { id: "finished-goods", label: "Finished Goods", icon: CheckCircle2 },
+      ],
+    },
   ];
   
   return (
@@ -955,27 +988,63 @@ function VendorManagementPage() {
       notificationCount={0}
       navSections={navSections}
       activeView={activeView}
-      onNavigate={setActiveView}
+      onNavigate={(viewId) => {
+        setActiveView(viewId);
+        setLocation('/');
+      }}
     >
       <VendorManagement />
     </DashboardShell>
   );
 }
 
-// Wrapper component for Vendor Analytics with navigation
+// Wrapper component for Vendor Analytics with full admin navigation
 function VendorAnalyticsPage() {
-  const { user, logoutMutation } = useAuth();
+  const { logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
-  const [activeView, setActiveView] = useState('analytics');
+  const [activeView, setActiveView] = useState('vendor-analytics');
   
-  const navSections = [
+  const navSections: NavSection[] = [
     {
-      id: 'navigation',
-      title: 'Navigation',
+      id: "main",
       items: [
-        { id: 'back', label: 'Back to Dashboard', icon: LayoutDashboard, onClick: () => setLocation('/') }
-      ]
-    }
+        { id: "overview", label: "Overview Dashboard", icon: LayoutDashboard, onClick: () => setLocation('/') },
+        { id: "sales-dashboard", label: "Sales Dashboard", icon: TrendingUp },
+        { id: "vendor-analytics", label: "Vendor Analytics", icon: Building2, onClick: () => setLocation('/vendor-analytics') },
+        { id: "reports", label: "Reports", icon: FileText },
+      ],
+    },
+    {
+      id: "config-section",
+      label: "Configuration",
+      items: [
+        { id: "users", label: "Users", icon: Users },
+        { id: "role-permissions", label: "Role Permissions", icon: Shield },
+        { id: "machines", label: "Machines", icon: Settings },
+        { id: "machine-types", label: "Machine Types", icon: Layers },
+        { id: "spare-parts", label: "Spare Parts", icon: Package },
+        { id: "pm-templates", label: "PM Templates", icon: ListChecks },
+        { id: "template-management", label: "Invoice Templates", icon: FileStack },
+        { id: "uom", label: "Unit of Measurement", icon: Layers },
+        { id: "vendors", label: "Vendor Master", icon: Building2, onClick: () => setLocation('/vendor-management') },
+        { id: "vendor-types", label: "Vendor Types", icon: Shield },
+        { id: "raw-material-types", label: "Raw Material Types", icon: Archive },
+        { id: "notification-settings", label: "Notification Settings", icon: Bell },
+        { id: "data-import", label: "Data Import", icon: Upload },
+      ],
+    },
+    {
+      id: "production-section",
+      label: "Production",
+      items: [
+        { id: "products", label: "Product Master", icon: Package },
+        { id: "product-categories", label: "Product Categories", icon: Layers },
+        { id: "product-types", label: "Product Types", icon: Archive },
+        { id: "checklists", label: "Checklist Builder", icon: FileText },
+        { id: "raw-materials", label: "Raw Materials", icon: Box },
+        { id: "finished-goods", label: "Finished Goods", icon: CheckCircle2 },
+      ],
+    },
   ];
   
   return (
@@ -985,7 +1054,10 @@ function VendorAnalyticsPage() {
       notificationCount={0}
       navSections={navSections}
       activeView={activeView}
-      onNavigate={setActiveView}
+      onNavigate={(viewId) => {
+        setActiveView(viewId);
+        setLocation('/');
+      }}
     >
       <VendorAnalytics />
     </DashboardShell>
