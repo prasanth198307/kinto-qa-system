@@ -17,6 +17,7 @@ import {
   creditNotes,
 } from '@shared/schema';
 import { sql, eq, and } from 'drizzle-orm';
+import { classifyAllVendors } from './classify-vendors';
 
 interface PartyData {
   Name: string;
@@ -566,9 +567,8 @@ export async function importVyapaarData(
       try {
         console.log('\n🔄 Running post-import vendor classification...');
         
-        // Import and run classification (fresh import each time to avoid caching issues)
-        const classifyModule = await import('./classify-vendors?t=' + Date.now());
-        await classifyModule.classifyAllVendors();
+        // Run vendor classification using static import (works in both dev and production)
+        await classifyAllVendors();
         
         // Get the actual count of vendor type assignments
         const typeCount = await db.select().from(vendorVendorTypes);
