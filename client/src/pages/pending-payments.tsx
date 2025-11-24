@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearch } from "wouter";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
 import PendingPaymentsDashboard from "@/components/PendingPaymentsDashboard";
 
 export default function PendingPayments() {
@@ -13,9 +15,22 @@ export default function PendingPayments() {
     setCustomerFilter(customer);
   }, [search]);
 
+  const handleBack = () => {
+    window.history.back();
+  };
+
   return (
     <div className="p-6">
       <div className="mb-6">
+        <Button 
+          variant="ghost" 
+          onClick={handleBack}
+          className="mb-4"
+          data-testid="button-back"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back
+        </Button>
         <h1 className="text-3xl font-bold tracking-tight">Pending Payments</h1>
         <p className="text-muted-foreground mt-2">
           {customerFilter 
