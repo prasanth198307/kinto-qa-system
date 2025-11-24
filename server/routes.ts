@@ -4930,6 +4930,137 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create manual credit note (for pricing errors, discounts, etc.)
+  app.post('/api/credit-notes/manual', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { invoiceId, reason, customReason, items, notes } = req.body;
+
+      // Validate input
+      if (!invoiceId) {
+        return res.status(400).json({ message: "Invoice ID is required" });
+      }
+      if (!reason) {
+        return res.status(400).json({ message: "Reason is required" });
+      }
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ message: "At least one credit note item is required" });
+      }
+
+      // Fetch invoice
+      const invoice = await storage.getInvoice(invoiceId);
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+
+      // Fetch invoice items for validation
+      const invoiceItems_list = await storage.getInvoiceItems(invoiceId);
+
+      // Generate credit note number
+      const existingCreditNotes = await db.select()
+        .from(creditNotes)
+        .where(eq(creditNotes.invoiceId, invoiceId));
+      const sequence = existingCreditNotes.length + 1;
+      const creditNoteNumber = `CN-${invoice.invoiceNumber}-${sequence.toString().padStart(2, '0')}`;
+
+      // Validate and calculate totals
+      let subtotal = 0;
+      let cgstAmount = 0;
+      let sgstAmount = 0;
+      let igstAmount = 0;
+
+      const validatedItems = [];
+      for (const item of items) {
+        // Find matching invoice item for GST rates
+        const invoiceItem = invoiceItems_list.find(ii => ii.id === item.invoiceItemId);
+        if (!invoiceItem) {
+          return res.status(400).json({ message: `Invalid invoice item ID: ${item.invoiceItemId}` });
+        }
+
+        // Validate quantity doesn't exceed invoice quantity
+        if (item.quantity > invoiceItem.quantity) {
+          return res.status(400).json({ 
+            message: `Credit note quantity (${item.quantity}) cannot exceed invoice quantity (${invoiceItem.quantity}) for ${invoiceItem.productName}` 
+          });
+        }
+
+        // Calculate item totals (amounts in paise)
+        const itemSubtotal = item.unitPrice * item.quantity;
+        const itemCgst = Math.round(itemSubtotal * invoiceItem.cgstRate / 10000);
+        const itemSgst = Math.round(itemSubtotal * invoiceItem.sgstRate / 10000);
+        const itemIgst = Math.round(itemSubtotal * (invoiceItem.igstRate || 0) / 10000);
+        const itemTotal = itemSubtotal + itemCgst + itemSgst + itemIgst;
+
+        subtotal += itemSubtotal;
+        cgstAmount += itemCgst;
+        sgstAmount += itemSgst;
+        igstAmount += itemIgst;
+
+        validatedItems.push({
+          productId: invoiceItem.productId,
+          invoiceItemId: item.invoiceItemId,
+          description: invoiceItem.description || invoiceItem.productName,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          discountAmount: 0,
+          taxableValue: itemSubtotal,
+          cgstRate: invoiceItem.cgstRate,
+          cgstAmount: itemCgst,
+          sgstRate: invoiceItem.sgstRate,
+          sgstAmount: itemSgst,
+          igstRate: invoiceItem.igstRate || 0,
+          igstAmount: itemIgst,
+          totalAmount: itemTotal,
+        });
+      }
+
+      const grandTotal = subtotal + cgstAmount + sgstAmount + igstAmount;
+
+      // Create credit note and items in transaction
+      await db.transaction(async (tx) => {
+        // Create credit note
+        const [creditNote] = await tx.insert(creditNotes).values({
+          noteNumber: creditNoteNumber,
+          invoiceId,
+          salesReturnId: null, // Not linked to sales return
+          creditDate: format(new Date(), 'yyyy-MM-dd'),
+          reason: reason === 'other' ? (customReason || 'Other') : reason,
+          status: 'issued',
+          subtotal,
+          cgstAmount,
+          sgstAmount,
+          igstAmount,
+          grandTotal,
+          issuedBy: req.user?.id,
+          notes: notes || `Manual credit note for ${reason}`,
+        }).returning();
+
+        // Create credit note items
+        for (const itemData of validatedItems) {
+          await tx.insert(creditNoteItems).values({
+            creditNoteId: creditNote.id,
+            ...itemData,
+          });
+        }
+
+        await logAudit(
+          req.user?.id,
+          'CREATE',
+          'credit_notes',
+          creditNote.id,
+          `Manual credit note ${creditNoteNumber} created for invoice ${invoice.invoiceNumber}. Reason: ${reason}. Amount: ₹${(grandTotal / 100).toFixed(2)}`
+        );
+      });
+
+      res.json({
+        message: `Credit note ${creditNoteNumber} created successfully`,
+        creditNoteNumber,
+      });
+    } catch (error) {
+      console.error("Error creating manual credit note:", error);
+      res.status(500).json({ message: "Failed to create credit note" });
+    }
+  });
+
   // Sales Analytics - Get aggregated sales data by time period
   app.get('/api/sales-analytics', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
