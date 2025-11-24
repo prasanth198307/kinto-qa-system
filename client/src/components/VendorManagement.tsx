@@ -119,37 +119,39 @@ export default function VendorManagement() {
   const [primaryVendorTypeId, setPrimaryVendorTypeId] = useState<string | null>(null);
   const [vendorTypePopoverOpen, setVendorTypePopoverOpen] = useState(false);
 
-  // Derive pagination params synchronously from URL during render
-  const searchParams = useMemo(() => new URLSearchParams(location.split('?')[1] || ''), [location]);
-  const page = useMemo(() => parseInt(searchParams.get('page') || '1', 10), [searchParams]);
-  const pageSize = useMemo(() => parseInt(searchParams.get('pageSize') || '25', 10), [searchParams]);
-  const searchQuery = useMemo(() => searchParams.get('searchQuery') || '', [searchParams]);
-  const cityFilter = useMemo(() => searchParams.get('city') || 'all', [searchParams]);
-  const stateFilter = useMemo(() => searchParams.get('state') || 'all', [searchParams]);
-  const activeStatusFilter = useMemo(() => searchParams.get('activeStatus') || 'all', [searchParams]);
+  // Force component to re-render when URL changes
+  const [, forceUpdate] = useState(0);
+
+  // Read params directly from window.location.search (not from wouter's location hook)
+  const searchParams = new URLSearchParams(window.location.search);
+  const page = parseInt(searchParams.get('page') || '1', 10);
+  const pageSize = parseInt(searchParams.get('pageSize') || '25', 10);
+  const searchQuery = searchParams.get('searchQuery') || '';
+  const cityFilter = searchParams.get('city') || 'all';
+  const stateFilter = searchParams.get('state') || 'all';
+  const activeStatusFilter = searchParams.get('activeStatus') || 'all';
 
   // Update URL params helper
   const updateUrlParams = useCallback((updates: Record<string, string | number>) => {
-    // Read fresh location from window to avoid stale captures
-    const currentSearch = window.location.search;
-    const currentParams = new URLSearchParams(currentSearch);
+    const params = new URLSearchParams(window.location.search);
     
     Object.entries(updates).forEach(([key, value]) => {
       if (value === '' || value === 'all') {
-        currentParams.delete(key);
+        params.delete(key);
       } else {
-        currentParams.set(key, String(value));
+        params.set(key, String(value));
       }
     });
     
-    const newSearch = currentParams.toString();
-    const pathname = location.split('?')[0];
-    const newLocation = `${pathname}${newSearch ? `?${newSearch}` : ''}`;
+    const newSearch = params.toString();
+    const newUrl = newSearch ? `${window.location.pathname}?${newSearch}` : window.location.pathname;
     
-    // Update URL - component will re-render with new location,
-    // useMemo will recalculate params, React Query will refetch
-    setLocation(newLocation);
-  }, [location, setLocation]);
+    // Update URL using History API
+    window.history.pushState({}, '', newUrl);
+    
+    // Force component to re-render and refetch
+    forceUpdate(prev => prev + 1);
+  }, [forceUpdate]);
 
   // Fetch paginated vendors
   const { data: vendorsResponse, isLoading } = useQuery<PaginatedVendorResponse | Vendor[]>({
