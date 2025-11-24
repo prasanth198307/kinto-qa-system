@@ -68,30 +68,32 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const companyGSTIN = "29AABCU9603R1ZV"; // Default KINTO GSTIN
 
-  const { data: gatepasses = [] } = useQuery<Gatepass[]>({
+  const { data: gatepasses = [], isLoading: gatepassesLoading } = useQuery<Gatepass[]>({
     queryKey: ['/api/gatepasses'],
   });
 
-  const { data: invoices = [] } = useQuery<Invoice[]>({
+  const { data: invoices = [], isLoading: invoicesLoading } = useQuery<Invoice[]>({
     queryKey: ['/api/invoices'],
   });
 
-  const { data: issuances = [] } = useQuery<RawMaterialIssuance[]>({
+  const { data: issuances = [], isLoading: issuancesLoading } = useQuery<RawMaterialIssuance[]>({
     queryKey: ['/api/raw-material-issuances'],
   });
 
-  const { data: purchaseOrders = [] } = useQuery<PurchaseOrder[]>({
+  const { data: purchaseOrders = [], isLoading: purchaseOrdersLoading } = useQuery<PurchaseOrder[]>({
     queryKey: ['/api/purchase-orders'],
   });
 
-  const { data: pmExecutions = [] } = useQuery<PMExecution[]>({
+  const { data: pmExecutions = [], isLoading: pmExecutionsLoading } = useQuery<PMExecution[]>({
     queryKey: ['/api/pm-executions'],
   });
 
-  // Extract unique customers from gatepasses and invoices
+  const isLoading = gatepassesLoading || invoicesLoading || issuancesLoading || purchaseOrdersLoading || pmExecutionsLoading;
+
+  // Extract unique customers from gatepasses and invoices - use optional chaining for safety
   const uniqueCustomers = Array.from(new Set([
-    ...gatepasses.map(g => g.customerName).filter(Boolean),
-    ...invoices.map(i => i.buyerName).filter(Boolean)
+    ...(gatepasses || []).map(g => g.customerName).filter(Boolean),
+    ...(invoices || []).map(i => i.buyerName).filter(Boolean)
   ])).sort();
 
   // Filter logic
