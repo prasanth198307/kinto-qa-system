@@ -5116,18 +5116,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalOrders: vendorAnalytics.reduce((sum, v) => sum + v.totalOrders, 0),
       };
 
-      // Vendor type breakdown - count ALL vendor types (not just primary) from full dataset
+      // Vendor type breakdown - count vendors by primary type to avoid revenue double-counting
       const typeBreakdown: Record<string, { count: Set<string>; revenue: number }> = {};
       vendorAnalytics.forEach(vendor => {
-        // Count each vendor type the vendor is assigned to
-        vendor.allTypes.forEach(typeName => {
-          if (!typeBreakdown[typeName]) {
-            typeBreakdown[typeName] = { count: new Set(), revenue: 0 };
+        // Only count revenue for the primary type to avoid double-counting
+        if (vendor.primaryType) {
+          if (!typeBreakdown[vendor.primaryType]) {
+            typeBreakdown[vendor.primaryType] = { count: new Set(), revenue: 0 };
           }
-          // Use Set to avoid counting same vendor multiple times per type
-          typeBreakdown[typeName].count.add(vendor.vendorId);
-          typeBreakdown[typeName].revenue += vendor.totalRevenue;
-        });
+          typeBreakdown[vendor.primaryType].count.add(vendor.vendorId);
+          typeBreakdown[vendor.primaryType].revenue += vendor.totalRevenue;
+        }
       });
 
       // Apply filters

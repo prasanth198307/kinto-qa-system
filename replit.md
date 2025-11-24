@@ -6,6 +6,49 @@ KINTO Operations & QA is a comprehensive manufacturing operations and quality ma
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes (November 24, 2025)
+
+### Production Data Integrity Fixes
+Fixed critical data discrepancies affecting Sales Dashboard and Vendor Analytics:
+
+**1. Vendor Type Double-Counting Bug (₹8L discrepancy)**
+- **Issue:** Vendors with multiple types (e.g., "Kinto" + "HPPani") had revenue counted multiple times in type breakdown
+- **Fix:** Modified `/api/vendor-analytics` to count revenue by PRIMARY vendor type only (server/routes.ts line 5122-5133)
+- **Impact:** Vendor type breakdown sum reduced from ₹1,21,35,385 (inflated) to ₹1,13,59,999 (accurate)
+- **Database Fix:** Set `is_primary = 1` for each vendor's first vendor type assignment (158 vendors updated)
+
+**2. Missing Vendor Type Assignment (₹3L uncategorized)**
+- **Issue:** "Sri Kanthamma Talli Agencies" had ₹3,03,334 revenue but no vendor type assigned
+- **Fix:** Assigned "Kinto" as primary vendor type
+- **Impact:** All revenue now included in vendor type breakdown
+
+**3. Buyer Name Mismatches (₹3L discrepancy)**
+- **Issue:** 8 invoices had parenthetical text in buyer names preventing vendor master linkage
+- **Fix:** Updated invoice buyer names to match vendor master records exactly
+- **Impact:** Sales Dashboard and Vendor Analytics now show matching totals (339 invoices)
+
+**4. JavaScript Runtime Error Pattern**
+- **Issue:** Components using `data || []` failed when API returned error objects (truthy but not arrays)
+- **Fix:** Replaced with `Array.isArray(data) ? data : []` pattern across 8 components
+- **Files:** Reports, Dispatch Tracking, ProofOfDelivery, PendingPaymentsDashboard, InvoiceDetail, VendorAnalytics
+
+**5. Query Client Pagination Bug**
+- **Issue:** Pagination parameters not properly converted to query strings
+- **Fix:** Enhanced queryClient.ts to handle `['/api/invoices', { page: 1 }]` pattern
+- **Impact:** All paginated endpoints now work correctly
+
+**Production Deployment:**
+- Comprehensive SQL fix script created: `production-complete-fix.sql`
+- Includes all 4 database fixes in one transactional script
+- Safe, idempotent, includes verification queries
+- Documentation updated in `PRODUCTION_DEPLOYMENT.md`
+
+**Verified Results:**
+- ✅ Sales Dashboard Total: ₹1,13,59,999.78
+- ✅ Vendor Analytics Total: ₹1,13,59,999.78
+- ✅ Vendor Type Breakdown Sum: ₹1,13,59,999.78
+- ✅ Difference: ₹0.00 (perfect match!)
+
 ## System Architecture
 
 ### UI/UX Decisions

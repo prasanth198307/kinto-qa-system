@@ -402,77 +402,144 @@ Before going live:
 
 ## Production Data Fixes
 
-### Required SQL Scripts for Production Database
+### 🎯 Complete Production Fix (RECOMMENDED)
 
-After initial deployment, run these scripts to fix data issues and prevent future problems:
-
-#### 1. Buyer Name Fix (REQUIRED)
-**File:** `production-buyer-name-fix.sql`  
-**Purpose:** Fix 3L discrepancy between Sales Dashboard and Vendor Analytics  
-**Impact:** Updates 8 invoices to match vendor master records exactly
+**File:** `production-complete-fix.sql`  
+**Purpose:** Fix ALL data integrity issues in one comprehensive script  
+**Impact:** Ensures Sales Dashboard = Vendor Analytics = ₹1,13,59,999.78 (perfect match)
 
 ```bash
-# On your Mac production database (localhost:5050)
-psql your_production_database_url -f production-buyer-name-fix.sql
+# For OCI production database
+ssh user@your-oci-instance
+cd /path/to/kinto-smart-ops
+git pull  # Get latest code including SQL scripts
+psql $DATABASE_URL -f production-complete-fix.sql
 ```
-
-**What it fixes:**
-- **Before:** Sales Dashboard shows ₹1,13,59,999, Vendor Analytics shows ₹1,10,49,999 (3L difference)
-- **After:** Both dashboards show ₹1,13,59,999 (perfect match)
-
-**Changes:**
-- 6 invoices: Removes "(Sri Kartam Talli Agencies)" suffix
-- 1 invoice: Removes "(MS SRI VENKATESWARA SER STN T CHOULTR)" suffix  
-- 1 invoice: Removes "(VISALAKSHI FILLING STATI)" suffix
-
-#### 2. Unique Constraint Fix (REQUIRED)
-**File:** `mac-production-fix.sql`  
-**Purpose:** Prevent duplicate vendor type assignments  
-**Impact:** Adds database constraint for data integrity
 
 ```bash
-# On your Mac production database (localhost:5050)
-psql your_production_database_url -f mac-production-fix.sql
+# For Mac production database (localhost:5050)
+psql your_production_database_url -f production-complete-fix.sql
 ```
 
-**What it fixes:**
+#### What This Script Fixes:
+
+**1. Buyer Name Mismatches (₹3L discrepancy)**
+- Updates 8 invoices to match vendor master records exactly
+- **Result:** Sales Dashboard and Vendor Analytics show matching totals
+
+**2. Primary Vendor Type Assignments (₹8L double-counting bug)**
+- Sets `is_primary = 1` for each vendor's first vendor type
+- **Result:** Vendor type breakdown no longer double-counts revenue
+- **Before:** Breakdown sum = ₹1,21,35,385 (inflated)
+- **After:** Breakdown sum = ₹1,13,59,999 (accurate)
+
+**3. Missing Vendor Type Assignment (₹3L uncategorized revenue)**
+- Assigns "Kinto" type to "Sri Kanthamma Talli Agencies"
+- **Result:** All revenue included in vendor type breakdown
+
+**4. Duplicate Prevention (unique constraint)**
 - Removes existing duplicate vendor type assignments
 - Adds unique constraint to prevent future duplicates
-- Prevents "Kinto Kinto" badge display issues
+- **Result:** No more "Kinto Kinto" badge issues
 
-### Recommended Execution Order
+#### Expected Results After Running Script:
 
-Run both scripts in this sequence:
+✅ **Sales Dashboard Total:** ₹1,13,59,999.78  
+✅ **Vendor Analytics Total:** ₹1,13,59,999.78  
+✅ **Vendor Type Breakdown Sum:** ₹1,13,59,999.78  
+✅ **Difference:** ₹0.00 (perfect match!)
 
+**Breakdown by Type:**
+- Kinto: ₹95,50,265.78
+- HPPani: ₹10,17,929.80
+- Purejal: ₹7,91,804.20
+- **Total:** ₹1,13,59,999.78 ✅
+
+#### Safety Features:
+
+- ✅ Uses transaction (BEGIN...COMMIT) - auto-rollback on errors
+- ✅ Idempotent - safe to run multiple times
+- ✅ Includes verification queries
+- ✅ Checks for existing constraints before adding
+
+---
+
+### 🔧 Individual Fix Scripts (Legacy)
+
+If you prefer to run fixes separately, these individual scripts are also available:
+
+#### 1. Buyer Name Fix Only
+**File:** `production-buyer-name-fix.sql`  
 ```bash
-# 1. Fix buyer names (data accuracy)
 psql $DATABASE_URL -f production-buyer-name-fix.sql
+```
 
-# 2. Add unique constraint (data integrity)
+#### 2. Unique Constraint Fix Only
+**File:** `mac-production-fix.sql`  
+```bash
 psql $DATABASE_URL -f mac-production-fix.sql
 ```
 
+**Note:** The comprehensive script (`production-complete-fix.sql`) is recommended as it includes all fixes plus additional improvements.
+
+---
+
 ### Verification Queries
 
-After running the scripts, verify the fixes worked:
+After running the complete fix script, verify all fixes worked:
 
 ```sql
--- Verify buyer name fix (should show 339 invoices matched)
+-- 1. Verify buyer name fix (should show 339 invoices matched)
 SELECT 
   COUNT(*) as matched_invoices,
   SUM(total_amount)/100 as total_sales
 FROM invoices i
 INNER JOIN vendors v ON i.buyer_name = v.vendor_name
 WHERE i.record_status = 1 AND v.record_status = 1;
--- Expected: 339 invoices, ₹1,13,59,999
+-- Expected: 339 invoices, ₹1,13,59,999.78
 
--- Verify unique constraint exists
-SELECT conname 
-FROM pg_constraint 
-WHERE conrelid = 'vendor_vendor_types'::regclass 
-  AND conname = 'vendor_vendor_types_vendor_id_vendor_type_id_unique';
--- Expected: 1 row
+-- 2. Verify vendor type breakdown matches total revenue
+WITH vendor_revenue AS (
+  SELECT 
+    v.id,
+    COALESCE(SUM(i.total_amount), 0) as total_revenue
+  FROM vendors v
+  LEFT JOIN invoices i ON i.buyer_name = v.vendor_name AND i.record_status = 1
+  WHERE v.record_status = 1
+  GROUP BY v.id
+),
+type_breakdown AS (
+  SELECT 
+    vt.name as vendor_type,
+    SUM(vr.total_revenue) as type_revenue
+  FROM vendor_revenue vr
+  INNER JOIN vendor_vendor_types vvt ON vr.id = vvt.vendor_id
+  INNER JOIN vendor_types vt ON vvt.vendor_type_id = vt.id
+  WHERE vvt.is_primary = 1 AND vvt.record_status = 1
+  GROUP BY vt.name
+)
+SELECT vendor_type, type_revenue / 100.0 as revenue_rupees
+FROM type_breakdown
+UNION ALL
+SELECT 'TOTAL', SUM(type_revenue) / 100.0
+FROM type_breakdown;
+-- Expected: Total = ₹1,13,59,999.78
+
+-- 3. Verify no uncategorized vendors with revenue
+SELECT COUNT(*) as uncategorized_vendors
+FROM (
+  SELECT v.id, COALESCE(SUM(i.total_amount), 0) as total_revenue
+  FROM vendors v
+  LEFT JOIN invoices i ON i.buyer_name = v.vendor_name AND i.record_status = 1
+  WHERE v.record_status = 1
+  GROUP BY v.id
+) vr
+LEFT JOIN vendor_vendor_types vvt ON vr.id = vvt.vendor_id AND vvt.record_status = 1
+WHERE vvt.vendor_id IS NULL AND vr.total_revenue > 0;
+-- Expected: 0
 ```
+
+---
 
 ### Replit Production Database Notes
 
@@ -482,7 +549,7 @@ When published to Replit, database **schema** changes are automatically applied.
 2. Select "Production Database"
 3. Select "My data"
 4. Toggle "Edit" mode
-5. Run the SQL queries from the scripts manually
+5. Copy and run the SQL from `production-complete-fix.sql` manually (in sections if needed)
 
 **Important:** Agent cannot modify production databases directly for safety reasons.
 
