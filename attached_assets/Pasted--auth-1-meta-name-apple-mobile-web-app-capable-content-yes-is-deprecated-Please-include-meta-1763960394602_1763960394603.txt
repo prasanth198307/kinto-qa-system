@@ -1,0 +1,355 @@
+
+auth:1 <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">Understand this warning
+queryClient.ts:32  GET https://713657ac-53c6-43a9-97a8-ef2697ef92d9-00-2xs534ob7npt2.riker.replit.dev/api/user 401 (Unauthorized)
+(anonymous) @ queryClient.ts:32
+fetchFn @ @tanstack_react-query.js?v=7ab7df22:1066
+run @ @tanstack_react-query.js?v=7ab7df22:776
+start @ @tanstack_react-query.js?v=7ab7df22:818
+fetch @ @tanstack_react-query.js?v=7ab7df22:1113
+#executeFetch @ @tanstack_react-query.js?v=7ab7df22:1432
+onSubscribe @ @tanstack_react-query.js?v=7ab7df22:1305
+subscribe @ @tanstack_react-query.js?v=7ab7df22:19
+(anonymous) @ @tanstack_react-query.js?v=7ab7df22:3243
+subscribeToStore @ chunk-E22KYI7D.js?v=7ab7df22:12032
+commitHookEffectListMount @ chunk-E22KYI7D.js?v=7ab7df22:16963
+commitPassiveMountOnFiber @ chunk-E22KYI7D.js?v=7ab7df22:18206
+commitPassiveMountEffects_complete @ chunk-E22KYI7D.js?v=7ab7df22:18179
+commitPassiveMountEffects_begin @ chunk-E22KYI7D.js?v=7ab7df22:18169
+commitPassiveMountEffects @ chunk-E22KYI7D.js?v=7ab7df22:18159
+flushPassiveEffectsImpl @ chunk-E22KYI7D.js?v=7ab7df22:19543
+flushPassiveEffects @ chunk-E22KYI7D.js?v=7ab7df22:19500
+performSyncWorkOnRoot @ chunk-E22KYI7D.js?v=7ab7df22:18921
+flushSyncCallbacks @ chunk-E22KYI7D.js?v=7ab7df22:9166
+commitRootImpl @ chunk-E22KYI7D.js?v=7ab7df22:19485
+commitRoot @ chunk-E22KYI7D.js?v=7ab7df22:19330
+finishConcurrentRender @ chunk-E22KYI7D.js?v=7ab7df22:18858
+performConcurrentWorkOnRoot @ chunk-E22KYI7D.js?v=7ab7df22:18768
+workLoop @ chunk-E22KYI7D.js?v=7ab7df22:197
+flushWork @ chunk-E22KYI7D.js?v=7ab7df22:176
+performWorkUntilDeadline @ chunk-E22KYI7D.js?v=7ab7df22:384Understand this error
+DataTablePagination.tsx:25 Uncaught TypeError: Cannot read properties of undefined (reading 'totalItems')
+    at DataTablePagination (DataTablePagination.tsx:25:28)
+    at renderWithHooks (chunk-E22KYI7D.js?v=7ab7df22:11596:26)
+    at mountIndeterminateComponent (chunk-E22KYI7D.js?v=7ab7df22:14974:21)
+    at beginWork (chunk-E22KYI7D.js?v=7ab7df22:15962:22)
+    at HTMLUnknownElement.callCallback2 (chunk-E22KYI7D.js?v=7ab7df22:3680:22)
+    at Object.invokeGuardedCallbackDev (chunk-E22KYI7D.js?v=7ab7df22:3705:24)
+    at invokeGuardedCallback (chunk-E22KYI7D.js?v=7ab7df22:3739:39)
+    at beginWork$1 (chunk-E22KYI7D.js?v=7ab7df22:19818:15)
+    at performUnitOfWork (chunk-E22KYI7D.js?v=7ab7df22:19251:20)
+    at workLoopSync (chunk-E22KYI7D.js?v=7ab7df22:19190:13)
+DataTablePagination @ DataTablePagination.tsx:25
+renderWithHooks @ chunk-E22KYI7D.js?v=7ab7df22:11596
+mountIndeterminateComponent @ chunk-E22KYI7D.js?v=7ab7df22:14974
+beginWork @ chunk-E22KYI7D.js?v=7ab7df22:15962
+callCallback2 @ chunk-E22KYI7D.js?v=7ab7df22:3680
+invokeGuardedCallbackDev @ chunk-E22KYI7D.js?v=7ab7df22:3705
+invokeGuardedCallback @ chunk-E22KYI7D.js?v=7ab7df22:3739
+beginWork$1 @ chunk-E22KYI7D.js?v=7ab7df22:19818
+performUnitOfWork @ chunk-E22KYI7D.js?v=7ab7df22:19251
+workLoopSync @ chunk-E22KYI7D.js?v=7ab7df22:19190
+renderRootSync @ chunk-E22KYI7D.js?v=7ab7df22:19169
+performSyncWorkOnRoot @ chunk-E22KYI7D.js?v=7ab7df22:18927
+flushSyncCallbacks @ chunk-E22KYI7D.js?v=7ab7df22:9166
+(anonymous) @ chunk-E22KYI7D.js?v=7ab7df22:18677
+setTimeout
+systemSetTimeoutZero @ @tanstack_react-query.js?v=7ab7df22:95
+flush @ @tanstack_react-query.js?v=7ab7df22:597
+batch @ @tanstack_react-query.js?v=7ab7df22:615
+#dispatch @ @tanstack_react-query.js?v=7ab7df22:1222
+setData @ @tanstack_react-query.js?v=7ab7df22:904
+fetch @ @tanstack_react-query.js?v=7ab7df22:1122
+await in fetch
+#executeFetch @ @tanstack_react-query.js?v=7ab7df22:1432
+onSubscribe @ @tanstack_react-query.js?v=7ab7df22:1305
+subscribe @ @tanstack_react-query.js?v=7ab7df22:19
+(anonymous) @ @tanstack_react-query.js?v=7ab7df22:3243
+subscribeToStore @ chunk-E22KYI7D.js?v=7ab7df22:12032
+commitHookEffectListMount @ chunk-E22KYI7D.js?v=7ab7df22:16963
+commitPassiveMountOnFiber @ chunk-E22KYI7D.js?v=7ab7df22:18206
+commitPassiveMountEffects_complete @ chunk-E22KYI7D.js?v=7ab7df22:18179
+commitPassiveMountEffects_begin @ chunk-E22KYI7D.js?v=7ab7df22:18169
+commitPassiveMountEffects @ chunk-E22KYI7D.js?v=7ab7df22:18159
+flushPassiveEffectsImpl @ chunk-E22KYI7D.js?v=7ab7df22:19543
+flushPassiveEffects @ chunk-E22KYI7D.js?v=7ab7df22:19500
+commitRootImpl @ chunk-E22KYI7D.js?v=7ab7df22:19469
+commitRoot @ chunk-E22KYI7D.js?v=7ab7df22:19330
+performSyncWorkOnRoot @ chunk-E22KYI7D.js?v=7ab7df22:18948
+flushSyncCallbacks @ chunk-E22KYI7D.js?v=7ab7df22:9166
+(anonymous) @ chunk-E22KYI7D.js?v=7ab7df22:18677
+setTimeout
+systemSetTimeoutZero @ @tanstack_react-query.js?v=7ab7df22:95
+flush @ @tanstack_react-query.js?v=7ab7df22:597
+batch @ @tanstack_react-query.js?v=7ab7df22:615
+#dispatch @ @tanstack_react-query.js?v=7ab7df22:1222
+setData @ @tanstack_react-query.js?v=7ab7df22:904
+setQueryData @ @tanstack_react-query.js?v=7ab7df22:2764
+onSuccess @ use-auth.tsx:40
+execute @ @tanstack_react-query.js?v=7ab7df22:2017
+await in execute
+mutate @ @tanstack_react-query.js?v=7ab7df22:2332
+(anonymous) @ @tanstack_react-query.js?v=7ab7df22:3512
+handleLogin @ auth-page.tsx:29
+callCallback2 @ chunk-E22KYI7D.js?v=7ab7df22:3680
+invokeGuardedCallbackDev @ chunk-E22KYI7D.js?v=7ab7df22:3705
+invokeGuardedCallback @ chunk-E22KYI7D.js?v=7ab7df22:3739
+invokeGuardedCallbackAndCatchFirstError @ chunk-E22KYI7D.js?v=7ab7df22:3742
+executeDispatch @ chunk-E22KYI7D.js?v=7ab7df22:7046
+processDispatchQueueItemsInOrder @ chunk-E22KYI7D.js?v=7ab7df22:7066
+processDispatchQueue @ chunk-E22KYI7D.js?v=7ab7df22:7075
+dispatchEventsForPlugins @ chunk-E22KYI7D.js?v=7ab7df22:7083
+(anonymous) @ chunk-E22KYI7D.js?v=7ab7df22:7206
+batchedUpdates$1 @ chunk-E22KYI7D.js?v=7ab7df22:18966
+batchedUpdates @ chunk-E22KYI7D.js?v=7ab7df22:3585
+dispatchEventForPluginEventSystem @ chunk-E22KYI7D.js?v=7ab7df22:7205
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-E22KYI7D.js?v=7ab7df22:5484
+dispatchEvent @ chunk-E22KYI7D.js?v=7ab7df22:5478
+dispatchDiscreteEvent @ chunk-E22KYI7D.js?v=7ab7df22:5455Understand this error
+DataTablePagination.tsx:25 Uncaught TypeError: Cannot read properties of undefined (reading 'totalItems')
+    at DataTablePagination (DataTablePagination.tsx:25:28)
+    at renderWithHooks (chunk-E22KYI7D.js?v=7ab7df22:11596:26)
+    at mountIndeterminateComponent (chunk-E22KYI7D.js?v=7ab7df22:14974:21)
+    at beginWork (chunk-E22KYI7D.js?v=7ab7df22:15962:22)
+    at HTMLUnknownElement.callCallback2 (chunk-E22KYI7D.js?v=7ab7df22:3680:22)
+    at Object.invokeGuardedCallbackDev (chunk-E22KYI7D.js?v=7ab7df22:3705:24)
+    at invokeGuardedCallback (chunk-E22KYI7D.js?v=7ab7df22:3739:39)
+    at beginWork$1 (chunk-E22KYI7D.js?v=7ab7df22:19818:15)
+    at performUnitOfWork (chunk-E22KYI7D.js?v=7ab7df22:19251:20)
+    at workLoopSync (chunk-E22KYI7D.js?v=7ab7df22:19190:13)
+DataTablePagination @ DataTablePagination.tsx:25
+renderWithHooks @ chunk-E22KYI7D.js?v=7ab7df22:11596
+mountIndeterminateComponent @ chunk-E22KYI7D.js?v=7ab7df22:14974
+beginWork @ chunk-E22KYI7D.js?v=7ab7df22:15962
+callCallback2 @ chunk-E22KYI7D.js?v=7ab7df22:3680
+invokeGuardedCallbackDev @ chunk-E22KYI7D.js?v=7ab7df22:3705
+invokeGuardedCallback @ chunk-E22KYI7D.js?v=7ab7df22:3739
+beginWork$1 @ chunk-E22KYI7D.js?v=7ab7df22:19818
+performUnitOfWork @ chunk-E22KYI7D.js?v=7ab7df22:19251
+workLoopSync @ chunk-E22KYI7D.js?v=7ab7df22:19190
+renderRootSync @ chunk-E22KYI7D.js?v=7ab7df22:19169
+recoverFromConcurrentError @ chunk-E22KYI7D.js?v=7ab7df22:18786
+performSyncWorkOnRoot @ chunk-E22KYI7D.js?v=7ab7df22:18932
+flushSyncCallbacks @ chunk-E22KYI7D.js?v=7ab7df22:9166
+(anonymous) @ chunk-E22KYI7D.js?v=7ab7df22:18677
+setTimeout
+systemSetTimeoutZero @ @tanstack_react-query.js?v=7ab7df22:95
+flush @ @tanstack_react-query.js?v=7ab7df22:597
+batch @ @tanstack_react-query.js?v=7ab7df22:615
+#dispatch @ @tanstack_react-query.js?v=7ab7df22:1222
+setData @ @tanstack_react-query.js?v=7ab7df22:904
+fetch @ @tanstack_react-query.js?v=7ab7df22:1122
+await in fetch
+#executeFetch @ @tanstack_react-query.js?v=7ab7df22:1432
+onSubscribe @ @tanstack_react-query.js?v=7ab7df22:1305
+subscribe @ @tanstack_react-query.js?v=7ab7df22:19
+(anonymous) @ @tanstack_react-query.js?v=7ab7df22:3243
+subscribeToStore @ chunk-E22KYI7D.js?v=7ab7df22:12032
+commitHookEffectListMount @ chunk-E22KYI7D.js?v=7ab7df22:16963
+commitPassiveMountOnFiber @ chunk-E22KYI7D.js?v=7ab7df22:18206
+commitPassiveMountEffects_complete @ chunk-E22KYI7D.js?v=7ab7df22:18179
+commitPassiveMountEffects_begin @ chunk-E22KYI7D.js?v=7ab7df22:18169
+commitPassiveMountEffects @ chunk-E22KYI7D.js?v=7ab7df22:18159
+flushPassiveEffectsImpl @ chunk-E22KYI7D.js?v=7ab7df22:19543
+flushPassiveEffects @ chunk-E22KYI7D.js?v=7ab7df22:19500
+commitRootImpl @ chunk-E22KYI7D.js?v=7ab7df22:19469
+commitRoot @ chunk-E22KYI7D.js?v=7ab7df22:19330
+performSyncWorkOnRoot @ chunk-E22KYI7D.js?v=7ab7df22:18948
+flushSyncCallbacks @ chunk-E22KYI7D.js?v=7ab7df22:9166
+(anonymous) @ chunk-E22KYI7D.js?v=7ab7df22:18677
+setTimeout
+systemSetTimeoutZero @ @tanstack_react-query.js?v=7ab7df22:95
+flush @ @tanstack_react-query.js?v=7ab7df22:597
+batch @ @tanstack_react-query.js?v=7ab7df22:615
+#dispatch @ @tanstack_react-query.js?v=7ab7df22:1222
+setData @ @tanstack_react-query.js?v=7ab7df22:904
+setQueryData @ @tanstack_react-query.js?v=7ab7df22:2764
+onSuccess @ use-auth.tsx:40
+execute @ @tanstack_react-query.js?v=7ab7df22:2017
+await in execute
+mutate @ @tanstack_react-query.js?v=7ab7df22:2332
+(anonymous) @ @tanstack_react-query.js?v=7ab7df22:3512
+handleLogin @ auth-page.tsx:29
+callCallback2 @ chunk-E22KYI7D.js?v=7ab7df22:3680
+invokeGuardedCallbackDev @ chunk-E22KYI7D.js?v=7ab7df22:3705
+invokeGuardedCallback @ chunk-E22KYI7D.js?v=7ab7df22:3739
+invokeGuardedCallbackAndCatchFirstError @ chunk-E22KYI7D.js?v=7ab7df22:3742
+executeDispatch @ chunk-E22KYI7D.js?v=7ab7df22:7046
+processDispatchQueueItemsInOrder @ chunk-E22KYI7D.js?v=7ab7df22:7066
+processDispatchQueue @ chunk-E22KYI7D.js?v=7ab7df22:7075
+dispatchEventsForPlugins @ chunk-E22KYI7D.js?v=7ab7df22:7083
+(anonymous) @ chunk-E22KYI7D.js?v=7ab7df22:7206
+batchedUpdates$1 @ chunk-E22KYI7D.js?v=7ab7df22:18966
+batchedUpdates @ chunk-E22KYI7D.js?v=7ab7df22:3585
+dispatchEventForPluginEventSystem @ chunk-E22KYI7D.js?v=7ab7df22:7205
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-E22KYI7D.js?v=7ab7df22:5484
+dispatchEvent @ chunk-E22KYI7D.js?v=7ab7df22:5478
+dispatchDiscreteEvent @ chunk-E22KYI7D.js?v=7ab7df22:5455Understand this error
+use-auth.tsx:40 The above error occurred in the <DataTablePagination> component:
+
+    at DataTablePagination (https://713657ac-53c6-43a9-97a8-ef2697ef92d9-00-2xs534ob7npt2.riker.replit.dev/src/components/DataTablePagination.tsx:27:3)
+    at div
+    at div
+    at _c9 (https://713657ac-53c6-43a9-97a8-ef2697ef92d9-00-2xs534ob7npt2.riker.replit.dev/src/components/ui/card.tsx:114:12)
+    at div
+    at _c (https://713657ac-53c6-43a9-97a8-ef2697ef92d9-00-2xs534ob7npt2.riker.replit.dev/src/components/ui/card.tsx:20:11)
+    at PendingPaymentsDashboard (https://713657ac-53c6-43a9-97a8-ef2697ef92d9-00-2xs534ob7npt2.riker.replit.dev/src/components/PendingPaymentsDashboard.tsx:48:52)
+    at div
+    at div
+    at div
+    at DashboardShell (https://713657ac-53c6-43a9-97a8-ef2697ef92d9-00-2xs534ob7npt2.riker.replit.dev/src/components/DashboardShell.tsx:22:3)
+    at AdminDashboard (https://713657ac-53c6-43a9-97a8-ef2697ef92d9-00-2xs534ob7npt2.riker.replit.dev/src/App.tsx:776:30)
+    at AuthenticatedApp (https://713657ac-53c6-43a9-97a8-ef2697ef92d9-00-2xs534ob7npt2.riker.replit.dev/src/App.tsx:1428:31)
+    at Route (https://713657ac-53c6-43a9-97a8-ef2697ef92d9-00-2xs534ob7npt2.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=7ab7df22:279:16)
+    at ProtectedRoute (https://713657ac-53c6-43a9-97a8-ef2697ef92d9-00-2xs534ob7npt2.riker.replit.dev/src/lib/protected-route.tsx:22:3)
+    at Switch (https://713657ac-53c6-43a9-97a8-ef2697ef92d9-00-2xs534ob7npt2.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=7ab7df22:335:17)
+    at Router
+    at Provider (https://713657ac-53c6-43a9-97a8-ef2697ef92d9-00-2xs534ob7npt2.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-XAOWCEX7.js?v=7ab7df22:43:15)
+    at TooltipProvider (https://713657ac-53c6-43a9-97a8-ef2697ef92d9-00-2xs534ob7npt2.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=7ab7df22:156:5)
+    at AuthProvider (https://713657ac-53c6-43a9-97a8-ef2697ef92d9-00-2xs534ob7npt2.riker.replit.dev/src/hooks/use-auth.tsx:26:32)
+    at QueryClientProvider (https://713657ac-53c6-43a9-97a8-ef2697ef92d9-00-2xs534ob7npt2.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=7ab7df22:3028:3)
+    at App
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+logCapturedError @ chunk-E22KYI7D.js?v=7ab7df22:14080
+update.callback @ chunk-E22KYI7D.js?v=7ab7df22:14100
+callCallback @ chunk-E22KYI7D.js?v=7ab7df22:11296
+commitUpdateQueue @ chunk-E22KYI7D.js?v=7ab7df22:11313
+commitLayoutEffectOnFiber @ chunk-E22KYI7D.js?v=7ab7df22:17141
+commitLayoutMountEffects_complete @ chunk-E22KYI7D.js?v=7ab7df22:18030
+commitLayoutEffects_begin @ chunk-E22KYI7D.js?v=7ab7df22:18019
+commitLayoutEffects @ chunk-E22KYI7D.js?v=7ab7df22:17970
+commitRootImpl @ chunk-E22KYI7D.js?v=7ab7df22:19406
+commitRoot @ chunk-E22KYI7D.js?v=7ab7df22:19330
+performSyncWorkOnRoot @ chunk-E22KYI7D.js?v=7ab7df22:18948
+flushSyncCallbacks @ chunk-E22KYI7D.js?v=7ab7df22:9166
+(anonymous) @ chunk-E22KYI7D.js?v=7ab7df22:18677
+setTimeout
+systemSetTimeoutZero @ @tanstack_react-query.js?v=7ab7df22:95
+flush @ @tanstack_react-query.js?v=7ab7df22:597
+batch @ @tanstack_react-query.js?v=7ab7df22:615
+#dispatch @ @tanstack_react-query.js?v=7ab7df22:1222
+setData @ @tanstack_react-query.js?v=7ab7df22:904
+fetch @ @tanstack_react-query.js?v=7ab7df22:1122
+await in fetch
+#executeFetch @ @tanstack_react-query.js?v=7ab7df22:1432
+onSubscribe @ @tanstack_react-query.js?v=7ab7df22:1305
+subscribe @ @tanstack_react-query.js?v=7ab7df22:19
+(anonymous) @ @tanstack_react-query.js?v=7ab7df22:3243
+subscribeToStore @ chunk-E22KYI7D.js?v=7ab7df22:12032
+commitHookEffectListMount @ chunk-E22KYI7D.js?v=7ab7df22:16963
+commitPassiveMountOnFiber @ chunk-E22KYI7D.js?v=7ab7df22:18206
+commitPassiveMountEffects_complete @ chunk-E22KYI7D.js?v=7ab7df22:18179
+commitPassiveMountEffects_begin @ chunk-E22KYI7D.js?v=7ab7df22:18169
+commitPassiveMountEffects @ chunk-E22KYI7D.js?v=7ab7df22:18159
+flushPassiveEffectsImpl @ chunk-E22KYI7D.js?v=7ab7df22:19543
+flushPassiveEffects @ chunk-E22KYI7D.js?v=7ab7df22:19500
+commitRootImpl @ chunk-E22KYI7D.js?v=7ab7df22:19469
+commitRoot @ chunk-E22KYI7D.js?v=7ab7df22:19330
+performSyncWorkOnRoot @ chunk-E22KYI7D.js?v=7ab7df22:18948
+flushSyncCallbacks @ chunk-E22KYI7D.js?v=7ab7df22:9166
+(anonymous) @ chunk-E22KYI7D.js?v=7ab7df22:18677
+setTimeout
+systemSetTimeoutZero @ @tanstack_react-query.js?v=7ab7df22:95
+flush @ @tanstack_react-query.js?v=7ab7df22:597
+batch @ @tanstack_react-query.js?v=7ab7df22:615
+#dispatch @ @tanstack_react-query.js?v=7ab7df22:1222
+setData @ @tanstack_react-query.js?v=7ab7df22:904
+setQueryData @ @tanstack_react-query.js?v=7ab7df22:2764
+onSuccess @ use-auth.tsx:40
+execute @ @tanstack_react-query.js?v=7ab7df22:2017
+await in execute
+mutate @ @tanstack_react-query.js?v=7ab7df22:2332
+(anonymous) @ @tanstack_react-query.js?v=7ab7df22:3512
+handleLogin @ auth-page.tsx:29
+callCallback2 @ chunk-E22KYI7D.js?v=7ab7df22:3680
+invokeGuardedCallbackDev @ chunk-E22KYI7D.js?v=7ab7df22:3705
+invokeGuardedCallback @ chunk-E22KYI7D.js?v=7ab7df22:3739
+invokeGuardedCallbackAndCatchFirstError @ chunk-E22KYI7D.js?v=7ab7df22:3742
+executeDispatch @ chunk-E22KYI7D.js?v=7ab7df22:7046
+processDispatchQueueItemsInOrder @ chunk-E22KYI7D.js?v=7ab7df22:7066
+processDispatchQueue @ chunk-E22KYI7D.js?v=7ab7df22:7075
+dispatchEventsForPlugins @ chunk-E22KYI7D.js?v=7ab7df22:7083
+(anonymous) @ chunk-E22KYI7D.js?v=7ab7df22:7206
+batchedUpdates$1 @ chunk-E22KYI7D.js?v=7ab7df22:18966
+batchedUpdates @ chunk-E22KYI7D.js?v=7ab7df22:3585
+dispatchEventForPluginEventSystem @ chunk-E22KYI7D.js?v=7ab7df22:7205
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-E22KYI7D.js?v=7ab7df22:5484
+dispatchEvent @ chunk-E22KYI7D.js?v=7ab7df22:5478
+dispatchDiscreteEvent @ chunk-E22KYI7D.js?v=7ab7df22:5455Understand this error
+chunk-E22KYI7D.js?v=7ab7df22:9176 Uncaught TypeError: Cannot read properties of undefined (reading 'totalItems')
+    at DataTablePagination (DataTablePagination.tsx:25:28)
+    at renderWithHooks (chunk-E22KYI7D.js?v=7ab7df22:11596:26)
+    at mountIndeterminateComponent (chunk-E22KYI7D.js?v=7ab7df22:14974:21)
+    at beginWork (chunk-E22KYI7D.js?v=7ab7df22:15962:22)
+    at beginWork$1 (chunk-E22KYI7D.js?v=7ab7df22:19806:22)
+    at performUnitOfWork (chunk-E22KYI7D.js?v=7ab7df22:19251:20)
+    at workLoopSync (chunk-E22KYI7D.js?v=7ab7df22:19190:13)
+    at renderRootSync (chunk-E22KYI7D.js?v=7ab7df22:19169:15)
+    at recoverFromConcurrentError (chunk-E22KYI7D.js?v=7ab7df22:18786:28)
+    at performSyncWorkOnRoot (chunk-E22KYI7D.js?v=7ab7df22:18932:28)
+DataTablePagination @ DataTablePagination.tsx:25
+renderWithHooks @ chunk-E22KYI7D.js?v=7ab7df22:11596
+mountIndeterminateComponent @ chunk-E22KYI7D.js?v=7ab7df22:14974
+beginWork @ chunk-E22KYI7D.js?v=7ab7df22:15962
+beginWork$1 @ chunk-E22KYI7D.js?v=7ab7df22:19806
+performUnitOfWork @ chunk-E22KYI7D.js?v=7ab7df22:19251
+workLoopSync @ chunk-E22KYI7D.js?v=7ab7df22:19190
+renderRootSync @ chunk-E22KYI7D.js?v=7ab7df22:19169
+recoverFromConcurrentError @ chunk-E22KYI7D.js?v=7ab7df22:18786
+performSyncWorkOnRoot @ chunk-E22KYI7D.js?v=7ab7df22:18932
+flushSyncCallbacks @ chunk-E22KYI7D.js?v=7ab7df22:9166
+(anonymous) @ chunk-E22KYI7D.js?v=7ab7df22:18677
+setTimeout
+systemSetTimeoutZero @ @tanstack_react-query.js?v=7ab7df22:95
+flush @ @tanstack_react-query.js?v=7ab7df22:597
+batch @ @tanstack_react-query.js?v=7ab7df22:615
+#dispatch @ @tanstack_react-query.js?v=7ab7df22:1222
+setData @ @tanstack_react-query.js?v=7ab7df22:904
+fetch @ @tanstack_react-query.js?v=7ab7df22:1122
+await in fetch
+#executeFetch @ @tanstack_react-query.js?v=7ab7df22:1432
+onSubscribe @ @tanstack_react-query.js?v=7ab7df22:1305
+subscribe @ @tanstack_react-query.js?v=7ab7df22:19
+(anonymous) @ @tanstack_react-query.js?v=7ab7df22:3243
+subscribeToStore @ chunk-E22KYI7D.js?v=7ab7df22:12032
+commitHookEffectListMount @ chunk-E22KYI7D.js?v=7ab7df22:16963
+commitPassiveMountOnFiber @ chunk-E22KYI7D.js?v=7ab7df22:18206
+commitPassiveMountEffects_complete @ chunk-E22KYI7D.js?v=7ab7df22:18179
+commitPassiveMountEffects_begin @ chunk-E22KYI7D.js?v=7ab7df22:18169
+commitPassiveMountEffects @ chunk-E22KYI7D.js?v=7ab7df22:18159
+flushPassiveEffectsImpl @ chunk-E22KYI7D.js?v=7ab7df22:19543
+flushPassiveEffects @ chunk-E22KYI7D.js?v=7ab7df22:19500
+commitRootImpl @ chunk-E22KYI7D.js?v=7ab7df22:19469
+commitRoot @ chunk-E22KYI7D.js?v=7ab7df22:19330
+performSyncWorkOnRoot @ chunk-E22KYI7D.js?v=7ab7df22:18948
+flushSyncCallbacks @ chunk-E22KYI7D.js?v=7ab7df22:9166
+(anonymous) @ chunk-E22KYI7D.js?v=7ab7df22:18677
+setTimeout
+systemSetTimeoutZero @ @tanstack_react-query.js?v=7ab7df22:95
+flush @ @tanstack_react-query.js?v=7ab7df22:597
+batch @ @tanstack_react-query.js?v=7ab7df22:615
+#dispatch @ @tanstack_react-query.js?v=7ab7df22:1222
+setData @ @tanstack_react-query.js?v=7ab7df22:904
+setQueryData @ @tanstack_react-query.js?v=7ab7df22:2764
+onSuccess @ use-auth.tsx:40
+execute @ @tanstack_react-query.js?v=7ab7df22:2017
+await in execute
+mutate @ @tanstack_react-query.js?v=7ab7df22:2332
+(anonymous) @ @tanstack_react-query.js?v=7ab7df22:3512
+handleLogin @ auth-page.tsx:29
+callCallback2 @ chunk-E22KYI7D.js?v=7ab7df22:3680
+invokeGuardedCallbackDev @ chunk-E22KYI7D.js?v=7ab7df22:3705
+invokeGuardedCallback @ chunk-E22KYI7D.js?v=7ab7df22:3739
+invokeGuardedCallbackAndCatchFirstError @ chunk-E22KYI7D.js?v=7ab7df22:3742
+executeDispatch @ chunk-E22KYI7D.js?v=7ab7df22:7046
+processDispatchQueueItemsInOrder @ chunk-E22KYI7D.js?v=7ab7df22:7066
+processDispatchQueue @ chunk-E22KYI7D.js?v=7ab7df22:7075
+dispatchEventsForPlugins @ chunk-E22KYI7D.js?v=7ab7df22:7083
+(anonymous) @ chunk-E22KYI7D.js?v=7ab7df22:7206
+batchedUpdates$1 @ chunk-E22KYI7D.js?v=7ab7df22:18966
+batchedUpdates @ chunk-E22KYI7D.js?v=7ab7df22:3585
+dispatchEventForPluginEventSystem @ chunk-E22KYI7D.js?v=7ab7df22:7205
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-E22KYI7D.js?v=7ab7df22:5484
+dispatchEvent @ chunk-E22KYI7D.js?v=7ab7df22:5478
+dispatchDiscreteEvent @ chunk-E22KYI7D.js?v=7ab7df22:5455Understand this error

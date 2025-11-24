@@ -307,12 +307,7 @@ export default function PendingPaymentsDashboard({ customerFilter }: PendingPaym
         {paginationMeta && pendingInvoices.length > 0 && (
           <div className="mt-4">
             <DataTablePagination
-              currentPage={paginationMeta.page}
-              pageSize={paginationMeta.pageSize}
-              totalItems={paginationMeta.totalItems}
-              totalPages={paginationMeta.totalPages}
-              hasNextPage={paginationMeta.hasNextPage}
-              hasPreviousPage={paginationMeta.hasPreviousPage}
+              meta={paginationMeta}
               onPageChange={handlePageChange}
               onPageSizeChange={handlePageSizeChange}
             />
