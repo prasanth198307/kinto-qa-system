@@ -53,14 +53,33 @@ export default function VendorAnalytics() {
   const [location, setLocation] = useLocation();
   
   // Derive pagination params synchronously from URL during render
-  const searchParams = useMemo(() => new URLSearchParams(location.split('?')[1] || ''), [location]);
-  const page = useMemo(() => parseInt(searchParams.get('page') || '1', 10), [searchParams]);
-  const pageSize = useMemo(() => parseInt(searchParams.get('pageSize') || '25', 10), [searchParams]);
+  const searchParams = useMemo(() => {
+    const params = new URLSearchParams(location.split('?')[1] || '');
+    console.log('[VendorAnalytics] searchParams updated from location:', location);
+    return params;
+  }, [location]);
+  
+  const page = useMemo(() => {
+    const p = parseInt(searchParams.get('page') || '1', 10);
+    console.log('[VendorAnalytics] page updated:', p);
+    return p;
+  }, [searchParams]);
+  
+  const pageSize = useMemo(() => {
+    const ps = parseInt(searchParams.get('pageSize') || '25', 10);
+    console.log('[VendorAnalytics] pageSize updated:', ps);
+    return ps;
+  }, [searchParams]);
+  
   const searchQuery = useMemo(() => searchParams.get('search') || '', [searchParams]);
   const sortBy = useMemo(() => searchParams.get('sortBy') || 'outstandingBalance', [searchParams]);
   
   // Update URL params helper
   const updateUrlParams = useCallback((updates: Record<string, string | number>) => {
+    console.log('[VendorAnalytics] updateUrlParams called with:', updates);
+    console.log('[VendorAnalytics] window.location.search:', window.location.search);
+    console.log('[VendorAnalytics] location from hook:', location);
+    
     // Read fresh location from window to avoid stale captures
     const currentSearch = window.location.search;
     const params = new URLSearchParams(currentSearch);
@@ -77,6 +96,8 @@ export default function VendorAnalytics() {
     const newSearch = params.toString();
     const newLocation = newSearch ? `${pathname}?${newSearch}` : pathname;
     
+    console.log('[VendorAnalytics] Setting new location:', newLocation);
+    
     // Update URL - component will re-render with new location,
     // useMemo will recalculate params, React Query will refetch
     setLocation(newLocation);
@@ -85,6 +106,7 @@ export default function VendorAnalytics() {
   const { data: analyticsData, isLoading } = useQuery<VendorAnalyticsResponse>({
     queryKey: ['/api/vendor-analytics', page, pageSize, searchQuery, sortBy],
     queryFn: async () => {
+      console.log('[VendorAnalytics] queryFn executing with:', { page, pageSize, searchQuery, sortBy });
       const params = new URLSearchParams({
         page: page.toString(),
         pageSize: pageSize.toString()
