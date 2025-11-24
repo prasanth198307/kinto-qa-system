@@ -46,6 +46,7 @@ import TemplateManagement from "@/pages/template-management";
 import ProductCategories from "@/pages/product-categories";
 import ProductTypes from "@/pages/product-types";
 import VendorTypes from "@/pages/vendor-types";
+import VendorManagement from "@/components/VendorManagement";
 import PendingPayments from "@/pages/pending-payments";
 import PaymentManagement from "@/pages/payment-management";
 import CreditNotes from "@/pages/credit-notes";
@@ -933,6 +934,7 @@ function Router() {
       <ProtectedRoute path="/checklists" component={ChecklistsPage} />
       <ProtectedRoute path="/reviewer-dashboard" component={ReviewerDashboardPage} />
       <ProtectedRoute path="/vendor-types" component={VendorTypes} />
+      <ProtectedRoute path="/vendor-management" component={VendorManagement} />
       <ProtectedRoute path="/invoice/:id" component={InvoiceDetail} />
       <ProtectedRoute path="/dispatch-tracking" component={DispatchTracking} />
       <ProtectedRoute path="/sales-returns" component={SalesReturns} />

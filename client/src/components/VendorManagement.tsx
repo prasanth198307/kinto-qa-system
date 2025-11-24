@@ -131,16 +131,25 @@ export default function VendorManagement() {
 
   // Update URL params helper
   const updateUrlParams = (updates: Record<string, string | number>) => {
-    const newParams = new URLSearchParams(searchParams);
+    // Read from current location to build new URL
+    const currentLocation = location;  // Capture current value
+    const currentParams = new URLSearchParams(currentLocation.split('?')[1] || '');
+    
     Object.entries(updates).forEach(([key, value]) => {
       if (value === '' || value === 'all') {
-        newParams.delete(key);
+        currentParams.delete(key);
       } else {
-        newParams.set(key, String(value));
+        currentParams.set(key, String(value));
       }
     });
-    const newSearch = newParams.toString();
-    setLocation(`${pathname}${newSearch ? `?${newSearch}` : ''}`);
+    
+    const newSearch = currentParams.toString();
+    const currentPathname = currentLocation.split('?')[0];
+    const newLocation = `${currentPathname}${newSearch ? `?${newSearch}` : ''}`;
+    
+    // Update URL - this will trigger a re-render with new location
+    // which will recalculate searchParams, page, pageSize, and queryKey
+    setLocation(newLocation);
   };
 
   // Fetch paginated vendors
