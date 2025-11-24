@@ -4933,27 +4933,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create manual credit note (for pricing errors, discounts, etc.)
   app.post('/api/credit-notes/manual', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
-      const { invoiceId, reason, customReason, items, notes } = req.body;
+      // Zod schema for validation
+      const manualCreditNoteSchema = z.object({
+        invoiceId: z.string().min(1, "Invoice ID is required"),
+        reason: z.enum(['pricing_error', 'discount', 'damage', 'other'], { 
+          required_error: "Reason is required" 
+        }),
+        customReason: z.string().optional(),
+        notes: z.string().optional(),
+        items: z.array(z.object({
+          invoiceItemId: z.string().min(1),
+          quantity: z.number().min(1, "Quantity must be at least 1"),
+          adjustedUnitPrice: z.number().min(0, "Price must be non-negative"),
+        })).min(1, "At least one item is required"),
+      });
 
-      // Validate input
-      if (!invoiceId) {
-        return res.status(400).json({ message: "Invoice ID is required" });
-      }
-      if (!reason) {
-        return res.status(400).json({ message: "Reason is required" });
-      }
-      if (!items || !Array.isArray(items) || items.length === 0) {
-        return res.status(400).json({ message: "At least one credit note item is required" });
+      const validationResult = manualCreditNoteSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Validation failed", 
+          errors: validationResult.error.errors 
+        });
       }
 
-      // Fetch invoice
+      const { invoiceId, reason, customReason, items, notes } = validationResult.data;
+
+      // Fetch invoice with outstanding balance
       const invoice = await storage.getInvoice(invoiceId);
       if (!invoice) {
         return res.status(404).json({ message: "Invoice not found" });
       }
 
-      // Fetch invoice items for validation
+      // Fetch invoice items - authoritative source for prices and quantities
       const invoiceItems_list = await storage.getInvoiceItems(invoiceId);
+      if (!invoiceItems_list || invoiceItems_list.length === 0) {
+        return res.status(404).json({ message: "Invoice has no items" });
+      }
 
       // Generate credit note number
       const existingCreditNotes = await db.select()
@@ -4962,7 +4977,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const sequence = existingCreditNotes.length + 1;
       const creditNoteNumber = `CN-${invoice.invoiceNumber}-${sequence.toString().padStart(2, '0')}`;
 
-      // Validate and calculate totals
+      // Calculate existing credit notes total to prevent over-crediting
+      const existingCreditTotal = existingCreditNotes
+        .filter(cn => cn.status === 'issued')
+        .reduce((sum, cn) => sum + cn.grandTotal, 0);
+
+      // Validate and calculate totals using AUTHORITATIVE invoice data
       let subtotal = 0;
       let cgstAmount = 0;
       let sgstAmount = 0;
@@ -4970,21 +4990,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const validatedItems = [];
       for (const item of items) {
-        // Find matching invoice item for GST rates
+        // Find matching invoice item - this is the authoritative source
         const invoiceItem = invoiceItems_list.find(ii => ii.id === item.invoiceItemId);
         if (!invoiceItem) {
-          return res.status(400).json({ message: `Invalid invoice item ID: ${item.invoiceItemId}` });
-        }
-
-        // Validate quantity doesn't exceed invoice quantity
-        if (item.quantity > invoiceItem.quantity) {
           return res.status(400).json({ 
-            message: `Credit note quantity (${item.quantity}) cannot exceed invoice quantity (${invoiceItem.quantity}) for ${invoiceItem.productName}` 
+            message: `Invalid invoice item ID: ${item.invoiceItemId}` 
           });
         }
 
-        // Calculate item totals (amounts in paise)
-        const itemSubtotal = item.unitPrice * item.quantity;
+        // STRICT VALIDATION: Quantity cannot exceed invoiced amount
+        if (item.quantity > invoiceItem.quantity) {
+          return res.status(400).json({ 
+            message: `Credit quantity (${item.quantity}) cannot exceed invoiced quantity (${invoiceItem.quantity}) for ${invoiceItem.productName}` 
+          });
+        }
+
+        // SECURITY: Use adjusted price but validate it doesn't exceed invoice price
+        // For pricing_error corrections, the adjusted price should be <= original
+        if (reason === 'pricing_error' && item.adjustedUnitPrice > invoiceItem.unitPrice) {
+          return res.status(400).json({ 
+            message: `Adjusted price (₹${item.adjustedUnitPrice/100}) cannot exceed invoice price (₹${invoiceItem.unitPrice/100}) for pricing error corrections on ${invoiceItem.productName}` 
+          });
+        }
+
+        // Calculate using AUTHORITATIVE GST rates from invoice
+        const itemSubtotal = item.adjustedUnitPrice * item.quantity;
         const itemCgst = Math.round(itemSubtotal * invoiceItem.cgstRate / 10000);
         const itemSgst = Math.round(itemSubtotal * invoiceItem.sgstRate / 10000);
         const itemIgst = Math.round(itemSubtotal * (invoiceItem.igstRate || 0) / 10000);
@@ -5000,20 +5030,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
           invoiceItemId: item.invoiceItemId,
           description: invoiceItem.description || invoiceItem.productName,
           quantity: item.quantity,
-          unitPrice: item.unitPrice,
+          unitPrice: item.adjustedUnitPrice, // Store adjusted price
           discountAmount: 0,
           taxableValue: itemSubtotal,
-          cgstRate: invoiceItem.cgstRate,
+          cgstRate: invoiceItem.cgstRate, // Authoritative from invoice
           cgstAmount: itemCgst,
-          sgstRate: invoiceItem.sgstRate,
+          sgstRate: invoiceItem.sgstRate, // Authoritative from invoice
           sgstAmount: itemSgst,
-          igstRate: invoiceItem.igstRate || 0,
+          igstRate: invoiceItem.igstRate || 0, // Authoritative from invoice
           igstAmount: itemIgst,
           totalAmount: itemTotal,
         });
       }
 
       const grandTotal = subtotal + cgstAmount + sgstAmount + igstAmount;
+
+      // CRITICAL VALIDATION: Credit note cannot exceed remaining invoice balance
+      const remainingBalance = invoice.totalAmount - (invoice.amountReceived || 0) - existingCreditTotal;
+      if (grandTotal > remainingBalance) {
+        return res.status(400).json({ 
+          message: `Credit note total (₹${(grandTotal/100).toFixed(2)}) exceeds remaining invoice balance (₹${(remainingBalance/100).toFixed(2)})` 
+        });
+      }
 
       // Create credit note and items in transaction
       await db.transaction(async (tx) => {

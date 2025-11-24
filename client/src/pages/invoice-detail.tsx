@@ -1,10 +1,11 @@
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Edit, Mail, FileText, Printer, Star } from "lucide-react";
+import { ArrowLeft, Edit, Mail, FileText, Printer, Star, Receipt } from "lucide-react";
 import type { Invoice, InvoiceItem, Product, Gatepass } from "@shared/schema";
 import PrintableInvoice from "@/components/PrintableInvoice";
 import { format } from "date-fns";
@@ -12,6 +13,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { GlobalHeader } from "@/components/GlobalHeader";
+import { CreateCreditNoteDialog } from "@/components/CreateCreditNoteDialog";
 
 interface Vendor {
   id: string;
@@ -41,7 +43,8 @@ export default function InvoiceDetail() {
   const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const { logoutMutation } = useAuth();
+  const { logoutMutation, user } = useAuth();
+  const [isCreditNoteDialogOpen, setIsCreditNoteDialogOpen] = useState(false);
 
   const { data: invoice, isLoading: isLoadingInvoice } = useQuery<Invoice>({
     queryKey: ['/api/invoices', id],
@@ -160,6 +163,19 @@ export default function InvoiceDetail() {
     });
   };
 
+  const handleCreditNoteSuccess = (creditNoteNumber: string) => {
+    toast({
+      title: "Credit Note Created",
+      description: `Credit note ${creditNoteNumber} has been created successfully.`,
+    });
+    // Refresh invoice data to show updated outstanding balance
+    queryClient.invalidateQueries({ queryKey: ['/api/invoices', id] });
+    queryClient.invalidateQueries({ queryKey: ['/api/credit-notes'] });
+  };
+
+  // Check if user is admin or manager
+  const canCreateCreditNote = user && (user.role === 'admin' || user.role === 'manager');
+
   return (
     <>
       <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />
@@ -201,6 +217,17 @@ export default function InvoiceDetail() {
             <Mail className="w-4 h-4 mr-2" />
             Email
           </Button>
+          {canCreateCreditNote && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsCreditNoteDialogOpen(true)}
+              data-testid="button-create-credit-note"
+            >
+              <Receipt className="w-4 h-4 mr-2" />
+              Create Credit Note
+            </Button>
+          )}
           {!relatedGatepass && invoice.status !== 'delivered' && (
             <Button
               variant="default"
@@ -443,6 +470,16 @@ export default function InvoiceDetail() {
           </CardContent>
         </Card>
       )}
+
+      {/* Credit Note Dialog */}
+      <CreateCreditNoteDialog
+        open={isCreditNoteDialogOpen}
+        onOpenChange={setIsCreditNoteDialogOpen}
+        invoiceId={id!}
+        invoiceNumber={invoice.invoiceNumber}
+        invoiceItems={safeItems}
+        onSuccess={handleCreditNoteSuccess}
+      />
       </div>
     </>
   );

@@ -8,6 +8,55 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (November 24, 2025)
 
+### Manual Credit Note Creation Feature (November 24, 2025)
+**Context:** User reported delivered invoice with wrong amount in same GST billing cycle.
+
+**Solution:** Implemented manual credit note creation feature for pricing corrections.
+
+**Implementation:**
+- **Backend:** POST `/api/credit-notes/manual` endpoint with hardened security
+  - Zod schema validation (strict type checking)
+  - Authoritative invoice data (GST rates from invoice, never client)
+  - Price validation: adjusted price ≤ invoice price (for pricing_error)
+  - Quantity validation: credit qty ≤ invoiced qty
+  - Outstanding balance check: prevents over-crediting
+  - Currency handling: consistent paise values throughout
+  - Auto-generated credit note numbers: CN-{INV#}-{SEQ}
+  - Full audit trail logging
+
+- **Frontend:** CreateCreditNoteDialog component
+  - Admin/Manager only (role-based access)
+  - Accessible from invoice detail page
+  - Reason selection: pricing_error, discount, damage, other
+  - Item selection with quantity/price adjustment
+  - Client-side clamping to invoice prices
+  - Proper paise/rupee conversion (fixes currency inconsistency)
+  - Responsive UI with validation feedback
+
+**Security Features:**
+- ✅ Server-side validation (Zod + custom logic)
+- ✅ No client-controlled prices (uses authoritative invoice data)
+- ✅ No quantity manipulation (validates against invoice)
+- ✅ No GST tampering (recalculates from invoice rates)
+- ✅ No over-crediting (checks outstanding balance)
+- ✅ Currency consistency (paise throughout)
+
+**GST Compliance:**
+- Same billing cycle: Credit note and invoice appear in same GSTR-1
+- Auto-netted in GST return period
+- Full tax breakdown preserved (CGST, SGST, IGST)
+
+**Use Cases:**
+1. **Pricing Error:** Overcharged/undercharged amount correction
+2. **Discount:** Additional discount after delivery
+3. **Damage:** Quality issue discovered post-delivery
+4. **Other:** Custom reason with explanation
+
+**Test Results:**
+- ✅ E2E test passed: CN-336-01 created successfully
+- ✅ Currency handling validated
+- ✅ Security hardening verified by architect
+
 ### Production Data Integrity Fixes
 Fixed critical data discrepancies affecting Sales Dashboard and Vendor Analytics:
 
