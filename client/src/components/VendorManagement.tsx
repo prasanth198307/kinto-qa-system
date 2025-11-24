@@ -131,6 +131,8 @@ export default function VendorManagement() {
 
   // Update URL params helper
   const updateUrlParams = (updates: Record<string, string | number>) => {
+    console.log('[VendorManagement] updateUrlParams called with:', updates);
+    console.log('[VendorManagement] Current location:', location);
     const newParams = new URLSearchParams(searchParams);
     Object.entries(updates).forEach(([key, value]) => {
       if (value === '' || value === 'all') {
@@ -140,7 +142,9 @@ export default function VendorManagement() {
       }
     });
     const newSearch = newParams.toString();
-    setLocation(`${pathname}${newSearch ? `?${newSearch}` : ''}`);
+    const newLocation = `${pathname}${newSearch ? `?${newSearch}` : ''}`;
+    console.log('[VendorManagement] New location:', newLocation);
+    setLocation(newLocation);
   };
 
   // Fetch paginated vendors
