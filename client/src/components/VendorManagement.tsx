@@ -119,21 +119,35 @@ export default function VendorManagement() {
   const [primaryVendorTypeId, setPrimaryVendorTypeId] = useState<string | null>(null);
   const [vendorTypePopoverOpen, setVendorTypePopoverOpen] = useState(false);
 
-  // Get pathname and search params separately
-  const pathname = location.split('?')[0];
-  const searchParams = useMemo(() => new URLSearchParams(location.split('?')[1] || ''), [location]);
-  const page = parseInt(searchParams.get('page') || '1', 10);
-  const pageSize = parseInt(searchParams.get('pageSize') || '25', 10);
-  const searchQuery = searchParams.get('searchQuery') || '';
-  const cityFilter = searchParams.get('city') || 'all';
-  const stateFilter = searchParams.get('state') || 'all';
-  const activeStatusFilter = searchParams.get('activeStatus') || 'all';
+  // Pagination state (synchronized with URL via useEffect)
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [cityFilter, setCityFilter] = useState('all');
+  const [stateFilter, setStateFilter] = useState('all');
+  const [activeStatusFilter, setActiveStatusFilter] = useState('all');
+
+  // Synchronize state with URL on mount and location changes
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.split('?')[1] || '');
+    const urlPage = parseInt(searchParams.get('page') || '1', 10);
+    const urlPageSize = parseInt(searchParams.get('pageSize') || '25', 10);
+    const urlSearchQuery = searchParams.get('searchQuery') || '';
+    const urlCity = searchParams.get('city') || 'all';
+    const urlState = searchParams.get('state') || 'all';
+    const urlActiveStatus = searchParams.get('activeStatus') || 'all';
+
+    setPage(urlPage);
+    setPageSize(urlPageSize);
+    setSearchQuery(urlSearchQuery);
+    setCityFilter(urlCity);
+    setStateFilter(urlState);
+    setActiveStatusFilter(urlActiveStatus);
+  }, [location]);
 
   // Update URL params helper
   const updateUrlParams = (updates: Record<string, string | number>) => {
-    // Read from current location to build new URL
-    const currentLocation = location;  // Capture current value
-    const currentParams = new URLSearchParams(currentLocation.split('?')[1] || '');
+    const currentParams = new URLSearchParams(location.split('?')[1] || '');
     
     Object.entries(updates).forEach(([key, value]) => {
       if (value === '' || value === 'all') {
@@ -144,11 +158,10 @@ export default function VendorManagement() {
     });
     
     const newSearch = currentParams.toString();
-    const currentPathname = currentLocation.split('?')[0];
-    const newLocation = `${currentPathname}${newSearch ? `?${newSearch}` : ''}`;
+    const pathname = location.split('?')[0];
+    const newLocation = `${pathname}${newSearch ? `?${newSearch}` : ''}`;
     
-    // Update URL - this will trigger a re-render with new location
-    // which will recalculate searchParams, page, pageSize, and queryKey
+    // Update URL - useEffect will sync state after navigation
     setLocation(newLocation);
   };
 
