@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Edit, Mail, FileText, Printer, Star, Receipt } from "lucide-react";
+import { ArrowLeft, Edit, Mail, FileText, Printer, Star, Receipt, RefreshCw } from "lucide-react";
 import type { Invoice, InvoiceItem, Product, Gatepass } from "@shared/schema";
 import PrintableInvoice from "@/components/PrintableInvoice";
 import { format } from "date-fns";
@@ -173,8 +173,47 @@ export default function InvoiceDetail() {
     queryClient.invalidateQueries({ queryKey: ['/api/credit-notes'] });
   };
 
+  // Cancel & Reissue mutation
+  const cancelAndReissueMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest('POST', `/api/invoices/${id}/cancel-and-reissue`, {});
+    },
+    onSuccess: (response: any) => {
+      toast({
+        title: "Invoice Cancelled",
+        description: response.message || "Invoice cancelled. Redirecting to create new invoice...",
+      });
+      
+      // Store invoice data in sessionStorage for re-issue
+      if (response.invoiceData) {
+        sessionStorage.setItem('reissue-invoice-data', JSON.stringify(response.invoiceData));
+      }
+      
+      // Navigate to invoice creation with reissue flag
+      navigate('/?tab=invoices&reissue=true');
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to cancel & reissue invoice",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Check if user is admin or manager
   const canCreateCreditNote = user && (user.role === 'admin' || user.role === 'manager');
+  
+  // Check if invoice is in current month
+  const isCurrentMonth = () => {
+    if (!invoice) return false;
+    const now = new Date();
+    const invoiceDate = new Date(invoice.invoiceDate);
+    return now.getMonth() === invoiceDate.getMonth() && 
+           now.getFullYear() === invoiceDate.getFullYear();
+  };
+  
+  const canCancelAndReissue = canCreateCreditNote && isCurrentMonth() && !relatedGatepass;
 
   return (
     <>
@@ -226,6 +265,18 @@ export default function InvoiceDetail() {
             >
               <Receipt className="w-4 h-4 mr-2" />
               Create Credit Note
+            </Button>
+          )}
+          {canCancelAndReissue && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => cancelAndReissueMutation.mutate()}
+              disabled={cancelAndReissueMutation.isPending}
+              data-testid="button-cancel-and-reissue"
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${cancelAndReissueMutation.isPending ? 'animate-spin' : ''}`} />
+              {cancelAndReissueMutation.isPending ? 'Cancelling...' : 'Cancel & Reissue'}
             </Button>
           )}
           {!relatedGatepass && invoice.status !== 'delivered' && (
