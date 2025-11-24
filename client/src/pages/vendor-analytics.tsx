@@ -61,8 +61,6 @@ export default function VendorAnalytics() {
   
   // Update URL params helper
   const updateUrlParams = (updates: Record<string, string | number>) => {
-    console.log('[VendorAnalytics] updateUrlParams called with:', updates);
-    console.log('[VendorAnalytics] Current location:', location);
     const pathname = location.split('?')[0];
     const params = new URLSearchParams(location.split('?')[1] || '');
     
@@ -75,9 +73,7 @@ export default function VendorAnalytics() {
     });
     
     const newSearch = params.toString();
-    const newLocation = newSearch ? `${pathname}?${newSearch}` : pathname;
-    console.log('[VendorAnalytics] New location:', newLocation);
-    setLocation(newLocation);
+    setLocation(newSearch ? `${pathname}?${newSearch}` : pathname);
   };
 
   const { data: analyticsData, isLoading } = useQuery<VendorAnalyticsResponse>({
