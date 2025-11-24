@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
@@ -119,35 +119,20 @@ export default function VendorManagement() {
   const [primaryVendorTypeId, setPrimaryVendorTypeId] = useState<string | null>(null);
   const [vendorTypePopoverOpen, setVendorTypePopoverOpen] = useState(false);
 
-  // Pagination state (synchronized with URL via useEffect)
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [cityFilter, setCityFilter] = useState('all');
-  const [stateFilter, setStateFilter] = useState('all');
-  const [activeStatusFilter, setActiveStatusFilter] = useState('all');
-
-  // Synchronize state with URL on mount and location changes
-  useEffect(() => {
-    const searchParams = new URLSearchParams(location.split('?')[1] || '');
-    const urlPage = parseInt(searchParams.get('page') || '1', 10);
-    const urlPageSize = parseInt(searchParams.get('pageSize') || '25', 10);
-    const urlSearchQuery = searchParams.get('searchQuery') || '';
-    const urlCity = searchParams.get('city') || 'all';
-    const urlState = searchParams.get('state') || 'all';
-    const urlActiveStatus = searchParams.get('activeStatus') || 'all';
-
-    setPage(urlPage);
-    setPageSize(urlPageSize);
-    setSearchQuery(urlSearchQuery);
-    setCityFilter(urlCity);
-    setStateFilter(urlState);
-    setActiveStatusFilter(urlActiveStatus);
-  }, [location]);
+  // Derive pagination params synchronously from URL during render
+  const searchParams = useMemo(() => new URLSearchParams(location.split('?')[1] || ''), [location]);
+  const page = useMemo(() => parseInt(searchParams.get('page') || '1', 10), [searchParams]);
+  const pageSize = useMemo(() => parseInt(searchParams.get('pageSize') || '25', 10), [searchParams]);
+  const searchQuery = useMemo(() => searchParams.get('searchQuery') || '', [searchParams]);
+  const cityFilter = useMemo(() => searchParams.get('city') || 'all', [searchParams]);
+  const stateFilter = useMemo(() => searchParams.get('state') || 'all', [searchParams]);
+  const activeStatusFilter = useMemo(() => searchParams.get('activeStatus') || 'all', [searchParams]);
 
   // Update URL params helper
-  const updateUrlParams = (updates: Record<string, string | number>) => {
-    const currentParams = new URLSearchParams(location.split('?')[1] || '');
+  const updateUrlParams = useCallback((updates: Record<string, string | number>) => {
+    // Read fresh location from window to avoid stale captures
+    const currentSearch = window.location.search;
+    const currentParams = new URLSearchParams(currentSearch);
     
     Object.entries(updates).forEach(([key, value]) => {
       if (value === '' || value === 'all') {
@@ -161,9 +146,10 @@ export default function VendorManagement() {
     const pathname = location.split('?')[0];
     const newLocation = `${pathname}${newSearch ? `?${newSearch}` : ''}`;
     
-    // Update URL - useEffect will sync state after navigation
+    // Update URL - component will re-render with new location,
+    // useMemo will recalculate params, React Query will refetch
     setLocation(newLocation);
-  };
+  }, [location, setLocation]);
 
   // Fetch paginated vendors
   const { data: vendorsResponse, isLoading } = useQuery<PaginatedVendorResponse | Vendor[]>({
