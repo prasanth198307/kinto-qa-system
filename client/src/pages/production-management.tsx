@@ -54,6 +54,10 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
   const [selectedMonth, setSelectedMonth] = useState("");
   const [selectedYear, setSelectedYear] = useState("");
   
+  // Invoice pagination
+  const [invoicePage, setInvoicePage] = useState(1);
+  const [invoicePageSize, setInvoicePageSize] = useState(25);
+  
   // Gatepass filters - URL-based state for pagination
   const gatepassParams = new URLSearchParams(location.split('?')[1] || '');
   const gatepassPage = parseInt(gatepassParams.get('gatepassPage') || '1');
@@ -248,6 +252,60 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
     // Sort by date (newest first)
     return filtered.sort((a, b) => new Date(b.invoiceDate).getTime() - new Date(a.invoiceDate).getTime());
   }, [invoices, invoiceSearchQuery, selectedVendor, dateFilterType, dateFrom, dateTo, selectedMonth, selectedYear]);
+  
+  // Reset invoice page to 1 when filters change
+  useEffect(() => {
+    setInvoicePage(1);
+  }, [invoiceSearchQuery, selectedVendor, dateFilterType, dateFrom, dateTo, selectedMonth, selectedYear]);
+  
+  // Calculate paginated invoices
+  const paginatedInvoicesData = useMemo(() => {
+    const totalItems = filteredInvoices.length;
+    const totalPages = Math.ceil(totalItems / invoicePageSize);
+    
+    // Normalize page synchronously: 0 for empty, clamp to [1,totalPages] for data
+    const currentPage = totalPages === 0 ? 0 : Math.max(1, Math.min(invoicePage, totalPages));
+    
+    // For empty results, return empty data
+    if (totalItems === 0) {
+      return {
+        paginatedInvoices: [],
+        meta: {
+          page: 0,
+          pageSize: invoicePageSize,
+          totalItems: 0,
+          totalPages: 0,
+          hasNextPage: false,
+          hasPreviousPage: false,
+        },
+        currentPage,
+      };
+    }
+    
+    // Calculate slice using synchronized currentPage
+    const startIndex = (currentPage - 1) * invoicePageSize;
+    const endIndex = startIndex + invoicePageSize;
+    const paginatedInvoices = filteredInvoices.slice(startIndex, endIndex);
+    
+    // Build metadata using synchronized currentPage
+    const meta = {
+      page: currentPage,
+      pageSize: invoicePageSize,
+      totalItems,
+      totalPages,
+      hasNextPage: currentPage < totalPages,
+      hasPreviousPage: currentPage > 1,
+    };
+    
+    return { paginatedInvoices, meta, currentPage };
+  }, [filteredInvoices, invoicePage, invoicePageSize]);
+  
+  // Persist normalized page back to state for next render
+  useEffect(() => {
+    if (paginatedInvoicesData.currentPage !== invoicePage) {
+      setInvoicePage(paginatedInvoicesData.currentPage);
+    }
+  }, [paginatedInvoicesData.currentPage, invoicePage]);
 
   // Gatepasses are now filtered and paginated on the backend
 
@@ -1040,12 +1098,26 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
             {/* Invoice Table */}
             <Card className="p-4">
               <InvoiceTable
-                invoices={filteredInvoices}
+                invoices={paginatedInvoicesData.paginatedInvoices}
                 isLoading={isLoadingInvoices}
                 onEdit={handleEditInvoice}
                 onDelete={handleDeleteInvoice}
                 onPayment={handlePayment}
               />
+              
+              {/* Pagination Controls - only show when there are results */}
+              {paginatedInvoicesData.meta.totalItems > 0 && (
+                <div className="mt-4">
+                  <DataTablePagination
+                    meta={paginatedInvoicesData.meta}
+                    onPageChange={setInvoicePage}
+                    onPageSizeChange={(newSize) => {
+                      setInvoicePageSize(newSize);
+                      setInvoicePage(1); // Reset to first page
+                    }}
+                  />
+                </div>
+              )}
             </Card>
 
             {/* Invoice Form Dialog */}
