@@ -96,8 +96,8 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
     ...(invoices || []).map(i => i.buyerName).filter(Boolean)
   ])).sort();
 
-  // Filter logic
-  const filteredGatepasses = gatepasses.filter(item => {
+  // Filter logic with safety guards
+  const filteredGatepasses = (gatepasses || []).filter(item => {
     // Date filter
     if (dateFrom || dateTo) {
       const date = new Date(item.gatepassDate);
@@ -111,7 +111,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
     return true;
   });
 
-  const filteredInvoices = invoices.filter(item => {
+  const filteredInvoices = (invoices || []).filter(item => {
     // Date filter
     if (dateFrom || dateTo) {
       const date = new Date(item.invoiceDate);
@@ -125,7 +125,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
     return true;
   });
 
-  const filteredIssuances = issuances.filter(item => {
+  const filteredIssuances = (issuances || []).filter(item => {
     // Date filter
     if (dateFrom || dateTo) {
       const date = new Date(item.issuanceDate);
@@ -135,7 +135,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
     return true;
   });
 
-  const filteredPurchaseOrders = purchaseOrders.filter(item => {
+  const filteredPurchaseOrders = (purchaseOrders || []).filter(item => {
     // Date filter
     if (dateFrom || dateTo) {
       if (!item.createdAt) return false;
@@ -146,7 +146,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
     return true;
   });
 
-  const filteredPMExecutions = pmExecutions.filter(item => {
+  const filteredPMExecutions = (pmExecutions || []).filter(item => {
     // Date filter
     if (dateFrom || dateTo) {
       const date = new Date(item.completedAt);
