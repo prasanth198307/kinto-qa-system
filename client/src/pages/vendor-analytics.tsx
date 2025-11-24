@@ -53,37 +53,22 @@ export default function VendorAnalytics() {
   const { toast } = useToast();
   const [location, setLocation] = useLocation();
   
-  // Derive pagination params synchronously from URL during render
-  const searchParams = useMemo(() => {
-    const params = new URLSearchParams(location.split('?')[1] || '');
-    console.log('🔍 [VendorAnalytics] Location changed:', location);
-    return params;
-  }, [location]);
+  // Force component to re-render when URL changes
+  const [, forceUpdate] = useState(0);
   
-  const page = useMemo(() => {
-    const p = parseInt(searchParams.get('page') || '1', 10);
-    console.log('📄 [VendorAnalytics] Page:', p);
-    return p;
-  }, [searchParams]);
+  // Read params directly from window.location.search (not from wouter's location hook)
+  const searchParams = new URLSearchParams(window.location.search);
+  const page = parseInt(searchParams.get('page') || '1', 10);
+  const pageSize = parseInt(searchParams.get('pageSize') || '25', 10);
+  const searchQuery = searchParams.get('search') || '';
+  const sortBy = searchParams.get('sortBy') || 'outstandingBalance';
   
-  const pageSize = useMemo(() => {
-    const ps = parseInt(searchParams.get('pageSize') || '25', 10);
-    console.log('📏 [VendorAnalytics] PageSize:', ps);
-    return ps;
-  }, [searchParams]);
-  
-  const searchQuery = useMemo(() => searchParams.get('search') || '', [searchParams]);
-  const sortBy = useMemo(() => searchParams.get('sortBy') || 'outstandingBalance', [searchParams]);
+  console.log('🔍 [VendorAnalytics] Reading from window.location.search:', window.location.search);
+  console.log('📄 [VendorAnalytics] Page:', page, 'PageSize:', pageSize);
   
   // Update URL params helper
   const updateUrlParams = useCallback((updates: Record<string, string | number>) => {
-    console.log('🔄 [VendorAnalytics] updateUrlParams called with:', updates);
-    console.log('🔄 [VendorAnalytics] Current location:', location);
-    console.log('🔄 [VendorAnalytics] Current window.location.search:', window.location.search);
-    
-    // Read fresh location from window to avoid stale captures
-    const currentSearch = window.location.search;
-    const params = new URLSearchParams(currentSearch);
+    const params = new URLSearchParams(window.location.search);
     
     Object.entries(updates).forEach(([key, value]) => {
       if (value === '' || value === null || value === undefined) {
@@ -93,21 +78,17 @@ export default function VendorAnalytics() {
       }
     });
     
-    const pathname = location.split('?')[0];
     const newSearch = params.toString();
-    const newLocation = newSearch ? `${pathname}?${newSearch}` : pathname;
+    const newUrl = newSearch ? `${window.location.pathname}?${newSearch}` : window.location.pathname;
     
-    console.log('🔄 [VendorAnalytics] New location will be:', newLocation);
+    console.log('🔄 [VendorAnalytics] Updating URL to:', newUrl);
     
-    // Update URL and force React Query to refetch
-    setLocation(newLocation);
+    // Update URL using History API
+    window.history.pushState({}, '', newUrl);
     
-    // Force invalidate queries after URL change to trigger refetch
-    setTimeout(() => {
-      console.log('🔄 [VendorAnalytics] Invalidating queries');
-      queryClient.invalidateQueries({ queryKey: ['/api/vendor-analytics'] });
-    }, 0);
-  }, [location, setLocation]);
+    // Force component to re-render and refetch
+    forceUpdate(prev => prev + 1);
+  }, [forceUpdate]);
 
   const { data: analyticsData, isLoading } = useQuery<VendorAnalyticsResponse>({
     queryKey: ['/api/vendor-analytics', page, pageSize, searchQuery, sortBy],

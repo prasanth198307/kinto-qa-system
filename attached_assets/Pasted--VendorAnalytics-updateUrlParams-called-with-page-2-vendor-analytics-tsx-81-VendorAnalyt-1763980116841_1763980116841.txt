@@ -1,0 +1,24 @@
+🔄 [VendorAnalytics] updateUrlParams called with: {page: 2}
+vendor-analytics.tsx:81 🔄 [VendorAnalytics] Current location: /vendor-analytics
+vendor-analytics.tsx:82 🔄 [VendorAnalytics] Current window.location.search: 
+vendor-analytics.tsx:100 🔄 [VendorAnalytics] New location will be: /vendor-analytics?page=2
+vendor-analytics.tsx:107 🔄 [VendorAnalytics] Invalidating queries
+vendor-analytics.tsx:115 🌐 [VendorAnalytics] React Query fetching with: {page: 1, pageSize: 25, searchQuery: '', sortBy: 'outstandingBalance'}page: 1pageSize: 25searchQuery: ""sortBy: "outstandingBalance"[[Prototype]]: Object
+vendor-analytics.tsx:80 🔄 [VendorAnalytics] updateUrlParams called with: {page: 2}
+vendor-analytics.tsx:81 🔄 [VendorAnalytics] Current location: /vendor-analytics
+vendor-analytics.tsx:82 🔄 [VendorAnalytics] Current window.location.search: ?page=2
+vendor-analytics.tsx:100 🔄 [VendorAnalytics] New location will be: /vendor-analytics?page=2
+vendor-analytics.tsx:107 🔄 [VendorAnalytics] Invalidating queries
+vendor-analytics.tsx:115 🌐 [VendorAnalytics] React Query fetching with: {page: 1, pageSize: 25, searchQuery: '', sortBy: 'outstandingBalance'}
+vendor-analytics.tsx:80 🔄 [VendorAnalytics] updateUrlParams called with: {page: 2}
+vendor-analytics.tsx:81 🔄 [VendorAnalytics] Current location: /vendor-analytics
+vendor-analytics.tsx:82 🔄 [VendorAnalytics] Current window.location.search: ?page=2
+vendor-analytics.tsx:100 🔄 [VendorAnalytics] New location will be: /vendor-analytics?page=2
+vendor-analytics.tsx:107 🔄 [VendorAnalytics] Invalidating queries
+vendor-analytics.tsx:115 🌐 [VendorAnalytics] React Query fetching with: {page: 1, pageSize: 25, searchQuery: '', sortBy: 'outstandingBalance'}
+vendor-analytics.tsx:80 🔄 [VendorAnalytics] updateUrlParams called with: {page: 2}
+vendor-analytics.tsx:81 🔄 [VendorAnalytics] Current location: /vendor-analytics
+vendor-analytics.tsx:82 🔄 [VendorAnalytics] Current window.location.search: ?page=2
+vendor-analytics.tsx:100 🔄 [VendorAnalytics] New location will be: /vendor-analytics?page=2
+vendor-analytics.tsx:107 🔄 [VendorAnalytics] Invalidating queries
+vendor-analytics.tsx:115 🌐 [VendorAnalytics] React Query fetching with: {page: 1, pageSize: 25, searchQuery: '', sortBy: 'outstandingBalance'}
