@@ -90,14 +90,14 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
 
   const isLoading = gatepassesLoading || invoicesLoading || issuancesLoading || purchaseOrdersLoading || pmExecutionsLoading;
 
-  // Extract unique customers from gatepasses and invoices - use optional chaining for safety
+  // Extract unique customers from gatepasses and invoices - use Array.isArray for safety
   const uniqueCustomers = Array.from(new Set([
-    ...(gatepasses || []).map(g => g.customerName).filter(Boolean),
-    ...(invoices || []).map(i => i.buyerName).filter(Boolean)
+    ...(Array.isArray(gatepasses) ? gatepasses.map(g => g.customerName).filter(Boolean) : []),
+    ...(Array.isArray(invoices) ? invoices.map(i => i.buyerName).filter(Boolean) : [])
   ])).sort();
 
-  // Filter logic with safety guards
-  const filteredGatepasses = (gatepasses || []).filter(item => {
+  // Filter logic with Array.isArray safety guards
+  const filteredGatepasses = Array.isArray(gatepasses) ? gatepasses.filter(item => {
     // Date filter
     if (dateFrom || dateTo) {
       const date = new Date(item.gatepassDate);
@@ -109,9 +109,9 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
       if (item.customerName !== selectedCustomer) return false;
     }
     return true;
-  });
+  }) : [];
 
-  const filteredInvoices = (invoices || []).filter(item => {
+  const filteredInvoices = Array.isArray(invoices) ? invoices.filter(item => {
     // Date filter
     if (dateFrom || dateTo) {
       const date = new Date(item.invoiceDate);
@@ -123,9 +123,9 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
       if (item.buyerName !== selectedCustomer) return false;
     }
     return true;
-  });
+  }) : [];
 
-  const filteredIssuances = (issuances || []).filter(item => {
+  const filteredIssuances = Array.isArray(issuances) ? issuances.filter(item => {
     // Date filter
     if (dateFrom || dateTo) {
       const date = new Date(item.issuanceDate);
@@ -133,9 +133,9 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
       if (dateTo && new Date(dateTo) < date) return false;
     }
     return true;
-  });
+  }) : [];
 
-  const filteredPurchaseOrders = (purchaseOrders || []).filter(item => {
+  const filteredPurchaseOrders = Array.isArray(purchaseOrders) ? purchaseOrders.filter(item => {
     // Date filter
     if (dateFrom || dateTo) {
       if (!item.createdAt) return false;
@@ -144,9 +144,9 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
       if (dateTo && new Date(dateTo) < date) return false;
     }
     return true;
-  });
+  }) : [];
 
-  const filteredPMExecutions = (pmExecutions || []).filter(item => {
+  const filteredPMExecutions = Array.isArray(pmExecutions) ? pmExecutions.filter(item => {
     // Date filter
     if (dateFrom || dateTo) {
       const date = new Date(item.completedAt);
@@ -154,7 +154,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
       if (dateTo && new Date(dateTo) < date) return false;
     }
     return true;
-  });
+  }) : [];
 
   const clearFilters = () => {
     setDateFrom("");
