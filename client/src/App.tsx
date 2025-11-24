@@ -932,6 +932,66 @@ function AuthenticatedApp() {
   );
 }
 
+// Wrapper component for Vendor Management with navigation
+function VendorManagementPage() {
+  const { user, logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('vendors');
+  
+  const navSections = [
+    {
+      id: 'navigation',
+      title: 'Navigation',
+      items: [
+        { id: 'back', label: 'Back to Dashboard', icon: LayoutDashboard, onClick: () => setLocation('/') }
+      ]
+    }
+  ];
+  
+  return (
+    <DashboardShell
+      title="Vendor Management"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={setActiveView}
+    >
+      <VendorManagement />
+    </DashboardShell>
+  );
+}
+
+// Wrapper component for Vendor Analytics with navigation
+function VendorAnalyticsPage() {
+  const { user, logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('analytics');
+  
+  const navSections = [
+    {
+      id: 'navigation',
+      title: 'Navigation',
+      items: [
+        { id: 'back', label: 'Back to Dashboard', icon: LayoutDashboard, onClick: () => setLocation('/') }
+      ]
+    }
+  ];
+  
+  return (
+    <DashboardShell
+      title="Vendor Analytics"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={setActiveView}
+    >
+      <VendorAnalytics />
+    </DashboardShell>
+  );
+}
+
 function Router() {
   return (
     <Switch>
@@ -939,14 +999,14 @@ function Router() {
       <ProtectedRoute path="/checklists" component={ChecklistsPage} />
       <ProtectedRoute path="/reviewer-dashboard" component={ReviewerDashboardPage} />
       <ProtectedRoute path="/vendor-types" component={VendorTypes} />
-      <ProtectedRoute path="/vendor-management" component={VendorManagement} />
+      <ProtectedRoute path="/vendor-management" component={VendorManagementPage} />
       <ProtectedRoute path="/invoice/:id" component={InvoiceDetail} />
       <ProtectedRoute path="/dispatch-tracking" component={DispatchTracking} />
       <ProtectedRoute path="/sales-returns" component={SalesReturns} />
       <ProtectedRoute path="/credit-notes" component={CreditNotes} />
       <ProtectedRoute path="/pending-payments" component={PendingPayments} />
       <ProtectedRoute path="/payment-management" component={PaymentManagement} />
-      <ProtectedRoute path="/vendor-analytics" component={VendorAnalytics} />
+      <ProtectedRoute path="/vendor-analytics" component={VendorAnalyticsPage} />
       <ProtectedRoute path="/production-management" component={ProductionManagement} />
       <ProtectedRoute path="/reports/production-reconciliation" component={ProductionReconciliationReport} />
       <ProtectedRoute path="/" component={AuthenticatedApp} />
