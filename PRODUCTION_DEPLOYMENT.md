@@ -400,6 +400,94 @@ Before going live:
 
 ---
 
+## Production Data Fixes
+
+### Required SQL Scripts for Production Database
+
+After initial deployment, run these scripts to fix data issues and prevent future problems:
+
+#### 1. Buyer Name Fix (REQUIRED)
+**File:** `production-buyer-name-fix.sql`  
+**Purpose:** Fix 3L discrepancy between Sales Dashboard and Vendor Analytics  
+**Impact:** Updates 8 invoices to match vendor master records exactly
+
+```bash
+# On your Mac production database (localhost:5050)
+psql your_production_database_url -f production-buyer-name-fix.sql
+```
+
+**What it fixes:**
+- **Before:** Sales Dashboard shows ₹1,13,59,999, Vendor Analytics shows ₹1,10,49,999 (3L difference)
+- **After:** Both dashboards show ₹1,13,59,999 (perfect match)
+
+**Changes:**
+- 6 invoices: Removes "(Sri Kartam Talli Agencies)" suffix
+- 1 invoice: Removes "(MS SRI VENKATESWARA SER STN T CHOULTR)" suffix  
+- 1 invoice: Removes "(VISALAKSHI FILLING STATI)" suffix
+
+#### 2. Unique Constraint Fix (REQUIRED)
+**File:** `mac-production-fix.sql`  
+**Purpose:** Prevent duplicate vendor type assignments  
+**Impact:** Adds database constraint for data integrity
+
+```bash
+# On your Mac production database (localhost:5050)
+psql your_production_database_url -f mac-production-fix.sql
+```
+
+**What it fixes:**
+- Removes existing duplicate vendor type assignments
+- Adds unique constraint to prevent future duplicates
+- Prevents "Kinto Kinto" badge display issues
+
+### Recommended Execution Order
+
+Run both scripts in this sequence:
+
+```bash
+# 1. Fix buyer names (data accuracy)
+psql $DATABASE_URL -f production-buyer-name-fix.sql
+
+# 2. Add unique constraint (data integrity)
+psql $DATABASE_URL -f mac-production-fix.sql
+```
+
+### Verification Queries
+
+After running the scripts, verify the fixes worked:
+
+```sql
+-- Verify buyer name fix (should show 339 invoices matched)
+SELECT 
+  COUNT(*) as matched_invoices,
+  SUM(total_amount)/100 as total_sales
+FROM invoices i
+INNER JOIN vendors v ON i.buyer_name = v.vendor_name
+WHERE i.record_status = 1 AND v.record_status = 1;
+-- Expected: 339 invoices, ₹1,13,59,999
+
+-- Verify unique constraint exists
+SELECT conname 
+FROM pg_constraint 
+WHERE conrelid = 'vendor_vendor_types'::regclass 
+  AND conname = 'vendor_vendor_types_vendor_id_vendor_type_id_unique';
+-- Expected: 1 row
+```
+
+### Replit Production Database Notes
+
+When published to Replit, database **schema** changes are automatically applied. However, **data fixes** (like buyer name updates) must be applied manually:
+
+1. Navigate to Database pane in Replit
+2. Select "Production Database"
+3. Select "My data"
+4. Toggle "Edit" mode
+5. Run the SQL queries from the scripts manually
+
+**Important:** Agent cannot modify production databases directly for safety reasons.
+
+---
+
 ## Support
 
 For issues or questions:
@@ -407,8 +495,9 @@ For issues or questions:
 - Review seed script source: `scripts/db/seed.ts`
 - Examine Drizzle schema: `shared/schema.ts`
 - Check migration files: `migrations/`
+- Review production fix scripts: `production-buyer-name-fix.sql`, `mac-production-fix.sql`
 
 ---
 
-**Last Updated:** November 22, 2025  
-**Version:** 1.0.0
+**Last Updated:** November 24, 2025  
+**Version:** 1.1.0
