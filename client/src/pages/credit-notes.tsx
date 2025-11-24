@@ -21,6 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import PrintableCreditNote from "@/components/PrintableCreditNote";
 
 interface CreditNote {
   id: string;
@@ -29,12 +30,20 @@ interface CreditNote {
   invoiceNumber: string;
   creditDate: string | Date;
   buyerName: string;
+  buyerAddress: string | null;
+  buyerGstin: string | null;
+  buyerStateCode: string | null;
+  sellerName: string | null;
+  sellerAddress: string | null;
+  sellerGstin: string | null;
+  sellerStateCode: string | null;
   subtotal: number;
   cgstAmount: number;
   sgstAmount: number;
   igstAmount: number;
   grandTotal: number;
   reason: string;
+  notes: string | null;
 }
 
 interface CreditNoteItem {
@@ -174,10 +183,17 @@ export default function CreditNotes() {
       <Dialog open={isViewOpen} onOpenChange={handleClose}>
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Credit Note Details</DialogTitle>
-            <DialogDescription>
-              {selectedCreditNote?.noteNumber}
-            </DialogDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle>Credit Note Details</DialogTitle>
+                <DialogDescription>
+                  {selectedCreditNote?.noteNumber}
+                </DialogDescription>
+              </div>
+              {selectedCreditNote && (
+                <PrintableCreditNote creditNote={selectedCreditNote} />
+              )}
+            </div>
           </DialogHeader>
 
           {selectedCreditNote && (
@@ -221,10 +237,10 @@ export default function CreditNotes() {
                           <TableCell>{item.productName}</TableCell>
                           <TableCell className="text-right">{item.quantity ?? 0}</TableCell>
                           <TableCell className="text-right">
-                            ₹{(item.unitPrice ?? 0).toFixed(2)}
+                            ₹{((item.unitPrice ?? 0) / 100).toFixed(2)}
                           </TableCell>
                           <TableCell className="text-right">
-                            ₹{(item.amount ?? 0).toFixed(2)}
+                            ₹{((item.amount ?? 0) / 100).toFixed(2)}
                           </TableCell>
                         </TableRow>
                       ))}
