@@ -43,11 +43,25 @@ Fixed critical data discrepancies affecting Sales Dashboard and Vendor Analytics
 - Safe, idempotent, includes verification queries
 - Documentation updated in `PRODUCTION_DEPLOYMENT.md`
 
+**6. Vendor Type Breakdown in Both Dashboards**
+- **Feature:** Added vendor type breakdown to both Sales Dashboard and Vendor Analytics
+- **Implementation:** 
+  - Backend: Both `/api/sales-analytics` and `/api/vendor-analytics` return `typeBreakdown[]`
+  - Frontend: Both dashboards display "Sales by Vendor Type" section with 3 cards (Kinto, HPPani, Purejal)
+- **Impact:** Users can see revenue distribution by vendor classification on both dashboards
+
 **Verified Results:**
 - ✅ Sales Dashboard Total: ₹1,13,59,999.78
+- ✅ Sales Dashboard Type Breakdown Sum: ₹1,13,59,999.78
 - ✅ Vendor Analytics Total: ₹1,13,59,999.78
-- ✅ Vendor Type Breakdown Sum: ₹1,13,59,999.78
-- ✅ Difference: ₹0.00 (perfect match!)
+- ✅ Vendor Analytics Type Breakdown Sum: ₹1,13,59,999.78
+- ✅ Both Dashboards Match: ₹0.00 difference (perfect match!)
+
+**Vendor Type Breakdown:**
+- Kinto: ₹95,50,265.78 (95 vendors)
+- HPPani: ₹10,17,929.80 (32 vendors)
+- Purejal: ₹7,91,804.20 (31 vendors)
+- **Total: ₹1,13,59,999.78** ✅
 
 ## System Architecture
 

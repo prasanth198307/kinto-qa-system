@@ -5035,7 +5035,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
         avgOrderValue: analytics.length > 0 ? analytics.reduce((sum, p) => sum + p.revenue, 0) / analytics.reduce((sum, p) => sum + p.invoiceCount, 0) : 0,
       };
 
-      res.json({ analytics, totals, year: currentYear, period });
+      // Calculate vendor type breakdown (same logic as vendor-analytics)
+      // Get all vendors and vendor types
+      const allVendors = await storage.getAllVendors();
+      const allVendorTypes = await storage.getAllVendorTypes();
+      const vendorTypeLinks = await db.select().from(vendorVendorTypes).where(eq(vendorVendorTypes.recordStatus, 1));
+
+      // Build vendor type breakdown by primary type only
+      const typeBreakdown: Record<string, { count: Set<string>; revenue: number }> = {};
+      
+      yearInvoices.forEach(invoice => {
+        // Find the vendor for this invoice
+        const vendor = allVendors.find(v => v.vendorName === invoice.buyerName && v.recordStatus === 1);
+        if (vendor) {
+          // Get vendor's primary type
+          const primaryTypeLink = vendorTypeLinks.find(link => 
+            link.vendorId === vendor.id && link.isPrimary === 1 && link.recordStatus === 1
+          );
+          
+          if (primaryTypeLink) {
+            const primaryType = allVendorTypes.find(vt => vt.id === primaryTypeLink.vendorTypeId);
+            
+            if (primaryType) {
+              if (!typeBreakdown[primaryType.name]) {
+                typeBreakdown[primaryType.name] = { count: new Set(), revenue: 0 };
+              }
+              typeBreakdown[primaryType.name].count.add(vendor.id);
+              typeBreakdown[primaryType.name].revenue += invoice.totalAmount;
+            }
+          }
+        }
+      });
+
+      res.json({ 
+        analytics, 
+        totals, 
+        year: currentYear, 
+        period,
+        typeBreakdown: Object.entries(typeBreakdown).map(([type, data]) => ({
+          type,
+          count: data.count.size,
+          revenue: data.revenue,
+        }))
+      });
     } catch (error) {
       console.error("Error fetching sales analytics:", error);
       res.status(500).json({ message: "Failed to fetch sales analytics" });

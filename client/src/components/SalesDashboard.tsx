@@ -26,6 +26,11 @@ interface SalesAnalytics {
     totalInvoices: number;
     avgOrderValue: number;
   };
+  typeBreakdown: Array<{
+    type: string;
+    count: number;
+    revenue: number;
+  }>;
   year: number;
   period: string;
 }
@@ -305,6 +310,39 @@ export default function SalesDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Vendor Type Breakdown */}
+      {salesData && salesData.typeBreakdown && salesData.typeBreakdown.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle data-testid="title-type-breakdown">Sales by Vendor Type</CardTitle>
+            <CardDescription data-testid="description-type-breakdown">Revenue breakdown by vendor classification</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-3" data-testid="sales-type-breakdown">
+              {salesData.typeBreakdown.map((type) => (
+                <Card key={type.type} className="p-4" data-testid={`card-sales-type-${type.type.toLowerCase().replace(/\s+/g, '-')}`}>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-semibold" data-testid={`text-sales-type-name-${type.type.toLowerCase().replace(/\s+/g, '-')}`}>
+                        {type.type}
+                      </h3>
+                      <p className="text-sm text-muted-foreground" data-testid={`text-sales-type-count-${type.type.toLowerCase().replace(/\s+/g, '-')}`}>
+                        {type.count} vendors
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold" data-testid={`text-sales-type-revenue-${type.type.toLowerCase().replace(/\s+/g, '-')}`}>
+                        {formatCurrency(type.revenue)}
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Period-wise Breakdown Table */}
       <Card>
