@@ -126,8 +126,8 @@ export default function PendingPaymentsDashboard({ customerFilter }: PendingPaym
     setLocation(`?${newParams.toString()}`);
   };
 
-  // Extract data from paginated response
-  const pendingInvoices = pendingPaymentsData?.data || [];
+  // Extract data from paginated response - use Array.isArray for safety
+  const pendingInvoices = Array.isArray(pendingPaymentsData?.data) ? pendingPaymentsData.data : [];
   const paginationMeta = pendingPaymentsData?.meta;
   const totalOutstanding = paginationMeta?.aggregateStats?.totalOutstanding || 0;
   const totalPendingCount = paginationMeta?.aggregateStats?.totalCount || 0;

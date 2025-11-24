@@ -76,12 +76,14 @@ export default function InvoiceDetail() {
     throwOnError: false,
   });
 
-  // Find the vendor matching the buyer name
-  const matchingVendor = vendors.find(v => v.vendorName === invoice?.buyerName);
+  // Find the vendor matching the buyer name - use Array.isArray for safety
+  const safeVendors = Array.isArray(vendors) ? vendors : [];
+  const matchingVendor = safeVendors.find(v => v.vendorName === invoice?.buyerName);
   
   // Get vendor types for this vendor
+  const safeVendorTypeAssignments = Array.isArray(allVendorTypeAssignments) ? allVendorTypeAssignments : [];
   const vendorTypes = matchingVendor 
-    ? allVendorTypeAssignments.filter(a => a.vendorId === matchingVendor.id)
+    ? safeVendorTypeAssignments.filter(a => a.vendorId === matchingVendor.id)
     : [];
 
   if (isLoadingInvoice) {
@@ -113,11 +115,16 @@ export default function InvoiceDetail() {
     );
   }
 
-  const relatedGatepass = gatepasses.find(g => g.invoiceId === id);
+  // Use Array.isArray checks for safety
+  const safeGatepasses = Array.isArray(gatepasses) ? gatepasses : [];
+  const safeProducts = Array.isArray(products) ? products : [];
+  const safeItems = Array.isArray(items) ? items : [];
+  
+  const relatedGatepass = safeGatepasses.find(g => g.invoiceId === id);
 
   const getProductName = (productId: string | null): string => {
     if (!productId) return 'Unknown Product';
-    const product = products.find(p => p.id === productId);
+    const product = safeProducts.find(p => p.id === productId);
     return product?.productName || 'Unknown Product';
   };
 
@@ -317,7 +324,7 @@ export default function InvoiceDetail() {
                 </tr>
               </thead>
               <tbody>
-                {items.map((item, index) => {
+                {safeItems.map((item, index) => {
                   const totalGst = item.cgstAmount + item.sgstAmount + item.igstAmount;
                   const gstRate = (item.cgstRate + item.sgstRate + item.igstRate) / 100;
                   
