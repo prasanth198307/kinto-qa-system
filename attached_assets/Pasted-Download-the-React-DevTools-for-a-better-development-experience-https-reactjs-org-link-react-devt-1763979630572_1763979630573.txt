@@ -1,0 +1,31 @@
+Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+auth:1 <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">Understand this warning
+chunk-E22KYI7D.js?v=7ab7df22:521 Warning: validateDOMNesting(...): <a> cannot appear as a descendant of <a>.
+    at a
+    at a
+    at https://713657ac-53c6-43a9-97a8-ef2697ef92d9-00-2xs534ob7npt2.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=7ab7df22:293:18
+    at td
+    at _c11 (https://713657ac-53c6-43a9-97a8-ef2697ef92d9-00-2xs534ob7npt2.riker.replit.dev/src/components/ui/table.tsx:152:13)
+    at tr
+    at _c9 (https://713657ac-53c6-43a9-97a8-ef2697ef92d9-00-2xs534ob7npt2.riker.replit.dev/src/components/ui/table.tsx:102:12)
+    at tbody
+    at _c5 (https://713657ac-53c6-43a9-97a8-ef2697ef92d9-00-2xs534ob7npt2.riker.replit.dev/src/components/ui/table.tsx:55:12)
+    at table
+    at div
+    at _c (https://713657ac-53c6-43a9-97a8-ef2697ef92d9-00-2xs534ob7npt2.riker.replit.dev/src/components/ui/table.tsx:20:11)
+    at div
+    at div
+    at _c9 (https://713657ac-53c6-43a9-97a8-ef2697ef92d9-00-2xs534ob7npt2.riker.replit.dev/src/components/ui/card.tsx:114:12)
+    at div
+    at _c (https://713657ac-53c6-43a9-97a8-ef2697ef92d9-00-2xs534ob7npt2.riker.replit.dev/src/components/ui/card.tsx:20:11)
+    at div
+    at VendorAnalytics (https://713657ac-53c6-43a9-97a8-ef2697ef92d9-00-2xs534ob7npt2.riker.replit.dev/src/pages/vendor-analytics.tsx:34:21)
+    at Route (https://713657ac-53c6-43a9-97a8-ef2697ef92d9-00-2xs534ob7npt2.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=7ab7df22:279:16)
+    at ProtectedRoute (https://713657ac-53c6-43a9-97a8-ef2697ef92d9-00-2xs534ob7npt2.riker.replit.dev/src/lib/protected-route.tsx:22:3)
+    at Switch (https://713657ac-53c6-43a9-97a8-ef2697ef92d9-00-2xs534ob7npt2.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=7ab7df22:335:17)
+    at Router
+    at Provider (https://713657ac-53c6-43a9-97a8-ef2697ef92d9-00-2xs534ob7npt2.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-XAOWCEX7.js?v=7ab7df22:43:15)
+    at TooltipProvider (https://713657ac-53c6-43a9-97a8-ef2697ef92d9-00-2xs534ob7npt2.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=7ab7df22:156:5)
+    at AuthProvider (https://713657ac-53c6-43a9-97a8-ef2697ef92d9-00-2xs534ob7npt2.riker.replit.dev/src/hooks/use-auth.tsx:26:32)
+    at QueryClientProvider (https://713657ac-53c6-43a9-97a8-ef2697ef92d9-00-2xs534ob7npt2.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=7ab7df22:3028:3)
+    at App
