@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
@@ -26,6 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, Package, Receipt, ShoppingCart, Wrench, Filter, FileCheck2, Download } from "lucide-react";
 import { format } from "date-fns";
 import type { Gatepass, Invoice, RawMaterialIssuance, PurchaseOrder, PMExecution } from "@shared/schema";
+import { DataTablePagination } from "@/components/DataTablePagination";
 import PrintableGatepass from "@/components/PrintableGatepass";
 import PrintableInvoice from "@/components/PrintableInvoice";
 import PrintableRawMaterialIssuance from "@/components/PrintableRawMaterialIssuance";
@@ -55,6 +56,10 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
   const [dateTo, setDateTo] = useState("");
   const [selectedCustomer, setSelectedCustomer] = useState<string>("all");
   const [activeTab, setActiveTab] = useState("gatepasses");
+  
+  // Pagination states for invoice tab
+  const [invoicePage, setInvoicePage] = useState(1);
+  const [invoicePageSize, setInvoicePageSize] = useState(25);
   
   // GST Report States
   const [gstReportType, setGstReportType] = useState<GSTReportType>("GSTR1");
@@ -154,6 +159,60 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
     setDateTo("");
     setSelectedCustomer("all");
   };
+  
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setInvoicePage(1);
+  }, [dateFrom, dateTo, selectedCustomer]);
+  
+  // Calculate paginated invoices with synchronous clamping
+  const paginatedInvoicesData = useMemo(() => {
+    const totalItems = filteredInvoices.length;
+    const totalPages = Math.ceil(totalItems / invoicePageSize);
+    
+    // Normalize page synchronously: 0 for empty, clamp to [1,totalPages] for data
+    const currentPage = totalPages === 0 ? 0 : Math.max(1, Math.min(invoicePage, totalPages));
+    
+    // For empty results, return empty data with page=0
+    if (totalItems === 0) {
+      return {
+        paginatedInvoices: [],
+        meta: {
+          page: 0,
+          pageSize: invoicePageSize,
+          totalItems: 0,
+          totalPages: 0,
+          hasNextPage: false,
+          hasPreviousPage: false,
+        },
+        currentPage,
+      };
+    }
+    
+    // Calculate slice using synchronized currentPage
+    const startIndex = (currentPage - 1) * invoicePageSize;
+    const endIndex = startIndex + invoicePageSize;
+    const paginatedInvoices = filteredInvoices.slice(startIndex, endIndex);
+    
+    // Build metadata using synchronized currentPage
+    const meta = {
+      page: currentPage,
+      pageSize: invoicePageSize,
+      totalItems,
+      totalPages,
+      hasNextPage: currentPage < totalPages,
+      hasPreviousPage: currentPage > 1,
+    };
+    
+    return { paginatedInvoices, meta, currentPage };
+  }, [filteredInvoices, invoicePage, invoicePageSize]);
+  
+  // Persist normalized page back to state for next render
+  useEffect(() => {
+    if (paginatedInvoicesData.currentPage !== invoicePage) {
+      setInvoicePage(paginatedInvoicesData.currentPage);
+    }
+  }, [paginatedInvoicesData.currentPage, invoicePage]);
 
   return (
     <>
@@ -319,34 +378,50 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                   No invoices found. Try adjusting your filters.
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Invoice #</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Buyer Name</TableHead>
-                        <TableHead>Total Amount</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredInvoices.map((invoice) => (
-                        <TableRow key={invoice.id}>
-                          <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
-                          <TableCell>{format(new Date(invoice.invoiceDate), 'MMM dd, yyyy')}</TableCell>
-                          <TableCell>{invoice.buyerName}</TableCell>
-                          <TableCell className="font-semibold">
-                            ₹{(invoice.totalAmount / 100).toFixed(2)}
-                          </TableCell>
-                          <TableCell>
-                            <PrintableInvoice invoice={invoice} />
-                          </TableCell>
+                <>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Invoice #</TableHead>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Buyer Name</TableHead>
+                          <TableHead>Total Amount</TableHead>
+                          <TableHead>Actions</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                      </TableHeader>
+                      <TableBody>
+                        {paginatedInvoicesData.paginatedInvoices.map((invoice) => (
+                          <TableRow key={invoice.id}>
+                            <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
+                            <TableCell>{format(new Date(invoice.invoiceDate), 'MMM dd, yyyy')}</TableCell>
+                            <TableCell>{invoice.buyerName}</TableCell>
+                            <TableCell className="font-semibold">
+                              ₹{(invoice.totalAmount / 100).toFixed(2)}
+                            </TableCell>
+                            <TableCell>
+                              <PrintableInvoice invoice={invoice} />
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  
+                  {/* Pagination Controls - only show when there are results */}
+                  {paginatedInvoicesData.meta.totalItems > 0 && (
+                    <div className="mt-4">
+                      <DataTablePagination
+                        meta={paginatedInvoicesData.meta}
+                        onPageChange={setInvoicePage}
+                        onPageSizeChange={(newSize) => {
+                          setInvoicePageSize(newSize);
+                          setInvoicePage(1); // Reset to first page
+                        }}
+                      />
+                    </div>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>
