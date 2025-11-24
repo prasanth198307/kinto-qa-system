@@ -130,17 +130,3 @@ export async function classifyAllVendors() {
     throw error;
   }
 }
-
-// Run the script if executed directly (ES module check)
-const isMainModule = import.meta.url === `file://${process.argv[1]}`;
-if (isMainModule) {
-  classifyAllVendors()
-    .then(() => {
-      console.log('✅ Script completed successfully');
-      process.exit(0);
-    })
-    .catch((error) => {
-      console.error('❌ Fatal error:', error);
-      process.exit(1);
-    });
-}
