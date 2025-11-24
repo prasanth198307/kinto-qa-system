@@ -79,6 +79,36 @@ export default function InvoiceDetail() {
     throwOnError: false,
   });
 
+  // Cancel & Reissue mutation - MUST be before early returns to avoid hooks ordering violation
+  const cancelAndReissueMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', `/api/invoices/${id}/cancel-and-reissue`, {});
+      return await response.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Invoice Cancelled",
+        description: data.message || "Invoice cancelled. Redirecting to create new invoice...",
+      });
+      
+      // Store invoice data and reissue flag in sessionStorage for re-issue
+      if (data.invoiceData) {
+        sessionStorage.setItem('reissue-invoice-data', JSON.stringify(data.invoiceData));
+        sessionStorage.setItem('is-reissue', data.isReissue ? 'true' : 'false');
+      }
+      
+      // Navigate to invoice creation with reissue flag
+      navigate('/?tab=invoices&reissue=true');
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to cancel & reissue invoice",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Find the vendor matching the buyer name - use Array.isArray for safety
   const safeVendors = Array.isArray(vendors) ? vendors : [];
   const matchingVendor = safeVendors.find(v => v.vendorName === invoice?.buyerName);
@@ -172,34 +202,6 @@ export default function InvoiceDetail() {
     queryClient.invalidateQueries({ queryKey: ['/api/invoices', id] });
     queryClient.invalidateQueries({ queryKey: ['/api/credit-notes'] });
   };
-
-  // Cancel & Reissue mutation
-  const cancelAndReissueMutation = useMutation({
-    mutationFn: async () => {
-      return await apiRequest('POST', `/api/invoices/${id}/cancel-and-reissue`, {});
-    },
-    onSuccess: (response: any) => {
-      toast({
-        title: "Invoice Cancelled",
-        description: response.message || "Invoice cancelled. Redirecting to create new invoice...",
-      });
-      
-      // Store invoice data in sessionStorage for re-issue
-      if (response.invoiceData) {
-        sessionStorage.setItem('reissue-invoice-data', JSON.stringify(response.invoiceData));
-      }
-      
-      // Navigate to invoice creation with reissue flag
-      navigate('/?tab=invoices&reissue=true');
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to cancel & reissue invoice",
-        variant: "destructive",
-      });
-    },
-  });
 
   // Check if user is admin or manager
   const canCreateCreditNote = user && (user.role === 'admin' || user.role === 'manager');

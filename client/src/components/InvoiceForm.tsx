@@ -72,10 +72,11 @@ type InvoiceFormData = z.infer<typeof invoiceFormSchema>;
 interface InvoiceFormProps {
   gatepass?: Gatepass;
   invoice?: Invoice;
+  isReissueMode?: boolean;
   onClose: () => void;
 }
 
-export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormProps) {
+export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, onClose }: InvoiceFormProps) {
   const { toast } = useToast();
   const [isIntrastateSupply, setIsIntrastateSupply] = useState(true);
   const [selectedBankId, setSelectedBankId] = useState<string>("");
@@ -334,25 +335,40 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
     }
   };
 
+  // Pre-select vendor based on buyer name (for reissue/edit mode)
+  useEffect(() => {
+    if (invoice && invoice.buyerName && !selectedVendorId) {
+      const matchingVendor = vendors.find(v => v.vendorName === invoice.buyerName);
+      if (matchingVendor) {
+        setSelectedVendorId(matchingVendor.id);
+      }
+    }
+  }, [invoice, vendors, selectedVendorId]);
+
   // Clear selected vendor when filter changes if vendor is no longer in filtered list
   useEffect(() => {
     if (selectedVendorId && !filteredVendors.find(v => v.id === selectedVendorId)) {
       setSelectedVendorId('');
-      // Clear buyer details when vendor selection is cleared
-      form.setValue("buyerName", "");
-      form.setValue("buyerGstin", "");
-      form.setValue("buyerAddress", "");
-      form.setValue("buyerState", "Karnataka");
-      form.setValue("buyerStateCode", "29");
-      form.setValue("isCluster", 0);
+      // Only clear buyer details if not in edit/reissue mode (no invoice prop)
+      if (!invoice) {
+        form.setValue("buyerName", "");
+        form.setValue("buyerGstin", "");
+        form.setValue("buyerAddress", "");
+        form.setValue("buyerState", "Karnataka");
+        form.setValue("buyerStateCode", "29");
+        form.setValue("isCluster", 0);
+      }
     }
-  }, [vendorTypeFilter, filteredVendors, selectedVendorId, form]);
+  }, [vendorTypeFilter, filteredVendors, selectedVendorId, form, invoice]);
 
   // Pre-populate invoice items from gatepass items or existing invoice
   useEffect(() => {
-    if (invoice && invoiceItems.length > 0) {
-      // Edit mode - populate from existing invoice items
-      const formItems = invoiceItems.map(item => ({
+    // Check if invoice has embedded items (e.g., from reissue flow)
+    const itemsToUse = (invoice as any)?.items?.length > 0 ? (invoice as any).items : invoiceItems;
+    
+    if (invoice && itemsToUse.length > 0) {
+      // Edit mode or reissue mode - populate from existing invoice items
+      const formItems = itemsToUse.map((item: any) => ({
         productId: item.productId || "",
         description: item.description || "",
         hsnCode: item.hsnCode || "",
@@ -504,15 +520,16 @@ export default function InvoiceForm({ gatepass, invoice, onClose }: InvoiceFormP
         };
       });
 
-      if (invoice) {
-        // Edit mode - update existing invoice
-        return await apiRequest('PATCH', `/api/invoices/${invoice.id}`, invoiceHeader);
-      } else {
-        // Create mode
+      // In reissue mode, always create a NEW invoice (POST) even if invoice prop exists
+      if (isReissueMode || !invoice || !invoice.id) {
+        // Create mode - new invoice
         return await apiRequest('POST', '/api/invoices', {
           header: invoiceHeader,
           items: invoiceItems,
         });
+      } else {
+        // Edit mode - update existing invoice
+        return await apiRequest('PATCH', `/api/invoices/${invoice.id}`, invoiceHeader);
       }
     },
     onSuccess: () => {

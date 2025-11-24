@@ -57,6 +57,59 @@ Preferred communication style: Simple, everyday language.
 - ✅ Currency handling validated
 - ✅ Security hardening verified by architect
 
+### Cancel & Reissue Invoice Feature (November 24, 2025)
+**Context:** Simpler alternative to credit notes for same-month invoice corrections (e.g., wrong amounts entered before dispatch).
+
+**Solution:** Implemented Cancel & Reissue workflow that creates a fresh invoice copy while soft-deleting the original.
+
+**Implementation:**
+- **Backend:** POST `/api/invoices/:id/cancel-and-reissue` endpoint with robust safeguards
+  - Current-month restriction: Only invoices from the current billing month can be reissued
+  - Active gatepass blocking: Prevents reissue if gatepass already created
+  - Deep data cleaning: Strips ALL identifiers (id, invoiceNumber, gatepassId, item IDs, timestamps, templateId, termsConditionsId)
+  - Explicit flag: Returns `isReissue: true` to differentiate from edit mode
+  - Soft delete: Sets original invoice `record_status = 0` (cancelled, preserved for audit trail)
+
+- **Frontend:** Complete data flow with sessionStorage management
+  - **invoice-detail.tsx**: Cancel & Reissue button → stores clean data + flag → navigates to Production Management
+  - **production-management.tsx**: Detects reissue param → loads sessionStorage → sets `isReissueMode=true` → opens form → cleans up storage
+  - **InvoiceForm.tsx**: Accepts `isReissueMode` prop → always POSTs new invoice (never PATCH) → pre-fills all fields including buyer name
+
+**Workflow Steps:**
+1. User clicks "Cancel & Reissue" on current-month invoice (no active gatepass)
+2. Backend cancels original invoice, strips all IDs, returns clean data + `isReissue: true`
+3. Frontend stores data/flag in sessionStorage, navigates to `/?tab=invoices&reissue=true`
+4. ProductionManagement detects params, loads data, sets `isReissueMode=true`, opens form
+5. InvoiceForm receives clean data + flag, pre-fills fields, pre-selects matching vendor
+6. User edits amounts/quantities, submits → POST creates NEW invoice with fresh ID
+7. Cancelled invoice remains in database (record_status=0) for audit/reporting
+8. New invoice gets fresh database-generated ID and invoice number
+
+**Security Features:**
+- ✅ Server-side ID stripping (backend never trusts client)
+- ✅ Explicit reissue flag prevents accidental PATCH
+- ✅ Form logic: `if (isReissueMode || !invoice || !invoice.id)` → POST
+- ✅ No ID conflicts or data corruption
+- ✅ Audit trail preserved (both invoices coexist)
+
+**Key Design Decisions:**
+- SessionStorage for data passing (temporary, auto-clears on page load)
+- Explicit `isReissueMode` flag to reliably distinguish reissue from edit
+- Buyer field protection: Pre-selects vendor to prevent field clearing
+- Clean URL handling: Removes reissue param after loading to prevent stale data
+
+**GST Compliance:**
+- Same-month restriction ensures corrected invoice in same GSTR-1 period
+- Cancelled invoice excluded from reporting (record_status=0)
+- New invoice counted in sales totals
+
+**Architect Review:**
+- ✅ PASS: Implementation complete and secure
+- ✅ Backend strips all identifiers correctly
+- ✅ Frontend always creates NEW invoice in reissue mode
+- ✅ Buyer fields pre-fill correctly
+- ✅ No security concerns observed
+
 ### Production Data Integrity Fixes
 Fixed critical data discrepancies affecting Sales Dashboard and Vendor Analytics:
 

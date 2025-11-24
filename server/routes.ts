@@ -4219,13 +4219,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Cancel the invoice (soft delete)
       await storage.deleteInvoice(id);
       
-      // Return invoice data for pre-filling the form
+      // Deep clean invoice data - remove ALL identifying fields to ensure fresh insert
+      const { 
+        id: invoiceId, 
+        invoiceNumber, 
+        gatepassId,
+        createdAt, 
+        updatedAt, 
+        recordStatus,
+        templateId,
+        termsConditionsId,
+        ...cleanInvoice 
+      } = invoice;
+      
+      // Clean invoice items - remove all IDs and references
+      const cleanItems = items.map(item => {
+        const {
+          id: itemId,
+          invoiceId: itemInvoiceId,
+          createdAt: itemCreatedAt,
+          updatedAt: itemUpdatedAt,
+          recordStatus: itemRecordStatus,
+          ...cleanItem
+        } = item;
+        return cleanItem;
+      });
+      
+      // Return invoice data for pre-filling the form with explicit reissue flag
       res.json({ 
         message: "Invoice cancelled successfully. Redirecting to create new invoice...",
         invoiceData: {
-          ...invoice,
-          items
-        }
+          ...cleanInvoice,
+          items: cleanItems
+        },
+        isReissue: true  // Explicit flag to differentiate from edit mode
       });
     } catch (error) {
       console.error("Error in cancel & reissue:", error);

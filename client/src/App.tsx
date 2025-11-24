@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider, useMutation, useQuery } from "@tanstack/react-query";
@@ -241,11 +241,25 @@ function ReviewerDashboard() {
 
 function ManagerDashboard() {
   const { logoutMutation } = useAuth();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const [activeView, setActiveView] = useState('overview');
   const mockRecords = [
     { id: '1', machine: 'RFC Machine', date: 'Oct 31, 2025', shift: 'Morning', operator: 'Ramesh Kumar', status: 'in_review' as const },
   ];
+
+  // Handle tab parameter from URL (for Cancel & Reissue flow and other deep links)
+  useEffect(() => {
+    const params = new URLSearchParams(location.split('?')[1] || '');
+    const tab = params.get('tab');
+    
+    if (tab) {
+      // Map valid tab values to activeView
+      const validTabs = ['invoices', 'gatepasses', 'raw-material-issuance'];
+      if (validTabs.includes(tab)) {
+        setActiveView(tab);
+      }
+    }
+  }, [location]);
 
   const handleLogout = () => {
     logoutMutation.mutate();
@@ -466,11 +480,25 @@ function ManagerDashboard() {
 
 function AdminDashboard() {
   const { logoutMutation } = useAuth();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const [activeView, setActiveView] = useState('overview');
   const [isPMDialogOpen, setIsPMDialogOpen] = useState(false);
   const [isExecutionDialogOpen, setIsExecutionDialogOpen] = useState(false);
   const [selectedPlanForExecution, setSelectedPlanForExecution] = useState<any>(null);
+
+  // Handle tab parameter from URL (for Cancel & Reissue flow and other deep links)
+  useEffect(() => {
+    const params = new URLSearchParams(location.split('?')[1] || '');
+    const tab = params.get('tab');
+    
+    if (tab) {
+      // Map valid tab values to activeView
+      const validTabs = ['invoices', 'gatepasses', 'raw-material-issuance'];
+      if (validTabs.includes(tab)) {
+        setActiveView(tab);
+      }
+    }
+  }, [location]);
 
   const { data: maintenancePlans = [] } = useQuery<any[]>({
     queryKey: ['/api/maintenance-plans'],

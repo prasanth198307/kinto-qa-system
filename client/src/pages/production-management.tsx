@@ -142,6 +142,9 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
     }
   }, [externalActiveTab]);
 
+  // State to track reissue mode
+  const [isReissueMode, setIsReissueMode] = useState(false);
+
   // Handle reissue parameter - pre-fill invoice form with cancelled invoice data
   useEffect(() => {
     const params = new URLSearchParams(location.split('?')[1] || '');
@@ -149,34 +152,31 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
     const tab = params.get('tab');
     
     if (isReissue && tab === 'invoices') {
-      // Get stored invoice data from sessionStorage
+      // Get stored invoice data and reissue flag from sessionStorage
       const storedData = sessionStorage.getItem('reissue-invoice-data');
+      const storedIsReissue = sessionStorage.getItem('is-reissue') === 'true';
       
       if (storedData) {
         try {
           const invoiceData = JSON.parse(storedData);
           
-          // Remove ID fields to ensure this is treated as a new invoice (POST not PATCH)
-          const { id, invoiceNumber, invoiceDate, createdAt, updatedAt, recordStatus, ...cleanData } = invoiceData;
-          
-          // Also clean up items - remove IDs
-          if (cleanData.items && Array.isArray(cleanData.items)) {
-            cleanData.items = cleanData.items.map((item: any) => {
-              const { id: itemId, invoiceId, createdAt: itemCreatedAt, updatedAt: itemUpdatedAt, recordStatus: itemRecordStatus, ...cleanItem } = item;
-              return cleanItem;
-            });
-          }
+          // Note: Backend already strips all IDs (invoice.id, invoiceNumber, item IDs, etc.)
+          // So this data is safe to use directly for creating a new invoice
           
           // Set the invoice tab as active
           setActiveTab('invoices');
           
+          // Set reissue mode flag
+          setIsReissueMode(storedIsReissue);
+          
           // Pre-fill the form with the cancelled invoice data
           // Without ID, it will be treated as a new invoice
-          setEditingInvoice(cleanData);
+          setEditingInvoice(invoiceData);
           setShowInvoiceForm(true);
           
           // Clear the stored data
           sessionStorage.removeItem('reissue-invoice-data');
+          sessionStorage.removeItem('is-reissue');
           
           // Clean up the URL (remove reissue parameter)
           params.delete('reissue');
@@ -192,6 +192,7 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
         } catch (error) {
           console.error('Failed to parse reissue invoice data:', error);
           sessionStorage.removeItem('reissue-invoice-data');
+          sessionStorage.removeItem('is-reissue');
         }
       }
     }
@@ -517,6 +518,7 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
     setShowInvoiceForm(false);
     setEditingInvoice(null);
     setSelectedGatepassForInvoice(null);
+    setIsReissueMode(false); // Reset reissue mode flag
   };
 
   const handleGenerateInvoice = (gatepass: Gatepass) => {
@@ -960,6 +962,7 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
                 <InvoiceForm
                   gatepass={selectedGatepassForInvoice || undefined}
                   invoice={editingInvoice || undefined}
+                  isReissueMode={isReissueMode}
                   onClose={handleInvoiceFormClose}
                 />
               </DialogContent>
@@ -1188,6 +1191,7 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
                 <InvoiceForm
                   gatepass={selectedGatepassForInvoice || undefined}
                   invoice={editingInvoice || undefined}
+                  isReissueMode={isReissueMode}
                   onClose={handleInvoiceFormClose}
                 />
               </DialogContent>
