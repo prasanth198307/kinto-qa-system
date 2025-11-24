@@ -142,6 +142,61 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
     }
   }, [externalActiveTab]);
 
+  // Handle reissue parameter - pre-fill invoice form with cancelled invoice data
+  useEffect(() => {
+    const params = new URLSearchParams(location.split('?')[1] || '');
+    const isReissue = params.get('reissue') === 'true';
+    const tab = params.get('tab');
+    
+    if (isReissue && tab === 'invoices') {
+      // Get stored invoice data from sessionStorage
+      const storedData = sessionStorage.getItem('reissue-invoice-data');
+      
+      if (storedData) {
+        try {
+          const invoiceData = JSON.parse(storedData);
+          
+          // Remove ID fields to ensure this is treated as a new invoice (POST not PATCH)
+          const { id, invoiceNumber, invoiceDate, createdAt, updatedAt, recordStatus, ...cleanData } = invoiceData;
+          
+          // Also clean up items - remove IDs
+          if (cleanData.items && Array.isArray(cleanData.items)) {
+            cleanData.items = cleanData.items.map((item: any) => {
+              const { id: itemId, invoiceId, createdAt: itemCreatedAt, updatedAt: itemUpdatedAt, recordStatus: itemRecordStatus, ...cleanItem } = item;
+              return cleanItem;
+            });
+          }
+          
+          // Set the invoice tab as active
+          setActiveTab('invoices');
+          
+          // Pre-fill the form with the cancelled invoice data
+          // Without ID, it will be treated as a new invoice
+          setEditingInvoice(cleanData);
+          setShowInvoiceForm(true);
+          
+          // Clear the stored data
+          sessionStorage.removeItem('reissue-invoice-data');
+          
+          // Clean up the URL (remove reissue parameter)
+          params.delete('reissue');
+          const cleanUrl = params.toString() 
+            ? `${location.split('?')[0]}?${params.toString()}`
+            : location.split('?')[0];
+          navigate(cleanUrl, { replace: true });
+          
+          toast({
+            title: "Invoice Data Loaded",
+            description: "Previous invoice data has been pre-filled. Please update amounts and save.",
+          });
+        } catch (error) {
+          console.error('Failed to parse reissue invoice data:', error);
+          sessionStorage.removeItem('reissue-invoice-data');
+        }
+      }
+    }
+  }, [location, navigate, toast]);
+
   const { data: issuances = [], isLoading: isLoadingIssuances } = useQuery<RawMaterialIssuance[]>({
     queryKey: ['/api/raw-material-issuances'],
   });
