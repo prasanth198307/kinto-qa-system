@@ -4167,6 +4167,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Cancel & Reissue invoice (for current month corrections)
+  app.post('/api/invoices/:id/cancel-and-reissue', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Fetch the invoice
+      const invoice = await storage.getInvoice(id);
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      
+      // Check if invoice is in current month
+      const now = new Date();
+      const invoiceDate = new Date(invoice.invoiceDate);
+      const currentMonth = now.getMonth();
+      const currentYear = now.getFullYear();
+      const invoiceMonth = invoiceDate.getMonth();
+      const invoiceYear = invoiceDate.getFullYear();
+      
+      if (invoiceMonth !== currentMonth || invoiceYear !== currentYear) {
+        return res.status(400).json({ 
+          message: "Can only cancel & reissue invoices from the current month. For older invoices, use Credit Notes instead.",
+          invoiceMonth: invoiceDate.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }),
+          currentMonth: now.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
+        });
+      }
+      
+      // Check if invoice has an associated gatepass
+      const existingGatepass = await db
+        .select()
+        .from(gatepasses)
+        .where(
+          and(
+            eq(gatepasses.invoiceId, id),
+            eq(gatepasses.recordStatus, 1)
+          )
+        )
+        .limit(1);
+      
+      if (existingGatepass.length > 0) {
+        return res.status(400).json({ 
+          message: "Cannot cancel invoice. A gatepass has been created for this invoice. Please cancel the gatepass first.",
+          gatepassNumber: existingGatepass[0].gatepassNumber
+        });
+      }
+      
+      // Fetch invoice items
+      const items = await storage.getInvoiceItems(id);
+      
+      // Cancel the invoice (soft delete)
+      await storage.deleteInvoice(id);
+      
+      // Return invoice data for pre-filling the form
+      res.json({ 
+        message: "Invoice cancelled successfully. Redirecting to create new invoice...",
+        invoiceData: {
+          ...invoice,
+          items
+        }
+      });
+    } catch (error) {
+      console.error("Error in cancel & reissue:", error);
+      res.status(500).json({ message: "Failed to cancel & reissue invoice" });
+    }
+  });
+
   // Update invoice status (for dispatch workflow)
   app.patch('/api/invoices/:id/status', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
