@@ -241,6 +241,7 @@ function ReviewerDashboard() {
 
 function ManagerDashboard() {
   const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
   const [activeView, setActiveView] = useState('overview');
   const mockRecords = [
     { id: '1', machine: 'RFC Machine', date: 'Oct 31, 2025', shift: 'Morning', operator: 'Ramesh Kumar', status: 'in_review' as const },
@@ -305,7 +306,7 @@ function ManagerDashboard() {
       label: "Inventory",
       items: [
         { id: "uom", label: "Unit of Measurement", icon: Layers },
-        { id: "vendors", label: "Vendor Master", icon: Building2 },
+        { id: "vendors", label: "Vendor Master", icon: Building2, onClick: () => setLocation('/vendor-management') },
         { id: "vendor-types", label: "Vendor Types", icon: Shield },
         { id: "raw-material-types", label: "Raw Material Types", icon: Archive },
       ],
@@ -465,6 +466,7 @@ function ManagerDashboard() {
 
 function AdminDashboard() {
   const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
   const [activeView, setActiveView] = useState('overview');
   const [isPMDialogOpen, setIsPMDialogOpen] = useState(false);
   const [isExecutionDialogOpen, setIsExecutionDialogOpen] = useState(false);
@@ -520,6 +522,7 @@ function AdminDashboard() {
           id: "vendor-analytics",
           label: "Vendor Analytics",
           icon: Building2,
+          onClick: () => setLocation('/vendor-analytics'),
         },
         {
           id: "reports",
@@ -540,7 +543,7 @@ function AdminDashboard() {
         { id: "pm-templates", label: "PM Templates", icon: ListChecks },
         { id: "template-management", label: "Invoice Templates", icon: FileStack },
         { id: "uom", label: "Unit of Measurement", icon: Layers },
-        { id: "vendors", label: "Vendor Master", icon: Building2 },
+        { id: "vendors", label: "Vendor Master", icon: Building2, onClick: () => setLocation('/vendor-management') },
         { id: "vendor-types", label: "Vendor Types", icon: Shield },
         { id: "raw-material-types", label: "Raw Material Types", icon: Archive },
         { id: "notification-settings", label: "Notification Settings", icon: Bell },
@@ -819,7 +822,9 @@ function AdminDashboard() {
           </div>
         );
       case 'vendor-analytics':
-        return <VendorAnalytics />;
+        // Redirect to standalone route
+        setLocation('/vendor-analytics');
+        return null;
       case 'reports':
         return <Reports showHeader={false} />;
       default:
