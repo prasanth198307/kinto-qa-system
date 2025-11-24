@@ -136,8 +136,9 @@ export default function ProofOfDelivery() {
     queryKey: ['/api/gatepasses'],
   });
 
-  // Filter gatepasses with "vehicle_out" status (ready for POD)
-  const deliveryPendingGatepasses = gatepasses.filter((gp) => gp.status === "vehicle_out");
+  // Filter gatepasses with "vehicle_out" status (ready for POD) - use Array.isArray for safety
+  const safeGatepasses = Array.isArray(gatepasses) ? gatepasses : [];
+  const deliveryPendingGatepasses = safeGatepasses.filter((gp) => gp.status === "vehicle_out");
 
   const podMutation = useMutation({
     mutationFn: async (data: {
