@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { Link, useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -52,17 +52,18 @@ export default function VendorAnalytics() {
   const { toast } = useToast();
   const [location, setLocation] = useLocation();
   
-  // URL-based state for pagination and filters
-  const urlParams = new URLSearchParams(location.split('?')[1] || '');
-  const page = parseInt(urlParams.get('page') || '1');
-  const pageSize = parseInt(urlParams.get('pageSize') || '25');
-  const searchQuery = urlParams.get('search') || '';
-  const sortBy = urlParams.get('sortBy') || 'outstandingBalance';
+  // Derive pagination params synchronously from URL during render
+  const searchParams = useMemo(() => new URLSearchParams(location.split('?')[1] || ''), [location]);
+  const page = useMemo(() => parseInt(searchParams.get('page') || '1', 10), [searchParams]);
+  const pageSize = useMemo(() => parseInt(searchParams.get('pageSize') || '25', 10), [searchParams]);
+  const searchQuery = useMemo(() => searchParams.get('search') || '', [searchParams]);
+  const sortBy = useMemo(() => searchParams.get('sortBy') || 'outstandingBalance', [searchParams]);
   
   // Update URL params helper
-  const updateUrlParams = (updates: Record<string, string | number>) => {
-    const pathname = location.split('?')[0];
-    const params = new URLSearchParams(location.split('?')[1] || '');
+  const updateUrlParams = useCallback((updates: Record<string, string | number>) => {
+    // Read fresh location from window to avoid stale captures
+    const currentSearch = window.location.search;
+    const params = new URLSearchParams(currentSearch);
     
     Object.entries(updates).forEach(([key, value]) => {
       if (value === '' || value === null || value === undefined) {
@@ -72,9 +73,14 @@ export default function VendorAnalytics() {
       }
     });
     
+    const pathname = location.split('?')[0];
     const newSearch = params.toString();
-    setLocation(newSearch ? `${pathname}?${newSearch}` : pathname);
-  };
+    const newLocation = newSearch ? `${pathname}?${newSearch}` : pathname;
+    
+    // Update URL - component will re-render with new location,
+    // useMemo will recalculate params, React Query will refetch
+    setLocation(newLocation);
+  }, [location, setLocation]);
 
   const { data: analyticsData, isLoading } = useQuery<VendorAnalyticsResponse>({
     queryKey: ['/api/vendor-analytics', page, pageSize, searchQuery, sortBy],
