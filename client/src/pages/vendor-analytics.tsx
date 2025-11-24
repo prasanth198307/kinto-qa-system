@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState, useCallback } from "react";
 import { Link, useLocation } from "wouter";
+import { queryClient } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -98,9 +99,14 @@ export default function VendorAnalytics() {
     
     console.log('🔄 [VendorAnalytics] New location will be:', newLocation);
     
-    // Update URL - component will re-render with new location,
-    // useMemo will recalculate params, React Query will refetch
+    // Update URL and force React Query to refetch
     setLocation(newLocation);
+    
+    // Force invalidate queries after URL change to trigger refetch
+    setTimeout(() => {
+      console.log('🔄 [VendorAnalytics] Invalidating queries');
+      queryClient.invalidateQueries({ queryKey: ['/api/vendor-analytics'] });
+    }, 0);
   }, [location, setLocation]);
 
   const { data: analyticsData, isLoading } = useQuery<VendorAnalyticsResponse>({
