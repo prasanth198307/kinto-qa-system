@@ -4288,24 +4288,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
           )
         );
       
-      // Cancel any associated gatepasses (soft delete)
-      for (const gatepass of existingGatepasses) {
-        await db.update(gatepasses)
-          .set({ recordStatus: 0 })
-          .where(eq(gatepasses.id, gatepass.id));
-        
-        console.log(`Cancelled gatepass ${gatepass.gatepassNumber} as part of invoice cancel & reissue`);
-        
-        // Note: Inventory return is handled separately if needed
-        // For Cancel & Reissue, we're replacing the invoice so inventory adjustments 
-        // will be made when the new gatepass is created
-      }
-      
-      // Fetch invoice items
+      // Fetch invoice items BEFORE cancellation
       const items = await storage.getInvoiceItems(id);
       
-      // Cancel the invoice (soft delete)
-      await storage.deleteInvoice(id);
+      // Use a transaction for atomicity
+      await db.transaction(async (tx) => {
+        // Track which gatepass numbers were cancelled for audit trail
+        const cancelledGatepassNumbers: string[] = [];
+        
+        // Cancel any associated gatepasses
+        for (const gatepass of existingGatepasses) {
+          await tx.update(gatepasses)
+            .set({ recordStatus: 0 })
+            .where(eq(gatepasses.id, gatepass.id));
+          
+          cancelledGatepassNumbers.push(gatepass.gatepassNumber);
+          console.log(`[CANCEL_REISSUE] Cancelled gatepass ${gatepass.gatepassNumber}`);
+        }
+        
+        // Return finished goods inventory ONCE per invoice item (outside gatepass loop)
+        // This prevents duplicate inventory returns if multiple gatepasses exist
+        if (existingGatepasses.length > 0) {
+          for (const item of items) {
+            if (item.productId && item.quantity > 0) {
+              const batchNumber = `CANCEL-${invoice.invoiceNumber}-${format(new Date(), 'yyyyMMdd-HHmmss')}`;
+              
+              await tx.insert(finishedGoods).values({
+                productId: item.productId,
+                batchNumber,
+                productionDate: new Date().toISOString(),
+                quantity: item.quantity,
+                qualityStatus: 'approved',
+                remarks: `Inventory returned - Invoice ${invoice.invoiceNumber} cancelled & reissued. Gatepass(es): ${cancelledGatepassNumbers.join(', ')}`,
+                createdBy: req.user?.id,
+              });
+              
+              console.log(`[INVENTORY] Returned ${item.quantity} units of product ${item.productId} to inventory (Cancel & Reissue)`);
+            }
+          }
+        }
+        
+        // Cancel the invoice (soft delete)
+        await tx.update(invoices)
+          .set({ recordStatus: 0 })
+          .where(eq(invoices.id, id));
+      });
       
       // Deep clean invoice data - remove ALL identifying fields to ensure fresh insert
       const { 
@@ -5340,6 +5367,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cessRate: number;
         cessAmount: number;
         totalAmount: number;
+        qtyReturned: number; // Track actual quantity being returned for inventory
       }> = [];
 
       for (const item of items) {
@@ -5396,6 +5424,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             cessRate: invoiceItem.cessRate || 0,
             cessAmount: cessAmountCalc,
             totalAmount: taxableValue + cgstAmountCalc + sgstAmountCalc + igstAmountCalc + cessAmountCalc,
+            qtyReturned: qtyDiff > 0 ? qtyDiff : 0, // Only return inventory for quantity reductions
           });
 
           subtotal += difference;
@@ -5450,7 +5479,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           notes: notes || `Auto-generated credit note for invoice correction`,
         }).returning();
 
-        // Create credit note items
+        // Create credit note items and return inventory for quantity reductions
+        let totalQtyReturned = 0;
         for (const itemData of creditItems) {
           await tx.insert(creditNoteItems).values({
             creditNoteId: creditNote.id,
@@ -5471,6 +5501,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
             cessAmount: itemData.cessAmount,
             totalAmount: itemData.totalAmount,
           });
+          
+          // Return finished goods inventory for quantity reductions only
+          if (itemData.productId && itemData.qtyReturned > 0) {
+            const batchNumber = `CORRECT-${invoice.invoiceNumber}-${format(new Date(), 'yyyyMMdd-HHmmss')}`;
+            
+            await tx.insert(finishedGoods).values({
+              productId: itemData.productId,
+              batchNumber,
+              productionDate: new Date().toISOString(),
+              quantity: itemData.qtyReturned,
+              qualityStatus: 'approved',
+              remarks: `Inventory returned - Correct & Credit note ${creditNoteNumber} for invoice ${invoice.invoiceNumber}. Qty reduced by ${itemData.qtyReturned}`,
+              createdBy: req.user?.id,
+            });
+            
+            totalQtyReturned += itemData.qtyReturned;
+            console.log(`[INVENTORY] Returned ${itemData.qtyReturned} units of product ${itemData.productId} to inventory (Correct & Credit)`);
+          }
         }
 
         await logAudit(
@@ -5478,7 +5526,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           'CREATE',
           'credit_notes',
           creditNote.id,
-          `Correct & Credit note ${creditNoteNumber} created for invoice ${invoice.invoiceNumber}. Reason: ${reason}. Amount: ₹${(grandTotal / 100).toFixed(2)}`
+          `Correct & Credit note ${creditNoteNumber} created for invoice ${invoice.invoiceNumber}. Reason: ${reason}. Amount: ₹${(grandTotal / 100).toFixed(2)}${totalQtyReturned > 0 ? `. Inventory returned: ${totalQtyReturned} units` : ''}`
         );
       });
 
@@ -5597,6 +5645,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
             cessAmount: invoiceItem.cessAmount || 0,
             totalAmount: invoiceItem.totalAmount,
           });
+          
+          // Return finished goods inventory for this item (full credit means goods returned)
+          if (invoiceItem.productId && invoiceItem.quantity > 0) {
+            const batchNumber = `CREDIT-${invoice.invoiceNumber}-${format(new Date(), 'yyyyMMdd-HHmmss')}`;
+            
+            await tx.insert(finishedGoods).values({
+              productId: invoiceItem.productId,
+              batchNumber,
+              productionDate: new Date().toISOString(),
+              quantity: invoiceItem.quantity,
+              qualityStatus: 'approved',
+              remarks: `Inventory returned - Full credit note ${creditNoteNumber} for invoice ${invoice.invoiceNumber}`,
+              createdBy: req.user?.id,
+            });
+            
+            console.log(`[INVENTORY] Returned ${invoiceItem.quantity} units of product ${invoiceItem.productId} to inventory (Quick Full Credit)`);
+          }
         }
 
         await logAudit(
@@ -5604,7 +5669,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           'CREATE',
           'credit_notes',
           creditNote.id,
-          `Quick full credit note ${creditNoteNumber} created for invoice ${invoice.invoiceNumber}. Full amount: ₹${(grandTotal / 100).toFixed(2)}`
+          `Quick full credit note ${creditNoteNumber} created for invoice ${invoice.invoiceNumber}. Full amount: ₹${(grandTotal / 100).toFixed(2)}. Inventory returned.`
         );
       });
 
