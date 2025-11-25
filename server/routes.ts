@@ -4046,6 +4046,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get cancelled invoices report (for audit trail) - MUST be before :id route
+  app.get('/api/invoices/cancelled', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { page = 1, pageSize = 20, dateFrom, dateTo, buyerName } = req.query;
+      
+      // Fetch all cancelled invoices (record_status = 0)
+      let cancelledInvoices = await db.select()
+        .from(invoices)
+        .where(eq(invoices.recordStatus, 0))
+        .orderBy(desc(invoices.updatedAt)); // Most recently cancelled first
+      
+      // Apply filters - use updatedAt as cancellation date since that's when record_status was set to 0
+      if (dateFrom) {
+        const fromDate = new Date(dateFrom as string);
+        cancelledInvoices = cancelledInvoices.filter(inv => 
+          new Date(inv.updatedAt!) >= fromDate
+        );
+      }
+      if (dateTo) {
+        const toDate = new Date(dateTo as string);
+        toDate.setHours(23, 59, 59, 999);
+        cancelledInvoices = cancelledInvoices.filter(inv => 
+          new Date(inv.updatedAt!) <= toDate
+        );
+      }
+      if (buyerName) {
+        cancelledInvoices = cancelledInvoices.filter(inv => 
+          inv.buyerName.toLowerCase().includes((buyerName as string).toLowerCase())
+        );
+      }
+      
+      // For each cancelled invoice, try to find a replacement invoice
+      // (same buyer, created after cancellation, with similar amount)
+      const invoicesWithReplacements = await Promise.all(
+        cancelledInvoices.map(async (cancelled) => {
+          // Look for a replacement invoice created after this one was cancelled
+          const possibleReplacements = await db.select()
+            .from(invoices)
+            .where(
+              and(
+                eq(invoices.buyerName, cancelled.buyerName),
+                eq(invoices.recordStatus, 1),
+                gt(invoices.createdAt, cancelled.updatedAt!) // Created after cancellation
+              )
+            )
+            .orderBy(invoices.createdAt)
+            .limit(1);
+          
+          const replacement = possibleReplacements.length > 0 ? possibleReplacements[0] : null;
+          
+          return {
+            ...cancelled,
+            replacementInvoiceId: replacement?.id || null,
+            replacementInvoiceNumber: replacement?.invoiceNumber || null,
+            cancellationDate: cancelled.updatedAt, // updatedAt reflects when it was cancelled
+          };
+        })
+      );
+      
+      // Pagination
+      const totalItems = invoicesWithReplacements.length;
+      const totalPages = Math.ceil(totalItems / Number(pageSize));
+      const startIndex = (Number(page) - 1) * Number(pageSize);
+      const endIndex = startIndex + Number(pageSize);
+      const paginatedData = invoicesWithReplacements.slice(startIndex, endIndex);
+      
+      res.json({
+        data: paginatedData,
+        pagination: {
+          page: Number(page),
+          pageSize: Number(pageSize),
+          totalItems,
+          totalPages,
+          hasNextPage: Number(page) < totalPages,
+          hasPreviousPage: Number(page) > 1,
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching cancelled invoices:", error);
+      res.status(500).json({ message: "Failed to fetch cancelled invoices" });
+    }
+  });
+
   // Create invoice with items
   app.post('/api/invoices', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
@@ -4257,89 +4340,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error in cancel & reissue:", error);
       res.status(500).json({ message: "Failed to cancel & reissue invoice" });
-    }
-  });
-
-  // Get cancelled invoices report (for audit trail)
-  app.get('/api/invoices/cancelled', requireRole('admin', 'manager'), async (req: any, res) => {
-    try {
-      const { page = 1, pageSize = 20, dateFrom, dateTo, buyerName } = req.query;
-      
-      // Fetch all cancelled invoices (record_status = 0)
-      let cancelledInvoices = await db.select()
-        .from(invoices)
-        .where(eq(invoices.recordStatus, 0))
-        .orderBy(desc(invoices.updatedAt)); // Most recently cancelled first
-      
-      // Apply filters - use updatedAt as cancellation date since that's when record_status was set to 0
-      if (dateFrom) {
-        const fromDate = new Date(dateFrom as string);
-        cancelledInvoices = cancelledInvoices.filter(inv => 
-          new Date(inv.updatedAt!) >= fromDate
-        );
-      }
-      if (dateTo) {
-        const toDate = new Date(dateTo as string);
-        toDate.setHours(23, 59, 59, 999);
-        cancelledInvoices = cancelledInvoices.filter(inv => 
-          new Date(inv.updatedAt!) <= toDate
-        );
-      }
-      if (buyerName) {
-        cancelledInvoices = cancelledInvoices.filter(inv => 
-          inv.buyerName.toLowerCase().includes((buyerName as string).toLowerCase())
-        );
-      }
-      
-      // For each cancelled invoice, try to find a replacement invoice
-      // (same buyer, created after cancellation, with similar amount)
-      const invoicesWithReplacements = await Promise.all(
-        cancelledInvoices.map(async (cancelled) => {
-          // Look for a replacement invoice created after this one was cancelled
-          const possibleReplacements = await db.select()
-            .from(invoices)
-            .where(
-              and(
-                eq(invoices.buyerName, cancelled.buyerName),
-                eq(invoices.recordStatus, 1),
-                gt(invoices.createdAt, cancelled.updatedAt!) // Created after cancellation
-              )
-            )
-            .orderBy(invoices.createdAt)
-            .limit(1);
-          
-          const replacement = possibleReplacements.length > 0 ? possibleReplacements[0] : null;
-          
-          return {
-            ...cancelled,
-            replacementInvoiceId: replacement?.id || null,
-            replacementInvoiceNumber: replacement?.invoiceNumber || null,
-            cancellationDate: cancelled.updatedAt, // updatedAt reflects when it was cancelled
-          };
-        })
-      );
-      
-      // Pagination
-      const totalItems = invoicesWithReplacements.length;
-      const totalPages = Math.ceil(totalItems / Number(pageSize));
-      const startIndex = (Number(page) - 1) * Number(pageSize);
-      const endIndex = startIndex + Number(pageSize);
-      const paginatedData = invoicesWithReplacements.slice(startIndex, endIndex);
-      
-      res.json({
-        data: paginatedData,
-        pagination: {
-          page: Number(page),
-          pageSize: Number(pageSize),
-          totalItems,
-          totalPages,
-          hasNextPage: Number(page) < totalPages,
-          hasPreviousPage: Number(page) > 1,
-        }
-      });
-    } catch (error) {
-      console.error("Error fetching cancelled invoices:", error);
-      res.status(500).json({ message: "Failed to fetch cancelled invoices" });
     }
   });
 
