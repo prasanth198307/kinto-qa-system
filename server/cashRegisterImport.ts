@@ -218,11 +218,6 @@ function parseItemDetails(itemDetails: string | undefined | null): ParsedExpense
 // Parse Excel file buffer and return preview
 export async function parseExcelFile(buffer: Buffer, fileName: string): Promise<ImportPreview> {
   const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
-  const sheetName = workbook.SheetNames[0];
-  const worksheet = workbook.Sheets[sheetName];
-  
-  // Convert to JSON with header row
-  const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: true }) as any[][];
   
   const result: ImportPreview = {
     fileName,
@@ -236,162 +231,175 @@ export async function parseExcelFile(buffer: Buffer, fileName: string): Promise<
     errors: []
   };
   
-  if (rawData.length < 2) {
-    result.errors.push('File is empty or has no data rows');
-    return result;
-  }
-  
-  // Find header row
-  const headerRow = rawData[0];
-  const columnMap = {
-    date: -1,
-    so: -1,
-    openingBalance: -1,
-    depositAmount: -1,
-    receivedCash: -1,
-    expenses: -1,
-    itemDetails: -1,
-    balanceAmount: -1,
-    sentToTulasi: -1
-  };
-  
-  // Map columns by header text
-  headerRow.forEach((header: any, index: number) => {
-    const h = String(header).toLowerCase().trim();
-    if (h === 'date') columnMap.date = index;
-    if (h === 'so' || h === 'salesperson') columnMap.so = index;
-    if (h.includes('opening') && h.includes('balance')) columnMap.openingBalance = index;
-    if (h.includes('deposit')) columnMap.depositAmount = index;
-    if (h.includes('received') || h.includes('cash received')) columnMap.receivedCash = index;
-    if (h === 'expenses' || h === 'expense') columnMap.expenses = index;
-    if (h.includes('item') && h.includes('detail')) columnMap.itemDetails = index;
-    if (h.includes('balance') && h.includes('amount')) columnMap.balanceAmount = index;
-    if (h.includes('sent') && h.includes('tulasi')) columnMap.sentToTulasi = index;
-  });
-  
-  // Validate required columns
-  if (columnMap.date === -1) result.errors.push('Missing "Date" column');
-  if (columnMap.so === -1) result.errors.push('Missing "SO" (Salesperson) column');
-  
-  if (result.errors.length > 0) {
-    return result;
-  }
-  
   const salespersonSet = new Set<string>();
   let minDate: string | null = null;
   let maxDate: string | null = null;
+  let globalRowNumber = 0;
   
-  // Parse data rows
-  for (let i = 1; i < rawData.length; i++) {
-    const row = rawData[i];
-    if (!row || row.length === 0) continue;
+  console.log('[CASH_REGISTER] Processing', workbook.SheetNames.length, 'sheets:', workbook.SheetNames.join(', '));
+  
+  // Process ALL sheets in the workbook
+  for (const sheetName of workbook.SheetNames) {
+    const worksheet = workbook.Sheets[sheetName];
     
-    const parsedRow: ParsedRow = {
-      rowNumber: i + 1,
-      date: '',
-      salespersonName: '',
-      openingBalance: 0,
-      depositAmount: 0,
-      receivedCash: 0,
-      expenses: 0,
-      itemDetails: '',
-      parsedItems: [],
-      balanceAmount: 0,
-      sentToTulasi: 0,
-      calculatedBalance: 0,
-      hasVariance: false,
-      variance: 0,
-      errors: [],
-      warnings: []
+    // Convert to JSON with header row
+    const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: true }) as any[][];
+    
+    if (rawData.length < 2) {
+      console.log('[CASH_REGISTER] Sheet', sheetName, 'is empty, skipping');
+      continue;
+    }
+    
+    // Find header row
+    const headerRow = rawData[0];
+    const columnMap = {
+      date: -1,
+      so: -1,
+      openingBalance: -1,
+      depositAmount: -1,
+      receivedCash: -1,
+      expenses: -1,
+      itemDetails: -1,
+      balanceAmount: -1,
+      sentToTulasi: -1
     };
     
-    result.totalRows++;
+    // Map columns by header text
+    headerRow.forEach((header: any, index: number) => {
+      const h = String(header).toLowerCase().trim();
+      if (h === 'date') columnMap.date = index;
+      if (h === 'so' || h === 'salesperson') columnMap.so = index;
+      if (h.includes('opening') && h.includes('balance')) columnMap.openingBalance = index;
+      if (h.includes('deposit')) columnMap.depositAmount = index;
+      if (h.includes('received') || h.includes('cash received')) columnMap.receivedCash = index;
+      if (h === 'expenses' || h === 'expense') columnMap.expenses = index;
+      if (h.includes('item') && h.includes('detail')) columnMap.itemDetails = index;
+      if (h.includes('balance') && h.includes('amount')) columnMap.balanceAmount = index;
+      if (h.includes('sent') && h.includes('tulasi')) columnMap.sentToTulasi = index;
+    });
     
-    // Parse date
-    if (columnMap.date >= 0) {
-      const dateVal = row[columnMap.date];
-      if (dateVal) {
-        parsedRow.date = excelDateToISO(dateVal);
-        if (!parsedRow.date) {
-          parsedRow.errors.push('Invalid date format');
-          console.log('[CASH_REGISTER] Row', i, 'invalid date:', dateVal);
+    // Skip sheet if missing required columns
+    if (columnMap.date === -1 || columnMap.so === -1) {
+      console.log('[CASH_REGISTER] Sheet', sheetName, 'missing required columns, skipping');
+      continue;
+    }
+    
+    console.log('[CASH_REGISTER] Processing sheet:', sheetName, 'with', rawData.length - 1, 'data rows');
+    
+    // Parse data rows from this sheet
+    for (let i = 1; i < rawData.length; i++) {
+      const row = rawData[i];
+      if (!row || row.length === 0) continue;
+      
+      globalRowNumber++;
+      
+      const parsedRow: ParsedRow = {
+        rowNumber: globalRowNumber,
+        date: '',
+        salespersonName: '',
+        openingBalance: 0,
+        depositAmount: 0,
+        receivedCash: 0,
+        expenses: 0,
+        itemDetails: '',
+        parsedItems: [],
+        balanceAmount: 0,
+        sentToTulasi: 0,
+        calculatedBalance: 0,
+        hasVariance: false,
+        variance: 0,
+        errors: [],
+        warnings: []
+      };
+      
+      result.totalRows++;
+      
+      // Parse date
+      if (columnMap.date >= 0) {
+        const dateVal = row[columnMap.date];
+        if (dateVal) {
+          parsedRow.date = excelDateToISO(dateVal);
+          if (!parsedRow.date) {
+            parsedRow.errors.push('Invalid date format');
+            console.log('[CASH_REGISTER] Row', i, 'invalid date:', dateVal);
+          } else {
+            if (!minDate || parsedRow.date < minDate) minDate = parsedRow.date;
+            if (!maxDate || parsedRow.date > maxDate) maxDate = parsedRow.date;
+          }
         } else {
-          if (!minDate || parsedRow.date < minDate) minDate = parsedRow.date;
-          if (!maxDate || parsedRow.date > maxDate) maxDate = parsedRow.date;
-        }
-      } else {
-        parsedRow.errors.push('Missing date');
-        console.log('[CASH_REGISTER] Row', i, 'missing date');
-      }
-    }
-    
-    // Parse salesperson
-    if (columnMap.so >= 0) {
-      parsedRow.salespersonName = String(row[columnMap.so] || '').trim().toUpperCase();
-      if (!parsedRow.salespersonName) {
-        parsedRow.errors.push('Missing salesperson');
-      } else {
-        salespersonSet.add(parsedRow.salespersonName);
-      }
-    }
-    
-    // Parse numeric fields
-    if (columnMap.openingBalance >= 0) {
-      parsedRow.openingBalance = parseCurrencyToPaise(row[columnMap.openingBalance]);
-    }
-    if (columnMap.depositAmount >= 0) {
-      parsedRow.depositAmount = parseCurrencyToPaise(row[columnMap.depositAmount]);
-    }
-    if (columnMap.receivedCash >= 0) {
-      parsedRow.receivedCash = parseCurrencyToPaise(row[columnMap.receivedCash]);
-    }
-    if (columnMap.expenses >= 0) {
-      parsedRow.expenses = parseCurrencyToPaise(row[columnMap.expenses]);
-    }
-    if (columnMap.balanceAmount >= 0) {
-      parsedRow.balanceAmount = parseCurrencyToPaise(row[columnMap.balanceAmount]);
-    }
-    if (columnMap.sentToTulasi >= 0) {
-      parsedRow.sentToTulasi = parseCurrencyToPaise(row[columnMap.sentToTulasi]);
-    }
-    
-    // Parse item details
-    if (columnMap.itemDetails >= 0) {
-      parsedRow.itemDetails = String(row[columnMap.itemDetails] || '');
-      parsedRow.parsedItems = parseItemDetails(parsedRow.itemDetails);
-      
-      // Check if parsed items sum matches expenses
-      const itemsTotal = parsedRow.parsedItems.reduce((sum, item) => sum + item.amount, 0);
-      if (itemsTotal > 0 && parsedRow.expenses > 0) {
-        if (Math.abs(itemsTotal - parsedRow.expenses) > 100) { // Allow 1 rupee tolerance
-          parsedRow.warnings.push(`Item details total (${itemsTotal/100}) doesn't match expenses (${parsedRow.expenses/100})`);
+          parsedRow.errors.push('Missing date');
+          console.log('[CASH_REGISTER] Row', i, 'missing date');
         }
       }
-    }
-    
-    // Calculate expected balance
-    // Opening + Cash Received - Expenses - Transfers = Closing
-    parsedRow.calculatedBalance = parsedRow.openingBalance + parsedRow.receivedCash - parsedRow.expenses - parsedRow.sentToTulasi;
-    
-    // Check variance
-    if (parsedRow.balanceAmount > 0) {
-      parsedRow.variance = parsedRow.balanceAmount - parsedRow.calculatedBalance;
-      parsedRow.hasVariance = Math.abs(parsedRow.variance) > 100; // 1 rupee tolerance
       
-      if (parsedRow.hasVariance) {
-        parsedRow.warnings.push(`Balance mismatch: expected ${parsedRow.calculatedBalance/100}, found ${parsedRow.balanceAmount/100}`);
+      // Parse salesperson
+      if (columnMap.so >= 0) {
+        parsedRow.salespersonName = String(row[columnMap.so] || '').trim().toUpperCase();
+        if (!parsedRow.salespersonName) {
+          parsedRow.errors.push('Missing salesperson');
+        } else {
+          salespersonSet.add(parsedRow.salespersonName);
+        }
       }
+      
+      // Parse numeric fields
+      if (columnMap.openingBalance >= 0) {
+        parsedRow.openingBalance = parseCurrencyToPaise(row[columnMap.openingBalance]);
+      }
+      if (columnMap.depositAmount >= 0) {
+        parsedRow.depositAmount = parseCurrencyToPaise(row[columnMap.depositAmount]);
+      }
+      if (columnMap.receivedCash >= 0) {
+        parsedRow.receivedCash = parseCurrencyToPaise(row[columnMap.receivedCash]);
+      }
+      if (columnMap.expenses >= 0) {
+        parsedRow.expenses = parseCurrencyToPaise(row[columnMap.expenses]);
+      }
+      if (columnMap.balanceAmount >= 0) {
+        parsedRow.balanceAmount = parseCurrencyToPaise(row[columnMap.balanceAmount]);
+      }
+      if (columnMap.sentToTulasi >= 0) {
+        parsedRow.sentToTulasi = parseCurrencyToPaise(row[columnMap.sentToTulasi]);
+      }
+      
+      // Parse item details
+      if (columnMap.itemDetails >= 0) {
+        parsedRow.itemDetails = String(row[columnMap.itemDetails] || '');
+        parsedRow.parsedItems = parseItemDetails(parsedRow.itemDetails);
+        
+        // Check if parsed items sum matches expenses
+        const itemsTotal = parsedRow.parsedItems.reduce((sum, item) => sum + item.amount, 0);
+        if (itemsTotal > 0 && parsedRow.expenses > 0) {
+          if (Math.abs(itemsTotal - parsedRow.expenses) > 100) { // Allow 1 rupee tolerance
+            parsedRow.warnings.push(`Item details total (${itemsTotal/100}) doesn't match expenses (${parsedRow.expenses/100})`);
+          }
+        }
+      }
+      
+      // Calculate expected balance
+      // Opening + Cash Received - Expenses - Transfers = Closing
+      parsedRow.calculatedBalance = parsedRow.openingBalance + parsedRow.receivedCash - parsedRow.expenses - parsedRow.sentToTulasi;
+      
+      // Check variance
+      if (parsedRow.balanceAmount > 0) {
+        parsedRow.variance = parsedRow.balanceAmount - parsedRow.calculatedBalance;
+        parsedRow.hasVariance = Math.abs(parsedRow.variance) > 100; // 1 rupee tolerance
+        
+        if (parsedRow.hasVariance) {
+          parsedRow.warnings.push(`Balance mismatch: expected ${parsedRow.calculatedBalance/100}, found ${parsedRow.balanceAmount/100}`);
+        }
+      }
+      
+      // Track valid/error rows
+      if (parsedRow.errors.length > 0) {
+        result.errorRows++;
+      } else {
+        result.validRows++;
+      }
+      
+      result.rows.push(parsedRow);
     }
-    
-    // Track valid/error rows
-    if (parsedRow.errors.length > 0) {
-      result.errorRows++;
-    } else {
-      result.validRows++;
-    }
-    
-    result.rows.push(parsedRow);
-  }
+  } // End of sheet loop
   
   console.log('[CASH_REGISTER] Parse summary: Total:', result.totalRows, 'Valid:', result.validRows, 'Error:', result.errorRows);
   
