@@ -339,7 +339,8 @@ export async function parseExcelFile(buffer: Buffer, fileName: string): Promise<
       
       // Skip rows where salesperson is a non-data marker (HOLIDAY, SUNDAY, ALL, NIL, empty)
       // These are summary/placeholder rows, not actual salesperson data
-      const skipSalespersons = ['HOLIDAY', 'SUNDAY', 'ALL', 'NIL', 'NA', ''];
+      // Note: 'NA' is kept as a valid salesperson name to match legacy import behavior
+      const skipSalespersons = ['HOLIDAY', 'SUNDAY', 'ALL', 'NIL', ''];
       if (skipSalespersons.includes(parsedRow.salespersonName)) {
         console.log('[CASH_REGISTER] Skipping non-salesperson row:', parsedRow.salespersonName || '(empty)', 'on', parsedRow.date);
         continue;

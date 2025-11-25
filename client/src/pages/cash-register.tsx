@@ -20,7 +20,7 @@ import {
   Plus, Upload, Search, Eye, Check, X, Receipt, Calendar, User, 
   Wallet, ArrowUpRight, ArrowDownRight, RefreshCw, FileSpreadsheet,
   AlertCircle, TrendingUp, TrendingDown, DollarSign, CheckCircle2, Lock,
-  AlertTriangle, Edit, Save, Trash2
+  AlertTriangle, Edit, Save, Trash2, PiggyBank
 } from "lucide-react";
 import type { CashRegisterDay, CashRegisterTransaction, CashRegisterExpenseItem, PaginationMeta } from "@shared/schema";
 import { DataTablePagination } from "@/components/DataTablePagination";
@@ -36,7 +36,7 @@ interface DiscrepancyDetails {
   items_difference: number;
 }
 
-interface DayWithTransactions extends CashRegisterDay {
+interface DayWithTransactions extends Omit<CashRegisterDay, 'hasDiscrepancy' | 'discrepancyDetails'> {
   transactions?: (CashRegisterTransaction & { items?: CashRegisterExpenseItem[] })[];
   hasDiscrepancy?: number;
   discrepancyDetails?: DiscrepancyDetails;
@@ -639,7 +639,7 @@ export default function CashRegisterPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-2">
@@ -657,6 +657,15 @@ export default function CashRegisterPage() {
               <span className="text-sm text-muted-foreground">Cash Received</span>
             </div>
             <div className="text-xl font-bold mt-1 text-green-600" data-testid="text-total-cash-received">{formatCurrency(totals.totalCashReceived)}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-2">
+              <PiggyBank className="w-5 h-5 text-purple-600" />
+              <span className="text-sm text-muted-foreground">Deposits</span>
+            </div>
+            <div className="text-xl font-bold mt-1 text-purple-600" data-testid="text-total-deposits">{formatCurrency(totals.totalDeposits)}</div>
           </CardContent>
         </Card>
         <Card>
