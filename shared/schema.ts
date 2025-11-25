@@ -2078,6 +2078,216 @@ export const insertProductionReconciliationItemSchema = createInsertSchema(produ
 export type InsertProductionReconciliationItem = z.infer<typeof insertProductionReconciliationItemSchema>;
 export type ProductionReconciliationItem = typeof productionReconciliationItems.$inferSelect;
 
+// ==================== DOCUMENT MANAGEMENT ====================
+
+// Document Categories - Types of documents that can be stored
+export const documentCategories = pgTable("document_categories", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 100 }).notNull().unique(),
+  description: text("description"),
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
+});
+
+export const insertDocumentCategorySchema = createInsertSchema(documentCategories).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertDocumentCategory = z.infer<typeof insertDocumentCategorySchema>;
+export type DocumentCategory = typeof documentCategories.$inferSelect;
+
+// Documents - Main document metadata table
+export const documents = pgTable("documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  categoryId: varchar("category_id").references(() => documentCategories.id),
+  
+  // File information
+  fileName: varchar("file_name", { length: 500 }).notNull(),
+  fileType: varchar("file_type", { length: 100 }), // MIME type
+  fileSize: integer("file_size"), // in bytes
+  filePath: text("file_path").notNull(), // Storage path
+  
+  // Related entity linking (polymorphic - can link to vendor, invoice, etc.)
+  relatedEntityType: varchar("related_entity_type", { length: 50 }), // 'vendor', 'invoice', 'purchase_order', etc.
+  relatedEntityId: varchar("related_entity_id"),
+  
+  // Document validity tracking
+  documentDate: date("document_date", { mode: 'string' }),
+  expiryDate: date("expiry_date", { mode: 'string' }),
+  
+  // Version control
+  versionNumber: integer("version_number").default(1).notNull(),
+  parentDocumentId: varchar("parent_document_id"), // For version tracking
+  
+  tags: text("tags").array(), // Searchable tags
+  remarks: text("remarks"),
+  
+  uploadedBy: varchar("uploaded_by").references(() => users.id),
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
+}, (table) => [
+  index("documents_category_idx").on(table.categoryId),
+  index("documents_related_entity_idx").on(table.relatedEntityType, table.relatedEntityId),
+  index("documents_expiry_idx").on(table.expiryDate),
+]);
+
+export const insertDocumentSchema = createInsertSchema(documents).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertDocument = z.infer<typeof insertDocumentSchema>;
+export type Document = typeof documents.$inferSelect;
+
+// ==================== EXPENSE TRACKING & VOUCHERS ====================
+
+// Expense Categories - Categories for expense classification
+export const expenseCategories = pgTable("expense_categories", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+  parentId: varchar("parent_id"), // For subcategories
+  gstApplicable: integer("gst_applicable").default(0).notNull(), // 0 = No, 1 = Yes
+  defaultGstRate: numeric("default_gst_rate", { precision: 5, scale: 2 }).default('0'),
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
+});
+
+export const insertExpenseCategorySchema = createInsertSchema(expenseCategories).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertExpenseCategory = z.infer<typeof insertExpenseCategorySchema>;
+export type ExpenseCategory = typeof expenseCategories.$inferSelect;
+
+// Expense Vouchers - Header table for expense vouchers
+export const expenseVouchers = pgTable("expense_vouchers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  voucherNumber: varchar("voucher_number", { length: 50 }).notNull().unique(),
+  voucherDate: date("voucher_date", { mode: 'string' }).notNull(),
+  
+  // Payee information
+  payeeType: varchar("payee_type", { length: 20 }).notNull(), // 'employee', 'vendor', 'other'
+  payeeId: varchar("payee_id"), // Reference to user or vendor
+  payeeName: varchar("payee_name", { length: 255 }).notNull(), // Stored for display
+  
+  // Payment details
+  paymentMode: varchar("payment_mode", { length: 50 }).notNull(), // 'cash', 'bank_transfer', 'upi', 'cheque'
+  bankName: varchar("bank_name", { length: 100 }),
+  chequeNumber: varchar("cheque_number", { length: 50 }),
+  transactionReference: varchar("transaction_reference", { length: 100 }),
+  
+  // Amount summary (in paise for precision)
+  subtotal: integer("subtotal").default(0).notNull(),
+  gstAmount: integer("gst_amount").default(0).notNull(),
+  totalAmount: integer("total_amount").default(0).notNull(),
+  
+  // Workflow
+  status: varchar("status", { length: 20 }).default('draft').notNull(), // 'draft', 'submitted', 'approved', 'rejected', 'paid'
+  
+  purpose: text("purpose"),
+  remarks: text("remarks"),
+  
+  // Audit trail
+  preparedBy: varchar("prepared_by").references(() => users.id).notNull(),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at", { mode: 'string' }),
+  
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
+}, (table) => [
+  index("expense_vouchers_date_idx").on(table.voucherDate),
+  index("expense_vouchers_status_idx").on(table.status),
+  index("expense_vouchers_payee_idx").on(table.payeeType, table.payeeId),
+]);
+
+export const insertExpenseVoucherSchema = createInsertSchema(expenseVouchers).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertExpenseVoucher = z.infer<typeof insertExpenseVoucherSchema>;
+export type ExpenseVoucher = typeof expenseVouchers.$inferSelect;
+
+// Expense Items - Line items for each voucher
+export const expenseItems = pgTable("expense_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  voucherId: varchar("voucher_id").references(() => expenseVouchers.id, { onDelete: 'cascade' }).notNull(),
+  categoryId: varchar("category_id").references(() => expenseCategories.id),
+  
+  description: text("description").notNull(),
+  quantity: integer("quantity").default(1).notNull(),
+  unitPrice: integer("unit_price").default(0).notNull(), // in paise
+  amount: integer("amount").default(0).notNull(), // in paise (quantity * unitPrice)
+  
+  // GST details
+  gstRate: numeric("gst_rate", { precision: 5, scale: 2 }).default('0'),
+  gstAmount: integer("gst_amount").default(0).notNull(), // in paise
+  
+  // Optional reference to purchase invoice
+  referenceInvoiceNumber: varchar("reference_invoice_number", { length: 100 }),
+  referenceInvoiceDate: date("reference_invoice_date", { mode: 'string' }),
+  
+  costCenter: varchar("cost_center", { length: 100 }),
+  remarks: text("remarks"),
+  
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
+});
+
+export const insertExpenseItemSchema = createInsertSchema(expenseItems).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertExpenseItem = z.infer<typeof insertExpenseItemSchema>;
+export type ExpenseItem = typeof expenseItems.$inferSelect;
+
+// Expense Attachments - Receipts and supporting documents
+export const expenseAttachments = pgTable("expense_attachments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  voucherId: varchar("voucher_id").references(() => expenseVouchers.id, { onDelete: 'cascade' }).notNull(),
+  
+  fileName: varchar("file_name", { length: 500 }).notNull(),
+  fileType: varchar("file_type", { length: 100 }),
+  fileSize: integer("file_size"),
+  filePath: text("file_path").notNull(),
+  
+  description: text("description"),
+  uploadedBy: varchar("uploaded_by").references(() => users.id),
+  
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+});
+
+export const insertExpenseAttachmentSchema = createInsertSchema(expenseAttachments).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+});
+
+export type InsertExpenseAttachment = z.infer<typeof insertExpenseAttachmentSchema>;
+export type ExpenseAttachment = typeof expenseAttachments.$inferSelect;
+
 // ==================== PAGINATION SCHEMAS ====================
 // Shared pagination request/response schemas for consistent API contracts
 
