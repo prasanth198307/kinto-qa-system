@@ -329,23 +329,40 @@ export default function CashRegisterPage() {
   };
 
   const calculateTotals = () => {
-    let totalOpening = 0;
-    let totalClosing = 0;
+    // Sort days by date to find first and last
+    const sortedDays = [...filteredDays].sort((a, b) => 
+      new Date(a.registerDate).getTime() - new Date(b.registerDate).getTime()
+    );
+    
+    // Get first day's opening balance and last day's closing balance
+    const startingBalance = sortedDays.length > 0 ? sortedDays[0].openingBalance : 0;
+    const currentBalance = sortedDays.length > 0 ? sortedDays[sortedDays.length - 1].closingBalance : 0;
+    const firstDate = sortedDays.length > 0 ? sortedDays[0].registerDate : null;
+    const lastDate = sortedDays.length > 0 ? sortedDays[sortedDays.length - 1].registerDate : null;
+    
+    // Sum up totals for cash flow metrics
     let totalDeposits = 0;
     let totalCashReceived = 0;
     let totalExpenses = 0;
     let totalTransfers = 0;
 
     filteredDays.forEach(day => {
-      totalOpening += day.openingBalance;
-      totalClosing += day.closingBalance;
       totalDeposits += day.totalDeposits;
       totalCashReceived += day.totalCashReceived;
       totalExpenses += day.totalExpenses;
       totalTransfers += day.totalTransfers;
     });
 
-    return { totalOpening, totalClosing, totalDeposits, totalCashReceived, totalExpenses, totalTransfers };
+    return { 
+      startingBalance, 
+      currentBalance, 
+      firstDate,
+      lastDate,
+      totalDeposits, 
+      totalCashReceived, 
+      totalExpenses, 
+      totalTransfers 
+    };
   };
 
   const totals = calculateTotals();
@@ -607,14 +624,15 @@ export default function CashRegisterPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-2">
               <Wallet className="w-5 h-5 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Total Opening</span>
+              <span className="text-sm text-muted-foreground">Starting Balance</span>
             </div>
-            <div className="text-xl font-bold mt-1" data-testid="text-total-opening">{formatCurrency(totals.totalOpening)}</div>
+            <div className="text-xl font-bold mt-1" data-testid="text-starting-balance">{formatCurrency(totals.startingBalance)}</div>
+            {totals.firstDate && <div className="text-xs text-muted-foreground">{format(new Date(totals.firstDate), 'MMM d, yyyy')}</div>}
           </CardContent>
         </Card>
         <Card>
@@ -647,10 +665,11 @@ export default function CashRegisterPage() {
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-2">
-              <DollarSign className="w-5 h-5 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Total Closing</span>
+              <DollarSign className="w-5 h-5 text-green-700" />
+              <span className="text-sm text-muted-foreground">Current Balance</span>
             </div>
-            <div className="text-xl font-bold mt-1" data-testid="text-total-closing">{formatCurrency(totals.totalClosing)}</div>
+            <div className="text-xl font-bold mt-1 text-green-700" data-testid="text-current-balance">{formatCurrency(totals.currentBalance)}</div>
+            {totals.lastDate && <div className="text-xs text-muted-foreground">{format(new Date(totals.lastDate), 'MMM d, yyyy')}</div>}
           </CardContent>
         </Card>
         <Card>
