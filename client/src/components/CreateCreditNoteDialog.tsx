@@ -234,7 +234,7 @@ export function CreateCreditNoteDialog({
                         />
                         <div className="flex-1">
                           <div className="font-medium" data-testid={`text-item-name-${item.id}`}>
-                            {item.productName}
+                            {item.description}
                           </div>
                           <div className="text-sm text-muted-foreground">
                             Invoice Qty: {item.quantity} @ {formatCurrency(item.unitPrice)}
@@ -290,7 +290,6 @@ export function CreateCreditNoteDialog({
                                       field.onChange(clampedValue);
                                     }}
                                     value={(field.value / 100).toFixed(2)}
-                                    data-testid={`input-price-${item.id}`}
                                   />
                                 </FormControl>
                                 <FormDescription className="text-xs">

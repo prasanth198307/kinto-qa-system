@@ -140,7 +140,7 @@ export function CorrectAndCreditDialog({
       if (difference > 0) {
         itemDifferences.push({
           invoiceItemId: item.invoiceItemId,
-          productName: invoiceItem.productName,
+          productName: invoiceItem.description,
           originalAmount,
           correctedAmount,
           difference,
@@ -314,8 +314,8 @@ export function CorrectAndCreditDialog({
                   return (
                     <div key={item.id} className="grid grid-cols-12 gap-2 p-3 items-center" data-testid={`row-item-${item.id}`}>
                       <div className="col-span-3">
-                        <div className="font-medium text-sm truncate" title={item.productName}>
-                          {item.productName}
+                        <div className="font-medium text-sm truncate" title={item.description}>
+                          {item.description}
                         </div>
                       </div>
                       

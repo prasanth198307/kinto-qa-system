@@ -116,8 +116,8 @@ export function QuickFullCreditDialog({
               <div className="font-medium mb-2">Items to Credit:</div>
               {invoiceItems.map((item) => (
                 <div key={item.id} className="flex justify-between text-muted-foreground">
-                  <span className="truncate max-w-[200px]" title={item.productName}>
-                    {item.productName} x {item.quantity}
+                  <span className="truncate max-w-[200px]" title={item.description}>
+                    {item.description} x {item.quantity}
                   </span>
                   <span>{formatCurrency(item.quantity * item.unitPrice)}</span>
                 </div>

@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Edit, Mail, FileText, Printer, Star, Receipt, RefreshCw } from "lucide-react";
+import { ArrowLeft, Edit, Mail, FileText, Printer, Star, Receipt, RefreshCw, Calculator, CreditCard } from "lucide-react";
 import type { Invoice, InvoiceItem, Product, Gatepass } from "@shared/schema";
 import PrintableInvoice from "@/components/PrintableInvoice";
 import { format } from "date-fns";
@@ -14,6 +14,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { GlobalHeader } from "@/components/GlobalHeader";
 import { CreateCreditNoteDialog } from "@/components/CreateCreditNoteDialog";
+import { CorrectAndCreditDialog } from "@/components/CorrectAndCreditDialog";
+import { QuickFullCreditDialog } from "@/components/QuickFullCreditDialog";
 
 interface Vendor {
   id: string;
@@ -45,6 +47,8 @@ export default function InvoiceDetail() {
   const { toast } = useToast();
   const { logoutMutation, user } = useAuth();
   const [isCreditNoteDialogOpen, setIsCreditNoteDialogOpen] = useState(false);
+  const [isCorrectAndCreditOpen, setIsCorrectAndCreditOpen] = useState(false);
+  const [isQuickFullCreditOpen, setIsQuickFullCreditOpen] = useState(false);
 
   const { data: invoice, isLoading: isLoadingInvoice } = useQuery<Invoice>({
     queryKey: ['/api/invoices', id],
@@ -204,7 +208,8 @@ export default function InvoiceDetail() {
   };
 
   // Check if user is admin or manager
-  const canCreateCreditNote = user && (user.role === 'admin' || user.role === 'manager');
+  const userRole = (user as any)?.role;
+  const canCreateCreditNote = user && (userRole === 'admin' || userRole === 'manager');
   
   // Check if invoice is in current month
   const isCurrentMonth = () => {
@@ -216,6 +221,10 @@ export default function InvoiceDetail() {
   };
   
   const canCancelAndReissue = canCreateCreditNote && isCurrentMonth() && !relatedGatepass;
+  
+  // For old invoices (not current month), show Correct & Credit and Quick Full Credit options
+  const isOldInvoice = !isCurrentMonth();
+  const canCorrectAndCredit = canCreateCreditNote && isOldInvoice;
 
   return (
     <>
@@ -280,6 +289,28 @@ export default function InvoiceDetail() {
               <RefreshCw className={`w-4 h-4 mr-2 ${cancelAndReissueMutation.isPending ? 'animate-spin' : ''}`} />
               {cancelAndReissueMutation.isPending ? 'Cancelling...' : 'Cancel & Reissue'}
             </Button>
+          )}
+          {canCorrectAndCredit && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsCorrectAndCreditOpen(true)}
+                data-testid="button-correct-and-credit"
+              >
+                <Calculator className="w-4 h-4 mr-2" />
+                Correct & Credit
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsQuickFullCreditOpen(true)}
+                data-testid="button-quick-full-credit"
+              >
+                <CreditCard className="w-4 h-4 mr-2" />
+                Quick Full Credit
+              </Button>
+            </>
           )}
           {!relatedGatepass && invoice.status !== 'delivered' && (
             <Button
@@ -531,6 +562,35 @@ export default function InvoiceDetail() {
         invoiceId={id!}
         invoiceNumber={invoice.invoiceNumber}
         invoiceItems={safeItems}
+        onSuccess={handleCreditNoteSuccess}
+      />
+
+      {/* Correct & Credit Dialog */}
+      <CorrectAndCreditDialog
+        open={isCorrectAndCreditOpen}
+        onOpenChange={setIsCorrectAndCreditOpen}
+        invoiceId={id!}
+        invoiceNumber={invoice.invoiceNumber}
+        invoiceItems={safeItems}
+        cgstRate={safeItems[0]?.cgstRate || 0}
+        sgstRate={safeItems[0]?.sgstRate || 0}
+        igstRate={safeItems[0]?.igstRate || 0}
+        onSuccess={handleCreditNoteSuccess}
+      />
+
+      {/* Quick Full Credit Dialog */}
+      <QuickFullCreditDialog
+        open={isQuickFullCreditOpen}
+        onOpenChange={setIsQuickFullCreditOpen}
+        invoiceId={id!}
+        invoiceNumber={invoice.invoiceNumber}
+        invoiceItems={safeItems}
+        subtotal={invoice.subtotal}
+        cgstAmount={invoice.cgstAmount}
+        sgstAmount={invoice.sgstAmount}
+        igstAmount={invoice.igstAmount}
+        grandTotal={invoice.totalAmount}
+        buyerName={invoice.buyerName}
         onSuccess={handleCreditNoteSuccess}
       />
       </div>
