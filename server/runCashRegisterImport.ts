@@ -182,9 +182,18 @@ async function importData() {
           const txId = txResult.rows[0].id;
           txCreated++;
           
+          // Check if all items have 0 amount (no amounts parsed)
+          const totalItemsAmount = parsedItems.reduce((sum, item) => sum + item.amount, 0);
+          const noAmountsParsed = totalItemsAmount === 0 && parsedItems.length > 0;
+          
           for (const item of parsedItems) {
-            // Items with no amount should be 0, not a share of total
-            await client.query('INSERT INTO cash_register_expense_items (id, transaction_id, item_label, amount, raw_text) VALUES (gen_random_uuid(), $1, $2, $3, $4)', [txId, item.label, item.amount, item.rawText]);
+            // If no amounts were parsed, distribute expense equally among items
+            // If only one item with no amount, it gets the full expense
+            let itemAmount = item.amount;
+            if (noAmountsParsed) {
+              itemAmount = Math.round(expenses / parsedItems.length);
+            }
+            await client.query('INSERT INTO cash_register_expense_items (id, transaction_id, item_label, amount, raw_text) VALUES (gen_random_uuid(), $1, $2, $3, $4)', [txId, item.label, itemAmount, item.rawText]);
             itemsCreated++;
           }
           
@@ -200,9 +209,13 @@ async function importData() {
             vouchersCreated++;
             
             for (const item of parsedItems) {
-              // Only add items that have an amount
-              if (item.amount > 0) {
-                await client.query('INSERT INTO expense_items (id, voucher_id, category_id, description, quantity, unit_price, amount, gst_rate, gst_amount) VALUES (gen_random_uuid(), $1, $2, $3, 1, $4, $4, 0, 0)', [voucherId, categoryId, item.label, item.amount]);
+              // Use same logic as cash register items
+              let voucherItemAmount = item.amount;
+              if (noAmountsParsed) {
+                voucherItemAmount = Math.round(expenses / parsedItems.length);
+              }
+              if (voucherItemAmount > 0) {
+                await client.query('INSERT INTO expense_items (id, voucher_id, category_id, description, quantity, unit_price, amount, gst_rate, gst_amount) VALUES (gen_random_uuid(), $1, $2, $3, 1, $4, $4, 0, 0)', [voucherId, categoryId, item.label, voucherItemAmount]);
               }
             }
             if (parsedItems.length === 0) {
