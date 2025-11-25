@@ -231,7 +231,7 @@ export default function InvoiceDetail() {
            now.getFullYear() === invoiceDate.getFullYear();
   };
   
-  const canCancelAndReissue = canCreateCreditNote && isCurrentMonth() && !relatedGatepass;
+  const canCancelAndReissue = canCreateCreditNote && isCurrentMonth();
   
   // For old invoices (not current month), show Correct & Credit and Quick Full Credit options
   const isOldInvoice = !isCurrentMonth();
@@ -613,6 +613,12 @@ export default function InvoiceDetail() {
             <AlertDialogDescription>
               Are you sure you want to cancel invoice <strong>{invoice.invoiceNumber}</strong>? 
               This will permanently mark the invoice as cancelled and redirect you to create a new replacement invoice.
+              {relatedGatepass && (
+                <>
+                  <br /><br />
+                  <strong>Note:</strong> The associated gatepass ({relatedGatepass.gatepassNumber}) will also be cancelled.
+                </>
+              )}
               <br /><br />
               <strong>This action cannot be undone.</strong>
             </AlertDialogDescription>

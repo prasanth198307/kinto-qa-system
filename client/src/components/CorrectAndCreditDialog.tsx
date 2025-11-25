@@ -113,6 +113,12 @@ export function CorrectAndCreditDialog({
   const reason = form.watch("reason");
   const watchedItems = form.watch("items");
 
+  // Create a stable serialized version of watched items to trigger recalculation
+  const watchedItemsKey = JSON.stringify(watchedItems.map(item => ({
+    q: item.correctedQuantity,
+    p: item.correctedUnitPrice,
+  })));
+
   const creditCalculation = useMemo(() => {
     let totalOriginal = 0;
     let totalCorrected = 0;
@@ -130,8 +136,14 @@ export function CorrectAndCreditDialog({
       const invoiceItem = invoiceItems[index];
       if (!invoiceItem) return;
 
-      const originalAmount = item.originalQuantity * item.originalUnitPrice;
-      const correctedAmount = item.correctedQuantity * item.correctedUnitPrice;
+      // Ensure numeric types for calculations
+      const origQty = Number(item.originalQuantity) || 0;
+      const origPrice = Number(item.originalUnitPrice) || 0;
+      const corrQty = Number(item.correctedQuantity) || 0;
+      const corrPrice = Number(item.correctedUnitPrice) || 0;
+
+      const originalAmount = origQty * origPrice;
+      const correctedAmount = corrQty * corrPrice;
       const difference = originalAmount - correctedAmount;
 
       totalOriginal += originalAmount;
@@ -144,12 +156,12 @@ export function CorrectAndCreditDialog({
           originalAmount,
           correctedAmount,
           difference,
-          creditQuantity: item.originalQuantity - item.correctedQuantity > 0 
-            ? item.originalQuantity - item.correctedQuantity 
-            : item.originalQuantity,
-          creditUnitPrice: item.originalQuantity - item.correctedQuantity > 0
-            ? item.originalUnitPrice
-            : item.originalUnitPrice - item.correctedUnitPrice,
+          creditQuantity: origQty - corrQty > 0 
+            ? origQty - corrQty 
+            : origQty,
+          creditUnitPrice: origQty - corrQty > 0
+            ? origPrice
+            : origPrice - corrPrice,
         });
       }
     });
@@ -171,7 +183,7 @@ export function CorrectAndCreditDialog({
       itemDifferences,
       hasChanges: subtotalDifference > 0,
     };
-  }, [watchedItems, invoiceItems, cgstRate, sgstRate, igstRate]);
+  }, [watchedItemsKey, invoiceItems, cgstRate, sgstRate, igstRate]);
 
   const handleSubmit = async (data: CorrectAndCreditForm) => {
     if (!creditCalculation.hasChanges) {

@@ -4277,8 +4277,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Check if invoice has an associated gatepass
-      const existingGatepass = await db
+      // Check if invoice has an associated gatepass and cancel it too
+      const existingGatepasses = await db
         .select()
         .from(gatepasses)
         .where(
@@ -4286,14 +4286,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
             eq(gatepasses.invoiceId, id),
             eq(gatepasses.recordStatus, 1)
           )
-        )
-        .limit(1);
+        );
       
-      if (existingGatepass.length > 0) {
-        return res.status(400).json({ 
-          message: "Cannot cancel invoice. A gatepass has been created for this invoice. Please cancel the gatepass first.",
-          gatepassNumber: existingGatepass[0].gatepassNumber
-        });
+      // Cancel any associated gatepasses (soft delete)
+      for (const gatepass of existingGatepasses) {
+        await db.update(gatepasses)
+          .set({ recordStatus: 0 })
+          .where(eq(gatepasses.id, gatepass.id));
+        
+        console.log(`Cancelled gatepass ${gatepass.gatepassNumber} as part of invoice cancel & reissue`);
+        
+        // Note: Inventory return is handled separately if needed
+        // For Cancel & Reissue, we're replacing the invoice so inventory adjustments 
+        // will be made when the new gatepass is created
       }
       
       // Fetch invoice items
@@ -5320,13 +5325,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let subtotal = 0;
       const creditItems: Array<{
         invoiceItemId: string;
-        productName: string;
+        productId: string;
+        description: string;
         quantity: number;
         unitPrice: number;
+        discountAmount: number;
+        taxableValue: number;
         cgstRate: number;
+        cgstAmount: number;
         sgstRate: number;
+        sgstAmount: number;
         igstRate: number;
-        lineTotal: number;
+        igstAmount: number;
+        cessRate: number;
+        cessAmount: number;
+        totalAmount: number;
       }> = [];
 
       for (const item of items) {
@@ -5335,7 +5348,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const difference = originalAmount - correctedAmount;
 
         if (difference > 0) {
-          // Find the original invoice item for GST rates and product name
+          // Find the original invoice item for GST rates and product details
           const invoiceItem = invoiceItems_list.find(i => i.id === item.invoiceItemId);
           if (!invoiceItem) continue;
 
@@ -5360,15 +5373,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
             creditPrice = Math.round(difference / item.originalQuantity);
           }
 
+          const taxableValue = creditQty * creditPrice;
+          const cgstAmountCalc = Math.round(taxableValue * invoiceItem.cgstRate / 10000);
+          const sgstAmountCalc = Math.round(taxableValue * invoiceItem.sgstRate / 10000);
+          const igstAmountCalc = Math.round(taxableValue * invoiceItem.igstRate / 10000);
+          const cessAmountCalc = Math.round(taxableValue * (invoiceItem.cessRate || 0) / 10000);
+
           creditItems.push({
             invoiceItemId: item.invoiceItemId,
-            productName: invoiceItem.productName,
+            productId: invoiceItem.productId,
+            description: invoiceItem.description,
             quantity: creditQty,
             unitPrice: creditPrice,
+            discountAmount: 0,
+            taxableValue: taxableValue,
             cgstRate: invoiceItem.cgstRate,
+            cgstAmount: cgstAmountCalc,
             sgstRate: invoiceItem.sgstRate,
+            sgstAmount: sgstAmountCalc,
             igstRate: invoiceItem.igstRate,
-            lineTotal: difference,
+            igstAmount: igstAmountCalc,
+            cessRate: invoiceItem.cessRate || 0,
+            cessAmount: cessAmountCalc,
+            totalAmount: taxableValue + cgstAmountCalc + sgstAmountCalc + igstAmountCalc + cessAmountCalc,
           });
 
           subtotal += difference;
@@ -5428,13 +5455,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await tx.insert(creditNoteItems).values({
             creditNoteId: creditNote.id,
             invoiceItemId: itemData.invoiceItemId,
-            productName: itemData.productName,
+            productId: itemData.productId,
+            description: itemData.description,
             quantity: itemData.quantity,
             unitPrice: itemData.unitPrice,
+            discountAmount: itemData.discountAmount,
+            taxableValue: itemData.taxableValue,
             cgstRate: itemData.cgstRate,
+            cgstAmount: itemData.cgstAmount,
             sgstRate: itemData.sgstRate,
+            sgstAmount: itemData.sgstAmount,
             igstRate: itemData.igstRate,
-            lineTotal: itemData.lineTotal,
+            igstAmount: itemData.igstAmount,
+            cessRate: itemData.cessRate,
+            cessAmount: itemData.cessAmount,
+            totalAmount: itemData.totalAmount,
           });
         }
 
@@ -5539,16 +5574,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Create credit note items for all invoice items
         for (const invoiceItem of invoiceItems_list) {
+          const lineTotal = invoiceItem.quantity * invoiceItem.unitPrice;
+          const discountAmount = invoiceItem.discount || 0;
+          const taxableValue = lineTotal - discountAmount;
+          
           await tx.insert(creditNoteItems).values({
             creditNoteId: creditNote.id,
             invoiceItemId: invoiceItem.id,
-            productName: invoiceItem.productName,
+            productId: invoiceItem.productId,
+            description: invoiceItem.description,
             quantity: invoiceItem.quantity,
             unitPrice: invoiceItem.unitPrice,
+            discountAmount: discountAmount,
+            taxableValue: taxableValue,
             cgstRate: invoiceItem.cgstRate,
+            cgstAmount: invoiceItem.cgstAmount,
             sgstRate: invoiceItem.sgstRate,
+            sgstAmount: invoiceItem.sgstAmount,
             igstRate: invoiceItem.igstRate,
-            lineTotal: invoiceItem.quantity * invoiceItem.unitPrice,
+            igstAmount: invoiceItem.igstAmount,
+            cessRate: invoiceItem.cessRate || 0,
+            cessAmount: invoiceItem.cessAmount || 0,
+            totalAmount: invoiceItem.totalAmount,
           });
         }
 
