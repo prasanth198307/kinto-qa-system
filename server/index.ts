@@ -114,7 +114,23 @@ app.use((req, res, next) => {
       }
     }, 300000); // Check every 5 minutes (300 seconds)
     
+    // Start document expiry alert system
+    // Checks every hour for documents nearing expiry (30 days before)
+    setInterval(async () => {
+      try {
+        await notificationService.checkAndSendDocumentExpiryAlerts(30);
+      } catch (error) {
+        console.error('[DOCUMENT EXPIRY ALERT SYSTEM ERROR]', error);
+      }
+    }, 3600000); // Check every hour (3600 seconds)
+    
+    // Initial check for document expiry on startup
+    notificationService.checkAndSendDocumentExpiryAlerts(30).catch(error => {
+      console.error('[DOCUMENT EXPIRY ALERT STARTUP ERROR]', error);
+    });
+    
     log('✅ Machine startup reminder system initialized');
     log('✅ Missed checklist notification system initialized');
+    log('✅ Document expiry alert system initialized');
   });
 })();
