@@ -53,10 +53,18 @@ export interface ImportResult {
 }
 
 // Convert Excel serial date to ISO string
-function excelDateToISO(excelDate: number | string | null | undefined): string {
+function excelDateToISO(excelDate: number | string | Date | null | undefined): string {
   try {
     // Handle null/undefined/empty
     if (excelDate === null || excelDate === undefined || excelDate === '') {
+      return '';
+    }
+    
+    // Handle Date objects (when xlsx parses with cellDates: true)
+    if (excelDate instanceof Date) {
+      if (!isNaN(excelDate.getTime()) && excelDate.getFullYear() >= 1900 && excelDate.getFullYear() <= 2100) {
+        return excelDate.toISOString().split('T')[0];
+      }
       return '';
     }
     
@@ -306,10 +314,14 @@ export async function parseExcelFile(buffer: Buffer, fileName: string): Promise<
         parsedRow.date = excelDateToISO(dateVal);
         if (!parsedRow.date) {
           parsedRow.errors.push('Invalid date format');
+          console.log('[CASH_REGISTER] Row', i, 'invalid date:', dateVal);
         } else {
           if (!minDate || parsedRow.date < minDate) minDate = parsedRow.date;
           if (!maxDate || parsedRow.date > maxDate) maxDate = parsedRow.date;
         }
+      } else {
+        parsedRow.errors.push('Missing date');
+        console.log('[CASH_REGISTER] Row', i, 'missing date');
       }
     }
     
@@ -380,6 +392,8 @@ export async function parseExcelFile(buffer: Buffer, fileName: string): Promise<
     
     result.rows.push(parsedRow);
   }
+  
+  console.log('[CASH_REGISTER] Parse summary: Total:', result.totalRows, 'Valid:', result.validRows, 'Error:', result.errorRows);
   
   // Set date range
   if (minDate && maxDate) {
