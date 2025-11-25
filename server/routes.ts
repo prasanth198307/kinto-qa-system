@@ -16,6 +16,7 @@ import { whatsappConversationService } from "./whatsappConversationService";
 import { calculateBOMSuggestions } from "@shared/calculations";
 import { importVyapaarData, clearImportedData } from "./vyapaar-import";
 import { parseExcelFile, commitImport } from "./cashRegisterImport";
+import { importCashRegisterFromExcel } from "./importCashRegisterFromExcel";
 import { insertCashRegisterDaySchema, insertCashRegisterTransactionSchema, insertCashRegisterExpenseItemSchema, insertSalespersonMappingSchema } from "@shared/schema";
 
 // Simple audit logging function
@@ -8793,6 +8794,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('[CASH_REGISTER] Error committing import:', error);
       res.status(400).json({ message: error.message || 'Failed to commit import' });
+    }
+  });
+
+  // Bulk import from attached Excel file (for all sheets)
+  app.post('/api/cash-register/import/bulk', isAuthenticated, requireRole('Admin', 'Finance'), async (req: any, res: Response) => {
+    try {
+      const { filePath } = req.body;
+      
+      if (!filePath) {
+        return res.status(400).json({ message: 'No file path provided' });
+      }
+      
+      const result = await importCashRegisterFromExcel(filePath, req.user?.id);
+      
+      if (result.success) {
+        await logAudit(req.user?.id, 'IMPORT', 'cash_register', '', 
+          `Bulk imported ${result.daysCreated} days, ${result.vouchersCreated} vouchers from ${filePath}`);
+      }
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error('[CASH_REGISTER] Error bulk importing:', error);
+      res.status(400).json({ message: error.message || 'Failed to bulk import' });
     }
   });
 
