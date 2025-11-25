@@ -65,6 +65,18 @@ function parseItemDetails(details: string): { label: string; amount: number; raw
       continue;
     }
     
+    // Check for multiple items joined with hyphen: "ITEM1-200-ITEM2-300"
+    // Pattern: amount followed by hyphen and more text (not just /- ending)
+    const multiItemMatch = trimmed.match(/^(.+?-\d+)-([A-Z].+)$/i);
+    if (multiItemMatch) {
+      // Split into two parts and process each
+      const firstPart = multiItemMatch[1];
+      const secondPart = multiItemMatch[2];
+      // Add them back to parts array to be processed
+      parts.splice(i + 1, 0, secondPart);
+      trimmed = firstPart;
+    }
+    
     // Remove trailing periods or colons
     trimmed = trimmed.replace(/[.:]+$/, '');
     
