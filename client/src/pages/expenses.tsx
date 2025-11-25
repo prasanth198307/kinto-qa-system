@@ -14,7 +14,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { Plus, FileText, Trash2, Search, Eye, Check, X, Receipt, Send, IndianRupee, Calendar, User, Building2 } from "lucide-react";
-import type { ExpenseCategory, ExpenseVoucher, ExpenseItem } from "@shared/schema";
+import type { ExpenseCategory, ExpenseVoucher, ExpenseItem, PaginationMeta } from "@shared/schema";
+import { DataTablePagination } from "@/components/DataTablePagination";
 
 interface ExpenseItemForm {
   description: string;
@@ -47,6 +48,8 @@ export default function ExpensesPage() {
   const [lineItems, setLineItems] = useState<ExpenseItemForm[]>([
     { description: '', categoryId: '', amount: '', gstAmount: '0', notes: '' }
   ]);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   const { data: categories = [], isLoading: categoriesLoading } = useQuery<ExpenseCategory[]>({
     queryKey: ['/api/expense-categories'],
@@ -202,6 +205,18 @@ export default function ExpensesPage() {
     const matchesStatus = statusFilter === "all" || v.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  // Pagination
+  const totalPages = Math.ceil(filteredVouchers.length / pageSize);
+  const paginatedVouchers = filteredVouchers.slice((page - 1) * pageSize, page * pageSize);
+  const paginationMeta: PaginationMeta = {
+    page,
+    pageSize,
+    totalItems: filteredVouchers.length,
+    totalPages,
+    hasNextPage: page < totalPages,
+    hasPreviousPage: page > 1,
+  };
 
   const getStatusBadge = (status: string | null) => {
     switch (status) {
@@ -480,7 +495,7 @@ export default function ExpensesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredVouchers.map(voucher => (
+                  {paginatedVouchers.map(voucher => (
                     <TableRow key={voucher.id} data-testid={`row-voucher-${voucher.id}`}>
                       <TableCell className="font-medium">{voucher.voucherNumber}</TableCell>
                       <TableCell>
@@ -534,6 +549,13 @@ export default function ExpensesPage() {
                 </TableBody>
               </Table>
             </div>
+          )}
+          {filteredVouchers.length > 0 && (
+            <DataTablePagination
+              meta={paginationMeta}
+              onPageChange={(newPage) => setPage(newPage)}
+              onPageSizeChange={(newSize) => { setPageSize(newSize); setPage(1); }}
+            />
           )}
         </CardContent>
       </Card>

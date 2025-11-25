@@ -15,7 +15,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { Upload, FileText, Download, Trash2, Search, Filter, Eye, Plus, Folder, File, FileImage, FileSpreadsheet, AlertCircle, Archive, Clock, AlertTriangle } from "lucide-react";
-import type { DocumentCategory, Document } from "@shared/schema";
+import type { DocumentCategory, Document, PaginationMeta } from "@shared/schema";
+import { DataTablePagination } from "@/components/DataTablePagination";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 // Helper to calculate expiry status
@@ -62,6 +63,8 @@ export default function DocumentsPage() {
   const [previewDocument, setPreviewDocument] = useState<Document | null>(null);
   const [selectedDocuments, setSelectedDocuments] = useState<Set<string>>(new Set());
   const [isDownloading, setIsDownloading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   const { data: categories = [], isLoading: categoriesLoading } = useQuery<DocumentCategory[]>({
     queryKey: ['/api/document-categories'],
@@ -194,6 +197,18 @@ export default function DocumentsPage() {
     const matchesCategory = selectedCategory === "all" || doc.categoryId === selectedCategory;
     return matchesSearch && matchesCategory;
   });
+
+  // Pagination
+  const totalPages = Math.ceil(filteredDocuments.length / pageSize);
+  const paginatedDocuments = filteredDocuments.slice((page - 1) * pageSize, page * pageSize);
+  const paginationMeta: PaginationMeta = {
+    page,
+    pageSize,
+    totalItems: filteredDocuments.length,
+    totalPages,
+    hasNextPage: page < totalPages,
+    hasPreviousPage: page > 1,
+  };
 
   const getCategoryName = (categoryId: string | null) => {
     if (!categoryId) return 'Uncategorized';
@@ -414,7 +429,7 @@ export default function DocumentsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredDocuments.map(doc => (
+                  {paginatedDocuments.map(doc => (
                     <TableRow key={doc.id} data-testid={`row-document-${doc.id}`}>
                       <TableCell>
                         <Checkbox
@@ -515,6 +530,13 @@ export default function DocumentsPage() {
                 </TableBody>
               </Table>
             </div>
+          )}
+          {filteredDocuments.length > 0 && (
+            <DataTablePagination
+              meta={paginationMeta}
+              onPageChange={(newPage) => setPage(newPage)}
+              onPageSizeChange={(newSize) => { setPageSize(newSize); setPage(1); }}
+            />
           )}
         </CardContent>
       </Card>

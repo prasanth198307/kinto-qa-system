@@ -22,7 +22,8 @@ import {
   AlertCircle, TrendingUp, TrendingDown, DollarSign, CheckCircle2, Lock,
   AlertTriangle, Edit, Save, Trash2
 } from "lucide-react";
-import type { CashRegisterDay, CashRegisterTransaction, CashRegisterExpenseItem } from "@shared/schema";
+import type { CashRegisterDay, CashRegisterTransaction, CashRegisterExpenseItem, PaginationMeta } from "@shared/schema";
+import { DataTablePagination } from "@/components/DataTablePagination";
 
 interface DiscrepancyDetails {
   balance_mismatch: boolean;
@@ -101,6 +102,8 @@ export default function CashRegisterPage() {
     openingBalance: '',
     notes: '',
   });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   const { data: days = [], isLoading: daysLoading, refetch: refetchDays } = useQuery<CashRegisterDay[]>({
     queryKey: ['/api/cash-register/days'],
@@ -312,6 +315,18 @@ export default function CashRegisterPage() {
       (discrepancyFilter === "ok" && day.hasDiscrepancy !== 1);
     return matchesSearch && matchesStatus && matchesSalesperson && matchesDiscrepancy;
   });
+
+  // Pagination
+  const totalPages = Math.ceil(filteredDays.length / pageSize);
+  const paginatedDays = filteredDays.slice((page - 1) * pageSize, page * pageSize);
+  const paginationMeta: PaginationMeta = {
+    page,
+    pageSize,
+    totalItems: filteredDays.length,
+    totalPages,
+    hasNextPage: page < totalPages,
+    hasPreviousPage: page > 1,
+  };
 
   const discrepancyCount = (days as DayWithTransactions[]).filter(d => d.hasDiscrepancy === 1).length;
 
@@ -760,7 +775,7 @@ export default function CashRegisterPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredDays.map((day) => (
+                  paginatedDays.map((day) => (
                     <TableRow 
                       key={day.id} 
                       data-testid={`row-day-${day.id}`}
@@ -808,6 +823,13 @@ export default function CashRegisterPage() {
               </TableBody>
             </Table>
           </div>
+          {filteredDays.length > 0 && (
+            <DataTablePagination
+              meta={paginationMeta}
+              onPageChange={(newPage) => setPage(newPage)}
+              onPageSizeChange={(newSize) => { setPageSize(newSize); setPage(1); }}
+            />
+          )}
         </CardContent>
       </Card>
 
