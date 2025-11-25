@@ -9124,6 +9124,137 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== REPORTS API ENDPOINTS ====================
+  
+  // Expense Report - Get expense vouchers with items for date range
+  app.get('/api/reports/expenses', isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { startDate, endDate, status, payeeType } = req.query;
+      
+      const allVouchers = await storage.getAllExpenseVouchers();
+      
+      // Filter by date range and other criteria
+      let filteredVouchers = allVouchers.filter(v => {
+        if (startDate && v.voucherDate < startDate) return false;
+        if (endDate && v.voucherDate > endDate) return false;
+        if (status && status !== 'all' && v.status !== status) return false;
+        if (payeeType && payeeType !== 'all' && v.payeeType !== payeeType) return false;
+        return true;
+      });
+      
+      // Get items for each voucher
+      const vouchersWithItems = await Promise.all(
+        filteredVouchers.map(async (voucher) => {
+          const fullVoucher = await storage.getExpenseVoucher(voucher.id);
+          return {
+            ...voucher,
+            items: fullVoucher?.items || []
+          };
+        })
+      );
+      
+      // Calculate summary
+      const summary = {
+        totalVouchers: vouchersWithItems.length,
+        totalAmount: vouchersWithItems.reduce((sum, v) => sum + (v.totalAmount || 0), 0),
+        totalGST: vouchersWithItems.reduce((sum, v) => sum + (v.gstAmount || 0), 0),
+        byStatus: {
+          draft: vouchersWithItems.filter(v => v.status === 'draft').length,
+          submitted: vouchersWithItems.filter(v => v.status === 'submitted').length,
+          approved: vouchersWithItems.filter(v => v.status === 'approved').length,
+          rejected: vouchersWithItems.filter(v => v.status === 'rejected').length,
+          paid: vouchersWithItems.filter(v => v.status === 'paid').length,
+        },
+        byPaymentMode: {} as Record<string, number>,
+      };
+      
+      // Group by payment mode
+      vouchersWithItems.forEach(v => {
+        const mode = v.paymentMode || 'unknown';
+        summary.byPaymentMode[mode] = (summary.byPaymentMode[mode] || 0) + (v.totalAmount || 0);
+      });
+      
+      res.json({
+        vouchers: vouchersWithItems,
+        summary,
+        dateRange: { startDate, endDate }
+      });
+    } catch (error: any) {
+      console.error('[REPORTS] Error fetching expense report:', error);
+      res.status(500).json({ message: error.message || 'Failed to fetch expense report' });
+    }
+  });
+  
+  // Cash Register Report - Get cash register data for date range
+  app.get('/api/reports/cash-register', isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { startDate, endDate, salesperson, status } = req.query;
+      
+      const allDays = await storage.getCashRegisterDays({});
+      
+      // Filter by date range and other criteria
+      let filteredDays = allDays.filter(d => {
+        if (startDate && d.registerDate < startDate) return false;
+        if (endDate && d.registerDate > endDate) return false;
+        if (salesperson && salesperson !== 'all' && d.salespersonName !== salesperson) return false;
+        if (status && status !== 'all' && d.status !== status) return false;
+        return true;
+      });
+      
+      // Get transactions and items for each day
+      const daysWithDetails = await Promise.all(
+        filteredDays.map(async (day) => {
+          const fullDay = await storage.getCashRegisterDayWithDetails(day.id);
+          return fullDay || day;
+        })
+      );
+      
+      // Sort by date
+      daysWithDetails.sort((a, b) => 
+        new Date(a.registerDate).getTime() - new Date(b.registerDate).getTime()
+      );
+      
+      // Calculate summary
+      const summary = {
+        totalDays: daysWithDetails.length,
+        startingBalance: daysWithDetails.length > 0 ? daysWithDetails[0].openingBalance : 0,
+        endingBalance: daysWithDetails.length > 0 ? daysWithDetails[daysWithDetails.length - 1].closingBalance : 0,
+        totalCashReceived: daysWithDetails.reduce((sum, d) => sum + (d.totalCashReceived || 0), 0),
+        totalDeposits: daysWithDetails.reduce((sum, d) => sum + (d.totalDeposits || 0), 0),
+        totalExpenses: daysWithDetails.reduce((sum, d) => sum + (d.totalExpenses || 0), 0),
+        totalTransfers: daysWithDetails.reduce((sum, d) => sum + (d.totalTransfers || 0), 0),
+        totalVariance: daysWithDetails.reduce((sum, d) => sum + (d.variance || 0), 0),
+        daysWithDiscrepancy: daysWithDetails.filter(d => d.hasDiscrepancy === 1).length,
+        byStatus: {
+          open: daysWithDetails.filter(d => d.status === 'open').length,
+          reconciled: daysWithDetails.filter(d => d.status === 'reconciled').length,
+          locked: daysWithDetails.filter(d => d.status === 'locked').length,
+        },
+        bySalesperson: {} as Record<string, { days: number; expenses: number; cashReceived: number }>,
+      };
+      
+      // Group by salesperson
+      daysWithDetails.forEach(d => {
+        const sp = d.salespersonName || 'Unknown';
+        if (!summary.bySalesperson[sp]) {
+          summary.bySalesperson[sp] = { days: 0, expenses: 0, cashReceived: 0 };
+        }
+        summary.bySalesperson[sp].days++;
+        summary.bySalesperson[sp].expenses += d.totalExpenses || 0;
+        summary.bySalesperson[sp].cashReceived += d.totalCashReceived || 0;
+      });
+      
+      res.json({
+        days: daysWithDetails,
+        summary,
+        dateRange: { startDate, endDate }
+      });
+    } catch (error: any) {
+      console.error('[REPORTS] Error fetching cash register report:', error);
+      res.status(500).json({ message: error.message || 'Failed to fetch cash register report' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
