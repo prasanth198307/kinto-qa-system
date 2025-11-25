@@ -50,6 +50,7 @@ import VendorManagement from "@/components/VendorManagement";
 import PendingPayments from "@/pages/pending-payments";
 import PaymentManagement from "@/pages/payment-management";
 import CreditNotes from "@/pages/credit-notes";
+import CancelledInvoices from "@/pages/cancelled-invoices";
 import InventorySummaryDashboard from "@/components/InventorySummaryDashboard";
 import TodayProductionStats from "@/components/TodayProductionStats";
 import RolePermissionsView from "@/components/RolePermissionsView";
@@ -58,7 +59,7 @@ import { ManagerChecklistAssignment } from "@/components/ManagerChecklistAssignm
 import PendingPaymentsDashboard from "@/components/PendingPaymentsDashboard";
 import { OperatorAssignedChecklists } from "@/components/OperatorAssignedChecklists";
 import { VerticalNavSidebar, type NavSection } from "@/components/VerticalNavSidebar";
-import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload } from "lucide-react";
+import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, FileX, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload } from "lucide-react";
 import SalesDashboard from "@/components/SalesDashboard";
 import VendorAnalytics from "@/pages/vendor-analytics";
 import ReviewerDashboardPage from "@/pages/ReviewerDashboard";
@@ -357,6 +358,7 @@ function ManagerDashboard() {
         { id: "invoices", label: "Invoices", icon: FileText },
         { id: "dispatch-tracking", label: "Dispatch Tracking", icon: Truck },
         { id: "sales-returns", label: "Sales Returns", icon: Package },
+        { id: "cancelled-invoices", label: "Cancelled Invoices", icon: FileX },
         { id: "production-reconciliation-report", label: "Production Reconciliation Report", icon: FileStack },
         { id: "variance-analytics", label: "Variance Analytics", icon: TrendingUp },
       ],
@@ -446,6 +448,8 @@ function ManagerDashboard() {
         return <VarianceAnalytics />;
       case 'dispatch-tracking':
         return <DispatchTracking showHeader={false} />;
+      case 'cancelled-invoices':
+        return <CancelledInvoices />;
       case 'reports':
         return <Reports showHeader={false} />;
       default:
@@ -667,6 +671,7 @@ function AdminDashboard() {
         { id: "pending-payments", label: "Pending Payments", icon: IndianRupee },
         { id: "payment-management", label: "Payment Management", icon: CreditCard },
         { id: "credit-notes", label: "Credit Notes", icon: FileText },
+        { id: "cancelled-invoices", label: "Cancelled Invoices", icon: FileX },
         { id: "sales-returns", label: "Sales Returns", icon: Package },
       ],
       quickActions: [
@@ -833,6 +838,8 @@ function AdminDashboard() {
         return <PaymentManagement />;
       case 'credit-notes':
         return <CreditNotes />;
+      case 'cancelled-invoices':
+        return <CancelledInvoices />;
       case 'dispatch-tracking':
         return <DispatchTracking showHeader={false} />;
       case 'machine-startup-reminders':
@@ -1236,6 +1243,7 @@ function Router() {
       <ProtectedRoute path="/dispatch-tracking" component={DispatchTracking} />
       <ProtectedRoute path="/sales-returns" component={SalesReturns} />
       <ProtectedRoute path="/credit-notes" component={CreditNotes} />
+      <ProtectedRoute path="/cancelled-invoices" component={CancelledInvoices} />
       <ProtectedRoute path="/pending-payments" component={PendingPaymentsPage} />
       <ProtectedRoute path="/payment-management" component={PaymentManagement} />
       <ProtectedRoute path="/vendor-analytics" component={VendorAnalyticsPage} />
