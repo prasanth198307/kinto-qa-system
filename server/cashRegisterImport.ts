@@ -528,8 +528,30 @@ export async function commitImport(
           result.transactionsCreated++;
         }
         
-        // Expense transaction with items
-        if (row.expenses > 0) {
+        // Create SEPARATE expense transaction (voucher) for EACH item
+        if (row.expenses > 0 && row.parsedItems.length > 0) {
+          for (const item of row.parsedItems) {
+            // Each item gets its own transaction/voucher
+            const itemAmount = item.amount > 0 ? item.amount : 0;
+            const expenseTransaction = await storage.createCashRegisterTransaction({
+              dayId: createdDay.id,
+              transactionType: 'expense',
+              amount: itemAmount,
+              description: item.label || item.rawText,
+            });
+            result.transactionsCreated++;
+            
+            // Create single expense item linked to this transaction
+            await storage.createCashRegisterExpenseItem({
+              transactionId: expenseTransaction.id,
+              itemLabel: item.label,
+              amount: itemAmount,
+              rawText: item.rawText,
+            });
+            result.expenseItemsCreated++;
+          }
+        } else if (row.expenses > 0) {
+          // Fallback: no parsed items, create single expense transaction
           const expenseTransaction = await storage.createCashRegisterTransaction({
             dayId: createdDay.id,
             transactionType: 'expense',
@@ -537,17 +559,6 @@ export async function commitImport(
             description: row.itemDetails || 'Expense from Excel import',
           });
           result.transactionsCreated++;
-          
-          // Create expense items
-          for (const item of row.parsedItems) {
-            await storage.createCashRegisterExpenseItem({
-              transactionId: expenseTransaction.id,
-              itemLabel: item.label,
-              amount: item.amount,
-              rawText: item.rawText,
-            });
-            result.expenseItemsCreated++;
-          }
         }
         
         // Transfer transaction
