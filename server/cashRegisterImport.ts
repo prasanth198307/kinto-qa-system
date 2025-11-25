@@ -363,7 +363,8 @@ export async function commitImport(
   }
   
   try {
-    for (const [key, groupRows] of dayGroups) {
+    const entries = Array.from(dayGroups.entries());
+    for (const [key, groupRows] of entries) {
       const [date, salespersonName] = key.split('|');
       
       // Check if day already exists

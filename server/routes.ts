@@ -15,6 +15,8 @@ import { whatsappWebhookRouter } from "./whatsappWebhook";
 import { whatsappConversationService } from "./whatsappConversationService";
 import { calculateBOMSuggestions } from "@shared/calculations";
 import { importVyapaarData, clearImportedData } from "./vyapaar-import";
+import { parseExcelFile, commitImport } from "./cashRegisterImport";
+import { insertCashRegisterDaySchema, insertCashRegisterTransactionSchema, insertCashRegisterExpenseItemSchema, insertSalespersonMappingSchema } from "@shared/schema";
 
 // Simple audit logging function
 async function logAudit(userId: string | undefined, action: string, table: string, recordId: string, description: string) {
@@ -8527,6 +8529,421 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     
     res.sendFile(filePath);
+  });
+
+  // ==================== CASH REGISTER ====================
+
+  // Get all cash register days
+  app.get('/api/cash-register/days', isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { startDate, endDate, salespersonName, status } = req.query;
+      const days = await storage.getCashRegisterDays({
+        startDate: startDate as string | undefined,
+        endDate: endDate as string | undefined,
+        salespersonName: salespersonName as string | undefined,
+        status: status as string | undefined,
+      });
+      res.json(days);
+    } catch (error: any) {
+      console.error('[CASH_REGISTER] Error fetching days:', error);
+      res.status(500).json({ message: error.message || 'Failed to fetch cash register days' });
+    }
+  });
+
+  // Get single cash register day with transactions
+  app.get('/api/cash-register/days/:id', isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { id } = req.params;
+      const day = await storage.getCashRegisterDay(id);
+      if (!day) {
+        return res.status(404).json({ message: 'Cash register day not found' });
+      }
+      
+      const transactions = await storage.getCashRegisterTransactions(id);
+      
+      // Get expense items for each expense transaction
+      const transactionsWithItems = await Promise.all(
+        transactions.map(async (tx) => {
+          if (tx.transactionType === 'expense') {
+            const items = await storage.getCashRegisterExpenseItems(tx.id);
+            return { ...tx, items };
+          }
+          return { ...tx, items: [] };
+        })
+      );
+      
+      res.json({ ...day, transactions: transactionsWithItems });
+    } catch (error: any) {
+      console.error('[CASH_REGISTER] Error fetching day:', error);
+      res.status(500).json({ message: error.message || 'Failed to fetch cash register day' });
+    }
+  });
+
+  // Create cash register day
+  app.post('/api/cash-register/days', isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const parsed = insertCashRegisterDaySchema.parse({
+        ...req.body,
+        createdBy: req.user?.id,
+      });
+      
+      // Check for duplicate
+      const existing = await storage.getCashRegisterDayByDateAndPerson(
+        parsed.registerDate,
+        parsed.salespersonName
+      );
+      if (existing) {
+        return res.status(400).json({ 
+          message: `Day already exists for ${parsed.salespersonName} on ${parsed.registerDate}` 
+        });
+      }
+      
+      const day = await storage.createCashRegisterDay(parsed);
+      await logAudit(req.user?.id, 'CREATE', 'cash_register_days', day.id, 
+        `Cash register day created for ${day.salespersonName} on ${day.registerDate}`);
+      res.status(201).json(day);
+    } catch (error: any) {
+      console.error('[CASH_REGISTER] Error creating day:', error);
+      res.status(400).json({ message: error.message || 'Failed to create cash register day' });
+    }
+  });
+
+  // Update cash register day
+  app.patch('/api/cash-register/days/:id', isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { id } = req.params;
+      const day = await storage.getCashRegisterDay(id);
+      if (!day) {
+        return res.status(404).json({ message: 'Cash register day not found' });
+      }
+      
+      if (day.status === 'locked') {
+        return res.status(400).json({ message: 'Cannot modify a locked day' });
+      }
+      
+      const updated = await storage.updateCashRegisterDay(id, req.body);
+      await logAudit(req.user?.id, 'UPDATE', 'cash_register_days', id, 
+        `Cash register day updated for ${day.salespersonName}`);
+      res.json(updated);
+    } catch (error: any) {
+      console.error('[CASH_REGISTER] Error updating day:', error);
+      res.status(400).json({ message: error.message || 'Failed to update cash register day' });
+    }
+  });
+
+  // Reconcile/lock cash register day
+  app.post('/api/cash-register/days/:id/reconcile', isAuthenticated, requireRole('Admin', 'Finance'), async (req: any, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { varianceAmount, notes } = req.body;
+      
+      const day = await storage.getCashRegisterDay(id);
+      if (!day) {
+        return res.status(404).json({ message: 'Cash register day not found' });
+      }
+      
+      const updated = await storage.updateCashRegisterDay(id, {
+        status: 'reconciled',
+        reconciledBy: req.user?.id,
+        reconciledAt: new Date().toISOString(),
+        varianceAmount: varianceAmount || 0,
+        notes: notes || day.notes,
+      });
+      
+      await logAudit(req.user?.id, 'RECONCILE', 'cash_register_days', id, 
+        `Cash register day reconciled for ${day.salespersonName}`);
+      res.json(updated);
+    } catch (error: any) {
+      console.error('[CASH_REGISTER] Error reconciling day:', error);
+      res.status(400).json({ message: error.message || 'Failed to reconcile cash register day' });
+    }
+  });
+
+  // Delete cash register day
+  app.delete('/api/cash-register/days/:id', isAuthenticated, requireRole('Admin'), async (req: any, res: Response) => {
+    try {
+      const { id } = req.params;
+      const day = await storage.getCashRegisterDay(id);
+      if (!day) {
+        return res.status(404).json({ message: 'Cash register day not found' });
+      }
+      
+      await storage.deleteCashRegisterDay(id);
+      await logAudit(req.user?.id, 'DELETE', 'cash_register_days', id, 
+        `Cash register day deleted for ${day.salespersonName}`);
+      res.status(204).send();
+    } catch (error: any) {
+      console.error('[CASH_REGISTER] Error deleting day:', error);
+      res.status(500).json({ message: error.message || 'Failed to delete cash register day' });
+    }
+  });
+
+  // Add transaction to cash register day
+  app.post('/api/cash-register/days/:dayId/transactions', isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { dayId } = req.params;
+      const day = await storage.getCashRegisterDay(dayId);
+      if (!day) {
+        return res.status(404).json({ message: 'Cash register day not found' });
+      }
+      
+      if (day.status === 'locked') {
+        return res.status(400).json({ message: 'Cannot add transactions to a locked day' });
+      }
+      
+      const parsed = insertCashRegisterTransactionSchema.parse({
+        ...req.body,
+        dayId,
+      });
+      
+      const transaction = await storage.createCashRegisterTransaction(parsed);
+      
+      // Update day totals
+      const amount = parsed.amount || 0;
+      const updates: any = {};
+      
+      switch (parsed.transactionType) {
+        case 'deposit':
+          updates.totalDeposits = day.totalDeposits + amount;
+          break;
+        case 'cash_received':
+          updates.totalCashReceived = day.totalCashReceived + amount;
+          break;
+        case 'expense':
+          updates.totalExpenses = day.totalExpenses + amount;
+          break;
+        case 'transfer':
+          updates.totalTransfers = day.totalTransfers + amount;
+          break;
+      }
+      
+      // Recalculate closing balance
+      updates.closingBalance = day.openingBalance + 
+        (updates.totalCashReceived || day.totalCashReceived) - 
+        (updates.totalExpenses || day.totalExpenses) - 
+        (updates.totalTransfers || day.totalTransfers);
+      
+      await storage.updateCashRegisterDay(dayId, updates);
+      
+      res.status(201).json(transaction);
+    } catch (error: any) {
+      console.error('[CASH_REGISTER] Error creating transaction:', error);
+      res.status(400).json({ message: error.message || 'Failed to create transaction' });
+    }
+  });
+
+  // Add expense items to transaction
+  app.post('/api/cash-register/transactions/:transactionId/items', isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { transactionId } = req.params;
+      const transaction = await storage.getCashRegisterTransaction(transactionId);
+      if (!transaction) {
+        return res.status(404).json({ message: 'Transaction not found' });
+      }
+      
+      if (transaction.transactionType !== 'expense') {
+        return res.status(400).json({ message: 'Can only add items to expense transactions' });
+      }
+      
+      const parsed = insertCashRegisterExpenseItemSchema.parse({
+        ...req.body,
+        transactionId,
+      });
+      
+      const item = await storage.createCashRegisterExpenseItem(parsed);
+      res.status(201).json(item);
+    } catch (error: any) {
+      console.error('[CASH_REGISTER] Error creating expense item:', error);
+      res.status(400).json({ message: error.message || 'Failed to create expense item' });
+    }
+  });
+
+  // Excel import - preview
+  app.post('/api/cash-register/import/preview', isAuthenticated, requireRole('Admin', 'Finance'), documentUpload.single('file'), async (req: any, res: Response) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: 'No file uploaded' });
+      }
+      
+      const preview = await parseExcelFile(req.file.buffer, req.file.originalname);
+      res.json(preview);
+    } catch (error: any) {
+      console.error('[CASH_REGISTER] Error parsing Excel file:', error);
+      res.status(400).json({ message: error.message || 'Failed to parse Excel file' });
+    }
+  });
+
+  // Excel import - commit
+  app.post('/api/cash-register/import/commit', isAuthenticated, requireRole('Admin', 'Finance'), async (req: any, res: Response) => {
+    try {
+      const { rows, fileName } = req.body;
+      
+      if (!rows || !Array.isArray(rows)) {
+        return res.status(400).json({ message: 'No rows to import' });
+      }
+      
+      const result = await commitImport(rows, fileName, req.user?.id);
+      
+      if (result.success) {
+        await logAudit(req.user?.id, 'IMPORT', 'cash_register', '', 
+          `Imported ${result.daysCreated} days from ${fileName}`);
+      }
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error('[CASH_REGISTER] Error committing import:', error);
+      res.status(400).json({ message: error.message || 'Failed to commit import' });
+    }
+  });
+
+  // Salesperson mappings CRUD
+  app.get('/api/cash-register/salesperson-mappings', isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const mappings = await storage.getAllSalespersonMappings();
+      res.json(mappings);
+    } catch (error: any) {
+      console.error('[CASH_REGISTER] Error fetching mappings:', error);
+      res.status(500).json({ message: error.message || 'Failed to fetch salesperson mappings' });
+    }
+  });
+
+  app.post('/api/cash-register/salesperson-mappings', isAuthenticated, requireRole('Admin'), async (req: any, res: Response) => {
+    try {
+      const parsed = insertSalespersonMappingSchema.parse(req.body);
+      
+      // Check for duplicate
+      const existing = await storage.getSalespersonMappingByName(parsed.excelName);
+      if (existing) {
+        return res.status(400).json({ message: `Mapping already exists for "${parsed.excelName}"` });
+      }
+      
+      const mapping = await storage.createSalespersonMapping(parsed);
+      res.status(201).json(mapping);
+    } catch (error: any) {
+      console.error('[CASH_REGISTER] Error creating mapping:', error);
+      res.status(400).json({ message: error.message || 'Failed to create salesperson mapping' });
+    }
+  });
+
+  app.patch('/api/cash-register/salesperson-mappings/:id', isAuthenticated, requireRole('Admin'), async (req: any, res: Response) => {
+    try {
+      const { id } = req.params;
+      const updated = await storage.updateSalespersonMapping(id, req.body);
+      if (!updated) {
+        return res.status(404).json({ message: 'Mapping not found' });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      console.error('[CASH_REGISTER] Error updating mapping:', error);
+      res.status(400).json({ message: error.message || 'Failed to update salesperson mapping' });
+    }
+  });
+
+  app.delete('/api/cash-register/salesperson-mappings/:id', isAuthenticated, requireRole('Admin'), async (req: any, res: Response) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteSalespersonMapping(id);
+      res.status(204).send();
+    } catch (error: any) {
+      console.error('[CASH_REGISTER] Error deleting mapping:', error);
+      res.status(500).json({ message: error.message || 'Failed to delete salesperson mapping' });
+    }
+  });
+
+  // Convert cash register expense to voucher
+  app.post('/api/cash-register/transactions/:transactionId/convert-to-voucher', isAuthenticated, requireRole('Admin', 'Finance'), async (req: any, res: Response) => {
+    try {
+      const { transactionId } = req.params;
+      const { categoryId, payeeName } = req.body;
+      
+      const transaction = await storage.getCashRegisterTransaction(transactionId);
+      if (!transaction) {
+        return res.status(404).json({ message: 'Transaction not found' });
+      }
+      
+      if (transaction.transactionType !== 'expense') {
+        return res.status(400).json({ message: 'Can only convert expense transactions' });
+      }
+      
+      if (transaction.convertedToVoucherId) {
+        return res.status(400).json({ message: 'Transaction already converted to voucher' });
+      }
+      
+      // Get the day for additional context
+      const day = await storage.getCashRegisterDay(transaction.dayId);
+      if (!day) {
+        return res.status(404).json({ message: 'Cash register day not found' });
+      }
+      
+      // Get expense items
+      const expenseItems = await storage.getCashRegisterExpenseItems(transactionId);
+      
+      // Generate voucher number
+      const now = new Date();
+      const voucherNumber = `EXP-${format(now, 'yyyyMMdd')}-${Date.now().toString().slice(-4)}`;
+      
+      // Create expense voucher
+      const voucher = await storage.createExpenseVoucher({
+        voucherNumber,
+        voucherDate: day.registerDate,
+        payeeType: 'staff' as const,
+        payeeName: payeeName || day.salespersonName,
+        payeeVendorId: null,
+        categoryId: categoryId || null,
+        totalAmount: transaction.amount,
+        paymentMode: 'cash' as const,
+        gstApplicable: false,
+        status: 'submitted' as const,
+        purpose: transaction.description || `Converted from Cash Register - ${day.salespersonName}`,
+        createdBy: req.user?.id,
+      });
+      
+      // Create expense items
+      for (const item of expenseItems) {
+        await storage.createExpenseItem({
+          voucherId: voucher.id,
+          description: item.itemLabel,
+          amount: item.amount,
+          categoryId: item.expenseCategoryId || categoryId || null,
+        });
+      }
+      
+      // If no items, create a single item
+      if (expenseItems.length === 0) {
+        await storage.createExpenseItem({
+          voucherId: voucher.id,
+          description: transaction.description || 'Cash register expense',
+          amount: transaction.amount,
+          categoryId: categoryId || null,
+        });
+      }
+      
+      // Update transaction to link to voucher
+      await storage.updateCashRegisterTransaction(transactionId, {
+        convertedToVoucherId: voucher.id,
+        convertedAt: new Date().toISOString(),
+      });
+      
+      await logAudit(req.user?.id, 'CONVERT', 'cash_register_transactions', transactionId, 
+        `Converted to expense voucher ${voucherNumber}`);
+      
+      res.status(201).json({ voucher, transactionId });
+    } catch (error: any) {
+      console.error('[CASH_REGISTER] Error converting to voucher:', error);
+      res.status(400).json({ message: error.message || 'Failed to convert to voucher' });
+    }
+  });
+
+  // Get unique salespersons from cash register
+  app.get('/api/cash-register/salespersons', isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const days = await storage.getCashRegisterDays({});
+      const salespersons = [...new Set(days.map(d => d.salespersonName))].filter(Boolean).sort();
+      res.json(salespersons);
+    } catch (error: any) {
+      console.error('[CASH_REGISTER] Error fetching salespersons:', error);
+      res.status(500).json({ message: error.message || 'Failed to fetch salespersons' });
+    }
   });
 
   const httpServer = createServer(app);
