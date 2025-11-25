@@ -17,7 +17,8 @@ import { calculateBOMSuggestions } from "@shared/calculations";
 import { importVyapaarData, clearImportedData } from "./vyapaar-import";
 import { parseExcelFile, commitImport } from "./cashRegisterImport";
 import { importCashRegisterFromExcel } from "./importCashRegisterFromExcel";
-import { insertCashRegisterDaySchema, insertCashRegisterTransactionSchema, insertCashRegisterExpenseItemSchema, insertSalespersonMappingSchema } from "@shared/schema";
+import { insertCashRegisterDaySchema, insertCashRegisterTransactionSchema, insertCashRegisterExpenseItemSchema, insertSalespersonMappingSchema, cashRegisterDays, cashRegisterTransactions, cashRegisterExpenseItems } from "@shared/schema";
+import { sql } from "drizzle-orm";
 
 // Simple audit logging function
 async function logAudit(userId: string | undefined, action: string, table: string, recordId: string, description: string) {
@@ -8931,6 +8932,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('[CASH_REGISTER] Error bulk importing:', error);
       res.status(400).json({ message: error.message || 'Failed to bulk import' });
+    }
+  });
+
+  // Clear all cash register data
+  app.post('/api/cash-register/clear-data', isAuthenticated, requireRole('Admin'), async (req: any, res: Response) => {
+    try {
+      console.log('[CASH_REGISTER] Clearing all cash register data...');
+      
+      // Delete in correct order due to foreign keys
+      // 1. Delete expense items
+      const itemsDeleted = await db.delete(cashRegisterExpenseItems).returning();
+      
+      // 2. Delete transactions
+      const transactionsDeleted = await db.delete(cashRegisterTransactions).returning();
+      
+      // 3. Delete days
+      const daysDeleted = await db.delete(cashRegisterDays).returning();
+      
+      // 4. Delete related vouchers (EXP-CR-*)
+      const vouchersResult = await db.execute(sql`
+        DELETE FROM expense_items WHERE voucher_id IN (
+          SELECT id FROM expense_vouchers WHERE voucher_number LIKE 'EXP-CR-%'
+        );
+        DELETE FROM expense_vouchers WHERE voucher_number LIKE 'EXP-CR-%';
+      `);
+      
+      await logAudit(req.user?.id, 'DELETE', 'cash_register', '', 
+        `Cleared all cash register data: ${daysDeleted.length} days, ${transactionsDeleted.length} transactions, ${itemsDeleted.length} items`);
+      
+      res.json({
+        success: true,
+        daysDeleted: daysDeleted.length,
+        transactionsDeleted: transactionsDeleted.length,
+        itemsDeleted: itemsDeleted.length,
+        message: `Cleared ${daysDeleted.length} days, ${transactionsDeleted.length} transactions, ${itemsDeleted.length} expense items`
+      });
+    } catch (error: any) {
+      console.error('[CASH_REGISTER] Error clearing data:', error);
+      res.status(500).json({ message: error.message || 'Failed to clear cash register data' });
     }
   });
 

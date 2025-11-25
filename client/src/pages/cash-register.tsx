@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -92,6 +93,8 @@ export default function CashRegisterPage() {
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
   const [newDayData, setNewDayData] = useState({
     registerDate: format(new Date(), 'yyyy-MM-dd'),
     salespersonName: '',
@@ -156,6 +159,30 @@ export default function CashRegisterPage() {
       openingBalance: Math.round((parseFloat(newDayData.openingBalance) || 0) * 100),
       notes: newDayData.notes,
     });
+  };
+
+  const handleClearData = async () => {
+    try {
+      setIsClearing(true);
+      const response = await apiRequest('POST', '/api/cash-register/clear-data', {});
+      const result = await response.json();
+      
+      if (result.success) {
+        toast({ 
+          title: "Data Cleared", 
+          description: result.message 
+        });
+        queryClient.invalidateQueries({ queryKey: ['/api/cash-register/days'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/cash-register/salespersons'] });
+        setIsClearDialogOpen(false);
+      } else {
+        throw new Error(result.message || 'Failed to clear data');
+      }
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setIsClearing(false);
+    }
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -343,6 +370,37 @@ export default function CashRegisterPage() {
           <p className="text-muted-foreground">Track daily cash flow per salesperson</p>
         </div>
         <div className="flex gap-2">
+          {days.length > 0 && (
+            <AlertDialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" data-testid="button-clear-data">
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Clear Data
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Clear All Cash Register Data?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete all {days.length} cash register days, including all transactions, expense items, and related vouchers. This action cannot be undone. 
+                    <br/><br/>
+                    Use this if you want to re-import the data from Excel with updated parsing logic.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={isClearing}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={handleClearData}
+                    disabled={isClearing}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    data-testid="button-confirm-clear"
+                  >
+                    {isClearing ? "Clearing..." : "Clear All Data"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
           <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" data-testid="button-import">
