@@ -961,7 +961,7 @@ function AuthenticatedApp() {
     return <RoleAssignment />;
   }
 
-  const role = (user as any).role as Role;
+  const role = ((user as any).role as string).toLowerCase() as Role;
 
   return (
     <>
