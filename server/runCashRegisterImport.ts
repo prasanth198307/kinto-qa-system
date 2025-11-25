@@ -76,8 +76,9 @@ function parseItemDetails(details: string): { label: string; amount: number; raw
     // Also handle "DIESEL-2500 PP TULASI" or "ITEM-25000 CASH" where text follows amount
     // Allow commas in the amount (Indian format like 3,500 or 49,500)
     
-    // First try: amount followed by optional text (PP TULASI, CASH, etc.)
-    let match = trimmed.match(/(.+?)[- ]([\d,]+(?:\.\d+)?)\s*([Kk])?\s*(?:PP\s*TULASI|CASH|TULASI)?(?:\/-)?$/i);
+    // First try: amount followed by optional text (PP TULASI, CASH, etc.) - with or without space
+    // Handles: "DIESEL-2000PP", "DIESEL-2500 PP TULASI", "ITEM-3000CASH"
+    let match = trimmed.match(/(.+?)[- ]([\d,]+(?:\.\d+)?)\s*([Kk])?\s*(?:PP\s*TULASI|PP|CASH|TULASI)?(?:\/-)?$/i);
     
     // Second try: amount at the very end
     if (!match) {
