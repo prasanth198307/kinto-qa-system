@@ -165,6 +165,18 @@ import {
   type InsertExpenseItem,
   type ExpenseAttachment,
   type InsertExpenseAttachment,
+  cashRegisterDays,
+  cashRegisterTransactions,
+  cashRegisterExpenseItems,
+  salespersonMappings,
+  type CashRegisterDay,
+  type InsertCashRegisterDay,
+  type CashRegisterTransaction,
+  type InsertCashRegisterTransaction,
+  type CashRegisterExpenseItem,
+  type InsertCashRegisterExpenseItem,
+  type SalespersonMapping,
+  type InsertSalespersonMapping,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, isNotNull, notInArray, gte, lte, sql } from "drizzle-orm";
@@ -553,6 +565,34 @@ export interface IStorage {
   createExpenseAttachment(attachment: InsertExpenseAttachment): Promise<ExpenseAttachment>;
   getExpenseAttachments(voucherId: string): Promise<ExpenseAttachment[]>;
   deleteExpenseAttachment(id: string): Promise<void>;
+  
+  // Cash Register Days
+  createCashRegisterDay(day: InsertCashRegisterDay): Promise<CashRegisterDay>;
+  getCashRegisterDays(filters?: { startDate?: string; endDate?: string; salespersonName?: string; status?: string }): Promise<CashRegisterDay[]>;
+  getCashRegisterDay(id: string): Promise<CashRegisterDay | undefined>;
+  getCashRegisterDayByDateAndPerson(date: string, salespersonName: string): Promise<CashRegisterDay | undefined>;
+  updateCashRegisterDay(id: string, day: Partial<InsertCashRegisterDay>): Promise<CashRegisterDay | undefined>;
+  deleteCashRegisterDay(id: string): Promise<void>;
+  
+  // Cash Register Transactions
+  createCashRegisterTransaction(transaction: InsertCashRegisterTransaction): Promise<CashRegisterTransaction>;
+  getCashRegisterTransactions(dayId: string): Promise<CashRegisterTransaction[]>;
+  getCashRegisterTransaction(id: string): Promise<CashRegisterTransaction | undefined>;
+  updateCashRegisterTransaction(id: string, transaction: Partial<InsertCashRegisterTransaction>): Promise<CashRegisterTransaction | undefined>;
+  deleteCashRegisterTransaction(id: string): Promise<void>;
+  
+  // Cash Register Expense Items
+  createCashRegisterExpenseItem(item: InsertCashRegisterExpenseItem): Promise<CashRegisterExpenseItem>;
+  getCashRegisterExpenseItems(transactionId: string): Promise<CashRegisterExpenseItem[]>;
+  updateCashRegisterExpenseItem(id: string, item: Partial<InsertCashRegisterExpenseItem>): Promise<CashRegisterExpenseItem | undefined>;
+  deleteCashRegisterExpenseItem(id: string): Promise<void>;
+  
+  // Salesperson Mappings
+  createSalespersonMapping(mapping: InsertSalespersonMapping): Promise<SalespersonMapping>;
+  getAllSalespersonMappings(): Promise<SalespersonMapping[]>;
+  getSalespersonMappingByName(excelName: string): Promise<SalespersonMapping | undefined>;
+  updateSalespersonMapping(id: string, mapping: Partial<InsertSalespersonMapping>): Promise<SalespersonMapping | undefined>;
+  deleteSalespersonMapping(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -3132,6 +3172,150 @@ export class DatabaseStorage implements IStorage {
     await db.update(expenseAttachments)
       .set({ recordStatus: 0 })
       .where(eq(expenseAttachments.id, id));
+  }
+
+  // Cash Register Days
+  async createCashRegisterDay(day: InsertCashRegisterDay): Promise<CashRegisterDay> {
+    const [created] = await db.insert(cashRegisterDays).values(day).returning();
+    return created;
+  }
+
+  async getCashRegisterDays(filters?: { startDate?: string; endDate?: string; salespersonName?: string; status?: string }): Promise<CashRegisterDay[]> {
+    const conditions = [eq(cashRegisterDays.recordStatus, 1)];
+    
+    if (filters?.startDate) {
+      conditions.push(gte(cashRegisterDays.registerDate, filters.startDate));
+    }
+    if (filters?.endDate) {
+      conditions.push(lte(cashRegisterDays.registerDate, filters.endDate));
+    }
+    if (filters?.salespersonName) {
+      conditions.push(eq(cashRegisterDays.salespersonName, filters.salespersonName));
+    }
+    if (filters?.status) {
+      conditions.push(eq(cashRegisterDays.status, filters.status));
+    }
+    
+    return await db.select().from(cashRegisterDays)
+      .where(and(...conditions))
+      .orderBy(sql`${cashRegisterDays.registerDate} DESC`);
+  }
+
+  async getCashRegisterDay(id: string): Promise<CashRegisterDay | undefined> {
+    const [day] = await db.select().from(cashRegisterDays)
+      .where(and(eq(cashRegisterDays.id, id), eq(cashRegisterDays.recordStatus, 1)));
+    return day;
+  }
+
+  async getCashRegisterDayByDateAndPerson(date: string, salespersonName: string): Promise<CashRegisterDay | undefined> {
+    const [day] = await db.select().from(cashRegisterDays)
+      .where(and(
+        eq(cashRegisterDays.registerDate, date),
+        eq(cashRegisterDays.salespersonName, salespersonName),
+        eq(cashRegisterDays.recordStatus, 1)
+      ));
+    return day;
+  }
+
+  async updateCashRegisterDay(id: string, day: Partial<InsertCashRegisterDay>): Promise<CashRegisterDay | undefined> {
+    const [updated] = await db.update(cashRegisterDays)
+      .set({ ...day, updatedAt: new Date().toISOString() })
+      .where(and(eq(cashRegisterDays.id, id), eq(cashRegisterDays.recordStatus, 1)))
+      .returning();
+    return updated;
+  }
+
+  async deleteCashRegisterDay(id: string): Promise<void> {
+    await db.update(cashRegisterDays)
+      .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
+      .where(eq(cashRegisterDays.id, id));
+  }
+
+  // Cash Register Transactions
+  async createCashRegisterTransaction(transaction: InsertCashRegisterTransaction): Promise<CashRegisterTransaction> {
+    const [created] = await db.insert(cashRegisterTransactions).values(transaction).returning();
+    return created;
+  }
+
+  async getCashRegisterTransactions(dayId: string): Promise<CashRegisterTransaction[]> {
+    return await db.select().from(cashRegisterTransactions)
+      .where(and(eq(cashRegisterTransactions.dayId, dayId), eq(cashRegisterTransactions.recordStatus, 1)));
+  }
+
+  async getCashRegisterTransaction(id: string): Promise<CashRegisterTransaction | undefined> {
+    const [transaction] = await db.select().from(cashRegisterTransactions)
+      .where(and(eq(cashRegisterTransactions.id, id), eq(cashRegisterTransactions.recordStatus, 1)));
+    return transaction;
+  }
+
+  async updateCashRegisterTransaction(id: string, transaction: Partial<InsertCashRegisterTransaction>): Promise<CashRegisterTransaction | undefined> {
+    const [updated] = await db.update(cashRegisterTransactions)
+      .set(transaction)
+      .where(and(eq(cashRegisterTransactions.id, id), eq(cashRegisterTransactions.recordStatus, 1)))
+      .returning();
+    return updated;
+  }
+
+  async deleteCashRegisterTransaction(id: string): Promise<void> {
+    await db.update(cashRegisterTransactions)
+      .set({ recordStatus: 0 })
+      .where(eq(cashRegisterTransactions.id, id));
+  }
+
+  // Cash Register Expense Items
+  async createCashRegisterExpenseItem(item: InsertCashRegisterExpenseItem): Promise<CashRegisterExpenseItem> {
+    const [created] = await db.insert(cashRegisterExpenseItems).values(item).returning();
+    return created;
+  }
+
+  async getCashRegisterExpenseItems(transactionId: string): Promise<CashRegisterExpenseItem[]> {
+    return await db.select().from(cashRegisterExpenseItems)
+      .where(and(eq(cashRegisterExpenseItems.transactionId, transactionId), eq(cashRegisterExpenseItems.recordStatus, 1)));
+  }
+
+  async updateCashRegisterExpenseItem(id: string, item: Partial<InsertCashRegisterExpenseItem>): Promise<CashRegisterExpenseItem | undefined> {
+    const [updated] = await db.update(cashRegisterExpenseItems)
+      .set(item)
+      .where(and(eq(cashRegisterExpenseItems.id, id), eq(cashRegisterExpenseItems.recordStatus, 1)))
+      .returning();
+    return updated;
+  }
+
+  async deleteCashRegisterExpenseItem(id: string): Promise<void> {
+    await db.update(cashRegisterExpenseItems)
+      .set({ recordStatus: 0 })
+      .where(eq(cashRegisterExpenseItems.id, id));
+  }
+
+  // Salesperson Mappings
+  async createSalespersonMapping(mapping: InsertSalespersonMapping): Promise<SalespersonMapping> {
+    const [created] = await db.insert(salespersonMappings).values(mapping).returning();
+    return created;
+  }
+
+  async getAllSalespersonMappings(): Promise<SalespersonMapping[]> {
+    return await db.select().from(salespersonMappings)
+      .where(eq(salespersonMappings.isActive, 1));
+  }
+
+  async getSalespersonMappingByName(excelName: string): Promise<SalespersonMapping | undefined> {
+    const [mapping] = await db.select().from(salespersonMappings)
+      .where(and(eq(salespersonMappings.excelName, excelName), eq(salespersonMappings.isActive, 1)));
+    return mapping;
+  }
+
+  async updateSalespersonMapping(id: string, mapping: Partial<InsertSalespersonMapping>): Promise<SalespersonMapping | undefined> {
+    const [updated] = await db.update(salespersonMappings)
+      .set(mapping)
+      .where(and(eq(salespersonMappings.id, id), eq(salespersonMappings.isActive, 1)))
+      .returning();
+    return updated;
+  }
+
+  async deleteSalespersonMapping(id: string): Promise<void> {
+    await db.update(salespersonMappings)
+      .set({ isActive: 0 })
+      .where(eq(salespersonMappings.id, id));
   }
 }
 
