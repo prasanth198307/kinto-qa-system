@@ -52,9 +52,18 @@ function parseItemDetails(details: string): { label: string; amount: number; raw
   const normalizedDetails = processedDetails.replace(/\r\n/g, ',').replace(/\n/g, ',');
   const parts = normalizedDetails.split(',');
   
-  for (const part of parts) {
-    let trimmed = part.trim();
+  for (let i = 0; i < parts.length; i++) {
+    let trimmed = parts[i].trim();
     if (!trimmed) continue;
+    
+    // Check if this part is just a number (like "350") - it's likely an amount for the previous item
+    // Pattern: "RAPIDO,350" split into ["RAPIDO", "350"]
+    if (/^\d+$/.test(trimmed) && items.length > 0 && items[items.length - 1].amount === 0) {
+      // Assign this number as the amount for the previous item
+      items[items.length - 1].amount = parseInt(trimmed) * 100;
+      items[items.length - 1].rawText += ',' + trimmed;
+      continue;
+    }
     
     // Remove trailing periods or colons
     trimmed = trimmed.replace(/[.:]+$/, '');
@@ -90,10 +99,10 @@ function parseItemDetails(details: string): { label: string; amount: number; raw
       items.push({
         label: match[1].trim().toUpperCase(),
         amount: Math.round(amount * 100), // Convert to paise
-        rawText: part.trim() // Keep original for reference
+        rawText: parts[i].trim() // Keep original for reference
       });
     } else {
-      items.push({ label: trimmed.toUpperCase(), amount: 0, rawText: part.trim() });
+      items.push({ label: trimmed.toUpperCase(), amount: 0, rawText: parts[i].trim() });
     }
   }
   return items;
