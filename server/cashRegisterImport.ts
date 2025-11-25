@@ -337,24 +337,12 @@ export async function parseExcelFile(buffer: Buffer, fileName: string): Promise<
         parsedRow.salespersonName = String(row[columnMap.so] || '').trim().toUpperCase();
       }
       
-      // Check if row has any actual data (not just a date placeholder)
-      const hasFinancialData = row.some((cell: any, idx: number) => {
-        if (idx <= 1) return false; // Skip date and SO columns
-        if (cell === null || cell === undefined) return false;
-        const str = String(cell).trim().toUpperCase();
-        if (!str || str === 'NIL' || str === 'NA' || str === '-') return false;
-        return true;
-      });
-      
-      // If no salesperson but has financial data, use "UNKNOWN"
-      if (!parsedRow.salespersonName) {
-        if (hasFinancialData) {
-          parsedRow.salespersonName = 'UNKNOWN';
-          parsedRow.warnings.push('Missing salesperson - assigned to UNKNOWN');
-        } else {
-          // Row is just a date placeholder with no data - skip it
-          continue;
-        }
+      // Skip rows where salesperson is a non-data marker (HOLIDAY, SUNDAY, ALL, NIL, empty)
+      // These are summary/placeholder rows, not actual salesperson data
+      const skipSalespersons = ['HOLIDAY', 'SUNDAY', 'ALL', 'NIL', 'NA', ''];
+      if (skipSalespersons.includes(parsedRow.salespersonName)) {
+        console.log('[CASH_REGISTER] Skipping non-salesperson row:', parsedRow.salespersonName || '(empty)', 'on', parsedRow.date);
+        continue;
       }
       
       salespersonSet.add(parsedRow.salespersonName);
