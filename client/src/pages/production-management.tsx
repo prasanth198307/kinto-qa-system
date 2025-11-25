@@ -151,52 +151,56 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
     const isReissue = params.get('reissue') === 'true';
     const tab = params.get('tab');
     
-    if (isReissue && tab === 'invoices') {
-      // Get stored invoice data and reissue flag from sessionStorage
-      const storedData = sessionStorage.getItem('reissue-invoice-data');
-      const storedIsReissue = sessionStorage.getItem('is-reissue') === 'true';
-      
-      if (storedData) {
-        try {
-          const invoiceData = JSON.parse(storedData);
-          
-          // Note: Backend already strips all IDs (invoice.id, invoiceNumber, item IDs, etc.)
-          // So this data is safe to use directly for creating a new invoice
-          
-          // Set the invoice tab as active
-          setActiveTab('invoices');
-          
-          // Set reissue mode flag
-          setIsReissueMode(storedIsReissue);
-          
-          // Pre-fill the form with the cancelled invoice data
-          // Without ID, it will be treated as a new invoice
-          setEditingInvoice(invoiceData);
-          setShowInvoiceForm(true);
-          
-          // Clear the stored data
-          sessionStorage.removeItem('reissue-invoice-data');
-          sessionStorage.removeItem('is-reissue');
-          
-          // Clean up the URL (remove reissue parameter)
+    // Check for reissue from URL params OR from sessionStorage directly when on invoices tab
+    const storedData = sessionStorage.getItem('reissue-invoice-data');
+    const storedIsReissue = sessionStorage.getItem('is-reissue') === 'true';
+    
+    // Handle reissue if URL has reissue param, or if we're on invoices tab and sessionStorage has data
+    const shouldHandleReissue = (isReissue && tab === 'invoices') || 
+      (activeTab === 'invoices' && storedData && storedIsReissue);
+    
+    if (shouldHandleReissue && storedData) {
+      try {
+        const invoiceData = JSON.parse(storedData);
+        
+        // Note: Backend already strips all IDs (invoice.id, invoiceNumber, item IDs, etc.)
+        // So this data is safe to use directly for creating a new invoice
+        
+        // Set the invoice tab as active
+        setActiveTab('invoices');
+        
+        // Set reissue mode flag
+        setIsReissueMode(true);
+        
+        // Pre-fill the form with the cancelled invoice data
+        // Without ID, it will be treated as a new invoice
+        setEditingInvoice(invoiceData);
+        setShowInvoiceForm(true);
+        
+        // Clear the stored data
+        sessionStorage.removeItem('reissue-invoice-data');
+        sessionStorage.removeItem('is-reissue');
+        
+        // Clean up the URL (remove reissue parameter)
+        if (isReissue) {
           params.delete('reissue');
           const cleanUrl = params.toString() 
             ? `${location.split('?')[0]}?${params.toString()}`
             : location.split('?')[0];
           navigate(cleanUrl, { replace: true });
-          
-          toast({
-            title: "Invoice Data Loaded",
-            description: "Previous invoice data has been pre-filled. Please update amounts and save.",
-          });
-        } catch (error) {
-          console.error('Failed to parse reissue invoice data:', error);
-          sessionStorage.removeItem('reissue-invoice-data');
-          sessionStorage.removeItem('is-reissue');
         }
+        
+        toast({
+          title: "Invoice Data Loaded",
+          description: "Previous invoice data has been pre-filled. Please update amounts and save.",
+        });
+      } catch (error) {
+        console.error('Failed to parse reissue invoice data:', error);
+        sessionStorage.removeItem('reissue-invoice-data');
+        sessionStorage.removeItem('is-reissue');
       }
     }
-  }, [location, navigate, toast]);
+  }, [location, navigate, toast, activeTab]);
 
   const { data: issuances = [], isLoading: isLoadingIssuances } = useQuery<RawMaterialIssuance[]>({
     queryKey: ['/api/raw-material-issuances'],
