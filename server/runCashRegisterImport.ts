@@ -21,14 +21,19 @@ function parseCurrency(val: any): number {
 function parseItemDetails(details: string): { label: string; amount: number; rawText: string }[] {
   if (!details || details === 'NIL' || details === '') return [];
   const items: { label: string; amount: number; rawText: string }[] = [];
-  const normalizedDetails = details.replace(/\r\n/g, ',').replace(/\n/g, ',');
+  
+  // First, handle Indian number format: replace commas between digits (thousands separator)
+  // Pattern: digit,digit should become digitdigit (e.g., 49,500 -> 49500)
+  let processedDetails = details.replace(/(\d),(\d)/g, '$1$2');
+  
+  const normalizedDetails = processedDetails.replace(/\r\n/g, ',').replace(/\n/g, ',');
   const parts = normalizedDetails.split(',');
   
   for (const part of parts) {
     const trimmed = part.trim();
     if (!trimmed) continue;
     
-    // Match patterns like "DIESEL-6K", "PETROL-260", "ITEM 500/-", "ITEM-3.5K"
+    // Match patterns like "DIESEL-6K", "PETROL-260", "ITEM 500/-", "ITEM-3.5K", "SUDHAKAR-49500"
     // The amount is always at the END after the last hyphen or space
     const match = trimmed.match(/(.+)[- ](\d+(?:\.\d+)?)\s*([Kk])?(?:\/-)?$/);
     if (match) {
