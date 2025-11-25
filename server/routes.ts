@@ -7974,6 +7974,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         filePath: `/uploads/documents/${req.file.filename}`,
         relatedEntityType: req.body.relatedEntityType || null,
         relatedEntityId: req.body.relatedEntityId || null,
+        documentDate: req.body.documentDate || null,
         expiryDate: req.body.expiryDate || null,
         tags: req.body.tags ? JSON.parse(req.body.tags) : null,
         uploadedBy: req.user?.id || null,

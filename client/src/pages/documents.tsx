@@ -27,6 +27,7 @@ export default function DocumentsPage() {
     title: "",
     description: "",
     categoryId: "",
+    documentDate: "",
     expiryDate: "",
     tags: "",
   });
@@ -60,7 +61,7 @@ export default function DocumentsPage() {
       toast({ title: "Success", description: "Document uploaded successfully" });
       setIsUploadOpen(false);
       setUploadFile(null);
-      setUploadData({ title: "", description: "", categoryId: "", expiryDate: "", tags: "" });
+      setUploadData({ title: "", description: "", categoryId: "", documentDate: "", expiryDate: "", tags: "" });
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -91,6 +92,7 @@ export default function DocumentsPage() {
     formData.append('title', uploadData.title || uploadFile.name);
     formData.append('description', uploadData.description);
     if (uploadData.categoryId) formData.append('categoryId', uploadData.categoryId);
+    if (uploadData.documentDate) formData.append('documentDate', uploadData.documentDate);
     if (uploadData.expiryDate) formData.append('expiryDate', uploadData.expiryDate);
     if (uploadData.tags) formData.append('tags', JSON.stringify(uploadData.tags.split(',').map(t => t.trim())));
 
@@ -286,15 +288,27 @@ export default function DocumentsPage() {
                     data-testid="input-description"
                   />
                 </div>
-                <div>
-                  <Label htmlFor="expiryDate">Expiry Date (Optional)</Label>
-                  <Input
-                    id="expiryDate"
-                    type="date"
-                    value={uploadData.expiryDate}
-                    onChange={(e) => setUploadData(prev => ({ ...prev, expiryDate: e.target.value }))}
-                    data-testid="input-expiry-date"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="documentDate">Document Date</Label>
+                    <Input
+                      id="documentDate"
+                      type="date"
+                      value={uploadData.documentDate}
+                      onChange={(e) => setUploadData(prev => ({ ...prev, documentDate: e.target.value }))}
+                      data-testid="input-document-date"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="expiryDate">Expiry Date (Optional)</Label>
+                    <Input
+                      id="expiryDate"
+                      type="date"
+                      value={uploadData.expiryDate}
+                      onChange={(e) => setUploadData(prev => ({ ...prev, expiryDate: e.target.value }))}
+                      data-testid="input-expiry-date"
+                    />
+                  </div>
                 </div>
                 <div>
                   <Label htmlFor="tags">Tags (comma-separated)</Label>
@@ -365,8 +379,8 @@ export default function DocumentsPage() {
                     </TableHead>
                     <TableHead>Document</TableHead>
                     <TableHead>Category</TableHead>
+                    <TableHead>Doc Date</TableHead>
                     <TableHead>Size</TableHead>
-                    <TableHead>Uploaded</TableHead>
                     <TableHead>Expiry</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -397,10 +411,10 @@ export default function DocumentsPage() {
                       <TableCell>
                         <Badge variant="secondary">{getCategoryName(doc.categoryId)}</Badge>
                       </TableCell>
-                      <TableCell>{formatFileSize(doc.fileSize)}</TableCell>
                       <TableCell>
-                        {doc.createdAt ? format(new Date(doc.createdAt), 'dd MMM yyyy') : 'N/A'}
+                        {doc.documentDate ? format(new Date(doc.documentDate), 'dd MMM yyyy') : '-'}
                       </TableCell>
+                      <TableCell>{formatFileSize(doc.fileSize)}</TableCell>
                       <TableCell>
                         {doc.expiryDate ? (
                           <span className={new Date(doc.expiryDate) < new Date() ? 'text-destructive' : ''}>
@@ -469,12 +483,24 @@ export default function DocumentsPage() {
                   <span className="ml-2 font-medium">{getCategoryName(previewDocument.categoryId)}</span>
                 </div>
                 <div>
+                  <span className="text-muted-foreground">Document Date:</span>
+                  <span className="ml-2 font-medium">
+                    {previewDocument.documentDate ? format(new Date(previewDocument.documentDate), 'dd MMM yyyy') : 'N/A'}
+                  </span>
+                </div>
+                <div>
                   <span className="text-muted-foreground">File Size:</span>
                   <span className="ml-2 font-medium">{formatFileSize(previewDocument.fileSize)}</span>
                 </div>
                 <div>
                   <span className="text-muted-foreground">File Type:</span>
                   <span className="ml-2 font-medium">{previewDocument.fileType}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Expiry Date:</span>
+                  <span className="ml-2 font-medium">
+                    {previewDocument.expiryDate ? format(new Date(previewDocument.expiryDate), 'dd MMM yyyy') : 'N/A'}
+                  </span>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Uploaded:</span>
