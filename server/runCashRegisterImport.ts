@@ -15,11 +15,21 @@ function parseCurrency(val: any): number {
   if (!val || val === 'NIL' || val === '') return 0;
   const str = String(val);
   
-  // Handle multi-line expense format like "7720/- CASH\r\n4,840/- TULASI PP\r\n12,560/- TOTAL"
-  // Look for TOTAL line first
-  const totalMatch = str.match(/(\d[\d,]*)\s*\/?-?\s*TOTAL/i);
-  if (totalMatch) {
-    const totalStr = totalMatch[1].replace(/,/g, '');
+  // Handle multi-line expense formats:
+  // Format 1: "7720/- CASH\r\n4,840/- TULASI PP\r\n12,560/- TOTAL"
+  // Format 2: "3000/- TULASI PP\r\n6,430/- CASH\r\nTOTAL-9,430/-"
+  
+  // Look for "TOTAL-amount" format (with hyphen before amount)
+  const totalHyphenMatch = str.match(/TOTAL\s*[-–]\s*(\d[\d,]*)/i);
+  if (totalHyphenMatch) {
+    const totalStr = totalHyphenMatch[1].replace(/,/g, '');
+    return Math.round(parseFloat(totalStr) * 100);
+  }
+  
+  // Look for "amount TOTAL" format
+  const totalAfterMatch = str.match(/(\d[\d,]*)\s*\/?-?\s*TOTAL/i);
+  if (totalAfterMatch) {
+    const totalStr = totalAfterMatch[1].replace(/,/g, '');
     return Math.round(parseFloat(totalStr) * 100);
   }
   
@@ -33,10 +43,12 @@ function parseItemDetails(details: string): { label: string; amount: number; raw
   if (!details || details === 'NIL' || details === '') return [];
   const items: { label: string; amount: number; rawText: string }[] = [];
   
-  // First, handle Indian number format: replace commas between digits (thousands separator)
-  // Pattern: digit,digit should become digitdigit (e.g., 49,500 -> 49500)
-  let processedDetails = details.replace(/(\d),(\d)/g, '$1$2');
+  // First, handle Indian thousands separator (like 3,500 or 49,500)
+  // Pattern: 1-2 digits, comma, 3 digits at end or before /- 
+  // This converts "MOTOR-3,500" to "MOTOR-3500" before splitting
+  let processedDetails = details.replace(/(\d{1,2}),(\d{3})(?=\s*\/?-?\s*$|\s*\/?-?\s*,)/g, '$1$2');
   
+  // Normalize newlines to commas for splitting
   const normalizedDetails = processedDetails.replace(/\r\n/g, ',').replace(/\n/g, ',');
   const parts = normalizedDetails.split(',');
   
@@ -51,11 +63,22 @@ function parseItemDetails(details: string): { label: string; amount: number; raw
     // Pattern: "ITEM-600(note)" -> "ITEM-600"
     trimmed = trimmed.replace(/\([^)]*\)\s*$/, '').trim();
     
-    // Match patterns like "DIESEL-6K", "PETROL-260", "ITEM 500/-", "ITEM-3.5K", "SUDHAKAR-49500"
-    // The amount is always at the END after the last hyphen or space
-    const match = trimmed.match(/(.+)[- ](\d+(?:\.\d+)?)\s*([Kk])?(?:\/-)?$/);
+    // Match patterns like "DIESEL-6K", "PETROL-260", "ITEM 500/-", "ITEM-3.5K", "SUDHAKAR-49500", "MOTOR-3,500"
+    // Also handle "DIESEL-2500 PP TULASI" or "ITEM-25000 CASH" where text follows amount
+    // Allow commas in the amount (Indian format like 3,500 or 49,500)
+    
+    // First try: amount followed by optional text (PP TULASI, CASH, etc.)
+    let match = trimmed.match(/(.+?)[- ]([\d,]+(?:\.\d+)?)\s*([Kk])?\s*(?:PP\s*TULASI|CASH|TULASI)?(?:\/-)?$/i);
+    
+    // Second try: amount at the very end
+    if (!match) {
+      match = trimmed.match(/(.+)[- ]([\d,]+(?:\.\d+)?)\s*([Kk])?(?:\/-)?$/);
+    }
+    
     if (match) {
-      let amount = parseFloat(match[2]);
+      // Remove commas from amount string before parsing
+      const amountStr = match[2].replace(/,/g, '');
+      let amount = parseFloat(amountStr);
       const kSuffix = match[3]; // Capture K/k suffix if present
       
       // Only multiply by 1000 if K/k is at the very end (not part of KG, KM, etc.)
