@@ -14,8 +14,36 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
-import { Upload, FileText, Download, Trash2, Search, Filter, Eye, Plus, Folder, File, FileImage, FileSpreadsheet, AlertCircle, Archive } from "lucide-react";
+import { Upload, FileText, Download, Trash2, Search, Filter, Eye, Plus, Folder, File, FileImage, FileSpreadsheet, AlertCircle, Archive, Clock, AlertTriangle } from "lucide-react";
 import type { DocumentCategory, Document } from "@shared/schema";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+
+// Helper to calculate expiry status
+function getExpiryStatus(expiryDate: string | null | undefined): { 
+  status: 'expired' | 'urgent' | 'warning' | 'ok' | 'none';
+  daysRemaining: number | null;
+  label: string;
+} {
+  if (!expiryDate) return { status: 'none', daysRemaining: null, label: 'No expiry set' };
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const expiry = new Date(expiryDate);
+  expiry.setHours(0, 0, 0, 0);
+  
+  const diffTime = expiry.getTime() - today.getTime();
+  const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (daysRemaining < 0) {
+    return { status: 'expired', daysRemaining, label: 'Expired' };
+  } else if (daysRemaining <= 7) {
+    return { status: 'urgent', daysRemaining, label: `${daysRemaining} day${daysRemaining !== 1 ? 's' : ''} left` };
+  } else if (daysRemaining <= 30) {
+    return { status: 'warning', daysRemaining, label: `${daysRemaining} days left` };
+  } else {
+    return { status: 'ok', daysRemaining, label: `${daysRemaining} days left` };
+  }
+}
 
 export default function DocumentsPage() {
   const { toast } = useToast();
@@ -416,11 +444,32 @@ export default function DocumentsPage() {
                       </TableCell>
                       <TableCell>{formatFileSize(doc.fileSize)}</TableCell>
                       <TableCell>
-                        {doc.expiryDate ? (
-                          <span className={new Date(doc.expiryDate) < new Date() ? 'text-destructive' : ''}>
-                            {format(new Date(doc.expiryDate), 'dd MMM yyyy')}
-                          </span>
-                        ) : '-'}
+                        {doc.expiryDate ? (() => {
+                          const expiryInfo = getExpiryStatus(doc.expiryDate);
+                          const statusColors = {
+                            expired: 'text-destructive',
+                            urgent: 'text-orange-600 dark:text-orange-400',
+                            warning: 'text-yellow-600 dark:text-yellow-500',
+                            ok: 'text-foreground',
+                            none: 'text-muted-foreground'
+                          };
+                          const StatusIcon = expiryInfo.status === 'expired' ? AlertCircle : 
+                                            expiryInfo.status === 'urgent' ? AlertTriangle : 
+                                            expiryInfo.status === 'warning' ? Clock : null;
+                          return (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className={`flex items-center gap-1 ${statusColors[expiryInfo.status]}`}>
+                                  {StatusIcon && <StatusIcon className="h-3.5 w-3.5" />}
+                                  {format(new Date(doc.expiryDate), 'dd MMM yyyy')}
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{expiryInfo.label}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          );
+                        })() : '-'}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
@@ -498,9 +547,24 @@ export default function DocumentsPage() {
                 </div>
                 <div>
                   <span className="text-muted-foreground">Expiry Date:</span>
-                  <span className="ml-2 font-medium">
-                    {previewDocument.expiryDate ? format(new Date(previewDocument.expiryDate), 'dd MMM yyyy') : 'N/A'}
-                  </span>
+                  {previewDocument.expiryDate ? (() => {
+                    const expiryInfo = getExpiryStatus(previewDocument.expiryDate);
+                    const statusColors = {
+                      expired: 'text-destructive',
+                      urgent: 'text-orange-600 dark:text-orange-400',
+                      warning: 'text-yellow-600 dark:text-yellow-500',
+                      ok: '',
+                      none: 'text-muted-foreground'
+                    };
+                    return (
+                      <span className={`ml-2 font-medium ${statusColors[expiryInfo.status]}`}>
+                        {format(new Date(previewDocument.expiryDate), 'dd MMM yyyy')}
+                        {expiryInfo.status !== 'ok' && expiryInfo.status !== 'none' && (
+                          <span className="ml-1 text-xs">({expiryInfo.label})</span>
+                        )}
+                      </span>
+                    );
+                  })() : <span className="ml-2 font-medium">N/A</span>}
                 </div>
                 <div>
                   <span className="text-muted-foreground">Uploaded:</span>

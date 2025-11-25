@@ -2955,8 +2955,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateDocument(id: string, document: Partial<InsertDocument>): Promise<Document | undefined> {
+    // If expiry date is being changed, reset the alert status so a new alert can be sent
+    const updateData: any = { ...document, updatedAt: new Date().toISOString() };
+    
+    if ('expiryDate' in document) {
+      // Get current document to check if expiry date is changing
+      const [current] = await db.select().from(documents)
+        .where(and(eq(documents.id, id), eq(documents.recordStatus, 1)));
+      
+      if (current && current.expiryDate !== document.expiryDate) {
+        // Expiry date changed - reset alert status so notification can be sent again
+        updateData.expiryAlertSent = 0;
+        updateData.expiryAlertSentAt = null;
+      }
+    }
+    
     const [updated] = await db.update(documents)
-      .set({ ...document, updatedAt: new Date().toISOString() })
+      .set(updateData)
       .where(and(eq(documents.id, id), eq(documents.recordStatus, 1)))
       .returning();
     return updated;
