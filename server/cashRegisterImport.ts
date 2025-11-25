@@ -120,7 +120,7 @@ function excelDateToISO(excelDate: number | string | null | undefined): string {
   }
 }
 
-// Parse currency string to paise (handles "6K", "5840", "260", etc.)
+// Parse currency string to paise (handles "6K", "5840", "260", "9,310/-", "NIL", etc.)
 function parseCurrencyToPaise(value: string | number | undefined | null): number {
   if (value === undefined || value === null || value === '') return 0;
   
@@ -128,26 +128,40 @@ function parseCurrencyToPaise(value: string | number | undefined | null): number
     return Math.round(value * 100);
   }
   
-  const str = value.toString().trim().toUpperCase();
+  let str = value.toString().trim().toUpperCase();
   
-  // Handle "K" suffix (thousands)
+  // Handle "NIL" or "N/A" or "-" as zero
+  if (str === 'NIL' || str === 'N/A' || str === '-' || str === 'NA' || str === '') {
+    return 0;
+  }
+  
+  // Remove common suffixes: "/-", "/=", "Rs", "Rs.", "₹"
+  str = str.replace(/\/-$/, '').replace(/\/=$/, '').replace(/^RS\.?\s*/i, '').replace(/^₹\s*/, '').trim();
+  
+  // Handle "K" suffix (thousands) - e.g., "6K" = 6000
   const kMatch = str.match(/^(\d+(?:\.\d+)?)\s*K$/i);
   if (kMatch) {
     return Math.round(parseFloat(kMatch[1]) * 1000 * 100);
   }
   
-  // Handle plain numbers
-  const numMatch = str.match(/^[\d,.]+$/);
+  // Handle plain numbers with optional commas - e.g., "9,310" or "9310"
+  const numMatch = str.match(/^[\d,]+(?:\.\d+)?$/);
   if (numMatch) {
     const cleanNum = str.replace(/,/g, '');
-    return Math.round(parseFloat(cleanNum) * 100);
+    const parsed = parseFloat(cleanNum);
+    if (!isNaN(parsed)) {
+      return Math.round(parsed * 100);
+    }
   }
   
-  // Handle numbers with currency symbols
-  const currencyMatch = str.match(/[\d,.]+/);
+  // Handle numbers with currency symbols or other characters
+  const currencyMatch = str.match(/[\d,]+(?:\.\d+)?/);
   if (currencyMatch) {
     const cleanNum = currencyMatch[0].replace(/,/g, '');
-    return Math.round(parseFloat(cleanNum) * 100);
+    const parsed = parseFloat(cleanNum);
+    if (!isNaN(parsed)) {
+      return Math.round(parsed * 100);
+    }
   }
   
   return 0;
