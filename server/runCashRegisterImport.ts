@@ -28,11 +28,21 @@ function parseItemDetails(details: string): { label: string; amount: number; raw
     const trimmed = part.trim();
     if (!trimmed) continue;
     
-    const match = trimmed.match(/(.+?)[- ](\d+)(?:\/-)?$/);
+    // Match patterns like "DIESEL-6K", "PETROL-260", "ITEM 500/-", "ITEM-3.5K"
+    const match = trimmed.match(/(.+?)[- ](\d+(?:\.\d+)?)\s*[Kk]?(?:\/-)?$/);
     if (match) {
+      let amountStr = match[2];
+      let amount = parseFloat(amountStr);
+      
+      // Check if original text has K/k suffix (means thousands)
+      const hasKSuffix = /\d+(?:\.\d+)?\s*[Kk]/.test(trimmed);
+      if (hasKSuffix) {
+        amount = amount * 1000;
+      }
+      
       items.push({
         label: match[1].trim().toUpperCase(),
-        amount: parseInt(match[2]) * 100,
+        amount: Math.round(amount * 100), // Convert to paise
         rawText: trimmed
       });
     } else {
