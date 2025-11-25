@@ -4460,6 +4460,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Fetch invoices with items
       const invoicesWithItems = await storage.getInvoicesWithItemsByPeriod(startDate, endDate);
       
+      // Fetch credit notes for the period (both auto and manual)
+      const allCreditNotes = await db.select().from(creditNotes)
+        .where(
+          and(
+            eq(creditNotes.recordStatus, 1),
+            eq(creditNotes.status, 'issued'),
+            gte(creditNotes.creditDate, startDate.toISOString().split('T')[0]),
+            lte(creditNotes.creditDate, endDate.toISOString().split('T')[0])
+          )
+        );
+      
+      // Get related invoice data for each credit note
+      const creditNotesWithInvoice = await Promise.all(
+        allCreditNotes.map(async (cn) => {
+          const invoice = await storage.getInvoice(cn.invoiceId);
+          const items = await storage.getInvoiceItems(cn.invoiceId);
+          return {
+            creditNote: cn,
+            invoice: invoice!,
+            items
+          };
+        })
+      );
+      
       // Aggregate HSN summary
       const hsnMap = new Map<string, any>();
       let totalTaxableValue = 0;
@@ -4518,6 +4542,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Build response
       const response = {
         invoices: invoicesWithItems,
+        creditNotes: creditNotesWithInvoice,
         hsnSummary,
         metadata: {
           period: `${month.toString().padStart(2, '0')}${year}`,
@@ -4525,6 +4550,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           startDate: startDate.toISOString(),
           endDate: endDate.toISOString(),
           totalInvoices: invoicesWithItems.length,
+          totalCreditNotes: creditNotesWithInvoice.length,
           totalTaxableValue: Number(totalTaxableValue.toFixed(2)),
           totalTax: Number(totalTax.toFixed(2)),
         },

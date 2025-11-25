@@ -722,7 +722,13 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                       const invoicesFromReport = reportData.invoices.map(item => item.invoice);
                       
                       if (gstReportType === 'GSTR1') {
-                        const report = generateGSTR1(invoicesFromReport, period, companyGSTIN, reportData.hsnSummary);
+                        const report = generateGSTR1(
+                          invoicesFromReport, 
+                          period, 
+                          companyGSTIN, 
+                          reportData.hsnSummary,
+                          reportData.creditNotes
+                        );
                         exportGSTReportAsJSON(report, 'GSTR1', period);
                       } else if (gstReportType === 'GSTR3B') {
                         const report = generateGSTR3B(invoicesFromReport, [], period, companyGSTIN);
@@ -752,7 +758,13 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                       const invoicesFromReport = reportData.invoices.map(item => item.invoice);
                       
                       if (gstReportType === 'GSTR1') {
-                        const report = generateGSTR1(invoicesFromReport, period, companyGSTIN, reportData.hsnSummary);
+                        const report = generateGSTR1(
+                          invoicesFromReport, 
+                          period, 
+                          companyGSTIN, 
+                          reportData.hsnSummary,
+                          reportData.creditNotes
+                        );
                         await exportGSTR1AsExcel(report, period);
                       } else if (gstReportType === 'GSTR3B') {
                         const report = generateGSTR3B(invoicesFromReport, [], period, companyGSTIN);

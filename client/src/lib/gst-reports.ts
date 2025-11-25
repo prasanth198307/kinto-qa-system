@@ -1,8 +1,15 @@
-import type { Invoice, InvoiceWithItems } from '@shared/schema';
+import type { Invoice, InvoiceWithItems, CreditNote } from '@shared/schema';
 
 // GST Report Types
 export type GSTReportType = 'GSTR1' | 'GSTR3B';
 export type PeriodType = 'monthly' | 'quarterly' | 'annual';
+
+// Credit Note with related invoice data for GST reporting
+export interface CreditNoteWithInvoice {
+  creditNote: CreditNote;
+  invoice: Invoice;
+  items: any[];
+}
 
 // API Response Type
 export interface GSTReportAPIResponse {
@@ -10,6 +17,7 @@ export interface GSTReportAPIResponse {
     invoice: Invoice;
     items: any[];
   }>;
+  creditNotes: CreditNoteWithInvoice[];
   hsnSummary: Array<{
     hsnCode: string;
     description: string;
@@ -28,6 +36,7 @@ export interface GSTReportAPIResponse {
     startDate: string;
     endDate: string;
     totalInvoices: number;
+    totalCreditNotes: number;
     totalTaxableValue: number;
     totalTax: number;
   };
@@ -41,7 +50,46 @@ export interface GSTR1Report {
   b2cl: B2CLInvoice[];
   b2cs: B2CSInvoice[];
   exp: ExportInvoice[];
+  cdnr: CDNRNote[]; // Credit/Debit Notes for Registered dealers
+  cdnur: CDNURNote[]; // Credit/Debit Notes for Unregistered dealers
   hsn: HSNSummary[];
+}
+
+// CDNR - Credit/Debit Notes for Registered Dealers (with GSTIN)
+export interface CDNRNote {
+  ctin: string; // Customer GSTIN
+  nt: {
+    ntty: string; // Note Type: C for Credit, D for Debit
+    nt_num: string; // Note Number
+    nt_dt: string; // Note Date (DD-MM-YYYY)
+    val: number; // Note Value
+    pos: string; // Place of Supply
+    rchrg: string; // Reverse Charge (Y/N)
+    inv_typ: string; // Invoice Type
+    inum: string; // Original Invoice Number
+    idt: string; // Original Invoice Date
+    txval: number; // Taxable Value
+    rt: number; // Tax Rate
+    csamt: number; // Cess Amount
+    camt: number; // CGST Amount
+    samt: number; // SGST Amount
+    iamt: number; // IGST Amount
+  }[];
+}
+
+// CDNUR - Credit/Debit Notes for Unregistered Dealers (without GSTIN)
+export interface CDNURNote {
+  ntty: string; // Note Type: C for Credit, D for Debit
+  nt_num: string; // Note Number
+  nt_dt: string; // Note Date (DD-MM-YYYY)
+  val: number; // Note Value
+  pos: string; // Place of Supply
+  inum: string; // Original Invoice Number
+  idt: string; // Original Invoice Date
+  txval: number; // Taxable Value
+  rt: number; // Tax Rate
+  csamt: number; // Cess Amount
+  iamt: number; // IGST Amount (for inter-state)
 }
 
 export interface B2BInvoice {
@@ -168,18 +216,32 @@ function calculateTaxRate(taxableValue: number, taxAmount: number): number {
 }
 
 /**
+ * Format date to DD-MM-YYYY for GST portal
+ */
+function formatDateForGST(dateStr: string): string {
+  const date = new Date(dateStr);
+  const day = date.getDate().toString().padStart(2, '0');
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}-${month}-${year}`;
+}
+
+/**
  * Generate GSTR-1 Report from invoices with real HSN data from API
  */
 export function generateGSTR1(
   invoices: Invoice[],
   period: string,
   companyGSTIN: string,
-  hsnSummary?: GSTReportAPIResponse['hsnSummary']
+  hsnSummary?: GSTReportAPIResponse['hsnSummary'],
+  creditNotes?: CreditNoteWithInvoice[]
 ): GSTR1Report {
   const b2bInvoices: B2BInvoice[] = [];
   const b2clInvoices: B2CLInvoice[] = [];
   const b2csInvoices: B2CSInvoice[] = [];
   const expInvoices: ExportInvoice[] = [];
+  const cdnrNotes: CDNRNote[] = [];
+  const cdnurNotes: CDNURNote[] = [];
   const hsnMap = new Map<string, HSNSummary>();
 
   invoices.forEach((invoice) => {
@@ -284,6 +346,75 @@ export function generateGSTR1(
     iamt: hsn.igstAmount,
   }));
 
+  // Process Credit Notes for CDNR and CDNUR sections
+  if (creditNotes && creditNotes.length > 0) {
+    // Group by GSTIN for CDNR (registered dealers)
+    const cdnrMap = new Map<string, CDNRNote['nt']>();
+    
+    creditNotes.forEach(({ creditNote, invoice }) => {
+      // Convert from paise to rupees
+      const noteValue = paiseToRupees(creditNote.grandTotal);
+      const taxableValue = paiseToRupees(creditNote.subtotal);
+      const cgstAmount = paiseToRupees(creditNote.cgstAmount);
+      const sgstAmount = paiseToRupees(creditNote.sgstAmount);
+      const igstAmount = paiseToRupees(creditNote.igstAmount);
+      const cessAmount = 0; // Credit notes don't have cess in our schema
+      
+      const totalTax = cgstAmount + sgstAmount + igstAmount;
+      const taxRate = calculateTaxRate(taxableValue, totalTax);
+      
+      const hasBuyerGSTIN = invoice.buyerGstin && invoice.buyerGstin.length === 15;
+      
+      if (hasBuyerGSTIN) {
+        // CDNR - Credit Note for Registered dealer
+        const noteData = {
+          ntty: 'C', // C for Credit Note
+          nt_num: creditNote.noteNumber,
+          nt_dt: formatDateForGST(creditNote.creditDate),
+          val: noteValue,
+          pos: invoice.buyerStateCode || '00',
+          rchrg: invoice.reverseCharge === 1 ? 'Y' : 'N',
+          inv_typ: 'R',
+          inum: invoice.invoiceNumber,
+          idt: formatDateForGST(invoice.invoiceDate),
+          txval: taxableValue,
+          rt: taxRate,
+          csamt: cessAmount,
+          camt: cgstAmount,
+          samt: sgstAmount,
+          iamt: igstAmount,
+        };
+        
+        const gstin = invoice.buyerGstin!;
+        if (!cdnrMap.has(gstin)) {
+          cdnrMap.set(gstin, []);
+        }
+        cdnrMap.get(gstin)!.push(noteData);
+      } else {
+        // CDNUR - Credit Note for Unregistered dealer
+        const cdnurNote: CDNURNote = {
+          ntty: 'C', // C for Credit Note
+          nt_num: creditNote.noteNumber,
+          nt_dt: formatDateForGST(creditNote.creditDate),
+          val: noteValue,
+          pos: invoice.buyerStateCode || '00',
+          inum: invoice.invoiceNumber,
+          idt: formatDateForGST(invoice.invoiceDate),
+          txval: taxableValue,
+          rt: taxRate,
+          csamt: cessAmount,
+          iamt: igstAmount || totalTax, // Use IGST or total tax for inter-state
+        };
+        cdnurNotes.push(cdnurNote);
+      }
+    });
+    
+    // Convert CDNR map to array format
+    cdnrMap.forEach((notes, ctin) => {
+      cdnrNotes.push({ ctin, nt: notes });
+    });
+  }
+
   return {
     gstin: companyGSTIN,
     fp: period,
@@ -291,6 +422,8 @@ export function generateGSTR1(
     b2cl: b2clInvoices,
     b2cs: b2csInvoices,
     exp: expInvoices,
+    cdnr: cdnrNotes,
+    cdnur: cdnurNotes,
     hsn: hsnData,
   };
 }
@@ -469,6 +602,51 @@ export async function exportGSTR1AsExcel(report: GSTR1Report, period: string): P
     );
     const expSheet = XLSX.utils.json_to_sheet(expData);
     XLSX.utils.book_append_sheet(workbook, expSheet, 'EXPORT');
+  }
+
+  // CDNR Sheet - Credit/Debit Notes for Registered Dealers
+  if (report.cdnr && report.cdnr.length > 0) {
+    const cdnrData = report.cdnr.flatMap((cdnr) =>
+      cdnr.nt.map((nt) => ({
+        'Receiver GSTIN': cdnr.ctin,
+        'Note Type': nt.ntty === 'C' ? 'Credit Note' : 'Debit Note',
+        'Note Number': nt.nt_num,
+        'Note Date': nt.nt_dt,
+        'Note Value': nt.val,
+        'Original Invoice Number': nt.inum,
+        'Original Invoice Date': nt.idt,
+        'Place of Supply': nt.pos,
+        'Reverse Charge': nt.rchrg,
+        'Invoice Type': nt.inv_typ,
+        'Taxable Value': nt.txval,
+        'Tax Rate': nt.rt,
+        'CGST': nt.camt,
+        'SGST': nt.samt,
+        'IGST': nt.iamt,
+        'Cess': nt.csamt,
+      }))
+    );
+    const cdnrSheet = XLSX.utils.json_to_sheet(cdnrData);
+    XLSX.utils.book_append_sheet(workbook, cdnrSheet, 'CDNR');
+  }
+
+  // CDNUR Sheet - Credit/Debit Notes for Unregistered Dealers
+  if (report.cdnur && report.cdnur.length > 0) {
+    const cdnurData = report.cdnur.map((cdnur) => ({
+      'Note Type': cdnur.ntty === 'C' ? 'Credit Note' : 'Debit Note',
+      'Note Number': cdnur.nt_num,
+      'Note Date': cdnur.nt_dt,
+      'Note Value': cdnur.val,
+      'Original Invoice Number': cdnur.inum,
+      'Original Invoice Date': cdnur.idt,
+      'Place of Supply': cdnur.pos,
+      'Taxable Value': cdnur.txval,
+      'Tax Rate': cdnur.rt,
+      'IGST': cdnur.iamt,
+      'Cess': cdnur.csamt,
+    }));
+    const cdnurSheet = XLSX.utils.json_to_sheet(cdnurData);
+    XLSX.utils.book_append_sheet(workbook, cdnurSheet, 'CDNUR');
   }
 
   // HSN Summary Sheet
