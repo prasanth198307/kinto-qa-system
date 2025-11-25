@@ -7,13 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
-import { Upload, FileText, Download, Trash2, Search, Filter, Eye, Plus, Folder, File, FileImage, FileSpreadsheet, AlertCircle } from "lucide-react";
+import { Upload, FileText, Download, Trash2, Search, Filter, Eye, Plus, Folder, File, FileImage, FileSpreadsheet, AlertCircle, Archive } from "lucide-react";
 import type { DocumentCategory, Document } from "@shared/schema";
 
 export default function DocumentsPage() {
@@ -30,6 +31,8 @@ export default function DocumentsPage() {
     tags: "",
   });
   const [previewDocument, setPreviewDocument] = useState<Document | null>(null);
+  const [selectedDocuments, setSelectedDocuments] = useState<Set<string>>(new Set());
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const { data: categories = [], isLoading: categoriesLoading } = useQuery<DocumentCategory[]>({
     queryKey: ['/api/document-categories'],
@@ -94,6 +97,63 @@ export default function DocumentsPage() {
     uploadMutation.mutate(formData);
   };
 
+  const toggleDocumentSelection = (docId: string) => {
+    const newSelection = new Set(selectedDocuments);
+    if (newSelection.has(docId)) {
+      newSelection.delete(docId);
+    } else {
+      newSelection.add(docId);
+    }
+    setSelectedDocuments(newSelection);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedDocuments.size === filteredDocuments.length) {
+      setSelectedDocuments(new Set());
+    } else {
+      setSelectedDocuments(new Set(filteredDocuments.map(d => d.id)));
+    }
+  };
+
+  const handleBulkDownload = async () => {
+    if (selectedDocuments.size === 0) {
+      toast({ title: "Error", description: "Please select documents to download", variant: "destructive" });
+      return;
+    }
+
+    setIsDownloading(true);
+    try {
+      const response = await fetch('/api/documents/bulk-download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ documentIds: Array.from(selectedDocuments) }),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Download failed');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `documents-${Date.now()}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast({ title: "Success", description: `Downloaded ${selectedDocuments.size} documents as ZIP` });
+      setSelectedDocuments(new Set());
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   const filteredDocuments = documents.filter(doc => {
     const matchesSearch = doc.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       doc.description?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -101,12 +161,18 @@ export default function DocumentsPage() {
     return matchesSearch && matchesCategory;
   });
 
+  const getCategoryName = (categoryId: string | null) => {
+    if (!categoryId) return 'Uncategorized';
+    const category = categories.find(c => c.id === categoryId);
+    return category?.name || 'Unknown';
+  };
+
   const getFileIcon = (fileType: string | null) => {
-    if (!fileType) return <File className="h-5 w-5" />;
-    if (fileType.includes('pdf')) return <FileText className="h-5 w-5 text-red-500" />;
-    if (fileType.includes('image')) return <FileImage className="h-5 w-5 text-blue-500" />;
-    if (fileType.includes('spreadsheet') || fileType.includes('excel')) return <FileSpreadsheet className="h-5 w-5 text-green-500" />;
-    return <File className="h-5 w-5" />;
+    if (!fileType) return <File className="h-4 w-4" />;
+    if (fileType.includes('pdf')) return <FileText className="h-4 w-4 text-red-500" />;
+    if (fileType.includes('image')) return <FileImage className="h-4 w-4 text-blue-500" />;
+    if (fileType.includes('spreadsheet') || fileType.includes('excel')) return <FileSpreadsheet className="h-4 w-4 text-green-500" />;
+    return <File className="h-4 w-4" />;
   };
 
   const formatFileSize = (bytes: number | null) => {
@@ -114,12 +180,6 @@ export default function DocumentsPage() {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  };
-
-  const getCategoryName = (categoryId: string | null) => {
-    if (!categoryId) return 'Uncategorized';
-    const category = categories.find(c => c.id === categoryId);
-    return category?.name || 'Unknown';
   };
 
   if (categoriesLoading || documentsLoading) {
@@ -136,104 +196,111 @@ export default function DocumentsPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold" data-testid="text-page-title">Document Management</h1>
-          <p className="text-muted-foreground text-sm">Upload and manage contracts, invoices, and other documents</p>
+          <p className="text-muted-foreground text-sm">Store and organize contracts, invoices, certificates</p>
         </div>
         
-        <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-upload-document">
-              <Upload className="h-4 w-4 mr-2" />
-              Upload Document
+        <div className="flex gap-2">
+          {selectedDocuments.size > 0 && (
+            <Button 
+              variant="outline" 
+              onClick={handleBulkDownload}
+              disabled={isDownloading}
+              data-testid="button-bulk-download"
+            >
+              <Archive className="h-4 w-4 mr-2" />
+              {isDownloading ? 'Downloading...' : `Download ${selectedDocuments.size} as ZIP`}
             </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Upload Document</DialogTitle>
-              <DialogDescription>Upload a new document to the system</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="file">File</Label>
-                <Input
-                  id="file"
-                  type="file"
-                  accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.webp,.txt,.csv"
-                  onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
-                  data-testid="input-file"
-                />
-                <p className="text-xs text-muted-foreground mt-1">PDF, Word, Excel, Images, Text (max 25MB)</p>
-              </div>
-              
-              <div>
-                <Label htmlFor="title">Title</Label>
-                <Input
-                  id="title"
-                  value={uploadData.title}
-                  onChange={(e) => setUploadData(prev => ({ ...prev, title: e.target.value }))}
-                  placeholder="Document title (optional - defaults to filename)"
-                  data-testid="input-title"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="category">Category</Label>
-                <Select
-                  value={uploadData.categoryId}
-                  onValueChange={(value) => setUploadData(prev => ({ ...prev, categoryId: value }))}
-                >
-                  <SelectTrigger data-testid="select-category">
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map(cat => (
-                      <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={uploadData.description}
-                  onChange={(e) => setUploadData(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Brief description"
-                  className="resize-none"
-                  data-testid="input-description"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="expiryDate">Expiry Date (optional)</Label>
-                <Input
-                  id="expiryDate"
-                  type="date"
-                  value={uploadData.expiryDate}
-                  onChange={(e) => setUploadData(prev => ({ ...prev, expiryDate: e.target.value }))}
-                  data-testid="input-expiry-date"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="tags">Tags (comma-separated)</Label>
-                <Input
-                  id="tags"
-                  value={uploadData.tags}
-                  onChange={(e) => setUploadData(prev => ({ ...prev, tags: e.target.value }))}
-                  placeholder="e.g., contract, 2024, vendor"
-                  data-testid="input-tags"
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsUploadOpen(false)}>Cancel</Button>
-              <Button onClick={handleUpload} disabled={uploadMutation.isPending} data-testid="button-submit-upload">
-                {uploadMutation.isPending ? 'Uploading...' : 'Upload'}
+          )}
+          
+          <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
+            <DialogTrigger asChild>
+              <Button data-testid="button-upload-document">
+                <Upload className="h-4 w-4 mr-2" />
+                Upload Document
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Upload Document</DialogTitle>
+                <DialogDescription>Upload a new document to the system</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="file">File</Label>
+                  <Input
+                    id="file"
+                    type="file"
+                    onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                    data-testid="input-file"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="title">Title</Label>
+                  <Input
+                    id="title"
+                    value={uploadData.title}
+                    onChange={(e) => setUploadData(prev => ({ ...prev, title: e.target.value }))}
+                    placeholder="Document title"
+                    data-testid="input-title"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="category">Category</Label>
+                  <Select
+                    value={uploadData.categoryId}
+                    onValueChange={(value) => setUploadData(prev => ({ ...prev, categoryId: value }))}
+                  >
+                    <SelectTrigger data-testid="select-category">
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map(cat => (
+                        <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    value={uploadData.description}
+                    onChange={(e) => setUploadData(prev => ({ ...prev, description: e.target.value }))}
+                    placeholder="Brief description"
+                    className="resize-none"
+                    data-testid="input-description"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="expiryDate">Expiry Date (Optional)</Label>
+                  <Input
+                    id="expiryDate"
+                    type="date"
+                    value={uploadData.expiryDate}
+                    onChange={(e) => setUploadData(prev => ({ ...prev, expiryDate: e.target.value }))}
+                    data-testid="input-expiry-date"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="tags">Tags (comma-separated)</Label>
+                  <Input
+                    id="tags"
+                    value={uploadData.tags}
+                    onChange={(e) => setUploadData(prev => ({ ...prev, tags: e.target.value }))}
+                    placeholder="contract, 2024, important"
+                    data-testid="input-tags"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsUploadOpen(false)}>Cancel</Button>
+                <Button onClick={handleUpload} disabled={uploadMutation.isPending} data-testid="button-submit-upload">
+                  {uploadMutation.isPending ? 'Uploading...' : 'Upload'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <Card>
@@ -251,7 +318,6 @@ export default function DocumentsPage() {
             </div>
             <Select value={selectedCategory} onValueChange={setSelectedCategory}>
               <SelectTrigger className="w-[180px]" data-testid="select-filter-category">
-                <Filter className="h-4 w-4 mr-2" />
                 <SelectValue placeholder="Filter by category" />
               </SelectTrigger>
               <SelectContent>
@@ -275,6 +341,13 @@ export default function DocumentsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-[50px]">
+                      <Checkbox
+                        checked={selectedDocuments.size === filteredDocuments.length && filteredDocuments.length > 0}
+                        onCheckedChange={toggleSelectAll}
+                        data-testid="checkbox-select-all"
+                      />
+                    </TableHead>
                     <TableHead>Document</TableHead>
                     <TableHead>Category</TableHead>
                     <TableHead>Size</TableHead>
@@ -287,11 +360,22 @@ export default function DocumentsPage() {
                   {filteredDocuments.map(doc => (
                     <TableRow key={doc.id} data-testid={`row-document-${doc.id}`}>
                       <TableCell>
-                        <div className="flex items-center gap-3">
+                        <Checkbox
+                          checked={selectedDocuments.has(doc.id)}
+                          onCheckedChange={() => toggleDocumentSelection(doc.id)}
+                          data-testid={`checkbox-select-${doc.id}`}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
                           {getFileIcon(doc.fileType)}
                           <div>
                             <div className="font-medium">{doc.title}</div>
-                            <div className="text-xs text-muted-foreground">{doc.fileName}</div>
+                            {doc.description && (
+                              <div className="text-xs text-muted-foreground truncate max-w-[200px]">
+                                {doc.description}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </TableCell>

@@ -8076,6 +8076,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bulk download documents as ZIP
+  app.post('/api/documents/bulk-download', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { documentIds } = req.body;
+      
+      if (!documentIds || !Array.isArray(documentIds) || documentIds.length === 0) {
+        return res.status(400).json({ message: 'No documents selected for download' });
+      }
+      
+      if (documentIds.length > 50) {
+        return res.status(400).json({ message: 'Maximum 50 documents can be downloaded at once' });
+      }
+      
+      // Fetch all documents
+      const documents = await Promise.all(
+        documentIds.map(id => storage.getDocument(id))
+      );
+      
+      const validDocuments = documents.filter(doc => doc && doc.filePath);
+      
+      if (validDocuments.length === 0) {
+        return res.status(404).json({ message: 'No valid documents found' });
+      }
+      
+      // Create ZIP archive
+      const archiver = require('archiver');
+      const archive = archiver('zip', { zlib: { level: 5 } });
+      
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Disposition', `attachment; filename="documents-${Date.now()}.zip"`);
+      
+      archive.pipe(res);
+      
+      for (const doc of validDocuments) {
+        if (doc && doc.filePath) {
+          const filePath = path.join(process.cwd(), doc.filePath);
+          if (fs.existsSync(filePath)) {
+            const fileName = doc.originalName || doc.title || `document-${doc.id}`;
+            archive.file(filePath, { name: fileName });
+          }
+        }
+      }
+      
+      await archive.finalize();
+    } catch (error: any) {
+      console.error('[DOCUMENTS] Error bulk downloading:', error);
+      res.status(500).json({ message: error.message || 'Failed to download documents' });
+    }
+  });
+
   // ============= EXPENSE TRACKING ROUTES =============
   
   // Configure multer for expense attachments
