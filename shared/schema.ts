@@ -2292,6 +2292,140 @@ export const insertExpenseAttachmentSchema = createInsertSchema(expenseAttachmen
 export type InsertExpenseAttachment = z.infer<typeof insertExpenseAttachmentSchema>;
 export type ExpenseAttachment = typeof expenseAttachments.$inferSelect;
 
+// ==================== DAILY CASH REGISTER ====================
+
+// Cash Register Days - Daily cash tracking per salesperson
+export const cashRegisterDays = pgTable("cash_register_days", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  registerDate: date("register_date", { mode: 'string' }).notNull(),
+  
+  // Salesperson/Staff
+  salespersonId: varchar("salesperson_id").references(() => users.id),
+  salespersonName: varchar("salesperson_name", { length: 100 }).notNull(), // Stored for display (e.g., "TARAK", "SAI")
+  
+  // Balances (in paise for precision)
+  openingBalance: integer("opening_balance").default(0).notNull(),
+  closingBalance: integer("closing_balance").default(0).notNull(),
+  
+  // Aggregated totals (in paise)
+  totalDeposits: integer("total_deposits").default(0).notNull(),
+  totalCashReceived: integer("total_cash_received").default(0).notNull(),
+  totalExpenses: integer("total_expenses").default(0).notNull(),
+  totalTransfers: integer("total_transfers").default(0).notNull(),
+  
+  // Reconciliation
+  status: varchar("status", { length: 20 }).default('open').notNull(), // 'open', 'reconciled', 'locked'
+  reconciledBy: varchar("reconciled_by").references(() => users.id),
+  reconciledAt: timestamp("reconciled_at", { mode: 'string' }),
+  varianceAmount: integer("variance_amount").default(0), // Difference if any
+  
+  notes: text("notes"),
+  
+  // Import tracking
+  importedFromFile: varchar("imported_from_file", { length: 500 }),
+  importedAt: timestamp("imported_at", { mode: 'string' }),
+  
+  createdBy: varchar("created_by").references(() => users.id),
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
+}, (table) => [
+  index("cash_register_days_date_idx").on(table.registerDate),
+  index("cash_register_days_salesperson_idx").on(table.salespersonId),
+  index("cash_register_days_status_idx").on(table.status),
+]);
+
+export const insertCashRegisterDaySchema = createInsertSchema(cashRegisterDays).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertCashRegisterDay = z.infer<typeof insertCashRegisterDaySchema>;
+export type CashRegisterDay = typeof cashRegisterDays.$inferSelect;
+
+// Cash Register Transactions - Individual transactions within a day
+export const cashRegisterTransactions = pgTable("cash_register_transactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  dayId: varchar("day_id").references(() => cashRegisterDays.id, { onDelete: 'cascade' }).notNull(),
+  
+  // Transaction type: 'deposit', 'cash_received', 'expense', 'transfer', 'adjustment'
+  transactionType: varchar("transaction_type", { length: 30 }).notNull(),
+  
+  // Amount (in paise, positive for credits, stored as absolute value)
+  amount: integer("amount").default(0).notNull(),
+  
+  // Reference/Description
+  reference: varchar("reference", { length: 255 }),
+  description: text("description"),
+  
+  // For transfers
+  transferTo: varchar("transfer_to", { length: 100 }), // e.g., "TULASI"
+  
+  // Voucher conversion tracking
+  convertedToVoucherId: varchar("converted_to_voucher_id").references(() => expenseVouchers.id),
+  convertedAt: timestamp("converted_at", { mode: 'string' }),
+  
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+});
+
+export const insertCashRegisterTransactionSchema = createInsertSchema(cashRegisterTransactions).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+});
+
+export type InsertCashRegisterTransaction = z.infer<typeof insertCashRegisterTransactionSchema>;
+export type CashRegisterTransaction = typeof cashRegisterTransactions.$inferSelect;
+
+// Cash Register Expense Items - Parsed expense line items from "Item Details"
+export const cashRegisterExpenseItems = pgTable("cash_register_expense_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  transactionId: varchar("transaction_id").references(() => cashRegisterTransactions.id, { onDelete: 'cascade' }).notNull(),
+  
+  // Parsed item details
+  itemLabel: varchar("item_label", { length: 255 }).notNull(), // e.g., "DIESEL", "PETROL", "RO FILTERS"
+  amount: integer("amount").default(0).notNull(), // in paise
+  
+  // Category mapping (optional)
+  expenseCategoryId: varchar("expense_category_id").references(() => expenseCategories.id),
+  
+  // Original raw text
+  rawText: varchar("raw_text", { length: 500 }),
+  
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+});
+
+export const insertCashRegisterExpenseItemSchema = createInsertSchema(cashRegisterExpenseItems).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+});
+
+export type InsertCashRegisterExpenseItem = z.infer<typeof insertCashRegisterExpenseItemSchema>;
+export type CashRegisterExpenseItem = typeof cashRegisterExpenseItems.$inferSelect;
+
+// Salesperson Mapping - Maps Excel SO values to system users
+export const salespersonMappings = pgTable("salesperson_mappings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  excelName: varchar("excel_name", { length: 100 }).notNull().unique(), // e.g., "TARAK", "SAI"
+  userId: varchar("user_id").references(() => users.id),
+  displayName: varchar("display_name", { length: 100 }),
+  isActive: integer("is_active").default(1).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+});
+
+export const insertSalespersonMappingSchema = createInsertSchema(salespersonMappings).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertSalespersonMapping = z.infer<typeof insertSalespersonMappingSchema>;
+export type SalespersonMapping = typeof salespersonMappings.$inferSelect;
+
 // ==================== PAGINATION SCHEMAS ====================
 // Shared pagination request/response schemas for consistent API contracts
 
