@@ -477,7 +477,7 @@ export default function CashRegisterPage() {
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
+                <Button variant="outline" onClick={() => setIsCreateOpen(false)} data-testid="button-cancel-create">Cancel</Button>
                 <Button onClick={handleCreateDay} disabled={createDayMutation.isPending} data-testid="button-create-day">
                   {createDayMutation.isPending ? 'Creating...' : 'Create'}
                 </Button>
@@ -713,12 +713,12 @@ export default function CashRegisterPage() {
                             </TableCell>
                             <TableCell>
                               {tx.convertedToVoucherId ? (
-                                <Badge variant="outline" className="text-xs">
+                                <Badge variant="outline" className="text-xs" data-testid={`badge-voucher-${tx.id}`}>
                                   <Receipt className="w-3 h-3 mr-1" />
                                   Voucher
                                 </Badge>
                               ) : tx.transactionType === 'expense' ? (
-                                <Button variant="ghost" size="sm" className="text-xs h-6">
+                                <Button variant="ghost" size="sm" className="text-xs h-6" data-testid={`button-convert-${tx.id}`}>
                                   Convert
                                 </Button>
                               ) : '-'}
@@ -749,7 +749,7 @@ export default function CashRegisterPage() {
                     {reconcileMutation.isPending ? 'Reconciling...' : 'Reconcile Day'}
                   </Button>
                 )}
-                <Button variant="outline" onClick={() => setSelectedDay(null)}>Close</Button>
+                <Button variant="outline" onClick={() => setSelectedDay(null)} data-testid="button-close-detail">Close</Button>
               </DialogFooter>
             </>
           )}
