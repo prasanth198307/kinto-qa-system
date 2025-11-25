@@ -147,6 +147,24 @@ import {
   type NotificationConfig,
   type InsertNotificationConfig,
   type InvoiceWithItems,
+  documentCategories,
+  documents,
+  expenseCategories,
+  expenseVouchers,
+  expenseItems,
+  expenseAttachments,
+  type DocumentCategory,
+  type InsertDocumentCategory,
+  type Document,
+  type InsertDocument,
+  type ExpenseCategory,
+  type InsertExpenseCategory,
+  type ExpenseVoucher,
+  type InsertExpenseVoucher,
+  type ExpenseItem,
+  type InsertExpenseItem,
+  type ExpenseAttachment,
+  type InsertExpenseAttachment,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, isNotNull, notInArray, gte, lte, sql } from "drizzle-orm";
@@ -490,6 +508,48 @@ export interface IStorage {
   updateRolePermission(id: string, permission: Partial<InsertRolePermission>): Promise<RolePermission | undefined>;
   deleteRolePermission(id: string): Promise<void>;
   upsertRolePermissions(roleId: string, permissions: InsertRolePermission[]): Promise<void>;
+  
+  // Document Categories
+  createDocumentCategory(category: InsertDocumentCategory): Promise<DocumentCategory>;
+  getAllDocumentCategories(): Promise<DocumentCategory[]>;
+  getDocumentCategory(id: string): Promise<DocumentCategory | undefined>;
+  updateDocumentCategory(id: string, category: Partial<InsertDocumentCategory>): Promise<DocumentCategory | undefined>;
+  deleteDocumentCategory(id: string): Promise<void>;
+  
+  // Documents
+  createDocument(document: InsertDocument): Promise<Document>;
+  getAllDocuments(): Promise<Document[]>;
+  getDocument(id: string): Promise<Document | undefined>;
+  getDocumentsByCategory(categoryId: string): Promise<Document[]>;
+  getDocumentsByEntity(entityType: string, entityId: string): Promise<Document[]>;
+  updateDocument(id: string, document: Partial<InsertDocument>): Promise<Document | undefined>;
+  deleteDocument(id: string): Promise<void>;
+  
+  // Expense Categories
+  createExpenseCategory(category: InsertExpenseCategory): Promise<ExpenseCategory>;
+  getAllExpenseCategories(): Promise<ExpenseCategory[]>;
+  getExpenseCategory(id: string): Promise<ExpenseCategory | undefined>;
+  updateExpenseCategory(id: string, category: Partial<InsertExpenseCategory>): Promise<ExpenseCategory | undefined>;
+  deleteExpenseCategory(id: string): Promise<void>;
+  
+  // Expense Vouchers
+  createExpenseVoucher(voucher: InsertExpenseVoucher): Promise<ExpenseVoucher>;
+  getAllExpenseVouchers(): Promise<ExpenseVoucher[]>;
+  getExpenseVoucher(id: string): Promise<ExpenseVoucher | undefined>;
+  getExpenseVoucherByNumber(voucherNumber: string): Promise<ExpenseVoucher | undefined>;
+  updateExpenseVoucher(id: string, voucher: Partial<InsertExpenseVoucher>): Promise<ExpenseVoucher | undefined>;
+  deleteExpenseVoucher(id: string): Promise<void>;
+  
+  // Expense Items
+  createExpenseItem(item: InsertExpenseItem): Promise<ExpenseItem>;
+  getExpenseItems(voucherId: string): Promise<ExpenseItem[]>;
+  updateExpenseItem(id: string, item: Partial<InsertExpenseItem>): Promise<ExpenseItem | undefined>;
+  deleteExpenseItem(id: string): Promise<void>;
+  
+  // Expense Attachments
+  createExpenseAttachment(attachment: InsertExpenseAttachment): Promise<ExpenseAttachment>;
+  getExpenseAttachments(voucherId: string): Promise<ExpenseAttachment[]>;
+  deleteExpenseAttachment(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2827,6 +2887,192 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(notificationConfig.id, id), eq(notificationConfig.recordStatus, 1)))
       .returning();
     return updated;
+  }
+
+  // ==================== DOCUMENT MANAGEMENT ====================
+  
+  // Document Categories
+  async createDocumentCategory(category: InsertDocumentCategory): Promise<DocumentCategory> {
+    const [created] = await db.insert(documentCategories).values(category).returning();
+    return created;
+  }
+
+  async getAllDocumentCategories(): Promise<DocumentCategory[]> {
+    return await db.select().from(documentCategories).where(eq(documentCategories.recordStatus, 1));
+  }
+
+  async getDocumentCategory(id: string): Promise<DocumentCategory | undefined> {
+    const [category] = await db.select().from(documentCategories)
+      .where(and(eq(documentCategories.id, id), eq(documentCategories.recordStatus, 1)));
+    return category;
+  }
+
+  async updateDocumentCategory(id: string, category: Partial<InsertDocumentCategory>): Promise<DocumentCategory | undefined> {
+    const [updated] = await db.update(documentCategories)
+      .set({ ...category, updatedAt: new Date().toISOString() })
+      .where(and(eq(documentCategories.id, id), eq(documentCategories.recordStatus, 1)))
+      .returning();
+    return updated;
+  }
+
+  async deleteDocumentCategory(id: string): Promise<void> {
+    await db.update(documentCategories)
+      .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
+      .where(eq(documentCategories.id, id));
+  }
+
+  // Documents
+  async createDocument(document: InsertDocument): Promise<Document> {
+    const [created] = await db.insert(documents).values(document).returning();
+    return created;
+  }
+
+  async getAllDocuments(): Promise<Document[]> {
+    return await db.select().from(documents).where(eq(documents.recordStatus, 1));
+  }
+
+  async getDocument(id: string): Promise<Document | undefined> {
+    const [doc] = await db.select().from(documents)
+      .where(and(eq(documents.id, id), eq(documents.recordStatus, 1)));
+    return doc;
+  }
+
+  async getDocumentsByCategory(categoryId: string): Promise<Document[]> {
+    return await db.select().from(documents)
+      .where(and(eq(documents.categoryId, categoryId), eq(documents.recordStatus, 1)));
+  }
+
+  async getDocumentsByEntity(entityType: string, entityId: string): Promise<Document[]> {
+    return await db.select().from(documents)
+      .where(and(
+        eq(documents.relatedEntityType, entityType),
+        eq(documents.relatedEntityId, entityId),
+        eq(documents.recordStatus, 1)
+      ));
+  }
+
+  async updateDocument(id: string, document: Partial<InsertDocument>): Promise<Document | undefined> {
+    const [updated] = await db.update(documents)
+      .set({ ...document, updatedAt: new Date().toISOString() })
+      .where(and(eq(documents.id, id), eq(documents.recordStatus, 1)))
+      .returning();
+    return updated;
+  }
+
+  async deleteDocument(id: string): Promise<void> {
+    await db.update(documents)
+      .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
+      .where(eq(documents.id, id));
+  }
+
+  // ==================== EXPENSE TRACKING ====================
+
+  // Expense Categories
+  async createExpenseCategory(category: InsertExpenseCategory): Promise<ExpenseCategory> {
+    const [created] = await db.insert(expenseCategories).values(category).returning();
+    return created;
+  }
+
+  async getAllExpenseCategories(): Promise<ExpenseCategory[]> {
+    return await db.select().from(expenseCategories).where(eq(expenseCategories.recordStatus, 1));
+  }
+
+  async getExpenseCategory(id: string): Promise<ExpenseCategory | undefined> {
+    const [category] = await db.select().from(expenseCategories)
+      .where(and(eq(expenseCategories.id, id), eq(expenseCategories.recordStatus, 1)));
+    return category;
+  }
+
+  async updateExpenseCategory(id: string, category: Partial<InsertExpenseCategory>): Promise<ExpenseCategory | undefined> {
+    const [updated] = await db.update(expenseCategories)
+      .set({ ...category, updatedAt: new Date().toISOString() })
+      .where(and(eq(expenseCategories.id, id), eq(expenseCategories.recordStatus, 1)))
+      .returning();
+    return updated;
+  }
+
+  async deleteExpenseCategory(id: string): Promise<void> {
+    await db.update(expenseCategories)
+      .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
+      .where(eq(expenseCategories.id, id));
+  }
+
+  // Expense Vouchers
+  async createExpenseVoucher(voucher: InsertExpenseVoucher): Promise<ExpenseVoucher> {
+    const [created] = await db.insert(expenseVouchers).values(voucher).returning();
+    return created;
+  }
+
+  async getAllExpenseVouchers(): Promise<ExpenseVoucher[]> {
+    return await db.select().from(expenseVouchers).where(eq(expenseVouchers.recordStatus, 1));
+  }
+
+  async getExpenseVoucher(id: string): Promise<ExpenseVoucher | undefined> {
+    const [voucher] = await db.select().from(expenseVouchers)
+      .where(and(eq(expenseVouchers.id, id), eq(expenseVouchers.recordStatus, 1)));
+    return voucher;
+  }
+
+  async getExpenseVoucherByNumber(voucherNumber: string): Promise<ExpenseVoucher | undefined> {
+    const [voucher] = await db.select().from(expenseVouchers)
+      .where(and(eq(expenseVouchers.voucherNumber, voucherNumber), eq(expenseVouchers.recordStatus, 1)));
+    return voucher;
+  }
+
+  async updateExpenseVoucher(id: string, voucher: Partial<InsertExpenseVoucher>): Promise<ExpenseVoucher | undefined> {
+    const [updated] = await db.update(expenseVouchers)
+      .set({ ...voucher, updatedAt: new Date().toISOString() })
+      .where(and(eq(expenseVouchers.id, id), eq(expenseVouchers.recordStatus, 1)))
+      .returning();
+    return updated;
+  }
+
+  async deleteExpenseVoucher(id: string): Promise<void> {
+    await db.update(expenseVouchers)
+      .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
+      .where(eq(expenseVouchers.id, id));
+  }
+
+  // Expense Items
+  async createExpenseItem(item: InsertExpenseItem): Promise<ExpenseItem> {
+    const [created] = await db.insert(expenseItems).values(item).returning();
+    return created;
+  }
+
+  async getExpenseItems(voucherId: string): Promise<ExpenseItem[]> {
+    return await db.select().from(expenseItems)
+      .where(and(eq(expenseItems.voucherId, voucherId), eq(expenseItems.recordStatus, 1)));
+  }
+
+  async updateExpenseItem(id: string, item: Partial<InsertExpenseItem>): Promise<ExpenseItem | undefined> {
+    const [updated] = await db.update(expenseItems)
+      .set({ ...item, updatedAt: new Date().toISOString() })
+      .where(and(eq(expenseItems.id, id), eq(expenseItems.recordStatus, 1)))
+      .returning();
+    return updated;
+  }
+
+  async deleteExpenseItem(id: string): Promise<void> {
+    await db.update(expenseItems)
+      .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
+      .where(eq(expenseItems.id, id));
+  }
+
+  // Expense Attachments
+  async createExpenseAttachment(attachment: InsertExpenseAttachment): Promise<ExpenseAttachment> {
+    const [created] = await db.insert(expenseAttachments).values(attachment).returning();
+    return created;
+  }
+
+  async getExpenseAttachments(voucherId: string): Promise<ExpenseAttachment[]> {
+    return await db.select().from(expenseAttachments)
+      .where(and(eq(expenseAttachments.voucherId, voucherId), eq(expenseAttachments.recordStatus, 1)));
+  }
+
+  async deleteExpenseAttachment(id: string): Promise<void> {
+    await db.update(expenseAttachments)
+      .set({ recordStatus: 0 })
+      .where(eq(expenseAttachments.id, id));
   }
 }
 
