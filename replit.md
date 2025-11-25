@@ -32,6 +32,8 @@ The backend is an Express.js application built with TypeScript and Node.js, usin
 - **Vyapaar Data Import System:** Excel-based data migration from Vyapaar accounting software with fuzzy matching, intelligent date conversion, automatic vendor type classification, and comprehensive error handling.
 - **Payment Write-Off System:** Admin-only functionality to write off outstanding invoice balances with transaction-based implementation, Zod validation, and audit logging.
 - **Comprehensive Pagination System:** Implemented server-side and client-side pagination across various modules with URL-based state management, type-safe responses, filtering, sorting, and backward compatibility.
+- **Document Management System:** Store and organize contracts, invoices, certificates, and other business documents with file versioning, category management, vendor/invoice linking, and document sharing capabilities.
+- **Expense Tracking System:** Record daily expenses with voucher issuance, multiple line items, expense categorization, payment mode tracking (cash/bank/UPI/cheque), GST handling, and approval workflow (draft → submitted → approved/rejected → paid).
 
 ### System Design Choices
 - **Authentication:** Users can log in with username or email.
