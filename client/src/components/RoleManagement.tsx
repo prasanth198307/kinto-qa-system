@@ -49,12 +49,17 @@ const AVAILABLE_SCREENS: ScreenDefinition[] = [
   { key: 'variance_analytics', label: 'Variance Analytics', allowedActions: ['view'] },
   { key: 'whatsapp_analytics', label: 'WhatsApp Analytics', allowedActions: ['view'] },
   { key: 'pm_history', label: 'PM History', allowedActions: ['view'] },
+  { key: 'vendor_analytics', label: 'Vendor Analytics', allowedActions: ['view'] },
+  { key: 'pending_payments', label: 'Pending Payments', allowedActions: ['view'] },
+  { key: 'cancelled_invoices_report', label: 'Cancelled Invoices Report', allowedActions: ['view'] },
   
   // Master Data - Products & Materials
   { key: 'products', label: 'Products', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'raw_materials', label: 'Raw Materials', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'finished_goods', label: 'Finished Goods', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'raw_material_types', label: 'Raw Material Types', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'product_categories', label: 'Product Categories', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'product_types', label: 'Product Types', allowedActions: ['view', 'create', 'edit', 'delete'] },
   
   // Master Data - Supporting
   { key: 'uom', label: 'Units of Measure', allowedActions: ['view', 'create', 'edit', 'delete'] },
@@ -78,8 +83,16 @@ const AVAILABLE_SCREENS: ScreenDefinition[] = [
   { key: 'production_reconciliations', label: 'Production Reconciliation', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'gatepasses', label: 'Gatepasses', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'invoices', label: 'Sales Invoices', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'credit_notes', label: 'Credit Notes', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'dispatch_tracking', label: 'Dispatch Tracking', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'sales_returns', label: 'Sales Returns', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  
+  // Document & Expense Management
+  { key: 'documents', label: 'Documents', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'document_categories', label: 'Document Categories', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'expenses', label: 'Expense Vouchers', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'expense_categories', label: 'Expense Categories', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'cash_register', label: 'Cash Register', allowedActions: ['view', 'create', 'edit', 'delete'] },
   
   // System & Configuration
   { key: 'users', label: 'User Management', allowedActions: ['view', 'create', 'edit', 'delete'] },
@@ -88,6 +101,8 @@ const AVAILABLE_SCREENS: ScreenDefinition[] = [
   { key: 'template_management', label: 'Template Management', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'notification_settings', label: 'Notification Settings', allowedActions: ['view', 'edit'] },
   { key: 'machine_startup_reminders', label: 'Machine Startup Reminders', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'vyapaar_import', label: 'Vyapaar Data Import', allowedActions: ['view', 'create'] },
+  { key: 'payment_writeoff', label: 'Payment Write-Off', allowedActions: ['view', 'create'] },
 ];
 
 export default function RoleManagement() {

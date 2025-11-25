@@ -234,6 +234,25 @@ Major additions to the KINTO Operations platform including Invoice Cancellation 
 | `cash_register_expense_items` | Parsed expense items |
 | `salesperson_mappings` | Excel name to user mapping |
 
+## Role Permissions Updated (48 Total Screens)
+
+### New Screens Added (13):
+| Screen Key | Label | Actions |
+|------------|-------|---------|
+| `vendor_analytics` | Vendor Analytics | View |
+| `pending_payments` | Pending Payments | View |
+| `cancelled_invoices_report` | Cancelled Invoices Report | View |
+| `product_categories` | Product Categories | View, Create, Edit, Delete |
+| `product_types` | Product Types | View, Create, Edit, Delete |
+| `credit_notes` | Credit Notes | View, Create, Edit, Delete |
+| `documents` | Documents | View, Create, Edit, Delete |
+| `document_categories` | Document Categories | View, Create, Edit, Delete |
+| `expenses` | Expense Vouchers | View, Create, Edit, Delete |
+| `expense_categories` | Expense Categories | View, Create, Edit, Delete |
+| `cash_register` | Cash Register | View, Create, Edit, Delete |
+| `vyapaar_import` | Vyapaar Data Import | View, Create |
+| `payment_writeoff` | Payment Write-Off | View, Create |
+
 ## Migration Script
 ```bash
 psql $DATABASE_URL -f updated_dbscripts/03_nov25_schema_additions.sql

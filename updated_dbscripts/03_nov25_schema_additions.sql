@@ -279,6 +279,47 @@ INSERT INTO expense_categories (name, description, display_order) VALUES
     ('Miscellaneous', 'Other expenses', 10)
 ON CONFLICT DO NOTHING;
 
+-- ==================== NEW ROLE PERMISSIONS ====================
+-- Add permissions for Admin role for new screens (Nov 24-25 features)
+-- Run this after the tables are created
+
+DO $$
+DECLARE
+    admin_role_id VARCHAR;
+BEGIN
+    -- Get Admin role ID
+    SELECT id INTO admin_role_id FROM roles WHERE LOWER(name) = 'admin' LIMIT 1;
+    
+    IF admin_role_id IS NOT NULL THEN
+        -- Insert new screen permissions for Admin role
+        -- Analytics & Reports
+        INSERT INTO role_permissions (role_id, screen_key, can_view, can_create, can_edit, can_delete)
+        VALUES 
+            (admin_role_id, 'vendor_analytics', 1, 0, 0, 0),
+            (admin_role_id, 'pending_payments', 1, 0, 0, 0),
+            (admin_role_id, 'cancelled_invoices_report', 1, 0, 0, 0),
+            -- Master Data
+            (admin_role_id, 'product_categories', 1, 1, 1, 1),
+            (admin_role_id, 'product_types', 1, 1, 1, 1),
+            -- Operations
+            (admin_role_id, 'credit_notes', 1, 1, 1, 1),
+            -- Document & Expense Management
+            (admin_role_id, 'documents', 1, 1, 1, 1),
+            (admin_role_id, 'document_categories', 1, 1, 1, 1),
+            (admin_role_id, 'expenses', 1, 1, 1, 1),
+            (admin_role_id, 'expense_categories', 1, 1, 1, 1),
+            (admin_role_id, 'cash_register', 1, 1, 1, 1),
+            -- Admin Functions
+            (admin_role_id, 'vyapaar_import', 1, 1, 0, 0),
+            (admin_role_id, 'payment_writeoff', 1, 1, 0, 0)
+        ON CONFLICT DO NOTHING;
+        
+        RAISE NOTICE 'Admin role permissions updated successfully';
+    ELSE
+        RAISE NOTICE 'Admin role not found - skipping permissions';
+    END IF;
+END $$;
+
 -- ============================================================
 -- END OF SCRIPT
 -- ============================================================
