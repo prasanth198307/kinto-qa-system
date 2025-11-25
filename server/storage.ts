@@ -524,6 +524,9 @@ export interface IStorage {
   getDocumentsByEntity(entityType: string, entityId: string): Promise<Document[]>;
   updateDocument(id: string, document: Partial<InsertDocument>): Promise<Document | undefined>;
   deleteDocument(id: string): Promise<void>;
+  getDocumentsNearingExpiry(daysBeforeExpiry: number): Promise<Document[]>;
+  markDocumentAlertSent(documentId: string): Promise<void>;
+  resetDocumentAlertStatus(documentId: string): Promise<void>;
   
   // Expense Categories
   createExpenseCategory(category: InsertExpenseCategory): Promise<ExpenseCategory>;
@@ -2963,6 +2966,47 @@ export class DatabaseStorage implements IStorage {
     await db.update(documents)
       .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
       .where(eq(documents.id, id));
+  }
+
+  async getDocumentsNearingExpiry(daysBeforeExpiry: number): Promise<Document[]> {
+    const today = new Date();
+    const futureDate = new Date();
+    futureDate.setDate(today.getDate() + daysBeforeExpiry);
+    
+    // Get documents that:
+    // 1. Have an expiry date
+    // 2. Are expiring within the specified days
+    // 3. Haven't had an alert sent yet
+    // 4. Are active (recordStatus = 1)
+    return await db.select().from(documents)
+      .where(and(
+        eq(documents.recordStatus, 1),
+        isNotNull(documents.expiryDate),
+        lte(documents.expiryDate, futureDate.toISOString().split('T')[0]),
+        gte(documents.expiryDate, today.toISOString().split('T')[0]),
+        eq(documents.expiryAlertSent, 0)
+      ))
+      .orderBy(documents.expiryDate);
+  }
+
+  async markDocumentAlertSent(documentId: string): Promise<void> {
+    await db.update(documents)
+      .set({ 
+        expiryAlertSent: 1, 
+        expiryAlertSentAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString() 
+      })
+      .where(eq(documents.id, documentId));
+  }
+
+  async resetDocumentAlertStatus(documentId: string): Promise<void> {
+    await db.update(documents)
+      .set({ 
+        expiryAlertSent: 0, 
+        expiryAlertSentAt: null,
+        updatedAt: new Date().toISOString() 
+      })
+      .where(eq(documents.id, documentId));
   }
 
   // ==================== EXPENSE TRACKING ====================
