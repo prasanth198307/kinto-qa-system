@@ -663,7 +663,7 @@ export default function CashRegisterPage() {
           <CardContent className="pt-4">
             <div className="flex items-center gap-2">
               <PiggyBank className="w-5 h-5 text-purple-600" />
-              <span className="text-sm text-muted-foreground">Deposits</span>
+              <span className="text-sm text-muted-foreground">Bank Deposits</span>
             </div>
             <div className="text-xl font-bold mt-1 text-purple-600" data-testid="text-total-deposits">{formatCurrency(totals.totalDeposits)}</div>
           </CardContent>

@@ -109,7 +109,8 @@ export async function importCashRegisterFromExcel(filePath: string, userId: stri
             continue;
           }
 
-          const calculatedClosing = openingBalance + depositAmount + receivedCash - expenses - sentToTulasi;
+          // Deposits are cash going OUT to bank, so subtract them
+          const calculatedClosing = openingBalance + receivedCash - expenses - sentToTulasi - depositAmount;
 
           const [day] = await db.insert(cashRegisterDays).values({
             registerDate: dateStr,

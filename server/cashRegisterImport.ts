@@ -383,8 +383,9 @@ export async function parseExcelFile(buffer: Buffer, fileName: string): Promise<
       }
       
       // Calculate expected balance
-      // Opening + Deposits + Cash Received - Expenses - Transfers = Closing
-      parsedRow.calculatedBalance = parsedRow.openingBalance + parsedRow.depositAmount + parsedRow.receivedCash - parsedRow.expenses - parsedRow.sentToTulasi;
+      // Opening + Cash Received - Expenses - Transfers - Deposits = Closing
+      // Note: Deposits are cash going OUT to bank, not coming in
+      parsedRow.calculatedBalance = parsedRow.openingBalance + parsedRow.receivedCash - parsedRow.expenses - parsedRow.sentToTulasi - parsedRow.depositAmount;
       
       // Check variance
       if (parsedRow.balanceAmount > 0) {
