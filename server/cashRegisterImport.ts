@@ -53,22 +53,71 @@ export interface ImportResult {
 }
 
 // Convert Excel serial date to ISO string
-function excelDateToISO(excelDate: number | string): string {
-  if (typeof excelDate === 'string') {
-    // Already a string date, try to parse
-    const parsed = new Date(excelDate);
-    if (!isNaN(parsed.getTime())) {
-      return parsed.toISOString().split('T')[0];
+function excelDateToISO(excelDate: number | string | null | undefined): string {
+  try {
+    // Handle null/undefined/empty
+    if (excelDate === null || excelDate === undefined || excelDate === '') {
+      return '';
     }
+    
+    if (typeof excelDate === 'string') {
+      const str = excelDate.trim();
+      if (!str) return '';
+      
+      // Try DD/MM/YYYY or DD-MM-YYYY format (common in India)
+      const ddmmyyyy = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+      if (ddmmyyyy) {
+        const day = parseInt(ddmmyyyy[1], 10);
+        const month = parseInt(ddmmyyyy[2], 10);
+        const year = parseInt(ddmmyyyy[3], 10);
+        if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= 2100) {
+          return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        }
+      }
+      
+      // Try YYYY-MM-DD format (ISO)
+      const isoFormat = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+      if (isoFormat) {
+        const year = parseInt(isoFormat[1], 10);
+        const month = parseInt(isoFormat[2], 10);
+        const day = parseInt(isoFormat[3], 10);
+        if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= 2100) {
+          return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        }
+      }
+      
+      // Try parsing as a general date string
+      const parsed = new Date(str);
+      if (!isNaN(parsed.getTime()) && parsed.getFullYear() >= 1900 && parsed.getFullYear() <= 2100) {
+        return parsed.toISOString().split('T')[0];
+      }
+      
+      return '';
+    }
+    
+    // Handle numeric Excel serial date
+    if (typeof excelDate === 'number') {
+      // Validate reasonable Excel date range (1 = Jan 1, 1900, ~45000 = year 2023)
+      if (excelDate < 1 || excelDate > 100000 || !isFinite(excelDate)) {
+        return '';
+      }
+      
+      // Excel serial date conversion
+      // Excel dates start from 1900-01-01 (day 1)
+      // But there's a bug in Excel: it thinks 1900 was a leap year
+      const excelEpoch = new Date(1899, 11, 30); // Dec 30, 1899
+      const date = new Date(excelEpoch.getTime() + excelDate * 24 * 60 * 60 * 1000);
+      
+      if (!isNaN(date.getTime()) && date.getFullYear() >= 1900 && date.getFullYear() <= 2100) {
+        return date.toISOString().split('T')[0];
+      }
+    }
+    
+    return '';
+  } catch (error) {
+    console.warn('[CASH_REGISTER] Date parsing error for:', excelDate, error);
     return '';
   }
-  
-  // Excel serial date conversion
-  // Excel dates start from 1900-01-01 (day 1)
-  // But there's a bug in Excel: it thinks 1900 was a leap year
-  const excelEpoch = new Date(1899, 11, 30); // Dec 30, 1899
-  const date = new Date(excelEpoch.getTime() + excelDate * 24 * 60 * 60 * 1000);
-  return date.toISOString().split('T')[0];
 }
 
 // Parse currency string to paise (handles "6K", "5840", "260", etc.)
