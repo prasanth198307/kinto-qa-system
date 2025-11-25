@@ -123,7 +123,11 @@ function requireRole(...allowedRoles: string[]) {
         return res.status(403).json({ message: "Forbidden: Invalid role" });
       }
 
-      if (!allowedRoles.includes(role.name)) {
+      // Case-insensitive role comparison
+      const userRoleLower = role.name.toLowerCase();
+      const hasAccess = allowedRoles.some(r => r.toLowerCase() === userRoleLower);
+      
+      if (!hasAccess) {
         console.log(`[AUDIT] User ${user.id} with role ${role.name} denied access to ${req.path} (requires: ${allowedRoles.join(', ')})`);
         return res.status(403).json({ message: "Forbidden: Insufficient permissions" });
       }
