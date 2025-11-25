@@ -335,12 +335,29 @@ export async function parseExcelFile(buffer: Buffer, fileName: string): Promise<
       // Parse salesperson
       if (columnMap.so >= 0) {
         parsedRow.salespersonName = String(row[columnMap.so] || '').trim().toUpperCase();
-        if (!parsedRow.salespersonName) {
-          parsedRow.errors.push('Missing salesperson');
+      }
+      
+      // Check if row has any actual data (not just a date placeholder)
+      const hasFinancialData = row.some((cell: any, idx: number) => {
+        if (idx <= 1) return false; // Skip date and SO columns
+        if (cell === null || cell === undefined) return false;
+        const str = String(cell).trim().toUpperCase();
+        if (!str || str === 'NIL' || str === 'NA' || str === '-') return false;
+        return true;
+      });
+      
+      // If no salesperson but has financial data, use "UNKNOWN"
+      if (!parsedRow.salespersonName) {
+        if (hasFinancialData) {
+          parsedRow.salespersonName = 'UNKNOWN';
+          parsedRow.warnings.push('Missing salesperson - assigned to UNKNOWN');
         } else {
-          salespersonSet.add(parsedRow.salespersonName);
+          // Row is just a date placeholder with no data - skip it
+          continue;
         }
       }
+      
+      salespersonSet.add(parsedRow.salespersonName);
       
       // Parse numeric fields
       if (columnMap.openingBalance >= 0) {
