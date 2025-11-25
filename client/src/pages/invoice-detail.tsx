@@ -5,6 +5,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { ArrowLeft, Edit, Mail, FileText, Printer, Star, Receipt, RefreshCw, Calculator, CreditCard } from "lucide-react";
 import type { Invoice, InvoiceItem, Product, Gatepass } from "@shared/schema";
 import PrintableInvoice from "@/components/PrintableInvoice";
@@ -49,6 +59,7 @@ export default function InvoiceDetail() {
   const [isCreditNoteDialogOpen, setIsCreditNoteDialogOpen] = useState(false);
   const [isCorrectAndCreditOpen, setIsCorrectAndCreditOpen] = useState(false);
   const [isQuickFullCreditOpen, setIsQuickFullCreditOpen] = useState(false);
+  const [isCancelReissueConfirmOpen, setIsCancelReissueConfirmOpen] = useState(false);
 
   const { data: invoice, isLoading: isLoadingInvoice } = useQuery<Invoice>({
     queryKey: ['/api/invoices', id],
@@ -282,7 +293,7 @@ export default function InvoiceDetail() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => cancelAndReissueMutation.mutate()}
+              onClick={() => setIsCancelReissueConfirmOpen(true)}
               disabled={cancelAndReissueMutation.isPending}
               data-testid="button-cancel-and-reissue"
             >
@@ -593,6 +604,31 @@ export default function InvoiceDetail() {
         buyerName={invoice.buyerName}
         onSuccess={handleCreditNoteSuccess}
       />
+
+      {/* Cancel & Reissue Confirmation Dialog */}
+      <AlertDialog open={isCancelReissueConfirmOpen} onOpenChange={setIsCancelReissueConfirmOpen}>
+        <AlertDialogContent data-testid="dialog-cancel-reissue-confirm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel & Reissue Invoice</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to cancel invoice <strong>{invoice.invoiceNumber}</strong>? 
+              This will permanently mark the invoice as cancelled and redirect you to create a new replacement invoice.
+              <br /><br />
+              <strong>This action cannot be undone.</strong>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-reissue-cancel">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => cancelAndReissueMutation.mutate()}
+              disabled={cancelAndReissueMutation.isPending}
+              data-testid="button-cancel-reissue-confirm"
+            >
+              {cancelAndReissueMutation.isPending ? 'Cancelling...' : 'Yes, Cancel & Reissue'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       </div>
     </>
   );
