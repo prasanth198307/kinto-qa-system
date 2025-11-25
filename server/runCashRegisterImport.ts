@@ -29,14 +29,15 @@ function parseItemDetails(details: string): { label: string; amount: number; raw
     if (!trimmed) continue;
     
     // Match patterns like "DIESEL-6K", "PETROL-260", "ITEM 500/-", "ITEM-3.5K"
-    const match = trimmed.match(/(.+?)[- ](\d+(?:\.\d+)?)\s*[Kk]?(?:\/-)?$/);
+    // The amount is always at the END after the last hyphen or space
+    const match = trimmed.match(/(.+)[- ](\d+(?:\.\d+)?)\s*([Kk])?(?:\/-)?$/);
     if (match) {
-      let amountStr = match[2];
-      let amount = parseFloat(amountStr);
+      let amount = parseFloat(match[2]);
+      const kSuffix = match[3]; // Capture K/k suffix if present
       
-      // Check if original text has K/k suffix (means thousands)
-      const hasKSuffix = /\d+(?:\.\d+)?\s*[Kk]/.test(trimmed);
-      if (hasKSuffix) {
+      // Only multiply by 1000 if K/k is at the very end (not part of KG, KM, etc.)
+      // Check that K is the suffix and nothing follows it (except /-)
+      if (kSuffix && !/[Kk][Gg]|[Kk][Mm]/.test(trimmed.slice(-5))) {
         amount = amount * 1000;
       }
       
