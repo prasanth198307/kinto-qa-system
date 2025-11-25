@@ -23,7 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Package, Receipt, ShoppingCart, Wrench, Filter, FileCheck2, Download } from "lucide-react";
+import { FileText, Package, Receipt, ShoppingCart, Wrench, Filter, FileCheck2, Download, Wallet, Banknote } from "lucide-react";
 import { format } from "date-fns";
 import type { Gatepass, Invoice, RawMaterialIssuance, PurchaseOrder, PMExecution } from "@shared/schema";
 import { DataTablePagination } from "@/components/DataTablePagination";
@@ -44,6 +44,14 @@ import {
   type GSTReportType,
   type PeriodType,
 } from "@/lib/gst-reports";
+import {
+  fetchExpenseReport,
+  fetchCashRegisterReport,
+  exportExpenseReportAsExcel,
+  exportCashRegisterReportAsExcel,
+  type ExpenseReportData,
+  type CashRegisterReportData,
+} from "@/lib/expense-cash-reports";
 
 interface ReportsProps {
   showHeader?: boolean;
@@ -67,6 +75,18 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const companyGSTIN = "29AABCU9603R1ZV"; // Default KINTO GSTIN
+  
+  // Expense Report States
+  const [expenseReportData, setExpenseReportData] = useState<ExpenseReportData | null>(null);
+  const [expenseReportLoading, setExpenseReportLoading] = useState(false);
+  const [expenseStatusFilter, setExpenseStatusFilter] = useState("all");
+  const [expensePayeeFilter, setExpensePayeeFilter] = useState("all");
+  
+  // Cash Register Report States
+  const [cashRegisterReportData, setCashRegisterReportData] = useState<CashRegisterReportData | null>(null);
+  const [cashRegisterReportLoading, setCashRegisterReportLoading] = useState(false);
+  const [cashRegisterSalespersonFilter, setCashRegisterSalespersonFilter] = useState("all");
+  const [cashRegisterStatusFilter, setCashRegisterStatusFilter] = useState("all");
 
   const { data: gatepasses = [], isLoading: gatepassesLoading } = useQuery<Gatepass[]>({
     queryKey: ['/api/gatepasses'],
@@ -292,7 +312,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
 
       {/* Reports Tabs */}
       <Tabs defaultValue="gatepasses" className="w-full" onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="flex flex-wrap h-auto gap-1 p-1">
           <TabsTrigger value="gatepasses" data-testid="tab-gatepasses">
             <FileText className="w-4 h-4 mr-2" />
             Gatepasses
@@ -312,6 +332,14 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
           <TabsTrigger value="maintenance" data-testid="tab-maintenance">
             <Wrench className="w-4 h-4 mr-2" />
             Maintenance
+          </TabsTrigger>
+          <TabsTrigger value="expenses" data-testid="tab-expenses">
+            <Banknote className="w-4 h-4 mr-2" />
+            Expenses
+          </TabsTrigger>
+          <TabsTrigger value="cash-register" data-testid="tab-cash-register">
+            <Wallet className="w-4 h-4 mr-2" />
+            Cash Register
           </TabsTrigger>
           <TabsTrigger value="gst-reports" data-testid="tab-gst-reports">
             <FileCheck2 className="w-4 h-4 mr-2" />
@@ -575,6 +603,397 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                       ))}
                     </TableBody>
                   </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Expenses Report Tab */}
+        <TabsContent value="expenses">
+          <Card>
+            <CardHeader>
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <CardTitle>Expense Vouchers Report</CardTitle>
+                  <CardDescription>
+                    View and export expense vouchers with detailed line items
+                  </CardDescription>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={async () => {
+                      setExpenseReportLoading(true);
+                      try {
+                        const data = await fetchExpenseReport(
+                          dateFrom || undefined,
+                          dateTo || undefined,
+                          expenseStatusFilter !== 'all' ? expenseStatusFilter : undefined,
+                          expensePayeeFilter !== 'all' ? expensePayeeFilter : undefined
+                        );
+                        setExpenseReportData(data);
+                        toast({
+                          title: "Report Generated",
+                          description: `Found ${data.vouchers.length} vouchers`,
+                        });
+                      } catch (error) {
+                        toast({
+                          title: "Error",
+                          description: "Failed to generate expense report",
+                          variant: "destructive",
+                        });
+                      } finally {
+                        setExpenseReportLoading(false);
+                      }
+                    }}
+                    disabled={expenseReportLoading}
+                    data-testid="button-generate-expense-report"
+                  >
+                    {expenseReportLoading ? 'Loading...' : 'Generate Report'}
+                  </Button>
+                  {expenseReportData && (
+                    <Button
+                      onClick={async () => {
+                        try {
+                          await exportExpenseReportAsExcel(expenseReportData);
+                          toast({
+                            title: "Export Complete",
+                            description: "Excel file downloaded successfully",
+                          });
+                        } catch (error) {
+                          toast({
+                            title: "Error",
+                            description: "Failed to export Excel file",
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                      data-testid="button-export-expense-excel"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Download Excel
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Filters */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                  <Label>Status</Label>
+                  <Select value={expenseStatusFilter} onValueChange={setExpenseStatusFilter}>
+                    <SelectTrigger data-testid="select-expense-status">
+                      <SelectValue placeholder="All Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="draft">Draft</SelectItem>
+                      <SelectItem value="submitted">Submitted</SelectItem>
+                      <SelectItem value="approved">Approved</SelectItem>
+                      <SelectItem value="rejected">Rejected</SelectItem>
+                      <SelectItem value="paid">Paid</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Payee Type</Label>
+                  <Select value={expensePayeeFilter} onValueChange={setExpensePayeeFilter}>
+                    <SelectTrigger data-testid="select-expense-payee">
+                      <SelectValue placeholder="All Payees" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Payees</SelectItem>
+                      <SelectItem value="employee">Employee</SelectItem>
+                      <SelectItem value="vendor">Vendor</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              {/* Summary */}
+              {expenseReportData && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <Card>
+                    <CardContent className="pt-4">
+                      <div className="text-sm text-muted-foreground">Total Vouchers</div>
+                      <div className="text-2xl font-bold">{expenseReportData.summary.totalVouchers}</div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-4">
+                      <div className="text-sm text-muted-foreground">Total Amount</div>
+                      <div className="text-2xl font-bold">₹{(expenseReportData.summary.totalAmount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-4">
+                      <div className="text-sm text-muted-foreground">Total GST</div>
+                      <div className="text-2xl font-bold">₹{(expenseReportData.summary.totalGST / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-4">
+                      <div className="text-sm text-muted-foreground">Approved</div>
+                      <div className="text-2xl font-bold">{expenseReportData.summary.byStatus.approved || 0}</div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+              
+              {/* Vouchers Table */}
+              {expenseReportData && expenseReportData.vouchers.length > 0 && (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Voucher No</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Payee</TableHead>
+                        <TableHead>Payment Mode</TableHead>
+                        <TableHead className="text-right">Amount (₹)</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Items</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {expenseReportData.vouchers.slice(0, 50).map((voucher) => (
+                        <TableRow key={voucher.id}>
+                          <TableCell className="font-medium">{voucher.voucherNumber}</TableCell>
+                          <TableCell>{format(new Date(voucher.voucherDate), 'MMM dd, yyyy')}</TableCell>
+                          <TableCell>{voucher.payeeName}</TableCell>
+                          <TableCell>{voucher.paymentMode}</TableCell>
+                          <TableCell className="text-right">{(voucher.totalAmount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
+                          <TableCell>
+                            <span className={`text-xs px-2 py-1 rounded ${
+                              voucher.status === 'approved' ? 'bg-green-100 text-green-800' :
+                              voucher.status === 'paid' ? 'bg-blue-100 text-blue-800' :
+                              voucher.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {voucher.status}
+                            </span>
+                          </TableCell>
+                          <TableCell>{voucher.items?.length || 0}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  {expenseReportData.vouchers.length > 50 && (
+                    <div className="text-sm text-muted-foreground mt-2">
+                      Showing 50 of {expenseReportData.vouchers.length} vouchers. Download Excel for full report.
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {!expenseReportData && (
+                <div className="text-center py-8 text-muted-foreground">
+                  Click "Generate Report" to view expense vouchers. Use date filters above for specific periods.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Cash Register Report Tab */}
+        <TabsContent value="cash-register">
+          <Card>
+            <CardHeader>
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <CardTitle>Cash Register Report</CardTitle>
+                  <CardDescription>
+                    View daily cash flow, transactions, and expense details
+                  </CardDescription>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={async () => {
+                      setCashRegisterReportLoading(true);
+                      try {
+                        const data = await fetchCashRegisterReport(
+                          dateFrom || undefined,
+                          dateTo || undefined,
+                          cashRegisterSalespersonFilter !== 'all' ? cashRegisterSalespersonFilter : undefined,
+                          cashRegisterStatusFilter !== 'all' ? cashRegisterStatusFilter : undefined
+                        );
+                        setCashRegisterReportData(data);
+                        toast({
+                          title: "Report Generated",
+                          description: `Found ${data.days.length} days of data`,
+                        });
+                      } catch (error) {
+                        toast({
+                          title: "Error",
+                          description: "Failed to generate cash register report",
+                          variant: "destructive",
+                        });
+                      } finally {
+                        setCashRegisterReportLoading(false);
+                      }
+                    }}
+                    disabled={cashRegisterReportLoading}
+                    data-testid="button-generate-cash-register-report"
+                  >
+                    {cashRegisterReportLoading ? 'Loading...' : 'Generate Report'}
+                  </Button>
+                  {cashRegisterReportData && (
+                    <Button
+                      onClick={async () => {
+                        try {
+                          await exportCashRegisterReportAsExcel(cashRegisterReportData);
+                          toast({
+                            title: "Export Complete",
+                            description: "Excel file downloaded successfully",
+                          });
+                        } catch (error) {
+                          toast({
+                            title: "Error",
+                            description: "Failed to export Excel file",
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                      data-testid="button-export-cash-register-excel"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Download Excel
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Filters */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                  <Label>Status</Label>
+                  <Select value={cashRegisterStatusFilter} onValueChange={setCashRegisterStatusFilter}>
+                    <SelectTrigger data-testid="select-cash-register-status">
+                      <SelectValue placeholder="All Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="open">Open</SelectItem>
+                      <SelectItem value="reconciled">Reconciled</SelectItem>
+                      <SelectItem value="locked">Locked</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Salesperson</Label>
+                  <Select value={cashRegisterSalespersonFilter} onValueChange={setCashRegisterSalespersonFilter}>
+                    <SelectTrigger data-testid="select-cash-register-salesperson">
+                      <SelectValue placeholder="All Salespersons" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Salespersons</SelectItem>
+                      {cashRegisterReportData?.summary?.bySalesperson && 
+                        Object.keys(cashRegisterReportData.summary.bySalesperson).map(sp => (
+                          <SelectItem key={sp} value={sp}>{sp}</SelectItem>
+                        ))
+                      }
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              {/* Summary */}
+              {cashRegisterReportData && (
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                  <Card>
+                    <CardContent className="pt-4">
+                      <div className="text-sm text-muted-foreground">Starting Balance</div>
+                      <div className="text-xl font-bold">₹{(cashRegisterReportData.summary.startingBalance / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-4">
+                      <div className="text-sm text-muted-foreground">Cash Received</div>
+                      <div className="text-xl font-bold text-green-600">₹{(cashRegisterReportData.summary.totalCashReceived / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-4">
+                      <div className="text-sm text-muted-foreground">Total Expenses</div>
+                      <div className="text-xl font-bold text-red-600">₹{(cashRegisterReportData.summary.totalExpenses / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-4">
+                      <div className="text-sm text-muted-foreground">Total Transfers</div>
+                      <div className="text-xl font-bold text-blue-600">₹{(cashRegisterReportData.summary.totalTransfers / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-4">
+                      <div className="text-sm text-muted-foreground">Ending Balance</div>
+                      <div className="text-xl font-bold">₹{(cashRegisterReportData.summary.endingBalance / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-4">
+                      <div className="text-sm text-muted-foreground">Days</div>
+                      <div className="text-xl font-bold">{cashRegisterReportData.summary.totalDays}</div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+              
+              {/* Days Table */}
+              {cashRegisterReportData && cashRegisterReportData.days.length > 0 && (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Salesperson</TableHead>
+                        <TableHead className="text-right">Opening (₹)</TableHead>
+                        <TableHead className="text-right">Cash Received (₹)</TableHead>
+                        <TableHead className="text-right">Expenses (₹)</TableHead>
+                        <TableHead className="text-right">Transfers (₹)</TableHead>
+                        <TableHead className="text-right">Closing (₹)</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {cashRegisterReportData.days.slice(0, 50).map((day) => (
+                        <TableRow key={day.id}>
+                          <TableCell className="font-medium">{format(new Date(day.registerDate), 'MMM dd, yyyy')}</TableCell>
+                          <TableCell>{day.salespersonName}</TableCell>
+                          <TableCell className="text-right">{(day.openingBalance / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
+                          <TableCell className="text-right text-green-600">{(day.totalCashReceived / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
+                          <TableCell className="text-right text-red-600">{(day.totalExpenses / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
+                          <TableCell className="text-right text-blue-600">{(day.totalTransfers / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
+                          <TableCell className="text-right">{(day.closingBalance / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
+                          <TableCell>
+                            <span className={`text-xs px-2 py-1 rounded ${
+                              day.status === 'reconciled' ? 'bg-green-100 text-green-800' :
+                              day.status === 'locked' ? 'bg-blue-100 text-blue-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {day.status}
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  {cashRegisterReportData.days.length > 50 && (
+                    <div className="text-sm text-muted-foreground mt-2">
+                      Showing 50 of {cashRegisterReportData.days.length} days. Download Excel for full report.
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {!cashRegisterReportData && (
+                <div className="text-center py-8 text-muted-foreground">
+                  Click "Generate Report" to view cash register data. Use date filters above for specific periods.
                 </div>
               )}
             </CardContent>
