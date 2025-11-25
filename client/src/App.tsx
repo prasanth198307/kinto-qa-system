@@ -59,7 +59,7 @@ import { ManagerChecklistAssignment } from "@/components/ManagerChecklistAssignm
 import PendingPaymentsDashboard from "@/components/PendingPaymentsDashboard";
 import { OperatorAssignedChecklists } from "@/components/OperatorAssignedChecklists";
 import { VerticalNavSidebar, type NavSection } from "@/components/VerticalNavSidebar";
-import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, FileX, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload } from "lucide-react";
+import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, FileX, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload, FolderOpen, Wallet } from "lucide-react";
 import SalesDashboard from "@/components/SalesDashboard";
 import VendorAnalytics from "@/pages/vendor-analytics";
 import ReviewerDashboardPage from "@/pages/ReviewerDashboard";
@@ -72,6 +72,8 @@ import InvoiceDetail from "@/pages/invoice-detail";
 import DispatchTracking from "@/pages/dispatch-tracking";
 import ChecklistsPage from "@/pages/checklists";
 import DataImport from "@/pages/data-import";
+import DocumentsPage from "@/pages/documents";
+import ExpensesPage from "@/pages/expenses";
 
 type Role = 'admin' | 'operator' | 'reviewer' | 'manager';
 
@@ -580,6 +582,8 @@ function AdminDashboard() {
         { id: "raw-material-types", label: "Raw Material Types", icon: Archive },
         { id: "notification-settings", label: "Notification Settings", icon: Bell },
         { id: "data-import", label: "Data Import", icon: Upload },
+        { id: "documents", label: "Documents", icon: FolderOpen, onClick: () => setLocation('/documents') },
+        { id: "expenses", label: "Expenses", icon: Wallet, onClick: () => setLocation('/expenses') },
       ],
       quickActions: [
         {
@@ -1000,6 +1004,8 @@ function VendorManagementPage() {
         { id: "raw-material-types", label: "Raw Material Types", icon: Archive },
         { id: "notification-settings", label: "Notification Settings", icon: Bell },
         { id: "data-import", label: "Data Import", icon: Upload },
+        { id: "documents", label: "Documents", icon: FolderOpen, onClick: () => setLocation('/documents') },
+        { id: "expenses", label: "Expenses", icon: Wallet, onClick: () => setLocation('/expenses') },
       ],
     },
     {
@@ -1066,6 +1072,8 @@ function ReportsPage() {
         { id: "raw-material-types", label: "Raw Material Types", icon: Archive },
         { id: "notification-settings", label: "Notification Settings", icon: Bell },
         { id: "data-import", label: "Data Import", icon: Upload },
+        { id: "documents", label: "Documents", icon: FolderOpen, onClick: () => setLocation('/documents') },
+        { id: "expenses", label: "Expenses", icon: Wallet, onClick: () => setLocation('/expenses') },
       ],
     },
     {
@@ -1132,6 +1140,8 @@ function PendingPaymentsPage() {
         { id: "raw-material-types", label: "Raw Material Types", icon: Archive },
         { id: "notification-settings", label: "Notification Settings", icon: Bell },
         { id: "data-import", label: "Data Import", icon: Upload },
+        { id: "documents", label: "Documents", icon: FolderOpen, onClick: () => setLocation('/documents') },
+        { id: "expenses", label: "Expenses", icon: Wallet, onClick: () => setLocation('/expenses') },
       ],
     },
     {
@@ -1198,6 +1208,8 @@ function VendorAnalyticsPage() {
         { id: "raw-material-types", label: "Raw Material Types", icon: Archive },
         { id: "notification-settings", label: "Notification Settings", icon: Bell },
         { id: "data-import", label: "Data Import", icon: Upload },
+        { id: "documents", label: "Documents", icon: FolderOpen, onClick: () => setLocation('/documents') },
+        { id: "expenses", label: "Expenses", icon: Wallet, onClick: () => setLocation('/expenses') },
       ],
     },
     {
@@ -1250,6 +1262,8 @@ function Router() {
       <ProtectedRoute path="/reports" component={ReportsPage} />
       <ProtectedRoute path="/production-management" component={ProductionManagement} />
       <ProtectedRoute path="/reports/production-reconciliation" component={ProductionReconciliationReport} />
+      <ProtectedRoute path="/documents" component={DocumentsPage} />
+      <ProtectedRoute path="/expenses" component={ExpensesPage} />
       <ProtectedRoute path="/" component={AuthenticatedApp} />
       <Route component={NotFound} />
     </Switch>
