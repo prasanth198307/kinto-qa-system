@@ -382,10 +382,9 @@ export async function parseExcelFile(buffer: Buffer, fileName: string): Promise<
         }
       }
       
-      // Calculate expected balance
-      // Opening + Cash Received - Expenses - Transfers - Deposits = Closing
-      // Note: Deposits are cash going OUT to bank, not coming in
-      parsedRow.calculatedBalance = parsedRow.openingBalance + parsedRow.receivedCash - parsedRow.expenses - parsedRow.sentToTulasi - parsedRow.depositAmount;
+      // Calculate expected balance: Opening + Cash Received - Expenses - Transfers = Closing
+      // Note: Deposits are tracked separately and NOT included in balance calculation
+      parsedRow.calculatedBalance = parsedRow.openingBalance + parsedRow.receivedCash - parsedRow.expenses - parsedRow.sentToTulasi;
       
       // Check variance
       if (parsedRow.balanceAmount > 0) {
