@@ -13,8 +13,19 @@ function excelDateToYYYYMMDD(serial: number): string | null {
 
 function parseCurrency(val: any): number {
   if (!val || val === 'NIL' || val === '') return 0;
-  const str = String(val).replace(/[₹,\/-]/g, '').replace(/\s+/g, '').trim();
-  const num = parseFloat(str);
+  const str = String(val);
+  
+  // Handle multi-line expense format like "7720/- CASH\r\n4,840/- TULASI PP\r\n12,560/- TOTAL"
+  // Look for TOTAL line first
+  const totalMatch = str.match(/(\d[\d,]*)\s*\/?-?\s*TOTAL/i);
+  if (totalMatch) {
+    const totalStr = totalMatch[1].replace(/,/g, '');
+    return Math.round(parseFloat(totalStr) * 100);
+  }
+  
+  // Otherwise just parse first number
+  const cleanStr = str.replace(/[₹\/-]/g, '').replace(/,/g, '').replace(/\s+/g, '').trim();
+  const num = parseFloat(cleanStr);
   return isNaN(num) ? 0 : Math.round(num * 100);
 }
 
@@ -30,8 +41,15 @@ function parseItemDetails(details: string): { label: string; amount: number; raw
   const parts = normalizedDetails.split(',');
   
   for (const part of parts) {
-    const trimmed = part.trim();
+    let trimmed = part.trim();
     if (!trimmed) continue;
+    
+    // Remove trailing periods or colons
+    trimmed = trimmed.replace(/[.:]+$/, '');
+    
+    // Remove trailing parenthetical notes like "(4 MEMBERS)" but keep the amount before it
+    // Pattern: "ITEM-600(note)" -> "ITEM-600"
+    trimmed = trimmed.replace(/\([^)]*\)\s*$/, '').trim();
     
     // Match patterns like "DIESEL-6K", "PETROL-260", "ITEM 500/-", "ITEM-3.5K", "SUDHAKAR-49500"
     // The amount is always at the END after the last hyphen or space
@@ -49,10 +67,10 @@ function parseItemDetails(details: string): { label: string; amount: number; raw
       items.push({
         label: match[1].trim().toUpperCase(),
         amount: Math.round(amount * 100), // Convert to paise
-        rawText: trimmed
+        rawText: part.trim() // Keep original for reference
       });
     } else {
-      items.push({ label: trimmed.toUpperCase(), amount: 0, rawText: trimmed });
+      items.push({ label: trimmed.toUpperCase(), amount: 0, rawText: part.trim() });
     }
   }
   return items;
@@ -142,7 +160,8 @@ async function importData() {
           txCreated++;
           
           for (const item of parsedItems) {
-            await client.query('INSERT INTO cash_register_expense_items (id, transaction_id, item_label, amount, raw_text) VALUES (gen_random_uuid(), $1, $2, $3, $4)', [txId, item.label, item.amount || Math.round(expenses/parsedItems.length), item.rawText]);
+            // Items with no amount should be 0, not a share of total
+            await client.query('INSERT INTO cash_register_expense_items (id, transaction_id, item_label, amount, raw_text) VALUES (gen_random_uuid(), $1, $2, $3, $4)', [txId, item.label, item.amount, item.rawText]);
             itemsCreated++;
           }
           
@@ -158,7 +177,10 @@ async function importData() {
             vouchersCreated++;
             
             for (const item of parsedItems) {
-              await client.query('INSERT INTO expense_items (id, voucher_id, category_id, description, quantity, unit_price, amount, gst_rate, gst_amount) VALUES (gen_random_uuid(), $1, $2, $3, 1, $4, $4, 0, 0)', [voucherId, categoryId, item.label, item.amount || Math.round(expenses/parsedItems.length)]);
+              // Only add items that have an amount
+              if (item.amount > 0) {
+                await client.query('INSERT INTO expense_items (id, voucher_id, category_id, description, quantity, unit_price, amount, gst_rate, gst_amount) VALUES (gen_random_uuid(), $1, $2, $3, 1, $4, $4, 0, 0)', [voucherId, categoryId, item.label, item.amount]);
+              }
             }
             if (parsedItems.length === 0) {
               await client.query('INSERT INTO expense_items (id, voucher_id, category_id, description, quantity, unit_price, amount, gst_rate, gst_amount) VALUES (gen_random_uuid(), $1, $2, $3, 1, $4, $4, 0, 0)', [voucherId, categoryId, 'Daily Expenses', expenses]);
