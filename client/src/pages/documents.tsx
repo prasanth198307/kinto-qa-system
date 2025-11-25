@@ -115,9 +115,13 @@ export default function DocumentsPage() {
     }
   };
 
-  const handleBulkDownload = async () => {
-    if (selectedDocuments.size === 0) {
-      toast({ title: "Error", description: "Please select documents to download", variant: "destructive" });
+  const handleBulkDownload = async (downloadAll: boolean = false) => {
+    const idsToDownload = downloadAll 
+      ? filteredDocuments.map(d => d.id) 
+      : Array.from(selectedDocuments);
+    
+    if (idsToDownload.length === 0) {
+      toast({ title: "Error", description: "No documents to download", variant: "destructive" });
       return;
     }
 
@@ -126,7 +130,7 @@ export default function DocumentsPage() {
       const response = await fetch('/api/documents/bulk-download', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ documentIds: Array.from(selectedDocuments) }),
+        body: JSON.stringify({ documentIds: idsToDownload }),
         credentials: 'include',
       });
 
@@ -145,7 +149,7 @@ export default function DocumentsPage() {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
 
-      toast({ title: "Success", description: `Downloaded ${selectedDocuments.size} documents as ZIP` });
+      toast({ title: "Success", description: `Downloaded ${idsToDownload.length} documents as ZIP` });
       setSelectedDocuments(new Set());
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -200,15 +204,26 @@ export default function DocumentsPage() {
         </div>
         
         <div className="flex gap-2">
+          {filteredDocuments.length > 0 && (
+            <Button 
+              variant="outline" 
+              onClick={() => handleBulkDownload(true)}
+              disabled={isDownloading}
+              data-testid="button-download-all"
+            >
+              <Archive className="h-4 w-4 mr-2" />
+              {isDownloading ? 'Downloading...' : 'Download All'}
+            </Button>
+          )}
           {selectedDocuments.size > 0 && (
             <Button 
               variant="outline" 
-              onClick={handleBulkDownload}
+              onClick={() => handleBulkDownload(false)}
               disabled={isDownloading}
               data-testid="button-bulk-download"
             >
-              <Archive className="h-4 w-4 mr-2" />
-              {isDownloading ? 'Downloading...' : `Download ${selectedDocuments.size} as ZIP`}
+              <Download className="h-4 w-4 mr-2" />
+              {isDownloading ? 'Downloading...' : `Download ${selectedDocuments.size} Selected`}
             </Button>
           )}
           
