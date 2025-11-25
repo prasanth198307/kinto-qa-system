@@ -1180,13 +1180,9 @@ function PendingPaymentsPage() {
   );
 }
 
-// Wrapper component for Vendor Analytics with full admin navigation
-function VendorAnalyticsPage() {
-  const { logoutMutation } = useAuth();
-  const [, setLocation] = useLocation();
-  const [activeView, setActiveView] = useState('vendor-analytics');
-  
-  const navSections: NavSection[] = [
+// Shared admin navigation sections factory
+function getAdminNavSections(setLocation: (path: string) => void): NavSection[] {
+  return [
     {
       id: "main",
       items: [
@@ -1231,6 +1227,15 @@ function VendorAnalyticsPage() {
       ],
     },
   ];
+}
+
+// Wrapper component for Vendor Analytics with full admin navigation
+function VendorAnalyticsPage() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('vendor-analytics');
+  
+  const navSections = getAdminNavSections(setLocation);
   
   return (
     <DashboardShell
@@ -1245,6 +1250,81 @@ function VendorAnalyticsPage() {
       }}
     >
       <VendorAnalytics />
+    </DashboardShell>
+  );
+}
+
+// Wrapper component for Documents page
+function DocumentsPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('documents');
+  
+  const navSections = getAdminNavSections(setLocation);
+  
+  return (
+    <DashboardShell
+      title="Documents"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={(viewId) => {
+        setActiveView(viewId);
+        setLocation('/');
+      }}
+    >
+      <DocumentsPage />
+    </DashboardShell>
+  );
+}
+
+// Wrapper component for Expenses page
+function ExpensesPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('expenses');
+  
+  const navSections = getAdminNavSections(setLocation);
+  
+  return (
+    <DashboardShell
+      title="Expense Vouchers"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={(viewId) => {
+        setActiveView(viewId);
+        setLocation('/');
+      }}
+    >
+      <ExpensesPage />
+    </DashboardShell>
+  );
+}
+
+// Wrapper component for Cash Register page
+function CashRegisterPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('cash-register');
+  
+  const navSections = getAdminNavSections(setLocation);
+  
+  return (
+    <DashboardShell
+      title="Cash Register"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={(viewId) => {
+        setActiveView(viewId);
+        setLocation('/');
+      }}
+    >
+      <CashRegisterPage />
     </DashboardShell>
   );
 }
@@ -1268,9 +1348,9 @@ function Router() {
       <ProtectedRoute path="/reports" component={ReportsPage} />
       <ProtectedRoute path="/production-management" component={ProductionManagement} />
       <ProtectedRoute path="/reports/production-reconciliation" component={ProductionReconciliationReport} />
-      <ProtectedRoute path="/documents" component={DocumentsPage} />
-      <ProtectedRoute path="/expenses" component={ExpensesPage} />
-      <ProtectedRoute path="/cash-register" component={CashRegisterPage} />
+      <ProtectedRoute path="/documents" component={DocumentsPageWrapper} />
+      <ProtectedRoute path="/expenses" component={ExpensesPageWrapper} />
+      <ProtectedRoute path="/cash-register" component={CashRegisterPageWrapper} />
       <ProtectedRoute path="/" component={AuthenticatedApp} />
       <Route component={NotFound} />
     </Switch>
