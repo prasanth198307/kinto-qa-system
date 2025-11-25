@@ -2121,6 +2121,10 @@ export const documents = pgTable("documents", {
   documentDate: date("document_date", { mode: 'string' }),
   expiryDate: date("expiry_date", { mode: 'string' }),
   
+  // Expiry alert tracking
+  expiryAlertSent: integer("expiry_alert_sent").default(0), // 0 = not sent, 1 = sent
+  expiryAlertSentAt: timestamp("expiry_alert_sent_at", { mode: 'string' }),
+  
   // Version control
   versionNumber: integer("version_number").default(1).notNull(),
   parentDocumentId: varchar("parent_document_id"), // For version tracking
