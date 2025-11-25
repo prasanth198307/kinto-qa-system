@@ -74,6 +74,7 @@ import ChecklistsPage from "@/pages/checklists";
 import DataImport from "@/pages/data-import";
 import DocumentsPage from "@/pages/documents";
 import ExpensesPage from "@/pages/expenses";
+import CashRegisterPage from "@/pages/cash-register";
 
 type Role = 'admin' | 'operator' | 'reviewer' | 'manager';
 
@@ -584,6 +585,7 @@ function AdminDashboard() {
         { id: "data-import", label: "Data Import", icon: Upload },
         { id: "documents", label: "Documents", icon: FolderOpen, onClick: () => setLocation('/documents') },
         { id: "expenses", label: "Expenses", icon: Wallet, onClick: () => setLocation('/expenses') },
+        { id: "cash-register", label: "Cash Register", icon: Calculator, onClick: () => setLocation('/cash-register') },
       ],
       quickActions: [
         {
@@ -1006,6 +1008,7 @@ function VendorManagementPage() {
         { id: "data-import", label: "Data Import", icon: Upload },
         { id: "documents", label: "Documents", icon: FolderOpen, onClick: () => setLocation('/documents') },
         { id: "expenses", label: "Expenses", icon: Wallet, onClick: () => setLocation('/expenses') },
+        { id: "cash-register", label: "Cash Register", icon: Calculator, onClick: () => setLocation('/cash-register') },
       ],
     },
     {
@@ -1074,6 +1077,7 @@ function ReportsPage() {
         { id: "data-import", label: "Data Import", icon: Upload },
         { id: "documents", label: "Documents", icon: FolderOpen, onClick: () => setLocation('/documents') },
         { id: "expenses", label: "Expenses", icon: Wallet, onClick: () => setLocation('/expenses') },
+        { id: "cash-register", label: "Cash Register", icon: Calculator, onClick: () => setLocation('/cash-register') },
       ],
     },
     {
@@ -1142,6 +1146,7 @@ function PendingPaymentsPage() {
         { id: "data-import", label: "Data Import", icon: Upload },
         { id: "documents", label: "Documents", icon: FolderOpen, onClick: () => setLocation('/documents') },
         { id: "expenses", label: "Expenses", icon: Wallet, onClick: () => setLocation('/expenses') },
+        { id: "cash-register", label: "Cash Register", icon: Calculator, onClick: () => setLocation('/cash-register') },
       ],
     },
     {
@@ -1210,6 +1215,7 @@ function VendorAnalyticsPage() {
         { id: "data-import", label: "Data Import", icon: Upload },
         { id: "documents", label: "Documents", icon: FolderOpen, onClick: () => setLocation('/documents') },
         { id: "expenses", label: "Expenses", icon: Wallet, onClick: () => setLocation('/expenses') },
+        { id: "cash-register", label: "Cash Register", icon: Calculator, onClick: () => setLocation('/cash-register') },
       ],
     },
     {
@@ -1264,6 +1270,7 @@ function Router() {
       <ProtectedRoute path="/reports/production-reconciliation" component={ProductionReconciliationReport} />
       <ProtectedRoute path="/documents" component={DocumentsPage} />
       <ProtectedRoute path="/expenses" component={ExpensesPage} />
+      <ProtectedRoute path="/cash-register" component={CashRegisterPage} />
       <ProtectedRoute path="/" component={AuthenticatedApp} />
       <Route component={NotFound} />
     </Switch>
