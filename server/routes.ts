@@ -23,6 +23,53 @@ import { insertCashRegisterDaySchema, insertCashRegisterTransactionSchema, inser
 async function logAudit(userId: string | undefined, action: string, table: string, recordId: string, description: string) {
   console.log(`[AUDIT] User: ${userId}, Action: ${action}, Table: ${table}, Record: ${recordId}, Description: ${description}`);
 }
+
+// Recalculate discrepancy for a cash register day
+async function recalculateDayDiscrepancy(dayId: string) {
+  try {
+    const day = await storage.getCashRegisterDay(dayId);
+    if (!day) return;
+    
+    // Get all expense transactions for this day
+    const transactions = await storage.getCashRegisterTransactions(dayId);
+    const expenseTransactions = transactions.filter(tx => tx.transactionType === 'expense');
+    
+    // Calculate items total
+    let itemsTotal = 0;
+    for (const tx of expenseTransactions) {
+      const items = await storage.getCashRegisterExpenseItems(tx.id);
+      itemsTotal += items.reduce((sum, item) => sum + item.amount, 0);
+    }
+    
+    // Calculate expected closing
+    const expectedClosing = day.openingBalance + day.totalDeposits + day.totalCashReceived - day.totalExpenses - day.totalTransfers;
+    
+    // Check for discrepancies
+    const balanceMismatch = day.closingBalance !== expectedClosing;
+    const itemsMismatch = day.totalExpenses !== itemsTotal;
+    const hasDiscrepancy = balanceMismatch || itemsMismatch;
+    
+    // Update the day with discrepancy info
+    await storage.updateCashRegisterDay(dayId, {
+      hasDiscrepancy: hasDiscrepancy ? 1 : 0,
+      discrepancyDetails: {
+        balance_mismatch: balanceMismatch,
+        items_mismatch: itemsMismatch,
+        expected_closing: expectedClosing / 100,
+        actual_closing: day.closingBalance / 100,
+        closing_difference: (day.closingBalance - expectedClosing) / 100,
+        total_expenses: day.totalExpenses / 100,
+        items_total: itemsTotal / 100,
+        items_difference: (day.totalExpenses - itemsTotal) / 100,
+      },
+    } as any);
+    
+    console.log(`[CASH_REGISTER] Recalculated discrepancy for day ${dayId}: hasDiscrepancy=${hasDiscrepancy}`);
+  } catch (error) {
+    console.error('[CASH_REGISTER] Error recalculating discrepancy:', error);
+  }
+}
+
 import { eq, and, ne, gte, lte, gt, desc, inArray } from "drizzle-orm";
 
 // Custom error class for database conflicts (used in transactions)
@@ -8756,6 +8803,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('[CASH_REGISTER] Error creating expense item:', error);
       res.status(400).json({ message: error.message || 'Failed to create expense item' });
+    }
+  });
+
+  // Update expense item amount
+  app.patch('/api/cash-register/expense-items/:id', isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { amount } = req.body;
+      
+      if (amount === undefined || amount < 0) {
+        return res.status(400).json({ message: 'Valid amount is required' });
+      }
+      
+      // Get the item to find the transaction and day
+      const item = await storage.getCashRegisterExpenseItem(id);
+      if (!item) {
+        return res.status(404).json({ message: 'Expense item not found' });
+      }
+      
+      // Update the item
+      const updatedItem = await storage.updateCashRegisterExpenseItem(id, { amount: Math.round(amount) });
+      
+      // Recalculate discrepancy for the day
+      const transaction = await storage.getCashRegisterTransaction(item.transactionId);
+      if (transaction) {
+        await recalculateDayDiscrepancy(transaction.dayId);
+      }
+      
+      res.json(updatedItem);
+    } catch (error: any) {
+      console.error('[CASH_REGISTER] Error updating expense item:', error);
+      res.status(400).json({ message: error.message || 'Failed to update expense item' });
+    }
+  });
+
+  // Add new expense item (for adjustments)
+  app.post('/api/cash-register/expense-items', isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { transactionId, amount, itemLabel } = req.body;
+      
+      if (!transactionId || amount === undefined || !itemLabel) {
+        return res.status(400).json({ message: 'transactionId, amount, and itemLabel are required' });
+      }
+      
+      const transaction = await storage.getCashRegisterTransaction(transactionId);
+      if (!transaction) {
+        return res.status(404).json({ message: 'Transaction not found' });
+      }
+      
+      if (transaction.transactionType !== 'expense') {
+        return res.status(400).json({ message: 'Can only add items to expense transactions' });
+      }
+      
+      const item = await storage.createCashRegisterExpenseItem({
+        transactionId,
+        amount: Math.round(amount),
+        itemLabel,
+        rawText: `${itemLabel} - ${amount / 100}`,
+      });
+      
+      // Recalculate discrepancy for the day
+      await recalculateDayDiscrepancy(transaction.dayId);
+      
+      res.status(201).json(item);
+    } catch (error: any) {
+      console.error('[CASH_REGISTER] Error adding expense item:', error);
+      res.status(400).json({ message: error.message || 'Failed to add expense item' });
     }
   });
 

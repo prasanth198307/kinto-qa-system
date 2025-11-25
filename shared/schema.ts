@@ -2321,6 +2321,10 @@ export const cashRegisterDays = pgTable("cash_register_days", {
   
   notes: text("notes"),
   
+  // Discrepancy tracking - JSON with validation issues
+  hasDiscrepancy: integer("has_discrepancy").default(0).notNull(), // 1 = has issues
+  discrepancyDetails: jsonb("discrepancy_details"), // { items_mismatch: true, balance_mismatch: true, details: [...] }
+  
   // Import tracking
   importedFromFile: varchar("imported_from_file", { length: 500 }),
   importedAt: timestamp("imported_at", { mode: 'string' }),

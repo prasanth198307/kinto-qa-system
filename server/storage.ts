@@ -583,6 +583,7 @@ export interface IStorage {
   
   // Cash Register Expense Items
   createCashRegisterExpenseItem(item: InsertCashRegisterExpenseItem): Promise<CashRegisterExpenseItem>;
+  getCashRegisterExpenseItem(id: string): Promise<CashRegisterExpenseItem | undefined>;
   getCashRegisterExpenseItems(transactionId: string): Promise<CashRegisterExpenseItem[]>;
   updateCashRegisterExpenseItem(id: string, item: Partial<InsertCashRegisterExpenseItem>): Promise<CashRegisterExpenseItem | undefined>;
   deleteCashRegisterExpenseItem(id: string): Promise<void>;
@@ -3266,6 +3267,12 @@ export class DatabaseStorage implements IStorage {
   async createCashRegisterExpenseItem(item: InsertCashRegisterExpenseItem): Promise<CashRegisterExpenseItem> {
     const [created] = await db.insert(cashRegisterExpenseItems).values(item).returning();
     return created;
+  }
+
+  async getCashRegisterExpenseItem(id: string): Promise<CashRegisterExpenseItem | undefined> {
+    const [item] = await db.select().from(cashRegisterExpenseItems)
+      .where(and(eq(cashRegisterExpenseItems.id, id), eq(cashRegisterExpenseItems.recordStatus, 1)));
+    return item;
   }
 
   async getCashRegisterExpenseItems(transactionId: string): Promise<CashRegisterExpenseItem[]> {

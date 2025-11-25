@@ -18,12 +18,26 @@ import { format } from "date-fns";
 import { 
   Plus, Upload, Search, Eye, Check, X, Receipt, Calendar, User, 
   Wallet, ArrowUpRight, ArrowDownRight, RefreshCw, FileSpreadsheet,
-  AlertCircle, TrendingUp, TrendingDown, DollarSign, CheckCircle2, Lock
+  AlertCircle, TrendingUp, TrendingDown, DollarSign, CheckCircle2, Lock,
+  AlertTriangle, Edit, Save, Trash2
 } from "lucide-react";
 import type { CashRegisterDay, CashRegisterTransaction, CashRegisterExpenseItem } from "@shared/schema";
 
+interface DiscrepancyDetails {
+  balance_mismatch: boolean;
+  items_mismatch: boolean;
+  expected_closing: number;
+  actual_closing: number;
+  closing_difference: number;
+  total_expenses: number;
+  items_total: number;
+  items_difference: number;
+}
+
 interface DayWithTransactions extends CashRegisterDay {
   transactions?: (CashRegisterTransaction & { items?: CashRegisterExpenseItem[] })[];
+  hasDiscrepancy?: number;
+  discrepancyDetails?: DiscrepancyDetails;
 }
 
 interface ImportPreview {
@@ -71,6 +85,8 @@ export default function CashRegisterPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [salespersonFilter, setSalespersonFilter] = useState<string>("all");
+  const [discrepancyFilter, setDiscrepancyFilter] = useState<string>("all");
+  const [editingItems, setEditingItems] = useState<{id: string, amount: string}[]>([]);
   const [selectedDay, setSelectedDay] = useState<DayWithTransactions | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
@@ -217,14 +233,60 @@ export default function CashRegisterPage() {
     }
   };
 
-  const filteredDays = days.filter(day => {
+  // Add mutation to update expense items
+  const updateExpenseItemMutation = useMutation({
+    mutationFn: async ({ id, amount }: { id: string; amount: number }) => {
+      const response = await apiRequest('PATCH', `/api/cash-register/expense-items/${id}`, { amount });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/cash-register/days'] });
+      if (selectedDay) {
+        viewDayDetails(selectedDay.id);
+      }
+      toast({ title: "Success", description: "Expense item updated" });
+      setEditingItems([]);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Add mutation to add adjustment item
+  const addAdjustmentMutation = useMutation({
+    mutationFn: async ({ transactionId, amount, label }: { transactionId: string; amount: number; label: string }) => {
+      const response = await apiRequest('POST', `/api/cash-register/expense-items`, { 
+        transactionId, 
+        amount, 
+        itemLabel: label 
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/cash-register/days'] });
+      if (selectedDay) {
+        viewDayDetails(selectedDay.id);
+      }
+      toast({ title: "Success", description: "Adjustment item added" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const filteredDays = (days as DayWithTransactions[]).filter(day => {
     const matchesSearch = searchQuery === "" || 
       day.salespersonName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       day.registerDate.includes(searchQuery);
     const matchesStatus = statusFilter === "all" || day.status === statusFilter;
     const matchesSalesperson = salespersonFilter === "all" || day.salespersonName === salespersonFilter;
-    return matchesSearch && matchesStatus && matchesSalesperson;
+    const matchesDiscrepancy = discrepancyFilter === "all" || 
+      (discrepancyFilter === "discrepancy" && day.hasDiscrepancy === 1) ||
+      (discrepancyFilter === "ok" && day.hasDiscrepancy !== 1);
+    return matchesSearch && matchesStatus && matchesSalesperson && matchesDiscrepancy;
   });
+
+  const discrepancyCount = (days as DayWithTransactions[]).filter(d => d.hasDiscrepancy === 1).length;
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -581,6 +643,16 @@ export default function CashRegisterPage() {
                   ))}
                 </SelectContent>
               </Select>
+              <Select value={discrepancyFilter} onValueChange={setDiscrepancyFilter}>
+                <SelectTrigger className="w-40" data-testid="select-discrepancy-filter">
+                  <SelectValue placeholder="Discrepancy" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Records</SelectItem>
+                  <SelectItem value="discrepancy">With Issues ({discrepancyCount})</SelectItem>
+                  <SelectItem value="ok">No Issues</SelectItem>
+                </SelectContent>
+              </Select>
               <Button variant="outline" size="icon" onClick={() => refetchDays()} data-testid="button-refresh">
                 <RefreshCw className="h-4 w-4" />
               </Button>
@@ -612,8 +684,19 @@ export default function CashRegisterPage() {
                   </TableRow>
                 ) : (
                   filteredDays.map((day) => (
-                    <TableRow key={day.id} data-testid={`row-day-${day.id}`}>
-                      <TableCell className="font-medium">{day.registerDate}</TableCell>
+                    <TableRow 
+                      key={day.id} 
+                      data-testid={`row-day-${day.id}`}
+                      className={day.hasDiscrepancy === 1 ? 'bg-yellow-50 dark:bg-yellow-950/20' : ''}
+                    >
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          {day.hasDiscrepancy === 1 && (
+                            <AlertTriangle className="h-4 w-4 text-yellow-600" data-testid={`icon-discrepancy-${day.id}`} />
+                          )}
+                          {day.registerDate}
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <Badge variant="outline" data-testid={`badge-salesperson-${day.id}`}>{day.salespersonName}</Badge>
                       </TableCell>
@@ -622,7 +705,16 @@ export default function CashRegisterPage() {
                       <TableCell className="text-right text-red-600">{formatCurrency(day.totalExpenses)}</TableCell>
                       <TableCell className="text-right text-blue-600">{formatCurrency(day.totalTransfers)}</TableCell>
                       <TableCell className="text-right font-medium">{formatCurrency(day.closingBalance)}</TableCell>
-                      <TableCell>{getStatusBadge(day.status)}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          {getStatusBadge(day.status)}
+                          {day.hasDiscrepancy === 1 && (
+                            <Badge variant="secondary" className="bg-yellow-200 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 text-xs" data-testid={`badge-discrepancy-${day.id}`}>
+                              Issue
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell className="text-right">
                         <Button 
                           variant="ghost" 
@@ -675,6 +767,45 @@ export default function CashRegisterPage() {
                 </div>
               </div>
 
+              {/* Discrepancy Alert */}
+              {selectedDay.hasDiscrepancy === 1 && selectedDay.discrepancyDetails && (
+                <div className="p-4 bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 rounded-md mb-4" data-testid="discrepancy-alert">
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                    <h4 className="font-medium text-yellow-800 dark:text-yellow-200">Discrepancy Found</h4>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    {selectedDay.discrepancyDetails.items_mismatch && (
+                      <div className="space-y-1">
+                        <p className="text-muted-foreground">Expense Items Total:</p>
+                        <p className="font-mono">
+                          <span className="text-red-600">Items: {formatCurrency(selectedDay.discrepancyDetails.items_total * 100)}</span>
+                          <span className="mx-2">vs</span>
+                          <span>Total: {formatCurrency(selectedDay.discrepancyDetails.total_expenses * 100)}</span>
+                        </p>
+                        <p className="text-yellow-700 dark:text-yellow-300 font-medium">
+                          Difference: {formatCurrency(Math.abs(selectedDay.discrepancyDetails.items_difference) * 100)}
+                          {selectedDay.discrepancyDetails.items_difference > 0 ? ' (missing items)' : ' (extra items)'}
+                        </p>
+                      </div>
+                    )}
+                    {selectedDay.discrepancyDetails.balance_mismatch && (
+                      <div className="space-y-1">
+                        <p className="text-muted-foreground">Balance Calculation:</p>
+                        <p className="font-mono">
+                          <span className="text-red-600">Actual: {formatCurrency(selectedDay.discrepancyDetails.actual_closing * 100)}</span>
+                          <span className="mx-2">vs</span>
+                          <span>Expected: {formatCurrency(selectedDay.discrepancyDetails.expected_closing * 100)}</span>
+                        </p>
+                        <p className="text-yellow-700 dark:text-yellow-300 font-medium">
+                          Difference: {formatCurrency(Math.abs(selectedDay.discrepancyDetails.closing_difference) * 100)}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {selectedDay.transactions && selectedDay.transactions.length > 0 && (
                 <div>
                   <h4 className="font-medium mb-2">Transactions</h4>
@@ -725,6 +856,121 @@ export default function CashRegisterPage() {
                             </TableCell>
                           </TableRow>
                         ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
+
+              {/* Expense Items Section with Edit Capability */}
+              {selectedDay.transactions?.some(tx => tx.transactionType === 'expense' && tx.items && tx.items.length > 0) && (
+                <div className="mt-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-medium">Expense Items (Edit to Fix Discrepancy)</h4>
+                    {selectedDay.hasDiscrepancy === 1 && selectedDay.discrepancyDetails?.items_mismatch && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          const expenseTx = selectedDay.transactions?.find(tx => tx.transactionType === 'expense');
+                          if (expenseTx && selectedDay.discrepancyDetails) {
+                            const diff = selectedDay.discrepancyDetails.items_difference * 100;
+                            if (diff > 0) {
+                              addAdjustmentMutation.mutate({
+                                transactionId: expenseTx.id,
+                                amount: Math.round(diff),
+                                label: 'OTHER/ADJUSTMENT'
+                              });
+                            }
+                          }
+                        }}
+                        disabled={addAdjustmentMutation.isPending}
+                        data-testid="button-add-adjustment"
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Add Adjustment Item
+                      </Button>
+                    )}
+                  </div>
+                  <div className="rounded-md border overflow-auto max-h-48">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Item</TableHead>
+                          <TableHead className="text-right">Amount</TableHead>
+                          <TableHead className="w-24">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {selectedDay.transactions
+                          .filter(tx => tx.transactionType === 'expense' && tx.items)
+                          .flatMap(tx => tx.items || [])
+                          .map((item) => {
+                            const isEditing = editingItems.some(e => e.id === item.id);
+                            const editValue = editingItems.find(e => e.id === item.id)?.amount || '';
+                            
+                            return (
+                              <TableRow key={item.id}>
+                                <TableCell className="font-medium">{item.itemLabel}</TableCell>
+                                <TableCell className="text-right">
+                                  {isEditing ? (
+                                    <Input
+                                      type="number"
+                                      className="w-24 h-8 text-right"
+                                      value={editValue}
+                                      onChange={(e) => setEditingItems(prev => 
+                                        prev.map(ei => ei.id === item.id ? { ...ei, amount: e.target.value } : ei)
+                                      )}
+                                      placeholder={(item.amount / 100).toString()}
+                                      data-testid={`input-edit-amount-${item.id}`}
+                                    />
+                                  ) : (
+                                    <span className="font-mono">{formatCurrency(item.amount)}</span>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  {isEditing ? (
+                                    <div className="flex gap-1">
+                                      <Button 
+                                        size="icon" 
+                                        variant="ghost" 
+                                        className="h-7 w-7"
+                                        onClick={() => {
+                                          const newAmount = parseFloat(editValue) * 100;
+                                          if (!isNaN(newAmount) && newAmount >= 0) {
+                                            updateExpenseItemMutation.mutate({ id: item.id, amount: Math.round(newAmount) });
+                                          }
+                                        }}
+                                        disabled={updateExpenseItemMutation.isPending}
+                                        data-testid={`button-save-${item.id}`}
+                                      >
+                                        <Save className="h-4 w-4 text-green-600" />
+                                      </Button>
+                                      <Button 
+                                        size="icon" 
+                                        variant="ghost" 
+                                        className="h-7 w-7"
+                                        onClick={() => setEditingItems(prev => prev.filter(e => e.id !== item.id))}
+                                        data-testid={`button-cancel-edit-${item.id}`}
+                                      >
+                                        <X className="h-4 w-4 text-red-600" />
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <Button 
+                                      size="icon" 
+                                      variant="ghost" 
+                                      className="h-7 w-7"
+                                      onClick={() => setEditingItems(prev => [...prev, { id: item.id, amount: (item.amount / 100).toString() }])}
+                                      data-testid={`button-edit-${item.id}`}
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
                       </TableBody>
                     </Table>
                   </div>
