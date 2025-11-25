@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, salesReturns, salesReturnItems, creditNotes, creditNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, salesReturns, salesReturnItems, creditNotes, creditNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes, insertDocumentCategorySchema, insertDocumentSchema, insertExpenseCategorySchema, insertExpenseVoucherSchema, insertExpenseItemSchema, insertExpenseAttachmentSchema } from "@shared/schema";
 import { format } from "date-fns";
 import { z } from "zod";
 import path from "path";
@@ -7839,6 +7839,611 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: error.message || 'Failed to clear imported data'
       });
     }
+  });
+
+  // ============= DOCUMENT MANAGEMENT ROUTES =============
+  
+  // Configure multer for document uploads
+  const documentUpload = multer({
+    storage: multer.diskStorage({
+      destination: (req, file, cb) => {
+        const uploadDir = path.join(process.cwd(), 'uploads', 'documents');
+        if (!fs.existsSync(uploadDir)) {
+          fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
+      },
+      filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const ext = path.extname(file.originalname);
+        cb(null, `doc-${uniqueSuffix}${ext}`);
+      }
+    }),
+    limits: { fileSize: 25 * 1024 * 1024 }, // 25MB limit
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = [
+        'application/pdf',
+        'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+        'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'text/plain', 'text/csv'
+      ];
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Invalid file type. Allowed: PDF, Images, Word, Excel, Text, CSV'));
+      }
+    }
+  });
+
+  // Document Categories CRUD
+  app.get('/api/document-categories', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const categories = await storage.getAllDocumentCategories();
+      res.json(categories);
+    } catch (error: any) {
+      console.error('[DOCUMENTS] Error fetching categories:', error);
+      res.status(500).json({ message: error.message || 'Failed to fetch document categories' });
+    }
+  });
+
+  app.post('/api/document-categories', isAuthenticated, requireRole('admin', 'manager'), async (req: Request, res: Response) => {
+    try {
+      const parsed = insertDocumentCategorySchema.parse(req.body);
+      const category = await storage.createDocumentCategory(parsed);
+      res.status(201).json(category);
+    } catch (error: any) {
+      console.error('[DOCUMENTS] Error creating category:', error);
+      res.status(400).json({ message: error.message || 'Failed to create document category' });
+    }
+  });
+
+  app.put('/api/document-categories/:id', isAuthenticated, requireRole('admin', 'manager'), async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const parsed = insertDocumentCategorySchema.partial().parse(req.body);
+      const category = await storage.updateDocumentCategory(id, parsed);
+      if (!category) {
+        return res.status(404).json({ message: 'Document category not found' });
+      }
+      res.json(category);
+    } catch (error: any) {
+      console.error('[DOCUMENTS] Error updating category:', error);
+      res.status(400).json({ message: error.message || 'Failed to update document category' });
+    }
+  });
+
+  app.delete('/api/document-categories/:id', isAuthenticated, requireRole('admin'), async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteDocumentCategory(id);
+      res.status(204).send();
+    } catch (error: any) {
+      console.error('[DOCUMENTS] Error deleting category:', error);
+      res.status(500).json({ message: error.message || 'Failed to delete document category' });
+    }
+  });
+
+  // Documents CRUD with file upload
+  app.get('/api/documents', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { categoryId, entityType, entityId } = req.query;
+      let documents;
+      
+      if (entityType && entityId) {
+        documents = await storage.getDocumentsByEntity(entityType as string, entityId as string);
+      } else if (categoryId) {
+        documents = await storage.getDocumentsByCategory(categoryId as string);
+      } else {
+        documents = await storage.getAllDocuments();
+      }
+      res.json(documents);
+    } catch (error: any) {
+      console.error('[DOCUMENTS] Error fetching documents:', error);
+      res.status(500).json({ message: error.message || 'Failed to fetch documents' });
+    }
+  });
+
+  app.get('/api/documents/:id', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const document = await storage.getDocument(id);
+      if (!document) {
+        return res.status(404).json({ message: 'Document not found' });
+      }
+      res.json(document);
+    } catch (error: any) {
+      console.error('[DOCUMENTS] Error fetching document:', error);
+      res.status(500).json({ message: error.message || 'Failed to fetch document' });
+    }
+  });
+
+  app.post('/api/documents', isAuthenticated, documentUpload.single('file'), async (req: any, res: Response) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: 'No file uploaded' });
+      }
+
+      const documentData = {
+        title: req.body.title || req.file.originalname,
+        description: req.body.description || null,
+        categoryId: req.body.categoryId || null,
+        fileName: req.file.originalname,
+        fileType: req.file.mimetype,
+        fileSize: req.file.size,
+        filePath: `/uploads/documents/${req.file.filename}`,
+        relatedEntityType: req.body.relatedEntityType || null,
+        relatedEntityId: req.body.relatedEntityId || null,
+        expiryDate: req.body.expiryDate || null,
+        tags: req.body.tags ? JSON.parse(req.body.tags) : null,
+        uploadedBy: req.user?.id || null,
+        version: 1,
+        isLatestVersion: true,
+      };
+
+      const parsed = insertDocumentSchema.parse(documentData);
+      const document = await storage.createDocument(parsed);
+      
+      await logAudit(req.user?.id, 'CREATE', 'documents', document.id, `Document uploaded: ${document.title}`);
+      res.status(201).json(document);
+    } catch (error: any) {
+      console.error('[DOCUMENTS] Error creating document:', error);
+      res.status(400).json({ message: error.message || 'Failed to create document' });
+    }
+  });
+
+  app.put('/api/documents/:id', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const parsed = insertDocumentSchema.partial().parse(req.body);
+      const document = await storage.updateDocument(id, parsed);
+      if (!document) {
+        return res.status(404).json({ message: 'Document not found' });
+      }
+      res.json(document);
+    } catch (error: any) {
+      console.error('[DOCUMENTS] Error updating document:', error);
+      res.status(400).json({ message: error.message || 'Failed to update document' });
+    }
+  });
+
+  app.delete('/api/documents/:id', isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { id } = req.params;
+      const document = await storage.getDocument(id);
+      if (!document) {
+        return res.status(404).json({ message: 'Document not found' });
+      }
+      
+      // Optionally delete the physical file
+      if (document.filePath) {
+        const fullPath = path.join(process.cwd(), document.filePath);
+        if (fs.existsSync(fullPath)) {
+          fs.unlinkSync(fullPath);
+        }
+      }
+      
+      await storage.deleteDocument(id);
+      await logAudit(req.user?.id, 'DELETE', 'documents', id, `Document deleted: ${document.title}`);
+      res.status(204).send();
+    } catch (error: any) {
+      console.error('[DOCUMENTS] Error deleting document:', error);
+      res.status(500).json({ message: error.message || 'Failed to delete document' });
+    }
+  });
+
+  // Serve document files
+  app.get('/uploads/documents/:filename', isAuthenticated, (req: Request, res: Response) => {
+    const { filename } = req.params;
+    const filePath = path.join(process.cwd(), 'uploads', 'documents', filename);
+    
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ message: 'File not found' });
+    }
+    
+    res.sendFile(filePath);
+  });
+
+  // ============= EXPENSE TRACKING ROUTES =============
+  
+  // Configure multer for expense attachments
+  const expenseUpload = multer({
+    storage: multer.diskStorage({
+      destination: (req, file, cb) => {
+        const uploadDir = path.join(process.cwd(), 'uploads', 'expenses');
+        if (!fs.existsSync(uploadDir)) {
+          fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
+      },
+      filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const ext = path.extname(file.originalname);
+        cb(null, `receipt-${uniqueSuffix}${ext}`);
+      }
+    }),
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Invalid file type. Allowed: PDF, Images'));
+      }
+    }
+  });
+
+  // Expense Categories CRUD
+  app.get('/api/expense-categories', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const categories = await storage.getAllExpenseCategories();
+      res.json(categories);
+    } catch (error: any) {
+      console.error('[EXPENSES] Error fetching categories:', error);
+      res.status(500).json({ message: error.message || 'Failed to fetch expense categories' });
+    }
+  });
+
+  app.post('/api/expense-categories', isAuthenticated, requireRole('admin', 'manager'), async (req: Request, res: Response) => {
+    try {
+      const parsed = insertExpenseCategorySchema.parse(req.body);
+      const category = await storage.createExpenseCategory(parsed);
+      res.status(201).json(category);
+    } catch (error: any) {
+      console.error('[EXPENSES] Error creating category:', error);
+      res.status(400).json({ message: error.message || 'Failed to create expense category' });
+    }
+  });
+
+  app.put('/api/expense-categories/:id', isAuthenticated, requireRole('admin', 'manager'), async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const parsed = insertExpenseCategorySchema.partial().parse(req.body);
+      const category = await storage.updateExpenseCategory(id, parsed);
+      if (!category) {
+        return res.status(404).json({ message: 'Expense category not found' });
+      }
+      res.json(category);
+    } catch (error: any) {
+      console.error('[EXPENSES] Error updating category:', error);
+      res.status(400).json({ message: error.message || 'Failed to update expense category' });
+    }
+  });
+
+  app.delete('/api/expense-categories/:id', isAuthenticated, requireRole('admin'), async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteExpenseCategory(id);
+      res.status(204).send();
+    } catch (error: any) {
+      console.error('[EXPENSES] Error deleting category:', error);
+      res.status(500).json({ message: error.message || 'Failed to delete expense category' });
+    }
+  });
+
+  // Expense Vouchers CRUD
+  app.get('/api/expense-vouchers', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const vouchers = await storage.getAllExpenseVouchers();
+      res.json(vouchers);
+    } catch (error: any) {
+      console.error('[EXPENSES] Error fetching vouchers:', error);
+      res.status(500).json({ message: error.message || 'Failed to fetch expense vouchers' });
+    }
+  });
+
+  app.get('/api/expense-vouchers/:id', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const voucher = await storage.getExpenseVoucher(id);
+      if (!voucher) {
+        return res.status(404).json({ message: 'Expense voucher not found' });
+      }
+      
+      // Fetch related items and attachments
+      const items = await storage.getExpenseItems(id);
+      const attachments = await storage.getExpenseAttachments(id);
+      
+      res.json({ ...voucher, items, attachments });
+    } catch (error: any) {
+      console.error('[EXPENSES] Error fetching voucher:', error);
+      res.status(500).json({ message: error.message || 'Failed to fetch expense voucher' });
+    }
+  });
+
+  // Generate unique voucher number
+  async function generateVoucherNumber(): Promise<string> {
+    const today = new Date();
+    const prefix = `EXP-${format(today, 'yyyyMM')}`;
+    
+    // Find the highest voucher number for this month
+    const allVouchers = await storage.getAllExpenseVouchers();
+    const monthVouchers = allVouchers.filter(v => v.voucherNumber?.startsWith(prefix));
+    
+    let maxNum = 0;
+    monthVouchers.forEach(v => {
+      const match = v.voucherNumber?.match(/-(\d+)$/);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num > maxNum) maxNum = num;
+      }
+    });
+    
+    return `${prefix}-${String(maxNum + 1).padStart(4, '0')}`;
+  }
+
+  app.post('/api/expense-vouchers', isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const voucherNumber = await generateVoucherNumber();
+      
+      const voucherData = {
+        ...req.body,
+        voucherNumber,
+        status: 'draft',
+        createdBy: req.user?.id || null,
+      };
+      
+      const parsed = insertExpenseVoucherSchema.parse(voucherData);
+      const voucher = await storage.createExpenseVoucher(parsed);
+      
+      // Create expense items if provided
+      if (req.body.items && Array.isArray(req.body.items)) {
+        for (const item of req.body.items) {
+          const itemData = {
+            voucherId: voucher.id,
+            categoryId: item.categoryId || null,
+            description: item.description,
+            amount: item.amount,
+            gstAmount: item.gstAmount || '0',
+            totalAmount: item.totalAmount || item.amount,
+            vendorId: item.vendorId || null,
+            invoiceNumber: item.invoiceNumber || null,
+            invoiceDate: item.invoiceDate || null,
+            notes: item.notes || null,
+          };
+          await storage.createExpenseItem(insertExpenseItemSchema.parse(itemData));
+        }
+      }
+      
+      await logAudit(req.user?.id, 'CREATE', 'expense_vouchers', voucher.id, `Expense voucher created: ${voucherNumber}`);
+      res.status(201).json(voucher);
+    } catch (error: any) {
+      console.error('[EXPENSES] Error creating voucher:', error);
+      res.status(400).json({ message: error.message || 'Failed to create expense voucher' });
+    }
+  });
+
+  app.put('/api/expense-vouchers/:id', isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { id } = req.params;
+      const existingVoucher = await storage.getExpenseVoucher(id);
+      
+      if (!existingVoucher) {
+        return res.status(404).json({ message: 'Expense voucher not found' });
+      }
+      
+      // Only allow edits if status is draft or pending
+      if (!['draft', 'pending'].includes(existingVoucher.status || 'draft')) {
+        return res.status(400).json({ message: 'Cannot edit approved or rejected vouchers' });
+      }
+      
+      const parsed = insertExpenseVoucherSchema.partial().parse(req.body);
+      const voucher = await storage.updateExpenseVoucher(id, parsed);
+      
+      // Update items if provided
+      if (req.body.items && Array.isArray(req.body.items)) {
+        // Delete existing items
+        const existingItems = await storage.getExpenseItems(id);
+        for (const item of existingItems) {
+          await storage.deleteExpenseItem(item.id);
+        }
+        
+        // Create new items
+        for (const item of req.body.items) {
+          const itemData = {
+            voucherId: id,
+            categoryId: item.categoryId || null,
+            description: item.description,
+            amount: item.amount,
+            gstAmount: item.gstAmount || '0',
+            totalAmount: item.totalAmount || item.amount,
+            vendorId: item.vendorId || null,
+            invoiceNumber: item.invoiceNumber || null,
+            invoiceDate: item.invoiceDate || null,
+            notes: item.notes || null,
+          };
+          await storage.createExpenseItem(insertExpenseItemSchema.parse(itemData));
+        }
+      }
+      
+      await logAudit(req.user?.id, 'UPDATE', 'expense_vouchers', id, `Expense voucher updated`);
+      res.json(voucher);
+    } catch (error: any) {
+      console.error('[EXPENSES] Error updating voucher:', error);
+      res.status(400).json({ message: error.message || 'Failed to update expense voucher' });
+    }
+  });
+
+  // Submit voucher for approval
+  app.post('/api/expense-vouchers/:id/submit', isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { id } = req.params;
+      const voucher = await storage.getExpenseVoucher(id);
+      
+      if (!voucher) {
+        return res.status(404).json({ message: 'Expense voucher not found' });
+      }
+      
+      if (voucher.status !== 'draft') {
+        return res.status(400).json({ message: 'Only draft vouchers can be submitted' });
+      }
+      
+      const updated = await storage.updateExpenseVoucher(id, { 
+        status: 'pending',
+        submittedAt: new Date().toISOString()
+      });
+      
+      await logAudit(req.user?.id, 'SUBMIT', 'expense_vouchers', id, `Expense voucher submitted for approval`);
+      res.json(updated);
+    } catch (error: any) {
+      console.error('[EXPENSES] Error submitting voucher:', error);
+      res.status(500).json({ message: error.message || 'Failed to submit expense voucher' });
+    }
+  });
+
+  // Approve voucher
+  app.post('/api/expense-vouchers/:id/approve', isAuthenticated, requireRole('admin', 'manager'), async (req: any, res: Response) => {
+    try {
+      const { id } = req.params;
+      const voucher = await storage.getExpenseVoucher(id);
+      
+      if (!voucher) {
+        return res.status(404).json({ message: 'Expense voucher not found' });
+      }
+      
+      if (voucher.status !== 'pending') {
+        return res.status(400).json({ message: 'Only pending vouchers can be approved' });
+      }
+      
+      const updated = await storage.updateExpenseVoucher(id, { 
+        status: 'approved',
+        approvedBy: req.user?.id || null,
+        approvedAt: new Date().toISOString()
+      });
+      
+      await logAudit(req.user?.id, 'APPROVE', 'expense_vouchers', id, `Expense voucher approved`);
+      res.json(updated);
+    } catch (error: any) {
+      console.error('[EXPENSES] Error approving voucher:', error);
+      res.status(500).json({ message: error.message || 'Failed to approve expense voucher' });
+    }
+  });
+
+  // Reject voucher
+  app.post('/api/expense-vouchers/:id/reject', isAuthenticated, requireRole('admin', 'manager'), async (req: any, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { rejectionReason } = req.body;
+      const voucher = await storage.getExpenseVoucher(id);
+      
+      if (!voucher) {
+        return res.status(404).json({ message: 'Expense voucher not found' });
+      }
+      
+      if (voucher.status !== 'pending') {
+        return res.status(400).json({ message: 'Only pending vouchers can be rejected' });
+      }
+      
+      const updated = await storage.updateExpenseVoucher(id, { 
+        status: 'rejected',
+        rejectionReason: rejectionReason || 'No reason provided'
+      });
+      
+      await logAudit(req.user?.id, 'REJECT', 'expense_vouchers', id, `Expense voucher rejected: ${rejectionReason}`);
+      res.json(updated);
+    } catch (error: any) {
+      console.error('[EXPENSES] Error rejecting voucher:', error);
+      res.status(500).json({ message: error.message || 'Failed to reject expense voucher' });
+    }
+  });
+
+  app.delete('/api/expense-vouchers/:id', isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { id } = req.params;
+      const voucher = await storage.getExpenseVoucher(id);
+      
+      if (!voucher) {
+        return res.status(404).json({ message: 'Expense voucher not found' });
+      }
+      
+      if (voucher.status === 'approved') {
+        return res.status(400).json({ message: 'Cannot delete approved vouchers' });
+      }
+      
+      // Delete attachments and their files
+      const attachments = await storage.getExpenseAttachments(id);
+      for (const attachment of attachments) {
+        if (attachment.filePath) {
+          const fullPath = path.join(process.cwd(), attachment.filePath);
+          if (fs.existsSync(fullPath)) {
+            fs.unlinkSync(fullPath);
+          }
+        }
+        await storage.deleteExpenseAttachment(attachment.id);
+      }
+      
+      // Delete items
+      const items = await storage.getExpenseItems(id);
+      for (const item of items) {
+        await storage.deleteExpenseItem(item.id);
+      }
+      
+      await storage.deleteExpenseVoucher(id);
+      await logAudit(req.user?.id, 'DELETE', 'expense_vouchers', id, `Expense voucher deleted: ${voucher.voucherNumber}`);
+      res.status(204).send();
+    } catch (error: any) {
+      console.error('[EXPENSES] Error deleting voucher:', error);
+      res.status(500).json({ message: error.message || 'Failed to delete expense voucher' });
+    }
+  });
+
+  // Expense Attachments
+  app.post('/api/expense-vouchers/:id/attachments', isAuthenticated, expenseUpload.single('file'), async (req: any, res: Response) => {
+    try {
+      const { id } = req.params;
+      
+      if (!req.file) {
+        return res.status(400).json({ message: 'No file uploaded' });
+      }
+      
+      const voucher = await storage.getExpenseVoucher(id);
+      if (!voucher) {
+        return res.status(404).json({ message: 'Expense voucher not found' });
+      }
+      
+      const attachmentData = {
+        voucherId: id,
+        fileName: req.file.originalname,
+        fileType: req.file.mimetype,
+        fileSize: req.file.size,
+        filePath: `/uploads/expenses/${req.file.filename}`,
+        uploadedBy: req.user?.id || null,
+      };
+      
+      const parsed = insertExpenseAttachmentSchema.parse(attachmentData);
+      const attachment = await storage.createExpenseAttachment(parsed);
+      
+      res.status(201).json(attachment);
+    } catch (error: any) {
+      console.error('[EXPENSES] Error uploading attachment:', error);
+      res.status(400).json({ message: error.message || 'Failed to upload attachment' });
+    }
+  });
+
+  app.delete('/api/expense-attachments/:id', isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { id } = req.params;
+      
+      // Note: We'd need a getExpenseAttachment method to properly delete the file
+      // For now, just soft-delete the record
+      await storage.deleteExpenseAttachment(id);
+      res.status(204).send();
+    } catch (error: any) {
+      console.error('[EXPENSES] Error deleting attachment:', error);
+      res.status(500).json({ message: error.message || 'Failed to delete attachment' });
+    }
+  });
+
+  // Serve expense attachment files
+  app.get('/uploads/expenses/:filename', isAuthenticated, (req: Request, res: Response) => {
+    const { filename } = req.params;
+    const filePath = path.join(process.cwd(), 'uploads', 'expenses', filename);
+    
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ message: 'File not found' });
+    }
+    
+    res.sendFile(filePath);
   });
 
   const httpServer = createServer(app);
