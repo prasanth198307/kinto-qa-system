@@ -8032,7 +8032,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Serve document files
+  // Serve document files (view in browser)
   app.get('/uploads/documents/:filename', isAuthenticated, (req: Request, res: Response) => {
     const { filename } = req.params;
     const filePath = path.join(process.cwd(), 'uploads', 'documents', filename);
@@ -8042,6 +8042,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     
     res.sendFile(filePath);
+  });
+
+  // Download document file (forces download)
+  app.get('/api/documents/:id/download', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const document = await storage.getDocument(id);
+      
+      if (!document) {
+        return res.status(404).json({ message: 'Document not found' });
+      }
+      
+      if (!document.filePath) {
+        return res.status(404).json({ message: 'No file attached to this document' });
+      }
+      
+      const filePath = path.join(process.cwd(), document.filePath);
+      
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ message: 'File not found on server' });
+      }
+      
+      // Set headers for download
+      const fileName = document.originalName || document.title || 'document';
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      res.setHeader('Content-Type', document.fileType || 'application/octet-stream');
+      
+      res.sendFile(filePath);
+    } catch (error: any) {
+      console.error('[DOCUMENTS] Error downloading document:', error);
+      res.status(500).json({ message: error.message || 'Failed to download document' });
+    }
   });
 
   // ============= EXPENSE TRACKING ROUTES =============

@@ -322,7 +322,14 @@ export default function DocumentsPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => window.open(doc.filePath || '', '_blank')}
+                            onClick={() => {
+                              const link = document.createElement('a');
+                              link.href = `/api/documents/${doc.id}/download`;
+                              link.download = doc.originalName || doc.title || 'document';
+                              document.body.appendChild(link);
+                              link.click();
+                              document.body.removeChild(link);
+                            }}
                             data-testid={`button-download-${doc.id}`}
                           >
                             <Download className="h-4 w-4" />
@@ -391,7 +398,14 @@ export default function DocumentsPage() {
                 </div>
               )}
               <div className="flex gap-2 pt-4">
-                <Button onClick={() => window.open(previewDocument.filePath || '', '_blank')}>
+                <Button onClick={() => {
+                  const link = document.createElement('a');
+                  link.href = `/api/documents/${previewDocument.id}/download`;
+                  link.download = previewDocument.originalName || previewDocument.title || 'document';
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                }}>
                   <Download className="h-4 w-4 mr-2" />
                   Download
                 </Button>
