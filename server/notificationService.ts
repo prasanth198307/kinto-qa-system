@@ -712,6 +712,277 @@ export class NotificationService {
       console.error('[REMINDER CHECK ERROR]', error);
     }
   }
+
+  /**
+   * Check for documents nearing expiry and send notifications
+   * This should be called periodically (e.g., every hour via setInterval)
+   */
+  async checkAndSendDocumentExpiryAlerts(daysBeforeExpiry: number = 30): Promise<void> {
+    try {
+      const expiringDocs = await storage.getDocumentsNearingExpiry(daysBeforeExpiry);
+      
+      if (expiringDocs.length === 0) {
+        return;
+      }
+
+      console.log(`[DOCUMENT EXPIRY] Found ${expiringDocs.length} documents nearing expiry`);
+
+      // Fetch notification configuration
+      const config = await storage.getNotificationConfig();
+      
+      // Get admin users to notify (those with Configuration access)
+      const allUsers = await storage.getAllUsers();
+      const adminUsers = allUsers.filter(u => 
+        u.recordStatus === 1 && 
+        (u.roleId === 'admin' || u.username === 'admin')
+      );
+
+      if (adminUsers.length === 0) {
+        console.log('[DOCUMENT EXPIRY] No admin users to notify');
+        return;
+      }
+
+      for (const doc of expiringDocs) {
+        const daysUntilExpiry = Math.ceil(
+          (new Date(doc.expiryDate!).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+        );
+
+        // Get category name if available
+        let categoryName = 'Uncategorized';
+        if (doc.categoryId) {
+          const category = await storage.getDocumentCategory(doc.categoryId);
+          if (category) categoryName = category.name;
+        }
+
+        // Send notification to all admin users
+        for (const admin of adminUsers) {
+          // Send Email notification
+          if (config?.emailEnabled === 1 && admin.email) {
+            try {
+              await this.sendDocumentExpiryEmail(
+                admin.email,
+                `${admin.firstName} ${admin.lastName}`,
+                doc.title,
+                categoryName,
+                doc.expiryDate!,
+                daysUntilExpiry,
+                config
+              );
+              console.log(`[DOCUMENT EXPIRY EMAIL] Sent to ${admin.email} for document: ${doc.title}`);
+            } catch (error) {
+              console.error(`[DOCUMENT EXPIRY EMAIL ERROR] Failed for ${admin.email}:`, error);
+            }
+          }
+
+          // Send WhatsApp notification
+          if (config?.whatsappEnabled === 1 && admin.mobileNumber) {
+            try {
+              await this.sendDocumentExpiryWhatsApp(
+                admin.mobileNumber,
+                `${admin.firstName} ${admin.lastName}`,
+                doc.title,
+                categoryName,
+                doc.expiryDate!,
+                daysUntilExpiry,
+                config
+              );
+              console.log(`[DOCUMENT EXPIRY WHATSAPP] Sent to ${admin.mobileNumber} for document: ${doc.title}`);
+            } catch (error) {
+              console.error(`[DOCUMENT EXPIRY WHATSAPP ERROR] Failed for ${admin.mobileNumber}:`, error);
+            }
+          }
+        }
+
+        // Mark document as alert sent
+        await storage.markDocumentAlertSent(doc.id);
+        console.log(`[DOCUMENT EXPIRY] Marked alert sent for document: ${doc.title}`);
+      }
+    } catch (error) {
+      console.error('[DOCUMENT EXPIRY CHECK ERROR]', error);
+    }
+  }
+
+  /**
+   * Send document expiry alert via Email
+   */
+  private async sendDocumentExpiryEmail(
+    email: string,
+    recipientName: string,
+    documentTitle: string,
+    categoryName: string,
+    expiryDate: string,
+    daysUntilExpiry: number,
+    config: any
+  ): Promise<void> {
+    const formattedExpiry = new Date(expiryDate).toLocaleDateString('en-IN', {
+      dateStyle: 'full',
+      timeZone: 'Asia/Kolkata'
+    });
+
+    const urgencyLevel = daysUntilExpiry <= 7 ? 'URGENT' : daysUntilExpiry <= 14 ? 'Important' : 'Notice';
+    const urgencyColor = daysUntilExpiry <= 7 ? '#dc2626' : daysUntilExpiry <= 14 ? '#ea580c' : '#1e40af';
+
+    const subject = `${urgencyLevel}: Document Expiring Soon - ${documentTitle}`;
+    const htmlBody = `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: ${urgencyColor}; color: white; padding: 20px; text-align: center; }
+    .content { background: #f9fafb; padding: 20px; margin: 20px 0; border-radius: 8px; }
+    .doc-info { background: white; padding: 15px; margin: 15px 0; border-left: 4px solid ${urgencyColor}; }
+    .footer { text-align: center; color: #6b7280; font-size: 12px; margin-top: 20px; }
+    .days-badge { display: inline-block; background: ${urgencyColor}; color: white; padding: 5px 15px; border-radius: 20px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Document Expiry Alert</h1>
+    </div>
+    <div class="content">
+      <p>Hello <strong>${recipientName}</strong>,</p>
+      <p>The following document is expiring soon and requires attention:</p>
+      <div class="doc-info">
+        <p><strong>Document:</strong> ${documentTitle}</p>
+        <p><strong>Category:</strong> ${categoryName}</p>
+        <p><strong>Expiry Date:</strong> ${formattedExpiry}</p>
+        <p><span class="days-badge">${daysUntilExpiry} day${daysUntilExpiry !== 1 ? 's' : ''} remaining</span></p>
+      </div>
+      <p>Please review and renew this document before expiry to ensure business continuity.</p>
+    </div>
+    <div class="footer">
+      <p>This is an automated notification from KINTO Document Management System</p>
+      <p>You can view and manage documents in the Documents section.</p>
+    </div>
+  </div>
+</body>
+</html>
+    `;
+
+    // Test mode OR missing environment variable - log to console
+    if (config.testMode === 1 || !process.env.SENDGRID_API_KEY) {
+      console.log('\n' + '='.repeat(60));
+      console.log('[DOCUMENT EXPIRY EMAIL - TEST MODE]');
+      console.log('='.repeat(60));
+      console.log(`To: ${email}`);
+      console.log(`Subject: ${subject}`);
+      console.log(`Document: ${documentTitle}`);
+      console.log(`Expires: ${formattedExpiry} (${daysUntilExpiry} days)`);
+      console.log('='.repeat(60) + '\n');
+      return;
+    }
+
+    // Production mode with SendGrid API key configured
+    try {
+      const sgMail = await import('@sendgrid/mail');
+      sgMail.default.setApiKey(process.env.SENDGRID_API_KEY);
+
+      const from = config.senderEmail || 'noreply@kinto.com';
+      const fromName = config.senderName || 'KINTO Document Management';
+
+      await sgMail.default.send({
+        to: email,
+        from: {
+          email: from,
+          name: fromName
+        },
+        subject,
+        html: htmlBody
+      });
+
+      console.log(`[DOCUMENT EXPIRY EMAIL SENT] To: ${email}, Document: ${documentTitle}`);
+    } catch (error) {
+      console.error('[DOCUMENT EXPIRY EMAIL ERROR]', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Send document expiry alert via WhatsApp
+   */
+  private async sendDocumentExpiryWhatsApp(
+    mobile: string,
+    recipientName: string,
+    documentTitle: string,
+    categoryName: string,
+    expiryDate: string,
+    daysUntilExpiry: number,
+    config: any
+  ): Promise<void> {
+    const formattedExpiry = new Date(expiryDate).toLocaleDateString('en-IN', {
+      dateStyle: 'medium',
+      timeZone: 'Asia/Kolkata'
+    });
+
+    // Set WhatsApp credentials dynamically
+    if (config.metaPhoneNumberId && config.metaAccessToken) {
+      whatsappService.setCredentials({
+        phoneNumberId: config.metaPhoneNumberId,
+        accessToken: config.metaAccessToken
+      });
+    } else if (process.env.WHATSAPP_PHONE_NUMBER_ID && process.env.WHATSAPP_ACCESS_TOKEN) {
+      whatsappService.setCredentials({
+        phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID,
+        accessToken: process.env.WHATSAPP_ACCESS_TOKEN
+      });
+    }
+
+    // Test mode - log to console
+    if (config.testMode === 1) {
+      console.log('\n' + '='.repeat(60));
+      console.log('[DOCUMENT EXPIRY WHATSAPP - TEST MODE]');
+      console.log('='.repeat(60));
+      console.log(`To: ${recipientName} (${mobile})`);
+      console.log('Message:');
+      console.log(`KINTO Document Expiry Alert`);
+      console.log('');
+      console.log(`Document: ${documentTitle}`);
+      console.log(`Category: ${categoryName}`);
+      console.log(`Expires: ${formattedExpiry}`);
+      console.log(`Days Remaining: ${daysUntilExpiry}`);
+      console.log('');
+      console.log('Please review and renew this document.');
+      console.log('='.repeat(60) + '\n');
+      return;
+    }
+
+    // Production mode - send plain text message (no template needed for internal alerts)
+    try {
+      let phoneNumber = mobile.replace(/\D/g, '');
+      
+      if (phoneNumber.startsWith('0')) {
+        phoneNumber = phoneNumber.substring(1);
+      }
+      
+      if (!phoneNumber.startsWith('91') && phoneNumber.length === 10) {
+        phoneNumber = `91${phoneNumber}`;
+      }
+
+      const message = `*KINTO Document Expiry Alert*\n\n` +
+        `Document: ${documentTitle}\n` +
+        `Category: ${categoryName}\n` +
+        `Expires: ${formattedExpiry}\n` +
+        `Days Remaining: ${daysUntilExpiry}\n\n` +
+        `Please review and renew this document to ensure business continuity.`;
+
+      const success = await whatsappService.sendTextMessage({
+        to: phoneNumber,
+        message: message
+      });
+
+      if (!success) {
+        throw new Error('WhatsApp message send failed');
+      }
+
+      console.log(`[DOCUMENT EXPIRY WHATSAPP SENT] To: ${phoneNumber}, Document: ${documentTitle}`);
+    } catch (error) {
+      console.error('[DOCUMENT EXPIRY WHATSAPP ERROR]', error);
+      throw error;
+    }
+  }
 }
 
 export const notificationService = new NotificationService();
