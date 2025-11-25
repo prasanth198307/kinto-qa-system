@@ -8885,7 +8885,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'No file uploaded' });
       }
       
-      const preview = await parseExcelFile(req.file.buffer, req.file.originalname);
+      // documentUpload uses disk storage, so read from file path
+      const fs = await import('fs');
+      const fileBuffer = fs.readFileSync(req.file.path);
+      
+      const preview = await parseExcelFile(fileBuffer, req.file.originalname);
+      
+      // Clean up temp file after parsing
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (e) {
+        console.warn('[CASH_REGISTER] Could not delete temp file:', req.file.path);
+      }
+      
       res.json(preview);
     } catch (error: any) {
       console.error('[CASH_REGISTER] Error parsing Excel file:', error);
