@@ -81,108 +81,108 @@ export default function CashRegisterVoucherPrint() {
     const printWindow = window.open('', '', 'width=800,height=600');
     if (!printWindow) return;
 
-    const vouchersPerPage = vouchers.length === 1 ? 1 : 2;
+    // Always use A5 size (half of A4) - 2 vouchers per A4 page
+    const vouchersPerPage = 2;
     
-    const generateVoucherHTML = (voucher: VoucherWithItems, isHalf: boolean) => {
-      // A4 = 297mm, page padding = 10mm each side, usable = 277mm
-      // For 2 vouchers: 277mm / 2 = 138.5mm each, with 3mm gap = 135mm each
-      const height = isHalf ? '133mm' : '277mm';
-      const padding = isHalf ? '6mm 8mm' : '12mm 15mm';
-      
+    const generateVoucherHTML = (voucher: VoucherWithItems) => {
+      // A5 height = 148.5mm, with margins = ~128mm usable
+      // Each voucher fits in bottom half of A5 area
       return `
-        <div class="voucher" style="height: ${height}; padding: ${padding}; page-break-inside: avoid; border-bottom: ${isHalf ? '1px dashed #999' : 'none'};">
-          <div class="header">
-            <div class="company-name">KINTO OPERATIONS</div>
-            <div class="document-title">EXPENSE VOUCHER</div>
-          </div>
-          
-          <div class="info-grid">
-            <div class="info-row">
-              <div class="info-item">
-                <span class="label">Voucher No:</span>
-                <span class="value">${voucher.voucherNumber}</span>
-              </div>
-              <div class="info-item">
-                <span class="label">Date:</span>
-                <span class="value">${format(new Date(voucher.voucherDate), 'dd/MM/yyyy')}</span>
-              </div>
+        <div class="voucher-container">
+          <div class="voucher">
+            <div class="header">
+              <div class="company-name">KINTO OPERATIONS</div>
+              <div class="document-title">EXPENSE VOUCHER</div>
             </div>
-            <div class="info-row">
-              <div class="info-item">
-                <span class="label">Paid To:</span>
-                <span class="value">${voucher.payeeName}</span>
+            
+            <div class="info-grid">
+              <div class="info-row">
+                <div class="info-item">
+                  <span class="label">Voucher No:</span>
+                  <span class="value">${voucher.voucherNumber}</span>
+                </div>
+                <div class="info-item">
+                  <span class="label">Date:</span>
+                  <span class="value">${format(new Date(voucher.voucherDate), 'dd/MM/yyyy')}</span>
+                </div>
               </div>
-              <div class="info-item">
-                <span class="label">Payment Mode:</span>
-                <span class="value">${voucher.paymentMode.replace('_', ' ').toUpperCase()}</span>
+              <div class="info-row">
+                <div class="info-item">
+                  <span class="label">Paid To:</span>
+                  <span class="value">${voucher.payeeName}</span>
+                </div>
+                <div class="info-item">
+                  <span class="label">Payment Mode:</span>
+                  <span class="value">${voucher.paymentMode.replace('_', ' ').toUpperCase()}</span>
+                </div>
               </div>
+              ${voucher.transactionReference ? `
+              <div class="info-row">
+                <div class="info-item full-width">
+                  <span class="label">Reference:</span>
+                  <span class="value">${voucher.transactionReference}</span>
+                </div>
+              </div>
+              ` : ''}
             </div>
-            ${voucher.transactionReference ? `
-            <div class="info-row">
-              <div class="info-item full-width">
-                <span class="label">Reference:</span>
-                <span class="value">${voucher.transactionReference}</span>
-              </div>
+
+            <table class="items-table">
+              <thead>
+                <tr>
+                  <th style="width: 8%">#</th>
+                  <th style="width: 52%">Description</th>
+                  <th style="width: 20%" class="right">Amount</th>
+                  <th style="width: 20%" class="right">GST</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${voucher.items.map((item, idx) => `
+                  <tr>
+                    <td>${idx + 1}</td>
+                    <td>${item.description}</td>
+                    <td class="right">${formatCurrencyPlain(item.amount)}</td>
+                    <td class="right">${formatCurrencyPlain(item.gstAmount)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+              <tfoot>
+                <tr class="subtotal-row">
+                  <td colspan="2" class="right">Subtotal:</td>
+                  <td class="right">${formatCurrencyPlain(voucher.subtotal)}</td>
+                  <td class="right">${formatCurrencyPlain(voucher.gstAmount)}</td>
+                </tr>
+                <tr class="total-row">
+                  <td colspan="2" class="right"><strong>Total Amount:</strong></td>
+                  <td colspan="2" class="right"><strong>${formatCurrency(voucher.totalAmount)}</strong></td>
+                </tr>
+              </tfoot>
+            </table>
+
+            <div class="amount-words">
+              <span class="label">Amount in Words:</span>
+              <span class="value">${numberToWords(voucher.totalAmount / 100)}</span>
+            </div>
+
+            ${voucher.purpose ? `
+            <div class="purpose">
+              <span class="label">Purpose:</span>
+              <span class="value">${voucher.purpose}</span>
             </div>
             ` : ''}
-          </div>
 
-          <table class="items-table">
-            <thead>
-              <tr>
-                <th style="width: 8%">#</th>
-                <th style="width: 52%">Description</th>
-                <th style="width: 20%" class="right">Amount</th>
-                <th style="width: 20%" class="right">GST</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${voucher.items.map((item, idx) => `
-                <tr>
-                  <td>${idx + 1}</td>
-                  <td>${item.description}</td>
-                  <td class="right">${formatCurrencyPlain(item.amount)}</td>
-                  <td class="right">${formatCurrencyPlain(item.gstAmount)}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-            <tfoot>
-              <tr class="subtotal-row">
-                <td colspan="2" class="right">Subtotal:</td>
-                <td class="right">${formatCurrencyPlain(voucher.subtotal)}</td>
-                <td class="right">${formatCurrencyPlain(voucher.gstAmount)}</td>
-              </tr>
-              <tr class="total-row">
-                <td colspan="2" class="right"><strong>Total Amount:</strong></td>
-                <td colspan="2" class="right"><strong>${formatCurrency(voucher.totalAmount)}</strong></td>
-              </tr>
-            </tfoot>
-          </table>
-
-          <div class="amount-words">
-            <span class="label">Amount in Words:</span>
-            <span class="value">${numberToWords(voucher.totalAmount / 100)}</span>
-          </div>
-
-          ${voucher.purpose ? `
-          <div class="purpose">
-            <span class="label">Purpose:</span>
-            <span class="value">${voucher.purpose}</span>
-          </div>
-          ` : ''}
-
-          <div class="signatures">
-            <div class="signature-box">
-              <div class="signature-line"></div>
-              <div class="signature-label">Prepared By</div>
-            </div>
-            <div class="signature-box">
-              <div class="signature-line"></div>
-              <div class="signature-label">Received By</div>
-            </div>
-            <div class="signature-box">
-              <div class="signature-line"></div>
-              <div class="signature-label">Approved By</div>
+            <div class="signatures">
+              <div class="signature-box">
+                <div class="signature-line"></div>
+                <div class="signature-label">Prepared By</div>
+              </div>
+              <div class="signature-box">
+                <div class="signature-line"></div>
+                <div class="signature-label">Received By</div>
+              </div>
+              <div class="signature-box">
+                <div class="signature-line"></div>
+                <div class="signature-label">Approved By</div>
+              </div>
             </div>
           </div>
         </div>
@@ -190,20 +190,19 @@ export default function CashRegisterVoucherPrint() {
     };
 
     const pages: string[] = [];
-    const isMultiple = vouchers.length > 1;
     
+    // Group vouchers into pages (2 per A4 page)
     for (let i = 0; i < vouchers.length; i += vouchersPerPage) {
       const pageVouchers = vouchers.slice(i, i + vouchersPerPage);
       let pageContent = '';
       
-      pageVouchers.forEach((v, idx) => {
-        // Use half-size format for all vouchers when printing multiple (even if odd number on last page)
-        pageContent += generateVoucherHTML(v, isMultiple);
+      pageVouchers.forEach((v) => {
+        pageContent += generateVoucherHTML(v);
       });
       
-      // Add empty space if odd number and not last page
-      if (isMultiple && pageVouchers.length === 1 && i + vouchersPerPage < vouchers.length) {
-        pageContent += '<div style="height: 133mm;"></div>';
+      // Add empty A5 slot if only 1 voucher on this page (for consistent layout)
+      if (pageVouchers.length === 1) {
+        pageContent += '<div class="voucher-container empty"></div>';
       }
       
       pages.push(`<div class="page">${pageContent}</div>`);
@@ -227,62 +226,82 @@ export default function CashRegisterVoucherPrint() {
             
             body {
               font-family: Arial, sans-serif;
-              font-size: 11px;
-              line-height: 1.3;
+              font-size: 10px;
+              line-height: 1.2;
               color: #000;
             }
 
             .page {
               width: 210mm;
-              min-height: 297mm;
-              padding: 10mm;
+              height: 297mm;
               margin: 0 auto;
               background: white;
               page-break-after: always;
+              display: flex;
+              flex-direction: column;
             }
 
             .page:last-child {
               page-break-after: auto;
             }
 
+            /* A5 container - each takes half of A4 */
+            .voucher-container {
+              height: 148.5mm;
+              width: 100%;
+              padding: 5mm 8mm;
+              display: flex;
+              flex-direction: column;
+              justify-content: flex-end;
+              border-bottom: 1px dashed #ccc;
+            }
+
+            .voucher-container:last-child {
+              border-bottom: none;
+            }
+
+            .voucher-container.empty {
+              /* Empty slot for odd number of vouchers */
+            }
+
             .voucher {
               border: 1px solid #333;
-              margin-bottom: 5mm;
+              padding: 5mm 6mm;
               background: #fff;
             }
 
             .header {
               text-align: center;
-              border-bottom: 2px solid #333;
-              padding-bottom: 8px;
-              margin-bottom: 10px;
+              border-bottom: 1.5px solid #333;
+              padding-bottom: 5px;
+              margin-bottom: 6px;
             }
 
             .company-name {
-              font-size: 18px;
+              font-size: 14px;
               font-weight: bold;
-              margin-bottom: 2px;
+              margin-bottom: 1px;
             }
 
             .document-title {
-              font-size: 14px;
+              font-size: 11px;
               font-weight: bold;
               color: #333;
             }
 
             .info-grid {
-              margin-bottom: 10px;
+              margin-bottom: 6px;
             }
 
             .info-row {
               display: flex;
               justify-content: space-between;
-              margin-bottom: 4px;
+              margin-bottom: 2px;
             }
 
             .info-item {
               display: flex;
-              gap: 5px;
+              gap: 4px;
             }
 
             .info-item.full-width {
@@ -292,28 +311,32 @@ export default function CashRegisterVoucherPrint() {
             .info-item .label {
               font-weight: bold;
               color: #555;
+              font-size: 9px;
             }
 
             .info-item .value {
               color: #000;
+              font-size: 9px;
             }
 
             .items-table {
               width: 100%;
               border-collapse: collapse;
-              margin-bottom: 10px;
+              margin-bottom: 6px;
+              font-size: 9px;
             }
 
             .items-table th,
             .items-table td {
               border: 1px solid #999;
-              padding: 5px 8px;
+              padding: 3px 5px;
               text-align: left;
             }
 
             .items-table th {
               background: #f0f0f0;
               font-weight: bold;
+              font-size: 8px;
             }
 
             .items-table .right {
@@ -330,31 +353,33 @@ export default function CashRegisterVoucherPrint() {
 
             .amount-words {
               border: 1px solid #999;
-              padding: 6px 10px;
-              margin-bottom: 8px;
+              padding: 4px 6px;
+              margin-bottom: 5px;
               background: #fafafa;
+              font-size: 9px;
             }
 
             .amount-words .label {
               font-weight: bold;
-              margin-right: 5px;
+              margin-right: 4px;
             }
 
             .purpose {
-              margin-bottom: 10px;
-              padding: 5px 0;
+              margin-bottom: 6px;
+              padding: 3px 0;
+              font-size: 9px;
             }
 
             .purpose .label {
               font-weight: bold;
-              margin-right: 5px;
+              margin-right: 4px;
             }
 
             .signatures {
               display: flex;
               justify-content: space-between;
-              margin-top: 15px;
-              padding-top: 10px;
+              margin-top: 8px;
+              padding-top: 6px;
             }
 
             .signature-box {
@@ -364,12 +389,12 @@ export default function CashRegisterVoucherPrint() {
 
             .signature-line {
               border-bottom: 1px solid #333;
-              height: 30px;
-              margin-bottom: 5px;
+              height: 20px;
+              margin-bottom: 3px;
             }
 
             .signature-label {
-              font-size: 10px;
+              font-size: 8px;
               color: #555;
             }
 
@@ -381,7 +406,6 @@ export default function CashRegisterVoucherPrint() {
               
               .page {
                 margin: 0;
-                padding: 10mm;
               }
             }
           </style>
