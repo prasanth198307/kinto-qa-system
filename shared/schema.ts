@@ -694,6 +694,9 @@ export const insertProductSchema = createInsertSchema(products).omit({
   defaultLossPercent: z.coerce.number().optional().nullable(),
   usableDerivedUnits: z.coerce.number().optional().nullable(),
   netVolume: z.coerce.number().optional().nullable(),
+  derivedValuePerBase: z.coerce.number().optional().nullable(),
+  weightPerBase: z.coerce.number().optional().nullable(),
+  weightPerDerived: z.coerce.number().optional().nullable(),
 });
 
 export type InsertProduct = z.infer<typeof insertProductSchema>;
