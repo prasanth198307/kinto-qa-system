@@ -87,13 +87,293 @@ Access comprehensive reports for business analysis and decision making.
 
 ![Reports](screenshots/03_Reports.png)
 
-**Available Reports:**
-- Production Reports
-- Sales Reports
-- Inventory Reports
-- Financial Reports
-- Quality Reports
-- GST Reports
+The Reports module provides detailed business analytics with powerful filtering and export capabilities. Each report is accessible from **Dashboard & Analytics → Reports** in the sidebar.
+
+---
+
+#### GST Reports (GSTR-1 & GSTR-3B)
+
+Generate GST-compliant reports for tax filing.
+
+**Navigation:** Dashboard & Analytics → Reports → GST Reports tab
+
+**Available Report Types:**
+- **GSTR-1** - Outward supplies (sales invoices)
+- **GSTR-3B** - Summary return with tax liability
+
+**Filters:**
+| Filter | Options | Description |
+|--------|---------|-------------|
+| Report Type | GSTR-1, GSTR-3B | Select the GST return type |
+| Period Type | Monthly, Quarterly, Annual | Filing frequency |
+| Start Date | Date picker | Beginning of report period |
+| End Date | Date picker | End of report period |
+| Customer | Dropdown | Filter by specific customer (optional) |
+
+**How to Generate:**
+1. Select the Report Type (GSTR-1 or GSTR-3B)
+2. Choose the Period Type
+3. Set the date range using Start Date and End Date
+4. Optionally filter by Customer
+5. Click **"Generate Report"** button
+
+**Report Sections (GSTR-1):**
+- B2B Invoices (Business to Business with GSTIN)
+- B2C Large Invoices (Above Rs. 2.5 Lakhs)
+- B2C Small Invoices (Below Rs. 2.5 Lakhs)
+- Credit/Debit Notes
+- HSN Summary
+
+**Export Options:**
+- **Excel** - Download as .xlsx file with multiple sheets
+- **JSON** - Download raw data for integration
+
+---
+
+#### Pending Payments Report
+
+Track outstanding invoice payments and aging analysis.
+
+**Navigation:** Finance & Sales → Pending Payments
+
+**Filters:**
+| Filter | Options | Description |
+|--------|---------|-------------|
+| Customer | Search box | Filter by customer name |
+| Date Range | From/To dates | Invoice date range |
+| Aging Period | All, 0-30, 31-60, 61-90, 90+ days | Payment age buckets |
+
+**How to Generate:**
+1. Navigate to Pending Payments page
+2. Use the search box to filter by customer name
+3. Set date range if needed
+4. View aging breakdown in the summary cards
+
+**Report Features:**
+- Total outstanding amount summary
+- Aging analysis (0-30, 31-60, 61-90, 90+ days)
+- Customer-wise breakdown
+- Click on any row to view invoice details
+- Record payments directly from this screen
+
+---
+
+#### Cancelled Invoices Report
+
+Audit trail of all cancelled invoices with replacement tracking.
+
+**Navigation:** Finance & Sales → Cancelled Invoices
+
+**Filters:**
+| Filter | Options | Description |
+|--------|---------|-------------|
+| Cancellation Date | From/To dates | Date range when invoices were cancelled |
+| Buyer Search | Text search | Search by buyer name |
+| Invoice Number | Text search | Search by invoice number |
+
+**How to Generate:**
+1. Navigate to Cancelled Invoices page
+2. Set the cancellation date range
+3. Optionally search by buyer or invoice number
+4. View list with cancellation details
+
+**Report Features:**
+- Original invoice details
+- Cancellation date and reason
+- Link to replacement invoice (if reissued)
+- Click "View" to see full invoice details
+
+---
+
+#### Production Reconciliation Report
+
+Analyze material usage vs production output with variance tracking.
+
+**Navigation:** Dashboard & Analytics → Production Reconciliation Report
+
+**Filters:**
+| Filter | Options | Description |
+|--------|---------|-------------|
+| Date From | Date picker | Start date of production period |
+| Date To | Date picker | End date of production period |
+| Product | Dropdown | Filter by specific product |
+| Batch | Dropdown | Filter by production batch |
+| Shift | Day/Night/All | Filter by production shift |
+
+**How to Generate:**
+1. Navigate to Production Reconciliation Report
+2. Set the date range
+3. Optionally filter by Product, Batch, or Shift
+4. Click **"Generate Report"** button
+
+**Report Sections:**
+- Reconciliation summary cards
+- Material-wise breakdown
+- Variance percentage analysis
+- Efficiency metrics
+
+**Export Options:**
+- **Excel** - Download detailed report with all materials
+
+---
+
+#### Variance Analytics Dashboard
+
+Visual analytics for production efficiency trends.
+
+**Navigation:** Dashboard & Analytics → Variance Analytics
+
+**Filters:**
+| Filter | Options | Description |
+|--------|---------|-------------|
+| Time Period | Last 7 days, 30 days, 90 days, Custom | Analysis period |
+| Product | Dropdown | Filter by specific product |
+| Material | Dropdown | Filter by raw material |
+
+**How to Generate:**
+1. Navigate to Variance Analytics
+2. Select the time period
+3. Optionally filter by product or material
+4. Charts update automatically
+
+**Dashboard Features:**
+- Trend charts showing variance over time
+- Product-wise efficiency comparison
+- Material usage patterns
+- Alerts for high variance items
+
+---
+
+#### Cash Register Report
+
+Daily cash flow summary with transaction details.
+
+**Navigation:** Cash & Expenses → Cash Register Report
+
+**Filters:**
+| Filter | Options | Description |
+|--------|---------|-------------|
+| Date From | Date picker | Start date of report period |
+| Date To | Date picker | End date of report period |
+| Salesperson | Dropdown | Filter by salesperson (optional) |
+| Status | Open/Closed/All | Day status filter |
+
+**How to Generate:**
+1. Navigate to Cash Register Report
+2. Set the date range
+3. Optionally filter by salesperson or status
+4. View summary and detailed transactions
+
+**Report Features:**
+- Daily summary with opening/closing balances
+- Transaction-wise breakdown (cash received, expenses, transfers)
+- Variance highlighting (discrepancies in red)
+- Linked voucher numbers for expenses
+
+**Export Options:**
+- **Excel** - Download complete cash register data
+
+**Print Vouchers:**
+- Click **"Print Vouchers"** to print A5-sized expense vouchers
+- 2 vouchers per A4 page
+- Includes signature boxes
+
+---
+
+#### Expense Summary Report
+
+Consolidated view of all expenses with category breakdown.
+
+**Navigation:** Cash & Expenses → Expenses (with filters)
+
+**Filters:**
+| Filter | Options | Description |
+|--------|---------|-------------|
+| Date From | Date picker | Start date |
+| Date To | Date picker | End date |
+| Category | Dropdown | Expense category |
+| Status | Draft/Submitted/Approved/Rejected/Paid | Voucher status |
+| Payment Mode | Cash/Bank/UPI/Cheque | Payment method |
+| Payee | Search box | Search by vendor/payee name |
+
+**How to Generate:**
+1. Navigate to Expenses page
+2. Apply filters as needed
+3. View filtered list with summary totals
+
+**Report Features:**
+- Summary cards showing totals by status
+- Category-wise breakdown
+- GST summary
+- Payment mode distribution
+
+**Export Options:**
+- **Excel** - Download expense data with all details
+
+---
+
+#### Dispatch Tracking Report
+
+Monitor invoice dispatch status through the delivery workflow.
+
+**Navigation:** Dispatch & Logistics → Dispatch Tracking
+
+**Filters:**
+| Filter | Options | Description |
+|--------|---------|-------------|
+| Status | All stages of dispatch | Filter by current stage |
+| Date Range | From/To dates | Invoice date range |
+| Customer | Search box | Filter by customer |
+
+**Dispatch Stages:**
+1. Invoice Created
+2. Gatepass Created
+3. Dispatched
+4. In Transit
+5. Delivered (with Proof of Delivery)
+
+**Report Features:**
+- Visual status indicators
+- Time tracking at each stage
+- Click to view details and update status
+- Download proof of delivery documents
+
+---
+
+#### WhatsApp Analytics Report
+
+Monitor WhatsApp integration performance for machine startup reminders.
+
+**Navigation:** Quality & Checklists → WhatsApp Analytics
+
+**Metrics Displayed:**
+- Total messages sent
+- Response rate percentage
+- On-time responses
+- Late responses
+- No response count
+
+**Report Features:**
+- Summary cards with key metrics
+- Detailed list of all WhatsApp interactions
+- Response status badges (On Time, Late, No Response)
+- Operator response text and timestamps
+
+---
+
+### Quick Reference: Report Locations
+
+| Report | Navigation Path | Key Filters |
+|--------|-----------------|-------------|
+| GST Reports | Dashboard → Reports → GST tab | Period, Date Range, Customer |
+| Pending Payments | Finance & Sales → Pending Payments | Customer, Date, Aging |
+| Cancelled Invoices | Finance & Sales → Cancelled Invoices | Cancellation Date, Buyer |
+| Production Reconciliation | Dashboard → Production Reconciliation | Date, Product, Batch, Shift |
+| Variance Analytics | Dashboard → Variance Analytics | Period, Product, Material |
+| Cash Register | Cash & Expenses → Cash Register Report | Date Range, Salesperson |
+| Expenses | Cash & Expenses → Expenses | Category, Status, Payment Mode |
+| Dispatch Tracking | Dispatch & Logistics → Dispatch Tracking | Status, Date, Customer |
+| WhatsApp Analytics | Quality → WhatsApp Analytics | (No filters - shows all data) |
 
 ---
 
