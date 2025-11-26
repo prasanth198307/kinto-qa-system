@@ -55,18 +55,28 @@ export function VerticalNavSidebar({
   isMobileOpen = false,
   onMobileClose,
 }: VerticalNavSidebarProps) {
-  // Initialize collapsed state from localStorage or default all open
+  // Initialize collapsed state - default all collapsed
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>(() => {
+    const STORAGE_VERSION = 'v2'; // Change this to reset user preferences
     try {
+      const version = localStorage.getItem('sidebarVersion');
       const saved = localStorage.getItem('sidebarCollapsedSections');
-      if (saved) {
+      if (version === STORAGE_VERSION && saved) {
         return JSON.parse(saved);
       }
+      // Reset storage for new version
+      localStorage.setItem('sidebarVersion', STORAGE_VERSION);
     } catch (e) {
       // Ignore parse errors
     }
-    // Default: all sections open
-    return {};
+    // Default: all sections collapsed
+    const defaultCollapsed: Record<string, boolean> = {};
+    sections.forEach(section => {
+      if (section.label) {
+        defaultCollapsed[section.id] = true;
+      }
+    });
+    return defaultCollapsed;
   });
 
   // Save to localStorage when collapsed state changes
