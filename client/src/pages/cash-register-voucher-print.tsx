@@ -84,8 +84,10 @@ export default function CashRegisterVoucherPrint() {
     const vouchersPerPage = vouchers.length === 1 ? 1 : 2;
     
     const generateVoucherHTML = (voucher: VoucherWithItems, isHalf: boolean) => {
-      const height = isHalf ? '140mm' : '277mm';
-      const padding = isHalf ? '8mm' : '15mm';
+      // A4 = 297mm, page padding = 10mm each side, usable = 277mm
+      // For 2 vouchers: 277mm / 2 = 138.5mm each, with 3mm gap = 135mm each
+      const height = isHalf ? '133mm' : '277mm';
+      const padding = isHalf ? '6mm 8mm' : '12mm 15mm';
       
       return `
         <div class="voucher" style="height: ${height}; padding: ${padding}; page-break-inside: avoid; border-bottom: ${isHalf ? '1px dashed #999' : 'none'};">
@@ -195,11 +197,13 @@ export default function CashRegisterVoucherPrint() {
       let pageContent = '';
       
       pageVouchers.forEach((v, idx) => {
-        pageContent += generateVoucherHTML(v, isMultiple && pageVouchers.length > 1);
+        // Use half-size format for all vouchers when printing multiple (even if odd number on last page)
+        pageContent += generateVoucherHTML(v, isMultiple);
       });
       
-      if (isMultiple && pageVouchers.length === 1 && i + 1 < vouchers.length) {
-        pageContent += '<div style="height: 140mm;"></div>';
+      // Add empty space if odd number and not last page
+      if (isMultiple && pageVouchers.length === 1 && i + vouchersPerPage < vouchers.length) {
+        pageContent += '<div style="height: 133mm;"></div>';
       }
       
       pages.push(`<div class="page">${pageContent}</div>`);
