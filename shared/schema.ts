@@ -2364,8 +2364,15 @@ export const cashRegisterTransactions = pgTable("cash_register_transactions", {
   reference: varchar("reference", { length: 255 }),
   description: text("description"),
   
+  // Source type for cash_received: 'secondary_sale', 'sale_cash', 'upi', 'bank_transfer', 'other'
+  sourceType: varchar("source_type", { length: 50 }),
+  
   // For transfers
   transferTo: varchar("transfer_to", { length: 100 }), // e.g., "TULASI"
+  
+  // Document attachment
+  documentPath: varchar("document_path", { length: 500 }),
+  documentName: varchar("document_name", { length: 255 }),
   
   // Voucher conversion tracking
   convertedToVoucherId: varchar("converted_to_voucher_id").references(() => expenseVouchers.id),

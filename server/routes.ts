@@ -8905,6 +8905,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Upload document for cash register transaction
+  app.post('/api/cash-register/transactions/:transactionId/document', isAuthenticated, documentUpload.single('file'), async (req: any, res: Response) => {
+    try {
+      const { transactionId } = req.params;
+      
+      if (!req.file) {
+        return res.status(400).json({ message: 'No file uploaded' });
+      }
+      
+      const transaction = await storage.getCashRegisterTransaction(transactionId);
+      if (!transaction) {
+        return res.status(404).json({ message: 'Transaction not found' });
+      }
+      
+      const day = await storage.getCashRegisterDay(transaction.dayId);
+      if (!day) {
+        return res.status(404).json({ message: 'Cash register day not found' });
+      }
+      
+      if (day.status !== 'open') {
+        return res.status(400).json({ message: 'Cannot upload documents to closed or locked days' });
+      }
+      
+      // Update transaction with document info
+      const updates = {
+        documentPath: `/uploads/documents/${req.file.filename}`,
+        documentName: req.file.originalname,
+      };
+      
+      await storage.updateCashRegisterTransaction(transactionId, updates);
+      
+      await logAudit(req.user?.id, 'UPDATE', 'cash_register_transactions', transactionId, 
+        `Document uploaded: ${req.file.originalname}`);
+      
+      // Return updated transaction
+      const updatedTransaction = await storage.getCashRegisterTransaction(transactionId);
+      res.json(updatedTransaction);
+    } catch (error: any) {
+      console.error('[CASH_REGISTER] Error uploading transaction document:', error);
+      res.status(500).json({ message: error.message || 'Failed to upload document' });
+    }
+  });
+
   // Add expense items to transaction
   app.post('/api/cash-register/transactions/:transactionId/items', isAuthenticated, async (req: any, res: Response) => {
     try {

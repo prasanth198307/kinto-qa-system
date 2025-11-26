@@ -21,7 +21,8 @@ import {
   Plus, Upload, Search, Eye, Check, X, Receipt, Calendar, User, 
   Wallet, ArrowUpRight, ArrowDownRight, RefreshCw, FileSpreadsheet,
   AlertCircle, TrendingUp, TrendingDown, DollarSign, CheckCircle2, Lock,
-  AlertTriangle, Edit, Save, Trash2, PiggyBank, ArrowLeft, ChevronRight
+  AlertTriangle, Edit, Save, Trash2, PiggyBank, ArrowLeft, ChevronRight,
+  Paperclip, FileText, CreditCard, Banknote
 } from "lucide-react";
 import type { CashRegisterDay, CashRegisterTransaction, CashRegisterExpenseItem, PaginationMeta } from "@shared/schema";
 import { DataTablePagination } from "@/components/DataTablePagination";
@@ -85,12 +86,15 @@ export default function CashRegisterPage() {
   const [pageSize, setPageSize] = useState(25);
   
   // New transaction form states
-  const [newCashReceived, setNewCashReceived] = useState({ amount: '', reference: '', description: '' });
+  const [newCashReceived, setNewCashReceived] = useState({ amount: '', reference: '', description: '', sourceType: 'sale_cash' });
   const [newExpense, setNewExpense] = useState({ amount: '', reference: '', description: '' });
   const [newTransfer, setNewTransfer] = useState({ amount: '', transferTo: '', description: '' });
   const [isAddingCash, setIsAddingCash] = useState(false);
   const [isAddingExpense, setIsAddingExpense] = useState(false);
   const [isAddingTransfer, setIsAddingTransfer] = useState(false);
+  
+  // Document upload states
+  const [uploadingDoc, setUploadingDoc] = useState<string | null>(null); // transaction ID being uploaded to
 
   const { data: days = [], isLoading: daysLoading, refetch: refetchDays } = useQuery<CashRegisterDay[]>({
     queryKey: ['/api/cash-register/days'],
@@ -128,7 +132,7 @@ export default function CashRegisterPage() {
 
   // Add transaction mutation
   const addTransactionMutation = useMutation({
-    mutationFn: async (data: { dayId: string; transactionType: string; amount: number; reference?: string; description?: string; transferTo?: string }) => {
+    mutationFn: async (data: { dayId: string; transactionType: string; amount: number; reference?: string; description?: string; transferTo?: string; sourceType?: string }) => {
       const response = await apiRequest('POST', `/api/cash-register/days/${data.dayId}/transactions`, data);
       return response.json();
     },
@@ -139,7 +143,7 @@ export default function CashRegisterPage() {
       }
       toast({ title: "Success", description: "Transaction added" });
       // Reset forms
-      setNewCashReceived({ amount: '', reference: '', description: '' });
+      setNewCashReceived({ amount: '', reference: '', description: '', sourceType: 'sale_cash' });
       setNewExpense({ amount: '', reference: '', description: '' });
       setNewTransfer({ amount: '', transferTo: '', description: '' });
       setIsAddingCash(false);
@@ -148,6 +152,38 @@ export default function CashRegisterPage() {
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Upload document mutation
+  const uploadDocumentMutation = useMutation({
+    mutationFn: async ({ transactionId, file }: { transactionId: string; file: File }) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch(`/api/cash-register/transactions/${transactionId}/document`, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to upload document');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/cash-register/days'] });
+      if (selectedDay) {
+        viewDayDetails(selectedDay.id);
+      }
+      toast({ title: "Success", description: "Document uploaded" });
+      setUploadingDoc(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+      setUploadingDoc(null);
     },
   });
 
@@ -292,7 +328,24 @@ export default function CashRegisterPage() {
       amount: Math.round(parseFloat(newCashReceived.amount) * 100),
       reference: newCashReceived.reference,
       description: newCashReceived.description,
+      sourceType: newCashReceived.sourceType,
     });
+  };
+
+  const handleDocumentUpload = (transactionId: string, file: File) => {
+    setUploadingDoc(transactionId);
+    uploadDocumentMutation.mutate({ transactionId, file });
+  };
+
+  const getSourceTypeLabel = (sourceType: string | null | undefined) => {
+    switch (sourceType) {
+      case 'sale_cash': return 'Sale Cash';
+      case 'secondary_sale': return 'Secondary Sale';
+      case 'upi': return 'UPI';
+      case 'bank_transfer': return 'Bank Transfer';
+      case 'other': return 'Other';
+      default: return sourceType || '';
+    }
   };
 
   const handleAddExpense = () => {
@@ -474,13 +527,40 @@ export default function CashRegisterPage() {
             <CardContent>
               {isAddingCash && (
                 <div className="mb-4 p-3 border rounded-lg bg-muted/30 space-y-2">
-                  <Input
-                    type="number"
-                    placeholder="Amount"
-                    value={newCashReceived.amount}
-                    onChange={(e) => setNewCashReceived(prev => ({ ...prev, amount: e.target.value }))}
-                    data-testid="input-cash-amount"
-                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      type="number"
+                      placeholder="Amount"
+                      value={newCashReceived.amount}
+                      onChange={(e) => setNewCashReceived(prev => ({ ...prev, amount: e.target.value }))}
+                      data-testid="input-cash-amount"
+                    />
+                    <Select 
+                      value={newCashReceived.sourceType} 
+                      onValueChange={(v) => setNewCashReceived(prev => ({ ...prev, sourceType: v }))}
+                    >
+                      <SelectTrigger data-testid="select-cash-source">
+                        <SelectValue placeholder="Source Type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="sale_cash">
+                          <span className="flex items-center gap-2"><Banknote className="w-3 h-3" /> Sale Cash</span>
+                        </SelectItem>
+                        <SelectItem value="secondary_sale">
+                          <span className="flex items-center gap-2"><Receipt className="w-3 h-3" /> Secondary Sale</span>
+                        </SelectItem>
+                        <SelectItem value="upi">
+                          <span className="flex items-center gap-2"><CreditCard className="w-3 h-3" /> UPI</span>
+                        </SelectItem>
+                        <SelectItem value="bank_transfer">
+                          <span className="flex items-center gap-2"><ArrowDownRight className="w-3 h-3" /> Bank Transfer</span>
+                        </SelectItem>
+                        <SelectItem value="other">
+                          <span className="flex items-center gap-2"><DollarSign className="w-3 h-3" /> Other</span>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <Input
                     placeholder="Reference (optional)"
                     value={newCashReceived.reference}
@@ -511,16 +591,46 @@ export default function CashRegisterPage() {
                   <div className="space-y-2">
                     {cashReceivedTxns.map((txn) => (
                       <div key={txn.id} className="flex items-center justify-between p-2 border rounded-md hover-elevate" data-testid={`txn-cash-${txn.id}`}>
-                        <div>
-                          <div className="font-medium text-green-600">{formatCurrency(txn.amount)}</div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-green-600">{formatCurrency(txn.amount)}</span>
+                            {txn.sourceType && (
+                              <Badge variant="outline" className="text-xs">
+                                {getSourceTypeLabel(txn.sourceType)}
+                              </Badge>
+                            )}
+                          </div>
                           {txn.reference && <div className="text-xs text-muted-foreground">{txn.reference}</div>}
                           {txn.description && <div className="text-xs text-muted-foreground">{txn.description}</div>}
+                          {txn.documentName && (
+                            <a href={txn.documentPath || '#'} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 flex items-center gap-1 mt-1">
+                              <Paperclip className="w-3 h-3" /> {txn.documentName}
+                            </a>
+                          )}
                         </div>
-                        {isDayOpen && (
-                          <Button size="icon" variant="ghost" onClick={() => deleteTransactionMutation.mutate(txn.id)} data-testid={`button-delete-cash-${txn.id}`}>
-                            <Trash2 className="w-4 h-4 text-muted-foreground" />
-                          </Button>
-                        )}
+                        <div className="flex items-center gap-1">
+                          {isDayOpen && !txn.documentPath && (
+                            <label className="cursor-pointer">
+                              <input
+                                type="file"
+                                className="hidden"
+                                accept=".pdf,.jpg,.jpeg,.png"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) handleDocumentUpload(txn.id, file);
+                                }}
+                              />
+                              <Button size="icon" variant="ghost" asChild data-testid={`button-upload-doc-${txn.id}`}>
+                                <span><Paperclip className="w-4 h-4 text-muted-foreground" /></span>
+                              </Button>
+                            </label>
+                          )}
+                          {isDayOpen && (
+                            <Button size="icon" variant="ghost" onClick={() => deleteTransactionMutation.mutate(txn.id)} data-testid={`button-delete-cash-${txn.id}`}>
+                              <Trash2 className="w-4 h-4 text-muted-foreground" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -585,21 +695,46 @@ export default function CashRegisterPage() {
                   <div className="space-y-2">
                     {expenseTxns.map((txn) => (
                       <div key={txn.id} className="flex items-center justify-between p-2 border rounded-md hover-elevate" data-testid={`txn-expense-${txn.id}`}>
-                        <div>
+                        <div className="flex-1">
                           <div className="font-medium text-red-600">{formatCurrency(txn.amount)}</div>
                           {txn.reference && <div className="text-xs text-muted-foreground">{txn.reference}</div>}
                           {txn.description && <div className="text-xs text-muted-foreground">{txn.description}</div>}
-                          {txn.convertedToVoucherId && (
-                            <Badge variant="outline" className="text-xs mt-1">
-                              <Receipt className="w-3 h-3 mr-1" /> Voucher
-                            </Badge>
+                          <div className="flex items-center gap-2 mt-1">
+                            {txn.convertedToVoucherId && (
+                              <Badge variant="outline" className="text-xs">
+                                <Receipt className="w-3 h-3 mr-1" /> Voucher
+                              </Badge>
+                            )}
+                            {txn.documentName && (
+                              <a href={txn.documentPath || '#'} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 flex items-center gap-1">
+                                <Paperclip className="w-3 h-3" /> {txn.documentName}
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {isDayOpen && !txn.documentPath && (
+                            <label className="cursor-pointer">
+                              <input
+                                type="file"
+                                className="hidden"
+                                accept=".pdf,.jpg,.jpeg,.png"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) handleDocumentUpload(txn.id, file);
+                                }}
+                              />
+                              <Button size="icon" variant="ghost" asChild data-testid={`button-upload-doc-exp-${txn.id}`}>
+                                <span><Paperclip className="w-4 h-4 text-muted-foreground" /></span>
+                              </Button>
+                            </label>
+                          )}
+                          {isDayOpen && (
+                            <Button size="icon" variant="ghost" onClick={() => deleteTransactionMutation.mutate(txn.id)} data-testid={`button-delete-expense-${txn.id}`}>
+                              <Trash2 className="w-4 h-4 text-muted-foreground" />
+                            </Button>
                           )}
                         </div>
-                        {isDayOpen && (
-                          <Button size="icon" variant="ghost" onClick={() => deleteTransactionMutation.mutate(txn.id)} data-testid={`button-delete-expense-${txn.id}`}>
-                            <Trash2 className="w-4 h-4 text-muted-foreground" />
-                          </Button>
-                        )}
                       </div>
                     ))}
                   </div>
@@ -664,16 +799,39 @@ export default function CashRegisterPage() {
                   <div className="space-y-2">
                     {transferTxns.map((txn) => (
                       <div key={txn.id} className="flex items-center justify-between p-2 border rounded-md hover-elevate" data-testid={`txn-transfer-${txn.id}`}>
-                        <div>
+                        <div className="flex-1">
                           <div className="font-medium text-blue-600">{formatCurrency(txn.amount)}</div>
                           {txn.transferTo && <div className="text-xs font-medium">To: {txn.transferTo}</div>}
                           {txn.description && <div className="text-xs text-muted-foreground">{txn.description}</div>}
+                          {txn.documentName && (
+                            <a href={txn.documentPath || '#'} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 flex items-center gap-1 mt-1">
+                              <Paperclip className="w-3 h-3" /> {txn.documentName}
+                            </a>
+                          )}
                         </div>
-                        {isDayOpen && (
-                          <Button size="icon" variant="ghost" onClick={() => deleteTransactionMutation.mutate(txn.id)} data-testid={`button-delete-transfer-${txn.id}`}>
-                            <Trash2 className="w-4 h-4 text-muted-foreground" />
-                          </Button>
-                        )}
+                        <div className="flex items-center gap-1">
+                          {isDayOpen && !txn.documentPath && (
+                            <label className="cursor-pointer">
+                              <input
+                                type="file"
+                                className="hidden"
+                                accept=".pdf,.jpg,.jpeg,.png"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) handleDocumentUpload(txn.id, file);
+                                }}
+                              />
+                              <Button size="icon" variant="ghost" asChild data-testid={`button-upload-doc-trans-${txn.id}`}>
+                                <span><Paperclip className="w-4 h-4 text-muted-foreground" /></span>
+                              </Button>
+                            </label>
+                          )}
+                          {isDayOpen && (
+                            <Button size="icon" variant="ghost" onClick={() => deleteTransactionMutation.mutate(txn.id)} data-testid={`button-delete-transfer-${txn.id}`}>
+                              <Trash2 className="w-4 h-4 text-muted-foreground" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
