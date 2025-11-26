@@ -8900,14 +8900,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
               new Date(d.registerDate) > new Date(lastImportedDay.registerDate)
             );
             
-            // Fix opening balances in sequence
+            // Fix opening balances in sequence and set status to 'open' for reconciliation
             let previousClosing = lastImportedClosing;
             for (const manualDay of manualDaysAfterImport) {
               if (manualDay.openingBalance !== previousClosing) {
-                // Fix this day's opening balance
+                // Fix this day's opening balance and set to open for reconciliation
                 const oldOB = manualDay.openingBalance;
                 await storage.updateCashRegisterDay(manualDay.id, {
                   openingBalance: previousClosing,
+                  status: 'open', // Reopen so user can reconcile with new OB
                 });
                 fixedDays.push({
                   id: manualDay.id,
@@ -8916,7 +8917,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   newOB: previousClosing,
                 });
                 await logAudit(req.user?.id, 'UPDATE', 'cash_register_days', manualDay.id, 
-                  `Opening balance auto-fixed from ${oldOB} to ${previousClosing} after all imported days closed`);
+                  `Opening balance auto-fixed from ${oldOB} to ${previousClosing} and status set to open for reconciliation`);
               }
               // Calculate this day's closing for the next day in chain
               previousClosing = previousClosing + manualDay.totalCashReceived - manualDay.totalExpenses - manualDay.totalTransfers;
