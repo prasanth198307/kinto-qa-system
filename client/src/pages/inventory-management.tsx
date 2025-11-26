@@ -1379,9 +1379,20 @@ function ProductDialog({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Base Unit</FormLabel>
-                        <FormControl>
-                          <Input placeholder="kg" {...field} value={field.value || ''} data-testid="input-base-unit" />
-                        </FormControl>
+                        <Select onValueChange={field.onChange} value={field.value || ''}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-base-unit">
+                              <SelectValue placeholder="Select base unit" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {uoms.map(uom => (
+                              <SelectItem key={uom.id} value={uom.name}>
+                                {uom.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -1392,9 +1403,20 @@ function ProductDialog({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Derived Unit</FormLabel>
-                        <FormControl>
-                          <Input placeholder="bottle" {...field} value={field.value || ''} data-testid="input-derived-unit" />
-                        </FormControl>
+                        <Select onValueChange={field.onChange} value={field.value || ''}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-derived-unit">
+                              <SelectValue placeholder="Select derived unit" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {uoms.map(uom => (
+                              <SelectItem key={uom.id} value={uom.name}>
+                                {uom.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -1415,6 +1437,7 @@ function ProductDialog({
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="None">None</SelectItem>
+                          <SelectItem value="multiply">Multiply</SelectItem>
                           <SelectItem value="Direct">Direct</SelectItem>
                           <SelectItem value="Formula-Based">Formula-Based</SelectItem>
                         </SelectContent>
@@ -1424,7 +1447,7 @@ function ProductDialog({
                   )}
                 />
 
-                {conversionMethod === 'Direct' && (
+                {(conversionMethod === 'Direct' || conversionMethod === 'multiply') && (
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
@@ -1541,7 +1564,7 @@ function ProductDialog({
                   </>
                 )}
 
-                {(conversionMethod === 'Direct' || conversionMethod === 'Formula-Based') && (
+                {(conversionMethod === 'Direct' || conversionMethod === 'Formula-Based' || conversionMethod === 'multiply') && (
                   <FormItem>
                     <FormLabel>Usable Derived Units (Auto-Calculated)</FormLabel>
                     <Input 
