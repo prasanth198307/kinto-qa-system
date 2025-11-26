@@ -1,10 +1,28 @@
 import * as XLSX from 'xlsx';
+import { format } from 'date-fns';
 import { storage } from './storage';
 import type { 
   InsertCashRegisterDay, 
   InsertCashRegisterTransaction, 
   InsertCashRegisterExpenseItem 
 } from '@shared/schema';
+
+// Counter to ensure unique voucher numbers within same import batch
+let voucherCounter = 0;
+
+// Helper to generate expense voucher number with collision prevention
+function generateVoucherNumber(date: string): string {
+  const dateStr = date.replace(/-/g, '');
+  const timestamp = Date.now().toString(36);
+  voucherCounter++;
+  const counter = voucherCounter.toString().padStart(4, '0');
+  return `EXP-CR-${dateStr}-${timestamp}-${counter}`;
+}
+
+// Reset counter at start of each import
+function resetVoucherCounter() {
+  voucherCounter = 0;
+}
 
 // Type definitions for parsed data
 export interface ParsedExpenseItem {
@@ -431,6 +449,9 @@ export async function commitImport(
   fileName: string, 
   createdBy: string
 ): Promise<ImportResult> {
+  // Reset voucher counter for this import batch
+  resetVoucherCounter();
+  
   const result: ImportResult = {
     success: false,
     daysCreated: 0,
@@ -533,11 +554,42 @@ export async function commitImport(
           for (const item of row.parsedItems) {
             // Each item gets its own transaction/voucher
             const itemAmount = item.amount > 0 ? item.amount : 0;
+            const itemDescription = item.label || item.rawText;
+            
+            // Create expense voucher first
+            const voucherNumber = generateVoucherNumber(date);
+            const voucher = await storage.createExpenseVoucher({
+              voucherNumber,
+              voucherDate: date,
+              payeeType: 'staff',
+              payeeName: salespersonName || 'Cash Register Import',
+              payeeId: null,
+              totalAmount: itemAmount,
+              subtotal: itemAmount,
+              gstAmount: 0,
+              paymentMode: 'cash',
+              status: 'submitted',
+              purpose: `Imported: ${itemDescription}`,
+              preparedBy: createdBy,
+            });
+            
+            // Create expense item for the voucher
+            await storage.createExpenseItem({
+              voucherId: voucher.id,
+              description: itemDescription,
+              amount: itemAmount,
+              gstAmount: 0,
+              categoryId: null,
+            });
+            
+            // Create cash register transaction linked to voucher
             const expenseTransaction = await storage.createCashRegisterTransaction({
               dayId: createdDay.id,
               transactionType: 'expense',
               amount: itemAmount,
-              description: item.label || item.rawText,
+              description: itemDescription,
+              convertedToVoucherId: voucher.id,
+              convertedAt: new Date().toISOString(),
             });
             result.transactionsCreated++;
             
@@ -551,12 +603,43 @@ export async function commitImport(
             result.expenseItemsCreated++;
           }
         } else if (row.expenses > 0) {
-          // Fallback: no parsed items, create single expense transaction
+          // Fallback: no parsed items, create single expense transaction with voucher
+          const itemDescription = row.itemDetails || 'Expense from Excel import';
+          
+          // Create expense voucher
+          const voucherNumber = generateVoucherNumber(date);
+          const voucher = await storage.createExpenseVoucher({
+            voucherNumber,
+            voucherDate: date,
+            payeeType: 'staff',
+            payeeName: salespersonName,
+            payeeId: null,
+            totalAmount: row.expenses,
+            subtotal: row.expenses,
+            gstAmount: 0,
+            paymentMode: 'cash',
+            status: 'approved',
+            purpose: `Imported: ${itemDescription}`,
+            preparedBy: createdBy,
+          });
+          
+          // Create expense item for the voucher
+          await storage.createExpenseItem({
+            voucherId: voucher.id,
+            description: itemDescription,
+            amount: row.expenses,
+            gstAmount: 0,
+            categoryId: null,
+          });
+          
+          // Create cash register transaction linked to voucher
           const expenseTransaction = await storage.createCashRegisterTransaction({
             dayId: createdDay.id,
             transactionType: 'expense',
             amount: row.expenses,
-            description: row.itemDetails || 'Expense from Excel import',
+            description: itemDescription,
+            convertedToVoucherId: voucher.id,
+            convertedAt: new Date().toISOString(),
           });
           result.transactionsCreated++;
         }

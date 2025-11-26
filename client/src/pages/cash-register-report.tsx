@@ -441,6 +441,10 @@ export default function CashRegisterReport() {
             <FileSpreadsheet className="w-4 h-4 mr-2" />
             Report
           </TabsTrigger>
+          <TabsTrigger value="vouchers" data-testid="tab-vouchers">
+            <Receipt className="w-4 h-4 mr-2" />
+            Print Vouchers
+          </TabsTrigger>
           <TabsTrigger value="documents" data-testid="tab-documents">
             <FileText className="w-4 h-4 mr-2" />
             Documents
@@ -822,6 +826,178 @@ export default function CashRegisterReport() {
           </Card>
         </>
       ) : null}
+      </TabsContent>
+
+      <TabsContent value="vouchers" className="space-y-6 mt-4">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Print Expense Vouchers</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Print expense vouchers for a specific date or date range. Vouchers are printed in A5 format (2 per A4 page).
+            </p>
+            
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <Button
+                variant="outline"
+                className="h-auto py-4 flex flex-col items-center gap-2"
+                onClick={() => {
+                  const today = format(new Date(), 'yyyy-MM-dd');
+                  const params = new URLSearchParams({
+                    startDate: today,
+                    endDate: today,
+                    mode: 'day',
+                  });
+                  window.open(`/cash-register/vouchers/print?${params}`, '_blank');
+                }}
+                data-testid="button-print-today-vouchers"
+              >
+                <Calendar className="w-6 h-6" />
+                <span className="font-medium">Today's Vouchers</span>
+                <span className="text-xs text-muted-foreground">{format(new Date(), 'MMM d, yyyy')}</span>
+              </Button>
+
+              <Button
+                variant="outline"
+                className="h-auto py-4 flex flex-col items-center gap-2"
+                onClick={() => {
+                  const params = new URLSearchParams({
+                    startDate,
+                    endDate,
+                    mode: 'range',
+                  });
+                  window.open(`/cash-register/vouchers/print?${params}`, '_blank');
+                }}
+                data-testid="button-print-period-vouchers"
+              >
+                <FileSpreadsheet className="w-6 h-6" />
+                <span className="font-medium">Current Period</span>
+                <span className="text-xs text-muted-foreground">
+                  {format(new Date(startDate), 'MMM d')} - {format(new Date(endDate), 'MMM d')}
+                </span>
+              </Button>
+
+              <Button
+                variant="outline"
+                className="h-auto py-4 flex flex-col items-center gap-2"
+                onClick={() => {
+                  const monthStart = startOfMonth(new Date());
+                  const monthEnd = endOfMonth(new Date());
+                  const params = new URLSearchParams({
+                    startDate: format(monthStart, 'yyyy-MM-dd'),
+                    endDate: format(monthEnd, 'yyyy-MM-dd'),
+                    mode: 'range',
+                  });
+                  window.open(`/cash-register/vouchers/print?${params}`, '_blank');
+                }}
+                data-testid="button-print-month-vouchers"
+              >
+                <Receipt className="w-6 h-6" />
+                <span className="font-medium">This Month</span>
+                <span className="text-xs text-muted-foreground">{format(new Date(), 'MMMM yyyy')}</span>
+              </Button>
+
+              <Button
+                variant="outline"
+                className="h-auto py-4 flex flex-col items-center gap-2"
+                onClick={() => {
+                  const lastMonth = subMonths(new Date(), 1);
+                  const monthStart = startOfMonth(lastMonth);
+                  const monthEnd = endOfMonth(lastMonth);
+                  const params = new URLSearchParams({
+                    startDate: format(monthStart, 'yyyy-MM-dd'),
+                    endDate: format(monthEnd, 'yyyy-MM-dd'),
+                    mode: 'range',
+                  });
+                  window.open(`/cash-register/vouchers/print?${params}`, '_blank');
+                }}
+                data-testid="button-print-last-month-vouchers"
+              >
+                <Printer className="w-6 h-6" />
+                <span className="font-medium">Last Month</span>
+                <span className="text-xs text-muted-foreground">{format(subMonths(new Date(), 1), 'MMMM yyyy')}</span>
+              </Button>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Custom Date Range</Label>
+              <div className="flex flex-wrap gap-4 items-end">
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Start Date</Label>
+                  <Input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(e) => setCustomStartDate(e.target.value)}
+                    className="w-[160px]"
+                    data-testid="input-voucher-start-date"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">End Date</Label>
+                  <Input
+                    type="date"
+                    value={customEndDate}
+                    onChange={(e) => setCustomEndDate(e.target.value)}
+                    className="w-[160px]"
+                    data-testid="input-voucher-end-date"
+                  />
+                </div>
+                <Button
+                  onClick={() => {
+                    if (!customStartDate || !customEndDate) {
+                      toast({
+                        title: 'Date range required',
+                        description: 'Please select both start and end dates.',
+                        variant: 'destructive',
+                      });
+                      return;
+                    }
+                    if (new Date(customStartDate) > new Date(customEndDate)) {
+                      toast({
+                        title: 'Invalid date range',
+                        description: 'Start date cannot be after end date.',
+                        variant: 'destructive',
+                      });
+                      return;
+                    }
+                    const params = new URLSearchParams({
+                      startDate: customStartDate,
+                      endDate: customEndDate,
+                      mode: 'range',
+                    });
+                    window.open(`/cash-register/vouchers/print?${params}`, '_blank');
+                  }}
+                  disabled={!customStartDate || !customEndDate}
+                  data-testid="button-print-custom-vouchers"
+                >
+                  <Printer className="w-4 h-4 mr-2" />
+                  Print Vouchers
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Receipt className="w-4 h-4" />
+              Print Tips
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="text-sm text-muted-foreground space-y-2">
+              <li>• Vouchers are formatted for A5 size (half of A4 page)</li>
+              <li>• Two vouchers print per A4 page for easy cutting</li>
+              <li>• Each voucher includes: Voucher number, date, payee, items, amounts, and signature boxes</li>
+              <li>• Signature boxes: Receiver's Signature, Cashier's Signature, Approved By</li>
+              <li>• Company name "Inmoisture Private Limited" appears on each voucher</li>
+            </ul>
+          </CardContent>
+        </Card>
       </TabsContent>
 
       <TabsContent value="documents" className="space-y-6 mt-4">

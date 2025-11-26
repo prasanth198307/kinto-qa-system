@@ -22,7 +22,7 @@ import {
   Wallet, ArrowUpRight, ArrowDownRight, RefreshCw, FileSpreadsheet,
   AlertCircle, TrendingUp, TrendingDown, DollarSign, CheckCircle2, Lock,
   AlertTriangle, Edit, Save, Trash2, PiggyBank, ArrowLeft, ChevronRight,
-  Paperclip, FileText, CreditCard, Banknote
+  Paperclip, FileText, CreditCard, Banknote, Printer
 } from "lucide-react";
 import type { CashRegisterDay, CashRegisterTransaction, CashRegisterExpenseItem, PaginationMeta } from "@shared/schema";
 import { DataTablePagination } from "@/components/DataTablePagination";
@@ -731,6 +731,17 @@ export default function CashRegisterPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
+                          {txn.convertedToVoucherId && (
+                            <Button 
+                              size="icon" 
+                              variant="ghost" 
+                              onClick={() => window.open(`/cash-register/vouchers/print?id=${txn.convertedToVoucherId}&mode=single`, '_blank')}
+                              title="Print Voucher"
+                              data-testid={`button-print-voucher-${txn.id}`}
+                            >
+                              <Printer className="w-4 h-4 text-muted-foreground" />
+                            </Button>
+                          )}
                           {isDayOpen && !txn.documentPath && (
                             <label className="cursor-pointer">
                               <input
