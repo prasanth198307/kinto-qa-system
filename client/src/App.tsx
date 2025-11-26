@@ -203,28 +203,19 @@ function OperatorDashboard() {
 
 function ReviewerDashboard() {
   const { logoutMutation } = useAuth();
-  const [activeView, setActiveView] = useState('submissions');
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('overview');
 
   const handleLogout = () => {
     logoutMutation.mutate();
   };
 
-  const navSections: NavSection[] = [
-    {
-      id: "main",
-      items: [
-        {
-          id: "submissions",
-          label: "Review Submissions",
-          icon: ClipboardCheck,
-        },
-      ],
-    },
-  ];
+  // Use the same navigation as admin dashboard for consistency
+  const navSections = getAdminNavSections(setLocation);
 
   const renderContent = () => {
     switch (activeView) {
-      case 'submissions':
+      case 'overview':
         return <ReviewerDashboardPage />;
       default:
         return <ReviewerDashboardPage />;
@@ -238,7 +229,9 @@ function ReviewerDashboard() {
       notificationCount={0}
       navSections={navSections}
       activeView={activeView}
-      onNavigate={setActiveView}
+      onNavigate={(viewId) => {
+        setActiveView(viewId);
+      }}
     >
       {renderContent()}
     </DashboardShell>
@@ -271,130 +264,8 @@ function ManagerDashboard() {
     logoutMutation.mutate();
   };
 
-  const navSections: NavSection[] = [
-    {
-      id: "main",
-      items: [
-        {
-          id: "overview",
-          label: "Overview",
-          icon: LayoutDashboard,
-        },
-        {
-          id: "assignments",
-          label: "Assignments",
-          icon: ClipboardCheck,
-        },
-        {
-          id: "reports",
-          label: "Reports",
-          icon: FileText,
-        },
-      ],
-    },
-    {
-      id: "production-section",
-      label: "Production",
-      items: [
-        { id: "products", label: "Product Master", icon: Package },
-        { id: "raw-materials", label: "Raw Materials", icon: Box },
-        { id: "finished-goods", label: "Finished Goods", icon: CheckCircle2 },
-      ],
-      quickActions: [
-        {
-          id: "add-product",
-          label: "Add Product",
-          icon: Package,
-          onClick: () => setActiveView("products"),
-        },
-        {
-          id: "add-raw-material",
-          label: "Add Raw Material",
-          icon: Box,
-          onClick: () => setActiveView("raw-materials"),
-        },
-        {
-          id: "add-finished-good",
-          label: "Add Finished Good",
-          icon: CheckCircle2,
-          onClick: () => setActiveView("finished-goods"),
-        },
-      ],
-    },
-    {
-      id: "inventory-section",
-      label: "Inventory",
-      items: [
-        { id: "uom", label: "Unit of Measurement", icon: Layers },
-        { id: "vendors", label: "Vendor Master", icon: Building2, onClick: () => setLocation('/vendor-management') },
-        { id: "vendor-types", label: "Vendor Types", icon: Shield },
-        { id: "raw-material-types", label: "Raw Material Types", icon: Archive },
-      ],
-      quickActions: [
-        {
-          id: "add-uom",
-          label: "Add UOM",
-          icon: Layers,
-          onClick: () => setActiveView("uom"),
-        },
-        {
-          id: "add-vendor",
-          label: "Add Vendor",
-          icon: Building2,
-          onClick: () => setActiveView("vendors"),
-        },
-        {
-          id: "add-raw-material-type",
-          label: "Add Material Type",
-          icon: Archive,
-          onClick: () => setActiveView("raw-material-types"),
-        },
-      ],
-    },
-    {
-      id: "operations",
-      label: "Operations",
-      items: [
-        { id: "purchase-orders", label: "Purchase Orders", icon: ShoppingCart },
-        { id: "raw-material-issuance", label: "Raw Material Issuance", icon: Package },
-        { id: "production-entries", label: "Production Entries", icon: ListChecks },
-        { id: "production-reconciliations", label: "Production Reconciliation", icon: Calculator },
-        { id: "gatepasses", label: "Gatepasses", icon: FileText },
-        { id: "invoices", label: "Invoices", icon: FileText },
-        { id: "dispatch-tracking", label: "Dispatch Tracking", icon: Truck },
-        { id: "sales-returns", label: "Sales Returns", icon: Package },
-        { id: "cancelled-invoices", label: "Cancelled Invoices", icon: FileX },
-        { id: "production-reconciliation-report", label: "Production Reconciliation Report", icon: FileStack },
-        { id: "variance-analytics", label: "Variance Analytics", icon: TrendingUp },
-      ],
-      quickActions: [
-        {
-          id: "add-purchase-order",
-          label: "Add Purchase Order",
-          icon: ShoppingCart,
-          onClick: () => setActiveView("purchase-orders"),
-        },
-        {
-          id: "create-issuance",
-          label: "Create Issuance",
-          icon: Package,
-          onClick: () => setActiveView("raw-material-issuance"),
-        },
-        {
-          id: "create-gatepass",
-          label: "Create Gatepass",
-          icon: FileText,
-          onClick: () => setActiveView("gatepasses"),
-        },
-        {
-          id: "create-invoice",
-          label: "Create Invoice",
-          icon: FileText,
-          onClick: () => setActiveView("invoices"),
-        },
-      ],
-    },
-  ];
+  // Use the same navigation as admin dashboard for consistency
+  const navSections = getAdminNavSections(setLocation);
 
   const renderContent = () => {
     switch (activeView) {
@@ -924,52 +795,8 @@ function VendorManagementPage() {
   const [, setLocation] = useLocation();
   const [activeView, setActiveView] = useState('vendors');
   
-  const navSections: NavSection[] = [
-    {
-      id: "main",
-      items: [
-        { id: "overview", label: "Overview Dashboard", icon: LayoutDashboard, onClick: () => setLocation('/') },
-        { id: "sales-dashboard", label: "Sales Dashboard", icon: TrendingUp },
-        { id: "vendor-analytics", label: "Vendor Analytics", icon: Building2, onClick: () => setLocation('/vendor-analytics') },
-        { id: "reports", label: "Reports", icon: FileText, onClick: () => setLocation('/reports') },
-      ],
-    },
-    {
-      id: "config-section",
-      label: "Configuration",
-      items: [
-        { id: "users", label: "Users", icon: Users },
-        { id: "role-permissions", label: "Role Permissions", icon: Shield },
-        { id: "machines", label: "Machines", icon: Settings },
-        { id: "machine-types", label: "Machine Types", icon: Layers },
-        { id: "spare-parts", label: "Spare Parts", icon: Package },
-        { id: "pm-templates", label: "PM Templates", icon: ListChecks },
-        { id: "template-management", label: "Invoice Templates", icon: FileStack },
-        { id: "uom", label: "Unit of Measurement", icon: Layers },
-        { id: "vendors", label: "Vendor Master", icon: Building2, onClick: () => setLocation('/vendor-management') },
-        { id: "vendor-types", label: "Vendor Types", icon: Shield },
-        { id: "raw-material-types", label: "Raw Material Types", icon: Archive },
-        { id: "notification-settings", label: "Notification Settings", icon: Bell },
-        { id: "data-import", label: "Data Import", icon: Upload },
-        { id: "documents", label: "Documents", icon: FolderOpen, onClick: () => setLocation('/documents') },
-        { id: "expenses", label: "Expenses", icon: Wallet, onClick: () => setLocation('/expenses') },
-        { id: "cash-register", label: "Cash Register", icon: Calculator, onClick: () => setLocation('/cash-register') },
-        { id: "cash-register-report", label: "Cash Report", icon: FileStack, onClick: () => setLocation('/cash-register-report') },
-      ],
-    },
-    {
-      id: "production-section",
-      label: "Production",
-      items: [
-        { id: "products", label: "Product Master", icon: Package },
-        { id: "product-categories", label: "Product Categories", icon: Layers },
-        { id: "product-types", label: "Product Types", icon: Archive },
-        { id: "checklists", label: "Checklist Builder", icon: FileText },
-        { id: "raw-materials", label: "Raw Materials", icon: Box },
-        { id: "finished-goods", label: "Finished Goods", icon: CheckCircle2 },
-      ],
-    },
-  ];
+  // Use the same navigation as admin dashboard for consistency
+  const navSections = getAdminNavSections(setLocation);
   
   return (
     <DashboardShell
@@ -980,7 +807,6 @@ function VendorManagementPage() {
       activeView={activeView}
       onNavigate={(viewId) => {
         setActiveView(viewId);
-        setLocation('/');
       }}
     >
       <VendorManagement />
@@ -994,52 +820,8 @@ function ReportsPage() {
   const [, setLocation] = useLocation();
   const [activeView, setActiveView] = useState('reports');
   
-  const navSections: NavSection[] = [
-    {
-      id: "main",
-      items: [
-        { id: "overview", label: "Overview Dashboard", icon: LayoutDashboard, onClick: () => setLocation('/') },
-        { id: "sales-dashboard", label: "Sales Dashboard", icon: TrendingUp },
-        { id: "vendor-analytics", label: "Vendor Analytics", icon: Building2, onClick: () => setLocation('/vendor-analytics') },
-        { id: "reports", label: "Reports", icon: FileText, onClick: () => setLocation('/reports') },
-      ],
-    },
-    {
-      id: "config-section",
-      label: "Configuration",
-      items: [
-        { id: "users", label: "Users", icon: Users },
-        { id: "role-permissions", label: "Role Permissions", icon: Shield },
-        { id: "machines", label: "Machines", icon: Settings },
-        { id: "machine-types", label: "Machine Types", icon: Layers },
-        { id: "spare-parts", label: "Spare Parts", icon: Package },
-        { id: "pm-templates", label: "PM Templates", icon: ListChecks },
-        { id: "template-management", label: "Invoice Templates", icon: FileStack },
-        { id: "uom", label: "Unit of Measurement", icon: Layers },
-        { id: "vendors", label: "Vendor Master", icon: Building2, onClick: () => setLocation('/vendor-management') },
-        { id: "vendor-types", label: "Vendor Types", icon: Shield },
-        { id: "raw-material-types", label: "Raw Material Types", icon: Archive },
-        { id: "notification-settings", label: "Notification Settings", icon: Bell },
-        { id: "data-import", label: "Data Import", icon: Upload },
-        { id: "documents", label: "Documents", icon: FolderOpen, onClick: () => setLocation('/documents') },
-        { id: "expenses", label: "Expenses", icon: Wallet, onClick: () => setLocation('/expenses') },
-        { id: "cash-register", label: "Cash Register", icon: Calculator, onClick: () => setLocation('/cash-register') },
-        { id: "cash-register-report", label: "Cash Report", icon: FileStack, onClick: () => setLocation('/cash-register-report') },
-      ],
-    },
-    {
-      id: "production-section",
-      label: "Production",
-      items: [
-        { id: "products", label: "Product Master", icon: Package },
-        { id: "product-categories", label: "Product Categories", icon: Layers },
-        { id: "product-types", label: "Product Types", icon: Archive },
-        { id: "checklists", label: "Checklist Builder", icon: FileText },
-        { id: "raw-materials", label: "Raw Materials", icon: Box },
-        { id: "finished-goods", label: "Finished Goods", icon: CheckCircle2 },
-      ],
-    },
-  ];
+  // Use the same navigation as admin dashboard for consistency
+  const navSections = getAdminNavSections(setLocation);
   
   return (
     <DashboardShell
@@ -1050,7 +832,6 @@ function ReportsPage() {
       activeView={activeView}
       onNavigate={(viewId) => {
         setActiveView(viewId);
-        setLocation('/');
       }}
     >
       <Reports showHeader={false} />
@@ -1064,52 +845,8 @@ function PendingPaymentsPage() {
   const [, setLocation] = useLocation();
   const [activeView, setActiveView] = useState('pending-payments');
   
-  const navSections: NavSection[] = [
-    {
-      id: "main",
-      items: [
-        { id: "overview", label: "Overview Dashboard", icon: LayoutDashboard, onClick: () => setLocation('/') },
-        { id: "sales-dashboard", label: "Sales Dashboard", icon: TrendingUp },
-        { id: "vendor-analytics", label: "Vendor Analytics", icon: Building2, onClick: () => setLocation('/vendor-analytics') },
-        { id: "reports", label: "Reports", icon: FileText, onClick: () => setLocation('/reports') },
-      ],
-    },
-    {
-      id: "config-section",
-      label: "Configuration",
-      items: [
-        { id: "users", label: "Users", icon: Users },
-        { id: "role-permissions", label: "Role Permissions", icon: Shield },
-        { id: "machines", label: "Machines", icon: Settings },
-        { id: "machine-types", label: "Machine Types", icon: Layers },
-        { id: "spare-parts", label: "Spare Parts", icon: Package },
-        { id: "pm-templates", label: "PM Templates", icon: ListChecks },
-        { id: "template-management", label: "Invoice Templates", icon: FileStack },
-        { id: "uom", label: "Unit of Measurement", icon: Layers },
-        { id: "vendors", label: "Vendor Master", icon: Building2, onClick: () => setLocation('/vendor-management') },
-        { id: "vendor-types", label: "Vendor Types", icon: Shield },
-        { id: "raw-material-types", label: "Raw Material Types", icon: Archive },
-        { id: "notification-settings", label: "Notification Settings", icon: Bell },
-        { id: "data-import", label: "Data Import", icon: Upload },
-        { id: "documents", label: "Documents", icon: FolderOpen, onClick: () => setLocation('/documents') },
-        { id: "expenses", label: "Expenses", icon: Wallet, onClick: () => setLocation('/expenses') },
-        { id: "cash-register", label: "Cash Register", icon: Calculator, onClick: () => setLocation('/cash-register') },
-        { id: "cash-register-report", label: "Cash Report", icon: FileStack, onClick: () => setLocation('/cash-register-report') },
-      ],
-    },
-    {
-      id: "production-section",
-      label: "Production",
-      items: [
-        { id: "products", label: "Product Master", icon: Package },
-        { id: "product-categories", label: "Product Categories", icon: Layers },
-        { id: "product-types", label: "Product Types", icon: Archive },
-        { id: "checklists", label: "Checklist Builder", icon: FileText },
-        { id: "raw-materials", label: "Raw Materials", icon: Box },
-        { id: "finished-goods", label: "Finished Goods", icon: CheckCircle2 },
-      ],
-    },
-  ];
+  // Use the same navigation as admin dashboard for consistency
+  const navSections = getAdminNavSections(setLocation);
   
   return (
     <DashboardShell
@@ -1120,7 +857,6 @@ function PendingPaymentsPage() {
       activeView={activeView}
       onNavigate={(viewId) => {
         setActiveView(viewId);
-        setLocation('/');
       }}
     >
       <PendingPayments />
