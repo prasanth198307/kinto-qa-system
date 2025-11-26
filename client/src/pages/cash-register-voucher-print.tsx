@@ -173,11 +173,11 @@ export default function CashRegisterVoucherPrint() {
             <div class="signatures">
               <div class="signature-box">
                 <div class="signature-line"></div>
-                <div class="signature-label">Prepared By</div>
+                <div class="signature-label">Receiver's Signature</div>
               </div>
               <div class="signature-box">
                 <div class="signature-line"></div>
-                <div class="signature-label">Received By</div>
+                <div class="signature-label">Cashier's Signature</div>
               </div>
               <div class="signature-box">
                 <div class="signature-line"></div>
