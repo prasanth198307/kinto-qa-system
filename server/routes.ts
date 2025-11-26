@@ -9534,6 +9534,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (mode === 'single' && id) {
         // Single voucher
         voucherIds = [id as string];
+      } else if (mode === 'all') {
+        // Get all expense vouchers from cash register (EXP-CR-*)
+        const allVouchers = await db.select({ id: expenseVouchers.id })
+          .from(expenseVouchers)
+          .where(and(
+            sql`${expenseVouchers.voucherNumber} LIKE 'EXP-CR-%'`,
+            eq(expenseVouchers.recordStatus, 1)
+          ))
+          .orderBy(desc(expenseVouchers.voucherDate))
+          .limit(50); // Limit to 50 for performance
+        
+        voucherIds = allVouchers.map(v => v.id);
       } else if ((mode === 'day' || mode === 'range') && startDate && endDate) {
         // Get vouchers from cash register transactions in date range
         const allDays = await storage.getCashRegisterDays();
