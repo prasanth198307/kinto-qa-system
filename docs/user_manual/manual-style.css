@@ -1,0 +1,130 @@
+/* KINTO User Manual Stylesheet */
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  line-height: 1.6;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px;
+  color: #333;
+}
+
+h1 {
+  color: #1a56db;
+  border-bottom: 3px solid #1a56db;
+  padding-bottom: 10px;
+}
+
+h2 {
+  color: #1e40af;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 8px;
+  margin-top: 40px;
+}
+
+h3 {
+  color: #1e3a8a;
+  margin-top: 30px;
+}
+
+h4 {
+  color: #374151;
+  margin-top: 25px;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 20px 0;
+}
+
+th, td {
+  border: 1px solid #d1d5db;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+th {
+  background-color: #f3f4f6;
+  font-weight: 600;
+}
+
+tr:nth-child(even) {
+  background-color: #f9fafb;
+}
+
+code {
+  background-color: #f3f4f6;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Consolas', monospace;
+  font-size: 0.9em;
+}
+
+pre {
+  background-color: #1f2937;
+  color: #f9fafb;
+  padding: 15px;
+  border-radius: 8px;
+  overflow-x: auto;
+}
+
+pre code {
+  background-color: transparent;
+  padding: 0;
+  color: inherit;
+}
+
+img {
+  max-width: 100%;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  margin: 15px 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+blockquote {
+  border-left: 4px solid #1a56db;
+  margin: 20px 0;
+  padding: 10px 20px;
+  background-color: #f0f9ff;
+}
+
+ul, ol {
+  margin: 15px 0;
+  padding-left: 25px;
+}
+
+li {
+  margin: 8px 0;
+}
+
+strong {
+  color: #1f2937;
+}
+
+hr {
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  margin: 30px 0;
+}
+
+/* Print styles */
+@media print {
+  body {
+    max-width: none;
+    padding: 0;
+  }
+  
+  h1, h2 {
+    page-break-after: avoid;
+  }
+  
+  table, img {
+    page-break-inside: avoid;
+  }
+  
+  pre {
+    background-color: #f3f4f6 !important;
+    color: #1f2937 !important;
+  }
+}
