@@ -71,6 +71,20 @@ ALTER TABLE expense_items ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT 
 ALTER TABLE expense_items ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
 
 -- ============================================================
+-- PRODUCT_BOM TABLE - For Bill of Materials (if missing columns)
+-- ============================================================
+
+-- Ensure product_bom table has all columns
+ALTER TABLE product_bom ADD COLUMN IF NOT EXISTS product_id VARCHAR(255);
+ALTER TABLE product_bom ADD COLUMN IF NOT EXISTS raw_material_id VARCHAR(255);
+ALTER TABLE product_bom ADD COLUMN IF NOT EXISTS quantity_required NUMERIC(12,6);
+ALTER TABLE product_bom ADD COLUMN IF NOT EXISTS uom VARCHAR(50);
+ALTER TABLE product_bom ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE product_bom ADD COLUMN IF NOT EXISTS record_status INTEGER DEFAULT 1;
+ALTER TABLE product_bom ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE product_bom ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
+-- ============================================================
 -- VERIFY - Show all columns
 -- ============================================================
 
@@ -81,4 +95,8 @@ UNION ALL
 SELECT 'expense_items' as table_name, column_name, data_type 
 FROM information_schema.columns 
 WHERE table_name = 'expense_items'
+UNION ALL
+SELECT 'product_bom' as table_name, column_name, data_type 
+FROM information_schema.columns 
+WHERE table_name = 'product_bom'
 ORDER BY table_name, column_name;
