@@ -69,7 +69,7 @@ export default function InventoryManagement({ activeTab: externalActiveTab }: In
     }
   }, [externalActiveTab]);
 
-  if (!user || !['admin', 'manager'].includes(user.role || '')) {
+  if (!user || !['admin', 'manager'].includes((user.role || '').toLowerCase())) {
     return (
       <>
         <div className="min-h-screen flex items-center justify-center p-4">
