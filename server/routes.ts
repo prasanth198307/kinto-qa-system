@@ -8874,6 +8874,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await logAudit(req.user?.id, 'CLOSE', 'cash_register_days', id, 
         `Cash register day closed. Expected: ${expectedClosingBalance}, Actual: ${actualClosingBalance}`);
       
+      // If this was an imported day, check if all imported days are now closed
+      // If so, auto-fix opening balances of manual days to maintain continuity
+      let fixedDays: any[] = [];
+      if (day.importedFromFile) {
+        const allDays = await storage.getCashRegisterDays();
+        const openImportedDays = allDays.filter(d => d.status === 'open' && d.importedFromFile);
+        
+        // All imported days are now closed - fix manual days' opening balances
+        if (openImportedDays.length === 0) {
+          // Sort all days by date to build the chain
+          const sortedDays = allDays.sort((a, b) => 
+            new Date(a.registerDate).getTime() - new Date(b.registerDate).getTime()
+          );
+          
+          // Find the last imported (closed) day to get its closing balance
+          const closedImportedDays = sortedDays.filter(d => d.importedFromFile && d.status === 'closed');
+          if (closedImportedDays.length > 0) {
+            const lastImportedDay = closedImportedDays[closedImportedDays.length - 1];
+            const lastImportedClosing = lastImportedDay.openingBalance + lastImportedDay.totalCashReceived - lastImportedDay.totalExpenses - lastImportedDay.totalTransfers;
+            
+            // Find manual days that come after the last imported day
+            const manualDaysAfterImport = sortedDays.filter(d => 
+              !d.importedFromFile && 
+              new Date(d.registerDate) > new Date(lastImportedDay.registerDate)
+            );
+            
+            // Fix opening balances in sequence
+            let previousClosing = lastImportedClosing;
+            for (const manualDay of manualDaysAfterImport) {
+              if (manualDay.openingBalance !== previousClosing) {
+                // Fix this day's opening balance
+                const oldOB = manualDay.openingBalance;
+                await storage.updateCashRegisterDay(manualDay.id, {
+                  openingBalance: previousClosing,
+                });
+                fixedDays.push({
+                  id: manualDay.id,
+                  date: manualDay.registerDate,
+                  oldOB,
+                  newOB: previousClosing,
+                });
+                await logAudit(req.user?.id, 'UPDATE', 'cash_register_days', manualDay.id, 
+                  `Opening balance auto-fixed from ${oldOB} to ${previousClosing} after all imported days closed`);
+              }
+              // Calculate this day's closing for the next day in chain
+              previousClosing = previousClosing + manualDay.totalCashReceived - manualDay.totalExpenses - manualDay.totalTransfers;
+            }
+          }
+        }
+      }
+      
       // Auto-create next day ONLY if this was NOT imported data
       let nextDay = null;
       if (!day.importedFromFile) {
@@ -8906,7 +8957,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      res.json({ closedDay: updated, nextDay });
+      res.json({ closedDay: updated, nextDay, fixedDays });
     } catch (error: any) {
       console.error('[CASH_REGISTER] Error closing day:', error);
       res.status(400).json({ message: error.message || 'Failed to close cash register day' });

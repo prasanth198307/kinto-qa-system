@@ -201,11 +201,15 @@ export default function CashRegisterPage() {
       });
       return response.json();
     },
-    onSuccess: (data: { closedDay: any; nextDay: any }) => {
+    onSuccess: (data: { closedDay: any; nextDay: any; fixedDays?: any[] }) => {
       queryClient.invalidateQueries({ queryKey: ['/api/cash-register/days'] });
-      const description = data.nextDay 
-        ? "Day closed. Next day created with opening balance carried forward."
-        : "Day closed successfully.";
+      let description = "Day closed successfully.";
+      if (data.nextDay) {
+        description = "Day closed. Next day created with opening balance carried forward.";
+      }
+      if (data.fixedDays && data.fixedDays.length > 0) {
+        description = `Day closed. Opening balances auto-fixed for ${data.fixedDays.length} day(s) to maintain continuity.`;
+      }
       toast({ title: "Day Closed", description });
       setSelectedDay(null);
       setIsReconcileOpen(false);
