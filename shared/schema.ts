@@ -2314,10 +2314,12 @@ export const cashRegisterDays = pgTable("cash_register_days", {
   totalTransfers: integer("total_transfers").default(0).notNull(),
   
   // Reconciliation
-  status: varchar("status", { length: 20 }).default('open').notNull(), // 'open', 'reconciled', 'locked'
+  status: varchar("status", { length: 20 }).default('open').notNull(), // 'open', 'closed', 'locked'
+  actualClosingBalance: integer("actual_closing_balance"), // Actual cash on hand when closing
   reconciledBy: varchar("reconciled_by").references(() => users.id),
   reconciledAt: timestamp("reconciled_at", { mode: 'string' }),
-  varianceAmount: integer("variance_amount").default(0), // Difference if any
+  varianceAmount: integer("variance_amount").default(0), // Difference between expected and actual
+  varianceNotes: text("variance_notes"), // Explanation for any variance
   
   notes: text("notes"),
   

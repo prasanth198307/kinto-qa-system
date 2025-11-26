@@ -8813,10 +8813,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Close cash register day
+  // Close cash register day with reconciliation
   app.post('/api/cash-register/days/:id/close', isAuthenticated, async (req: any, res: Response) => {
     try {
       const { id } = req.params;
+      const { actualClosingBalance, varianceNotes } = req.body;
+      
+      // Validate required reconciliation data
+      if (actualClosingBalance === undefined || actualClosingBalance === null) {
+        return res.status(400).json({ message: 'Actual closing balance is required for reconciliation' });
+      }
+      
       const day = await storage.getCashRegisterDay(id);
       if (!day) {
         return res.status(404).json({ message: 'Cash register day not found' });
@@ -8826,19 +8833,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Day is already closed or locked' });
       }
       
-      // Calculate final closing balance
-      const closingBalance = day.openingBalance + day.totalCashReceived - day.totalExpenses - day.totalTransfers;
+      // Calculate expected closing balance
+      const expectedClosingBalance = day.openingBalance + day.totalCashReceived - day.totalExpenses - day.totalTransfers;
       
-      // Update day status to closed
+      // Calculate variance (actual - expected)
+      const varianceAmount = actualClosingBalance - expectedClosingBalance;
+      
+      // Require notes if there's a variance
+      if (varianceAmount !== 0 && !varianceNotes?.trim()) {
+        return res.status(400).json({ 
+          message: 'Variance notes are required when actual balance differs from expected' 
+        });
+      }
+      
+      // Update day status to closed with reconciliation data
       const updated = await storage.updateCashRegisterDay(id, {
         status: 'closed',
-        closingBalance,
+        closingBalance: expectedClosingBalance,
+        actualClosingBalance,
+        varianceAmount,
+        varianceNotes: varianceNotes || null,
         reconciledAt: new Date().toISOString(),
         reconciledBy: req.user?.id,
       });
       
+      const varianceInfo = varianceAmount !== 0 
+        ? ` Variance: ${varianceAmount} paise (${varianceNotes})`
+        : '';
+      
       await logAudit(req.user?.id, 'CLOSE', 'cash_register_days', id, 
-        `Cash register day closed with balance ${closingBalance}`);
+        `Cash register day closed. Expected: ${expectedClosingBalance}, Actual: ${actualClosingBalance}${varianceInfo}`);
       
       res.json(updated);
     } catch (error: any) {

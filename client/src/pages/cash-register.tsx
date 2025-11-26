@@ -95,6 +95,11 @@ export default function CashRegisterPage() {
   
   // Document upload states
   const [uploadingDoc, setUploadingDoc] = useState<string | null>(null); // transaction ID being uploaded to
+  
+  // Reconciliation dialog states
+  const [isReconcileOpen, setIsReconcileOpen] = useState(false);
+  const [actualBalance, setActualBalance] = useState('');
+  const [varianceNotes, setVarianceNotes] = useState('');
 
   const { data: days = [], isLoading: daysLoading, refetch: refetchDays } = useQuery<CashRegisterDay[]>({
     queryKey: ['/api/cash-register/days'],
@@ -189,14 +194,20 @@ export default function CashRegisterPage() {
 
   // Close day mutation
   const closeDayMutation = useMutation({
-    mutationFn: async (dayId: string) => {
-      const response = await apiRequest('POST', `/api/cash-register/days/${dayId}/close`, {});
+    mutationFn: async ({ dayId, actualClosingBalance, varianceNotes }: { dayId: string; actualClosingBalance: number; varianceNotes: string }) => {
+      const response = await apiRequest('POST', `/api/cash-register/days/${dayId}/close`, {
+        actualClosingBalance,
+        varianceNotes,
+      });
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/cash-register/days'] });
       toast({ title: "Day Closed", description: "The day has been closed and balance carried forward" });
       setSelectedDay(null);
+      setIsReconcileOpen(false);
+      setActualBalance('');
+      setVarianceNotes('');
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -845,36 +856,128 @@ export default function CashRegisterPage() {
         {isDayOpen && (
           <Card className="bg-primary/5">
             <CardContent className="pt-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-4">
                 <div>
                   <h3 className="font-medium">Close This Day</h3>
                   <p className="text-sm text-muted-foreground">
-                    Closing balance of {formatCurrency(calculatedClosing)} will be carried forward as next day's opening balance.
+                    Expected closing balance: {formatCurrency(calculatedClosing)}. Reconcile and close to carry forward.
                   </p>
                 </div>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
+                <Dialog open={isReconcileOpen} onOpenChange={(open) => {
+                  setIsReconcileOpen(open);
+                  if (open) {
+                    setActualBalance((calculatedClosing / 100).toString());
+                    setVarianceNotes('');
+                  }
+                }}>
+                  <DialogTrigger asChild>
                     <Button variant="default" data-testid="button-close-day">
                       <Lock className="w-4 h-4 mr-2" />
                       Close Day
                     </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Close This Day?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will lock all transactions for {format(new Date(selectedDay.registerDate), 'MMMM d, yyyy')}.
-                        The closing balance of {formatCurrency(calculatedClosing)} will be used as the opening balance for the next day.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => closeDayMutation.mutate(selectedDay.id)} data-testid="button-confirm-close">
-                        Close Day
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Reconcile & Close Day</DialogTitle>
+                      <DialogDescription>
+                        Enter the actual cash on hand to reconcile before closing {format(new Date(selectedDay.registerDate), 'MMMM d, yyyy')}.
+                      </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="space-y-4 py-4">
+                      <div className="p-3 bg-muted/50 rounded-lg space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Opening Balance:</span>
+                          <span className="font-medium">{formatCurrency(selectedDay.openingBalance)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm text-green-600">
+                          <span>+ Cash Received:</span>
+                          <span>{formatCurrency(selectedDay.totalCashReceived)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm text-red-600">
+                          <span>- Expenses:</span>
+                          <span>{formatCurrency(selectedDay.totalExpenses)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm text-blue-600">
+                          <span>- Transfers:</span>
+                          <span>{formatCurrency(selectedDay.totalTransfers)}</span>
+                        </div>
+                        <Separator />
+                        <div className="flex justify-between font-medium">
+                          <span>Expected Closing:</span>
+                          <span>{formatCurrency(calculatedClosing)}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="actual-balance">Actual Cash on Hand (₹)</Label>
+                        <Input
+                          id="actual-balance"
+                          type="number"
+                          step="0.01"
+                          placeholder="Enter actual cash count"
+                          value={actualBalance}
+                          onChange={(e) => setActualBalance(e.target.value)}
+                          data-testid="input-actual-balance"
+                        />
+                      </div>
+                      
+                      {actualBalance && Math.round(parseFloat(actualBalance) * 100) !== calculatedClosing && (
+                        <div className="p-3 border border-amber-500/50 bg-amber-500/10 rounded-lg space-y-2">
+                          <div className="flex items-center gap-2 text-amber-600">
+                            <AlertTriangle className="w-4 h-4" />
+                            <span className="font-medium">Variance Detected</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span>Variance Amount:</span>
+                            <span className={Math.round(parseFloat(actualBalance) * 100) > calculatedClosing ? 'text-green-600' : 'text-red-600'}>
+                              {formatCurrency(Math.round(parseFloat(actualBalance) * 100) - calculatedClosing)}
+                            </span>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="variance-notes">Reason for Variance (Required)</Label>
+                            <Textarea
+                              id="variance-notes"
+                              placeholder="Explain why the actual balance differs from expected..."
+                              value={varianceNotes}
+                              onChange={(e) => setVarianceNotes(e.target.value)}
+                              rows={3}
+                              data-testid="input-variance-notes"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setIsReconcileOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button 
+                        onClick={() => {
+                          if (!actualBalance) {
+                            toast({ title: "Error", description: "Please enter actual cash on hand", variant: "destructive" });
+                            return;
+                          }
+                          const actualPaise = Math.round(parseFloat(actualBalance) * 100);
+                          if (actualPaise !== calculatedClosing && !varianceNotes.trim()) {
+                            toast({ title: "Error", description: "Please provide a reason for the variance", variant: "destructive" });
+                            return;
+                          }
+                          closeDayMutation.mutate({
+                            dayId: selectedDay.id,
+                            actualClosingBalance: actualPaise,
+                            varianceNotes: varianceNotes.trim(),
+                          });
+                        }}
+                        disabled={closeDayMutation.isPending}
+                        data-testid="button-confirm-close"
+                      >
+                        {closeDayMutation.isPending ? 'Closing...' : 'Reconcile & Close'}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
             </CardContent>
           </Card>
