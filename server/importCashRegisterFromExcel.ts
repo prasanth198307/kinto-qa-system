@@ -172,27 +172,78 @@ export async function importCashRegisterFromExcel(filePath: string, userId: stri
             transactionsCreated++;
           }
 
-          if (expenses > 0) {
-            const [expenseTx] = await db.insert(cashRegisterTransactions).values({
-              dayId: day.id,
-              transactionType: 'expense',
-              amount: expenses,
-              description: itemDetails || 'Daily Expenses',
-              reference: `Import-${sheetName}`,
-            }).returning();
-            transactionsCreated++;
-
+          if (expenses > 0 && parsedItems.length > 0) {
+            // Create SEPARATE voucher for EACH line item
+            let itemCounter = 0;
             for (const item of parsedItems) {
+              itemCounter++;
+              const itemAmount = item.amount || Math.round(expenses / parsedItems.length);
+              
+              // Create unique voucher number for each item
+              const voucherNumber = `EXP-CR-${dateStr.replace(/-/g, '')}-${salesperson.substring(0, 3)}-${String(itemCounter).padStart(2, '0')}`;
+              
+              // Check for existing voucher with this number
+              const existingVoucher = await db.select().from(expenseVouchers)
+                .where(eq(expenseVouchers.voucherNumber, voucherNumber))
+                .limit(1);
+              
+              if (existingVoucher.length > 0) {
+                console.log(`Skipping duplicate voucher: ${voucherNumber}`);
+                continue;
+              }
+              
+              // Create expense voucher for this single item
+              const [voucher] = await db.insert(expenseVouchers).values({
+                voucherNumber,
+                voucherDate: dateStr,
+                payeeType: 'employee',
+                payeeName: salesperson,
+                paymentMode: 'cash',
+                subtotal: itemAmount,
+                gstAmount: 0,
+                totalAmount: itemAmount,
+                status: 'approved',
+                purpose: item.label,
+                remarks: `Auto-imported from Excel (${sheetName})`,
+                preparedBy: userId,
+              }).returning();
+              vouchersCreated++;
+              
+              // Create single expense item for this voucher
+              await db.insert(expenseItems).values({
+                voucherId: voucher.id,
+                categoryId: defaultCategoryId,
+                description: item.label,
+                quantity: 1,
+                unitPrice: itemAmount,
+                amount: itemAmount,
+                gstRate: '0',
+                gstAmount: 0,
+              });
+              
+              // Create expense transaction linked to this voucher
+              const [expenseTx] = await db.insert(cashRegisterTransactions).values({
+                dayId: day.id,
+                transactionType: 'expense',
+                amount: itemAmount,
+                description: item.label,
+                reference: `Import-${sheetName}`,
+                convertedToVoucherId: voucher.id,
+              }).returning();
+              transactionsCreated++;
+              
+              // Create expense item record for cash register
               await db.insert(cashRegisterExpenseItems).values({
                 transactionId: expenseTx.id,
                 itemLabel: item.label,
-                amount: item.amount || Math.round(expenses / parsedItems.length),
+                amount: itemAmount,
                 rawText: item.rawText,
               });
               expenseItemsCreated++;
             }
-
-            const voucherNumber = `EXP-CR-${dateStr.replace(/-/g, '')}-${salesperson.substring(0, 3)}`;
+          } else if (expenses > 0) {
+            // Fallback: no parsed items, create single voucher for total expense
+            const voucherNumber = `EXP-CR-${dateStr.replace(/-/g, '')}-${salesperson.substring(0, 3)}-01`;
             
             const existingVoucher = await db.select().from(expenseVouchers)
               .where(eq(expenseVouchers.voucherNumber, voucherNumber))
@@ -209,42 +260,32 @@ export async function importCashRegisterFromExcel(filePath: string, userId: stri
                 gstAmount: 0,
                 totalAmount: expenses,
                 status: 'approved',
-                purpose: `Cash Register Expenses - ${salesperson} - ${dateStr}`,
-                remarks: `Auto-imported from Excel (${sheetName}). Items: ${itemDetails}`,
+                purpose: itemDetails || 'Daily Expenses',
+                remarks: `Auto-imported from Excel (${sheetName})`,
                 preparedBy: userId,
               }).returning();
               vouchersCreated++;
-
-              for (const item of parsedItems) {
-                const itemAmount = item.amount || Math.round(expenses / parsedItems.length);
-                await db.insert(expenseItems).values({
-                  voucherId: voucher.id,
-                  categoryId: defaultCategoryId,
-                  description: item.label,
-                  quantity: 1,
-                  unitPrice: itemAmount,
-                  amount: itemAmount,
-                  gstRate: '0',
-                  gstAmount: 0,
-                });
-              }
-
-              if (parsedItems.length === 0) {
-                await db.insert(expenseItems).values({
-                  voucherId: voucher.id,
-                  categoryId: defaultCategoryId,
-                  description: 'Daily Expenses',
-                  quantity: 1,
-                  unitPrice: expenses,
-                  amount: expenses,
-                  gstRate: '0',
-                  gstAmount: 0,
-                });
-              }
-
-              await db.update(cashRegisterTransactions)
-                .set({ convertedToVoucherId: voucher.id })
-                .where(eq(cashRegisterTransactions.id, expenseTx.id));
+              
+              await db.insert(expenseItems).values({
+                voucherId: voucher.id,
+                categoryId: defaultCategoryId,
+                description: itemDetails || 'Daily Expenses',
+                quantity: 1,
+                unitPrice: expenses,
+                amount: expenses,
+                gstRate: '0',
+                gstAmount: 0,
+              });
+              
+              const [expenseTx] = await db.insert(cashRegisterTransactions).values({
+                dayId: day.id,
+                transactionType: 'expense',
+                amount: expenses,
+                description: itemDetails || 'Daily Expenses',
+                reference: `Import-${sheetName}`,
+                convertedToVoucherId: voucher.id,
+              }).returning();
+              transactionsCreated++;
             }
           }
 
