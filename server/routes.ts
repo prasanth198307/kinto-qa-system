@@ -8857,14 +8857,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         reconciledBy: req.user?.id,
       });
       
-      const varianceInfo = varianceAmount !== 0 
-        ? ` Variance: ${varianceAmount} paise (${varianceNotes})`
-        : '';
-      
       await logAudit(req.user?.id, 'CLOSE', 'cash_register_days', id, 
-        `Cash register day closed. Expected: ${expectedClosingBalance}, Actual: ${actualClosingBalance}${varianceInfo}`);
+        `Cash register day closed. Expected: ${expectedClosingBalance}, Actual: ${actualClosingBalance}`);
       
-      res.json(updated);
+      // Auto-create next day ONLY if this was NOT imported data
+      let nextDay = null;
+      if (!day.importedFromFile) {
+        // Calculate next day's date
+        const currentDate = new Date(day.registerDate);
+        currentDate.setDate(currentDate.getDate() + 1);
+        const nextDateStr = currentDate.toISOString().split('T')[0];
+        
+        // Check if next day already exists
+        const existingNextDay = await storage.getCashRegisterDayByDateAndPerson(nextDateStr, day.salespersonName);
+        
+        if (!existingNextDay) {
+          // Create next day with closing balance as opening
+          nextDay = await storage.createCashRegisterDay({
+            registerDate: nextDateStr,
+            salespersonName: day.salespersonName,
+            salespersonId: day.salespersonId,
+            openingBalance: expectedClosingBalance,
+            closingBalance: expectedClosingBalance, // Initially same as opening
+            totalDeposits: 0,
+            totalCashReceived: 0,
+            totalExpenses: 0,
+            totalTransfers: 0,
+            status: 'open',
+            createdBy: req.user?.id,
+          });
+          
+          await logAudit(req.user?.id, 'CREATE', 'cash_register_days', nextDay.id, 
+            `Next day auto-created with opening balance ${expectedClosingBalance} from previous day close`);
+        }
+      }
+      
+      res.json({ closedDay: updated, nextDay });
     } catch (error: any) {
       console.error('[CASH_REGISTER] Error closing day:', error);
       res.status(400).json({ message: error.message || 'Failed to close cash register day' });

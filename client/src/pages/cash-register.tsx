@@ -201,9 +201,12 @@ export default function CashRegisterPage() {
       });
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: { closedDay: any; nextDay: any }) => {
       queryClient.invalidateQueries({ queryKey: ['/api/cash-register/days'] });
-      toast({ title: "Day Closed", description: "The day has been closed and balance carried forward" });
+      const description = data.nextDay 
+        ? "Day closed. Next day created with opening balance carried forward."
+        : "Day closed successfully.";
+      toast({ title: "Day Closed", description });
       setSelectedDay(null);
       setIsReconcileOpen(false);
       setActualBalance('');
