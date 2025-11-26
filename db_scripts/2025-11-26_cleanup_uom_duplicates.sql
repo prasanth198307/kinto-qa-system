@@ -1,9 +1,15 @@
 -- ============================================================================
 -- KINTO Smart Ops - UOM Cleanup and Product Unit Conversion Fix
 -- Date: 2025-11-26
--- Description: Cleans up duplicate UOM entries and fixes product unit values
+-- Description: Cleans up duplicate UOM entries, fixes product unit values, 
+--              and fixes empty SKU codes
 -- For Mac (localhost:5050) environment
 -- ============================================================================
+
+-- ============================================================================
+-- Step 0: Fix empty SKU codes (convert '' to NULL to avoid unique constraint)
+-- ============================================================================
+UPDATE products SET sku_code = NULL WHERE sku_code = '';
 
 -- Step 1: Check current duplicates
 SELECT name, COUNT(*) as count, array_agg(id) as ids

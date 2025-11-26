@@ -1672,6 +1672,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const productData = { ...req.body, createdBy: userId };
       const validatedData = insertProductSchema.parse(productData);
       
+      // Convert empty SKU code to null to avoid unique constraint violation
+      if (validatedData.skuCode === '' || validatedData.skuCode === undefined) {
+        validatedData.skuCode = null;
+      }
+      
       // Auto-calculate fields
       const dataWithCalculations = calculateProductFields(validatedData);
       
@@ -1704,6 +1709,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const validatedData = insertProductSchema.partial().parse(req.body);
+      
+      // Convert empty SKU code to null to avoid unique constraint violation
+      if (validatedData.skuCode === '' || validatedData.skuCode === undefined) {
+        validatedData.skuCode = null;
+      }
       
       // Get existing product to merge with updates before calculating
       const existingProduct = await storage.getProduct(id);
