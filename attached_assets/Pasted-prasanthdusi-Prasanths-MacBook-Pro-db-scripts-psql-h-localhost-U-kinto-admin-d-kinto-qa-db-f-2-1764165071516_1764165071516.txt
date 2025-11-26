@@ -1,0 +1,41 @@
+prasanthdusi@Prasanths-MacBook-Pro db_scripts % psql -h localhost -U kinto_admin -d kinto_qa_db -f 2025-11-26_cleanup_uom_duplicates.sql     
+  name  | count |                                     ids                                     
+--------+-------+-----------------------------------------------------------------------------
+ Liters |     2 | {9b5533e7-caac-45e7-afb0-7b63f7d99212,9fc7f812-e7d2-4925-8764-896392214408}
+ Cases  |     2 | {c874da8d-88f2-43a4-b301-303b3ac07f6f,adc9dbd7-5e1e-4bd1-b32c-2bb98e73ec3d}
+(2 rows)
+
+UPDATE 0
+UPDATE 0
+UPDATE 0
+UPDATE 0
+psql:2025-11-26_cleanup_uom_duplicates.sql:44: ERROR:  update or delete on table "uom" violates foreign key constraint "products_uom_id_fkey" on table "products"
+DETAIL:  Key (id)=(adc9dbd7-5e1e-4bd1-b32c-2bb98e73ec3d) is still referenced from table "products".
+DELETE 1
+                  id                  |     name      
+--------------------------------------+---------------
+ 84feebc5-c472-4434-9a86-6459e3bbc0c2 | Bag
+ 1fb4b81f-3192-4102-8eee-da2ae085e9c9 | Bottles
+ 48fc9134-796a-43ce-b3d3-91d8397849f3 | Box
+ 628cdcc7-02d4-454c-b9db-d0640bd1695e | Carton
+ c874da8d-88f2-43a4-b301-303b3ac07f6f | Cases
+ adc9dbd7-5e1e-4bd1-b32c-2bb98e73ec3d | Cases
+ 3cc3355c-336b-472b-a24f-1b3d9582617a | Dozen
+ 9cbc659b-e2f1-4aac-b657-25863012c6eb | Feet
+ 57cdd356-f009-435a-b3ff-8f25a5cda30f | Grams
+ 79b6475a-5337-47bc-86ff-d2a5a59fd968 | Gross
+ 8d65dfb3-9630-4218-8ba8-880d626364b0 | Inches
+ eb0651b0-f54c-4999-b469-7014e759d964 | Kilograms
+ 9b5533e7-caac-45e7-afb0-7b63f7d99212 | Liters
+ 8187aede-2302-4873-ba9b-667379443d99 | Meters
+ 6a461b02-9cf7-416b-a6d7-55447676eff5 | Milliliters
+ 16a032df-450a-4fe8-950a-fdc69f068aaf | Packet
+ a5b2366c-3d12-45f1-9e36-872e3c75ce71 | Pair
+ 5793675a-a63c-4949-aeff-79b998151b50 | Pieces
+ 465b90d4-b4ac-44b7-9cc3-6becc4f82f67 | Roll
+ f62344a0-35a7-447e-aaf5-0b0bf201b5b3 | Set
+ c2c2eada-b1a3-4423-a828-ebe8393a2b10 | Square Feet
+ bfdcfb6a-5722-453f-a3c0-dac3370c83e3 | Square Meters
+ 22bd9e40-cf3c-4a48-be95-e1e5c6451a81 | Tons
+(23 rows)
+
