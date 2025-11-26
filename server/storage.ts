@@ -1421,12 +1421,19 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
+    // Check for duplicate raw materials in the input
+    const rawMaterialIds = bomItems.map(item => item.rawMaterialId);
+    const uniqueRawMaterialIds = [...new Set(rawMaterialIds)];
+    if (rawMaterialIds.length !== uniqueRawMaterialIds.length) {
+      throw new Error("Duplicate raw materials found in BOM. Each raw material can only be added once.");
+    }
+
     // Use transaction for atomic delete + insert
     return await db.transaction(async (tx) => {
-      // Step 1: Delete all existing BOM items for this product
+      // Step 1: PHYSICALLY delete all existing BOM items for this product
+      // (not soft-delete, because unique index includes soft-deleted records)
       await tx
-        .update(productBom)
-        .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
+        .delete(productBom)
         .where(eq(productBom.productId, productId));
 
       // Step 2: Insert all new BOM items
@@ -1454,13 +1461,20 @@ export class DatabaseStorage implements IStorage {
     if (!product) {
       throw new Error("Product not found");
     }
+
+    // Check for duplicate raw materials in the input
+    const rawMaterialIds = bomItems.map(item => item.rawMaterialId);
+    const uniqueRawMaterialIds = [...new Set(rawMaterialIds)];
+    if (rawMaterialIds.length !== uniqueRawMaterialIds.length) {
+      throw new Error("Duplicate raw materials found in BOM. Each raw material can only be added once.");
+    }
     
     // Use transaction to ensure atomicity
     return await db.transaction(async (tx) => {
-      // Delete existing BOM items for this product
+      // PHYSICALLY delete existing BOM items for this product
+      // (not soft-delete, because unique index includes soft-deleted records)
       await tx
-        .update(productBom)
-        .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
+        .delete(productBom)
         .where(eq(productBom.productId, productId));
       
       // Insert new BOM items
