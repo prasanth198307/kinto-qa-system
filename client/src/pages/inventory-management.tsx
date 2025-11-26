@@ -1026,6 +1026,9 @@ function ProductDialog({
   const basePrice = useWatch({ control: form.control, name: "basePrice" });
   const gstPercent = useWatch({ control: form.control, name: "gstPercent" });
   const conversionMethod = useWatch({ control: form.control, name: "conversionMethod" });
+  
+  // Watch bomItems to properly track changes in the BOM table
+  const watchedBomItems = useWatch({ control: form.control, name: "bomItems" });
 
   // Calculate totalPrice
   const calculatedTotalPrice = basePrice && gstPercent !== undefined
@@ -1702,64 +1705,77 @@ function ProductDialog({
                           </TableCell>
                         </TableRow>
                       ) : (
-                        fields.map((field, index) => (
-                          <TableRow key={field.id}>
-                            <TableCell>
-                              <Select 
-                                value={(field as any).rawMaterialId || ''} 
-                                onValueChange={(value) => form.setValue(`bomItems.${index}.rawMaterialId` as any, value)}
-                              >
-                                <SelectTrigger data-testid={`select-bom-material-${index}`}>
-                                  <SelectValue placeholder="Select material" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {rawMaterials.filter(rm => rm.recordStatus === 1).map(rm => (
-                                    <SelectItem key={rm.id} value={rm.id}>
-                                      {rm.materialCode} - {rm.materialName}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </TableCell>
-                            <TableCell>
-                              <Input 
-                                type="number" 
-                                step="0.01"
-                                placeholder="0" 
-                                value={(field as any).quantityRequired || ''} 
-                                onChange={(e) => form.setValue(`bomItems.${index}.quantityRequired` as any, parseFloat(e.target.value) || 0)}
-                                data-testid={`input-bom-quantity-${index}`}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Input 
-                                placeholder="kg" 
-                                value={(field as any).uom || ''} 
-                                onChange={(e) => form.setValue(`bomItems.${index}.uom` as any, e.target.value)}
-                                data-testid={`input-bom-uom-${index}`}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Input 
-                                placeholder="Optional notes" 
-                                value={(field as any).notes || ''} 
-                                onChange={(e) => form.setValue(`bomItems.${index}.notes` as any, e.target.value)}
-                                data-testid={`input-bom-notes-${index}`}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => remove(index)}
-                                data-testid={`button-delete-bom-${index}`}
-                              >
-                                <Minus className="h-4 w-4" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))
+                        fields.map((field, index) => {
+                          // Use watched values for proper reactivity
+                          const bomItem = watchedBomItems?.[index] || {};
+                          return (
+                            <TableRow key={field.id}>
+                              <TableCell>
+                                <Select 
+                                  value={bomItem.rawMaterialId || ''} 
+                                  onValueChange={(value) => form.setValue(`bomItems.${index}.rawMaterialId` as any, value)}
+                                >
+                                  <SelectTrigger data-testid={`select-bom-material-${index}`}>
+                                    <SelectValue placeholder="Select material" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {rawMaterials.filter(rm => rm.recordStatus === 1).map(rm => (
+                                      <SelectItem key={rm.id} value={rm.id}>
+                                        {rm.materialCode} - {rm.materialName}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
+                              <TableCell>
+                                <Input 
+                                  type="number" 
+                                  step="0.01"
+                                  placeholder="0" 
+                                  value={bomItem.quantityRequired || ''} 
+                                  onChange={(e) => form.setValue(`bomItems.${index}.quantityRequired` as any, parseFloat(e.target.value) || 0)}
+                                  data-testid={`input-bom-quantity-${index}`}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Select 
+                                  value={bomItem.uom || ''} 
+                                  onValueChange={(value) => form.setValue(`bomItems.${index}.uom` as any, value)}
+                                >
+                                  <SelectTrigger data-testid={`select-bom-uom-${index}`}>
+                                    <SelectValue placeholder="Select UOM" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {uoms.map(uom => (
+                                      <SelectItem key={uom.id} value={uom.name}>
+                                        {uom.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
+                              <TableCell>
+                                <Input 
+                                  placeholder="Optional notes" 
+                                  value={bomItem.notes || ''} 
+                                  onChange={(e) => form.setValue(`bomItems.${index}.notes` as any, e.target.value)}
+                                  data-testid={`input-bom-notes-${index}`}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => remove(index)}
+                                  data-testid={`button-delete-bom-${index}`}
+                                >
+                                  <Minus className="h-4 w-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
                       )}
                     </TableBody>
                   </Table>
