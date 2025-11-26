@@ -87,11 +87,13 @@ export default function CashRegisterPage() {
   
   // New transaction form states
   const [newCashReceived, setNewCashReceived] = useState({ amount: '', reference: '', description: '', sourceType: 'sale_cash' });
-  const [newExpense, setNewExpense] = useState({ amount: '', reference: '', description: '' });
+  // Support multiple expense line items - each will create its own voucher
+  const [expenseItems, setExpenseItems] = useState([{ amount: '', reference: '', description: '' }]);
   const [newTransfer, setNewTransfer] = useState({ amount: '', transferTo: '', description: '' });
   const [isAddingCash, setIsAddingCash] = useState(false);
   const [isAddingExpense, setIsAddingExpense] = useState(false);
   const [isAddingTransfer, setIsAddingTransfer] = useState(false);
+  const [isSavingExpenses, setIsSavingExpenses] = useState(false);
   
   // Document upload states
   const [uploadingDoc, setUploadingDoc] = useState<string | null>(null); // transaction ID being uploaded to
@@ -149,7 +151,7 @@ export default function CashRegisterPage() {
       toast({ title: "Success", description: "Transaction added" });
       // Reset forms
       setNewCashReceived({ amount: '', reference: '', description: '', sourceType: 'sale_cash' });
-      setNewExpense({ amount: '', reference: '', description: '' });
+      setExpenseItems([{ amount: '', reference: '', description: '' }]);
       setNewTransfer({ amount: '', transferTo: '', description: '' });
       setIsAddingCash(false);
       setIsAddingExpense(false);
@@ -366,15 +368,64 @@ export default function CashRegisterPage() {
     }
   };
 
-  const handleAddExpense = () => {
-    if (!selectedDay || !newExpense.amount) return;
-    addTransactionMutation.mutate({
-      dayId: selectedDay.id,
-      transactionType: 'expense',
-      amount: Math.round(parseFloat(newExpense.amount) * 100),
-      reference: newExpense.reference,
-      description: newExpense.description,
-    });
+  // Handle adding multiple expense items - each creates its own voucher
+  const handleAddExpenses = async () => {
+    if (!selectedDay) return;
+    
+    // Filter out empty items
+    const validItems = expenseItems.filter(item => item.amount && parseFloat(item.amount) > 0);
+    
+    if (validItems.length === 0) {
+      toast({ title: "Error", description: "Please add at least one expense item", variant: "destructive" });
+      return;
+    }
+    
+    setIsSavingExpenses(true);
+    
+    try {
+      // Create each expense item as a separate transaction with its own voucher
+      for (const item of validItems) {
+        await apiRequest('POST', `/api/cash-register/days/${selectedDay.id}/transactions`, {
+          dayId: selectedDay.id,
+          transactionType: 'expense',
+          amount: Math.round(parseFloat(item.amount) * 100),
+          reference: item.reference,
+          description: item.description,
+        });
+      }
+      
+      // Success - refresh and reset
+      queryClient.invalidateQueries({ queryKey: ['/api/cash-register/days'] });
+      viewDayDetails(selectedDay.id);
+      toast({ 
+        title: "Success", 
+        description: `${validItems.length} expense${validItems.length > 1 ? 's' : ''} added with individual vouchers` 
+      });
+      setExpenseItems([{ amount: '', reference: '', description: '' }]);
+      setIsAddingExpense(false);
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || "Failed to add expenses", variant: "destructive" });
+    } finally {
+      setIsSavingExpenses(false);
+    }
+  };
+  
+  // Add new expense line item
+  const addExpenseLineItem = () => {
+    setExpenseItems(prev => [...prev, { amount: '', reference: '', description: '' }]);
+  };
+  
+  // Remove expense line item
+  const removeExpenseLineItem = (index: number) => {
+    if (expenseItems.length === 1) return; // Keep at least one
+    setExpenseItems(prev => prev.filter((_, i) => i !== index));
+  };
+  
+  // Update expense line item
+  const updateExpenseLineItem = (index: number, field: string, value: string) => {
+    setExpenseItems(prev => prev.map((item, i) => 
+      i === index ? { ...item, [field]: value } : item
+    ));
   };
 
   const handleAddTransfer = () => {
@@ -671,35 +722,86 @@ export default function CashRegisterPage() {
                   </Button>
                 )}
               </div>
-              <CardDescription className="text-xs">Each expense generates a voucher</CardDescription>
+              <CardDescription className="text-xs">Each line item creates its own voucher</CardDescription>
             </CardHeader>
             <CardContent>
               {isAddingExpense && (
-                <div className="mb-4 p-3 border rounded-lg bg-muted/30 space-y-2">
-                  <Input
-                    type="number"
-                    placeholder="Amount"
-                    value={newExpense.amount}
-                    onChange={(e) => setNewExpense(prev => ({ ...prev, amount: e.target.value }))}
-                    data-testid="input-expense-amount"
-                  />
-                  <Input
-                    placeholder="Reference / Item (e.g., Diesel, Tea)"
-                    value={newExpense.reference}
-                    onChange={(e) => setNewExpense(prev => ({ ...prev, reference: e.target.value }))}
-                    data-testid="input-expense-reference"
-                  />
-                  <Input
-                    placeholder="Description (optional)"
-                    value={newExpense.description}
-                    onChange={(e) => setNewExpense(prev => ({ ...prev, description: e.target.value }))}
-                    data-testid="input-expense-description"
-                  />
-                  <div className="flex gap-2">
-                    <Button size="sm" onClick={handleAddExpense} disabled={addTransactionMutation.isPending} data-testid="button-save-expense">
-                      <Receipt className="w-4 h-4 mr-1" /> Save & Create Voucher
+                <div className="mb-4 p-3 border rounded-lg bg-muted/30 space-y-3">
+                  <div className="text-xs font-medium text-muted-foreground mb-2">
+                    Add multiple expense items - each will get its own voucher
+                  </div>
+                  
+                  {expenseItems.map((item, index) => (
+                    <div key={index} className="flex gap-2 items-start p-2 bg-background rounded border" data-testid={`expense-item-${index}`}>
+                      <div className="flex-1 space-y-2">
+                        <div className="flex gap-2">
+                          <Input
+                            type="number"
+                            placeholder="Amount"
+                            value={item.amount}
+                            onChange={(e) => updateExpenseLineItem(index, 'amount', e.target.value)}
+                            className="w-28"
+                            data-testid={`input-expense-amount-${index}`}
+                          />
+                          <Input
+                            placeholder="Item (e.g., Diesel, Tea, Lunch)"
+                            value={item.reference}
+                            onChange={(e) => updateExpenseLineItem(index, 'reference', e.target.value)}
+                            className="flex-1"
+                            data-testid={`input-expense-reference-${index}`}
+                          />
+                        </div>
+                        <Input
+                          placeholder="Description (optional)"
+                          value={item.description}
+                          onChange={(e) => updateExpenseLineItem(index, 'description', e.target.value)}
+                          className="text-xs"
+                          data-testid={`input-expense-description-${index}`}
+                        />
+                      </div>
+                      {expenseItems.length > 1 && (
+                        <Button 
+                          size="icon" 
+                          variant="ghost" 
+                          onClick={() => removeExpenseLineItem(index)}
+                          className="h-8 w-8 text-muted-foreground hover:text-red-600"
+                          data-testid={`button-remove-expense-${index}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                  
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={addExpenseLineItem}
+                    className="w-full"
+                    data-testid="button-add-expense-item"
+                  >
+                    <Plus className="w-4 h-4 mr-1" /> Add Another Item
+                  </Button>
+                  
+                  <div className="flex gap-2 pt-2 border-t">
+                    <Button 
+                      size="sm" 
+                      onClick={handleAddExpenses} 
+                      disabled={isSavingExpenses} 
+                      data-testid="button-save-expenses"
+                    >
+                      <Receipt className="w-4 h-4 mr-1" /> 
+                      {isSavingExpenses ? 'Saving...' : `Save ${expenseItems.filter(i => i.amount).length} Item${expenseItems.filter(i => i.amount).length !== 1 ? 's' : ''} & Create Vouchers`}
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => setIsAddingExpense(false)} data-testid="button-cancel-expense">
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => {
+                        setIsAddingExpense(false);
+                        setExpenseItems([{ amount: '', reference: '', description: '' }]);
+                      }} 
+                      data-testid="button-cancel-expense"
+                    >
                       Cancel
                     </Button>
                   </div>
