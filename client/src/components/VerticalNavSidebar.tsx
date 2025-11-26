@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Plus } from "lucide-react";
+import { Menu, X, Plus, ChevronDown, ChevronRight } from "lucide-react";
 import { type LucideIcon } from "lucide-react";
 import {
   DropdownMenu,
@@ -8,6 +8,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 export interface QuickAction {
   id: string;
@@ -21,6 +26,7 @@ export interface NavSection {
   label?: string;
   items: NavItem[];
   quickActions?: QuickAction[];
+  defaultOpen?: boolean;
 }
 
 export interface NavItem {
@@ -49,6 +55,44 @@ export function VerticalNavSidebar({
   isMobileOpen = false,
   onMobileClose,
 }: VerticalNavSidebarProps) {
+  // Initialize collapsed state from localStorage or default all open
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem('sidebarCollapsedSections');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      // Ignore parse errors
+    }
+    // Default: all sections open
+    return {};
+  });
+
+  // Save to localStorage when collapsed state changes
+  useEffect(() => {
+    localStorage.setItem('sidebarCollapsedSections', JSON.stringify(collapsedSections));
+  }, [collapsedSections]);
+
+  // Auto-expand section containing active item
+  useEffect(() => {
+    const activeSection = sections.find(section => 
+      section.items.some(item => item.id === activeItem)
+    );
+    if (activeSection && collapsedSections[activeSection.id]) {
+      setCollapsedSections(prev => ({
+        ...prev,
+        [activeSection.id]: false
+      }));
+    }
+  }, [activeItem, sections]);
+
+  const toggleSection = (sectionId: string) => {
+    setCollapsedSections(prev => ({
+      ...prev,
+      [sectionId]: !prev[sectionId]
+    }));
+  };
 
   const handleItemClick = (item: NavItem) => {
     onItemClick(item.id);
@@ -68,7 +112,7 @@ export function VerticalNavSidebar({
       <Button
         key={item.id}
         variant={isActive ? "default" : "ghost"}
-        className={`w-full justify-start text-left min-h-10 h-auto py-2 ${
+        className={`w-full justify-start text-left min-h-9 h-auto py-1.5 ${
           isActive ? "bg-primary text-primary-foreground" : "text-muted-foreground hover-elevate"
         }`}
         onClick={() => handleItemClick(item)}
@@ -90,54 +134,86 @@ export function VerticalNavSidebar({
         touchAction: 'pan-y'
       }}
     >
-      <div className="space-y-4">
-        {sections.map((section, index) => (
-          <div key={section.id}>
-            {section.label && (
-              <div className="flex items-center justify-between mb-1.5 px-2">
-                <div className="text-xs font-semibold text-muted-foreground uppercase">
-                  {section.label}
-                </div>
-                {section.quickActions && section.quickActions.length > 0 && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
+      <div className="space-y-1">
+        {sections.map((section, index) => {
+          const isCollapsed = collapsedSections[section.id] ?? false;
+          const hasActiveItem = section.items.some(item => item.id === activeItem);
+          
+          return (
+            <div key={section.id}>
+              {section.label ? (
+                <Collapsible open={!isCollapsed} onOpenChange={() => toggleSection(section.id)}>
+                  <div className="flex items-center justify-between mb-1 px-1">
+                    <CollapsibleTrigger asChild>
                       <Button
                         variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 hover-elevate"
-                        aria-label={`Add ${section.label?.toLowerCase()} item`}
-                        data-testid={`button-quick-action-${section.id}`}
+                        size="sm"
+                        className={`flex-1 justify-start h-8 px-2 hover-elevate ${
+                          hasActiveItem && isCollapsed ? 'bg-primary/10 text-primary' : ''
+                        }`}
+                        data-testid={`toggle-section-${section.id}`}
                       >
-                        <Plus className="h-4 w-4" />
+                        {isCollapsed ? (
+                          <ChevronRight className="h-4 w-4 mr-1.5 flex-shrink-0" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 mr-1.5 flex-shrink-0" />
+                        )}
+                        <span className="text-xs font-semibold uppercase tracking-wide">
+                          {section.label}
+                        </span>
+                        {hasActiveItem && isCollapsed && (
+                          <span className="ml-auto w-2 h-2 rounded-full bg-primary" />
+                        )}
                       </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56">
-                      {section.quickActions.map((action) => {
-                        const ActionIcon = action.icon;
-                        return (
-                          <DropdownMenuItem
-                            key={action.id}
-                            onClick={action.onClick}
-                            data-testid={`quick-action-${action.id}`}
+                    </CollapsibleTrigger>
+                    {section.quickActions && section.quickActions.length > 0 && !isCollapsed && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 hover-elevate flex-shrink-0"
+                            aria-label={`Add ${section.label?.toLowerCase()} item`}
+                            data-testid={`button-quick-action-${section.id}`}
                           >
-                            <ActionIcon className="h-4 w-4 mr-2" />
-                            {action.label}
-                          </DropdownMenuItem>
-                        );
-                      })}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-              </div>
-            )}
-            <div className="space-y-1">
-              {section.items.map((item) => renderNavItem(item))}
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56">
+                          {section.quickActions.map((action) => {
+                            const ActionIcon = action.icon;
+                            return (
+                              <DropdownMenuItem
+                                key={action.id}
+                                onClick={action.onClick}
+                                data-testid={`quick-action-${action.id}`}
+                              >
+                                <ActionIcon className="h-4 w-4 mr-2" />
+                                {action.label}
+                              </DropdownMenuItem>
+                            );
+                          })}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </div>
+                  <CollapsibleContent>
+                    <div className="space-y-0.5 pl-2">
+                      {section.items.map((item) => renderNavItem(item))}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              ) : (
+                <div className="space-y-0.5">
+                  {section.items.map((item) => renderNavItem(item))}
+                </div>
+              )}
+              {index < sections.length - 1 && (
+                <div className="border-t border-border my-2" />
+              )}
             </div>
-            {index < sections.length - 1 && (
-              <div className="border-t border-border my-4" />
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -156,7 +232,7 @@ export function VerticalNavSidebar({
       {/* Sidebar */}
       <div
         className={`
-          fixed top-0 left-0 bottom-0 w-72 bg-card border-r border-border z-40 pt-20 px-4 pb-4
+          fixed top-0 left-0 bottom-0 w-72 bg-card border-r border-border z-40 pt-20 px-3 pb-4
           transition-transform duration-300 ease-in-out
           flex flex-col h-full
           ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
