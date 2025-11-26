@@ -409,18 +409,34 @@ export default function VendorManagement() {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
+    const formData = new FormData(e.currentTarget);
+    const gstNumber = formData.get("gstNumber") as string || null;
+    
+    // Determine effective GST status - from verification result or existing vendor
+    const effectiveGstStatus = gstVerificationResult?.status || 
+      (editingVendor?.gstNumber === gstNumber ? editingVendor?.gstStatus : null);
+    
     // Prevent saving if GST is suspended or cancelled
-    if (gstVerificationResult && (gstVerificationResult.status === 'Cancelled' || gstVerificationResult.status === 'Suspended')) {
+    if (gstNumber && effectiveGstStatus && 
+        (effectiveGstStatus === 'Cancelled' || effectiveGstStatus === 'Suspended')) {
       toast({
         title: "Cannot Save Vendor",
-        description: `GST registration is ${gstVerificationResult.status}. Please use an active GST number or remove the GST number.`,
+        description: `GST registration is ${effectiveGstStatus}. Please use an active GST number or remove the GST number.`,
         variant: "destructive",
       });
       return;
     }
     
-    const formData = new FormData(e.currentTarget);
-    const gstNumber = formData.get("gstNumber") as string || null;
+    // If GST number changed from existing vendor, clear GST status unless newly verified
+    const gstChanged = editingVendor && editingVendor.gstNumber !== gstNumber;
+    const gstStatusToSave = gstVerificationResult?.status || 
+      (gstChanged ? null : editingVendor?.gstStatus) || null;
+    const gstLegalNameToSave = gstVerificationResult?.legalName || 
+      (gstChanged ? null : editingVendor?.gstLegalName) || null;
+    const gstTradeNameToSave = gstVerificationResult?.tradeName || 
+      (gstChanged ? null : editingVendor?.gstTradeName) || null;
+    const gstVerifiedAtToSave = gstVerificationResult ? new Date().toISOString() : 
+      (gstChanged ? null : editingVendor?.gstVerifiedAt) || null;
     
     const data = {
       vendorCode: formData.get("vendorCode") as string,
@@ -430,10 +446,10 @@ export default function VendorManagement() {
       state: formData.get("state") as string,
       pincode: formData.get("pincode") as string,
       gstNumber: gstNumber,
-      gstStatus: gstVerificationResult?.status || null,
-      gstLegalName: gstVerificationResult?.legalName || null,
-      gstTradeName: gstVerificationResult?.tradeName || null,
-      gstVerifiedAt: gstVerificationResult ? new Date().toISOString() : null,
+      gstStatus: gstStatusToSave,
+      gstLegalName: gstLegalNameToSave,
+      gstTradeName: gstTradeNameToSave,
+      gstVerifiedAt: gstVerifiedAtToSave,
       aadhaarNumber: formData.get("aadhaarNumber") as string || null,
       mobileNumber: formData.get("mobileNumber") as string,
       email: formData.get("email") as string || null,
@@ -452,6 +468,16 @@ export default function VendorManagement() {
 
   const handleEdit = (vendor: Vendor) => {
     setEditingVendor(vendor);
+    // Initialize GST verification result from existing vendor status
+    if (vendor.gstStatus) {
+      setGstVerificationResult({
+        status: vendor.gstStatus,
+        legalName: vendor.gstLegalName || undefined,
+        tradeName: vendor.gstTradeName || undefined,
+      });
+    } else {
+      setGstVerificationResult(null);
+    }
     // Pre-seed vendor types from cached data to avoid UI flicker
     const existingTypes = vendorTypesMap[vendor.id] || [];
     setSelectedVendorTypes(existingTypes.map(vt => vt.vendorTypeId));
@@ -689,16 +715,11 @@ export default function VendorManagement() {
                       )}
                     </div>
                   )}
-                  {/* Show existing GST status for editing vendor */}
-                  {editingVendor?.gstStatus && !gstVerificationResult && (
-                    <div className="flex items-center gap-2">
-                      <GstStatusBadge status={editingVendor.gstStatus} />
-                      {editingVendor.gstVerifiedAt && (
-                        <span className="text-xs text-muted-foreground">
-                          Verified: {new Date(editingVendor.gstVerifiedAt).toLocaleDateString()}
-                        </span>
-                      )}
-                    </div>
+                  {/* Show verified at timestamp */}
+                  {editingVendor?.gstVerifiedAt && !gstVerifying && gstVerificationResult?.status === editingVendor?.gstStatus && (
+                    <span className="text-xs text-muted-foreground">
+                      Last verified: {new Date(editingVendor.gstVerifiedAt).toLocaleDateString()}
+                    </span>
                   )}
                 </div>
                 <div>
