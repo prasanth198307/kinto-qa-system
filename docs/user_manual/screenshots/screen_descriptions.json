@@ -1,0 +1,222 @@
+[
+  {
+    "filename": "01_Overview_Dashboard.png",
+    "title": "Overview Dashboard",
+    "description": "Main dashboard showing key metrics, production stats, pending payments, and inventory summary"
+  },
+  {
+    "filename": "02_Sales_Dashboard.png",
+    "title": "Sales Dashboard",
+    "description": "Sales analytics and revenue tracking dashboard"
+  },
+  {
+    "filename": "03_Reports.png",
+    "title": "Reports",
+    "description": "Comprehensive reporting system for all modules"
+  },
+  {
+    "filename": "04_Checklist_Builder.png",
+    "title": "Checklist Builder",
+    "description": "Create and manage checklist templates for quality control"
+  },
+  {
+    "filename": "05_Checklist_Assignments.png",
+    "title": "Checklist Assignments",
+    "description": "Assign checklists to operators for specific machines and shifts"
+  },
+  {
+    "filename": "06_Machine_Startup_Reminders.png",
+    "title": "Machine Startup Reminders",
+    "description": "Configure automated reminders for machine startup procedures"
+  },
+  {
+    "filename": "07_WhatsApp_Analytics.png",
+    "title": "WhatsApp Analytics",
+    "description": "Track WhatsApp message delivery and response analytics"
+  },
+  {
+    "filename": "08_Product_Master.png",
+    "title": "Product Master",
+    "description": "Manage product catalog with specifications and pricing"
+  },
+  {
+    "filename": "09_Product_Categories.png",
+    "title": "Product Categories",
+    "description": "Organize products into categories"
+  },
+  {
+    "filename": "10_Product_Types.png",
+    "title": "Product Types",
+    "description": "Define product types for classification"
+  },
+  {
+    "filename": "11_Raw_Materials.png",
+    "title": "Raw Materials",
+    "description": "Manage raw material inventory and specifications"
+  },
+  {
+    "filename": "12_Finished_Goods.png",
+    "title": "Finished Goods",
+    "description": "Track finished goods inventory with quality status"
+  },
+  {
+    "filename": "13_Raw_Material_Issuance.png",
+    "title": "Raw Material Issuance",
+    "description": "Issue raw materials to production with BOM-based calculations"
+  },
+  {
+    "filename": "14_Production_Entries.png",
+    "title": "Production Entries",
+    "description": "Record daily production output by machine and product"
+  },
+  {
+    "filename": "15_Production_Reconciliation.png",
+    "title": "Production Reconciliation",
+    "description": "End-of-day reconciliation of production vs materials consumed"
+  },
+  {
+    "filename": "16_Variance_Analytics.png",
+    "title": "Variance Analytics",
+    "description": "Analyze production variances and efficiency metrics"
+  },
+  {
+    "filename": "17_Sales_Invoices.png",
+    "title": "Sales Invoices",
+    "description": "Create GST-compliant invoices with UPI QR codes"
+  },
+  {
+    "filename": "18_Pending_Payments.png",
+    "title": "Pending Payments",
+    "description": "Track outstanding payments with aging analysis"
+  },
+  {
+    "filename": "19_Payment_Management.png",
+    "title": "Payment Management",
+    "description": "Record and allocate payments using FIFO method"
+  },
+  {
+    "filename": "20_Credit_Notes.png",
+    "title": "Credit Notes",
+    "description": "Manage credit notes for returns and adjustments"
+  },
+  {
+    "filename": "21_Cancelled_Invoices.png",
+    "title": "Cancelled Invoices",
+    "description": "View cancelled invoices with audit trail"
+  },
+  {
+    "filename": "22_Sales_Returns.png",
+    "title": "Sales Returns",
+    "description": "Process customer returns with quality segregation"
+  },
+  {
+    "filename": "23_Gatepasses.png",
+    "title": "Gatepasses",
+    "description": "Create gatepasses for dispatching goods"
+  },
+  {
+    "filename": "24_Dispatch_Tracking.png",
+    "title": "Dispatch Tracking",
+    "description": "Track shipments through 5-stage delivery workflow"
+  },
+  {
+    "filename": "25_Daily_Cash_Register.png",
+    "title": "Daily Cash Register",
+    "description": "Daily business cash flow tracking with reconciliation"
+  },
+  {
+    "filename": "26_Cash_Register_Report.png",
+    "title": "Cash Register Report",
+    "description": "Cash register reports with Excel export"
+  },
+  {
+    "filename": "27_Expense_Vouchers.png",
+    "title": "Expense Vouchers",
+    "description": "Record expenses with voucher generation and approval workflow"
+  },
+  {
+    "filename": "28_Documents.png",
+    "title": "Documents",
+    "description": "Store and manage business documents with expiry tracking"
+  },
+  {
+    "filename": "29_PM_Schedule.png",
+    "title": "PM Schedule",
+    "description": "Schedule preventive maintenance tasks"
+  },
+  {
+    "filename": "30_PM_History.png",
+    "title": "PM History",
+    "description": "View maintenance history and completed tasks"
+  },
+  {
+    "filename": "31_Purchase_Orders.png",
+    "title": "Purchase Orders",
+    "description": "Create and manage purchase orders for materials"
+  },
+  {
+    "filename": "32_Users.png",
+    "title": "Users",
+    "description": "Manage system users with role assignments"
+  },
+  {
+    "filename": "33_Role_Permissions.png",
+    "title": "Role Permissions",
+    "description": "Configure granular access control for 50+ screens"
+  },
+  {
+    "filename": "34_Vendor_Master.png",
+    "title": "Vendor Master",
+    "description": "Manage vendors with classification and contact details"
+  },
+  {
+    "filename": "35_Vendor_Types.png",
+    "title": "Vendor Types",
+    "description": "Define vendor classification types"
+  },
+  {
+    "filename": "36_Machines.png",
+    "title": "Machines",
+    "description": "Configure machine inventory with specifications"
+  },
+  {
+    "filename": "37_Machine_Types.png",
+    "title": "Machine Types",
+    "description": "Define machine categories and types"
+  },
+  {
+    "filename": "38_Spare_Parts.png",
+    "title": "Spare Parts",
+    "description": "Manage spare parts inventory for maintenance"
+  },
+  {
+    "filename": "39_PM_Templates.png",
+    "title": "PM Templates",
+    "description": "Create preventive maintenance task templates"
+  },
+  {
+    "filename": "40_Unit_of_Measurement.png",
+    "title": "Unit of Measurement",
+    "description": "Define units of measurement for products and materials"
+  },
+  {
+    "filename": "41_Raw_Material_Types.png",
+    "title": "Raw Material Types",
+    "description": "Categorize raw materials by type"
+  },
+  {
+    "filename": "42_Invoice_Templates.png",
+    "title": "Invoice Templates",
+    "description": "Design invoice templates with company branding"
+  },
+  {
+    "filename": "43_Notification_Settings.png",
+    "title": "Notification Settings",
+    "description": "Configure email and WhatsApp notification preferences"
+  },
+  {
+    "filename": "44_Data_Import.png",
+    "title": "Data Import",
+    "description": "Import data from Excel files and external systems"
+  }
+]
