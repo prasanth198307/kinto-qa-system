@@ -8839,10 +8839,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Calculate variance (actual - expected)
       const varianceAmount = actualClosingBalance - expectedClosingBalance;
       
-      // Require notes if there's a variance
-      if (varianceAmount !== 0 && !varianceNotes?.trim()) {
+      // Enforce that actual must match expected - user must record adjustment transactions first
+      if (varianceAmount !== 0) {
         return res.status(400).json({ 
-          message: 'Variance notes are required when actual balance differs from expected' 
+          message: `Cannot close day with variance of ${varianceAmount} paise. Please record an adjustment transaction (Expense for shortage, Cash Received for surplus) to balance the books first.` 
         });
       }
       

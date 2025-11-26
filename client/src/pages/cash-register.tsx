@@ -923,27 +923,66 @@ export default function CashRegisterPage() {
                       </div>
                       
                       {actualBalance && Math.round(parseFloat(actualBalance) * 100) !== calculatedClosing && (
-                        <div className="p-3 border border-amber-500/50 bg-amber-500/10 rounded-lg space-y-2">
+                        <div className="p-3 border border-amber-500/50 bg-amber-500/10 rounded-lg space-y-3">
                           <div className="flex items-center gap-2 text-amber-600">
                             <AlertTriangle className="w-4 h-4" />
-                            <span className="font-medium">Variance Detected</span>
+                            <span className="font-medium">Variance Detected - Record Adjustment</span>
                           </div>
                           <div className="flex justify-between text-sm">
                             <span>Variance Amount:</span>
-                            <span className={Math.round(parseFloat(actualBalance) * 100) > calculatedClosing ? 'text-green-600' : 'text-red-600'}>
-                              {formatCurrency(Math.round(parseFloat(actualBalance) * 100) - calculatedClosing)}
+                            <span className={Math.round(parseFloat(actualBalance) * 100) > calculatedClosing ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
+                              {formatCurrency(Math.abs(Math.round(parseFloat(actualBalance) * 100) - calculatedClosing))}
+                              {Math.round(parseFloat(actualBalance) * 100) > calculatedClosing ? ' (Surplus)' : ' (Shortage)'}
                             </span>
                           </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="variance-notes">Reason for Variance (Required)</Label>
-                            <Textarea
-                              id="variance-notes"
-                              placeholder="Explain why the actual balance differs from expected..."
-                              value={varianceNotes}
-                              onChange={(e) => setVarianceNotes(e.target.value)}
-                              rows={3}
-                              data-testid="input-variance-notes"
-                            />
+                          <p className="text-sm text-muted-foreground">
+                            {Math.round(parseFloat(actualBalance) * 100) < calculatedClosing 
+                              ? 'You have less cash than expected. Record this as an Expense to balance the books.'
+                              : 'You have more cash than expected. Record this as Cash Received to balance the books.'}
+                          </p>
+                          <div className="flex gap-2">
+                            {Math.round(parseFloat(actualBalance) * 100) < calculatedClosing ? (
+                              <Button 
+                                size="sm" 
+                                variant="destructive"
+                                onClick={() => {
+                                  const shortage = calculatedClosing - Math.round(parseFloat(actualBalance) * 100);
+                                  setNewExpense({ 
+                                    amount: (shortage / 100).toString(), 
+                                    reference: 'Reconciliation Adjustment', 
+                                    description: 'Cash shortage during reconciliation' 
+                                  });
+                                  setIsAddingExpense(true);
+                                  setIsReconcileOpen(false);
+                                  toast({ title: "Add Expense", description: "Record the shortage as an expense, then close the day" });
+                                }}
+                                data-testid="button-add-shortage-expense"
+                              >
+                                <TrendingDown className="w-4 h-4 mr-1" />
+                                Record as Expense ({formatCurrency(Math.abs(Math.round(parseFloat(actualBalance) * 100) - calculatedClosing))})
+                              </Button>
+                            ) : (
+                              <Button 
+                                size="sm" 
+                                className="bg-green-600 hover:bg-green-700"
+                                onClick={() => {
+                                  const surplus = Math.round(parseFloat(actualBalance) * 100) - calculatedClosing;
+                                  setNewCashReceived({ 
+                                    amount: (surplus / 100).toString(), 
+                                    reference: 'Reconciliation Adjustment', 
+                                    description: 'Unaccounted cash found during reconciliation',
+                                    sourceType: 'other'
+                                  });
+                                  setIsAddingCash(true);
+                                  setIsReconcileOpen(false);
+                                  toast({ title: "Add Cash Received", description: "Record the surplus as cash received, then close the day" });
+                                }}
+                                data-testid="button-add-surplus-cash"
+                              >
+                                <TrendingUp className="w-4 h-4 mr-1" />
+                                Record as Cash Received ({formatCurrency(Math.abs(Math.round(parseFloat(actualBalance) * 100) - calculatedClosing))})
+                              </Button>
+                            )}
                           </div>
                         </div>
                       )}
@@ -960,20 +999,19 @@ export default function CashRegisterPage() {
                             return;
                           }
                           const actualPaise = Math.round(parseFloat(actualBalance) * 100);
-                          if (actualPaise !== calculatedClosing && !varianceNotes.trim()) {
-                            toast({ title: "Error", description: "Please provide a reason for the variance", variant: "destructive" });
-                            return;
-                          }
                           closeDayMutation.mutate({
                             dayId: selectedDay.id,
                             actualClosingBalance: actualPaise,
-                            varianceNotes: varianceNotes.trim(),
+                            varianceNotes: '',
                           });
                         }}
-                        disabled={closeDayMutation.isPending}
+                        disabled={closeDayMutation.isPending || !actualBalance || Math.round(parseFloat(actualBalance || '0') * 100) !== calculatedClosing}
                         data-testid="button-confirm-close"
                       >
-                        {closeDayMutation.isPending ? 'Closing...' : 'Reconcile & Close'}
+                        {closeDayMutation.isPending ? 'Closing...' : 
+                          Math.round(parseFloat(actualBalance || '0') * 100) !== calculatedClosing 
+                            ? 'Record Adjustment First' 
+                            : 'Reconcile & Close'}
                       </Button>
                     </DialogFooter>
                   </DialogContent>
