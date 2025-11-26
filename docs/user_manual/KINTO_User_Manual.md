@@ -700,23 +700,145 @@ View historical cash register entries with export capability.
 
 ### Expense Vouchers
 
-Manage expense vouchers with approval workflow.
+Manage expense vouchers with approval workflow and professional printing.
 
 ![Expense Vouchers](screenshots/27_Expense_Vouchers.png)
 
-**Expense Workflow:**
-1. **Draft** - Create expense voucher
-2. **Submitted** - Send for approval
-3. **Approved/Rejected** - Manager decision
-4. **Paid** - Payment confirmed
+**Navigation:** Cash & Expenses → Expenses
 
-**Voucher Features:**
-- Multiple line items per voucher
-- Expense category assignment
-- GST handling
-- Payment mode tracking
-- A5-sized print format (2 per A4 page)
-- Signature boxes for Receiver, Cashier, Approved By
+---
+
+#### How Vouchers Are Created
+
+There are **two ways** to generate expense vouchers:
+
+**Method 1: Automatic Generation from Cash Register**
+1. Navigate to **Cash & Expenses → Daily Cash Register**
+2. Open or create a day
+3. Click **"Add"** in the Expenses section
+4. Enter expense details (each line item = 1 voucher):
+   - Amount
+   - Item name (e.g., Diesel, Tea, Lunch)
+   - Description (optional)
+5. Click **"Add Another Item"** to add more expenses
+6. Click **"Save X Items & Create Vouchers"**
+7. Each line item automatically creates its own voucher
+
+**Method 2: Manual Creation from Expenses Page**
+1. Navigate to **Cash & Expenses → Expenses**
+2. Click **"Create Expense"** button
+3. Fill in voucher details:
+   - Payee name and type
+   - Payment mode (Cash/Bank/UPI/Cheque)
+   - Add line items with amounts
+   - Select expense categories
+   - Add GST if applicable
+4. Click **"Save"** to create voucher
+
+---
+
+#### Expense Voucher Filters
+
+![Expense Vouchers](screenshots/27_Expense_Vouchers.png)
+
+**Available Filters:**
+
+| Filter | Options | Description |
+|--------|---------|-------------|
+| Search | Text box | Search by voucher number, payee name, or purpose |
+| Status | Draft, Submitted, Approved, Rejected, Paid | Filter by voucher status |
+| Date From | Date picker | Start date of voucher period |
+| Date To | Date picker | End date of voucher period |
+| Payment Mode | Cash, Bank, UPI, Cheque | Filter by payment method |
+| Category | Dropdown | Filter by expense category |
+
+**How to Filter:**
+1. Navigate to **Cash & Expenses → Expenses**
+2. Use the search box to find specific vouchers
+3. Click filter dropdowns to narrow by status, date, or payment mode
+4. Results update automatically
+
+---
+
+#### Expense Workflow Status
+
+| Status | Description | Who Can Change |
+|--------|-------------|----------------|
+| **Draft** | Voucher created but not submitted | Creator |
+| **Submitted** | Sent for manager approval | Creator → Manager |
+| **Approved** | Manager approved the expense | Manager |
+| **Rejected** | Manager rejected the expense | Manager |
+| **Paid** | Payment has been made | Admin/Manager |
+
+---
+
+#### Printing Expense Vouchers
+
+**Print Format:** A5-sized vouchers (2 per A4 page)
+
+![Expense Voucher Print](screenshots/29_Expense_Voucher_Print.png)
+
+**Voucher Print Layout:**
+- Company name: **Inmoisture Private Limited**
+- Voucher number and date
+- Payee details
+- Line items with amounts
+- GST breakdown (if applicable)
+- Total amount in words and figures
+- **Signature boxes:**
+  - Received By (with amount)
+  - Cashier
+  - Approved By
+
+**How to Print Single Voucher:**
+1. Navigate to **Cash & Expenses → Expenses**
+2. Find the voucher you want to print
+3. Click the **Print** icon (🖨️) on the voucher row
+4. Voucher opens in print preview
+5. Click **Print** or press Ctrl+P
+
+**How to Print Multiple Vouchers (from Cash Register Report):**
+1. Navigate to **Cash & Expenses → Cash Register Report**
+2. Set the date range
+3. Click **"Print Vouchers"** button
+4. All expense vouchers for that period open in print view
+5. Vouchers are arranged 2 per A4 page (A5 size each)
+6. Click **Print** or press Ctrl+P
+
+**How to Print from Daily Cash Register:**
+1. Navigate to **Cash & Expenses → Daily Cash Register**
+2. Select a day to view details
+3. In the Expenses section, click the **Print** icon next to any expense
+4. Single voucher opens in print preview
+
+---
+
+#### Voucher Number Format
+
+Vouchers created from Cash Register follow this format:
+```
+EXP-CR-YYYYMMDD-XXX-NN
+```
+- **EXP-CR** - Expense from Cash Register
+- **YYYYMMDD** - Date (e.g., 20251126)
+- **XXX** - Sequence number for the day
+- **NN** - Line item number (for multiple items)
+
+Example: `EXP-CR-20251126-001-01` (First voucher, first item on Nov 26, 2025)
+
+---
+
+#### Quick Actions on Expenses Page
+
+| Action | Icon | Description |
+|--------|------|-------------|
+| View | 👁️ | View voucher details |
+| Print | 🖨️ | Print single voucher (A5 format) |
+| Edit | ✏️ | Edit draft voucher |
+| Submit | ➡️ | Submit for approval |
+| Approve | ✓ | Approve expense (Manager only) |
+| Reject | ✗ | Reject expense (Manager only) |
+| Mark Paid | 💰 | Mark as paid (Admin only) |
 
 ### Documents
 
