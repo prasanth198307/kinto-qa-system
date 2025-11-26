@@ -95,6 +95,8 @@ The Reports module provides detailed business analytics with powerful filtering 
 
 Generate GST-compliant reports for tax filing.
 
+![GST Reports](screenshots/03_Reports.png)
+
 **Navigation:** Dashboard & Analytics → Reports → GST Reports tab
 
 **Available Report Types:**
@@ -134,6 +136,8 @@ Generate GST-compliant reports for tax filing.
 
 Track outstanding invoice payments and aging analysis.
 
+![Pending Payments](screenshots/18_Pending_Payments.png)
+
 **Navigation:** Finance & Sales → Pending Payments
 
 **Filters:**
@@ -162,6 +166,8 @@ Track outstanding invoice payments and aging analysis.
 
 Audit trail of all cancelled invoices with replacement tracking.
 
+![Cancelled Invoices](screenshots/21_Cancelled_Invoices.png)
+
 **Navigation:** Finance & Sales → Cancelled Invoices
 
 **Filters:**
@@ -188,6 +194,8 @@ Audit trail of all cancelled invoices with replacement tracking.
 #### Production Reconciliation Report
 
 Analyze material usage vs production output with variance tracking.
+
+![Production Reconciliation](screenshots/15_Production_Reconciliation.png)
 
 **Navigation:** Dashboard & Analytics → Production Reconciliation Report
 
@@ -221,6 +229,8 @@ Analyze material usage vs production output with variance tracking.
 
 Visual analytics for production efficiency trends.
 
+![Variance Analytics](screenshots/16_Variance_Analytics.png)
+
 **Navigation:** Dashboard & Analytics → Variance Analytics
 
 **Filters:**
@@ -247,6 +257,8 @@ Visual analytics for production efficiency trends.
 #### Cash Register Report
 
 Daily cash flow summary with transaction details.
+
+![Cash Register Report](screenshots/26_Cash_Register_Report.png)
 
 **Navigation:** Cash & Expenses → Cash Register Report
 
@@ -284,6 +296,8 @@ Daily cash flow summary with transaction details.
 
 Consolidated view of all expenses with category breakdown.
 
+![Expense Vouchers](screenshots/27_Expense_Vouchers.png)
+
 **Navigation:** Cash & Expenses → Expenses (with filters)
 
 **Filters:**
@@ -316,6 +330,8 @@ Consolidated view of all expenses with category breakdown.
 
 Monitor invoice dispatch status through the delivery workflow.
 
+![Dispatch Tracking](screenshots/24_Dispatch_Tracking.png)
+
 **Navigation:** Dispatch & Logistics → Dispatch Tracking
 
 **Filters:**
@@ -343,6 +359,8 @@ Monitor invoice dispatch status through the delivery workflow.
 #### WhatsApp Analytics Report
 
 Monitor WhatsApp integration performance for machine startup reminders.
+
+![WhatsApp Analytics](screenshots/07_WhatsApp_Analytics.png)
 
 **Navigation:** Quality & Checklists → WhatsApp Analytics
 
