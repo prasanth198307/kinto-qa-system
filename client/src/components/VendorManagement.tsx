@@ -159,6 +159,14 @@ export default function VendorManagement() {
     blockReason?: string;
     message?: string;
   } | null>(null);
+  const [bulkVerifying, setBulkVerifying] = useState(false);
+  const [bulkVerifyProgress, setBulkVerifyProgress] = useState<{
+    total: number;
+    verified: number;
+    active: number;
+    cancelled: number;
+    suspended: number;
+  } | null>(null);
 
   // Force component to re-render when URL changes
   const [, forceUpdate] = useState(0);
@@ -519,21 +527,22 @@ export default function VendorManagement() {
     
     setGstVerifying(true);
     try {
-      const response = await apiRequest("POST", "/api/gst/verify", { gstin });
-      setGstVerificationResult(response);
+      const res = await apiRequest("POST", "/api/gst/verify", { gstin });
+      const data = await res.json();
+      setGstVerificationResult(data);
       
-      if (response.status === 'Active') {
+      if (data.status === 'Active') {
         toast({
           title: "GST Verified",
-          description: `GSTIN is Active. Legal Name: ${response.legalName || 'N/A'}`,
+          description: `GSTIN is Active. Legal Name: ${data.legalName || 'N/A'}`,
         });
-      } else if (response.status === 'Cancelled' || response.status === 'Suspended') {
+      } else if (data.status === 'Cancelled' || data.status === 'Suspended') {
         toast({
           title: "GST Status Warning",
-          description: `GSTIN is ${response.status}. You cannot save this vendor.`,
+          description: `GSTIN is ${data.status}. You cannot save this vendor.`,
           variant: "destructive",
         });
-      } else if (response.status === 'Inactive') {
+      } else if (data.status === 'Inactive') {
         toast({
           title: "GST Status Warning",
           description: "GSTIN is Inactive. Please verify manually.",
@@ -542,7 +551,7 @@ export default function VendorManagement() {
       } else {
         toast({
           title: "GST Status Unknown",
-          description: response.message || "Could not verify GST. Please verify manually.",
+          description: data.message || "Could not verify GST. Please verify manually.",
         });
       }
     } catch (error: any) {
@@ -553,6 +562,38 @@ export default function VendorManagement() {
       });
     } finally {
       setGstVerifying(false);
+    }
+  };
+
+  const bulkVerifyGst = async () => {
+    setBulkVerifying(true);
+    setBulkVerifyProgress(null);
+    try {
+      const res = await apiRequest("POST", "/api/vendors/bulk-verify-gst", {});
+      const data = await res.json();
+      setBulkVerifyProgress({
+        total: data.total,
+        verified: data.verified,
+        active: data.active,
+        cancelled: data.cancelled,
+        suspended: data.suspended,
+      });
+      
+      // Refresh vendor list
+      queryClient.invalidateQueries({ queryKey: ['/api/vendors'] });
+      
+      toast({
+        title: "Bulk GST Verification Complete",
+        description: `Verified ${data.verified} of ${data.total} vendors. Active: ${data.active}, Cancelled: ${data.cancelled}, Suspended: ${data.suspended}`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Bulk Verification Failed",
+        description: error.message || "Failed to verify GST for all vendors",
+        variant: "destructive",
+      });
+    } finally {
+      setBulkVerifying(false);
     }
   };
 
@@ -568,13 +609,33 @@ export default function VendorManagement() {
               {paginationMeta ? `Showing ${vendors.length} of ${paginationMeta.totalItems} vendors` : `${vendors.length} vendors`}
             </p>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" data-testid="button-add-vendor">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Vendor
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={bulkVerifyGst}
+              disabled={bulkVerifying}
+              data-testid="button-bulk-verify-gst"
+            >
+              {bulkVerifying ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Verifying GST...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Verify All GST
+                </>
+              )}
             </Button>
-          </DialogTrigger>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" data-testid="button-add-vendor">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Vendor
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
@@ -979,6 +1040,7 @@ export default function VendorManagement() {
             </form>
           </DialogContent>
         </Dialog>
+          </div>
       </CardHeader>
     </Card>
 

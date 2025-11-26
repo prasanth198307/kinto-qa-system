@@ -2135,6 +2135,129 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bulk verify GST for all unverified vendors
+  app.post('/api/vendors/bulk-verify-gst', requireRole('admin'), async (req: any, res) => {
+    try {
+      const axios = require('axios');
+      
+      // Get all vendors with GST numbers that haven't been verified
+      const allVendors = await storage.getAllVendors();
+      const unverifiedVendors = allVendors.filter(v => 
+        v.gstNumber && 
+        v.gstNumber.trim() !== '' && 
+        (!v.gstStatus || v.gstStatus === '' || v.gstStatus === 'Unknown')
+      );
+      
+      console.log(`[GST BULK] Starting verification for ${unverifiedVendors.length} vendors`);
+      
+      const results = {
+        total: unverifiedVendors.length,
+        verified: 0,
+        active: 0,
+        cancelled: 0,
+        suspended: 0,
+        inactive: 0,
+        unknown: 0,
+        failed: 0,
+        details: [] as any[]
+      };
+      
+      // Process in batches to avoid rate limiting
+      const batchSize = 5;
+      const delayBetweenBatches = 2000; // 2 seconds
+      
+      for (let i = 0; i < unverifiedVendors.length; i += batchSize) {
+        const batch = unverifiedVendors.slice(i, i + batchSize);
+        
+        const batchPromises = batch.map(async (vendor) => {
+          try {
+            const gstin = vendor.gstNumber!.toUpperCase();
+            const gstinRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+            
+            if (!gstinRegex.test(gstin)) {
+              results.details.push({
+                vendorId: vendor.id,
+                vendorName: vendor.vendorName,
+                gstNumber: vendor.gstNumber,
+                status: 'Invalid Format',
+                error: 'GSTIN format invalid'
+              });
+              results.failed++;
+              return;
+            }
+            
+            const response = await axios.get(
+              `https://sheet.gstincheck.co.in/check/free/${gstin}`,
+              { timeout: 15000 }
+            );
+            
+            if (response.data && response.data.flag === true && response.data.data) {
+              const gstData = response.data.data;
+              
+              let status = 'Unknown';
+              if (gstData.sts === 'Active') { status = 'Active'; results.active++; }
+              else if (gstData.sts === 'Cancelled') { status = 'Cancelled'; results.cancelled++; }
+              else if (gstData.sts === 'Suspended') { status = 'Suspended'; results.suspended++; }
+              else if (gstData.sts === 'Inactive') { status = 'Inactive'; results.inactive++; }
+              else { status = gstData.sts || 'Unknown'; results.unknown++; }
+              
+              // Update vendor with GST details
+              await storage.updateVendor(vendor.id, {
+                gstStatus: status,
+                gstLegalName: gstData.lgnm || null,
+                gstTradeName: gstData.tradeNam || null,
+                gstVerifiedAt: new Date().toISOString()
+              });
+              
+              results.verified++;
+              results.details.push({
+                vendorId: vendor.id,
+                vendorName: vendor.vendorName,
+                gstNumber: vendor.gstNumber,
+                status: status,
+                legalName: gstData.lgnm || ''
+              });
+              
+              console.log(`[GST BULK] Verified ${vendor.vendorName}: ${status}`);
+            } else {
+              results.unknown++;
+              results.details.push({
+                vendorId: vendor.id,
+                vendorName: vendor.vendorName,
+                gstNumber: vendor.gstNumber,
+                status: 'Unknown',
+                error: 'No data returned'
+              });
+            }
+          } catch (apiError: any) {
+            console.error(`[GST BULK] Error for ${vendor.vendorName}:`, apiError.message);
+            results.failed++;
+            results.details.push({
+              vendorId: vendor.id,
+              vendorName: vendor.vendorName,
+              gstNumber: vendor.gstNumber,
+              status: 'Error',
+              error: apiError.message
+            });
+          }
+        });
+        
+        await Promise.all(batchPromises);
+        
+        // Delay between batches to avoid rate limiting
+        if (i + batchSize < unverifiedVendors.length) {
+          await new Promise(resolve => setTimeout(resolve, delayBetweenBatches));
+        }
+      }
+      
+      console.log(`[GST BULK] Completed: ${results.verified}/${results.total} verified`);
+      res.json(results);
+    } catch (error) {
+      console.error("Error in bulk GST verification:", error);
+      res.status(500).json({ message: "Failed to complete bulk GST verification" });
+    }
+  });
+
   // Raw Material Type Master API
   app.get('/api/raw-material-types', isAuthenticated, async (req: any, res) => {
     try {
