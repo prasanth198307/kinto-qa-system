@@ -43,7 +43,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Star, Search, X, Check, ChevronsUpDown } from "lucide-react";
+import { Plus, Pencil, Trash2, Star, Search, X, Check, ChevronsUpDown, ShieldCheck, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -68,6 +68,38 @@ interface VendorVendorType {
   vendorTypeId: string;
   isPrimary: number;
   vendorType?: VendorType;
+}
+
+function GstStatusBadge({ status, size = "sm" }: { status: string | null | undefined; size?: "sm" | "xs" }) {
+  if (!status) return null;
+  
+  const statusLower = status.toLowerCase();
+  let variant: "default" | "secondary" | "destructive" | "outline" = "secondary";
+  let className = "";
+  let icon = null;
+  
+  if (statusLower === 'active') {
+    variant = "default";
+    className = size === "xs" ? "text-[10px] px-1.5 py-0.5" : "text-xs";
+    icon = <ShieldCheck className={size === "xs" ? "h-2.5 w-2.5 mr-0.5" : "h-3 w-3 mr-1"} />;
+  } else if (statusLower === 'cancelled' || statusLower === 'suspended') {
+    variant = "destructive";
+    className = size === "xs" ? "text-[10px] px-1.5 py-0.5" : "text-xs";
+    icon = <AlertCircle className={size === "xs" ? "h-2.5 w-2.5 mr-0.5" : "h-3 w-3 mr-1"} />;
+  } else if (statusLower === 'inactive') {
+    variant = "secondary";
+    className = size === "xs" ? "text-[10px] px-1.5 py-0.5 bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200" : "text-xs bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200";
+    icon = <AlertCircle className={size === "xs" ? "h-2.5 w-2.5 mr-0.5" : "h-3 w-3 mr-1"} />;
+  } else {
+    className = size === "xs" ? "text-[10px] px-1.5 py-0.5" : "text-xs";
+  }
+  
+  return (
+    <Badge variant={variant} className={className} data-testid="badge-gst-status">
+      {icon}
+      GST: {status}
+    </Badge>
+  );
 }
 
 function VendorTypesBadges({ vendorId, vendorTypes = [] }: { vendorId: string; vendorTypes?: VendorVendorType[] }) {
@@ -118,6 +150,15 @@ export default function VendorManagement() {
   const [selectedVendorTypes, setSelectedVendorTypes] = useState<string[]>([]);
   const [primaryVendorTypeId, setPrimaryVendorTypeId] = useState<string | null>(null);
   const [vendorTypePopoverOpen, setVendorTypePopoverOpen] = useState(false);
+  const [gstVerifying, setGstVerifying] = useState(false);
+  const [gstVerificationResult, setGstVerificationResult] = useState<{
+    status: string;
+    legalName?: string;
+    tradeName?: string;
+    isBlocked?: boolean;
+    blockReason?: string;
+    message?: string;
+  } | null>(null);
 
   // Force component to re-render when URL changes
   const [, forceUpdate] = useState(0);
@@ -367,7 +408,20 @@ export default function VendorManagement() {
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    
+    // Prevent saving if GST is suspended or cancelled
+    if (gstVerificationResult && (gstVerificationResult.status === 'Cancelled' || gstVerificationResult.status === 'Suspended')) {
+      toast({
+        title: "Cannot Save Vendor",
+        description: `GST registration is ${gstVerificationResult.status}. Please use an active GST number or remove the GST number.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    
     const formData = new FormData(e.currentTarget);
+    const gstNumber = formData.get("gstNumber") as string || null;
+    
     const data = {
       vendorCode: formData.get("vendorCode") as string,
       vendorName: formData.get("vendorName") as string,
@@ -375,7 +429,11 @@ export default function VendorManagement() {
       city: formData.get("city") as string,
       state: formData.get("state") as string,
       pincode: formData.get("pincode") as string,
-      gstNumber: formData.get("gstNumber") as string || null,
+      gstNumber: gstNumber,
+      gstStatus: gstVerificationResult?.status || null,
+      gstLegalName: gstVerificationResult?.legalName || null,
+      gstTradeName: gstVerificationResult?.tradeName || null,
+      gstVerifiedAt: gstVerificationResult ? new Date().toISOString() : null,
       aadhaarNumber: formData.get("aadhaarNumber") as string || null,
       mobileNumber: formData.get("mobileNumber") as string,
       email: formData.get("email") as string || null,
@@ -420,6 +478,56 @@ export default function VendorManagement() {
     setEditingVendor(null);
     setSelectedVendorTypes([]);
     setPrimaryVendorTypeId(null);
+    setGstVerificationResult(null);
+  };
+
+  const verifyGst = async (gstin: string) => {
+    if (!gstin || gstin.length < 15) {
+      toast({
+        title: "Invalid GST Number",
+        description: "Please enter a valid 15-character GSTIN",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setGstVerifying(true);
+    try {
+      const response = await apiRequest("POST", "/api/gst/verify", { gstin });
+      setGstVerificationResult(response);
+      
+      if (response.status === 'Active') {
+        toast({
+          title: "GST Verified",
+          description: `GSTIN is Active. Legal Name: ${response.legalName || 'N/A'}`,
+        });
+      } else if (response.status === 'Cancelled' || response.status === 'Suspended') {
+        toast({
+          title: "GST Status Warning",
+          description: `GSTIN is ${response.status}. You cannot save this vendor.`,
+          variant: "destructive",
+        });
+      } else if (response.status === 'Inactive') {
+        toast({
+          title: "GST Status Warning",
+          description: "GSTIN is Inactive. Please verify manually.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "GST Status Unknown",
+          description: response.message || "Could not verify GST. Please verify manually.",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Verification Failed",
+        description: error.message || "Failed to verify GST",
+        variant: "destructive",
+      });
+    } finally {
+      setGstVerifying(false);
+    }
   };
 
   return (
@@ -513,15 +621,85 @@ export default function VendorManagement() {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="gstNumber">GST Number</Label>
-                  <Input
-                    id="gstNumber"
-                    name="gstNumber"
-                    defaultValue={editingVendor?.gstNumber || ""}
-                    placeholder="Optional"
-                    data-testid="input-gst-number"
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      id="gstNumber"
+                      name="gstNumber"
+                      defaultValue={editingVendor?.gstNumber || ""}
+                      placeholder="15-digit GSTIN"
+                      className="flex-1"
+                      data-testid="input-gst-number"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        const gstInput = document.getElementById('gstNumber') as HTMLInputElement;
+                        if (gstInput?.value) {
+                          verifyGst(gstInput.value);
+                        } else {
+                          toast({
+                            title: "No GST Number",
+                            description: "Please enter a GST number to verify",
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                      disabled={gstVerifying}
+                      data-testid="button-verify-gst"
+                    >
+                      {gstVerifying ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <ShieldCheck className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                  {/* GST Verification Result */}
+                  {gstVerificationResult && (
+                    <div className={cn(
+                      "text-sm p-2 rounded border",
+                      gstVerificationResult.status === 'Active' 
+                        ? "bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-300"
+                        : gstVerificationResult.status === 'Cancelled' || gstVerificationResult.status === 'Suspended'
+                        ? "bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300"
+                        : "bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-300"
+                    )}>
+                      <div className="flex items-center gap-1.5 font-medium">
+                        {gstVerificationResult.status === 'Active' ? (
+                          <ShieldCheck className="h-4 w-4" />
+                        ) : (
+                          <AlertCircle className="h-4 w-4" />
+                        )}
+                        GST Status: {gstVerificationResult.status}
+                      </div>
+                      {gstVerificationResult.legalName && (
+                        <div className="text-xs mt-1">Legal Name: {gstVerificationResult.legalName}</div>
+                      )}
+                      {gstVerificationResult.tradeName && (
+                        <div className="text-xs">Trade Name: {gstVerificationResult.tradeName}</div>
+                      )}
+                      {gstVerificationResult.isBlocked && (
+                        <div className="text-xs mt-1 font-medium text-red-600 dark:text-red-400">
+                          {gstVerificationResult.blockReason}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {/* Show existing GST status for editing vendor */}
+                  {editingVendor?.gstStatus && !gstVerificationResult && (
+                    <div className="flex items-center gap-2">
+                      <GstStatusBadge status={editingVendor.gstStatus} />
+                      {editingVendor.gstVerifiedAt && (
+                        <span className="text-xs text-muted-foreground">
+                          Verified: {new Date(editingVendor.gstVerifiedAt).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="aadhaarNumber">Aadhaar Number</Label>
@@ -917,7 +1095,14 @@ export default function VendorManagement() {
                     <TableCell>{vendor.vendorName}</TableCell>
                     <TableCell>{vendor.mobileNumber}</TableCell>
                     <TableCell className="text-sm">
-                      {vendor.gstNumber || vendor.aadhaarNumber || "-"}
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-1.5">
+                          {vendor.gstNumber || vendor.aadhaarNumber || "-"}
+                          {vendor.gstNumber && vendor.gstStatus && (
+                            <GstStatusBadge status={vendor.gstStatus} size="xs" />
+                          )}
+                        </div>
+                      </div>
                     </TableCell>
                     <TableCell>{vendor.city || "-"}</TableCell>
                     <TableCell>{vendor.vendorType || "-"}</TableCell>
