@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subMonths, subYears } from 'date-fns';
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subMonths, subYears, getDaysInMonth } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -27,6 +27,21 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+
+const MONTHS = [
+  { value: '01', label: 'January' },
+  { value: '02', label: 'February' },
+  { value: '03', label: 'March' },
+  { value: '04', label: 'April' },
+  { value: '05', label: 'May' },
+  { value: '06', label: 'June' },
+  { value: '07', label: 'July' },
+  { value: '08', label: 'August' },
+  { value: '09', label: 'September' },
+  { value: '10', label: 'October' },
+  { value: '11', label: 'November' },
+  { value: '12', label: 'December' },
+];
 
 interface PeriodSummary {
   period: string;
@@ -99,20 +114,67 @@ const formatPeriodLabel = (period: string, periodType: string) => {
 };
 
 export default function CashRegisterReport() {
-  const [periodType, setPeriodType] = useState('daily');
-  const [startDate, setStartDate] = useState(() => {
+  const [periodType, setPeriodType] = useState('monthly');
+  const [selectedMonth, setSelectedMonth] = useState(() => format(new Date(), 'MM'));
+  const [selectedYear, setSelectedYear] = useState(() => format(new Date(), 'yyyy'));
+  const [customStartDate, setCustomStartDate] = useState(() => {
     const date = new Date();
     date.setDate(date.getDate() - 30);
     return format(date, 'yyyy-MM-dd');
   });
-  const [endDate, setEndDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
+  const [customEndDate, setCustomEndDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
   const [expandedPeriods, setExpandedPeriods] = useState<Set<string>>(new Set());
 
+  const availableYears = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let year = currentYear; year >= 2020; year--) {
+      years.push(year.toString());
+    }
+    return years;
+  }, []);
+
+  const { startDate, endDate } = useMemo(() => {
+    if (periodType === 'monthly') {
+      const year = parseInt(selectedYear);
+      const month = parseInt(selectedMonth) - 1;
+      const start = startOfMonth(new Date(year, month, 1));
+      const end = endOfMonth(new Date(year, month, 1));
+      return {
+        startDate: format(start, 'yyyy-MM-dd'),
+        endDate: format(end, 'yyyy-MM-dd'),
+      };
+    } else if (periodType === 'yearly') {
+      const year = parseInt(selectedYear);
+      const start = startOfYear(new Date(year, 0, 1));
+      const end = endOfYear(new Date(year, 11, 31));
+      return {
+        startDate: format(start, 'yyyy-MM-dd'),
+        endDate: format(end, 'yyyy-MM-dd'),
+      };
+    } else if (periodType === 'custom') {
+      return {
+        startDate: customStartDate,
+        endDate: customEndDate,
+      };
+    } else {
+      const today = new Date();
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      return {
+        startDate: format(thirtyDaysAgo, 'yyyy-MM-dd'),
+        endDate: format(today, 'yyyy-MM-dd'),
+      };
+    }
+  }, [periodType, selectedMonth, selectedYear, customStartDate, customEndDate]);
+
+  const actualPeriodType = periodType === 'custom' ? 'daily' : periodType;
+
   const { data: reportData, isLoading } = useQuery<ReportData>({
-    queryKey: ['/api/cash-register/report', periodType, startDate, endDate],
+    queryKey: ['/api/cash-register/report', actualPeriodType, startDate, endDate],
     queryFn: async () => {
       const params = new URLSearchParams({
-        periodType,
+        periodType: actualPeriodType,
         startDate,
         endDate,
       });
@@ -147,21 +209,9 @@ export default function CashRegisterReport() {
         start = startOfWeek(today, { weekStartsOn: 1 });
         end = endOfWeek(today, { weekStartsOn: 1 });
         break;
-      case 'this_month':
-        start = startOfMonth(today);
-        end = endOfMonth(today);
-        break;
-      case 'last_month':
-        start = startOfMonth(subMonths(today, 1));
-        end = endOfMonth(subMonths(today, 1));
-        break;
-      case 'this_year':
-        start = startOfYear(today);
-        end = endOfYear(today);
-        break;
-      case 'last_year':
-        start = startOfYear(subYears(today, 1));
-        end = endOfYear(subYears(today, 1));
+      case 'last_30':
+        start = new Date();
+        start.setDate(start.getDate() - 30);
         break;
       case 'all':
         start = new Date('2020-01-01');
@@ -171,8 +221,8 @@ export default function CashRegisterReport() {
         start = subMonths(today, 1);
     }
 
-    setStartDate(format(start, 'yyyy-MM-dd'));
-    setEndDate(format(end, 'yyyy-MM-dd'));
+    setCustomStartDate(format(start, 'yyyy-MM-dd'));
+    setCustomEndDate(format(end, 'yyyy-MM-dd'));
   };
 
   const handlePrint = () => {
@@ -197,54 +247,158 @@ export default function CashRegisterReport() {
           <CardTitle className="text-base">Filters</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-wrap gap-4 items-end">
             <div className="space-y-2">
-              <Label>Period Type</Label>
+              <Label>View</Label>
               <Select value={periodType} onValueChange={setPeriodType}>
                 <SelectTrigger className="w-[140px]" data-testid="select-period-type">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="daily">Daily</SelectItem>
-                  <SelectItem value="weekly">Weekly</SelectItem>
                   <SelectItem value="monthly">Monthly</SelectItem>
                   <SelectItem value="yearly">Yearly</SelectItem>
+                  <SelectItem value="custom">Custom Dates</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label>Start Date</Label>
-              <Input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-[160px]"
-                data-testid="input-start-date"
-              />
-            </div>
+            {periodType === 'monthly' && (
+              <>
+                <div className="space-y-2">
+                  <Label>Month</Label>
+                  <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                    <SelectTrigger className="w-[140px]" data-testid="select-month">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MONTHS.map((month) => (
+                        <SelectItem key={month.value} value={month.value}>
+                          {month.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Year</Label>
+                  <Select value={selectedYear} onValueChange={setSelectedYear}>
+                    <SelectTrigger className="w-[100px]" data-testid="select-year">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableYears.map((year) => (
+                        <SelectItem key={year} value={year}>
+                          {year}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
 
-            <div className="space-y-2">
-              <Label>End Date</Label>
-              <Input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-[160px]"
-                data-testid="input-end-date"
-              />
-            </div>
+            {periodType === 'yearly' && (
+              <div className="space-y-2">
+                <Label>Year</Label>
+                <Select value={selectedYear} onValueChange={setSelectedYear}>
+                  <SelectTrigger className="w-[100px]" data-testid="select-year">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableYears.map((year) => (
+                      <SelectItem key={year} value={year}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {periodType === 'custom' && (
+              <>
+                <div className="space-y-2">
+                  <Label>Start Date</Label>
+                  <Input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(e) => setCustomStartDate(e.target.value)}
+                    className="w-[160px]"
+                    data-testid="input-start-date"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>End Date</Label>
+                  <Input
+                    type="date"
+                    value={customEndDate}
+                    onChange={(e) => setCustomEndDate(e.target.value)}
+                    className="w-[160px]"
+                    data-testid="input-end-date"
+                  />
+                </div>
+              </>
+            )}
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={() => setQuickRange('today')} data-testid="button-today">Today</Button>
-            <Button variant="outline" size="sm" onClick={() => setQuickRange('this_week')} data-testid="button-this-week">This Week</Button>
-            <Button variant="outline" size="sm" onClick={() => setQuickRange('this_month')} data-testid="button-this-month">This Month</Button>
-            <Button variant="outline" size="sm" onClick={() => setQuickRange('last_month')} data-testid="button-last-month">Last Month</Button>
-            <Button variant="outline" size="sm" onClick={() => setQuickRange('this_year')} data-testid="button-this-year">This Year</Button>
-            <Button variant="outline" size="sm" onClick={() => setQuickRange('last_year')} data-testid="button-last-year">Last Year</Button>
-            <Button variant="outline" size="sm" onClick={() => setQuickRange('all')} data-testid="button-all-time">All Time</Button>
-          </div>
+          {periodType === 'monthly' && (
+            <div className="flex flex-wrap gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => {
+                  const today = new Date();
+                  setSelectedMonth(format(today, 'MM'));
+                  setSelectedYear(format(today, 'yyyy'));
+                }} 
+                data-testid="button-this-month"
+              >
+                This Month
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => {
+                  const lastMonth = subMonths(new Date(), 1);
+                  setSelectedMonth(format(lastMonth, 'MM'));
+                  setSelectedYear(format(lastMonth, 'yyyy'));
+                }} 
+                data-testid="button-last-month"
+              >
+                Last Month
+              </Button>
+            </div>
+          )}
+
+          {periodType === 'yearly' && (
+            <div className="flex flex-wrap gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setSelectedYear(format(new Date(), 'yyyy'))} 
+                data-testid="button-this-year"
+              >
+                This Year
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setSelectedYear(format(subYears(new Date(), 1), 'yyyy'))} 
+                data-testid="button-last-year"
+              >
+                Last Year
+              </Button>
+            </div>
+          )}
+
+          {periodType === 'custom' && (
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" onClick={() => setQuickRange('today')} data-testid="button-today">Today</Button>
+              <Button variant="outline" size="sm" onClick={() => setQuickRange('this_week')} data-testid="button-this-week">This Week</Button>
+              <Button variant="outline" size="sm" onClick={() => setQuickRange('last_30')} data-testid="button-last-30">Last 30 Days</Button>
+              <Button variant="outline" size="sm" onClick={() => setQuickRange('all')} data-testid="button-all-time">All Time</Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -354,7 +508,7 @@ export default function CashRegisterReport() {
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <FileSpreadsheet className="w-4 h-4" />
-                {periodType.charAt(0).toUpperCase() + periodType.slice(1)} Breakdown
+                {periodType === 'custom' ? 'Daily' : periodType.charAt(0).toUpperCase() + periodType.slice(1)} Breakdown
               </CardTitle>
             </CardHeader>
             <CardContent>
