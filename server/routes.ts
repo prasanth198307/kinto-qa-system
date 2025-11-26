@@ -8640,6 +8640,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdBy: req.user?.id,
       });
       
+      // Check if there are any open imported days - must close all imported data first
+      const allDays = await storage.getCashRegisterDays();
+      const openImportedDays = allDays.filter(d => 
+        d.status === 'open' && d.importedFromFile
+      );
+      
+      if (openImportedDays.length > 0) {
+        const dates = openImportedDays.slice(0, 3).map(d => d.registerDate).join(', ');
+        const moreText = openImportedDays.length > 3 ? ` and ${openImportedDays.length - 3} more` : '';
+        return res.status(400).json({ 
+          message: `Please close all imported days before creating a new day. Open imported days: ${dates}${moreText}` 
+        });
+      }
+      
       // Check for duplicate
       const existing = await storage.getCashRegisterDayByDateAndPerson(
         parsed.registerDate,
