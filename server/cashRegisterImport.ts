@@ -660,7 +660,11 @@ export async function commitImport(
     
     result.success = true;
   } catch (error) {
-    result.errors.push(`Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : '';
+    console.error('[CASH_REGISTER] Import commit error:', errorMessage);
+    console.error('[CASH_REGISTER] Error stack:', errorStack);
+    result.errors.push(`Import failed: ${errorMessage}`);
   }
   
   return result;
