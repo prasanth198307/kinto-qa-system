@@ -59,7 +59,7 @@ import { ManagerChecklistAssignment } from "@/components/ManagerChecklistAssignm
 import PendingPaymentsDashboard from "@/components/PendingPaymentsDashboard";
 import { OperatorAssignedChecklists } from "@/components/OperatorAssignedChecklists";
 import { VerticalNavSidebar, type NavSection } from "@/components/VerticalNavSidebar";
-import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, Settings, Calendar, Users, FileText, FileX, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload, FolderOpen, Wallet } from "lucide-react";
+import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, ClipboardList, Settings, Calendar, Users, FileText, FileX, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload, FolderOpen, Wallet } from "lucide-react";
 import SalesDashboard from "@/components/SalesDashboard";
 import VendorAnalytics from "@/pages/vendor-analytics";
 import ReviewerDashboardPage from "@/pages/ReviewerDashboard";
@@ -557,6 +557,7 @@ function AdminDashboard() {
       label: "Quality & Checklists",
       items: [
         { id: "checklists", label: "Checklist Builder", icon: FileText },
+        { id: "checklist-assignments", label: "Checklist Assignments", icon: ClipboardList },
         { id: "machine-startup-reminders", label: "Machine Startup Reminders", icon: Bell },
         { id: "whatsapp-analytics", label: "WhatsApp Analytics", icon: TrendingUp },
       ],
@@ -697,6 +698,12 @@ function AdminDashboard() {
         return (
           <div className="p-4">
             <AdminChecklistBuilder />
+          </div>
+        );
+      case 'checklist-assignments':
+        return (
+          <div className="p-4">
+            <ManagerChecklistAssignment />
           </div>
         );
       case 'spare-parts':
