@@ -1,10 +1,28 @@
 import * as XLSX from 'xlsx';
+import * as fs from 'fs';
 import { db } from './db';
 import { cashRegisterDays, cashRegisterTransactions, cashRegisterExpenseItems, expenseVouchers, expenseItems, expenseCategories, users } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 
-function excelDateToYYYYMMDD(serial: number): string | null {
-  if (!serial || typeof serial !== 'number') return null;
+function excelDateToYYYYMMDD(serial: number | Date | string): string | null {
+  if (!serial) return null;
+  
+  if (serial instanceof Date) {
+    return serial.toISOString().split('T')[0];
+  }
+  
+  if (typeof serial === 'string') {
+    const match = serial.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (match) {
+      const day = parseInt(match[1], 10);
+      const month = parseInt(match[2], 10);
+      const year = parseInt(match[3], 10);
+      return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    }
+    return serial;
+  }
+  
+  if (typeof serial !== 'number') return null;
   const date = new Date((serial - 25569) * 86400 * 1000);
   return date.toISOString().split('T')[0];
 }
@@ -56,7 +74,9 @@ export async function importCashRegisterFromExcel(filePath: string, userId: stri
   let vouchersCreated = 0;
 
   try {
-    const workbook = XLSX.readFile(filePath);
+    // Read file as buffer and use XLSX.read instead of readFile
+    const fileBuffer = fs.readFileSync(filePath);
+    const workbook = XLSX.read(fileBuffer, { type: 'buffer', cellDates: true });
     console.log('Importing sheets:', workbook.SheetNames);
 
     let defaultCategoryId: string | null = null;
