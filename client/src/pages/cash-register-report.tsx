@@ -220,6 +220,7 @@ export default function CashRegisterReport() {
   const [expandedPeriods, setExpandedPeriods] = useState<Set<string>>(new Set());
   const [docTransactionType, setDocTransactionType] = useState('all');
   const [isExporting, setIsExporting] = useState(false);
+  const [isDownloadingDocs, setIsDownloadingDocs] = useState(false);
 
   const availableYears = useMemo(() => {
     const currentYear = new Date().getFullYear();
@@ -324,6 +325,47 @@ export default function CashRegisterReport() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleDownloadAllDocuments = async () => {
+    if (!documentsData?.documents || documentsData.documents.length === 0) {
+      toast({ title: 'No documents to download', variant: 'destructive' });
+      return;
+    }
+    
+    setIsDownloadingDocs(true);
+    try {
+      const params = new URLSearchParams({
+        startDate,
+        endDate,
+        transactionType: docTransactionType,
+      });
+      
+      const response = await fetch(`/api/cash-register/documents/download?${params}`, {
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to download documents');
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `cash_register_docs_${startDate}_to_${endDate}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast({ title: `Downloaded ${documentsData.documents.length} documents as ZIP` });
+    } catch (error: any) {
+      toast({ title: error.message || 'Failed to download documents', variant: 'destructive' });
+    } finally {
+      setIsDownloadingDocs(false);
+    }
   };
 
   const togglePeriod = (period: string) => {
@@ -828,11 +870,21 @@ export default function CashRegisterReport() {
             </Card>
           ) : documentsData?.documents && documentsData.documents.length > 0 ? (
             <Card>
-              <CardHeader className="pb-3">
+              <CardHeader className="pb-3 flex flex-row items-center justify-between gap-2">
                 <CardTitle className="text-base flex items-center gap-2">
                   <FileText className="w-4 h-4" />
                   Documents ({documentsData.documents.length})
                 </CardTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownloadAllDocuments}
+                  disabled={isDownloadingDocs}
+                  data-testid="button-download-all-docs"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  {isDownloadingDocs ? 'Downloading...' : 'Download All (ZIP)'}
+                </Button>
               </CardHeader>
               <CardContent>
                 <Table>

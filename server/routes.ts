@@ -9428,6 +9428,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Download multiple cash register documents as ZIP
+  app.get('/api/cash-register/documents/download', isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { startDate, endDate, transactionType } = req.query;
+      
+      if (!startDate || !endDate) {
+        return res.status(400).json({ message: 'Start date and end date are required' });
+      }
+      
+      // Get all days in range
+      const allDays = await storage.getCashRegisterDays();
+      const daysInRange = allDays.filter(d => {
+        const date = d.registerDate;
+        return date >= startDate && date <= endDate;
+      });
+      
+      const dayIds = daysInRange.map(d => d.id);
+      
+      if (dayIds.length === 0) {
+        return res.status(404).json({ message: 'No days found in the selected range' });
+      }
+      
+      // Get all transactions for these days that have documents
+      const allTransactions = await db.select()
+        .from(cashRegisterTransactions)
+        .where(and(
+          inArray(cashRegisterTransactions.dayId, dayIds),
+          isNotNull(cashRegisterTransactions.documentPath),
+          eq(cashRegisterTransactions.recordStatus, 1)
+        ));
+      
+      // Filter by transaction type if specified
+      let filteredTransactions = allTransactions;
+      if (transactionType && transactionType !== 'all') {
+        filteredTransactions = allTransactions.filter(t => t.transactionType === transactionType);
+      }
+      
+      // Filter to only those with actual documents
+      const docsToDownload = filteredTransactions.filter(t => t.documentPath);
+      
+      if (docsToDownload.length === 0) {
+        return res.status(404).json({ message: 'No documents found for the selected criteria' });
+      }
+      
+      // Create a map of day IDs to dates for naming
+      const dayMap = new Map(daysInRange.map(d => [d.id, d.registerDate]));
+      
+      // Set up ZIP response
+      const archiver = require('archiver');
+      const archive = archiver('zip', { zlib: { level: 5 } });
+      
+      // Generate filename based on date range
+      const zipFilename = `cash_register_docs_${startDate}_to_${endDate}.zip`;
+      
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Disposition', `attachment; filename="${zipFilename}"`);
+      
+      archive.pipe(res);
+      
+      // Add each document to the archive
+      const fs = require('fs');
+      const path = require('path');
+      
+      for (const doc of docsToDownload) {
+        if (doc.documentPath) {
+          // Extract the file path from the URL/path
+          let filePath = doc.documentPath;
+          if (filePath.startsWith('/')) {
+            filePath = filePath.substring(1);
+          }
+          
+          const fullPath = path.join(process.cwd(), filePath);
+          
+          if (fs.existsSync(fullPath)) {
+            const date = dayMap.get(doc.dayId) || 'unknown';
+            const type = doc.transactionType || 'other';
+            const ext = path.extname(doc.documentName || filePath);
+            const baseName = path.basename(doc.documentName || filePath, ext);
+            
+            // Create folder structure: date/type/filename
+            const archivePath = `${date}/${type}/${baseName}_${doc.id}${ext}`;
+            archive.file(fullPath, { name: archivePath });
+          }
+        }
+      }
+      
+      await archive.finalize();
+      
+    } catch (error: any) {
+      console.error('[CASH_REGISTER] Error downloading documents:', error);
+      if (!res.headersSent) {
+        res.status(500).json({ message: error.message || 'Failed to download documents' });
+      }
+    }
+  });
+
   // Clear all cash register data
   app.post('/api/cash-register/clear-data', isAuthenticated, requireRole('Admin'), async (req: any, res: Response) => {
     try {
