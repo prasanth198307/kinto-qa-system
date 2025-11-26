@@ -1061,6 +1061,7 @@ function ProductDialog({
           taxType: item.taxType || '',
           minimumStockLevel: item.minimumStockLevel || undefined,
           isActive: item.isActive || 'true',
+          bomItems: [], // Initialize empty BOM array - will be hydrated by separate effect
         });
         // BOM will be hydrated by separate effect below
       } else {
@@ -1090,8 +1091,8 @@ function ProductDialog({
           taxType: '',
           minimumStockLevel: undefined,
           isActive: 'true',
+          bomItems: [], // Initialize empty BOM array
         });
-        replace([]); // Clear any stale BOM rows from previous edit
       }
       setActiveTab("info");
     }
