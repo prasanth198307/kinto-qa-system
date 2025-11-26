@@ -9524,6 +9524,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get expense vouchers for printing
+  app.get('/api/cash-register/vouchers/print', isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { id, startDate, endDate, mode } = req.query;
+      
+      let voucherIds: string[] = [];
+      
+      if (mode === 'single' && id) {
+        // Single voucher
+        voucherIds = [id as string];
+      } else if ((mode === 'day' || mode === 'range') && startDate && endDate) {
+        // Get vouchers from cash register transactions in date range
+        const allDays = await storage.getCashRegisterDays();
+        const daysInRange = allDays.filter(d => {
+          const date = d.registerDate;
+          return date >= startDate && date <= endDate;
+        });
+        
+        const dayIds = daysInRange.map(d => d.id);
+        
+        if (dayIds.length > 0) {
+          // Get expense transactions with voucher IDs
+          const transactions = await db.select()
+            .from(cashRegisterTransactions)
+            .where(and(
+              inArray(cashRegisterTransactions.dayId, dayIds),
+              eq(cashRegisterTransactions.transactionType, 'expense'),
+              isNotNull(cashRegisterTransactions.convertedToVoucherId),
+              eq(cashRegisterTransactions.recordStatus, 1)
+            ));
+          
+          voucherIds = transactions
+            .map(t => t.convertedToVoucherId)
+            .filter((id): id is string => id !== null);
+        }
+      }
+      
+      if (voucherIds.length === 0) {
+        return res.json([]);
+      }
+      
+      // Fetch vouchers with their items
+      const vouchers = await db.select()
+        .from(expenseVouchers)
+        .where(and(
+          inArray(expenseVouchers.id, voucherIds),
+          eq(expenseVouchers.recordStatus, 1)
+        ))
+        .orderBy(expenseVouchers.voucherDate);
+      
+      // Fetch items for all vouchers
+      const allItems = await db.select()
+        .from(expenseItems)
+        .where(and(
+          inArray(expenseItems.voucherId, voucherIds),
+          eq(expenseItems.recordStatus, 1)
+        ));
+      
+      // Group items by voucher
+      const itemsByVoucher = allItems.reduce((acc: Record<string, typeof allItems>, item) => {
+        if (!acc[item.voucherId]) acc[item.voucherId] = [];
+        acc[item.voucherId].push(item);
+        return acc;
+      }, {});
+      
+      // Combine vouchers with their items
+      const vouchersWithItems = vouchers.map(v => ({
+        ...v,
+        items: itemsByVoucher[v.id] || [],
+      }));
+      
+      res.json(vouchersWithItems);
+    } catch (error: any) {
+      console.error('[CASH_REGISTER] Error fetching vouchers for print:', error);
+      res.status(500).json({ message: error.message || 'Failed to fetch vouchers' });
+    }
+  });
+
   // Clear all cash register data
   app.post('/api/cash-register/clear-data', isAuthenticated, requireRole('Admin'), async (req: any, res: Response) => {
     try {

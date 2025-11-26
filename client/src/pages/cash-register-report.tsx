@@ -875,16 +875,36 @@ export default function CashRegisterReport() {
                   <FileText className="w-4 h-4" />
                   Documents ({documentsData.documents.length})
                 </CardTitle>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleDownloadAllDocuments}
-                  disabled={isDownloadingDocs}
-                  data-testid="button-download-all-docs"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  {isDownloadingDocs ? 'Downloading...' : 'Download All (ZIP)'}
-                </Button>
+                <div className="flex gap-2">
+                  {documentsData.documents.some(d => d.transactionType === 'expense' && d.voucherId) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const params = new URLSearchParams({
+                          startDate,
+                          endDate,
+                          mode: 'range',
+                        });
+                        window.open(`/cash-register/vouchers/print?${params}`, '_blank');
+                      }}
+                      data-testid="button-print-all-vouchers"
+                    >
+                      <Printer className="w-4 h-4 mr-2" />
+                      Print All Vouchers
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDownloadAllDocuments}
+                    disabled={isDownloadingDocs}
+                    data-testid="button-download-all-docs"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    {isDownloadingDocs ? 'Downloading...' : 'Download All (ZIP)'}
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <Table>

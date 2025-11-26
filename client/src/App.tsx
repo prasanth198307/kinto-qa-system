@@ -76,6 +76,7 @@ import DocumentsPage from "@/pages/documents";
 import ExpensesPage from "@/pages/expenses";
 import CashRegisterPage from "@/pages/cash-register";
 import CashRegisterReport from "@/pages/cash-register-report";
+import CashRegisterVoucherPrint from "@/pages/cash-register-voucher-print";
 
 type Role = 'admin' | 'operator' | 'reviewer' | 'manager';
 
@@ -1383,6 +1384,7 @@ function Router() {
       <ProtectedRoute path="/expenses" component={ExpensesPageWrapper} />
       <ProtectedRoute path="/cash-register" component={CashRegisterPageWrapper} />
       <ProtectedRoute path="/cash-register-report" component={CashRegisterReportWrapper} />
+      <ProtectedRoute path="/cash-register/vouchers/print" component={CashRegisterVoucherPrint} />
       <ProtectedRoute path="/" component={AuthenticatedApp} />
       <Route component={NotFound} />
     </Switch>
