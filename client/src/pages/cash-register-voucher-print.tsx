@@ -91,7 +91,7 @@ export default function CashRegisterVoucherPrint() {
         <div class="voucher-container">
           <div class="voucher">
             <div class="header">
-              <div class="company-name">KINTO OPERATIONS</div>
+              <div class="company-name">Inmoisture Private Limited</div>
               <div class="document-title">EXPENSE VOUCHER</div>
             </div>
             
