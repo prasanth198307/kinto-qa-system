@@ -310,10 +310,16 @@ export default function CashRegisterPage() {
       day.registerDate.includes(searchQuery);
     const matchesStatus = statusFilter === "all" || day.status === statusFilter;
     const matchesSalesperson = salespersonFilter === "all" || day.salespersonName === salespersonFilter;
-    const matchesDiscrepancy = discrepancyFilter === "all" || 
+    
+    // Calculate variance for this day
+    const expectedClosing = day.openingBalance + day.totalCashReceived - day.totalExpenses - day.totalTransfers;
+    const hasVariance = Math.abs(day.closingBalance - expectedClosing) > 100;
+    
+    const matchesFilter = discrepancyFilter === "all" || 
+      (discrepancyFilter === "variance" && hasVariance) ||
       (discrepancyFilter === "discrepancy" && day.hasDiscrepancy === 1) ||
-      (discrepancyFilter === "ok" && day.hasDiscrepancy !== 1);
-    return matchesSearch && matchesStatus && matchesSalesperson && matchesDiscrepancy;
+      (discrepancyFilter === "ok" && day.hasDiscrepancy !== 1 && !hasVariance);
+    return matchesSearch && matchesStatus && matchesSalesperson && matchesFilter;
   });
 
   // Pagination
@@ -329,6 +335,12 @@ export default function CashRegisterPage() {
   };
 
   const discrepancyCount = (days as DayWithTransactions[]).filter(d => d.hasDiscrepancy === 1).length;
+  
+  // Calculate variance count (rows where actual closing doesn't match formula)
+  const varianceCount = (days as CashRegisterDay[]).filter(d => {
+    const expectedClosing = d.openingBalance + d.totalCashReceived - d.totalExpenses - d.totalTransfers;
+    return Math.abs(d.closingBalance - expectedClosing) > 100;
+  }).length;
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -745,11 +757,12 @@ export default function CashRegisterPage() {
                 </SelectContent>
               </Select>
               <Select value={discrepancyFilter} onValueChange={setDiscrepancyFilter}>
-                <SelectTrigger className="w-40" data-testid="select-discrepancy-filter">
-                  <SelectValue placeholder="Discrepancy" />
+                <SelectTrigger className="w-44" data-testid="select-discrepancy-filter">
+                  <SelectValue placeholder="Filter" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Records</SelectItem>
+                  <SelectItem value="variance">With Variance ({varianceCount})</SelectItem>
                   <SelectItem value="discrepancy">With Issues ({discrepancyCount})</SelectItem>
                   <SelectItem value="ok">No Issues</SelectItem>
                 </SelectContent>
@@ -772,6 +785,7 @@ export default function CashRegisterPage() {
                   <TableHead className="text-right">Expenses</TableHead>
                   <TableHead className="text-right">Transfers</TableHead>
                   <TableHead className="text-right">Closing</TableHead>
+                  <TableHead className="text-right">Variance</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -779,7 +793,7 @@ export default function CashRegisterPage() {
               <TableBody>
                 {filteredDays.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                       No cash register days found
                     </TableCell>
                   </TableRow>
@@ -806,6 +820,20 @@ export default function CashRegisterPage() {
                       <TableCell className="text-right text-red-600">{formatCurrency(day.totalExpenses)}</TableCell>
                       <TableCell className="text-right text-blue-600">{formatCurrency(day.totalTransfers)}</TableCell>
                       <TableCell className="text-right font-medium">{formatCurrency(day.closingBalance)}</TableCell>
+                      <TableCell className="text-right">
+                        {(() => {
+                          const expectedClosing = day.openingBalance + day.totalCashReceived - day.totalExpenses - day.totalTransfers;
+                          const variance = day.closingBalance - expectedClosing;
+                          if (Math.abs(variance) <= 100) {
+                            return <span className="text-muted-foreground">-</span>;
+                          }
+                          return (
+                            <span className={variance > 0 ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
+                              {variance > 0 ? '+' : ''}{formatCurrency(variance)}
+                            </span>
+                          );
+                        })()}
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
                           {getStatusBadge(day.status)}
