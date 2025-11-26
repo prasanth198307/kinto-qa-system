@@ -758,6 +758,10 @@ export const vendors = pgTable("vendors", {
   state: varchar("state", { length: 100 }),
   pincode: varchar("pincode", { length: 20 }),
   gstNumber: varchar("gst_number", { length: 20 }),
+  gstStatus: varchar("gst_status", { length: 50 }), // Active, Cancelled, Suspended, Inactive, Unknown
+  gstLegalName: varchar("gst_legal_name", { length: 255 }), // Legal name from GST portal
+  gstTradeName: varchar("gst_trade_name", { length: 255 }), // Trade name from GST portal
+  gstVerifiedAt: timestamp("gst_verified_at", { mode: 'string' }), // Last verification timestamp
   aadhaarNumber: varchar("aadhaar_number", { length: 20 }),
   mobileNumber: varchar("mobile_number", { length: 20 }).notNull(),
   email: varchar("email", { length: 255 }),

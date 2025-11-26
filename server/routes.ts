@@ -1986,6 +1986,155 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GST Verification API
+  app.post('/api/gst/verify', isAuthenticated, async (req: any, res) => {
+    try {
+      const { gstin } = req.body;
+      
+      if (!gstin) {
+        return res.status(400).json({ message: "GSTIN is required" });
+      }
+      
+      // Validate GSTIN format (15 characters: 2 state code + 10 PAN + 1 entity + 1 check + 1 default)
+      const gstinRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+      if (!gstinRegex.test(gstin.toUpperCase())) {
+        return res.status(400).json({ 
+          message: "Invalid GSTIN format", 
+          valid: false,
+          status: 'Invalid'
+        });
+      }
+      
+      // Try to verify using free GST API
+      try {
+        const axios = require('axios');
+        const response = await axios.get(
+          `https://sheet.gstincheck.co.in/check/free/${gstin.toUpperCase()}`,
+          { timeout: 10000 }
+        );
+        
+        if (response.data && response.data.flag === true && response.data.data) {
+          const gstData = response.data.data;
+          
+          // Map status codes to readable status
+          let status = 'Unknown';
+          if (gstData.sts === 'Active') status = 'Active';
+          else if (gstData.sts === 'Cancelled') status = 'Cancelled';
+          else if (gstData.sts === 'Suspended') status = 'Suspended';
+          else if (gstData.sts === 'Inactive') status = 'Inactive';
+          else if (gstData.sts) status = gstData.sts;
+          
+          return res.json({
+            valid: true,
+            gstin: gstin.toUpperCase(),
+            status: status,
+            legalName: gstData.lgnm || '',
+            tradeName: gstData.tradeNam || '',
+            registrationDate: gstData.rgdt || '',
+            cancellationDate: gstData.cxdt || '',
+            stateCode: gstData.stcd || '',
+            taxpayerType: gstData.dty || '',
+            principalPlace: gstData.pradr?.adr || '',
+            lastUpdated: gstData.lstupdt || '',
+            isBlocked: status !== 'Active',
+            blockReason: status !== 'Active' ? `GST registration is ${status}` : null
+          });
+        } else {
+          // API returned but no valid data
+          return res.json({
+            valid: false,
+            gstin: gstin.toUpperCase(),
+            status: 'Unknown',
+            message: 'Could not verify GSTIN. Please check the number and try again.',
+            isBlocked: false
+          });
+        }
+      } catch (apiError: any) {
+        console.error('GST API error:', apiError.message);
+        // Return unknown status if API fails (don't block the user)
+        return res.json({
+          valid: true,
+          gstin: gstin.toUpperCase(),
+          status: 'Unknown',
+          message: 'GST verification service unavailable. Please verify manually.',
+          isBlocked: false
+        });
+      }
+    } catch (error) {
+      console.error("Error verifying GST:", error);
+      res.status(500).json({ message: "Failed to verify GST" });
+    }
+  });
+
+  // Update vendor with GST verification
+  app.post('/api/vendors/:id/verify-gst', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const vendor = await storage.getVendor(id);
+      
+      if (!vendor) {
+        return res.status(404).json({ message: "Vendor not found" });
+      }
+      
+      if (!vendor.gstNumber) {
+        return res.status(400).json({ message: "Vendor has no GST number" });
+      }
+      
+      // Call the GST verification
+      const axios = require('axios');
+      try {
+        const response = await axios.get(
+          `https://sheet.gstincheck.co.in/check/free/${vendor.gstNumber.toUpperCase()}`,
+          { timeout: 10000 }
+        );
+        
+        if (response.data && response.data.flag === true && response.data.data) {
+          const gstData = response.data.data;
+          
+          let status = 'Unknown';
+          if (gstData.sts === 'Active') status = 'Active';
+          else if (gstData.sts === 'Cancelled') status = 'Cancelled';
+          else if (gstData.sts === 'Suspended') status = 'Suspended';
+          else if (gstData.sts === 'Inactive') status = 'Inactive';
+          else if (gstData.sts) status = gstData.sts;
+          
+          // Update vendor with GST details
+          const updatedVendor = await storage.updateVendor(id, {
+            gstStatus: status,
+            gstLegalName: gstData.lgnm || null,
+            gstTradeName: gstData.tradeNam || null,
+            gstVerifiedAt: new Date().toISOString()
+          });
+          
+          return res.json({
+            vendor: updatedVendor,
+            gstDetails: {
+              status,
+              legalName: gstData.lgnm,
+              tradeName: gstData.tradeNam,
+              registrationDate: gstData.rgdt,
+              taxpayerType: gstData.dty
+            }
+          });
+        } else {
+          return res.json({
+            vendor,
+            message: 'Could not verify GSTIN'
+          });
+        }
+      } catch (apiError: any) {
+        console.error('GST API error:', apiError.message);
+        return res.json({
+          vendor,
+          message: 'GST verification service unavailable'
+        });
+      }
+    } catch (error) {
+      console.error("Error verifying vendor GST:", error);
+      res.status(500).json({ message: "Failed to verify vendor GST" });
+    }
+  });
+
   // Raw Material Type Master API
   app.get('/api/raw-material-types', isAuthenticated, async (req: any, res) => {
     try {
