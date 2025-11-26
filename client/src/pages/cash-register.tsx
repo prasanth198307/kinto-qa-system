@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -15,31 +15,19 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
 import { 
   Plus, Upload, Search, Eye, Check, X, Receipt, Calendar, User, 
   Wallet, ArrowUpRight, ArrowDownRight, RefreshCw, FileSpreadsheet,
   AlertCircle, TrendingUp, TrendingDown, DollarSign, CheckCircle2, Lock,
-  AlertTriangle, Edit, Save, Trash2, PiggyBank
+  AlertTriangle, Edit, Save, Trash2, PiggyBank, ArrowLeft, ChevronRight
 } from "lucide-react";
 import type { CashRegisterDay, CashRegisterTransaction, CashRegisterExpenseItem, PaginationMeta } from "@shared/schema";
 import { DataTablePagination } from "@/components/DataTablePagination";
 
-interface DiscrepancyDetails {
-  balance_mismatch: boolean;
-  items_mismatch: boolean;
-  expected_closing: number;
-  actual_closing: number;
-  closing_difference: number;
-  total_expenses: number;
-  items_total: number;
-  items_difference: number;
-}
-
-interface DayWithTransactions extends Omit<CashRegisterDay, 'hasDiscrepancy' | 'discrepancyDetails'> {
+interface DayWithTransactions extends CashRegisterDay {
   transactions?: (CashRegisterTransaction & { items?: CashRegisterExpenseItem[] })[];
-  hasDiscrepancy?: number;
-  discrepancyDetails?: DiscrepancyDetails;
 }
 
 interface ImportPreview {
@@ -86,9 +74,6 @@ export default function CashRegisterPage() {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [salespersonFilter, setSalespersonFilter] = useState<string>("all");
-  const [discrepancyFilter, setDiscrepancyFilter] = useState<string>("all");
-  const [editingItems, setEditingItems] = useState<{id: string, amount: string}[]>([]);
   const [selectedDay, setSelectedDay] = useState<DayWithTransactions | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
@@ -96,53 +81,85 @@ export default function CashRegisterPage() {
   const [isImporting, setIsImporting] = useState(false);
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
-  const [newDayData, setNewDayData] = useState({
-    registerDate: format(new Date(), 'yyyy-MM-dd'),
-    salespersonName: '',
-    openingBalance: '',
-    notes: '',
-  });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+  
+  // New transaction form states
+  const [newCashReceived, setNewCashReceived] = useState({ amount: '', reference: '', description: '' });
+  const [newExpense, setNewExpense] = useState({ amount: '', reference: '', description: '' });
+  const [newTransfer, setNewTransfer] = useState({ amount: '', transferTo: '', description: '' });
+  const [isAddingCash, setIsAddingCash] = useState(false);
+  const [isAddingExpense, setIsAddingExpense] = useState(false);
+  const [isAddingTransfer, setIsAddingTransfer] = useState(false);
 
   const { data: days = [], isLoading: daysLoading, refetch: refetchDays } = useQuery<CashRegisterDay[]>({
     queryKey: ['/api/cash-register/days'],
   });
 
-  const { data: salespersons = [] } = useQuery<string[]>({
-    queryKey: ['/api/cash-register/salespersons'],
-  });
+  // Get previous day's closing balance for new day creation
+  const getPreviousDayClosingBalance = () => {
+    if (days.length === 0) return 0;
+    const sortedDays = [...days].sort((a, b) => 
+      new Date(b.registerDate).getTime() - new Date(a.registerDate).getTime()
+    );
+    return sortedDays[0].closingBalance;
+  };
 
+  // Create new day mutation
   const createDayMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const response = await apiRequest('POST', '/api/cash-register/days', data);
+    mutationFn: async (data: { registerDate: string; openingBalance: number }) => {
+      const response = await apiRequest('POST', '/api/cash-register/days', {
+        ...data,
+        salespersonName: 'BUSINESS', // Default salesperson name for daily tracking
+      });
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/cash-register/days'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/cash-register/salespersons'] });
-      toast({ title: "Success", description: "Cash register day created" });
+      toast({ title: "Success", description: "New day created" });
       setIsCreateOpen(false);
-      setNewDayData({
-        registerDate: format(new Date(), 'yyyy-MM-dd'),
-        salespersonName: '',
-        openingBalance: '',
-        notes: '',
-      });
+      // Open the newly created day
+      viewDayDetails(data.id);
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 
-  const reconcileMutation = useMutation({
-    mutationFn: async ({ id, varianceAmount, notes }: { id: string; varianceAmount?: number; notes?: string }) => {
-      const response = await apiRequest('POST', `/api/cash-register/days/${id}/reconcile`, { varianceAmount, notes });
+  // Add transaction mutation
+  const addTransactionMutation = useMutation({
+    mutationFn: async (data: { dayId: string; transactionType: string; amount: number; reference?: string; description?: string; transferTo?: string }) => {
+      const response = await apiRequest('POST', `/api/cash-register/days/${data.dayId}/transactions`, data);
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/cash-register/days'] });
-      toast({ title: "Success", description: "Day reconciled successfully" });
+      if (selectedDay) {
+        viewDayDetails(selectedDay.id);
+      }
+      toast({ title: "Success", description: "Transaction added" });
+      // Reset forms
+      setNewCashReceived({ amount: '', reference: '', description: '' });
+      setNewExpense({ amount: '', reference: '', description: '' });
+      setNewTransfer({ amount: '', transferTo: '', description: '' });
+      setIsAddingCash(false);
+      setIsAddingExpense(false);
+      setIsAddingTransfer(false);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Close day mutation
+  const closeDayMutation = useMutation({
+    mutationFn: async (dayId: string) => {
+      const response = await apiRequest('POST', `/api/cash-register/days/${dayId}/close`, {});
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/cash-register/days'] });
+      toast({ title: "Day Closed", description: "The day has been closed and balance carried forward" });
       setSelectedDay(null);
     },
     onError: (error: Error) => {
@@ -150,17 +167,30 @@ export default function CashRegisterPage() {
     },
   });
 
-  const handleCreateDay = () => {
-    if (!newDayData.registerDate || !newDayData.salespersonName) {
-      toast({ title: "Validation Error", description: "Date and Salesperson are required", variant: "destructive" });
-      return;
-    }
+  // Delete transaction mutation
+  const deleteTransactionMutation = useMutation({
+    mutationFn: async (transactionId: string) => {
+      const response = await apiRequest('DELETE', `/api/cash-register/transactions/${transactionId}`, {});
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/cash-register/days'] });
+      if (selectedDay) {
+        viewDayDetails(selectedDay.id);
+      }
+      toast({ title: "Success", description: "Transaction deleted" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
 
+  const handleCreateNewDay = () => {
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const openingBalance = getPreviousDayClosingBalance();
     createDayMutation.mutate({
-      registerDate: newDayData.registerDate,
-      salespersonName: newDayData.salespersonName.toUpperCase(),
-      openingBalance: Math.round((parseFloat(newDayData.openingBalance) || 0) * 100),
-      notes: newDayData.notes,
+      registerDate: today,
+      openingBalance: openingBalance,
     });
   };
 
@@ -171,12 +201,8 @@ export default function CashRegisterPage() {
       const result = await response.json();
       
       if (result.success) {
-        toast({ 
-          title: "Data Cleared", 
-          description: result.message 
-        });
+        toast({ title: "Data Cleared", description: result.message });
         queryClient.invalidateQueries({ queryKey: ['/api/cash-register/days'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/cash-register/salespersons'] });
         setIsClearDialogOpen(false);
       } else {
         throw new Error(result.message || 'Failed to clear data');
@@ -232,18 +258,13 @@ export default function CashRegisterPage() {
       if (result.success) {
         toast({ 
           title: "Import Complete", 
-          description: `Imported ${result.daysCreated} days, ${result.transactionsCreated} transactions, ${result.expenseItemsCreated} expense items` 
+          description: `Imported ${result.daysCreated} days, ${result.transactionsCreated} transactions` 
         });
         queryClient.invalidateQueries({ queryKey: ['/api/cash-register/days'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/cash-register/salespersons'] });
         setIsImportOpen(false);
         setImportPreview(null);
       } else {
-        toast({ 
-          title: "Import Failed", 
-          description: result.errors.join(', '), 
-          variant: "destructive" 
-        });
+        toast({ title: "Import Failed", description: result.errors.join(', '), variant: "destructive" });
       }
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -263,136 +284,90 @@ export default function CashRegisterPage() {
     }
   };
 
-  // Add mutation to update expense items
-  const updateExpenseItemMutation = useMutation({
-    mutationFn: async ({ id, amount }: { id: string; amount: number }) => {
-      const response = await apiRequest('PATCH', `/api/cash-register/expense-items/${id}`, { amount });
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/cash-register/days'] });
-      if (selectedDay) {
-        viewDayDetails(selectedDay.id);
-      }
-      toast({ title: "Success", description: "Expense item updated" });
-      setEditingItems([]);
-    },
-    onError: (error: Error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    },
-  });
+  const handleAddCashReceived = () => {
+    if (!selectedDay || !newCashReceived.amount) return;
+    addTransactionMutation.mutate({
+      dayId: selectedDay.id,
+      transactionType: 'cash_received',
+      amount: Math.round(parseFloat(newCashReceived.amount) * 100),
+      reference: newCashReceived.reference,
+      description: newCashReceived.description,
+    });
+  };
 
-  // Add mutation to add adjustment item
-  const addAdjustmentMutation = useMutation({
-    mutationFn: async ({ transactionId, amount, label }: { transactionId: string; amount: number; label: string }) => {
-      const response = await apiRequest('POST', `/api/cash-register/expense-items`, { 
-        transactionId, 
-        amount, 
-        itemLabel: label 
-      });
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/cash-register/days'] });
-      if (selectedDay) {
-        viewDayDetails(selectedDay.id);
-      }
-      toast({ title: "Success", description: "Adjustment item added" });
-    },
-    onError: (error: Error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    },
-  });
+  const handleAddExpense = () => {
+    if (!selectedDay || !newExpense.amount) return;
+    addTransactionMutation.mutate({
+      dayId: selectedDay.id,
+      transactionType: 'expense',
+      amount: Math.round(parseFloat(newExpense.amount) * 100),
+      reference: newExpense.reference,
+      description: newExpense.description,
+    });
+  };
 
-  const filteredDays = (days as DayWithTransactions[]).filter(day => {
-    const matchesSearch = searchQuery === "" || 
-      day.salespersonName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      day.registerDate.includes(searchQuery);
-    const matchesStatus = statusFilter === "all" || day.status === statusFilter;
-    const matchesSalesperson = salespersonFilter === "all" || day.salespersonName === salespersonFilter;
-    
-    // Calculate variance for this day
-    const expectedClosing = day.openingBalance + day.totalCashReceived - day.totalExpenses - day.totalTransfers;
-    const hasVariance = Math.abs(day.closingBalance - expectedClosing) > 100;
-    
-    const matchesFilter = discrepancyFilter === "all" || 
-      (discrepancyFilter === "variance" && hasVariance) ||
-      (discrepancyFilter === "discrepancy" && day.hasDiscrepancy === 1) ||
-      (discrepancyFilter === "ok" && day.hasDiscrepancy !== 1 && !hasVariance);
-    return matchesSearch && matchesStatus && matchesSalesperson && matchesFilter;
-  });
+  const handleAddTransfer = () => {
+    if (!selectedDay || !newTransfer.amount) return;
+    addTransactionMutation.mutate({
+      dayId: selectedDay.id,
+      transactionType: 'transfer',
+      amount: Math.round(parseFloat(newTransfer.amount) * 100),
+      transferTo: newTransfer.transferTo,
+      description: newTransfer.description,
+    });
+  };
+
+  // Filter and sort days by date (newest first)
+  const filteredDays = [...(days as DayWithTransactions[])]
+    .filter(day => {
+      const matchesSearch = searchQuery === "" || 
+        day.registerDate.includes(searchQuery);
+      const matchesStatus = statusFilter === "all" || day.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    })
+    .sort((a, b) => new Date(b.registerDate).getTime() - new Date(a.registerDate).getTime());
 
   // Pagination
   const totalPages = Math.ceil(filteredDays.length / pageSize);
   const paginatedDays = filteredDays.slice((page - 1) * pageSize, page * pageSize);
-  const paginationMeta: PaginationMeta = {
-    page,
-    pageSize,
-    totalItems: filteredDays.length,
-    totalPages,
-    hasNextPage: page < totalPages,
-    hasPreviousPage: page > 1,
+
+  const calculateTotals = () => {
+    const sortedDays = [...filteredDays].sort((a, b) => 
+      new Date(a.registerDate).getTime() - new Date(b.registerDate).getTime()
+    );
+    
+    const startingBalance = sortedDays.length > 0 ? sortedDays[0].openingBalance : 0;
+    const currentBalance = sortedDays.length > 0 ? sortedDays[sortedDays.length - 1].closingBalance : 0;
+    const firstDate = sortedDays.length > 0 ? sortedDays[0].registerDate : null;
+    const lastDate = sortedDays.length > 0 ? sortedDays[sortedDays.length - 1].registerDate : null;
+    
+    let totalCashReceived = 0;
+    let totalExpenses = 0;
+    let totalTransfers = 0;
+
+    filteredDays.forEach(day => {
+      totalCashReceived += day.totalCashReceived;
+      totalExpenses += day.totalExpenses;
+      totalTransfers += day.totalTransfers;
+    });
+
+    return { startingBalance, currentBalance, firstDate, lastDate, totalCashReceived, totalExpenses, totalTransfers };
   };
 
-  const discrepancyCount = (days as DayWithTransactions[]).filter(d => d.hasDiscrepancy === 1).length;
-  
-  // Calculate variance count (rows where actual closing doesn't match formula)
-  const varianceCount = (days as CashRegisterDay[]).filter(d => {
-    const expectedClosing = d.openingBalance + d.totalCashReceived - d.totalExpenses - d.totalTransfers;
-    return Math.abs(d.closingBalance - expectedClosing) > 100;
-  }).length;
+  const totals = calculateTotals();
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'open':
         return <Badge variant="secondary" data-testid="badge-status-open">Open</Badge>;
-      case 'reconciled':
-        return <Badge variant="default" className="bg-green-600" data-testid="badge-status-reconciled"><CheckCircle2 className="w-3 h-3 mr-1" />Reconciled</Badge>;
+      case 'closed':
+        return <Badge variant="default" className="bg-green-600" data-testid="badge-status-closed"><Lock className="w-3 h-3 mr-1" />Closed</Badge>;
       case 'locked':
         return <Badge variant="outline" data-testid="badge-status-locked"><Lock className="w-3 h-3 mr-1" />Locked</Badge>;
       default:
         return <Badge data-testid="badge-status-unknown">{status}</Badge>;
     }
   };
-
-  const calculateTotals = () => {
-    // Sort days by date to find first and last
-    const sortedDays = [...filteredDays].sort((a, b) => 
-      new Date(a.registerDate).getTime() - new Date(b.registerDate).getTime()
-    );
-    
-    // Get first day's opening balance and last day's closing balance
-    const startingBalance = sortedDays.length > 0 ? sortedDays[0].openingBalance : 0;
-    const currentBalance = sortedDays.length > 0 ? sortedDays[sortedDays.length - 1].closingBalance : 0;
-    const firstDate = sortedDays.length > 0 ? sortedDays[0].registerDate : null;
-    const lastDate = sortedDays.length > 0 ? sortedDays[sortedDays.length - 1].registerDate : null;
-    
-    // Sum up totals for cash flow metrics
-    let totalDeposits = 0;
-    let totalCashReceived = 0;
-    let totalExpenses = 0;
-    let totalTransfers = 0;
-
-    filteredDays.forEach(day => {
-      totalDeposits += day.totalDeposits;
-      totalCashReceived += day.totalCashReceived;
-      totalExpenses += day.totalExpenses;
-      totalTransfers += day.totalTransfers;
-    });
-
-    return { 
-      startingBalance, 
-      currentBalance, 
-      firstDate,
-      lastDate,
-      totalDeposits, 
-      totalCashReceived, 
-      totalExpenses, 
-      totalTransfers 
-    };
-  };
-
-  const totals = calculateTotals();
 
   if (daysLoading) {
     return (
@@ -406,12 +381,357 @@ export default function CashRegisterPage() {
     );
   }
 
+  // Day Detail View
+  if (selectedDay) {
+    const transactions = selectedDay.transactions || [];
+    const cashReceivedTxns = transactions.filter(t => t.transactionType === 'cash_received');
+    const expenseTxns = transactions.filter(t => t.transactionType === 'expense');
+    const transferTxns = transactions.filter(t => t.transactionType === 'transfer');
+    
+    const calculatedClosing = selectedDay.openingBalance + 
+      selectedDay.totalCashReceived - 
+      selectedDay.totalExpenses - 
+      selectedDay.totalTransfers;
+    
+    const isDayOpen = selectedDay.status === 'open';
+
+    return (
+      <div className="p-4 space-y-4">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => setSelectedDay(null)} data-testid="button-back">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold" data-testid="text-day-date">
+              {format(new Date(selectedDay.registerDate), 'EEEE, MMMM d, yyyy')}
+            </h1>
+            <div className="flex items-center gap-2">
+              {getStatusBadge(selectedDay.status)}
+              {selectedDay.salespersonName !== 'BUSINESS' && (
+                <span className="text-muted-foreground text-sm">({selectedDay.salespersonName})</span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Balance Summary */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <Card>
+            <CardContent className="pt-4">
+              <div className="text-sm text-muted-foreground">Opening Balance</div>
+              <div className="text-xl font-bold" data-testid="text-opening">{formatCurrency(selectedDay.openingBalance)}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-1 text-sm text-green-600">
+                <TrendingUp className="w-4 h-4" /> Cash Received
+              </div>
+              <div className="text-xl font-bold text-green-600" data-testid="text-cash-in">+{formatCurrency(selectedDay.totalCashReceived)}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-1 text-sm text-red-600">
+                <TrendingDown className="w-4 h-4" /> Expenses
+              </div>
+              <div className="text-xl font-bold text-red-600" data-testid="text-expenses">-{formatCurrency(selectedDay.totalExpenses)}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-1 text-sm text-blue-600">
+                <ArrowUpRight className="w-4 h-4" /> Transfers
+              </div>
+              <div className="text-xl font-bold text-blue-600" data-testid="text-transfers">-{formatCurrency(selectedDay.totalTransfers)}</div>
+            </CardContent>
+          </Card>
+          <Card className="bg-primary/5">
+            <CardContent className="pt-4">
+              <div className="text-sm font-medium">Closing Balance</div>
+              <div className="text-xl font-bold" data-testid="text-closing">{formatCurrency(calculatedClosing)}</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Transactions */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Cash Received */}
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-green-600" />
+                  Cash Received
+                </CardTitle>
+                {isDayOpen && (
+                  <Button size="sm" variant="outline" onClick={() => setIsAddingCash(!isAddingCash)} data-testid="button-add-cash">
+                    <Plus className="w-4 h-4 mr-1" /> Add
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {isAddingCash && (
+                <div className="mb-4 p-3 border rounded-lg bg-muted/30 space-y-2">
+                  <Input
+                    type="number"
+                    placeholder="Amount"
+                    value={newCashReceived.amount}
+                    onChange={(e) => setNewCashReceived(prev => ({ ...prev, amount: e.target.value }))}
+                    data-testid="input-cash-amount"
+                  />
+                  <Input
+                    placeholder="Reference (optional)"
+                    value={newCashReceived.reference}
+                    onChange={(e) => setNewCashReceived(prev => ({ ...prev, reference: e.target.value }))}
+                    data-testid="input-cash-reference"
+                  />
+                  <Input
+                    placeholder="Description (optional)"
+                    value={newCashReceived.description}
+                    onChange={(e) => setNewCashReceived(prev => ({ ...prev, description: e.target.value }))}
+                    data-testid="input-cash-description"
+                  />
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={handleAddCashReceived} disabled={addTransactionMutation.isPending} data-testid="button-save-cash">
+                      <Check className="w-4 h-4 mr-1" /> Save
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setIsAddingCash(false)} data-testid="button-cancel-cash">
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
+              <ScrollArea className="h-48">
+                {cashReceivedTxns.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">No cash received today</p>
+                ) : (
+                  <div className="space-y-2">
+                    {cashReceivedTxns.map((txn) => (
+                      <div key={txn.id} className="flex items-center justify-between p-2 border rounded-md hover-elevate" data-testid={`txn-cash-${txn.id}`}>
+                        <div>
+                          <div className="font-medium text-green-600">{formatCurrency(txn.amount)}</div>
+                          {txn.reference && <div className="text-xs text-muted-foreground">{txn.reference}</div>}
+                          {txn.description && <div className="text-xs text-muted-foreground">{txn.description}</div>}
+                        </div>
+                        {isDayOpen && (
+                          <Button size="icon" variant="ghost" onClick={() => deleteTransactionMutation.mutate(txn.id)} data-testid={`button-delete-cash-${txn.id}`}>
+                            <Trash2 className="w-4 h-4 text-muted-foreground" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+            </CardContent>
+          </Card>
+
+          {/* Expenses */}
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <TrendingDown className="w-5 h-5 text-red-600" />
+                  Expenses
+                </CardTitle>
+                {isDayOpen && (
+                  <Button size="sm" variant="outline" onClick={() => setIsAddingExpense(!isAddingExpense)} data-testid="button-add-expense">
+                    <Plus className="w-4 h-4 mr-1" /> Add
+                  </Button>
+                )}
+              </div>
+              <CardDescription className="text-xs">Each expense generates a voucher</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isAddingExpense && (
+                <div className="mb-4 p-3 border rounded-lg bg-muted/30 space-y-2">
+                  <Input
+                    type="number"
+                    placeholder="Amount"
+                    value={newExpense.amount}
+                    onChange={(e) => setNewExpense(prev => ({ ...prev, amount: e.target.value }))}
+                    data-testid="input-expense-amount"
+                  />
+                  <Input
+                    placeholder="Reference / Item (e.g., Diesel, Tea)"
+                    value={newExpense.reference}
+                    onChange={(e) => setNewExpense(prev => ({ ...prev, reference: e.target.value }))}
+                    data-testid="input-expense-reference"
+                  />
+                  <Input
+                    placeholder="Description (optional)"
+                    value={newExpense.description}
+                    onChange={(e) => setNewExpense(prev => ({ ...prev, description: e.target.value }))}
+                    data-testid="input-expense-description"
+                  />
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={handleAddExpense} disabled={addTransactionMutation.isPending} data-testid="button-save-expense">
+                      <Receipt className="w-4 h-4 mr-1" /> Save & Create Voucher
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setIsAddingExpense(false)} data-testid="button-cancel-expense">
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
+              <ScrollArea className="h-48">
+                {expenseTxns.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">No expenses today</p>
+                ) : (
+                  <div className="space-y-2">
+                    {expenseTxns.map((txn) => (
+                      <div key={txn.id} className="flex items-center justify-between p-2 border rounded-md hover-elevate" data-testid={`txn-expense-${txn.id}`}>
+                        <div>
+                          <div className="font-medium text-red-600">{formatCurrency(txn.amount)}</div>
+                          {txn.reference && <div className="text-xs text-muted-foreground">{txn.reference}</div>}
+                          {txn.description && <div className="text-xs text-muted-foreground">{txn.description}</div>}
+                          {txn.convertedToVoucherId && (
+                            <Badge variant="outline" className="text-xs mt-1">
+                              <Receipt className="w-3 h-3 mr-1" /> Voucher
+                            </Badge>
+                          )}
+                        </div>
+                        {isDayOpen && (
+                          <Button size="icon" variant="ghost" onClick={() => deleteTransactionMutation.mutate(txn.id)} data-testid={`button-delete-expense-${txn.id}`}>
+                            <Trash2 className="w-4 h-4 text-muted-foreground" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+            </CardContent>
+          </Card>
+
+          {/* Transfers */}
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <ArrowUpRight className="w-5 h-5 text-blue-600" />
+                  Transfers
+                </CardTitle>
+                {isDayOpen && (
+                  <Button size="sm" variant="outline" onClick={() => setIsAddingTransfer(!isAddingTransfer)} data-testid="button-add-transfer">
+                    <Plus className="w-4 h-4 mr-1" /> Add
+                  </Button>
+                )}
+              </div>
+              <CardDescription className="text-xs">Cash sent to owner/bank</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isAddingTransfer && (
+                <div className="mb-4 p-3 border rounded-lg bg-muted/30 space-y-2">
+                  <Input
+                    type="number"
+                    placeholder="Amount"
+                    value={newTransfer.amount}
+                    onChange={(e) => setNewTransfer(prev => ({ ...prev, amount: e.target.value }))}
+                    data-testid="input-transfer-amount"
+                  />
+                  <Input
+                    placeholder="Transfer To (e.g., TULASI, Bank)"
+                    value={newTransfer.transferTo}
+                    onChange={(e) => setNewTransfer(prev => ({ ...prev, transferTo: e.target.value }))}
+                    data-testid="input-transfer-to"
+                  />
+                  <Input
+                    placeholder="Description (optional)"
+                    value={newTransfer.description}
+                    onChange={(e) => setNewTransfer(prev => ({ ...prev, description: e.target.value }))}
+                    data-testid="input-transfer-description"
+                  />
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={handleAddTransfer} disabled={addTransactionMutation.isPending} data-testid="button-save-transfer">
+                      <Check className="w-4 h-4 mr-1" /> Save
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setIsAddingTransfer(false)} data-testid="button-cancel-transfer">
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
+              <ScrollArea className="h-48">
+                {transferTxns.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">No transfers today</p>
+                ) : (
+                  <div className="space-y-2">
+                    {transferTxns.map((txn) => (
+                      <div key={txn.id} className="flex items-center justify-between p-2 border rounded-md hover-elevate" data-testid={`txn-transfer-${txn.id}`}>
+                        <div>
+                          <div className="font-medium text-blue-600">{formatCurrency(txn.amount)}</div>
+                          {txn.transferTo && <div className="text-xs font-medium">To: {txn.transferTo}</div>}
+                          {txn.description && <div className="text-xs text-muted-foreground">{txn.description}</div>}
+                        </div>
+                        {isDayOpen && (
+                          <Button size="icon" variant="ghost" onClick={() => deleteTransactionMutation.mutate(txn.id)} data-testid={`button-delete-transfer-${txn.id}`}>
+                            <Trash2 className="w-4 h-4 text-muted-foreground" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Close Day Button */}
+        {isDayOpen && (
+          <Card className="bg-primary/5">
+            <CardContent className="pt-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-medium">Close This Day</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Closing balance of {formatCurrency(calculatedClosing)} will be carried forward as next day's opening balance.
+                  </p>
+                </div>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="default" data-testid="button-close-day">
+                      <Lock className="w-4 h-4 mr-2" />
+                      Close Day
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Close This Day?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will lock all transactions for {format(new Date(selectedDay.registerDate), 'MMMM d, yyyy')}.
+                        The closing balance of {formatCurrency(calculatedClosing)} will be used as the opening balance for the next day.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => closeDayMutation.mutate(selectedDay.id)} data-testid="button-confirm-close">
+                        Close Day
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    );
+  }
+
+  // Main List View
   return (
     <div className="p-4 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold" data-testid="text-page-title">Daily Cash Register</h1>
-          <p className="text-muted-foreground">Track daily cash flow per salesperson</p>
+          <p className="text-muted-foreground">Track daily cash flow - receipts, expenses, and transfers</p>
         </div>
         <div className="flex gap-2">
           {days.length > 0 && (
@@ -426,9 +746,7 @@ export default function CashRegisterPage() {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Clear All Cash Register Data?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will permanently delete all {days.length} cash register days, including all transactions, expense items, and related vouchers. This action cannot be undone. 
-                    <br/><br/>
-                    Use this if you want to re-import the data from Excel with updated parsing logic.
+                    This will permanently delete all {days.length} cash register days and all related transactions. This cannot be undone.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -445,6 +763,7 @@ export default function CashRegisterPage() {
               </AlertDialogContent>
             </AlertDialog>
           )}
+          
           <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" data-testid="button-import">
@@ -456,7 +775,7 @@ export default function CashRegisterPage() {
               <DialogHeader>
                 <DialogTitle>Import Cash Register Data</DialogTitle>
                 <DialogDescription>
-                  Upload an Excel file with daily expense data. The file should have columns: Date, SO, Opening Balance, Deposit Amount, Received Cash, Expenses, Item Details, Balance Amount, Sent To Tulasi
+                  Upload an Excel file with daily cash data
                 </DialogDescription>
               </DialogHeader>
               
@@ -477,26 +796,26 @@ export default function CashRegisterPage() {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <Card>
                         <CardContent className="pt-4">
-                          <div className="text-2xl font-bold" data-testid="text-total-rows">{importPreview.totalRows}</div>
+                          <div className="text-2xl font-bold">{importPreview.totalRows}</div>
                           <div className="text-sm text-muted-foreground">Total Rows</div>
                         </CardContent>
                       </Card>
                       <Card>
                         <CardContent className="pt-4">
-                          <div className="text-2xl font-bold text-green-600" data-testid="text-valid-rows">{importPreview.validRows}</div>
+                          <div className="text-2xl font-bold text-green-600">{importPreview.validRows}</div>
                           <div className="text-sm text-muted-foreground">Valid Rows</div>
                         </CardContent>
                       </Card>
                       <Card>
                         <CardContent className="pt-4">
-                          <div className="text-2xl font-bold text-red-600" data-testid="text-error-rows">{importPreview.errorRows}</div>
+                          <div className="text-2xl font-bold text-red-600">{importPreview.errorRows}</div>
                           <div className="text-sm text-muted-foreground">Error Rows</div>
                         </CardContent>
                       </Card>
                       <Card>
                         <CardContent className="pt-4">
-                          <div className="text-2xl font-bold" data-testid="text-salespersons-count">{importPreview.uniqueSalespersons.length}</div>
-                          <div className="text-sm text-muted-foreground">Salespersons</div>
+                          <div className="text-2xl font-bold">{importPreview.uniqueSalespersons?.length || 0}</div>
+                          <div className="text-sm text-muted-foreground">Sources</div>
                         </CardContent>
                       </Card>
                     </div>
@@ -507,64 +826,41 @@ export default function CashRegisterPage() {
                       </div>
                     )}
 
-                    {importPreview.errors.length > 0 && (
-                      <div className="p-3 bg-destructive/10 rounded-md">
-                        <p className="font-medium text-destructive">Errors:</p>
-                        <ul className="list-disc list-inside text-sm">
-                          {importPreview.errors.map((err, i) => <li key={i}>{err}</li>)}
-                        </ul>
-                      </div>
-                    )}
-
-                    {importPreview.unmappedSalespersons.length > 0 && (
-                      <div className="p-3 bg-yellow-500/10 rounded-md">
-                        <p className="font-medium text-yellow-700">Unmapped Salespersons:</p>
-                        <p className="text-sm">{importPreview.unmappedSalespersons.join(', ')}</p>
-                      </div>
-                    )}
-
-                    <div>
-                      <h4 className="font-medium mb-2">Preview Data ({importPreview.rows.length} rows)</h4>
-                      <div className="border rounded-md overflow-auto max-h-64">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead className="w-10">#</TableHead>
-                              <TableHead>Date</TableHead>
-                              <TableHead>Salesperson</TableHead>
-                              <TableHead className="text-right">Opening</TableHead>
-                              <TableHead className="text-right">Cash In</TableHead>
-                              <TableHead className="text-right">Expenses</TableHead>
-                              <TableHead className="text-right">Transfers</TableHead>
-                              <TableHead className="text-right">Closing</TableHead>
-                              <TableHead>Status</TableHead>
+                    <div className="border rounded-md overflow-auto max-h-64">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>#</TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead className="text-right">Opening</TableHead>
+                            <TableHead className="text-right">Cash In</TableHead>
+                            <TableHead className="text-right">Expenses</TableHead>
+                            <TableHead className="text-right">Transfers</TableHead>
+                            <TableHead className="text-right">Closing</TableHead>
+                            <TableHead>Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {importPreview.rows.slice(0, 50).map((row) => (
+                            <TableRow key={row.rowNumber} className={row.errors.length > 0 ? 'bg-destructive/10' : ''}>
+                              <TableCell>{row.rowNumber}</TableCell>
+                              <TableCell>{row.date}</TableCell>
+                              <TableCell className="text-right">{formatCurrency(row.openingBalance)}</TableCell>
+                              <TableCell className="text-right">{formatCurrency(row.receivedCash)}</TableCell>
+                              <TableCell className="text-right">{formatCurrency(row.expenses)}</TableCell>
+                              <TableCell className="text-right">{formatCurrency(row.sentToTulasi)}</TableCell>
+                              <TableCell className="text-right">{formatCurrency(row.balanceAmount)}</TableCell>
+                              <TableCell>
+                                {row.errors.length > 0 ? (
+                                  <Badge variant="destructive" className="text-xs">Error</Badge>
+                                ) : (
+                                  <Badge variant="default" className="text-xs bg-green-600">OK</Badge>
+                                )}
+                              </TableCell>
                             </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {importPreview.rows.slice(0, 50).map((row) => (
-                              <TableRow key={row.rowNumber} className={row.errors.length > 0 ? 'bg-destructive/10' : ''}>
-                                <TableCell>{row.rowNumber}</TableCell>
-                                <TableCell>{row.date}</TableCell>
-                                <TableCell>{row.salespersonName}</TableCell>
-                                <TableCell className="text-right">{formatCurrency(row.openingBalance)}</TableCell>
-                                <TableCell className="text-right">{formatCurrency(row.receivedCash)}</TableCell>
-                                <TableCell className="text-right">{formatCurrency(row.expenses)}</TableCell>
-                                <TableCell className="text-right">{formatCurrency(row.sentToTulasi)}</TableCell>
-                                <TableCell className="text-right">{formatCurrency(row.balanceAmount)}</TableCell>
-                                <TableCell>
-                                  {row.errors.length > 0 ? (
-                                    <Badge variant="destructive" className="text-xs">Error</Badge>
-                                  ) : row.warnings.length > 0 ? (
-                                    <Badge variant="secondary" className="text-xs">Warning</Badge>
-                                  ) : (
-                                    <Badge variant="default" className="text-xs bg-green-600">OK</Badge>
-                                  )}
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
+                          ))}
+                        </TableBody>
+                      </Table>
                     </div>
                   </div>
                 </ScrollArea>
@@ -573,13 +869,10 @@ export default function CashRegisterPage() {
               <DialogFooter className="gap-2">
                 {importPreview && (
                   <>
-                    <Button variant="outline" onClick={() => setImportPreview(null)} data-testid="button-clear-preview">
-                      Clear
-                    </Button>
+                    <Button variant="outline" onClick={() => setImportPreview(null)}>Clear</Button>
                     <Button 
                       onClick={handleCommitImport} 
                       disabled={isImporting || importPreview.validRows === 0}
-                      data-testid="button-commit-import"
                     >
                       {isImporting ? 'Importing...' : `Import ${importPreview.validRows} Rows`}
                     </Button>
@@ -589,69 +882,15 @@ export default function CashRegisterPage() {
             </DialogContent>
           </Dialog>
 
-          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-            <DialogTrigger asChild>
-              <Button data-testid="button-new-day">
-                <Plus className="w-4 h-4 mr-2" />
-                New Day
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create Cash Register Day</DialogTitle>
-                <DialogDescription>Start tracking cash for a salesperson on a specific date</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label>Date</Label>
-                  <Input 
-                    type="date" 
-                    value={newDayData.registerDate}
-                    onChange={(e) => setNewDayData(prev => ({ ...prev, registerDate: e.target.value }))}
-                    data-testid="input-register-date"
-                  />
-                </div>
-                <div>
-                  <Label>Salesperson</Label>
-                  <Input 
-                    placeholder="e.g., TARAK, SAI"
-                    value={newDayData.salespersonName}
-                    onChange={(e) => setNewDayData(prev => ({ ...prev, salespersonName: e.target.value.toUpperCase() }))}
-                    data-testid="input-salesperson"
-                  />
-                </div>
-                <div>
-                  <Label>Opening Balance</Label>
-                  <Input 
-                    type="number" 
-                    placeholder="0.00"
-                    value={newDayData.openingBalance}
-                    onChange={(e) => setNewDayData(prev => ({ ...prev, openingBalance: e.target.value }))}
-                    data-testid="input-opening-balance"
-                  />
-                </div>
-                <div>
-                  <Label>Notes</Label>
-                  <Textarea 
-                    placeholder="Optional notes..."
-                    value={newDayData.notes}
-                    onChange={(e) => setNewDayData(prev => ({ ...prev, notes: e.target.value }))}
-                    data-testid="input-notes"
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsCreateOpen(false)} data-testid="button-cancel-create">Cancel</Button>
-                <Button onClick={handleCreateDay} disabled={createDayMutation.isPending} data-testid="button-create-day">
-                  {createDayMutation.isPending ? 'Creating...' : 'Create'}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <Button onClick={handleCreateNewDay} disabled={createDayMutation.isPending} data-testid="button-new-day">
+            <Plus className="w-4 h-4 mr-2" />
+            New Day
+          </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-2">
@@ -666,25 +905,16 @@ export default function CashRegisterPage() {
           <CardContent className="pt-4">
             <div className="flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-green-600" />
-              <span className="text-sm text-muted-foreground">Cash Received</span>
+              <span className="text-sm text-muted-foreground">Total Cash In</span>
             </div>
-            <div className="text-xl font-bold mt-1 text-green-600" data-testid="text-total-cash-received">{formatCurrency(totals.totalCashReceived)}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-2">
-              <PiggyBank className="w-5 h-5 text-purple-600" />
-              <span className="text-sm text-muted-foreground">Bank Deposits</span>
-            </div>
-            <div className="text-xl font-bold mt-1 text-purple-600" data-testid="text-total-deposits">{formatCurrency(totals.totalDeposits)}</div>
+            <div className="text-xl font-bold mt-1 text-green-600" data-testid="text-total-cash-in">{formatCurrency(totals.totalCashReceived)}</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-2">
               <TrendingDown className="w-5 h-5 text-red-600" />
-              <span className="text-sm text-muted-foreground">Expenses</span>
+              <span className="text-sm text-muted-foreground">Total Expenses</span>
             </div>
             <div className="text-xl font-bold mt-1 text-red-600" data-testid="text-total-expenses">{formatCurrency(totals.totalExpenses)}</div>
           </CardContent>
@@ -693,41 +923,33 @@ export default function CashRegisterPage() {
           <CardContent className="pt-4">
             <div className="flex items-center gap-2">
               <ArrowUpRight className="w-5 h-5 text-blue-600" />
-              <span className="text-sm text-muted-foreground">Transfers</span>
+              <span className="text-sm text-muted-foreground">Total Transfers</span>
             </div>
             <div className="text-xl font-bold mt-1 text-blue-600" data-testid="text-total-transfers">{formatCurrency(totals.totalTransfers)}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-primary/5">
           <CardContent className="pt-4">
             <div className="flex items-center gap-2">
-              <DollarSign className="w-5 h-5 text-green-700" />
-              <span className="text-sm text-muted-foreground">Current Balance</span>
+              <DollarSign className="w-5 h-5 text-primary" />
+              <span className="text-sm font-medium">Current Balance</span>
             </div>
-            <div className="text-xl font-bold mt-1 text-green-700" data-testid="text-current-balance">{formatCurrency(totals.currentBalance)}</div>
+            <div className="text-xl font-bold mt-1" data-testid="text-current-balance">{formatCurrency(totals.currentBalance)}</div>
             {totals.lastDate && <div className="text-xs text-muted-foreground">{format(new Date(totals.lastDate), 'MMM d, yyyy')}</div>}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Days</span>
-            </div>
-            <div className="text-xl font-bold mt-1" data-testid="text-total-days">{filteredDays.length}</div>
           </CardContent>
         </Card>
       </div>
 
+      {/* Days List */}
       <Card>
         <CardHeader>
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <CardTitle>Cash Register Days</CardTitle>
+            <CardTitle>Days ({filteredDays.length})</CardTitle>
             <div className="flex flex-wrap gap-2">
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search..."
+                  placeholder="Search date..."
                   className="pl-8 w-48"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -741,30 +963,7 @@ export default function CashRegisterPage() {
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="open">Open</SelectItem>
-                  <SelectItem value="reconciled">Reconciled</SelectItem>
-                  <SelectItem value="locked">Locked</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={salespersonFilter} onValueChange={setSalespersonFilter}>
-                <SelectTrigger className="w-36" data-testid="select-salesperson-filter">
-                  <SelectValue placeholder="Salesperson" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Salespersons</SelectItem>
-                  {salespersons.map(sp => (
-                    <SelectItem key={sp} value={sp}>{sp}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={discrepancyFilter} onValueChange={setDiscrepancyFilter}>
-                <SelectTrigger className="w-44" data-testid="select-discrepancy-filter">
-                  <SelectValue placeholder="Filter" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Records</SelectItem>
-                  <SelectItem value="variance">With Variance ({varianceCount})</SelectItem>
-                  <SelectItem value="discrepancy">With Issues ({discrepancyCount})</SelectItem>
-                  <SelectItem value="ok">No Issues</SelectItem>
+                  <SelectItem value="closed">Closed</SelectItem>
                 </SelectContent>
               </Select>
               <Button variant="outline" size="icon" onClick={() => refetchDays()} data-testid="button-refresh">
@@ -779,364 +978,72 @@ export default function CashRegisterPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
-                  <TableHead>Salesperson</TableHead>
                   <TableHead className="text-right">Opening</TableHead>
                   <TableHead className="text-right">Cash In</TableHead>
                   <TableHead className="text-right">Expenses</TableHead>
                   <TableHead className="text-right">Transfers</TableHead>
                   <TableHead className="text-right">Closing</TableHead>
-                  <TableHead className="text-right">Variance</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredDays.length === 0 ? (
+                {paginatedDays.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
-                      No cash register days found
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      No cash register entries yet. Click "New Day" to start tracking.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  paginatedDays.map((day) => (
-                    <TableRow 
-                      key={day.id} 
-                      data-testid={`row-day-${day.id}`}
-                      className={day.hasDiscrepancy === 1 ? 'bg-yellow-50 dark:bg-yellow-950/20' : ''}
-                    >
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          {day.hasDiscrepancy === 1 && (
-                            <AlertTriangle className="h-4 w-4 text-yellow-600" data-testid={`icon-discrepancy-${day.id}`} />
-                          )}
-                          {day.registerDate}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" data-testid={`badge-salesperson-${day.id}`}>{day.salespersonName}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right">{formatCurrency(day.openingBalance)}</TableCell>
-                      <TableCell className="text-right text-green-600">{formatCurrency(day.totalCashReceived)}</TableCell>
-                      <TableCell className="text-right text-red-600">{formatCurrency(day.totalExpenses)}</TableCell>
-                      <TableCell className="text-right text-blue-600">{formatCurrency(day.totalTransfers)}</TableCell>
-                      <TableCell className="text-right font-medium">{formatCurrency(day.closingBalance)}</TableCell>
-                      <TableCell className="text-right">
-                        {(() => {
-                          const expectedClosing = day.openingBalance + day.totalCashReceived - day.totalExpenses - day.totalTransfers;
-                          const variance = day.closingBalance - expectedClosing;
-                          if (Math.abs(variance) <= 100) {
-                            return <span className="text-muted-foreground">-</span>;
-                          }
-                          return (
-                            <span className={variance > 0 ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
-                              {variance > 0 ? '+' : ''}{formatCurrency(variance)}
-                            </span>
-                          );
-                        })()}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          {getStatusBadge(day.status)}
-                          {day.hasDiscrepancy === 1 && (
-                            <Badge variant="secondary" className="bg-yellow-200 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 text-xs" data-testid={`badge-discrepancy-${day.id}`}>
-                              Issue
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => viewDayDetails(day.id)}
-                          data-testid={`button-view-${day.id}`}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  paginatedDays.map((day) => {
+                    const expectedClosing = day.openingBalance + day.totalCashReceived - day.totalExpenses - day.totalTransfers;
+                    return (
+                      <TableRow 
+                        key={day.id} 
+                        className="cursor-pointer hover-elevate" 
+                        onClick={() => viewDayDetails(day.id)}
+                        data-testid={`row-day-${day.id}`}
+                      >
+                        <TableCell>
+                          <div className="font-medium">{format(new Date(day.registerDate), 'EEE, MMM d, yyyy')}</div>
+                        </TableCell>
+                        <TableCell className="text-right">{formatCurrency(day.openingBalance)}</TableCell>
+                        <TableCell className="text-right text-green-600">+{formatCurrency(day.totalCashReceived)}</TableCell>
+                        <TableCell className="text-right text-red-600">-{formatCurrency(day.totalExpenses)}</TableCell>
+                        <TableCell className="text-right text-blue-600">-{formatCurrency(day.totalTransfers)}</TableCell>
+                        <TableCell className="text-right font-medium">{formatCurrency(expectedClosing)}</TableCell>
+                        <TableCell>{getStatusBadge(day.status)}</TableCell>
+                        <TableCell className="text-right">
+                          <Button size="icon" variant="ghost" data-testid={`button-view-${day.id}`}>
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>
           </div>
-          {filteredDays.length > 0 && (
-            <DataTablePagination
-              meta={paginationMeta}
-              onPageChange={(newPage) => setPage(newPage)}
-              onPageSizeChange={(newSize) => { setPageSize(newSize); setPage(1); }}
-            />
+          
+          {filteredDays.length > pageSize && (
+            <div className="mt-4">
+              <DataTablePagination
+                meta={{
+                  page,
+                  pageSize,
+                  totalItems: filteredDays.length,
+                  totalPages,
+                  hasNextPage: page < totalPages,
+                  hasPreviousPage: page > 1,
+                }}
+                onPageChange={setPage}
+                onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+              />
+            </div>
           )}
         </CardContent>
       </Card>
-
-      <Dialog open={!!selectedDay} onOpenChange={() => setSelectedDay(null)}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-auto">
-          {selectedDay && (
-            <>
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <Calendar className="w-5 h-5" />
-                  {selectedDay.registerDate} - {selectedDay.salespersonName}
-                </DialogTitle>
-                <DialogDescription>
-                  View cash register details and transactions
-                </DialogDescription>
-              </DialogHeader>
-
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 my-4">
-                <div className="text-center p-3 bg-muted rounded-md">
-                  <div className="text-sm text-muted-foreground">Opening</div>
-                  <div className="text-lg font-bold">{formatCurrency(selectedDay.openingBalance)}</div>
-                </div>
-                <div className="text-center p-3 bg-green-50 dark:bg-green-950 rounded-md">
-                  <div className="text-sm text-muted-foreground">Cash In</div>
-                  <div className="text-lg font-bold text-green-600">{formatCurrency(selectedDay.totalCashReceived)}</div>
-                </div>
-                <div className="text-center p-3 bg-red-50 dark:bg-red-950 rounded-md">
-                  <div className="text-sm text-muted-foreground">Expenses</div>
-                  <div className="text-lg font-bold text-red-600">{formatCurrency(selectedDay.totalExpenses)}</div>
-                </div>
-                <div className="text-center p-3 bg-muted rounded-md">
-                  <div className="text-sm text-muted-foreground">Closing</div>
-                  <div className="text-lg font-bold">{formatCurrency(selectedDay.closingBalance)}</div>
-                </div>
-              </div>
-
-              {/* Discrepancy Alert */}
-              {selectedDay.hasDiscrepancy === 1 && selectedDay.discrepancyDetails && (
-                <div className="p-4 bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 rounded-md mb-4" data-testid="discrepancy-alert">
-                  <div className="flex items-center gap-2 mb-2">
-                    <AlertTriangle className="h-5 w-5 text-yellow-600" />
-                    <h4 className="font-medium text-yellow-800 dark:text-yellow-200">Discrepancy Found</h4>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    {selectedDay.discrepancyDetails.items_mismatch && (
-                      <div className="space-y-1">
-                        <p className="text-muted-foreground">Expense Items Total:</p>
-                        <p className="font-mono">
-                          <span className="text-red-600">Items: {formatCurrency(selectedDay.discrepancyDetails.items_total * 100)}</span>
-                          <span className="mx-2">vs</span>
-                          <span>Total: {formatCurrency(selectedDay.discrepancyDetails.total_expenses * 100)}</span>
-                        </p>
-                        <p className="text-yellow-700 dark:text-yellow-300 font-medium">
-                          Difference: {formatCurrency(Math.abs(selectedDay.discrepancyDetails.items_difference) * 100)}
-                          {selectedDay.discrepancyDetails.items_difference > 0 ? ' (missing items)' : ' (extra items)'}
-                        </p>
-                      </div>
-                    )}
-                    {selectedDay.discrepancyDetails.balance_mismatch && (
-                      <div className="space-y-1">
-                        <p className="text-muted-foreground">Balance Calculation:</p>
-                        <p className="font-mono">
-                          <span className="text-red-600">Actual: {formatCurrency(selectedDay.discrepancyDetails.actual_closing * 100)}</span>
-                          <span className="mx-2">vs</span>
-                          <span>Expected: {formatCurrency(selectedDay.discrepancyDetails.expected_closing * 100)}</span>
-                        </p>
-                        <p className="text-yellow-700 dark:text-yellow-300 font-medium">
-                          Difference: {formatCurrency(Math.abs(selectedDay.discrepancyDetails.closing_difference) * 100)}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {selectedDay.transactions && selectedDay.transactions.length > 0 && (
-                <div>
-                  <h4 className="font-medium mb-2">Transactions</h4>
-                  <div className="rounded-md border overflow-auto max-h-64">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Type</TableHead>
-                          <TableHead>Description</TableHead>
-                          <TableHead className="text-right">Amount</TableHead>
-                          <TableHead>Converted</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {selectedDay.transactions.map((tx) => (
-                          <TableRow key={tx.id}>
-                            <TableCell>
-                              <Badge variant={
-                                tx.transactionType === 'expense' ? 'destructive' :
-                                tx.transactionType === 'cash_received' ? 'default' :
-                                tx.transactionType === 'transfer' ? 'secondary' : 'outline'
-                              }>
-                                {tx.transactionType.replace('_', ' ')}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              {tx.description || tx.reference || '-'}
-                              {tx.items && tx.items.length > 0 && (
-                                <div className="text-xs text-muted-foreground mt-1">
-                                  {tx.items.map(item => item.itemLabel).join(', ')}
-                                </div>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-right font-mono">
-                              {formatCurrency(tx.amount)}
-                            </TableCell>
-                            <TableCell>
-                              {tx.convertedToVoucherId ? (
-                                <Badge variant="outline" className="text-xs" data-testid={`badge-voucher-${tx.id}`}>
-                                  <Receipt className="w-3 h-3 mr-1" />
-                                  Voucher
-                                </Badge>
-                              ) : tx.transactionType === 'expense' ? (
-                                <Button variant="ghost" size="sm" className="text-xs h-6" data-testid={`button-convert-${tx.id}`}>
-                                  Convert
-                                </Button>
-                              ) : '-'}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
-              )}
-
-              {/* Expense Items Section with Edit Capability */}
-              {selectedDay.transactions?.some(tx => tx.transactionType === 'expense' && tx.items && tx.items.length > 0) && (
-                <div className="mt-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-medium">Expense Items (Edit to Fix Discrepancy)</h4>
-                    {selectedDay.hasDiscrepancy === 1 && selectedDay.discrepancyDetails?.items_mismatch && (
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => {
-                          const expenseTx = selectedDay.transactions?.find(tx => tx.transactionType === 'expense');
-                          if (expenseTx && selectedDay.discrepancyDetails) {
-                            const diff = selectedDay.discrepancyDetails.items_difference * 100;
-                            if (diff > 0) {
-                              addAdjustmentMutation.mutate({
-                                transactionId: expenseTx.id,
-                                amount: Math.round(diff),
-                                label: 'OTHER/ADJUSTMENT'
-                              });
-                            }
-                          }
-                        }}
-                        disabled={addAdjustmentMutation.isPending}
-                        data-testid="button-add-adjustment"
-                      >
-                        <Plus className="h-4 w-4 mr-1" />
-                        Add Adjustment Item
-                      </Button>
-                    )}
-                  </div>
-                  <div className="rounded-md border overflow-auto max-h-48">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Item</TableHead>
-                          <TableHead className="text-right">Amount</TableHead>
-                          <TableHead className="w-24">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {selectedDay.transactions
-                          .filter(tx => tx.transactionType === 'expense' && tx.items)
-                          .flatMap(tx => tx.items || [])
-                          .map((item) => {
-                            const isEditing = editingItems.some(e => e.id === item.id);
-                            const editValue = editingItems.find(e => e.id === item.id)?.amount || '';
-                            
-                            return (
-                              <TableRow key={item.id}>
-                                <TableCell className="font-medium">{item.itemLabel}</TableCell>
-                                <TableCell className="text-right">
-                                  {isEditing ? (
-                                    <Input
-                                      type="number"
-                                      className="w-24 h-8 text-right"
-                                      value={editValue}
-                                      onChange={(e) => setEditingItems(prev => 
-                                        prev.map(ei => ei.id === item.id ? { ...ei, amount: e.target.value } : ei)
-                                      )}
-                                      placeholder={(item.amount / 100).toString()}
-                                      data-testid={`input-edit-amount-${item.id}`}
-                                    />
-                                  ) : (
-                                    <span className="font-mono">{formatCurrency(item.amount)}</span>
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  {isEditing ? (
-                                    <div className="flex gap-1">
-                                      <Button 
-                                        size="icon" 
-                                        variant="ghost" 
-                                        className="h-7 w-7"
-                                        onClick={() => {
-                                          const newAmount = parseFloat(editValue) * 100;
-                                          if (!isNaN(newAmount) && newAmount >= 0) {
-                                            updateExpenseItemMutation.mutate({ id: item.id, amount: Math.round(newAmount) });
-                                          }
-                                        }}
-                                        disabled={updateExpenseItemMutation.isPending}
-                                        data-testid={`button-save-${item.id}`}
-                                      >
-                                        <Save className="h-4 w-4 text-green-600" />
-                                      </Button>
-                                      <Button 
-                                        size="icon" 
-                                        variant="ghost" 
-                                        className="h-7 w-7"
-                                        onClick={() => setEditingItems(prev => prev.filter(e => e.id !== item.id))}
-                                        data-testid={`button-cancel-edit-${item.id}`}
-                                      >
-                                        <X className="h-4 w-4 text-red-600" />
-                                      </Button>
-                                    </div>
-                                  ) : (
-                                    <Button 
-                                      size="icon" 
-                                      variant="ghost" 
-                                      className="h-7 w-7"
-                                      onClick={() => setEditingItems(prev => [...prev, { id: item.id, amount: (item.amount / 100).toString() }])}
-                                      data-testid={`button-edit-${item.id}`}
-                                    >
-                                      <Edit className="h-4 w-4" />
-                                    </Button>
-                                  )}
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
-              )}
-
-              {selectedDay.notes && (
-                <div className="mt-4 p-3 bg-muted rounded-md">
-                  <span className="text-sm text-muted-foreground">Notes: </span>
-                  <span>{selectedDay.notes}</span>
-                </div>
-              )}
-
-              <DialogFooter className="gap-2 mt-4">
-                {selectedDay.status === 'open' && (
-                  <Button 
-                    onClick={() => reconcileMutation.mutate({ id: selectedDay.id })}
-                    disabled={reconcileMutation.isPending}
-                    data-testid="button-reconcile"
-                  >
-                    <CheckCircle2 className="w-4 h-4 mr-2" />
-                    {reconcileMutation.isPending ? 'Reconciling...' : 'Reconcile Day'}
-                  </Button>
-                )}
-                <Button variant="outline" onClick={() => setSelectedDay(null)} data-testid="button-close-detail">Close</Button>
-              </DialogFooter>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

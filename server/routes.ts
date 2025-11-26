@@ -8740,8 +8740,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'Cash register day not found' });
       }
       
-      if (day.status === 'locked') {
-        return res.status(400).json({ message: 'Cannot add transactions to a locked day' });
+      if (day.status === 'locked' || day.status === 'closed') {
+        return res.status(400).json({ message: 'Cannot add transactions to a closed or locked day' });
       }
       
       const parsed = insertCashRegisterTransactionSchema.parse({
@@ -8749,7 +8749,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         dayId,
       });
       
-      const transaction = await storage.createCashRegisterTransaction(parsed);
+      let transaction = await storage.createCashRegisterTransaction(parsed);
       
       // Update day totals
       const amount = parsed.amount || 0;
@@ -8764,17 +8764,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
           break;
         case 'expense':
           updates.totalExpenses = day.totalExpenses + amount;
+          // Auto-generate expense voucher
+          try {
+            const voucherNumber = `EV-CR-${day.registerDate.replace(/-/g, '')}-${Date.now().toString().slice(-4)}`;
+            const voucher = await storage.createExpenseVoucher({
+              voucherNumber,
+              voucherDate: day.registerDate,
+              status: 'submitted',
+              paymentMode: 'cash',
+              totalAmount: amount,
+              gstAmount: 0,
+              netAmount: amount,
+              notes: `Cash Register Expense: ${parsed.reference || parsed.description || 'Expense'}`,
+              submittedBy: req.user?.id,
+              submittedAt: new Date().toISOString(),
+            });
+            
+            // Link transaction to voucher
+            await storage.updateCashRegisterTransaction(transaction.id, {
+              convertedToVoucherId: voucher.id,
+              convertedAt: new Date().toISOString(),
+            });
+            
+            // Refresh transaction to include voucher link
+            transaction = await storage.getCashRegisterTransaction(transaction.id) || transaction;
+          } catch (voucherError) {
+            console.error('[CASH_REGISTER] Error creating expense voucher:', voucherError);
+            // Continue even if voucher creation fails
+          }
           break;
         case 'transfer':
           updates.totalTransfers = day.totalTransfers + amount;
           break;
       }
       
-      // Recalculate closing balance
+      // Recalculate closing balance (Opening + CashReceived - Expenses - Transfers)
       updates.closingBalance = day.openingBalance + 
-        (updates.totalCashReceived || day.totalCashReceived) - 
-        (updates.totalExpenses || day.totalExpenses) - 
-        (updates.totalTransfers || day.totalTransfers);
+        (updates.totalCashReceived ?? day.totalCashReceived) - 
+        (updates.totalExpenses ?? day.totalExpenses) - 
+        (updates.totalTransfers ?? day.totalTransfers);
       
       await storage.updateCashRegisterDay(dayId, updates);
       
@@ -8782,6 +8810,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('[CASH_REGISTER] Error creating transaction:', error);
       res.status(400).json({ message: error.message || 'Failed to create transaction' });
+    }
+  });
+
+  // Close cash register day
+  app.post('/api/cash-register/days/:id/close', isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { id } = req.params;
+      const day = await storage.getCashRegisterDay(id);
+      if (!day) {
+        return res.status(404).json({ message: 'Cash register day not found' });
+      }
+      
+      if (day.status !== 'open') {
+        return res.status(400).json({ message: 'Day is already closed or locked' });
+      }
+      
+      // Calculate final closing balance
+      const closingBalance = day.openingBalance + day.totalCashReceived - day.totalExpenses - day.totalTransfers;
+      
+      // Update day status to closed
+      const updated = await storage.updateCashRegisterDay(id, {
+        status: 'closed',
+        closingBalance,
+        reconciledAt: new Date().toISOString(),
+        reconciledBy: req.user?.id,
+      });
+      
+      await logAudit(req.user?.id, 'CLOSE', 'cash_register_days', id, 
+        `Cash register day closed with balance ${closingBalance}`);
+      
+      res.json(updated);
+    } catch (error: any) {
+      console.error('[CASH_REGISTER] Error closing day:', error);
+      res.status(400).json({ message: error.message || 'Failed to close cash register day' });
+    }
+  });
+
+  // Delete cash register transaction
+  app.delete('/api/cash-register/transactions/:id', isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { id } = req.params;
+      const transaction = await storage.getCashRegisterTransaction(id);
+      if (!transaction) {
+        return res.status(404).json({ message: 'Transaction not found' });
+      }
+      
+      const day = await storage.getCashRegisterDay(transaction.dayId);
+      if (!day) {
+        return res.status(404).json({ message: 'Cash register day not found' });
+      }
+      
+      if (day.status !== 'open') {
+        return res.status(400).json({ message: 'Cannot delete transactions from a closed or locked day' });
+      }
+      
+      // Update day totals by subtracting the transaction amount
+      const amount = transaction.amount || 0;
+      const updates: any = {};
+      
+      switch (transaction.transactionType) {
+        case 'deposit':
+          updates.totalDeposits = Math.max(0, day.totalDeposits - amount);
+          break;
+        case 'cash_received':
+          updates.totalCashReceived = Math.max(0, day.totalCashReceived - amount);
+          break;
+        case 'expense':
+          updates.totalExpenses = Math.max(0, day.totalExpenses - amount);
+          break;
+        case 'transfer':
+          updates.totalTransfers = Math.max(0, day.totalTransfers - amount);
+          break;
+      }
+      
+      // Recalculate closing balance
+      updates.closingBalance = day.openingBalance + 
+        (updates.totalCashReceived ?? day.totalCashReceived) - 
+        (updates.totalExpenses ?? day.totalExpenses) - 
+        (updates.totalTransfers ?? day.totalTransfers);
+      
+      await storage.updateCashRegisterDay(day.id, updates);
+      
+      // Delete the transaction
+      await storage.deleteCashRegisterTransaction(id);
+      
+      await logAudit(req.user?.id, 'DELETE', 'cash_register_transactions', id, 
+        `Transaction deleted: ${transaction.transactionType} - ${amount}`);
+      
+      res.status(204).send();
+    } catch (error: any) {
+      console.error('[CASH_REGISTER] Error deleting transaction:', error);
+      res.status(500).json({ message: error.message || 'Failed to delete transaction' });
     }
   });
 
