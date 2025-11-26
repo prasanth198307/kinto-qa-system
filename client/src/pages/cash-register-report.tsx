@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Calendar, 
   ChevronDown, 
@@ -20,13 +21,18 @@ import {
   ArrowRightLeft,
   FileSpreadsheet,
   Printer,
-  Download
+  Download,
+  FileText,
+  Eye,
+  File,
+  Receipt
 } from 'lucide-react';
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { useToast } from '@/hooks/use-toast';
 
 const MONTHS = [
   { value: '01', label: 'January' },
@@ -88,12 +94,98 @@ interface ReportData {
   periods: PeriodSummary[];
 }
 
+interface DocumentData {
+  id: string;
+  date: string;
+  transactionType: string;
+  sourceType?: string;
+  amount: number;
+  description?: string;
+  documentPath: string;
+  documentName: string;
+  reference?: string;
+  dayId: string;
+  voucherId?: string;
+}
+
 const formatCurrency = (paise: number) => {
   return new Intl.NumberFormat('en-IN', {
     style: 'currency',
     currency: 'INR',
     minimumFractionDigits: 2,
   }).format(paise / 100);
+};
+
+const formatCurrencyNumber = (paise: number) => {
+  return (paise / 100).toFixed(2);
+};
+
+const exportToExcel = async (reportData: ReportData, periodType: string) => {
+  const XLSX = await import('xlsx');
+  const workbook = XLSX.utils.book_new();
+  
+  const summaryData = [
+    ['Cash Register Report'],
+    ['Period', periodType.charAt(0).toUpperCase() + periodType.slice(1)],
+    [''],
+    ['Overall Summary'],
+    ['Opening Balance', formatCurrencyNumber(reportData.overallSummary.openingBalance)],
+    ['Total Cash Received', formatCurrencyNumber(reportData.overallSummary.totalCashReceived)],
+    ['Total Expenses', formatCurrencyNumber(reportData.overallSummary.totalExpenses)],
+    ['Total Transfers', formatCurrencyNumber(reportData.overallSummary.totalTransfers)],
+    ['Net Cash Flow', formatCurrencyNumber(reportData.overallSummary.netCashFlow)],
+    ['Closing Balance', formatCurrencyNumber(reportData.overallSummary.closingBalance)],
+    [''],
+    ['Days Summary'],
+    ['Total Days', reportData.overallSummary.totalDays],
+    ['Open Days', reportData.overallSummary.openDays],
+    ['Closed Days', reportData.overallSummary.closedDays],
+  ];
+  
+  const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+  XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
+  
+  const detailHeaders = ['Date', 'Status', 'Opening Balance', 'Cash Received', 'Expenses', 'Transfers', 'Closing Balance', 'Imported'];
+  const detailRows: (string | number)[][] = [detailHeaders];
+  
+  reportData.periods.forEach(period => {
+    period.days.forEach(day => {
+      detailRows.push([
+        format(new Date(day.date), 'yyyy-MM-dd'),
+        day.status,
+        parseFloat(formatCurrencyNumber(day.openingBalance)),
+        parseFloat(formatCurrencyNumber(day.cashReceived)),
+        parseFloat(formatCurrencyNumber(day.expenses)),
+        parseFloat(formatCurrencyNumber(day.transfers)),
+        parseFloat(formatCurrencyNumber(day.closingBalance)),
+        day.importedFromFile ? 'Yes' : 'No',
+      ]);
+    });
+  });
+  
+  const detailSheet = XLSX.utils.aoa_to_sheet(detailRows);
+  XLSX.utils.book_append_sheet(workbook, detailSheet, 'Daily Details');
+  
+  const periodHeaders = ['Period', 'Days', 'Opening Balance', 'Cash Received', 'Expenses', 'Transfers', 'Net Cash Flow', 'Closing Balance'];
+  const periodRows: (string | number)[][] = [periodHeaders];
+  
+  reportData.periods.forEach(period => {
+    periodRows.push([
+      period.period,
+      period.daysCount,
+      parseFloat(formatCurrencyNumber(period.openingBalance)),
+      parseFloat(formatCurrencyNumber(period.totalCashReceived)),
+      parseFloat(formatCurrencyNumber(period.totalExpenses)),
+      parseFloat(formatCurrencyNumber(period.totalTransfers)),
+      parseFloat(formatCurrencyNumber(period.netCashFlow)),
+      parseFloat(formatCurrencyNumber(period.closingBalance)),
+    ]);
+  });
+  
+  const periodSheet = XLSX.utils.aoa_to_sheet(periodRows);
+  XLSX.utils.book_append_sheet(workbook, periodSheet, 'Period Summary');
+  
+  XLSX.writeFile(workbook, `cash-register-report-${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
 };
 
 const formatPeriodLabel = (period: string, periodType: string) => {
@@ -114,6 +206,8 @@ const formatPeriodLabel = (period: string, periodType: string) => {
 };
 
 export default function CashRegisterReport() {
+  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState('report');
   const [periodType, setPeriodType] = useState('monthly');
   const [selectedMonth, setSelectedMonth] = useState(() => format(new Date(), 'MM'));
   const [selectedYear, setSelectedYear] = useState(() => format(new Date(), 'yyyy'));
@@ -124,6 +218,8 @@ export default function CashRegisterReport() {
   });
   const [customEndDate, setCustomEndDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
   const [expandedPeriods, setExpandedPeriods] = useState<Set<string>>(new Set());
+  const [docTransactionType, setDocTransactionType] = useState('all');
+  const [isExporting, setIsExporting] = useState(false);
 
   const availableYears = useMemo(() => {
     const currentYear = new Date().getFullYear();
@@ -186,6 +282,50 @@ export default function CashRegisterReport() {
     },
   });
 
+  const { data: documentsData, isLoading: isLoadingDocs } = useQuery<{ documents: DocumentData[] }>({
+    queryKey: ['/api/cash-register/documents', startDate, endDate, docTransactionType],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        startDate,
+        endDate,
+        transactionType: docTransactionType,
+      });
+      const response = await fetch(`/api/cash-register/documents?${params}`, {
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('Failed to fetch documents');
+      return response.json();
+    },
+    enabled: activeTab === 'documents',
+  });
+
+  const handleExcelExport = async () => {
+    if (!reportData) return;
+    setIsExporting(true);
+    try {
+      await exportToExcel(reportData, periodType);
+      toast({ title: 'Excel downloaded successfully' });
+    } catch (error) {
+      toast({ title: 'Failed to export Excel', variant: 'destructive' });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handlePrintVoucher = (voucherId: string) => {
+    window.open(`/api/expense-vouchers/${voucherId}/print`, '_blank');
+  };
+
+  const handleDownloadDocument = (documentPath: string, documentName: string) => {
+    const link = document.createElement('a');
+    link.href = documentPath;
+    link.download = documentName;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const togglePeriod = (period: string) => {
     const newExpanded = new Set(expandedPeriods);
     if (newExpanded.has(period)) {
@@ -234,13 +374,38 @@ export default function CashRegisterReport() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold" data-testid="text-report-title">Cash Register Report</h1>
-          <p className="text-muted-foreground">View daily, weekly, monthly, and yearly cash flow summaries</p>
+          <p className="text-muted-foreground">View cash flow summaries and documents</p>
         </div>
-        <Button variant="outline" onClick={handlePrint} data-testid="button-print-report">
-          <Printer className="w-4 h-4 mr-2" />
-          Print Report
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button 
+            variant="outline" 
+            onClick={handleExcelExport} 
+            disabled={isExporting || !reportData}
+            data-testid="button-download-excel"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            {isExporting ? 'Exporting...' : 'Download Excel'}
+          </Button>
+          <Button variant="outline" onClick={handlePrint} data-testid="button-print-report">
+            <Printer className="w-4 h-4 mr-2" />
+            Print Report
+          </Button>
+        </div>
       </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="report" data-testid="tab-report">
+            <FileSpreadsheet className="w-4 h-4 mr-2" />
+            Report
+          </TabsTrigger>
+          <TabsTrigger value="documents" data-testid="tab-documents">
+            <FileText className="w-4 h-4 mr-2" />
+            Documents
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="report" className="space-y-6 mt-4">
 
       <Card>
         <CardHeader className="pb-3">
@@ -615,6 +780,152 @@ export default function CashRegisterReport() {
           </Card>
         </>
       ) : null}
+      </TabsContent>
+
+      <TabsContent value="documents" className="space-y-6 mt-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Filter Documents</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-wrap gap-4 items-end">
+                <div className="space-y-2">
+                  <Label>Transaction Type</Label>
+                  <Select value={docTransactionType} onValueChange={setDocTransactionType}>
+                    <SelectTrigger className="w-[160px]" data-testid="select-doc-type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Types</SelectItem>
+                      <SelectItem value="cash_received">Cash Received</SelectItem>
+                      <SelectItem value="expense">Expenses</SelectItem>
+                      <SelectItem value="transfer">Transfers</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Showing documents from {format(new Date(startDate), 'MMM d, yyyy')} to {format(new Date(endDate), 'MMM d, yyyy')}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {isLoadingDocs ? (
+            <Card>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="flex gap-4">
+                      <Skeleton className="h-12 w-12" />
+                      <div className="flex-1 space-y-2">
+                        <Skeleton className="h-4 w-48" />
+                        <Skeleton className="h-4 w-24" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ) : documentsData?.documents && documentsData.documents.length > 0 ? (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <FileText className="w-4 h-4" />
+                  Documents ({documentsData.documents.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead>Document</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {documentsData.documents.map((doc) => (
+                      <TableRow key={doc.id} data-testid={`row-document-${doc.id}`}>
+                        <TableCell>{format(new Date(doc.date), 'MMM d, yyyy')}</TableCell>
+                        <TableCell>
+                          <Badge 
+                            variant="outline"
+                            className={
+                              doc.transactionType === 'cash_received' ? 'border-green-500 text-green-700' :
+                              doc.transactionType === 'expense' ? 'border-red-500 text-red-700' :
+                              'border-blue-500 text-blue-700'
+                            }
+                          >
+                            {doc.transactionType === 'cash_received' ? 'Cash Received' :
+                             doc.transactionType === 'expense' ? 'Expense' : 'Transfer'}
+                            {doc.sourceType && ` (${doc.sourceType.replace('_', ' ')})`}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="max-w-[200px] truncate">
+                          {doc.description || doc.reference || '-'}
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          {formatCurrency(doc.amount)}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <File className="w-4 h-4 text-muted-foreground" />
+                            <span className="text-sm truncate max-w-[150px]">{doc.documentName}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => window.open(doc.documentPath, '_blank')}
+                              title="View Document"
+                              data-testid={`button-view-doc-${doc.id}`}
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDownloadDocument(doc.documentPath, doc.documentName)}
+                              title="Download Document"
+                              data-testid={`button-download-doc-${doc.id}`}
+                            >
+                              <Download className="w-4 h-4" />
+                            </Button>
+                            {doc.transactionType === 'expense' && doc.voucherId && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handlePrintVoucher(doc.voucherId!)}
+                                title="Print Voucher"
+                                data-testid={`button-print-voucher-${doc.id}`}
+                              >
+                                <Receipt className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="p-8 text-center text-muted-foreground">
+                <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>No documents found for the selected period and type</p>
+                <p className="text-sm mt-2">Upload documents to cash register transactions to see them here</p>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

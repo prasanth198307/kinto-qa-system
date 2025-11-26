@@ -71,7 +71,7 @@ async function recalculateDayDiscrepancy(dayId: string) {
   }
 }
 
-import { eq, and, ne, gte, lte, gt, desc, inArray } from "drizzle-orm";
+import { eq, and, ne, gte, lte, gt, desc, inArray, isNotNull } from "drizzle-orm";
 
 // Custom error class for database conflicts (used in transactions)
 class ConflictError extends Error {
@@ -9363,6 +9363,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('[CASH_REGISTER] Error generating report:', error);
       res.status(500).json({ message: error.message || 'Failed to generate report' });
+    }
+  });
+
+  // Get cash register documents for a date range
+  app.get('/api/cash-register/documents', isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { startDate, endDate, transactionType } = req.query;
+      
+      if (!startDate || !endDate) {
+        return res.status(400).json({ message: 'Start date and end date are required' });
+      }
+      
+      // Get all days in range
+      const allDays = await storage.getCashRegisterDays();
+      const daysInRange = allDays.filter(d => {
+        const date = d.registerDate;
+        return date >= startDate && date <= endDate;
+      });
+      
+      const dayIds = daysInRange.map(d => d.id);
+      
+      // Get all transactions for these days that have documents
+      const allTransactions = await db.select()
+        .from(cashRegisterTransactions)
+        .where(and(
+          inArray(cashRegisterTransactions.dayId, dayIds.length > 0 ? dayIds : ['']),
+          isNotNull(cashRegisterTransactions.documentPath),
+          eq(cashRegisterTransactions.recordStatus, 1)
+        ));
+      
+      // Filter by transaction type if specified
+      let filteredTransactions = allTransactions;
+      if (transactionType && transactionType !== 'all') {
+        filteredTransactions = allTransactions.filter(t => t.transactionType === transactionType);
+      }
+      
+      // Map to document data format with day info
+      const dayMap = new Map(daysInRange.map(d => [d.id, d]));
+      const documents = filteredTransactions.map(t => {
+        const day = dayMap.get(t.dayId);
+        return {
+          id: t.id,
+          date: day?.registerDate || '',
+          transactionType: t.transactionType,
+          sourceType: t.sourceType,
+          amount: t.amount,
+          description: t.description,
+          documentPath: t.documentPath,
+          documentName: t.documentName,
+          reference: t.reference,
+          dayId: t.dayId,
+          voucherId: t.convertedToVoucherId,
+        };
+      }).filter(d => d.documentPath); // Only include ones with actual documents
+      
+      // Sort by date descending
+      documents.sort((a, b) => b.date.localeCompare(a.date));
+      
+      res.json({ documents });
+    } catch (error: any) {
+      console.error('[CASH_REGISTER] Error fetching documents:', error);
+      res.status(500).json({ message: error.message || 'Failed to fetch documents' });
     }
   });
 
