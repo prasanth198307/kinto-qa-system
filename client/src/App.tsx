@@ -75,6 +75,7 @@ import DataImport from "@/pages/data-import";
 import DocumentsPage from "@/pages/documents";
 import ExpensesPage from "@/pages/expenses";
 import CashRegisterPage from "@/pages/cash-register";
+import CashRegisterReport from "@/pages/cash-register-report";
 
 type Role = 'admin' | 'operator' | 'reviewer' | 'manager';
 
@@ -586,6 +587,7 @@ function AdminDashboard() {
         { id: "documents", label: "Documents", icon: FolderOpen, onClick: () => setLocation('/documents') },
         { id: "expenses", label: "Expenses", icon: Wallet, onClick: () => setLocation('/expenses') },
         { id: "cash-register", label: "Cash Register", icon: Calculator, onClick: () => setLocation('/cash-register') },
+        { id: "cash-register-report", label: "Cash Report", icon: FileStack, onClick: () => setLocation('/cash-register-report') },
       ],
       quickActions: [
         {
@@ -1009,6 +1011,7 @@ function VendorManagementPage() {
         { id: "documents", label: "Documents", icon: FolderOpen, onClick: () => setLocation('/documents') },
         { id: "expenses", label: "Expenses", icon: Wallet, onClick: () => setLocation('/expenses') },
         { id: "cash-register", label: "Cash Register", icon: Calculator, onClick: () => setLocation('/cash-register') },
+        { id: "cash-register-report", label: "Cash Report", icon: FileStack, onClick: () => setLocation('/cash-register-report') },
       ],
     },
     {
@@ -1078,6 +1081,7 @@ function ReportsPage() {
         { id: "documents", label: "Documents", icon: FolderOpen, onClick: () => setLocation('/documents') },
         { id: "expenses", label: "Expenses", icon: Wallet, onClick: () => setLocation('/expenses') },
         { id: "cash-register", label: "Cash Register", icon: Calculator, onClick: () => setLocation('/cash-register') },
+        { id: "cash-register-report", label: "Cash Report", icon: FileStack, onClick: () => setLocation('/cash-register-report') },
       ],
     },
     {
@@ -1147,6 +1151,7 @@ function PendingPaymentsPage() {
         { id: "documents", label: "Documents", icon: FolderOpen, onClick: () => setLocation('/documents') },
         { id: "expenses", label: "Expenses", icon: Wallet, onClick: () => setLocation('/expenses') },
         { id: "cash-register", label: "Cash Register", icon: Calculator, onClick: () => setLocation('/cash-register') },
+        { id: "cash-register-report", label: "Cash Report", icon: FileStack, onClick: () => setLocation('/cash-register-report') },
       ],
     },
     {
@@ -1212,6 +1217,7 @@ function getAdminNavSections(setLocation: (path: string) => void): NavSection[] 
         { id: "documents", label: "Documents", icon: FolderOpen, onClick: () => setLocation('/documents') },
         { id: "expenses", label: "Expenses", icon: Wallet, onClick: () => setLocation('/expenses') },
         { id: "cash-register", label: "Cash Register", icon: Calculator, onClick: () => setLocation('/cash-register') },
+        { id: "cash-register-report", label: "Cash Report", icon: FileStack, onClick: () => setLocation('/cash-register-report') },
       ],
     },
     {
@@ -1329,6 +1335,31 @@ function CashRegisterPageWrapper() {
   );
 }
 
+// Wrapper component for Cash Register Report page
+function CashRegisterReportWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('cash-register-report');
+  
+  const navSections = getAdminNavSections(setLocation);
+  
+  return (
+    <DashboardShell
+      title="Cash Register Report"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={(viewId) => {
+        setActiveView(viewId);
+        setLocation('/');
+      }}
+    >
+      <CashRegisterReport />
+    </DashboardShell>
+  );
+}
+
 function Router() {
   return (
     <Switch>
@@ -1351,6 +1382,7 @@ function Router() {
       <ProtectedRoute path="/documents" component={DocumentsPageWrapper} />
       <ProtectedRoute path="/expenses" component={ExpensesPageWrapper} />
       <ProtectedRoute path="/cash-register" component={CashRegisterPageWrapper} />
+      <ProtectedRoute path="/cash-register-report" component={CashRegisterReportWrapper} />
       <ProtectedRoute path="/" component={AuthenticatedApp} />
       <Route component={NotFound} />
     </Switch>

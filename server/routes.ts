@@ -9232,6 +9232,140 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Cash Register Report - Daily, Weekly, Monthly, Yearly
+  app.get('/api/cash-register/report', isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { periodType, startDate, endDate, salespersonName } = req.query;
+      
+      // Get all days within date range
+      const allDays = await storage.getCashRegisterDays({
+        startDate: startDate as string | undefined,
+        endDate: endDate as string | undefined,
+        salespersonName: salespersonName as string | undefined,
+      });
+      
+      // Sort by date
+      const sortedDays = allDays.sort((a, b) => 
+        new Date(a.registerDate).getTime() - new Date(b.registerDate).getTime()
+      );
+      
+      // Group by period
+      const groupByPeriod = (days: typeof sortedDays, type: string) => {
+        const groups: Record<string, typeof sortedDays> = {};
+        
+        for (const day of days) {
+          const date = new Date(day.registerDate);
+          let key: string;
+          
+          switch (type) {
+            case 'daily':
+              key = day.registerDate;
+              break;
+            case 'weekly':
+              // Get week start (Monday)
+              const weekStart = new Date(date);
+              weekStart.setDate(date.getDate() - date.getDay() + 1);
+              key = weekStart.toISOString().split('T')[0];
+              break;
+            case 'monthly':
+              key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+              break;
+            case 'yearly':
+              key = String(date.getFullYear());
+              break;
+            default:
+              key = day.registerDate;
+          }
+          
+          if (!groups[key]) {
+            groups[key] = [];
+          }
+          groups[key].push(day);
+        }
+        
+        return groups;
+      };
+      
+      const groups = groupByPeriod(sortedDays, periodType as string || 'daily');
+      
+      // Calculate summaries for each period
+      const periodSummaries = Object.entries(groups).map(([period, days]) => {
+        const firstDay = days[0];
+        const lastDay = days[days.length - 1];
+        
+        const totalCashReceived = days.reduce((sum, d) => sum + d.totalCashReceived, 0);
+        const totalExpenses = days.reduce((sum, d) => sum + d.totalExpenses, 0);
+        const totalTransfers = days.reduce((sum, d) => sum + d.totalTransfers, 0);
+        const openingBalance = firstDay.openingBalance;
+        const closingBalance = lastDay.openingBalance + lastDay.totalCashReceived - lastDay.totalExpenses - lastDay.totalTransfers;
+        const netCashFlow = totalCashReceived - totalExpenses - totalTransfers;
+        
+        // Count statuses
+        const openDays = days.filter(d => d.status === 'open').length;
+        const closedDays = days.filter(d => d.status === 'closed').length;
+        
+        return {
+          period,
+          startDate: firstDay.registerDate,
+          endDate: lastDay.registerDate,
+          daysCount: days.length,
+          openDays,
+          closedDays,
+          openingBalance,
+          closingBalance,
+          totalCashReceived,
+          totalExpenses,
+          totalTransfers,
+          netCashFlow,
+          days: days.map(d => ({
+            id: d.id,
+            date: d.registerDate,
+            status: d.status,
+            openingBalance: d.openingBalance,
+            cashReceived: d.totalCashReceived,
+            expenses: d.totalExpenses,
+            transfers: d.totalTransfers,
+            closingBalance: d.openingBalance + d.totalCashReceived - d.totalExpenses - d.totalTransfers,
+            salespersonName: d.salespersonName,
+            importedFromFile: d.importedFromFile,
+          })),
+        };
+      });
+      
+      // Sort periods chronologically
+      periodSummaries.sort((a, b) => a.period.localeCompare(b.period));
+      
+      // Overall summary
+      const overallSummary = {
+        totalDays: sortedDays.length,
+        totalCashReceived: sortedDays.reduce((sum, d) => sum + d.totalCashReceived, 0),
+        totalExpenses: sortedDays.reduce((sum, d) => sum + d.totalExpenses, 0),
+        totalTransfers: sortedDays.reduce((sum, d) => sum + d.totalTransfers, 0),
+        netCashFlow: 0,
+        openingBalance: sortedDays.length > 0 ? sortedDays[0].openingBalance : 0,
+        closingBalance: 0,
+        openDays: sortedDays.filter(d => d.status === 'open').length,
+        closedDays: sortedDays.filter(d => d.status === 'closed').length,
+      };
+      overallSummary.netCashFlow = overallSummary.totalCashReceived - overallSummary.totalExpenses - overallSummary.totalTransfers;
+      if (sortedDays.length > 0) {
+        const lastDay = sortedDays[sortedDays.length - 1];
+        overallSummary.closingBalance = lastDay.openingBalance + lastDay.totalCashReceived - lastDay.totalExpenses - lastDay.totalTransfers;
+      }
+      
+      res.json({
+        periodType: periodType || 'daily',
+        startDate,
+        endDate,
+        overallSummary,
+        periods: periodSummaries,
+      });
+    } catch (error: any) {
+      console.error('[CASH_REGISTER] Error generating report:', error);
+      res.status(500).json({ message: error.message || 'Failed to generate report' });
+    }
+  });
+
   // Clear all cash register data
   app.post('/api/cash-register/clear-data', isAuthenticated, requireRole('Admin'), async (req: any, res: Response) => {
     try {
