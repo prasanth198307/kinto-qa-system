@@ -202,7 +202,7 @@ function OperatorDashboard() {
 }
 
 function ReviewerDashboard() {
-  const { logoutMutation } = useAuth();
+  const { user, logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
   const [activeView, setActiveView] = useState('overview');
 
@@ -210,8 +210,8 @@ function ReviewerDashboard() {
     logoutMutation.mutate();
   };
 
-  // Use the same navigation as admin dashboard for consistency
-  const navSections = getAdminNavSections(setLocation);
+  // Use the same navigation as admin dashboard for consistency, filtered by role
+  const navSections = getAdminNavSections(setLocation, (user as any)?.role);
 
   const renderContent = () => {
     switch (activeView) {
@@ -239,7 +239,7 @@ function ReviewerDashboard() {
 }
 
 function ManagerDashboard() {
-  const { logoutMutation } = useAuth();
+  const { user, logoutMutation } = useAuth();
   const [location, setLocation] = useLocation();
   const [activeView, setActiveView] = useState('overview');
   const mockRecords = [
@@ -264,8 +264,8 @@ function ManagerDashboard() {
     logoutMutation.mutate();
   };
 
-  // Use the same navigation as admin dashboard for consistency
-  const navSections = getAdminNavSections(setLocation);
+  // Use the same navigation as admin dashboard for consistency, filtered by role
+  const navSections = getAdminNavSections(setLocation, (user as any)?.role);
 
   const renderContent = () => {
     switch (activeView) {
@@ -816,12 +816,12 @@ function VendorManagementPage() {
 
 // Wrapper component for Reports with full admin navigation
 function ReportsPage() {
-  const { logoutMutation } = useAuth();
+  const { user, logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
   const [activeView, setActiveView] = useState('reports');
   
-  // Use the same navigation as admin dashboard for consistency
-  const navSections = getAdminNavSections(setLocation);
+  // Use the same navigation as admin dashboard for consistency, filtered by role
+  const navSections = getAdminNavSections(setLocation, (user as any)?.role);
   
   return (
     <DashboardShell
@@ -841,12 +841,12 @@ function ReportsPage() {
 
 // Wrapper component for Pending Payments with full admin navigation
 function PendingPaymentsPage() {
-  const { logoutMutation } = useAuth();
+  const { user, logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
   const [activeView, setActiveView] = useState('pending-payments');
   
-  // Use the same navigation as admin dashboard for consistency
-  const navSections = getAdminNavSections(setLocation);
+  // Use the same navigation as admin dashboard for consistency, filtered by role
+  const navSections = getAdminNavSections(setLocation, (user as any)?.role);
   
   return (
     <DashboardShell
@@ -864,9 +864,119 @@ function PendingPaymentsPage() {
   );
 }
 
+// Permission mapping: maps nav item IDs to screen names from the permissions system
+const navItemToScreen: Record<string, string> = {
+  // Dashboard & Analytics
+  'overview': 'Overview',
+  'sales-dashboard': 'Overview',
+  'vendor-analytics': 'Overview',
+  'reports': 'Overview',
+  // Quality & Checklists
+  'checklists': 'Checklist Templates',
+  'checklist-assignments': 'Checklist Templates',
+  'machine-startup-reminders': 'Checklist Templates',
+  'whatsapp-analytics': 'Checklist Templates',
+  // Production & Inventory
+  'products': 'Inventory Management',
+  'product-categories': 'Inventory Management',
+  'product-types': 'Inventory Management',
+  'raw-materials': 'Inventory Management',
+  'finished-goods': 'Inventory Management',
+  'raw-material-issuance': 'Create Raw Material Transactions',
+  'production-entries': 'Create Finished Goods',
+  'production-reconciliations': 'Create Finished Goods',
+  'production-reconciliation-report': 'Create Finished Goods',
+  'variance-analytics': 'Create Finished Goods',
+  // Finance & Sales
+  'invoices': 'Purchase Orders',
+  'pending-payments': 'Purchase Orders',
+  'payment-management': 'Purchase Orders',
+  'credit-notes': 'Purchase Orders',
+  'cancelled-invoices': 'Purchase Orders',
+  'sales-returns': 'Purchase Orders',
+  // Dispatch & Logistics
+  'gatepasses': 'Purchase Orders',
+  'dispatch-tracking': 'Purchase Orders',
+  // Cash & Expenses
+  'cash-register': 'Purchase Orders',
+  'cash-register-report': 'Purchase Orders',
+  'expenses': 'Purchase Orders',
+  'documents': 'Inventory Management',
+  // Maintenance
+  'maintenance': 'Maintenance Plans',
+  'pm-history': 'PM History',
+  'purchase-orders': 'Purchase Orders',
+  // Master Data
+  'users': 'User Management',
+  'role-permissions': 'User Management',
+  'vendors': 'Inventory Management',
+  'vendor-types': 'Inventory Management',
+  'machines': 'Machines',
+  'machine-types': 'Machine Types',
+  'spare-parts': 'Spare Parts',
+  'pm-templates': 'PM Templates',
+  'uom': 'Inventory Management',
+  'raw-material-types': 'Inventory Management',
+  'template-management': 'Inventory Management',
+  // Settings
+  'notification-settings': 'User Management',
+  'data-import': 'User Management',
+};
+
+// Permission matrix: which roles can access which screens
+const screenPermissions: Record<string, { admin: boolean; manager: boolean; operator: boolean; reviewer: boolean }> = {
+  'Overview': { admin: true, manager: true, operator: true, reviewer: true },
+  'User Management': { admin: true, manager: false, operator: false, reviewer: false },
+  'Machines': { admin: true, manager: true, operator: false, reviewer: false },
+  'Checklist Templates': { admin: true, manager: true, operator: false, reviewer: false },
+  'Spare Parts': { admin: true, manager: true, operator: false, reviewer: false },
+  'Machine Types': { admin: true, manager: true, operator: false, reviewer: false },
+  'PM Templates': { admin: true, manager: true, operator: false, reviewer: false },
+  'Maintenance Plans': { admin: true, manager: true, operator: false, reviewer: false },
+  'PM History': { admin: true, manager: true, operator: true, reviewer: true },
+  'Purchase Orders': { admin: true, manager: true, operator: false, reviewer: false },
+  'Inventory Management': { admin: true, manager: true, operator: false, reviewer: false },
+  'Create Raw Material Transactions': { admin: true, manager: true, operator: true, reviewer: false },
+  'Create Finished Goods': { admin: true, manager: true, operator: true, reviewer: false },
+  'Execute Checklists': { admin: true, manager: false, operator: true, reviewer: false },
+  'Review Checklists': { admin: true, manager: false, operator: false, reviewer: true },
+  'Final Approval': { admin: true, manager: true, operator: false, reviewer: false },
+};
+
+// Check if a nav item is accessible for a given role
+function canAccessNavItem(itemId: string, role: string): boolean {
+  const screenName = navItemToScreen[itemId];
+  if (!screenName) return true; // If not mapped, show it (safe default)
+  
+  const permissions = screenPermissions[screenName];
+  if (!permissions) return true; // If no permissions defined, show it
+  
+  const roleLower = role.toLowerCase();
+  if (roleLower === 'admin') return permissions.admin;
+  if (roleLower === 'manager') return permissions.manager;
+  if (roleLower === 'operator') return permissions.operator;
+  if (roleLower === 'reviewer') return permissions.reviewer;
+  
+  return false; // Unknown role - hide by default
+}
+
+// Filter nav sections based on user's role
+function filterNavSectionsByRole(sections: NavSection[], role: string): NavSection[] {
+  if (!sections || !Array.isArray(sections)) return [];
+  
+  const filtered = sections
+    .map(section => ({
+      ...section,
+      items: section.items.filter(item => canAccessNavItem(item.id, role))
+    }))
+    .filter(section => section.items.length > 0); // Hide empty sections
+    
+  return filtered.length > 0 ? filtered : sections; // Fallback to all sections if filter removes everything
+}
+
 // Shared admin navigation sections factory - matches main dashboard navigation
-function getAdminNavSections(setLocation: (path: string) => void): NavSection[] {
-  return [
+function getAdminNavSections(setLocation: (path: string) => void, userRole?: string): NavSection[] {
+  const allSections: NavSection[] = [
     {
       id: "dashboard",
       label: "Dashboard & Analytics",
@@ -968,15 +1078,21 @@ function getAdminNavSections(setLocation: (path: string) => void): NavSection[] 
       ],
     },
   ];
+  
+  // If no role provided, return all sections (admin view)
+  if (!userRole) return allSections;
+  
+  // Filter sections based on user's role permissions
+  return filterNavSectionsByRole(allSections, userRole);
 }
 
 // Wrapper component for Vendor Analytics with full admin navigation
 function VendorAnalyticsPage() {
-  const { logoutMutation } = useAuth();
+  const { user, logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
   const [activeView, setActiveView] = useState('vendor-analytics');
   
-  const navSections = getAdminNavSections(setLocation);
+  const navSections = getAdminNavSections(setLocation, (user as any)?.role);
   
   return (
     <DashboardShell
@@ -987,7 +1103,6 @@ function VendorAnalyticsPage() {
       activeView={activeView}
       onNavigate={(viewId) => {
         setActiveView(viewId);
-        setLocation('/');
       }}
     >
       <VendorAnalytics />
@@ -997,11 +1112,11 @@ function VendorAnalyticsPage() {
 
 // Wrapper component for Documents page
 function DocumentsPageWrapper() {
-  const { logoutMutation } = useAuth();
+  const { user, logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
   const [activeView, setActiveView] = useState('documents');
   
-  const navSections = getAdminNavSections(setLocation);
+  const navSections = getAdminNavSections(setLocation, (user as any)?.role);
   
   return (
     <DashboardShell
@@ -1022,11 +1137,11 @@ function DocumentsPageWrapper() {
 
 // Wrapper component for Expenses page
 function ExpensesPageWrapper() {
-  const { logoutMutation } = useAuth();
+  const { user, logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
   const [activeView, setActiveView] = useState('expenses');
   
-  const navSections = getAdminNavSections(setLocation);
+  const navSections = getAdminNavSections(setLocation, (user as any)?.role);
   
   return (
     <DashboardShell
@@ -1037,7 +1152,6 @@ function ExpensesPageWrapper() {
       activeView={activeView}
       onNavigate={(viewId) => {
         setActiveView(viewId);
-        setLocation('/');
       }}
     >
       <ExpensesPage />
@@ -1047,11 +1161,11 @@ function ExpensesPageWrapper() {
 
 // Wrapper component for Cash Register page
 function CashRegisterPageWrapper() {
-  const { logoutMutation } = useAuth();
+  const { user, logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
   const [activeView, setActiveView] = useState('cash-register');
   
-  const navSections = getAdminNavSections(setLocation);
+  const navSections = getAdminNavSections(setLocation, (user as any)?.role);
   
   return (
     <DashboardShell
@@ -1062,7 +1176,6 @@ function CashRegisterPageWrapper() {
       activeView={activeView}
       onNavigate={(viewId) => {
         setActiveView(viewId);
-        setLocation('/');
       }}
     >
       <CashRegisterPage />
@@ -1072,11 +1185,11 @@ function CashRegisterPageWrapper() {
 
 // Wrapper component for Cash Register Report page
 function CashRegisterReportWrapper() {
-  const { logoutMutation } = useAuth();
+  const { user, logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
   const [activeView, setActiveView] = useState('cash-register-report');
   
-  const navSections = getAdminNavSections(setLocation);
+  const navSections = getAdminNavSections(setLocation, (user as any)?.role);
   
   return (
     <DashboardShell
@@ -1087,7 +1200,6 @@ function CashRegisterReportWrapper() {
       activeView={activeView}
       onNavigate={(viewId) => {
         setActiveView(viewId);
-        setLocation('/');
       }}
     >
       <CashRegisterReport />

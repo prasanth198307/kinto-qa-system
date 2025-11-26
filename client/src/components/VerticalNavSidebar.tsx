@@ -47,7 +47,7 @@ interface VerticalNavSidebarProps {
 }
 
 export function VerticalNavSidebar({
-  sections,
+  sections = [],
   activeItem,
   onItemClick,
   onLogout,
@@ -55,6 +55,9 @@ export function VerticalNavSidebar({
   isMobileOpen = false,
   onMobileClose,
 }: VerticalNavSidebarProps) {
+  // Guard against undefined sections
+  const safeSections = sections || [];
+  
   // Initialize collapsed state - default all collapsed
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>(() => {
     const STORAGE_VERSION = 'v2'; // Change this to reset user preferences
@@ -71,7 +74,7 @@ export function VerticalNavSidebar({
     }
     // Default: all sections collapsed
     const defaultCollapsed: Record<string, boolean> = {};
-    sections.forEach(section => {
+    safeSections.forEach(section => {
       if (section.label) {
         defaultCollapsed[section.id] = true;
       }
@@ -86,7 +89,7 @@ export function VerticalNavSidebar({
 
   // Auto-expand section containing active item
   useEffect(() => {
-    const activeSection = sections.find(section => 
+    const activeSection = safeSections.find(section => 
       section.items.some(item => item.id === activeItem)
     );
     if (activeSection && collapsedSections[activeSection.id]) {
@@ -95,7 +98,7 @@ export function VerticalNavSidebar({
         [activeSection.id]: false
       }));
     }
-  }, [activeItem, sections]);
+  }, [activeItem, safeSections]);
 
   const toggleSection = (sectionId: string) => {
     setCollapsedSections(prev => ({
@@ -145,7 +148,7 @@ export function VerticalNavSidebar({
       }}
     >
       <div className="space-y-1">
-        {sections.map((section, index) => {
+        {safeSections.map((section, index) => {
           const isCollapsed = collapsedSections[section.id] ?? false;
           const hasActiveItem = section.items.some(item => item.id === activeItem);
           
