@@ -105,3 +105,7 @@ integrations = ["javascript_database:1.0.0", "javascript_log_in_with_replit:1.0.
 [userenv]
 
 [userenv.development]
+
+[userenv.shared]
+TEST_USER_USERNAME = "test_automation"
+TEST_USER_PASSWORD = "TestAdmin123!"
