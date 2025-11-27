@@ -8178,6 +8178,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Clear only invoices data endpoint (keeps vendors and products)
+  app.post('/api/clear-invoices-only', isAuthenticated, requireRole('admin'), async (req: Request, res: Response) => {
+    try {
+      console.log('[INVOICE CLEAR] Clearing all invoice data...');
+      
+      // Clear in correct order due to FK constraints
+      const creditNoteItemsResult = await db.delete(creditNoteItems);
+      const creditNotesResult = await db.delete(creditNotes);
+      const invoiceItemsResult = await db.delete(invoiceItems);
+      const invoicePaymentsResult = await db.delete(invoicePayments);
+      const invoicesResult = await db.delete(invoices);
+      
+      const result = {
+        success: true,
+        message: 'All invoice data cleared successfully. Vendors and products preserved.',
+        stats: {
+          creditNoteItems: creditNoteItemsResult.rowCount || 0,
+          creditNotes: creditNotesResult.rowCount || 0,
+          invoiceItems: invoiceItemsResult.rowCount || 0,
+          invoicePayments: invoicePaymentsResult.rowCount || 0,
+          invoices: invoicesResult.rowCount || 0,
+        }
+      };
+      
+      console.log('[INVOICE CLEAR] Clear completed:', result);
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error('[INVOICE CLEAR] Error:', error);
+      res.status(500).json({ 
+        success: false,
+        message: error.message || 'Failed to clear invoice data'
+      });
+    }
+  });
+
   // ============= DOCUMENT MANAGEMENT ROUTES =============
   
   // Configure multer for document uploads

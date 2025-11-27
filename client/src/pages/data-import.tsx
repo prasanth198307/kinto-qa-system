@@ -41,6 +41,7 @@ export default function DataImport() {
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [importSuccessful, setImportSuccessful] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
+  const [showClearInvoicesDialog, setShowClearInvoicesDialog] = useState(false);
 
   const importMutation = useMutation({
     mutationFn: async (formData: FormData) => {
@@ -113,7 +114,6 @@ export default function DataImport() {
       return await response.json();
     },
     onSuccess: (data) => {
-      // Invalidate all caches after clearing data
       queryClient.invalidateQueries({ queryKey: ['/api/vendors'] });
       queryClient.invalidateQueries({ queryKey: ['/api/products'] });
       queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
@@ -124,6 +124,40 @@ export default function DataImport() {
         description: data.message,
       });
       setShowClearDialog(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Clear Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const clearInvoicesMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch('/api/clear-invoices-only', {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to clear invoices');
+      }
+
+      return await response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/invoice-payments'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/credit-notes'] });
+      
+      toast({
+        title: "Invoices Cleared",
+        description: `Cleared ${data.stats.invoices} invoices, ${data.stats.invoiceItems} items, ${data.stats.invoicePayments} payments. Vendors and products preserved.`,
+      });
+      setShowClearInvoicesDialog(false);
     },
     onError: (error: Error) => {
       toast({
@@ -168,42 +202,79 @@ export default function DataImport() {
             Upload Excel files from Vyapaar to migrate your data
           </p>
         </div>
-        <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
-          <AlertDialogTrigger asChild>
-            <Button
-              variant="destructive"
-              size="sm"
-              disabled={clearDataMutation.isPending}
-              data-testid="button-clear-data"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Clear All Data
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Clear All Transaction Data?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will permanently delete ALL vendors, products, invoices, gatepasses, production entries, and related transactional data.
-                Master data (UOMs, roles, permissions, users, vendor types, product categories) will be preserved.
-                <br /><br />
-                <strong>Warning:</strong> This clears ALL data, not just Vyapaar imports.
-                <br /><br />
-                This action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel data-testid="button-cancel-clear">Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleClearData}
-                className="bg-destructive hover:bg-destructive/90"
-                data-testid="button-confirm-clear"
+        <div className="flex gap-2">
+          <AlertDialog open={showClearInvoicesDialog} onOpenChange={setShowClearInvoicesDialog}>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={clearInvoicesMutation.isPending}
+                data-testid="button-clear-invoices"
               >
-                {clearDataMutation.isPending ? 'Clearing...' : 'Clear Data'}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+                <Trash2 className="h-4 w-4 mr-2" />
+                Clear Invoices Only
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Clear All Invoice Data?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete ALL invoices, invoice items, payments, and credit notes.
+                  <br /><br />
+                  <strong>Vendors and Products will be preserved.</strong>
+                  <br /><br />
+                  Use this when you want to re-import invoices without losing your vendor and product data.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel data-testid="button-cancel-clear-invoices">Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => clearInvoicesMutation.mutate()}
+                  className="bg-destructive hover:bg-destructive/90"
+                  data-testid="button-confirm-clear-invoices"
+                >
+                  {clearInvoicesMutation.isPending ? 'Clearing...' : 'Clear Invoices'}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={clearDataMutation.isPending}
+                data-testid="button-clear-data"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Clear All Data
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Clear All Transaction Data?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete ALL vendors, products, invoices, gatepasses, production entries, and related transactional data.
+                  Master data (UOMs, roles, permissions, users, vendor types, product categories) will be preserved.
+                  <br /><br />
+                  <strong>Warning:</strong> This clears ALL data, not just Vyapaar imports.
+                  <br /><br />
+                  This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel data-testid="button-cancel-clear">Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleClearData}
+                  className="bg-destructive hover:bg-destructive/90"
+                  data-testid="button-confirm-clear"
+                >
+                  {clearDataMutation.isPending ? 'Clearing...' : 'Clear Data'}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
       </div>
 
       <Alert data-testid="alert-import-info">
