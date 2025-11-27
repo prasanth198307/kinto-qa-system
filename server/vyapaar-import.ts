@@ -15,6 +15,8 @@ import {
   salesReturns,
   salesReturnItems,
   creditNotes,
+  invoiceTemplates,
+  termsConditions,
 } from '@shared/schema';
 import { sql, eq, and } from 'drizzle-orm';
 import { classifyAllVendors } from './classify-vendors';
@@ -71,6 +73,51 @@ interface ItemData {
 
 function normalize(str: string | undefined): string {
   return (str || '').trim().toLowerCase();
+}
+
+// GST State Code to State Name mapping
+function getStateNameFromCode(stateCode: string): string | null {
+  const stateMap: Record<string, string> = {
+    '01': 'Jammu & Kashmir',
+    '02': 'Himachal Pradesh',
+    '03': 'Punjab',
+    '04': 'Chandigarh',
+    '05': 'Uttarakhand',
+    '06': 'Haryana',
+    '07': 'Delhi',
+    '08': 'Rajasthan',
+    '09': 'Uttar Pradesh',
+    '10': 'Bihar',
+    '11': 'Sikkim',
+    '12': 'Arunachal Pradesh',
+    '13': 'Nagaland',
+    '14': 'Manipur',
+    '15': 'Mizoram',
+    '16': 'Tripura',
+    '17': 'Meghalaya',
+    '18': 'Assam',
+    '19': 'West Bengal',
+    '20': 'Jharkhand',
+    '21': 'Odisha',
+    '22': 'Chattisgarh',
+    '23': 'Madhya Pradesh',
+    '24': 'Gujarat',
+    '25': 'Daman & Diu',
+    '26': 'Dadra & Nagar Haveli',
+    '27': 'Maharashtra',
+    '28': 'Andhra Pradesh (Old)',
+    '29': 'Karnataka',
+    '30': 'Goa',
+    '31': 'Lakshadweep',
+    '32': 'Kerala',
+    '33': 'Tamil Nadu',
+    '34': 'Puducherry',
+    '35': 'Andaman & Nicobar Islands',
+    '36': 'Telangana',
+    '37': 'Andhra Pradesh',
+    '38': 'Ladakh',
+  };
+  return stateMap[stateCode] || null;
 }
 
 function fuzzyMatch(str1: string, str2: string): boolean {
@@ -294,6 +341,19 @@ export async function importVyapaarData(
       
       if (uomsToCreate.length > 0) {
         await tx.insert(uom).values(uomsToCreate);
+      }
+      
+      // Fetch default invoice template and terms for populating seller details
+      const [defaultTemplate] = await tx.select().from(invoiceTemplates).where(eq(invoiceTemplates.isDefault, 1));
+      const [defaultTerms] = await tx.select().from(termsConditions).where(eq(termsConditions.isDefault, 1));
+      
+      if (defaultTemplate) {
+        console.log(`Using default template: ${defaultTemplate.templateName}`);
+      } else {
+        console.log('Warning: No default invoice template found');
+      }
+      if (defaultTerms) {
+        console.log(`Using default terms: ${defaultTerms.tcName}`);
       }
     
       // Import vendors with unique codes OR use existing vendors (invoices-only mode)
@@ -527,26 +587,50 @@ export async function importVyapaarData(
           grandTotal += totalAmount;
         }
         
+        // Derive buyer state from GSTIN if available
+        const buyerStateCode = vendorRecord?.gstNumber ? vendorRecord.gstNumber.substring(0, 2) : null;
+        const buyerState = vendorRecord?.state || (buyerStateCode ? getStateNameFromCode(buyerStateCode) : null);
+        
         const [newInvoice] = await tx.insert(invoices).values({
-        invoiceNumber,
-        invoiceDate: invoiceDate.toISOString(),
-        buyerName: vendorRecord?.vendorName || vendorName,
-        buyerId: vendorId,
-        buyerAddress: vendorRecord?.address || null,
-        buyerGstin: vendorRecord?.gstNumber || null,
-        buyerContact: vendorRecord?.mobileNumber || null,
-        buyerState: vendorRecord?.state || null,
-        buyerStateCode: vendorRecord?.gstNumber ? vendorRecord.gstNumber.substring(0, 2) : null,
-        subtotal: Math.round(subtotal * 100),
-        cgstAmount: Math.round(cgstTotal * 100),
-        sgstAmount: Math.round(sgstTotal * 100),
-        igstAmount: Math.round(igstTotal * 100),
-        roundOff: 0,
-        totalAmount: Math.round(grandTotal * 100),
-        remarks: sale.__EMPTY_10 || null,
-        vehicleNumber: sale.__EMPTY_11 || null,
-        placeOfSupply: null,
-        status: 'delivered',
+          invoiceNumber,
+          invoiceDate: invoiceDate.toISOString(),
+          // Buyer details from vendor record
+          buyerName: vendorRecord?.vendorName || vendorName,
+          buyerId: vendorId,
+          buyerAddress: vendorRecord?.address || null,
+          buyerGstin: vendorRecord?.gstNumber || null,
+          buyerContact: vendorRecord?.mobileNumber || null,
+          buyerState: buyerState,
+          buyerStateCode: buyerStateCode,
+          // Seller details from default template
+          sellerName: defaultTemplate?.defaultSellerName || null,
+          sellerAddress: defaultTemplate?.defaultSellerAddress || null,
+          sellerGstin: defaultTemplate?.defaultSellerGstin || null,
+          sellerState: defaultTemplate?.defaultSellerState || null,
+          sellerStateCode: defaultTemplate?.defaultSellerStateCode || null,
+          sellerPhone: defaultTemplate?.defaultSellerPhone || null,
+          sellerEmail: defaultTemplate?.defaultSellerEmail || null,
+          // Bank details from default template
+          bankName: defaultTemplate?.defaultBankName || null,
+          bankAccountNumber: defaultTemplate?.defaultBankAccountNumber || null,
+          bankIfscCode: defaultTemplate?.defaultBankIfscCode || null,
+          accountHolderName: defaultTemplate?.defaultAccountHolderName || null,
+          branchName: defaultTemplate?.defaultBranchName || null,
+          upiId: defaultTemplate?.defaultUpiId || null,
+          // Link to template and terms
+          templateId: defaultTemplate?.id || null,
+          termsConditionsId: defaultTerms?.id || null,
+          // Amounts
+          subtotal: Math.round(subtotal * 100),
+          cgstAmount: Math.round(cgstTotal * 100),
+          sgstAmount: Math.round(sgstTotal * 100),
+          igstAmount: Math.round(igstTotal * 100),
+          roundOff: 0,
+          totalAmount: Math.round(grandTotal * 100),
+          remarks: sale.__EMPTY_10 || null,
+          vehicleNumber: sale.__EMPTY_11 || null,
+          placeOfSupply: buyerState ? `${buyerStateCode}-${buyerState}` : null,
+          status: 'delivered',
         }).returning();
         
         // Add only valid invoice items
