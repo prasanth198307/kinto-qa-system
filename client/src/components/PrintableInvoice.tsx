@@ -107,12 +107,12 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
     const amountReceived = invoice.amountReceived || 0;
     const balanceDue = invoice.totalAmount - amountReceived;
 
-    // Get bank details from invoice or fall back to template
-    const bankName = invoice.bankName || template?.defaultBankName;
-    const bankAccountNumber = invoice.bankAccountNumber || template?.defaultBankAccountNumber;
-    const bankIfscCode = invoice.bankIfscCode || template?.defaultBankIfscCode;
-    const accountHolderName = invoice.accountHolderName || template?.defaultAccountHolderName;
-    const upiId = invoice.upiId || template?.defaultUpiId;
+    // Get bank details - prioritize template (default) for QR code, fall back to invoice
+    const bankName = template?.defaultBankName || invoice.bankName;
+    const bankAccountNumber = template?.defaultBankAccountNumber || invoice.bankAccountNumber;
+    const bankIfscCode = template?.defaultBankIfscCode || invoice.bankIfscCode;
+    const accountHolderName = template?.defaultAccountHolderName || invoice.accountHolderName;
+    const upiId = template?.defaultUpiId || invoice.upiId;
 
     let upiQRCodeDataUrl = '';
     try {
