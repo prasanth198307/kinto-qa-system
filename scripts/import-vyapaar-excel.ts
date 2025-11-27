@@ -98,8 +98,8 @@ console.log('🚀 Starting Vyapaar Excel Auto-Import...\n');
 
 // Read Excel files
 console.log('📖 Reading Excel files...');
-const partyWB = XLSX.readFile('attached_assets/PartyReport_1763717077023.xlsx');
-const saleWB = XLSX.readFile('attached_assets/SaleReport_1763717077023.xlsx');
+const partyWB = XLSX.readFile('attached_assets/PartyReport_1764228749065.xlsx');
+const saleWB = XLSX.readFile('attached_assets/SaleReport_1764228749066.xlsx');
 
 const partySheet = partyWB.Sheets[partyWB.SheetNames[0]];
 const saleSheet = saleWB.Sheets[saleWB.SheetNames[0]];
