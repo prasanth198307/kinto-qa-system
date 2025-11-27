@@ -252,12 +252,18 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
         <!-- Tax Summary Section -->
         <div class="summary-section">
           <div class="totals-box">
-            <div class="totals-grid">
-              <div>Sub Total:</div>
-              <div style="text-align:right;">${formatCurrency(invoice.subtotal)}</div>
-              <div>Total:</div>
-              <div style="text-align:right;"><strong>${formatCurrency(invoice.totalAmount)}</strong></div>
-            </div>
+            <table class="totals-table">
+              <tbody>
+                <tr>
+                  <td>Sub Total:</td>
+                  <td style="text-align:right;">${formatCurrency(invoice.subtotal)}</td>
+                </tr>
+                <tr>
+                  <td><strong>Total:</strong></td>
+                  <td style="text-align:right;"><strong>${formatCurrency(invoice.totalAmount)}</strong></td>
+                </tr>
+              </tbody>
+            </table>
           </div>
 
           <!-- HSN Tax Summary Table -->
@@ -563,15 +569,17 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
 
             .totals-box {
               flex: 0 0 200px;
-              border: 1px solid #000;
-              padding: 8px;
             }
 
-            .totals-grid {
-              display: grid;
-              grid-template-columns: auto auto;
-              gap: 5px;
+            .totals-table {
+              width: 100%;
+              border-collapse: collapse;
               font-size: 10px;
+            }
+
+            .totals-table td {
+              border: 1px solid #000;
+              padding: 4px 6px;
             }
 
             .hsn-summary {

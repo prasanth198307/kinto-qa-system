@@ -654,6 +654,10 @@ export async function importVyapaarData(
           const productId = productMap.get(normalize(item.__EMPTY_2));
           // productId is guaranteed to exist because we filtered above
           
+          // Get product's UOM (should be CASES)
+          const [productRecord] = await tx.select().from(products).where(eq(products.id, productId!));
+          const itemUomId = productRecord?.uomId || casesUom.id;
+          
           const totalAmount = Number(item.__EMPTY_17) || 0;
           const taxAmount = Number(item.__EMPTY_15) || 0;
           const unitPrice = Number(item.__EMPTY_11) || 0;
@@ -674,6 +678,7 @@ export async function importVyapaarData(
           await tx.insert(invoiceItems).values({
           invoiceId: newInvoice.id,
           productId: productId!,
+          uomId: itemUomId,
           description: item.__EMPTY_2 || '',
           hsnCode: item.__EMPTY_4 || null,
           quantity,
