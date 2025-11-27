@@ -458,6 +458,9 @@ export async function importVyapaarData(
         continue;
       }
       
+      // Get vendor details for buyer info
+      const [vendorRecord] = await tx.select().from(vendors).where(eq(vendors.id, vendorId));
+      
       const invoiceItemsData = itemData.filter(item => item.__EMPTY === invoiceNumber);
       
       // Pre-validate items to find valid products (but allow invoices with no items for cancelled invoices)
@@ -527,8 +530,13 @@ export async function importVyapaarData(
         const [newInvoice] = await tx.insert(invoices).values({
         invoiceNumber,
         invoiceDate: invoiceDate.toISOString(),
-        buyerName: vendorName,
+        buyerName: vendorRecord?.vendorName || vendorName,
         buyerId: vendorId,
+        buyerAddress: vendorRecord?.address || null,
+        buyerGstin: vendorRecord?.gstNumber || null,
+        buyerContact: vendorRecord?.mobileNumber || null,
+        buyerState: vendorRecord?.state || null,
+        buyerStateCode: vendorRecord?.gstNumber ? vendorRecord.gstNumber.substring(0, 2) : null,
         subtotal: Math.round(subtotal * 100),
         cgstAmount: Math.round(cgstTotal * 100),
         sgstAmount: Math.round(sgstTotal * 100),
@@ -551,18 +559,33 @@ export async function importVyapaarData(
           const unitPrice = Number(item.__EMPTY_11) || 0;
           const discount = Number(item.__EMPTY_13) || 0;
           const quantity = Number(item.__EMPTY_9) || 0;
+          const taxableAmount = totalAmount - taxAmount;
+          
+          // Calculate GST rate from tax amount and taxable amount
+          // GST rate = (taxAmount / taxableAmount) * 100
+          // Then split equally for CGST and SGST
+          let gstRate = 0;
+          if (taxableAmount > 0 && taxAmount > 0) {
+            gstRate = Math.round((taxAmount / taxableAmount) * 10000); // In basis points (1800 = 18%)
+          }
+          const cgstRate = Math.round(gstRate / 2); // Half for CGST (e.g., 900 = 9%)
+          const sgstRate = Math.round(gstRate / 2); // Half for SGST (e.g., 900 = 9%)
           
           await tx.insert(invoiceItems).values({
           invoiceId: newInvoice.id,
           productId: productId!,
           description: item.__EMPTY_2 || '',
+          hsnCode: item.__EMPTY_4 || null,
           quantity,
           unitPrice: Math.round(unitPrice * 100),
           discount: Math.round(discount * 100),
-          taxableAmount: Math.round((totalAmount - taxAmount) * 100),
-          cgst: Math.round((taxAmount / 2) * 100),
-          sgst: Math.round((taxAmount / 2) * 100),
-          igst: 0,
+          taxableAmount: Math.round(taxableAmount * 100),
+          cgstRate: cgstRate,
+          cgstAmount: Math.round((taxAmount / 2) * 100),
+          sgstRate: sgstRate,
+          sgstAmount: Math.round((taxAmount / 2) * 100),
+          igstRate: 0,
+          igstAmount: 0,
           totalAmount: Math.round(totalAmount * 100),
           });
         }
