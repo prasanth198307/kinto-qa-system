@@ -162,7 +162,7 @@ export async function clearImportedData(): Promise<{
 }
 
 export async function importVyapaarData(
-  partyFilePath: string,
+  partyFilePath: string | null, // Null when only re-importing invoices (vendors already exist)
   saleFilePath: string,
   itemFilePath?: string // Optional - if not provided, items are in saleFilePath (2-file format)
 ): Promise<{
@@ -183,38 +183,56 @@ export async function importVyapaarData(
       
       // Clear only the data we'll be repopulating (use DELETE instead of TRUNCATE for transaction safety)
       // Delete in correct order to avoid foreign key violations
-      console.log('Clearing vendor and product data...');
-      await tx.execute(sql`DELETE FROM production_reconciliation_items`); // References production_reconciliations
-      await tx.execute(sql`DELETE FROM production_reconciliations`); // References raw_material_issuance, production_entries
-      await tx.execute(sql`DELETE FROM production_entries`); // References raw_material_issuance
-      await tx.execute(sql`DELETE FROM credit_note_items`); // References credit_notes
-      await tx.execute(sql`DELETE FROM credit_notes`); // References invoices
-      await tx.execute(sql`DELETE FROM sales_return_items`); // References sales_returns
-      await tx.execute(sql`DELETE FROM sales_returns`); // References invoices and gatepasses
-      await tx.execute(sql`DELETE FROM gatepass_items`); // References gatepasses, finished_goods, products
-      await tx.execute(sql`DELETE FROM gatepasses`); // Referenced by sales_returns and gatepass_items
-      await tx.execute(sql`DELETE FROM finished_goods`); // Referenced by gatepass_items, references products
-      await tx.execute(sql`DELETE FROM raw_material_issuance_items`); // References raw_material_issuance
-      await tx.execute(sql`DELETE FROM raw_material_issuance`); // References products
-      await tx.execute(sql`DELETE FROM invoice_payments`);
-      await tx.execute(sql`DELETE FROM invoice_items`);
-      await tx.execute(sql`DELETE FROM invoices`);
-      await tx.execute(sql`DELETE FROM vendor_vendor_types`);
-      await tx.execute(sql`DELETE FROM vendors`);
-      await tx.execute(sql`DELETE FROM products`);
+      
+      // If partyFilePath is null, we're only re-importing invoices (vendors/products preserved)
+      const invoicesOnlyMode = partyFilePath === null;
+      
+      if (invoicesOnlyMode) {
+        console.log('Invoices-only mode: Clearing invoice data only (preserving vendors and products)...');
+        await tx.execute(sql`DELETE FROM credit_note_items`);
+        await tx.execute(sql`DELETE FROM credit_notes`);
+        await tx.execute(sql`DELETE FROM invoice_payments`);
+        await tx.execute(sql`DELETE FROM invoice_items`);
+        await tx.execute(sql`DELETE FROM invoices`);
+      } else {
+        console.log('Full import mode: Clearing all vendor, product, and invoice data...');
+        await tx.execute(sql`DELETE FROM production_reconciliation_items`);
+        await tx.execute(sql`DELETE FROM production_reconciliations`);
+        await tx.execute(sql`DELETE FROM production_entries`);
+        await tx.execute(sql`DELETE FROM credit_note_items`);
+        await tx.execute(sql`DELETE FROM credit_notes`);
+        await tx.execute(sql`DELETE FROM sales_return_items`);
+        await tx.execute(sql`DELETE FROM sales_returns`);
+        await tx.execute(sql`DELETE FROM gatepass_items`);
+        await tx.execute(sql`DELETE FROM gatepasses`);
+        await tx.execute(sql`DELETE FROM finished_goods`);
+        await tx.execute(sql`DELETE FROM raw_material_issuance_items`);
+        await tx.execute(sql`DELETE FROM raw_material_issuance`);
+        await tx.execute(sql`DELETE FROM invoice_payments`);
+        await tx.execute(sql`DELETE FROM invoice_items`);
+        await tx.execute(sql`DELETE FROM invoices`);
+        await tx.execute(sql`DELETE FROM vendor_vendor_types`);
+        await tx.execute(sql`DELETE FROM vendors`);
+        await tx.execute(sql`DELETE FROM products`);
+      }
     
       // Dynamically import XLSX for Mac compatibility
       const { default: XLSX } = await import('xlsx');
       
       // Read Excel files
-      const partyWorkbook = XLSX.readFile(partyFilePath);
       const saleWorkbook = XLSX.readFile(saleFilePath);
       
       // Support both 2-file and 3-file formats
       // If itemFilePath is provided, use it; otherwise, items are in saleFilePath (second sheet or same sheet)
       const itemWorkbook = itemFilePath ? XLSX.readFile(itemFilePath) : saleWorkbook;
       
-      const partyData: PartyData[] = XLSX.utils.sheet_to_json(partyWorkbook.Sheets[partyWorkbook.SheetNames[0]]);
+      // Party data is optional - if not provided, use existing vendors
+      let partyData: PartyData[] = [];
+      if (partyFilePath) {
+        const partyWorkbook = XLSX.readFile(partyFilePath);
+        partyData = XLSX.utils.sheet_to_json(partyWorkbook.Sheets[partyWorkbook.SheetNames[0]]);
+      }
+      
       let saleData: SaleData[] = XLSX.utils.sheet_to_json(saleWorkbook.Sheets[saleWorkbook.SheetNames[0]]);
       
       // For 2-file format, items might be in second sheet or same sheet with different columns
@@ -278,41 +296,53 @@ export async function importVyapaarData(
         await tx.insert(uom).values(uomsToCreate);
       }
     
-      // Import vendors with unique codes
+      // Import vendors with unique codes OR use existing vendors (invoices-only mode)
       const vendorMap = new Map<string, string>();
-      const usedVendorCodes = new Set<string>();
-      let vendorCounter = 1;
       
-      for (const party of partyData) {
-        if (!party.Name) continue;
-        
-        // Generate unique vendor code with fallback for empty base codes
-        let baseCode = party.Name.substring(0, 10).toUpperCase().replace(/[^A-Z0-9]/g, '');
-        if (!baseCode) baseCode = `VEN${vendorCounter}`; // Fallback for non-alphanumeric names
-        
-        let vendorCode = baseCode;
-        let suffix = 1;
-        while (usedVendorCodes.has(vendorCode)) {
-          vendorCode = `${baseCode}-${suffix}`;
-          suffix++;
+      if (invoicesOnlyMode) {
+        // Use existing vendors - build map from database
+        console.log('Using existing vendors from database...');
+        const existingVendors = await tx.select().from(vendors);
+        for (const vendor of existingVendors) {
+          vendorMap.set(normalize(vendor.vendorName), vendor.id);
         }
-        usedVendorCodes.add(vendorCode);
+        console.log(`Loaded ${existingVendors.length} existing vendors`);
+      } else {
+        // Import new vendors from party data
+        const usedVendorCodes = new Set<string>();
+        let vendorCounter = 1;
         
-        const [newVendor] = await tx.insert(vendors).values({
-        vendorName: party.Name,
-        vendorCode,
-        email: party.Email || null,
-        mobileNumber: party['Phone No.'] || '0000000000', // Required field, use placeholder if missing
-        address: party.Address || null,
-        city: null,
-        state: null,
-        pincode: null,
-        gstNumber: party.GSTIN || null,
-        creditLimit: null,
-      }).returning();
-      
-        vendorMap.set(normalize(party.Name), newVendor.id);
-        vendorCounter++;
+        for (const party of partyData) {
+          if (!party.Name) continue;
+          
+          // Generate unique vendor code with fallback for empty base codes
+          let baseCode = party.Name.substring(0, 10).toUpperCase().replace(/[^A-Z0-9]/g, '');
+          if (!baseCode) baseCode = `VEN${vendorCounter}`; // Fallback for non-alphanumeric names
+          
+          let vendorCode = baseCode;
+          let suffix = 1;
+          while (usedVendorCodes.has(vendorCode)) {
+            vendorCode = `${baseCode}-${suffix}`;
+            suffix++;
+          }
+          usedVendorCodes.add(vendorCode);
+          
+          const [newVendor] = await tx.insert(vendors).values({
+            vendorName: party.Name,
+            vendorCode,
+            email: party.Email || null,
+            mobileNumber: party['Phone No.'] || '0000000000', // Required field, use placeholder if missing
+            address: party.Address || null,
+            city: null,
+            state: null,
+            pincode: null,
+            gstNumber: party.GSTIN || null,
+            creditLimit: null,
+          }).returning();
+          
+          vendorMap.set(normalize(party.Name), newVendor.id);
+          vendorCounter++;
+        }
       }
       
       // Get or create default product category and type (preserve existing master data)
@@ -344,41 +374,53 @@ export async function importVyapaarData(
         throw new Error('CASES UOM not found. Cannot import products without valid UOM.');
       }
       
-      // Import products with unique codes
+      // Import products with unique codes OR use existing products (invoices-only mode)
       const productMap = new Map<string, string>();
-      const uniqueProducts = new Set<string>();
-      const usedProductCodes = new Set<string>();
       
-      for (const item of itemData) {
-        const productName = item.__EMPTY_2;
-        if (!productName || uniqueProducts.has(normalize(productName))) continue;
-        
-        uniqueProducts.add(normalize(productName));
-        
-        // Generate unique product code with fallback for empty base codes
-        let baseCode = (item.__EMPTY_3 || productName.substring(0, 10)).toUpperCase().replace(/[^A-Z0-9]/g, '');
-        if (!baseCode) baseCode = `PRD${uniqueProducts.size + 1}`; // Fallback for non-alphanumeric names
-        
-        let productCode = baseCode;
-        let suffix = 1;
-        while (usedProductCodes.has(productCode)) {
-          productCode = `${baseCode}-${suffix}`;
-          suffix++;
+      if (invoicesOnlyMode) {
+        // Use existing products - build map from database
+        console.log('Using existing products from database...');
+        const existingProducts = await tx.select().from(products);
+        for (const product of existingProducts) {
+          productMap.set(normalize(product.productName), product.id);
         }
-        usedProductCodes.add(productCode);
+        console.log(`Loaded ${existingProducts.length} existing products`);
+      } else {
+        // Import new products from item data
+        const uniqueProducts = new Set<string>();
+        const usedProductCodes = new Set<string>();
         
-        const [newProduct] = await tx.insert(products).values({
-        productName: productName,
-        productCode,
-        categoryId: category.id,
-        typeId: productType.id,
-        hsnCode: item.__EMPTY_4 || null,
-        uomId: casesUom.id, // CASES UOM for all imported products
-        sellingPrice: Math.round((item.__EMPTY_11 || 0) * 100),
-        description: item.__EMPTY_7 || null,
-        }).returning();
-        
-        productMap.set(normalize(productName), newProduct.id);
+        for (const item of itemData) {
+          const productName = item.__EMPTY_2;
+          if (!productName || uniqueProducts.has(normalize(productName))) continue;
+          
+          uniqueProducts.add(normalize(productName));
+          
+          // Generate unique product code with fallback for empty base codes
+          let baseCode = (item.__EMPTY_3 || productName.substring(0, 10)).toUpperCase().replace(/[^A-Z0-9]/g, '');
+          if (!baseCode) baseCode = `PRD${uniqueProducts.size + 1}`; // Fallback for non-alphanumeric names
+          
+          let productCode = baseCode;
+          let suffix = 1;
+          while (usedProductCodes.has(productCode)) {
+            productCode = `${baseCode}-${suffix}`;
+            suffix++;
+          }
+          usedProductCodes.add(productCode);
+          
+          const [newProduct] = await tx.insert(products).values({
+            productName: productName,
+            productCode,
+            categoryId: category.id,
+            typeId: productType.id,
+            hsnCode: item.__EMPTY_4 || null,
+            uomId: casesUom.id, // CASES UOM for all imported products
+            sellingPrice: Math.round((item.__EMPTY_11 || 0) * 100),
+            description: item.__EMPTY_7 || null,
+          }).returning();
+          
+          productMap.set(normalize(productName), newProduct.id);
+        }
       }
       
       // Import invoices
@@ -545,9 +587,10 @@ export async function importVyapaarData(
       console.log('Import transaction completed successfully');
       
       // Return stats (classification will happen after transaction commits)
+      const modeLabel = invoicesOnlyMode ? 'Invoices-only import' : 'Full data import';
       return {
         success: true,
-        message: 'Data imported successfully',
+        message: `${modeLabel} completed successfully`,
         stats: {
           vendors: vendorMap.size,
           products: productMap.size,

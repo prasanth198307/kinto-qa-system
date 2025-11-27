@@ -8079,11 +8079,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         itemDetails?: Express.Multer.File[];
       };
 
-      // Check if Party Report and Sale Report are provided
-      if (!files?.partyReport?.[0] || !files?.saleReport?.[0]) {
+      // Check if Sale Report is provided (Party Report is optional if vendors exist)
+      if (!files?.saleReport?.[0]) {
         return res.status(400).json({ 
           success: false,
-          error: 'Party Report and Sale Report files are required'
+          error: 'Sale Report file is required'
         });
       }
 
@@ -8125,22 +8125,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Save files temporarily
       const timestamp = Date.now();
-      const partyPath = path.join(tmpDir, `party-${timestamp}.xlsx`);
+      const partyPath = files?.partyReport?.[0] ? path.join(tmpDir, `party-${timestamp}.xlsx`) : null;
       const salePath = path.join(tmpDir, `sale-${timestamp}.xlsx`);
       const itemPath = path.join(tmpDir, `item-${timestamp}.xlsx`);
 
-      fs.writeFileSync(partyPath, files.partyReport[0].buffer);
+      if (partyPath && files?.partyReport?.[0]) {
+        fs.writeFileSync(partyPath, files.partyReport[0].buffer);
+      }
       fs.writeFileSync(salePath, files.saleReport[0].buffer);
       fs.writeFileSync(itemPath, itemDetailsBuffer);
 
       console.log('[DATA IMPORT] Starting import from uploaded files');
+      console.log('[DATA IMPORT] Party Report:', partyPath ? 'provided' : 'not provided (using existing vendors)');
       
       // Run import
       const result = await importVyapaarData(partyPath, salePath, itemPath);
 
       // Clean up temporary files
       try {
-        fs.unlinkSync(partyPath);
+        if (partyPath) fs.unlinkSync(partyPath);
         fs.unlinkSync(salePath);
         fs.unlinkSync(itemPath);
       } catch (cleanupError) {

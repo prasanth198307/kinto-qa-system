@@ -169,17 +169,19 @@ export default function DataImport() {
   });
 
   const handleImport = () => {
-    if (!partyFile || !saleFile) {
+    if (!saleFile) {
       toast({
-        title: "Missing Files",
-        description: "Please upload at least Party Report and Sale Report files",
+        title: "Missing File",
+        description: "Please upload at least the Sale Report file",
         variant: "destructive",
       });
       return;
     }
 
     const formData = new FormData();
-    formData.append('partyReport', partyFile);
+    if (partyFile) {
+      formData.append('partyReport', partyFile);
+    }
     formData.append('saleReport', saleFile);
     if (itemFile) {
       formData.append('itemDetails', itemFile);
@@ -279,11 +281,10 @@ export default function DataImport() {
 
       <Alert data-testid="alert-import-info">
         <Info className="h-4 w-4" />
-        <AlertTitle>Important Information</AlertTitle>
-        <AlertDescription>
-          This will clear existing data and import fresh data from Vyapaar Excel files. 
-          You can either upload 3 separate files (Party Report, Sale Report, Item Details) 
-          OR 2 files if your Sale Report contains an "Item Details" sheet.
+        <AlertTitle>Import Options</AlertTitle>
+        <AlertDescription className="space-y-2">
+          <p><strong>Full Import:</strong> Upload Party Report + Sale Report (with Item Details sheet) to import vendors, products, and invoices.</p>
+          <p><strong>Invoices Only:</strong> If vendors and products already exist, use "Clear Invoices Only" then upload just the Sale Report to re-import invoices while preserving your vendor and product data.</p>
         </AlertDescription>
       </Alert>
 
@@ -297,7 +298,7 @@ export default function DataImport() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="party-file" data-testid="label-party-file">
-              Party Report (Vendors/Customers)
+              Party Report (Vendors/Customers) - Optional if vendors exist
             </Label>
             <div className="flex items-center gap-2">
               <Input
@@ -373,7 +374,7 @@ export default function DataImport() {
           <div className="flex gap-2">
             <Button
               onClick={handleImport}
-              disabled={!partyFile || !saleFile || importMutation.isPending || importSuccessful}
+              disabled={!saleFile || importMutation.isPending || importSuccessful}
               className="flex-1 gap-2"
               data-testid="button-start-import"
             >
