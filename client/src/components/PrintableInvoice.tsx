@@ -251,23 +251,7 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
 
         <!-- Tax Summary Section -->
         <div class="summary-section">
-          <!-- HSN Tax Summary Table (LEFT) -->
-          <div class="hsn-summary">
-            <table class="totals-table" style="margin-bottom:5px;">
-              <tbody>
-                <tr>
-                  <td>Sub Total:</td>
-                  <td style="text-align:right;">${formatCurrency(invoice.subtotal)}</td>
-                </tr>
-                <tr>
-                  <td><strong>Total:</strong></td>
-                  <td style="text-align:right;"><strong>${formatCurrency(invoice.totalAmount)}</strong></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <!-- HSN Tax Breakdown (RIGHT) -->
+          <!-- HSN Tax Breakdown (LEFT) -->
           <div class="hsn-table-wrapper">
             <table class="hsn-table">
               <thead>
@@ -328,6 +312,22 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
                   <td style="text-align:right;"><strong>${formatCurrency(invoice.cgstAmount + invoice.sgstAmount + invoice.igstAmount)}</strong></td>
                 </tr>
               </tfoot>
+            </table>
+          </div>
+
+          <!-- Sub Total / Total (RIGHT) -->
+          <div class="totals-box">
+            <table class="totals-table">
+              <tbody>
+                <tr>
+                  <td>Sub Total:</td>
+                  <td style="text-align:right;">${formatCurrency(invoice.subtotal)}</td>
+                </tr>
+                <tr>
+                  <td><strong>Total:</strong></td>
+                  <td style="text-align:right;"><strong>${formatCurrency(invoice.totalAmount)}</strong></td>
+                </tr>
+              </tbody>
             </table>
           </div>
         </div>
@@ -568,7 +568,11 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
               gap: 10px;
             }
 
-            .hsn-summary {
+            .hsn-table-wrapper {
+              flex: 1;
+            }
+
+            .totals-box {
               flex: 0 0 200px;
             }
 
@@ -581,10 +585,6 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
             .totals-table td {
               border: 1px solid #000;
               padding: 4px 6px;
-            }
-
-            .hsn-table-wrapper {
-              flex: 1;
             }
 
             /* HSN Table */
