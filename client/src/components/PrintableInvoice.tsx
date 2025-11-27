@@ -107,20 +107,27 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
     const amountReceived = invoice.amountReceived || 0;
     const balanceDue = invoice.totalAmount - amountReceived;
 
+    // Get bank details from invoice or fall back to template
+    const bankName = invoice.bankName || template?.defaultBankName;
+    const bankAccountNumber = invoice.bankAccountNumber || template?.defaultBankAccountNumber;
+    const bankIfscCode = invoice.bankIfscCode || template?.defaultBankIfscCode;
+    const accountHolderName = invoice.accountHolderName || template?.defaultAccountHolderName;
+    const upiId = invoice.upiId || template?.defaultUpiId;
+
     let upiQRCodeDataUrl = '';
     try {
       let upiString = '';
-      const payeeName = encodeURIComponent(invoice.accountHolderName || invoice.sellerName || 'KINTO');
+      const payeeName = encodeURIComponent(accountHolderName || invoice.sellerName || 'KINTO');
       
-      if (invoice.upiId) {
+      if (upiId) {
         // Use UPI ID if available
-        upiString = `upi://pay?pa=${encodeURIComponent(invoice.upiId)}&pn=${payeeName}&cu=INR`;
-      } else if (invoice.bankAccountNumber && invoice.bankIfscCode) {
+        upiString = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${payeeName}&cu=INR`;
+      } else if (bankAccountNumber && bankIfscCode) {
         // Generate UPI QR from bank account + IFSC (NPCI format)
         // Format: account-number.ifsc.ifsc.npci
-        const accountNumber = invoice.bankAccountNumber.replace(/\s/g, '');
-        const ifscCode = invoice.bankIfscCode.toUpperCase().replace(/\s/g, '');
-        upiString = `upi://pay?pa=${accountNumber}.${ifscCode}.ifsc.npci&pn=${payeeName}&cu=INR`;
+        const accountNum = bankAccountNumber.replace(/\s/g, '');
+        const ifsc = bankIfscCode.toUpperCase().replace(/\s/g, '');
+        upiString = `upi://pay?pa=${accountNum}.${ifsc}.ifsc.npci&pn=${payeeName}&cu=INR`;
       }
       
       if (upiString) {
@@ -350,15 +357,15 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
 
         <!-- Bank Details and Signature Section (Side by Side) -->
         <div class="bank-signature-grid">
-          <!-- Bank Details (Left) -->
-          ${invoice.bankName || invoice.upiId ? `
+          <!-- Bank Details (Left) - Uses invoice bank details or falls back to template -->
+          ${bankName || upiId || bankAccountNumber ? `
             <div class="bank-details-container">
               <div class="bank-details">
                 <div class="bank-label">Bank Details:</div>
-                ${invoice.bankName ? `<div>Name : <strong>${invoice.bankName}</strong></div>` : ''}
-                ${invoice.bankAccountNumber ? `<div>Account No. : ${invoice.bankAccountNumber}</div>` : ''}
-                ${invoice.bankIfscCode ? `<div>IFSC code : ${invoice.bankIfscCode}</div>` : ''}
-                ${invoice.accountHolderName ? `<div>Account holder's name : ${invoice.accountHolderName}</div>` : ''}
+                ${bankName ? `<div>Name : <strong>${bankName}</strong></div>` : ''}
+                ${bankAccountNumber ? `<div>Account No. : ${bankAccountNumber}</div>` : ''}
+                ${bankIfscCode ? `<div>IFSC code : ${bankIfscCode}</div>` : ''}
+                ${accountHolderName ? `<div>Account holder's name : ${accountHolderName}</div>` : ''}
               </div>
               ${upiQRCodeDataUrl ? `
                 <div class="qr-code-section">
