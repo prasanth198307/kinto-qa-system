@@ -108,9 +108,22 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
     const balanceDue = invoice.totalAmount - amountReceived;
 
     let upiQRCodeDataUrl = '';
-    if (invoice.upiId) {
-      try {
-        const upiString = `upi://pay?pa=${encodeURIComponent(invoice.upiId)}&pn=${encodeURIComponent(invoice.accountHolderName || invoice.sellerName || 'KINTO')}&cu=INR`;
+    try {
+      let upiString = '';
+      const payeeName = encodeURIComponent(invoice.accountHolderName || invoice.sellerName || 'KINTO');
+      
+      if (invoice.upiId) {
+        // Use UPI ID if available
+        upiString = `upi://pay?pa=${encodeURIComponent(invoice.upiId)}&pn=${payeeName}&cu=INR`;
+      } else if (invoice.bankAccountNumber && invoice.bankIfscCode) {
+        // Generate UPI QR from bank account + IFSC (NPCI format)
+        // Format: account-number.ifsc.ifsc.npci
+        const accountNumber = invoice.bankAccountNumber.replace(/\s/g, '');
+        const ifscCode = invoice.bankIfscCode.toUpperCase().replace(/\s/g, '');
+        upiString = `upi://pay?pa=${accountNumber}.${ifscCode}.ifsc.npci&pn=${payeeName}&cu=INR`;
+      }
+      
+      if (upiString) {
         upiQRCodeDataUrl = await QRCode.toDataURL(upiString, {
           width: 150,
           margin: 1,
@@ -119,9 +132,9 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
             light: '#FFFFFF'
           }
         });
-      } catch (error) {
-        console.error('Failed to generate UPI QR code:', error);
       }
+    } catch (error) {
+      console.error('Failed to generate UPI QR code:', error);
     }
 
     const generateInvoiceHTML = (copyType: string) => `
