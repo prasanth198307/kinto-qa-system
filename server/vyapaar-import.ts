@@ -509,11 +509,27 @@ export async function importVyapaarData(
       usedNumbers.add(invoiceNumber);
       
       const vendorName = sale.__EMPTY_2;
-      const vendorId = Array.from(vendorMap.entries())
-        .find(([name, id]) => fuzzyMatch(name, vendorName))?.[1];
+      
+      // IMPROVED VENDOR MATCHING: Try exact match first, then fuzzy as fallback
+      let vendorId = vendorMap.get(normalize(vendorName));
       
       if (!vendorId) {
-        console.log(`Skipping invoice ${invoiceNumber}: vendor not found`);
+        // Fallback to fuzzy matching, but check for ambiguous matches
+        const fuzzyMatches = Array.from(vendorMap.entries())
+          .filter(([name, id]) => fuzzyMatch(name, vendorName));
+        
+        if (fuzzyMatches.length === 1) {
+          vendorId = fuzzyMatches[0][1];
+          console.log(`Fuzzy matched vendor for invoice ${invoiceNumber}: "${vendorName}" → "${fuzzyMatches[0][0]}"`);
+        } else if (fuzzyMatches.length > 1) {
+          // Multiple matches - log warning and use first match (could be wrong!)
+          console.warn(`⚠️ AMBIGUOUS vendor match for invoice ${invoiceNumber}: "${vendorName}" matches ${fuzzyMatches.length} vendors: ${fuzzyMatches.map(m => m[0]).join(', ')}`);
+          vendorId = fuzzyMatches[0][1];
+        }
+      }
+      
+      if (!vendorId) {
+        console.log(`Skipping invoice ${invoiceNumber}: vendor not found - "${vendorName}"`);
         skippedCount++;
         continue;
       }
