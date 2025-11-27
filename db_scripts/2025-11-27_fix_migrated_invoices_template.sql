@@ -4,79 +4,79 @@
 --              and populates missing seller and bank details from the default template
 -- Run this on production database after Vyapaar import
 
--- Step 1: Find the default template ID (adjust if your default template has different ID)
+-- Step 1: Find the default template ID and update invoices
 DO $$
 DECLARE
-    default_template_id VARCHAR;
-    default_seller_name VARCHAR;
-    default_seller_gstin VARCHAR;
-    default_seller_address TEXT;
-    default_seller_state VARCHAR;
-    default_seller_state_code VARCHAR;
-    default_seller_phone VARCHAR;
-    default_seller_email VARCHAR;
-    default_bank_name VARCHAR;
-    default_bank_account_number VARCHAR;
-    default_bank_ifsc_code VARCHAR;
-    default_account_holder_name VARCHAR;
-    default_upi_id VARCHAR;
+    v_template_id VARCHAR;
+    v_seller_name VARCHAR;
+    v_seller_gstin VARCHAR;
+    v_seller_address TEXT;
+    v_seller_state VARCHAR;
+    v_seller_state_code VARCHAR;
+    v_seller_phone VARCHAR;
+    v_seller_email VARCHAR;
+    v_bank_name VARCHAR;
+    v_bank_account_number VARCHAR;
+    v_bank_ifsc_code VARCHAR;
+    v_account_holder_name VARCHAR;
+    v_upi_id VARCHAR;
     updated_count INTEGER;
 BEGIN
-    -- Get default template details
+    -- Get default template details using table alias to avoid ambiguity
     SELECT 
-        id, 
-        default_seller_name, 
-        default_seller_gstin, 
-        default_seller_address,
-        default_seller_state, 
-        default_seller_state_code, 
-        default_seller_phone, 
-        default_seller_email,
-        default_bank_name, 
-        default_bank_account_number, 
-        default_bank_ifsc_code, 
-        default_account_holder_name, 
-        default_upi_id
+        t.id, 
+        t.default_seller_name, 
+        t.default_seller_gstin, 
+        t.default_seller_address,
+        t.default_seller_state, 
+        t.default_seller_state_code, 
+        t.default_seller_phone, 
+        t.default_seller_email,
+        t.default_bank_name, 
+        t.default_bank_account_number, 
+        t.default_bank_ifsc_code, 
+        t.default_account_holder_name, 
+        t.default_upi_id
     INTO 
-        default_template_id,
-        default_seller_name,
-        default_seller_gstin,
-        default_seller_address,
-        default_seller_state,
-        default_seller_state_code,
-        default_seller_phone,
-        default_seller_email,
-        default_bank_name,
-        default_bank_account_number,
-        default_bank_ifsc_code,
-        default_account_holder_name,
-        default_upi_id
-    FROM invoice_templates 
-    WHERE is_default = 1 
+        v_template_id,
+        v_seller_name,
+        v_seller_gstin,
+        v_seller_address,
+        v_seller_state,
+        v_seller_state_code,
+        v_seller_phone,
+        v_seller_email,
+        v_bank_name,
+        v_bank_account_number,
+        v_bank_ifsc_code,
+        v_account_holder_name,
+        v_upi_id
+    FROM invoice_templates t
+    WHERE t.is_default = 1 
     LIMIT 1;
     
-    IF default_template_id IS NULL THEN
+    IF v_template_id IS NULL THEN
         RAISE EXCEPTION 'No default invoice template found. Please create a default template first.';
     END IF;
     
-    RAISE NOTICE 'Using default template: % (ID: %)', default_seller_name, default_template_id;
+    RAISE NOTICE 'Using default template: % (ID: %)', v_seller_name, v_template_id;
     
     -- Step 2: Update all invoices without template_id
     UPDATE invoices 
     SET 
-        template_id = default_template_id,
-        seller_name = COALESCE(seller_name, default_seller_name),
-        seller_gstin = COALESCE(seller_gstin, default_seller_gstin),
-        seller_address = COALESCE(seller_address, default_seller_address),
-        seller_state = COALESCE(seller_state, default_seller_state),
-        seller_state_code = COALESCE(seller_state_code, default_seller_state_code),
-        seller_phone = COALESCE(seller_phone, default_seller_phone),
-        seller_email = COALESCE(seller_email, default_seller_email),
-        bank_name = COALESCE(bank_name, default_bank_name),
-        bank_account_number = COALESCE(bank_account_number, default_bank_account_number),
-        bank_ifsc_code = COALESCE(bank_ifsc_code, default_bank_ifsc_code),
-        account_holder_name = COALESCE(account_holder_name, default_account_holder_name),
-        upi_id = COALESCE(upi_id, default_upi_id)
+        template_id = v_template_id,
+        seller_name = COALESCE(seller_name, v_seller_name),
+        seller_gstin = COALESCE(seller_gstin, v_seller_gstin),
+        seller_address = COALESCE(seller_address, v_seller_address),
+        seller_state = COALESCE(seller_state, v_seller_state),
+        seller_state_code = COALESCE(seller_state_code, v_seller_state_code),
+        seller_phone = COALESCE(seller_phone, v_seller_phone),
+        seller_email = COALESCE(seller_email, v_seller_email),
+        bank_name = COALESCE(bank_name, v_bank_name),
+        bank_account_number = COALESCE(bank_account_number, v_bank_account_number),
+        bank_ifsc_code = COALESCE(bank_ifsc_code, v_bank_ifsc_code),
+        account_holder_name = COALESCE(account_holder_name, v_account_holder_name),
+        upi_id = COALESCE(upi_id, v_upi_id)
     WHERE template_id IS NULL;
     
     GET DIAGNOSTICS updated_count = ROW_COUNT;
