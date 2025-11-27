@@ -251,8 +251,9 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
 
         <!-- Tax Summary Section -->
         <div class="summary-section">
-          <div class="totals-box">
-            <table class="totals-table">
+          <!-- HSN Tax Summary Table (LEFT) -->
+          <div class="hsn-summary">
+            <table class="totals-table" style="margin-bottom:5px;">
               <tbody>
                 <tr>
                   <td>Sub Total:</td>
@@ -266,8 +267,8 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
             </table>
           </div>
 
-          <!-- HSN Tax Summary Table -->
-          <div class="hsn-summary">
+          <!-- HSN Tax Breakdown (RIGHT) -->
+          <div class="hsn-table-wrapper">
             <table class="hsn-table">
               <thead>
                 <tr>
@@ -567,7 +568,7 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
               gap: 10px;
             }
 
-            .totals-box {
+            .hsn-summary {
               flex: 0 0 200px;
             }
 
@@ -582,7 +583,7 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
               padding: 4px 6px;
             }
 
-            .hsn-summary {
+            .hsn-table-wrapper {
               flex: 1;
             }
 
