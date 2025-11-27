@@ -91,12 +91,14 @@ export async function classifyAllVendors() {
           await tx.delete(vendorVendorTypes).where(eq(vendorVendorTypes.vendorId, vendor.id));
           
           // Insert new assignments with conflict handling
-          for (const typeId of typesToAssign) {
+          // First type in the array is marked as primary
+          for (let i = 0; i < typesToAssign.length; i++) {
+            const typeId = typesToAssign[i];
             await tx.insert(vendorVendorTypes)
               .values({
                 vendorId: vendor.id,
                 vendorTypeId: typeId,
-                isPrimary: 0
+                isPrimary: i === 0 ? 1 : 0  // First type is primary
               })
               .onConflictDoNothing({
                 target: [vendorVendorTypes.vendorId, vendorVendorTypes.vendorTypeId]
