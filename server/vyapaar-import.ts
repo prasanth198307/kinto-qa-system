@@ -946,12 +946,22 @@ export async function importVyapaarData(
           
           let remainingAmount = amountPaise;
           
-          // Allocate payment to invoices using FIFO
+          // Allocate payment to invoices using FIFO, respecting Sale Report caps
           for (const invoice of vendorInvoices) {
             if (remainingAmount <= 0) break;
             
+            // Check if this invoice has a Sale Report cap
+            const saleReportCap = saleReportPayments.get(invoice.id);
+            const maxAllowedReceived = saleReportCap 
+              ? Math.min(saleReportCap.receivedAmount, invoice.totalAmount) 
+              : invoice.totalAmount;
+            
+            // Calculate how much more we can allocate (respecting the cap)
+            const roomUnderCap = maxAllowedReceived - invoice.amountReceived;
+            if (roomUnderCap <= 0) continue; // Already at or over cap
+            
             const outstanding = invoice.totalAmount - invoice.amountReceived;
-            const allocationAmount = Math.min(remainingAmount, outstanding);
+            const allocationAmount = Math.min(remainingAmount, outstanding, roomUnderCap);
             
             if (allocationAmount > 0) {
               // Create payment record for this invoice
