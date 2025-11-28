@@ -211,7 +211,8 @@ export async function clearImportedData(): Promise<{
 export async function importVyapaarData(
   partyFilePath: string | null, // Null when only re-importing invoices (vendors already exist)
   saleFilePath: string,
-  itemFilePath?: string // Optional - if not provided, items are in saleFilePath (2-file format)
+  itemFilePath?: string, // Optional - if not provided, items are in saleFilePath (2-file format)
+  paymentsFilePath?: string | null // Optional - separate payments file for additional payments
 ): Promise<{
   success: boolean;
   message: string;
@@ -221,6 +222,9 @@ export async function importVyapaarData(
     invoices: number;
     vendorTypes: number;
     skipped: number;
+    payments: number;
+    paymentsSkipped: number;
+    paymentsUnallocated: number;
   };
 }> {
   // Wrap entire import in a transaction for atomicity
@@ -724,6 +728,204 @@ export async function importVyapaarData(
         invoiceCount++;
       }
       
+      // Import separate payments file if provided (FIFO allocation to invoices)
+      let paymentsImported = 0;
+      let paymentsSkipped = 0;
+      let paymentsUnallocated = 0;
+      
+      if (paymentsFilePath) {
+        console.log('Processing separate Payments file...');
+        
+        const paymentsWorkbook = XLSX.readFile(paymentsFilePath);
+        const paymentsSheet = paymentsWorkbook.Sheets[paymentsWorkbook.SheetNames[0]];
+        const paymentsData: any[] = XLSX.utils.sheet_to_json(paymentsSheet, { header: 1 });
+        
+        // Find header row dynamically (look for "Date" column)
+        let headerRowIndex = -1;
+        let columnMapping: Record<string, number> = {};
+        
+        for (let i = 0; i < Math.min(10, paymentsData.length); i++) {
+          const row = paymentsData[i];
+          if (!row) continue;
+          
+          // Check if this row contains header keywords
+          const rowStr = JSON.stringify(row).toLowerCase();
+          if (rowStr.includes('date') && rowStr.includes('party')) {
+            headerRowIndex = i;
+            // Map column indices by header names
+            for (let j = 0; j < row.length; j++) {
+              const header = String(row[j] || '').toLowerCase().trim();
+              if (header.includes('date') && !header.includes('due')) columnMapping['date'] = j;
+              else if (header.includes('reference') || header.includes('ref')) columnMapping['reference'] = j;
+              else if (header.includes('party')) columnMapping['party'] = j;
+              else if (header.includes('payment type') || header.includes('mode')) columnMapping['paymentType'] = j;
+              else if (header.includes('received')) columnMapping['received'] = j;
+              else if (header.includes('description') || header.includes('remarks')) columnMapping['description'] = j;
+            }
+            break;
+          }
+        }
+        
+        // Fallback to positional mapping if header not found
+        if (headerRowIndex === -1) {
+          headerRowIndex = 2; // Default: skip first 3 rows
+          columnMapping = { date: 0, reference: 1, party: 2, paymentType: 6, received: 8, description: 12 };
+          console.log('Using positional column mapping (header row not detected)');
+        } else {
+          console.log(`Found header at row ${headerRowIndex + 1}, columns:`, columnMapping);
+        }
+        
+        const paymentRows = paymentsData.slice(headerRowIndex + 1).filter(row => {
+          return row && row[columnMapping['date'] || 0] && row[columnMapping['party'] || 2];
+        });
+        
+        console.log(`Found ${paymentRows.length} payment records to process`);
+        
+        // Create deduplication signatures using (vendorName, paymentDate, amount)
+        // This works regardless of VY- or PY- reference prefixes
+        const existingPaymentSignatures = new Set<string>();
+        const existingPayments = await tx.select({
+          paymentDate: invoicePayments.paymentDate,
+          amount: invoicePayments.amount,
+          invoiceId: invoicePayments.invoiceId,
+        }).from(invoicePayments);
+        
+        // Get invoice to vendor mapping for existing payments
+        const existingInvoices = await tx.select({
+          id: invoices.id,
+          buyerName: invoices.buyerName,
+        }).from(invoices);
+        const invoiceVendorMap = new Map(existingInvoices.map(inv => [inv.id, inv.buyerName]));
+        
+        for (const payment of existingPayments) {
+          const vendorName = invoiceVendorMap.get(payment.invoiceId) || '';
+          // Normalize: vendorName + date (YYYY-MM-DD) + amount in paise
+          const sig = `${normalize(vendorName)}-${payment.paymentDate?.substring(0, 10)}-${payment.amount}`;
+          existingPaymentSignatures.add(sig);
+        }
+        
+        for (const row of paymentRows) {
+          const dateStr = String(row[columnMapping['date'] || 0] || '').trim();
+          const referenceNo = String(row[columnMapping['reference'] || 1] || '').trim();
+          const partyName = String(row[columnMapping['party'] || 2] || '').trim();
+          const paymentMethod = String(row[columnMapping['paymentType'] || 6] || 'Cash').trim();
+          const receivedAmount = Number(row[columnMapping['received'] || 8]) || 0;
+          const description = String(row[columnMapping['description'] || 12] || '').trim();
+          
+          if (!partyName || receivedAmount <= 0) {
+            paymentsSkipped++;
+            continue;
+          }
+          
+          // Parse date (DD/MM/YYYY format or Excel date serial)
+          let paymentDate: Date;
+          try {
+            if (typeof dateStr === 'number') {
+              // Excel date serial number
+              paymentDate = new Date((dateStr - 25569) * 86400 * 1000);
+            } else {
+              const parts = dateStr.split('/');
+              if (parts.length === 3) {
+                paymentDate = new Date(`${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`);
+              } else {
+                paymentDate = new Date(dateStr);
+              }
+            }
+            if (isNaN(paymentDate.getTime())) {
+              console.log(`Skipping payment: invalid date "${dateStr}" for ${partyName}`);
+              paymentsSkipped++;
+              continue;
+            }
+          } catch {
+            paymentsSkipped++;
+            continue;
+          }
+          
+          // Find vendor by fuzzy matching
+          let vendorId: string | undefined;
+          let matchedVendorName: string | undefined;
+          const normalizedPartyName = normalize(partyName);
+          vendorId = vendorMap.get(normalizedPartyName);
+          
+          if (vendorId) {
+            matchedVendorName = partyName;
+          } else {
+            // Fuzzy match
+            const fuzzyMatches = Array.from(vendorMap.entries())
+              .filter(([name]) => fuzzyMatch(name, partyName));
+            if (fuzzyMatches.length > 0) {
+              vendorId = fuzzyMatches[0][1];
+              matchedVendorName = fuzzyMatches[0][0];
+            }
+          }
+          
+          if (!vendorId) {
+            console.log(`Skipping payment: vendor not found - "${partyName}"`);
+            paymentsSkipped++;
+            continue;
+          }
+          
+          // Check for duplicates using (normalized vendor name, date, amount)
+          const amountPaise = Math.round(receivedAmount * 100);
+          const paymentSig = `${normalize(matchedVendorName || partyName)}-${paymentDate.toISOString().substring(0, 10)}-${amountPaise}`;
+          if (existingPaymentSignatures.has(paymentSig)) {
+            console.log(`Skipping duplicate payment: ${partyName}, ${paymentDate.toISOString().substring(0, 10)}, ₹${receivedAmount}`);
+            paymentsSkipped++;
+            continue;
+          }
+          existingPaymentSignatures.add(paymentSig);
+          
+          // Get vendor's unpaid invoices sorted by date (FIFO)
+          // Query fresh to get current amountReceived (may have been updated by earlier allocations)
+          const vendorRecord = await tx.select().from(vendors).where(eq(vendors.id, vendorId)).then(r => r[0]);
+          const vendorInvoices = await tx.select().from(invoices)
+            .where(and(
+              eq(invoices.buyerName, vendorRecord.vendorName),
+              sql`${invoices.total_amount} > ${invoices.amount_received}`
+            ))
+            .orderBy(sql`${invoices.invoice_date} ASC`);
+          
+          let remainingAmount = amountPaise;
+          
+          // Allocate payment to invoices using FIFO
+          for (const invoice of vendorInvoices) {
+            if (remainingAmount <= 0) break;
+            
+            const outstanding = invoice.totalAmount - invoice.amountReceived;
+            const allocationAmount = Math.min(remainingAmount, outstanding);
+            
+            if (allocationAmount > 0) {
+              // Create payment record for this invoice
+              await tx.insert(invoicePayments).values({
+                invoiceId: invoice.id,
+                paymentDate: paymentDate.toISOString(),
+                amount: allocationAmount,
+                paymentMethod: paymentMethod,
+                paymentType: allocationAmount >= outstanding ? 'Full' : 'Partial',
+                referenceNumber: referenceNo ? `PY-${referenceNo}` : `PY-${invoice.invoiceNumber}`,
+                remarks: description || 'Imported from Vyapaar Payments file (FIFO allocated)',
+              });
+              
+              // Update invoice amountReceived
+              await tx.update(invoices)
+                .set({ amountReceived: invoice.amountReceived + allocationAmount })
+                .where(eq(invoices.id, invoice.id));
+              
+              remainingAmount -= allocationAmount;
+              paymentsImported++;
+            }
+          }
+          
+          // If there's remaining amount (overpayment), log it
+          if (remainingAmount > 0) {
+            console.log(`⚠️ Unallocated payment for ${partyName}: ₹${(remainingAmount / 100).toFixed(2)} (no more unpaid invoices)`);
+            paymentsUnallocated++;
+          }
+        }
+        
+        console.log(`✅ Payments import complete: ${paymentsImported} imported, ${paymentsSkipped} skipped, ${paymentsUnallocated} unallocated`);
+      }
+      
       console.log('Import transaction completed successfully');
       
       // Return stats (classification will happen after transaction commits)
@@ -737,6 +939,9 @@ export async function importVyapaarData(
           invoices: invoiceCount,
           vendorTypes: 0, // Will be updated after classification
           skipped: skippedCount,
+          payments: paymentsImported,
+          paymentsSkipped,
+          paymentsUnallocated,
         },
       };
     } catch (error: any) {
@@ -776,6 +981,9 @@ export async function importVyapaarData(
         invoices: 0,
         vendorTypes: 0,
         skipped: 0,
+        payments: 0,
+        paymentsSkipped: 0,
+        paymentsUnallocated: 0,
       },
     };
   });

@@ -8070,13 +8070,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/import-vyapaar', isAuthenticated, requireRole('admin'), upload.fields([
     { name: 'partyReport', maxCount: 1 },
     { name: 'saleReport', maxCount: 1 },
-    { name: 'itemDetails', maxCount: 1 }
+    { name: 'itemDetails', maxCount: 1 },
+    { name: 'paymentsReport', maxCount: 1 }
   ]), async (req: any, res: Response) => {
     try {
       const files = req.files as {
         partyReport?: Express.Multer.File[];
         saleReport?: Express.Multer.File[];
         itemDetails?: Express.Multer.File[];
+        paymentsReport?: Express.Multer.File[];
       };
 
       // Check if Sale Report is provided (Party Report is optional if vendors exist)
@@ -8128,24 +8130,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const partyPath = files?.partyReport?.[0] ? path.join(tmpDir, `party-${timestamp}.xlsx`) : null;
       const salePath = path.join(tmpDir, `sale-${timestamp}.xlsx`);
       const itemPath = path.join(tmpDir, `item-${timestamp}.xlsx`);
+      const paymentsPath = files?.paymentsReport?.[0] ? path.join(tmpDir, `payments-${timestamp}.xlsx`) : null;
 
       if (partyPath && files?.partyReport?.[0]) {
         fs.writeFileSync(partyPath, files.partyReport[0].buffer);
       }
       fs.writeFileSync(salePath, files.saleReport[0].buffer);
       fs.writeFileSync(itemPath, itemDetailsBuffer);
+      if (paymentsPath && files?.paymentsReport?.[0]) {
+        fs.writeFileSync(paymentsPath, files.paymentsReport[0].buffer);
+      }
 
       console.log('[DATA IMPORT] Starting import from uploaded files');
       console.log('[DATA IMPORT] Party Report:', partyPath ? 'provided' : 'not provided (using existing vendors)');
+      console.log('[DATA IMPORT] Payments Report:', paymentsPath ? 'provided' : 'not provided');
       
       // Run import
-      const result = await importVyapaarData(partyPath, salePath, itemPath);
+      const result = await importVyapaarData(partyPath, salePath, itemPath, paymentsPath);
 
       // Clean up temporary files
       try {
         if (partyPath) fs.unlinkSync(partyPath);
         fs.unlinkSync(salePath);
         fs.unlinkSync(itemPath);
+        if (paymentsPath) fs.unlinkSync(paymentsPath);
       } catch (cleanupError) {
         console.error('[DATA IMPORT] Failed to cleanup temp files:', cleanupError);
       }

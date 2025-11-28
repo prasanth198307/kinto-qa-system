@@ -30,6 +30,9 @@ interface ImportResult {
     invoices: number;
     vendorTypes: number;
     skipped: number;
+    payments: number;
+    paymentsSkipped: number;
+    paymentsUnallocated: number;
   };
 }
 
@@ -38,6 +41,7 @@ export default function DataImport() {
   const [partyFile, setPartyFile] = useState<File | null>(null);
   const [saleFile, setSaleFile] = useState<File | null>(null);
   const [itemFile, setItemFile] = useState<File | null>(null);
+  const [paymentsFile, setPaymentsFile] = useState<File | null>(null);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [importSuccessful, setImportSuccessful] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
@@ -83,9 +87,14 @@ export default function DataImport() {
       queryClient.invalidateQueries({ queryKey: ['/api/invoice-payments'] });
       queryClient.invalidateQueries({ queryKey: ['/api/vendor-types'] });
       
+      const hasPaymentIssues = (stats.paymentsSkipped || 0) > 0 || (stats.paymentsUnallocated || 0) > 0;
+      
       toast({
-        title: "Import Successful",
-        description: `Imported ${stats.vendors} vendors, ${stats.products} products, and ${stats.invoices} invoices`,
+        title: hasPaymentIssues ? "Import Completed with Warnings" : "Import Successful",
+        description: hasPaymentIssues 
+          ? `Imported ${stats.invoices} invoices, ${stats.payments || 0} payments. Check payment notes below for issues.`
+          : `Imported ${stats.vendors} vendors, ${stats.products} products, ${stats.invoices} invoices${stats.payments > 0 ? `, and ${stats.payments} payments` : ''}`,
+        variant: hasPaymentIssues ? "destructive" : "default",
       });
     },
     onError: (error: Error) => {
@@ -185,6 +194,9 @@ export default function DataImport() {
     formData.append('saleReport', saleFile);
     if (itemFile) {
       formData.append('itemDetails', itemFile);
+    }
+    if (paymentsFile) {
+      formData.append('paymentsReport', paymentsFile);
     }
 
     setImportResult(null);
@@ -371,6 +383,33 @@ export default function DataImport() {
             )}
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="payments-file" data-testid="label-payments-file">
+              Payments Report - Optional
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Separate payments received after invoices. Will be allocated to invoices using FIFO (oldest first)
+            </p>
+            <div className="flex items-center gap-2">
+              <Input
+                id="payments-file"
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={(e) => setPaymentsFile(e.target.files?.[0] || null)}
+                disabled={importMutation.isPending || importSuccessful}
+                data-testid="input-payments-file"
+              />
+              {paymentsFile && (
+                <CheckCircle2 className="h-5 w-5 text-green-600" data-testid="icon-payments-file-selected" />
+              )}
+            </div>
+            {paymentsFile && (
+              <p className="text-sm text-muted-foreground" data-testid="text-payments-filename">
+                Selected: {paymentsFile.name}
+              </p>
+            )}
+          </div>
+
           <div className="flex gap-2">
             <Button
               onClick={handleImport}
@@ -397,6 +436,7 @@ export default function DataImport() {
                   setPartyFile(null);
                   setSaleFile(null);
                   setItemFile(null);
+                  setPaymentsFile(null);
                   setImportResult(null);
                 }}
                 variant="outline"
@@ -441,7 +481,7 @@ export default function DataImport() {
           </CardHeader>
           {importResult.success && (
             <CardContent>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
                 <div className="space-y-1" data-testid="stat-vendors">
                   <p className="text-sm text-muted-foreground">Vendors</p>
                   <p className="text-2xl font-bold">{importResult.stats.vendors}</p>
@@ -454,6 +494,10 @@ export default function DataImport() {
                   <p className="text-sm text-muted-foreground">Invoices</p>
                   <p className="text-2xl font-bold">{importResult.stats.invoices}</p>
                 </div>
+                <div className="space-y-1" data-testid="stat-payments">
+                  <p className="text-sm text-muted-foreground">Payments (FIFO)</p>
+                  <p className="text-2xl font-bold">{importResult.stats.payments || 0}</p>
+                </div>
                 <div className="space-y-1" data-testid="stat-vendor-types">
                   <p className="text-sm text-muted-foreground">Vendor Types</p>
                   <p className="text-2xl font-bold">{importResult.stats.vendorTypes}</p>
@@ -465,6 +509,20 @@ export default function DataImport() {
                   <AlertTitle>Some Items Skipped</AlertTitle>
                   <AlertDescription>
                     {importResult.stats.skipped} items were skipped (duplicates or missing data)
+                  </AlertDescription>
+                </Alert>
+              )}
+              {((importResult.stats.paymentsSkipped || 0) > 0 || (importResult.stats.paymentsUnallocated || 0) > 0) && (
+                <Alert className="mt-4" variant="destructive" data-testid="alert-payment-issues">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Payment Import Warnings</AlertTitle>
+                  <AlertDescription>
+                    {(importResult.stats.paymentsSkipped || 0) > 0 && (
+                      <span className="block">{importResult.stats.paymentsSkipped} payments skipped (duplicates, missing vendor, or invalid data)</span>
+                    )}
+                    {(importResult.stats.paymentsUnallocated || 0) > 0 && (
+                      <span className="block">{importResult.stats.paymentsUnallocated} payments had excess amounts (no more unpaid invoices)</span>
+                    )}
                   </AlertDescription>
                 </Alert>
               )}
