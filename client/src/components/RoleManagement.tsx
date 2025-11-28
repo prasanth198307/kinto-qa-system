@@ -52,6 +52,7 @@ const AVAILABLE_SCREENS: ScreenDefinition[] = [
   { key: 'vendor_analytics', label: 'Vendor Analytics', allowedActions: ['view'] },
   { key: 'pending_payments', label: 'Pending Payments', allowedActions: ['view'] },
   { key: 'cancelled_invoices_report', label: 'Cancelled Invoices Report', allowedActions: ['view'] },
+  { key: 'write_off_report', label: 'Write-Off Report', allowedActions: ['view'] },
   
   // Master Data - Products & Materials
   { key: 'products', label: 'Products', allowedActions: ['view', 'create', 'edit', 'delete'] },
