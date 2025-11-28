@@ -655,7 +655,9 @@ export async function importVyapaarData(
           igstAmount: Math.round(igstTotal * 100),
           roundOff: 0,
           totalAmount: Math.round(grandTotal * 100),
-          amountReceived: Math.round(receivedAmount * 100), // Set payment received from Vyapaar data
+          // If Payments.xlsx is provided, set amountReceived=0 and let FIFO allocation handle it
+          // Otherwise use Sale Report's "Received" column
+          amountReceived: paymentsFilePath ? 0 : Math.round(receivedAmount * 100),
           remarks: sale.__EMPTY_11 || null, // Description column
           vehicleNumber: (sale.__EMPTY_12 || '').substring(0, 50) || null, // Vehicle No column (truncate to 50 chars)
           placeOfSupply: buyerState ? `${buyerStateCode}-${buyerState}` : null,
@@ -708,8 +710,9 @@ export async function importVyapaarData(
           });
         }
         
-        // Add payment record if payment received
-        if (receivedAmount > 0) {
+        // Add payment record if payment received (only if NO Payments.xlsx provided)
+        // When Payments.xlsx is provided, ALL payments come from that file via FIFO allocation
+        if (receivedAmount > 0 && !paymentsFilePath) {
           // Determine payment type based on balance
           const balanceDue = Number(sale.__EMPTY_8) || 0;
           const invoicePaymentType = balanceDue === 0 ? 'Full' : 'Partial';
