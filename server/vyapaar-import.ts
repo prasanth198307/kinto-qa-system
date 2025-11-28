@@ -608,10 +608,12 @@ export async function importVyapaarData(
         const buyerState = vendorRecord?.state || (buyerStateCode ? getStateNameFromCode(buyerStateCode) : null);
         
         // Extract payment info from Sale Report
-        // Column mapping: __EMPTY_5=Total, __EMPTY_6=Payment Type, __EMPTY_7=Received Amount, __EMPTY_8=Balance Due, __EMPTY_9=Payment Status
+        // New format column mapping (with Due Date column):
+        // __EMPTY_5=Total, __EMPTY_6=Payment Type, __EMPTY_7=Received Amount, __EMPTY_8=Balance Due
+        // __EMPTY_9=Due Date, __EMPTY_10=Status, __EMPTY_11=Description, __EMPTY_12=Vehicle No
         const receivedAmount = Number(sale.__EMPTY_7) || 0;
         const paymentType = sale.__EMPTY_6 || 'Cash';
-        const paymentStatus = sale.__EMPTY_9 || '';
+        const paymentStatus = sale.__EMPTY_10 || ''; // Status column (Paid, Unpaid, Overdue)
         
         const [newInvoice] = await tx.insert(invoices).values({
           invoiceNumber,
@@ -650,8 +652,8 @@ export async function importVyapaarData(
           roundOff: 0,
           totalAmount: Math.round(grandTotal * 100),
           amountReceived: Math.round(receivedAmount * 100), // Set payment received from Vyapaar data
-          remarks: sale.__EMPTY_10 || null,
-          vehicleNumber: sale.__EMPTY_11 || null,
+          remarks: sale.__EMPTY_11 || null, // Description column
+          vehicleNumber: (sale.__EMPTY_12 || '').substring(0, 50) || null, // Vehicle No column (truncate to 50 chars)
           placeOfSupply: buyerState ? `${buyerStateCode}-${buyerState}` : null,
           status: 'delivered',
         }).returning();
