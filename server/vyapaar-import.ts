@@ -607,6 +607,12 @@ export async function importVyapaarData(
         const buyerStateCode = vendorRecord?.gstNumber ? vendorRecord.gstNumber.substring(0, 2) : null;
         const buyerState = vendorRecord?.state || (buyerStateCode ? getStateNameFromCode(buyerStateCode) : null);
         
+        // Extract payment info from Sale Report
+        // Column mapping: __EMPTY_5=Total, __EMPTY_6=Payment Type, __EMPTY_7=Received Amount, __EMPTY_8=Balance Due, __EMPTY_9=Payment Status
+        const receivedAmount = Number(sale.__EMPTY_7) || 0;
+        const paymentType = sale.__EMPTY_6 || 'Cash';
+        const paymentStatus = sale.__EMPTY_9 || '';
+        
         const [newInvoice] = await tx.insert(invoices).values({
           invoiceNumber,
           invoiceDate: invoiceDate.toISOString(),
@@ -643,6 +649,7 @@ export async function importVyapaarData(
           igstAmount: Math.round(igstTotal * 100),
           roundOff: 0,
           totalAmount: Math.round(grandTotal * 100),
+          amountReceived: Math.round(receivedAmount * 100), // Set payment received from Vyapaar data
           remarks: sale.__EMPTY_10 || null,
           vehicleNumber: sale.__EMPTY_11 || null,
           placeOfSupply: buyerState ? `${buyerStateCode}-${buyerState}` : null,
@@ -695,17 +702,20 @@ export async function importVyapaarData(
           });
         }
         
-        // Add payment if exists (with number validation)
-        const paymentAmount = Number(sale.__EMPTY_7) || 0;
-        if (paymentAmount > 0) {
+        // Add payment record if payment received
+        if (receivedAmount > 0) {
+          // Determine payment type based on balance
+          const balanceDue = Number(sale.__EMPTY_8) || 0;
+          const invoicePaymentType = balanceDue === 0 ? 'Full' : 'Partial';
+          
           await tx.insert(invoicePayments).values({
-          invoiceId: newInvoice.id,
-          paymentDate: invoiceDate.toISOString(),
-          amount: Math.round(paymentAmount * 100),
-          paymentMethod: sale.__EMPTY_6 || 'Cash',
-          paymentType: 'Partial',
-          referenceNumber: null,
-          remarks: null,
+            invoiceId: newInvoice.id,
+            paymentDate: invoiceDate.toISOString(),
+            amount: Math.round(receivedAmount * 100),
+            paymentMethod: paymentType, // Cash, UPI, Bank Transfer, etc.
+            paymentType: invoicePaymentType,
+            referenceNumber: `VY-${invoiceNumber}`, // Vyapaar import reference
+            remarks: paymentStatus ? `Vyapaar status: ${paymentStatus}` : 'Imported from Vyapaar',
           });
         }
         
