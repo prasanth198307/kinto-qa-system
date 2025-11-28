@@ -5154,6 +5154,105 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get write-off report
+  app.get('/api/reports/write-offs', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { page = 1, pageSize = 25, dateFrom, dateTo, buyerName } = req.query;
+      const pageNum = Math.max(1, parseInt(page as string) || 1);
+      const pageSizeNum = Math.min(100, Math.max(1, parseInt(pageSize as string) || 25));
+      const offset = (pageNum - 1) * pageSizeNum;
+
+      // Build WHERE conditions for SQL-level filtering
+      const conditions: any[] = [
+        eq(invoicePayments.paymentType, 'Write-off'),
+        eq(invoicePayments.recordStatus, 1)
+      ];
+
+      if (dateFrom) {
+        conditions.push(sql`${invoicePayments.paymentDate}::date >= ${dateFrom}::date`);
+      }
+      if (dateTo) {
+        conditions.push(sql`${invoicePayments.paymentDate}::date <= ${dateTo}::date`);
+      }
+      if (buyerName) {
+        conditions.push(sql`LOWER(${invoices.buyerName}) LIKE LOWER(${'%' + buyerName + '%'})`);
+      }
+
+      // Get total count and aggregate stats with SQL-level filtering
+      const aggregateResult = await db
+        .select({
+          totalCount: sql<number>`COUNT(*)::int`,
+          totalWriteOffAmount: sql<number>`COALESCE(SUM(${invoicePayments.amount}), 0)::bigint`,
+        })
+        .from(invoicePayments)
+        .innerJoin(invoices, eq(invoicePayments.invoiceId, invoices.id))
+        .where(and(...conditions));
+
+      const totalCount = aggregateResult[0]?.totalCount || 0;
+      const totalWriteOffAmount = Number(aggregateResult[0]?.totalWriteOffAmount || 0);
+      const totalPages = Math.ceil(totalCount / pageSizeNum);
+
+      // Fetch paginated write-off payments with SQL-level filtering
+      const writeOffs = await db
+        .select({
+          id: invoicePayments.id,
+          invoiceId: invoicePayments.invoiceId,
+          amount: invoicePayments.amount,
+          paymentDate: invoicePayments.paymentDate,
+          remarks: invoicePayments.remarks,
+          recordedBy: invoicePayments.recordedBy,
+          createdAt: invoicePayments.createdAt,
+          invoiceNumber: invoices.invoiceNumber,
+          invoiceDate: invoices.invoiceDate,
+          buyerName: invoices.buyerName,
+          totalAmount: invoices.totalAmount,
+        })
+        .from(invoicePayments)
+        .innerJoin(invoices, eq(invoicePayments.invoiceId, invoices.id))
+        .where(and(...conditions))
+        .orderBy(desc(invoicePayments.createdAt))
+        .limit(pageSizeNum)
+        .offset(offset);
+
+      // Fetch user names for recordedBy
+      const userIds = [...new Set(writeOffs.map(wo => wo.recordedBy).filter(Boolean))];
+      const userNames: Record<string, string> = {};
+      
+      if (userIds.length > 0) {
+        const usersData = await db.select({ id: users.id, username: users.username })
+          .from(users)
+          .where(sql`${users.id} IN (${sql.join(userIds.map(id => sql`${id}`), sql`,`)})`);
+        
+        usersData.forEach(u => {
+          userNames[u.id] = u.username;
+        });
+      }
+
+      // Add user names to write-offs
+      const writeOffsWithUserNames = writeOffs.map(wo => ({
+        ...wo,
+        recordedByName: wo.recordedBy ? userNames[wo.recordedBy] || 'Unknown' : 'System',
+      }));
+
+      res.json({
+        data: writeOffsWithUserNames,
+        meta: {
+          page: pageNum,
+          pageSize: pageSizeNum,
+          total: totalCount,
+          totalPages,
+        },
+        aggregateStats: {
+          totalWriteOffAmount,
+          totalCount,
+        },
+      });
+    } catch (error) {
+      console.error("Error fetching write-off report:", error);
+      res.status(500).json({ message: "Failed to fetch write-off report" });
+    }
+  });
+
   // Delete a payment
   app.delete('/api/invoice-payments/:id', requireRole('admin'), async (req: any, res) => {
     try {

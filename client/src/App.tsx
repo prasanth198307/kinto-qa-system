@@ -51,6 +51,7 @@ import PendingPayments from "@/pages/pending-payments";
 import PaymentManagement from "@/pages/payment-management";
 import CreditNotes from "@/pages/credit-notes";
 import CancelledInvoices from "@/pages/cancelled-invoices";
+import WriteOffReport from "@/pages/write-off-report";
 import InventorySummaryDashboard from "@/components/InventorySummaryDashboard";
 import TodayProductionStats from "@/components/TodayProductionStats";
 import RolePermissionsView from "@/components/RolePermissionsView";
@@ -326,6 +327,8 @@ function ManagerDashboard() {
         return <DispatchTracking showHeader={false} />;
       case 'cancelled-invoices':
         return <CancelledInvoices />;
+      case 'write-off-report':
+        return <WriteOffReport />;
       case 'reports':
         return <Reports showHeader={false} />;
       default:
@@ -463,6 +466,7 @@ function AdminDashboard() {
         { id: "payment-management", label: "Payment Management", icon: CreditCard },
         { id: "credit-notes", label: "Credit Notes", icon: FileText },
         { id: "cancelled-invoices", label: "Cancelled Invoices", icon: FileX },
+        { id: "write-off-report", label: "Write-Off Report", icon: XCircle },
         { id: "sales-returns", label: "Sales Returns", icon: Package },
       ],
       quickActions: [
@@ -662,6 +666,8 @@ function AdminDashboard() {
         return <CreditNotes />;
       case 'cancelled-invoices':
         return <CancelledInvoices />;
+      case 'write-off-report':
+        return <WriteOffReport />;
       case 'dispatch-tracking':
         return <DispatchTracking showHeader={false} />;
       case 'machine-startup-reminders':
@@ -1046,6 +1052,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "payment-management", label: "Payment Management", icon: CreditCard, onClick: () => setLocation('/payment-management') },
         { id: "credit-notes", label: "Credit Notes", icon: FileText, onClick: () => setLocation('/credit-notes') },
         { id: "cancelled-invoices", label: "Cancelled Invoices", icon: FileX, onClick: () => setLocation('/cancelled-invoices') },
+        { id: "write-off-report", label: "Write-Off Report", icon: XCircle, onClick: () => setLocation('/write-off-report') },
         { id: "sales-returns", label: "Sales Returns", icon: Package, onClick: () => setLocation('/sales-returns') },
       ],
     },
@@ -1244,6 +1251,7 @@ function Router() {
       <ProtectedRoute path="/sales-returns" component={SalesReturns} />
       <ProtectedRoute path="/credit-notes" component={CreditNotes} />
       <ProtectedRoute path="/cancelled-invoices" component={CancelledInvoices} />
+      <ProtectedRoute path="/write-off-report" component={WriteOffReport} />
       <ProtectedRoute path="/pending-payments" component={PendingPaymentsPage} />
       <ProtectedRoute path="/payment-management" component={PaymentManagementPage} />
       <ProtectedRoute path="/vendor-analytics" component={VendorAnalyticsPage} />
