@@ -655,9 +655,9 @@ export async function importVyapaarData(
           igstAmount: Math.round(igstTotal * 100),
           roundOff: 0,
           totalAmount: Math.round(grandTotal * 100),
-          // If Payments.xlsx is provided, set amountReceived=0 and let FIFO allocation handle it
-          // Otherwise use Sale Report's "Received" column
-          amountReceived: paymentsFilePath ? 0 : Math.round(receivedAmount * 100),
+          // ALWAYS use Sale Report's "Received" column - this is the source of truth from Vyapaar
+          // Payments.xlsx is just for payment history/linking, doesn't change received amounts
+          amountReceived: Math.round(receivedAmount * 100),
           remarks: sale.__EMPTY_11 || null, // Description column
           vehicleNumber: (sale.__EMPTY_12 || '').substring(0, 50) || null, // Vehicle No column (truncate to 50 chars)
           placeOfSupply: buyerState ? `${buyerStateCode}-${buyerState}` : null,
@@ -710,9 +710,9 @@ export async function importVyapaarData(
           });
         }
         
-        // Add payment record if payment received (only if NO Payments.xlsx provided)
-        // When Payments.xlsx is provided, ALL payments come from that file via FIFO allocation
-        if (receivedAmount > 0 && !paymentsFilePath) {
+        // ALWAYS create VY- payment record if payment received from Sale Report
+        // This is the source of truth from Vyapaar - Payments.xlsx is just for additional history
+        if (receivedAmount > 0) {
           // Determine payment type based on balance
           const balanceDue = Number(sale.__EMPTY_8) || 0;
           const invoicePaymentType = balanceDue === 0 ? 'Full' : 'Partial';
@@ -946,39 +946,29 @@ export async function importVyapaarData(
           
           let remainingAmount = amountPaise;
           
-          // Allocate payment to invoices using FIFO, respecting Sale Report caps
+          // Link payment to invoices using FIFO (for history only - doesn't change amountReceived)
+          // amountReceived is already set from Sale Report - Payments.xlsx is just for tracking
           for (const invoice of vendorInvoices) {
             if (remainingAmount <= 0) break;
             
-            // Check if this invoice has a Sale Report cap
-            const saleReportCap = saleReportPayments.get(invoice.id);
-            const maxAllowedReceived = saleReportCap 
-              ? Math.min(saleReportCap.receivedAmount, invoice.totalAmount) 
-              : invoice.totalAmount;
-            
-            // Calculate how much more we can allocate (respecting the cap)
-            const roomUnderCap = maxAllowedReceived - invoice.amountReceived;
-            if (roomUnderCap <= 0) continue; // Already at or over cap
-            
+            // Link up to the invoice total (for history tracking)
             const outstanding = invoice.totalAmount - invoice.amountReceived;
-            const allocationAmount = Math.min(remainingAmount, outstanding, roomUnderCap);
+            const allocationAmount = Math.min(remainingAmount, Math.max(outstanding, invoice.totalAmount));
             
             if (allocationAmount > 0) {
-              // Create payment record for this invoice
+              // Create payment record for history linking (does NOT update invoice.amountReceived)
               await tx.insert(invoicePayments).values({
                 invoiceId: invoice.id,
                 paymentDate: paymentDate.toISOString(),
                 amount: allocationAmount,
                 paymentMethod: paymentMethod,
-                paymentType: allocationAmount >= outstanding ? 'Full' : 'Partial',
+                paymentType: 'Partial', // PY payments are just history links
                 referenceNumber: referenceNo ? `PY-${referenceNo}` : `PY-${invoice.invoiceNumber}`,
-                remarks: description || 'Imported from Vyapaar Payments file (FIFO allocated)',
+                remarks: description || 'Imported from Vyapaar Payments file (history link)',
               });
               
-              // Update invoice amountReceived
-              await tx.update(invoices)
-                .set({ amountReceived: invoice.amountReceived + allocationAmount })
-                .where(eq(invoices.id, invoice.id));
+              // NOTE: We do NOT update invoice.amountReceived here
+              // Invoice received amounts are set from Sale Report and are the source of truth
               
               remainingAmount -= allocationAmount;
               paymentsImported++;
@@ -995,65 +985,8 @@ export async function importVyapaarData(
           }
         }
         
-        console.log(`✅ Payments import complete: ${paymentsImported} imported, ${paymentsSkipped} skipped, ${paymentsUnallocated} unallocated`);
-        console.log(`Vendors with payments from Payments.xlsx: ${vendorsWithPayments.size}`);
-        
-        // FALLBACK: For invoices not fully paid by Payments.xlsx, use Sale Report "Received" column
-        // This fills the gap between what Payments.xlsx allocated and what Sale Report shows as received
-        let fallbackPaymentsCreated = 0;
-        let fallbackTotalAmount = 0;
-        let fallbackChecked = 0;
-        let fallbackWithGap = 0;
-        console.log('Processing fallback payments from Sale Report for unpaid invoice balances...');
-        console.log(`Checking ${saleReportPayments.size} entries from Sale Report...`);
-        
-        for (const [invoiceId, paymentData] of saleReportPayments) {
-          fallbackChecked++;
-          // Get current invoice state after Payments.xlsx allocation
-          const invoiceCheck = await tx.select().from(invoices).where(eq(invoices.id, invoiceId)).then(r => r[0]);
-          if (!invoiceCheck) {
-            console.log(`Invoice ${invoiceId} not found in DB`);
-            continue;
-          }
-          
-          // Calculate how much Sale Report says was received vs what we've allocated
-          const saleReportReceived = paymentData.receivedAmount; // From Sale Report "Received" column
-          const currentReceived = invoiceCheck.amountReceived;   // What we've allocated so far
-          
-          // If Sale Report shows more received than we've allocated, add the difference
-          if (saleReportReceived > currentReceived) {
-            fallbackWithGap++;
-            const gapAmount = saleReportReceived - currentReceived;
-            const maxCanReceive = invoiceCheck.totalAmount - currentReceived;
-            const paymentAmount = Math.min(gapAmount, maxCanReceive);
-            
-            if (paymentAmount > 0) {
-              await tx.insert(invoicePayments).values({
-                invoiceId: invoiceId,
-                paymentDate: paymentData.invoiceDate,
-                amount: paymentAmount,
-                paymentMethod: paymentData.paymentType,
-                paymentType: (currentReceived + paymentAmount) >= invoiceCheck.totalAmount ? 'Full' : 'Partial',
-                referenceNumber: `VY-${paymentData.invoiceNumber}`,
-                remarks: paymentData.paymentStatus 
-                  ? `Vyapaar Sale Report (gap fill): ${paymentData.paymentStatus}` 
-                  : 'Imported from Vyapaar Sale Report (gap fill)',
-              });
-              
-              // Update invoice amountReceived
-              await tx.update(invoices)
-                .set({ amountReceived: currentReceived + paymentAmount })
-                .where(eq(invoices.id, invoiceId));
-              
-              fallbackPaymentsCreated++;
-              fallbackTotalAmount += paymentAmount;
-            }
-          }
-        }
-        
-        console.log(`Fallback: Checked ${fallbackChecked}, found ${fallbackWithGap} with gap`);
-        console.log(`✅ Fallback payments from Sale Report: ${fallbackPaymentsCreated} created, total ₹${(fallbackTotalAmount / 100).toFixed(2)}`);
-        paymentsImported += fallbackPaymentsCreated;
+        console.log(`✅ Payments.xlsx import complete: ${paymentsImported} linked, ${paymentsSkipped} skipped, ${paymentsUnallocated} unallocated`);
+        console.log(`Note: Payments.xlsx is for payment history only - invoice amounts are from Sale Report`);
       }
       
       console.log('Import transaction completed successfully');
