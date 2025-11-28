@@ -156,7 +156,11 @@ function fuzzyMatch(str1: string, str2: string): boolean {
   for (const v1 of variants1) {
     for (const v2 of variants2) {
       if (v1 === v2) return true;
-      if (v1.includes(v2) || v2.includes(v1)) return true;
+      // Only do substring matching if both strings are at least 4 chars
+      // This prevents short strings like "a" from matching everything
+      if (v1.length >= 4 && v2.length >= 4) {
+        if (v1.includes(v2) || v2.includes(v1)) return true;
+      }
     }
   }
   
