@@ -79,6 +79,8 @@ const editPaymentSchema = z.object({
   referenceNumber: z.string().optional(),
   bankName: z.string().optional(),
   remarks: z.string().optional(),
+  amount: z.string().optional(),
+  amountChangeReason: z.string().optional(),
 });
 
 type FIFOPaymentFormData = z.infer<typeof fifoPaymentSchema>;
@@ -193,18 +195,26 @@ export default function PaymentManagement() {
       referenceNumber: "",
       bankName: "",
       remarks: "",
+      amount: "",
+      amountChangeReason: "",
     },
   });
 
   const editMutation = useMutation({
-    mutationFn: async (data: EditPaymentFormData & { paymentId: string }) => {
-      const payload = {
+    mutationFn: async (data: EditPaymentFormData & { paymentId: string; originalAmount: number }) => {
+      const newAmount = data.amount ? Math.round(parseFloat(data.amount) * 100) : undefined;
+      const payload: any = {
         paymentDate: new Date(data.paymentDate).toISOString(),
         paymentMethod: data.paymentMethod,
         referenceNumber: data.referenceNumber,
         bankName: data.bankName,
         remarks: data.remarks,
       };
+      // Only include amount if it changed
+      if (newAmount !== undefined && newAmount !== data.originalAmount) {
+        payload.amount = newAmount;
+        payload.amountChangeReason = data.amountChangeReason;
+      }
       await apiRequest('PATCH', `/api/invoice-payments/${data.paymentId}`, payload);
     },
     onSuccess: () => {
@@ -235,13 +245,21 @@ export default function PaymentManagement() {
       referenceNumber: payment.referenceNumber || "",
       bankName: payment.bankName || "",
       remarks: payment.remarks || "",
+      amount: (payment.amount / 100).toFixed(2),
+      amountChangeReason: "",
     });
     setShowEditDialog(true);
   };
 
+  // Check if amount can be edited (only PY- payments, not VY- imports)
+  const canEditAmount = (payment: any) => {
+    const refNum = payment?.referenceNumber || '';
+    return !refNum.startsWith('VY-');
+  };
+
   const onEditSubmit = (data: EditPaymentFormData) => {
     if (editPayment) {
-      editMutation.mutate({ ...data, paymentId: editPayment.id });
+      editMutation.mutate({ ...data, paymentId: editPayment.id, originalAmount: editPayment.amount });
     }
   };
 
@@ -758,19 +776,67 @@ export default function PaymentManagement() {
           </DialogHeader>
           <Form {...editForm}>
             <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
-              <FormField
-                control={editForm.control}
-                name="paymentDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Payment Date</FormLabel>
-                    <FormControl>
-                      <Input {...field} type="date" data-testid="input-edit-payment-date" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={editForm.control}
+                  name="paymentDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Payment Date</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="date" data-testid="input-edit-payment-date" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={editForm.control}
+                  name="amount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Amount (₹)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field} 
+                          type="number" 
+                          step="0.01"
+                          disabled={!canEditAmount(editPayment)}
+                          data-testid="input-edit-amount" 
+                        />
+                      </FormControl>
+                      {!canEditAmount(editPayment) && (
+                        <p className="text-xs text-muted-foreground">
+                          VY- payments cannot be edited (Vyapaar import)
+                        </p>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {canEditAmount(editPayment) && editForm.watch('amount') !== (editPayment?.amount / 100).toFixed(2) && (
+                <FormField
+                  control={editForm.control}
+                  name="amountChangeReason"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Reason for Amount Change *</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          {...field} 
+                          rows={2} 
+                          placeholder="Please provide a reason for changing the amount..." 
+                          data-testid="input-edit-amount-reason" 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               <FormField
                 control={editForm.control}

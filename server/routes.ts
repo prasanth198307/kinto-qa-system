@@ -6484,11 +6484,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Edit Payment - Update payment date, method, reference, bank, remarks
+  // Edit Payment - Update payment date, method, reference, bank, remarks, and amount (PY- only)
   app.patch('/api/invoice-payments/:id', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const { id } = req.params;
-      const { paymentDate, paymentMethod, referenceNumber, bankName, remarks } = req.body;
+      const { paymentDate, paymentMethod, referenceNumber, bankName, remarks, amount, amountChangeReason } = req.body;
 
       // Get the payment to verify it exists and is not cancelled
       const [payment] = await db.select().from(invoicePayments).where(eq(invoicePayments.id, id));
@@ -6499,6 +6499,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (payment.cancelledAt) {
         return res.status(400).json({ message: "Cannot edit a cancelled payment" });
+      }
+
+      if (payment.paymentType === 'Write-off') {
+        return res.status(400).json({ message: "Cannot edit write-off payments" });
+      }
+
+      // Check if trying to edit amount
+      const isAmountChange = amount !== undefined && amount !== payment.amount;
+      
+      if (isAmountChange) {
+        // Only allow amount changes for PY- payments (manually entered), not VY- (Vyapaar imports)
+        const refNum = payment.referenceNumber || '';
+        if (refNum.startsWith('VY-')) {
+          return res.status(400).json({ 
+            message: "Cannot edit amount for Vyapaar-imported payments (VY-). These are authoritative records that must match the original Vyapaar data. Please cancel and re-enter if needed." 
+          });
+        }
+
+        // Require reason for amount changes
+        if (!amountChangeReason || !amountChangeReason.trim()) {
+          return res.status(400).json({ message: "A reason is required when changing payment amount" });
+        }
+
+        // Validate amount is positive
+        if (amount <= 0) {
+          return res.status(400).json({ message: "Payment amount must be positive" });
+        }
       }
 
       // Update the payment
@@ -6521,21 +6548,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (remarks !== undefined) {
         updateData.remarks = remarks || null;
       }
+      if (isAmountChange) {
+        updateData.amount = amount;
+      }
+
+      const oldAmount = payment.amount;
 
       await db.update(invoicePayments)
         .set(updateData)
         .where(eq(invoicePayments.id, id));
 
+      // If amount changed, recalculate invoice's amountReceived
+      if (isAmountChange) {
+        // Get all active payments for this invoice
+        const allPayments = await db.select()
+          .from(invoicePayments)
+          .where(and(
+            eq(invoicePayments.invoiceId, payment.invoiceId),
+            eq(invoicePayments.recordStatus, 1)
+          ));
+        
+        // Only count non-cancelled payments
+        const totalReceived = allPayments
+          .filter(p => !p.cancelledAt)
+          .reduce((sum, p) => sum + p.amount, 0);
+        
+        // Update invoice amountReceived
+        await db.update(invoices)
+          .set({ 
+            amountReceived: totalReceived,
+            updatedAt: new Date().toISOString()
+          })
+          .where(eq(invoices.id, payment.invoiceId));
+
+        await logAudit(
+          req.user?.id, 
+          'UPDATE', 
+          'invoice_payments', 
+          id, 
+          `Amount changed from ₹${(oldAmount / 100).toFixed(2)} to ₹${(amount / 100).toFixed(2)}. Reason: ${amountChangeReason}. Invoice balance recalculated.`
+        );
+      } else {
+        await logAudit(
+          req.user?.id, 
+          'UPDATE', 
+          'invoice_payments', 
+          id, 
+          `Updated payment details: ${Object.keys(updateData).filter(k => k !== 'updatedAt').join(', ')}`
+        );
+      }
+
       // Fetch updated payment
       const [updatedPayment] = await db.select().from(invoicePayments).where(eq(invoicePayments.id, id));
-
-      await logAudit(
-        req.user?.id, 
-        'UPDATE', 
-        'invoice_payments', 
-        id, 
-        `Updated payment details: ${Object.keys(updateData).filter(k => k !== 'updatedAt').join(', ')}`
-      );
 
       res.json({ payment: updatedPayment, message: "Payment updated successfully" });
     } catch (error) {
