@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, salesReturns, salesReturnItems, creditNotes, creditNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes, insertDocumentCategorySchema, insertDocumentSchema, insertExpenseCategorySchema, insertExpenseVoucherSchema, insertExpenseItemSchema, insertExpenseAttachmentSchema } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, salesReturns, salesReturnItems, creditNotes, creditNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes, vendors, insertDocumentCategorySchema, insertDocumentSchema, insertExpenseCategorySchema, insertExpenseVoucherSchema, insertExpenseItemSchema, insertExpenseAttachmentSchema } from "@shared/schema";
 import { format } from "date-fns";
 import { z } from "zod";
 import path from "path";
@@ -4991,6 +4991,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Payment History - Get all payments with linked invoice and vendor details
+  // MUST be before /:invoiceId route to avoid "history" being matched as invoiceId
+  app.get('/api/invoice-payments/history', isAuthenticated, async (req: any, res) => {
+    try {
+      const payments = await db.select({
+        id: invoicePayments.id,
+        invoiceId: invoicePayments.invoiceId,
+        paymentDate: invoicePayments.paymentDate,
+        amount: invoicePayments.amount,
+        paymentMethod: invoicePayments.paymentMethod,
+        referenceNumber: invoicePayments.referenceNumber,
+        paymentType: invoicePayments.paymentType,
+        bankName: invoicePayments.bankName,
+        remarks: invoicePayments.remarks,
+        cancelledAt: invoicePayments.cancelledAt,
+        cancellationRemarks: invoicePayments.cancellationRemarks,
+        invoiceNumber: invoices.invoiceNumber,
+        invoiceDate: invoices.invoiceDate,
+        vendorId: vendors.id,
+        vendorName: vendors.vendorName,
+      })
+      .from(invoicePayments)
+      .leftJoin(invoices, eq(invoicePayments.invoiceId, invoices.id))
+      .leftJoin(vendors, eq(invoices.buyerName, vendors.vendorName))
+      .where(eq(invoicePayments.recordStatus, 1))
+      .orderBy(desc(invoicePayments.paymentDate));
+
+      res.json(payments);
+    } catch (error: any) {
+      console.error("Error fetching payment history:", error?.message || error);
+      res.status(500).json({ message: "Failed to fetch payment history" });
+    }
+  });
+
   // Get payments for a specific invoice
   app.get('/api/invoice-payments/:invoiceId', isAuthenticated, async (req: any, res) => {
     try {
@@ -6447,39 +6481,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error allocating payment:", error);
       res.status(500).json({ message: "Failed to allocate payment" });
-    }
-  });
-
-  // Payment History - Get all payments with linked invoice and vendor details
-  app.get('/api/invoice-payments/history', isAuthenticated, async (req: any, res) => {
-    try {
-      const payments = await db.select({
-        id: invoicePayments.id,
-        invoiceId: invoicePayments.invoiceId,
-        paymentDate: invoicePayments.paymentDate,
-        amount: invoicePayments.amount,
-        paymentMethod: invoicePayments.paymentMethod,
-        referenceNumber: invoicePayments.referenceNumber,
-        paymentType: invoicePayments.paymentType,
-        bankName: invoicePayments.bankName,
-        remarks: invoicePayments.remarks,
-        cancelledAt: invoicePayments.cancelledAt,
-        cancellationRemarks: invoicePayments.cancellationRemarks,
-        invoiceNumber: invoices.invoiceNumber,
-        invoiceDate: invoices.invoiceDate,
-        vendorId: vendors.id,
-        vendorName: vendors.vendorName,
-      })
-      .from(invoicePayments)
-      .leftJoin(invoices, eq(invoicePayments.invoiceId, invoices.id))
-      .leftJoin(vendors, eq(invoices.buyerName, vendors.vendorName))
-      .where(eq(invoicePayments.recordStatus, 1))
-      .orderBy(sql`${invoicePayments.paymentDate} DESC`);
-
-      res.json(payments);
-    } catch (error) {
-      console.error("Error fetching payment history:", error);
-      res.status(500).json({ message: "Failed to fetch payment history" });
     }
   });
 
