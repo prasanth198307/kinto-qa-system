@@ -6509,14 +6509,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isAmountChange = amount !== undefined && amount !== payment.amount;
       
       if (isAmountChange) {
-        // Only allow amount changes for PY- payments (manually entered), not VY- (Vyapaar imports)
-        const refNum = payment.referenceNumber || '';
-        if (refNum.startsWith('VY-')) {
-          return res.status(400).json({ 
-            message: "Cannot edit amount for Vyapaar-imported payments (VY-). These are authoritative records that must match the original Vyapaar data. Please cancel and re-enter if needed." 
-          });
-        }
-
         // Require reason for amount changes
         if (!amountChangeReason || !amountChangeReason.trim()) {
           return res.status(400).json({ message: "A reason is required when changing payment amount" });

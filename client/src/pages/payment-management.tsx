@@ -251,10 +251,10 @@ export default function PaymentManagement() {
     setShowEditDialog(true);
   };
 
-  // Check if amount can be edited (only PY- payments, not VY- imports)
-  const canEditAmount = (payment: any) => {
+  // Check if payment is a VY- import (Vyapaar)
+  const isVyapaarPayment = (payment: any) => {
     const refNum = payment?.referenceNumber || '';
-    return !refNum.startsWith('VY-');
+    return refNum.startsWith('VY-');
   };
 
   const onEditSubmit = (data: EditPaymentFormData) => {
@@ -802,40 +802,41 @@ export default function PaymentManagement() {
                           {...field} 
                           type="number" 
                           step="0.01"
-                          disabled={!canEditAmount(editPayment)}
                           data-testid="input-edit-amount" 
                         />
                       </FormControl>
-                      {!canEditAmount(editPayment) && (
-                        <p className="text-xs text-muted-foreground">
-                          VY- payments cannot be edited (Vyapaar import)
-                        </p>
-                      )}
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
 
-              {canEditAmount(editPayment) && editForm.watch('amount') !== (editPayment?.amount / 100).toFixed(2) && (
-                <FormField
-                  control={editForm.control}
-                  name="amountChangeReason"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Reason for Amount Change *</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          {...field} 
-                          rows={2} 
-                          placeholder="Please provide a reason for changing the amount..." 
-                          data-testid="input-edit-amount-reason" 
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
+              {editForm.watch('amount') !== (editPayment?.amount / 100).toFixed(2) && (
+                <>
+                  {isVyapaarPayment(editPayment) && (
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-md text-amber-800 text-sm">
+                      <strong>Warning:</strong> This is a Vyapaar-imported payment (VY-). Changing this amount will affect the Vyapaar totals matching.
+                    </div>
                   )}
-                />
+                  <FormField
+                    control={editForm.control}
+                    name="amountChangeReason"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Reason for Amount Change *</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            {...field} 
+                            rows={2} 
+                            placeholder="Please provide a reason for changing the amount..." 
+                            data-testid="input-edit-amount-reason" 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
               )}
 
               <FormField
