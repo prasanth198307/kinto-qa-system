@@ -881,9 +881,9 @@ export async function importVyapaarData(
           const vendorInvoices = await tx.select().from(invoices)
             .where(and(
               eq(invoices.buyerName, vendorRecord.vendorName),
-              sql`${invoices.total_amount} > ${invoices.amount_received}`
+              sql`${invoices.totalAmount} > ${invoices.amountReceived}`
             ))
-            .orderBy(sql`${invoices.invoice_date} ASC`);
+            .orderBy(invoices.invoiceDate);
           
           let remainingAmount = amountPaise;
           
