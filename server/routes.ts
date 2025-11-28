@@ -4912,10 +4912,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allInvoices = await storage.getAllInvoices();
       const allPayments = await storage.getAllPayments();
       
-      // Calculate outstanding balance for each invoice
+      // Calculate outstanding balance for each invoice using amountReceived (source of truth from Sale Report)
       const invoicesWithBalance = allInvoices.map(invoice => {
-        const payments = allPayments.filter(p => p.invoiceId === invoice.id);
-        const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+        // Use invoice.amountReceived as source of truth (from Sale Report)
+        const totalPaid = invoice.amountReceived || 0;
         const outstandingBalance = Math.max(0, invoice.totalAmount - totalPaid);
         
         return {
@@ -6266,11 +6266,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const vendorItems = allItems.filter(item => invoiceIds.has(item.invoiceId));
         const totalQuantity = vendorItems.reduce((sum, item) => sum + item.quantity, 0);
 
-        // Calculate payments and outstanding balance
-        const vendorPayments = allPayments.filter(payment => 
-          vendorInvoices.some(inv => inv.id === payment.invoiceId)
-        );
-        const totalPaid = vendorPayments.reduce((sum, p) => sum + p.amount, 0);
+        // Calculate outstanding balance using invoice.amountReceived (source of truth from Sale Report)
+        const totalPaid = vendorInvoices.reduce((sum, inv) => sum + (inv.amountReceived || 0), 0);
         const outstandingBalance = totalRevenue - totalPaid;
 
         // Get vendor types for this vendor
