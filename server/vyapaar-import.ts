@@ -731,6 +731,62 @@ export async function importVyapaarData(
         invoiceCount++;
       }
       
+      // Store Sale Report received amounts for fallback (when vendor not in Payments.xlsx)
+      // Map: invoiceId -> { receivedAmount, paymentType, invoiceDate, vendorId }
+      const saleReportPayments = new Map<string, { 
+        receivedAmount: number; 
+        paymentType: string; 
+        invoiceDate: string; 
+        vendorId: string;
+        invoiceNumber: string;
+        paymentStatus: string;
+      }>();
+      
+      // Populate saleReportPayments map from the invoices we just created
+      const allInvoicesForFallback = await tx.select().from(invoices).where(eq(invoices.recordStatus, 1));
+      console.log(`Found ${allInvoicesForFallback.length} invoices in DB for fallback matching`);
+      console.log(`SaleData has ${saleData.length} entries for matching`);
+      
+      let matchCount = 0;
+      let noReceivedCount = 0;
+      let noBuyerCount = 0;
+      
+      for (const inv of allInvoicesForFallback) {
+        // Find the original sale data for this invoice
+        const saleMatch = saleData.find(s => {
+          const invNum = String(s.__EMPTY_1 || '');
+          return invNum && (invNum === inv.invoiceNumber || inv.invoiceNumber.startsWith(invNum + '-DUP'));
+        });
+        
+        if (saleMatch) {
+          matchCount++;
+          if (!inv.buyerName) {
+            noBuyerCount++;
+            continue;
+          }
+          const receivedAmount = Number(saleMatch.__EMPTY_7) || 0;
+          const paymentType = saleMatch.__EMPTY_6 || 'Cash';
+          const paymentStatus = saleMatch.__EMPTY_10 || '';
+          if (receivedAmount > 0) {
+            saleReportPayments.set(inv.id, {
+              receivedAmount: Math.round(receivedAmount * 100),
+              paymentType,
+              invoiceDate: inv.invoiceDate,
+              vendorId: inv.buyerName, // Use buyerName since there's no buyerId column
+              invoiceNumber: inv.invoiceNumber,
+              paymentStatus
+            });
+          } else {
+            noReceivedCount++;
+          }
+        }
+      }
+      console.log(`Matched ${matchCount} invoices, ${noReceivedCount} with zero received, ${noBuyerCount} with no buyer`);
+      console.log(`Stored ${saleReportPayments.size} Sale Report payments for fallback`);
+      
+      // Track vendors that receive payments from Payments.xlsx
+      const vendorsWithPayments = new Set<string>();
+      
       // Import separate payments file if provided (FIFO allocation to invoices)
       let paymentsImported = 0;
       let paymentsSkipped = 0;
@@ -919,6 +975,9 @@ export async function importVyapaarData(
             }
           }
           
+          // Track this vendor as having payments from Payments.xlsx
+          vendorsWithPayments.add(vendorId);
+          
           // If there's remaining amount (overpayment), log it
           if (remainingAmount > 0) {
             console.log(`⚠️ Unallocated payment for ${partyName}: ₹${(remainingAmount / 100).toFixed(2)} (no more unpaid invoices)`);
@@ -927,6 +986,64 @@ export async function importVyapaarData(
         }
         
         console.log(`✅ Payments import complete: ${paymentsImported} imported, ${paymentsSkipped} skipped, ${paymentsUnallocated} unallocated`);
+        console.log(`Vendors with payments from Payments.xlsx: ${vendorsWithPayments.size}`);
+        
+        // FALLBACK: For invoices not fully paid by Payments.xlsx, use Sale Report "Received" column
+        // This fills the gap between what Payments.xlsx allocated and what Sale Report shows as received
+        let fallbackPaymentsCreated = 0;
+        let fallbackTotalAmount = 0;
+        let fallbackChecked = 0;
+        let fallbackWithGap = 0;
+        console.log('Processing fallback payments from Sale Report for unpaid invoice balances...');
+        console.log(`Checking ${saleReportPayments.size} entries from Sale Report...`);
+        
+        for (const [invoiceId, paymentData] of saleReportPayments) {
+          fallbackChecked++;
+          // Get current invoice state after Payments.xlsx allocation
+          const invoiceCheck = await tx.select().from(invoices).where(eq(invoices.id, invoiceId)).then(r => r[0]);
+          if (!invoiceCheck) {
+            console.log(`Invoice ${invoiceId} not found in DB`);
+            continue;
+          }
+          
+          // Calculate how much Sale Report says was received vs what we've allocated
+          const saleReportReceived = paymentData.receivedAmount; // From Sale Report "Received" column
+          const currentReceived = invoiceCheck.amountReceived;   // What we've allocated so far
+          
+          // If Sale Report shows more received than we've allocated, add the difference
+          if (saleReportReceived > currentReceived) {
+            fallbackWithGap++;
+            const gapAmount = saleReportReceived - currentReceived;
+            const maxCanReceive = invoiceCheck.totalAmount - currentReceived;
+            const paymentAmount = Math.min(gapAmount, maxCanReceive);
+            
+            if (paymentAmount > 0) {
+              await tx.insert(invoicePayments).values({
+                invoiceId: invoiceId,
+                paymentDate: paymentData.invoiceDate,
+                amount: paymentAmount,
+                paymentMethod: paymentData.paymentType,
+                paymentType: (currentReceived + paymentAmount) >= invoiceCheck.totalAmount ? 'Full' : 'Partial',
+                referenceNumber: `VY-${paymentData.invoiceNumber}`,
+                remarks: paymentData.paymentStatus 
+                  ? `Vyapaar Sale Report (gap fill): ${paymentData.paymentStatus}` 
+                  : 'Imported from Vyapaar Sale Report (gap fill)',
+              });
+              
+              // Update invoice amountReceived
+              await tx.update(invoices)
+                .set({ amountReceived: currentReceived + paymentAmount })
+                .where(eq(invoices.id, invoiceId));
+              
+              fallbackPaymentsCreated++;
+              fallbackTotalAmount += paymentAmount;
+            }
+          }
+        }
+        
+        console.log(`Fallback: Checked ${fallbackChecked}, found ${fallbackWithGap} with gap`);
+        console.log(`✅ Fallback payments from Sale Report: ${fallbackPaymentsCreated} created, total ₹${(fallbackTotalAmount / 100).toFixed(2)}`);
+        paymentsImported += fallbackPaymentsCreated;
       }
       
       console.log('Import transaction completed successfully');
