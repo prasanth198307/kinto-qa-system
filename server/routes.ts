@@ -6484,6 +6484,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Edit Payment - Update payment date, method, reference, bank, remarks
+  app.patch('/api/invoice-payments/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { paymentDate, paymentMethod, referenceNumber, bankName, remarks } = req.body;
+
+      // Get the payment to verify it exists and is not cancelled
+      const [payment] = await db.select().from(invoicePayments).where(eq(invoicePayments.id, id));
+      
+      if (!payment) {
+        return res.status(404).json({ message: "Payment not found" });
+      }
+
+      if (payment.cancelledAt) {
+        return res.status(400).json({ message: "Cannot edit a cancelled payment" });
+      }
+
+      // Update the payment
+      const updateData: any = {
+        updatedAt: new Date().toISOString(),
+      };
+
+      if (paymentDate) {
+        updateData.paymentDate = new Date(paymentDate).toISOString();
+      }
+      if (paymentMethod) {
+        updateData.paymentMethod = paymentMethod;
+      }
+      if (referenceNumber !== undefined) {
+        updateData.referenceNumber = referenceNumber || null;
+      }
+      if (bankName !== undefined) {
+        updateData.bankName = bankName || null;
+      }
+      if (remarks !== undefined) {
+        updateData.remarks = remarks || null;
+      }
+
+      await db.update(invoicePayments)
+        .set(updateData)
+        .where(eq(invoicePayments.id, id));
+
+      // Fetch updated payment
+      const [updatedPayment] = await db.select().from(invoicePayments).where(eq(invoicePayments.id, id));
+
+      await logAudit(
+        req.user?.id, 
+        'UPDATE', 
+        'invoice_payments', 
+        id, 
+        `Updated payment details: ${Object.keys(updateData).filter(k => k !== 'updatedAt').join(', ')}`
+      );
+
+      res.json({ payment: updatedPayment, message: "Payment updated successfully" });
+    } catch (error) {
+      console.error("Error updating payment:", error);
+      res.status(500).json({ message: "Failed to update payment" });
+    }
+  });
+
   // Cancel Payment - Reverse payment allocation and restore invoice outstanding balance
   app.patch('/api/invoice-payments/:id/cancel', requireRole('admin', 'manager'), async (req: any, res) => {
     try {

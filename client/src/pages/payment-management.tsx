@@ -60,7 +60,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2, Plus, X, FileText, Search, Filter, Check, ChevronsUpDown } from "lucide-react";
+import { Loader2, Plus, X, FileText, Search, Filter, Check, ChevronsUpDown, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const fifoPaymentSchema = z.object({
@@ -73,7 +73,16 @@ const fifoPaymentSchema = z.object({
   remarks: z.string().optional(),
 });
 
+const editPaymentSchema = z.object({
+  paymentDate: z.string().min(1, "Payment date is required"),
+  paymentMethod: z.enum(["Cash", "Cheque", "NEFT", "RTGS", "UPI", "Other"]),
+  referenceNumber: z.string().optional(),
+  bankName: z.string().optional(),
+  remarks: z.string().optional(),
+});
+
 type FIFOPaymentFormData = z.infer<typeof fifoPaymentSchema>;
+type EditPaymentFormData = z.infer<typeof editPaymentSchema>;
 
 export default function PaymentManagement() {
   const { toast } = useToast();
@@ -82,6 +91,10 @@ export default function PaymentManagement() {
   const [cancelPaymentId, setCancelPaymentId] = useState<string | null>(null);
   const [cancellationRemarks, setCancellationRemarks] = useState("");
   const [vendorPopoverOpen, setVendorPopoverOpen] = useState(false);
+  
+  // Edit payment state
+  const [editPayment, setEditPayment] = useState<any>(null);
+  const [showEditDialog, setShowEditDialog] = useState(false);
   
   // Filters for payment history
   const [searchTerm, setSearchTerm] = useState("");
@@ -170,6 +183,67 @@ export default function PaymentManagement() {
       });
     },
   });
+
+  // Edit form
+  const editForm = useForm<EditPaymentFormData>({
+    resolver: zodResolver(editPaymentSchema),
+    defaultValues: {
+      paymentDate: "",
+      paymentMethod: "Cash",
+      referenceNumber: "",
+      bankName: "",
+      remarks: "",
+    },
+  });
+
+  const editMutation = useMutation({
+    mutationFn: async (data: EditPaymentFormData & { paymentId: string }) => {
+      const payload = {
+        paymentDate: new Date(data.paymentDate).toISOString(),
+        paymentMethod: data.paymentMethod,
+        referenceNumber: data.referenceNumber,
+        bankName: data.bankName,
+        remarks: data.remarks,
+      };
+      await apiRequest('PATCH', `/api/invoice-payments/${data.paymentId}`, payload);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/invoice-payments'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/invoice-payments/history'] });
+      toast({
+        title: "Success",
+        description: "Payment updated successfully",
+      });
+      setShowEditDialog(false);
+      setEditPayment(null);
+      editForm.reset();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleEditPayment = (payment: any) => {
+    setEditPayment(payment);
+    editForm.reset({
+      paymentDate: payment.paymentDate ? format(new Date(payment.paymentDate), "yyyy-MM-dd") : "",
+      paymentMethod: payment.paymentMethod || "Cash",
+      referenceNumber: payment.referenceNumber || "",
+      bankName: payment.bankName || "",
+      remarks: payment.remarks || "",
+    });
+    setShowEditDialog(true);
+  };
+
+  const onEditSubmit = (data: EditPaymentFormData) => {
+    if (editPayment) {
+      editMutation.mutate({ ...data, paymentId: editPayment.id });
+    }
+  };
 
   const onSubmit = (data: FIFOPaymentFormData) => {
     allocateMutation.mutate(data);
@@ -346,17 +420,30 @@ export default function PaymentManagement() {
                         )}
                       </TableCell>
                       <TableCell>
-                        {!payment.cancelledAt && payment.paymentType !== 'Write-off' && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setCancelPaymentId(payment.id)}
-                            data-testid={`button-cancel-${payment.id}`}
-                          >
-                            <X className="w-4 h-4 mr-1" />
-                            Cancel
-                          </Button>
-                        )}
+                        <div className="flex items-center gap-1">
+                          {!payment.cancelledAt && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditPayment(payment)}
+                              data-testid={`button-edit-${payment.id}`}
+                            >
+                              <Pencil className="w-4 h-4 mr-1" />
+                              Edit
+                            </Button>
+                          )}
+                          {!payment.cancelledAt && payment.paymentType !== 'Write-off' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setCancelPaymentId(payment.id)}
+                              data-testid={`button-cancel-${payment.id}`}
+                            >
+                              <X className="w-4 h-4 mr-1" />
+                              Cancel
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -651,6 +738,132 @@ export default function PaymentManagement() {
               <p>Processing payment allocation...</p>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Payment Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={(open) => {
+        setShowEditDialog(open);
+        if (!open) {
+          setEditPayment(null);
+          editForm.reset();
+        }
+      }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Payment</DialogTitle>
+            <DialogDescription>
+              Update payment details for {editPayment?.vendorName} - Invoice #{editPayment?.invoiceNumber}
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...editForm}>
+            <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
+              <FormField
+                control={editForm.control}
+                name="paymentDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Payment Date</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="date" data-testid="input-edit-payment-date" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editForm.control}
+                name="paymentMethod"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Payment Method</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-edit-payment-method">
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="Cash">Cash</SelectItem>
+                        <SelectItem value="Cheque">Cheque</SelectItem>
+                        <SelectItem value="NEFT">NEFT</SelectItem>
+                        <SelectItem value="RTGS">RTGS</SelectItem>
+                        <SelectItem value="UPI">UPI</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editForm.control}
+                name="referenceNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Reference Number</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Transaction ID / Cheque No" data-testid="input-edit-reference" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editForm.control}
+                name="bankName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Bank Name</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Bank name" data-testid="input-edit-bank-name" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editForm.control}
+                name="remarks"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Remarks</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} rows={3} placeholder="Additional notes" data-testid="input-edit-remarks" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setShowEditDialog(false);
+                    setEditPayment(null);
+                    editForm.reset();
+                  }}
+                  data-testid="button-cancel-edit"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={editMutation.isPending}
+                  data-testid="button-save-edit"
+                >
+                  {editMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Save Changes
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
 
