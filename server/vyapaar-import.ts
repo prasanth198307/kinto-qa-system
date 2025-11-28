@@ -615,9 +615,13 @@ export async function importVyapaarData(
         // New format column mapping (with Due Date column):
         // __EMPTY_5=Total, __EMPTY_6=Payment Type, __EMPTY_7=Received Amount, __EMPTY_8=Balance Due
         // __EMPTY_9=Due Date, __EMPTY_10=Status, __EMPTY_11=Description, __EMPTY_12=Vehicle No
+        const saleReportTotal = Number(sale.__EMPTY_5) || 0; // Use Sale Report Total directly for precision
         const receivedAmount = Number(sale.__EMPTY_7) || 0;
         const paymentType = sale.__EMPTY_6 || 'Cash';
         const paymentStatus = sale.__EMPTY_10 || ''; // Status column (Paid, Unpaid, Overdue)
+        
+        // Use Sale Report total if available, otherwise use calculated grandTotal
+        const finalTotal = saleReportTotal > 0 ? saleReportTotal : grandTotal;
         
         const [newInvoice] = await tx.insert(invoices).values({
           invoiceNumber,
@@ -654,7 +658,7 @@ export async function importVyapaarData(
           sgstAmount: Math.round(sgstTotal * 100),
           igstAmount: Math.round(igstTotal * 100),
           roundOff: 0,
-          totalAmount: Math.round(grandTotal * 100),
+          totalAmount: Math.round(finalTotal * 100),
           // ALWAYS use Sale Report's "Received" column - this is the source of truth from Vyapaar
           // Payments.xlsx is just for payment history/linking, doesn't change received amounts
           amountReceived: Math.round(receivedAmount * 100),
