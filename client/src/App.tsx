@@ -864,6 +864,30 @@ function PendingPaymentsPage() {
   );
 }
 
+// Wrapper component for Payment Management with full admin navigation
+function PaymentManagementPage() {
+  const { user, logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('payment-management');
+  
+  const navSections = getAdminNavSections(setLocation, (user as any)?.role);
+  
+  return (
+    <DashboardShell
+      title="Payment Management"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={(viewId) => {
+        setActiveView(viewId);
+      }}
+    >
+      <PaymentManagement />
+    </DashboardShell>
+  );
+}
+
 // Permission mapping: maps nav item IDs to screen names from the permissions system
 const navItemToScreen: Record<string, string> = {
   // Dashboard & Analytics
@@ -1221,7 +1245,7 @@ function Router() {
       <ProtectedRoute path="/credit-notes" component={CreditNotes} />
       <ProtectedRoute path="/cancelled-invoices" component={CancelledInvoices} />
       <ProtectedRoute path="/pending-payments" component={PendingPaymentsPage} />
-      <ProtectedRoute path="/payment-management" component={PaymentManagement} />
+      <ProtectedRoute path="/payment-management" component={PaymentManagementPage} />
       <ProtectedRoute path="/vendor-analytics" component={VendorAnalyticsPage} />
       <ProtectedRoute path="/reports" component={ReportsPage} />
       <ProtectedRoute path="/production-management" component={ProductionManagement} />
