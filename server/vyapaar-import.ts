@@ -934,12 +934,12 @@ export async function importVyapaarData(
           }
           
           // Check for duplicates using (normalized vendor name, date, amount)
+          // Instead of skipping, we'll mark as duplicate evidence but still store it
           const amountPaise = Math.round(receivedAmount * 100);
           const paymentSig = `${normalize(matchedVendorName || partyName)}-${paymentDate.toISOString().substring(0, 10)}-${amountPaise}`;
-          if (existingPaymentSignatures.has(paymentSig)) {
-            console.log(`Skipping duplicate payment: ${partyName}, ${paymentDate.toISOString().substring(0, 10)}, ₹${receivedAmount}`);
-            paymentsSkipped++;
-            continue;
+          const isDuplicate = existingPaymentSignatures.has(paymentSig);
+          if (isDuplicate) {
+            console.log(`Found duplicate payment (storing as evidence): ${partyName}, ${paymentDate.toISOString().substring(0, 10)}, ₹${receivedAmount}`);
           }
           existingPaymentSignatures.add(paymentSig);
           
@@ -996,15 +996,16 @@ export async function importVyapaarData(
                 referenceNumber: referenceNo || null,
                 paymentMode: paymentMethod,
                 bankName: null,
-                matchConfidence: Math.max(matchConfidence, 50),
-                matchStatus: 'matched',
+                matchConfidence: isDuplicate ? 40 : Math.max(matchConfidence, 50),
+                matchStatus: isDuplicate ? 'duplicate' : 'matched',
                 sourceRow: JSON.stringify({
                   date: paymentDate.toISOString().substring(0, 10),
                   party: partyName,
                   reference: referenceNo,
                   received: receivedAmount,
                   method: paymentMethod,
-                  description: description
+                  description: description,
+                  isDuplicate: isDuplicate || undefined
                 }),
                 importBatchId: `IMPORT-${new Date().toISOString().substring(0, 10)}`,
                 sourceFile: 'Payments.xlsx',
@@ -1062,8 +1063,8 @@ export async function importVyapaarData(
                 referenceNumber: referenceNo || null,
                 paymentMode: paymentMethod,
                 bankName: null,
-                matchConfidence: 50, // Medium confidence - linked to paid invoice
-                matchStatus: 'matched', // Now matched to paid invoice
+                matchConfidence: isDuplicate ? 40 : 50,
+                matchStatus: isDuplicate ? 'duplicate' : 'matched',
                 sourceRow: JSON.stringify({
                   date: paymentDate.toISOString().substring(0, 10),
                   party: partyName,
@@ -1071,7 +1072,8 @@ export async function importVyapaarData(
                   received: receivedAmount,
                   method: paymentMethod,
                   description: description,
-                  linkedTo: 'Paid invoice (FIFO by date proximity)'
+                  linkedTo: 'Paid invoice (FIFO by date proximity)',
+                  isDuplicate: isDuplicate || undefined
                 }),
                 importBatchId: `IMPORT-${new Date().toISOString().substring(0, 10)}`,
                 sourceFile: 'Payments.xlsx',
@@ -1089,8 +1091,8 @@ export async function importVyapaarData(
                 referenceNumber: referenceNo || null,
                 paymentMode: paymentMethod,
                 bankName: null,
-                matchConfidence: 30, // Low confidence - orphan
-                matchStatus: 'orphan',
+                matchConfidence: isDuplicate ? 40 : 30,
+                matchStatus: isDuplicate ? 'duplicate' : 'orphan',
                 sourceRow: JSON.stringify({
                   date: paymentDate.toISOString().substring(0, 10),
                   party: partyName,
@@ -1098,16 +1100,53 @@ export async function importVyapaarData(
                   received: receivedAmount,
                   method: paymentMethod,
                   description: description,
-                  reason: 'No matching VY- payment found by date/amount'
+                  reason: 'No matching VY- payment found by date/amount',
+                  isDuplicate: isDuplicate || undefined
                 }),
                 importBatchId: `IMPORT-${new Date().toISOString().substring(0, 10)}`,
                 sourceFile: 'Payments.xlsx',
               });
               paymentsImported++;
-              paymentsUnallocated++;
+              if (!isDuplicate) paymentsUnallocated++;
             } else {
-              // No VY- payments at all for this vendor - skip
-              console.log(`⚠️ No VY- payments for ${partyName} to attach evidence to`);
+              // No VY- payments at all for this vendor - still store as unlinked evidence
+              console.log(`⚠️ No VY- payments for ${partyName} - storing as unlinked evidence`);
+              // Try to find any invoice for this vendor to link to
+              const anyInvoice = await tx.select({ id: invoices.id })
+                .from(invoices)
+                .where(and(
+                  eq(invoices.buyerName, vendorRecord?.vendorName || ''),
+                  eq(invoices.recordStatus, 1)
+                ))
+                .limit(1);
+              
+              if (anyInvoice.length > 0) {
+                await tx.insert(paymentEvidence).values({
+                  parentPaymentId: null,
+                  invoiceId: anyInvoice[0].id,
+                  vendorId: vendorId,
+                  amount: remainingAmount,
+                  receivedOn: paymentDate.toISOString(),
+                  referenceNumber: referenceNo || null,
+                  paymentMode: paymentMethod,
+                  bankName: null,
+                  matchConfidence: isDuplicate ? 40 : 20,
+                  matchStatus: isDuplicate ? 'duplicate' : 'unlinked',
+                  sourceRow: JSON.stringify({
+                    date: paymentDate.toISOString().substring(0, 10),
+                    party: partyName,
+                    reference: referenceNo,
+                    received: receivedAmount,
+                    method: paymentMethod,
+                    description: description,
+                    reason: 'No VY- payment exists for vendor',
+                    isDuplicate: isDuplicate || undefined
+                  }),
+                  importBatchId: `IMPORT-${new Date().toISOString().substring(0, 10)}`,
+                  sourceFile: 'Payments.xlsx',
+                });
+                paymentsImported++;
+              }
               paymentsUnallocated++;
             }
           }
