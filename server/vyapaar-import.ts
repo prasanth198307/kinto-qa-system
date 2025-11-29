@@ -968,14 +968,13 @@ export async function importVyapaarData(
           
           let evidenceLinked = false;
           
-          // MATCHING STRATEGY: Match by buyer name + invoice amount
-          // For each vendor's invoices with VY- payments, find where evidence amount matches
-          // If multiple evidence payments sum to invoice total, link all to that invoice
+          // FIFO MATCHING STRATEGY: Fill oldest invoice first, then move to next
+          // Evidence always goes to the oldest invoice that still has room
           let bestVyPayment = null;
           let matchConfidence = 100;
           let matchMethod = 'none';
           
-          // Get all invoices for this vendor with their VY- payments and total amounts
+          // Get all invoices for this vendor with their VY- payments, ordered by invoice date (FIFO)
           const vendorInvoicesWithPayments = await tx.select({
             invoice: invoices,
             vyPayment: invoicePayments,
@@ -988,59 +987,41 @@ export async function importVyapaarData(
             sql`${invoicePayments.referenceNumber} LIKE 'VY-%'`,
             eq(invoicePayments.recordStatus, 1)
           ))
-          .orderBy(invoices.invoiceDate);
+          .orderBy(invoices.invoiceDate); // Oldest invoice first (FIFO)
           
-          // PRIORITY 1: Exact amount match - evidence amount = VY- payment amount
+          // FIFO: Go through invoices from oldest to newest, find first one with room
           for (const inv of vendorInvoicesWithPayments) {
-            if (inv.vyPayment.amount === amountPaise) {
+            // Get sum of already linked evidence for this invoice
+            const linkedEvidenceSum = await tx.select({
+              total: sql<number>`COALESCE(SUM(${paymentEvidence.amount}), 0)`
+            })
+            .from(paymentEvidence)
+            .where(and(
+              eq(paymentEvidence.invoiceId, inv.invoice.id),
+              eq(paymentEvidence.matchStatus, 'matched')
+            ))
+            .then(r => Number(r[0]?.total || 0));
+            
+            const invoiceTotal = inv.vyPayment.amount || 0;
+            const remaining = invoiceTotal - linkedEvidenceSum;
+            
+            // If this invoice still has room for evidence, link it here (FIFO)
+            if (remaining > 0) {
               bestVyPayment = inv.vyPayment;
-              matchConfidence = 100;
-              matchMethod = 'exact_amount_match';
-              break;
-            }
-          }
-          
-          // PRIORITY 2: If no exact match, find invoice where this evidence contributes to total
-          // Check if this evidence amount + already linked evidence = invoice total
-          if (!bestVyPayment) {
-            for (const inv of vendorInvoicesWithPayments) {
-              // Get sum of already linked evidence for this invoice
-              const linkedEvidenceSum = await tx.select({
-                total: sql<number>`COALESCE(SUM(${paymentEvidence.amount}), 0)`
-              })
-              .from(paymentEvidence)
-              .where(and(
-                eq(paymentEvidence.invoiceId, inv.invoice.id),
-                eq(paymentEvidence.matchStatus, 'matched')
-              ))
-              .then(r => Number(r[0]?.total || 0));
-              
-              const invoiceTotal = inv.vyPayment.amount || 0;
-              const remaining = invoiceTotal - linkedEvidenceSum;
-              
-              // If this evidence amount fills the remaining (or partial), link it
-              if (remaining > 0 && amountPaise <= remaining + 100) { // Allow small tolerance
-                bestVyPayment = inv.vyPayment;
-                matchConfidence = amountPaise === remaining ? 95 : 80;
-                matchMethod = 'cumulative_amount_match';
-                break;
+              // Calculate confidence based on how well the amount fits
+              if (amountPaise === remaining) {
+                matchConfidence = 100; // Exact fill
+                matchMethod = 'fifo_exact_fill';
+              } else if (amountPaise <= remaining) {
+                matchConfidence = 90; // Partial fill
+                matchMethod = 'fifo_partial_fill';
+              } else {
+                // Evidence is larger than remaining - still link but lower confidence
+                matchConfidence = 70;
+                matchMethod = 'fifo_overflow';
               }
-            }
-          }
-          
-          // PRIORITY 3: Date proximity fallback (within 7 days)
-          if (!bestVyPayment) {
-            let bestDateDiff = Infinity;
-            for (const inv of vendorInvoicesWithPayments) {
-              const vyDate = new Date(inv.vyPayment.paymentDate);
-              const daysDiff = Math.abs((paymentDate.getTime() - vyDate.getTime()) / (1000 * 60 * 60 * 24));
-              
-              if (daysDiff <= 7 && daysDiff < bestDateDiff) {
-                bestDateDiff = daysDiff;
-                bestVyPayment = inv.vyPayment;
-                matchConfidence = 70 - Math.min(Math.round(daysDiff * 5), 20);
-                matchMethod = 'date_proximity';
-              }
+              console.log(`FIFO: Linking ₹${receivedAmount} to Invoice ${inv.invoice.invoiceNumber} (remaining: ₹${remaining/100})`);
+              break; // Stop at first invoice with room (FIFO)
             }
           }
           
