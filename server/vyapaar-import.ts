@@ -989,6 +989,7 @@ export async function importVyapaarData(
               
               await tx.insert(paymentEvidence).values({
                 parentPaymentId: vyPayment.id,
+                invoiceId: vyPayment.invoiceId,
                 vendorId: vendorId,
                 amount: evidenceAmount,
                 receivedOn: paymentDate.toISOString(),
@@ -1024,6 +1025,7 @@ export async function importVyapaarData(
               // Attach as orphan evidence to first VY- payment
               await tx.insert(paymentEvidence).values({
                 parentPaymentId: anyVyPayment.id,
+                invoiceId: anyVyPayment.invoiceId,
                 vendorId: vendorId,
                 amount: remainingAmount,
                 receivedOn: paymentDate.toISOString(),
