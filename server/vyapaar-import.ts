@@ -6,6 +6,7 @@ import {
   invoices,
   invoiceItems,
   invoicePayments,
+  paymentEvidence,
   uom,
   productTypes,
   vendorTypes,
@@ -942,59 +943,122 @@ export async function importVyapaarData(
           }
           existingPaymentSignatures.add(paymentSig);
           
-          // Get vendor's unpaid invoices sorted by date (FIFO)
-          // Query fresh to get current amountReceived (may have been updated by earlier allocations)
+          // NEW APPROACH: Find VY- payments for this vendor and link as evidence
+          // Get vendor record and their VY- payments from Sale Report
           const vendorRecord = await tx.select().from(vendors).where(eq(vendors.id, vendorId)).then(r => r[0]);
-          const vendorInvoices = await tx.select().from(invoices)
-            .where(and(
-              eq(invoices.buyerName, vendorRecord.vendorName),
-              sql`${invoices.totalAmount} > ${invoices.amountReceived}`
-            ))
-            .orderBy(invoices.invoiceDate);
+          
+          // Get VY- payments for this vendor's invoices
+          const vendorInvoiceIds = await tx.select({ id: invoices.id })
+            .from(invoices)
+            .where(eq(invoices.buyerName, vendorRecord.vendorName));
+          
+          const invoiceIdList = vendorInvoiceIds.map(i => i.id);
+          
+          // Find VY- payments for these invoices that we can link evidence to
+          const vyPayments = invoiceIdList.length > 0 
+            ? await tx.select()
+                .from(invoicePayments)
+                .where(and(
+                  sql`${invoicePayments.invoiceId} = ANY(ARRAY[${sql.raw(invoiceIdList.map(id => `'${id}'`).join(','))}])`,
+                  sql`${invoicePayments.referenceNumber} LIKE 'VY-%'`,
+                  eq(invoicePayments.recordStatus, 1)
+                ))
+                .orderBy(invoicePayments.paymentDate)
+            : [];
           
           let remainingAmount = amountPaise;
+          let evidenceLinked = false;
           
-          // Link payment to invoices using FIFO (for history only - doesn't change amountReceived)
-          // amountReceived is already set from Sale Report - Payments.xlsx is just for tracking
-          for (const invoice of vendorInvoices) {
+          // Try to match and link to existing VY- payments
+          // Match by: same vendor, amount match (exact or partial), date within ±7 days
+          for (const vyPayment of vyPayments) {
             if (remainingAmount <= 0) break;
             
-            // Link up to the invoice total (for history tracking)
-            const outstanding = invoice.totalAmount - invoice.amountReceived;
-            const allocationAmount = Math.min(remainingAmount, Math.max(outstanding, invoice.totalAmount));
+            const vyDate = new Date(vyPayment.paymentDate);
+            const daysDiff = Math.abs((paymentDate.getTime() - vyDate.getTime()) / (1000 * 60 * 60 * 24));
             
-            if (allocationAmount > 0) {
-              // Create payment record for history linking (does NOT update invoice.amountReceived)
-              await tx.insert(invoicePayments).values({
-                invoiceId: invoice.id,
-                paymentDate: paymentDate.toISOString(),
-                amount: allocationAmount,
-                paymentMethod: paymentMethod,
-                paymentType: 'Partial', // PY payments are just history links
-                referenceNumber: referenceNo ? `PY-${referenceNo}` : `PY-${invoice.invoiceNumber}`,
-                remarks: description || 'Imported from Vyapaar Payments file (history link)',
+            // Match if date is within 7 days
+            if (daysDiff <= 7) {
+              // Link this evidence to the VY- payment
+              const evidenceAmount = Math.min(remainingAmount, vyPayment.amount);
+              
+              // Calculate match confidence based on amount and date proximity
+              let matchConfidence = 100;
+              if (evidenceAmount !== vyPayment.amount) matchConfidence -= 20; // Partial amount match
+              if (daysDiff > 0) matchConfidence -= Math.min(daysDiff * 5, 30); // Date proximity penalty
+              
+              await tx.insert(paymentEvidence).values({
+                parentPaymentId: vyPayment.id,
+                vendorId: vendorId,
+                amount: evidenceAmount,
+                receivedOn: paymentDate.toISOString(),
+                referenceNumber: referenceNo || null,
+                paymentMode: paymentMethod,
+                bankName: null,
+                matchConfidence: Math.max(matchConfidence, 50),
+                matchStatus: 'matched',
+                sourceRow: JSON.stringify({
+                  date: paymentDate.toISOString().substring(0, 10),
+                  party: partyName,
+                  reference: referenceNo,
+                  received: receivedAmount,
+                  method: paymentMethod,
+                  description: description
+                }),
+                importBatchId: `IMPORT-${new Date().toISOString().substring(0, 10)}`,
+                sourceFile: 'Payments.xlsx',
               });
               
-              // NOTE: We do NOT update invoice.amountReceived here
-              // Invoice received amounts are set from Sale Report and are the source of truth
-              
-              remainingAmount -= allocationAmount;
+              remainingAmount -= evidenceAmount;
               paymentsImported++;
+              evidenceLinked = true;
+            }
+          }
+          
+          // If no VY- payment found to link, create orphan evidence for manual review
+          if (!evidenceLinked && remainingAmount > 0) {
+            // Find ANY VY- payment for this vendor to attach as orphan
+            const anyVyPayment = vyPayments.length > 0 ? vyPayments[0] : null;
+            
+            if (anyVyPayment) {
+              // Attach as orphan evidence to first VY- payment
+              await tx.insert(paymentEvidence).values({
+                parentPaymentId: anyVyPayment.id,
+                vendorId: vendorId,
+                amount: remainingAmount,
+                receivedOn: paymentDate.toISOString(),
+                referenceNumber: referenceNo || null,
+                paymentMode: paymentMethod,
+                bankName: null,
+                matchConfidence: 30, // Low confidence - orphan
+                matchStatus: 'orphan',
+                sourceRow: JSON.stringify({
+                  date: paymentDate.toISOString().substring(0, 10),
+                  party: partyName,
+                  reference: referenceNo,
+                  received: receivedAmount,
+                  method: paymentMethod,
+                  description: description,
+                  reason: 'No matching VY- payment found by date/amount'
+                }),
+                importBatchId: `IMPORT-${new Date().toISOString().substring(0, 10)}`,
+                sourceFile: 'Payments.xlsx',
+              });
+              paymentsImported++;
+              paymentsUnallocated++;
+            } else {
+              // No VY- payments at all for this vendor - skip
+              console.log(`⚠️ No VY- payments for ${partyName} to attach evidence to`);
+              paymentsUnallocated++;
             }
           }
           
           // Track this vendor as having payments from Payments.xlsx
           vendorsWithPayments.add(vendorId);
-          
-          // If there's remaining amount (overpayment), log it
-          if (remainingAmount > 0) {
-            console.log(`⚠️ Unallocated payment for ${partyName}: ₹${(remainingAmount / 100).toFixed(2)} (no more unpaid invoices)`);
-            paymentsUnallocated++;
-          }
         }
         
-        console.log(`✅ Payments.xlsx import complete: ${paymentsImported} linked, ${paymentsSkipped} skipped, ${paymentsUnallocated} unallocated`);
-        console.log(`Note: Payments.xlsx is for payment history only - invoice amounts are from Sale Report`);
+        console.log(`✅ Payments.xlsx import complete: ${paymentsImported} evidence records linked, ${paymentsSkipped} skipped, ${paymentsUnallocated} orphaned`);
+        console.log(`Note: Payments.xlsx records are now stored as evidence under VY- payments from Sale Report`);
       }
       
       console.log('Import transaction completed successfully');
