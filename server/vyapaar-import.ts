@@ -968,88 +968,93 @@ export async function importVyapaarData(
           
           let evidenceLinked = false;
           
-          // MATCHING STRATEGY:
-          // 1. If Reference is an invoice number, find VY-{number} across ALL vendors (global search)
-          // 2. If no invoice ref, use vendor-specific date proximity matching
+          // MATCHING STRATEGY: Match by buyer name + invoice amount
+          // For each vendor's invoices with VY- payments, find where evidence amount matches
+          // If multiple evidence payments sum to invoice total, link all to that invoice
           let bestVyPayment = null;
           let matchConfidence = 100;
           let matchMethod = 'none';
-          let hasInvoiceRef = false;
-          let actualVendorId = vendorId; // May change if invoice found for different vendor
           
-          // Try to extract invoice number from reference
-          const invoiceNumMatch = referenceNo.match(/^(\d+)$/);
-          if (invoiceNumMatch) {
-            hasInvoiceRef = true;
-            const invoiceNum = parseInt(invoiceNumMatch[1], 10);
-            
-            // GLOBAL SEARCH: Find VY-{invoiceNum} across ALL vendors
-            // This handles cases where fuzzy vendor matching was wrong
-            const globalVyPayment = await tx.select({
-              payment: invoicePayments,
-              invoice: invoices,
-            })
-            .from(invoicePayments)
-            .innerJoin(invoices, eq(invoicePayments.invoiceId, invoices.id))
-            .where(and(
-              eq(invoicePayments.referenceNumber, `VY-${invoiceNum}`),
-              eq(invoicePayments.recordStatus, 1),
-              eq(invoices.recordStatus, 1)
-            ))
-            .then(r => r[0]);
-            
-            if (globalVyPayment) {
-              bestVyPayment = globalVyPayment.payment;
+          // Get all invoices for this vendor with their VY- payments and total amounts
+          const vendorInvoicesWithPayments = await tx.select({
+            invoice: invoices,
+            vyPayment: invoicePayments,
+          })
+          .from(invoices)
+          .innerJoin(invoicePayments, eq(invoicePayments.invoiceId, invoices.id))
+          .where(and(
+            eq(invoices.buyerName, vendorRecord.vendorName),
+            eq(invoices.recordStatus, 1),
+            sql`${invoicePayments.referenceNumber} LIKE 'VY-%'`,
+            eq(invoicePayments.recordStatus, 1)
+          ))
+          .orderBy(invoices.invoiceDate);
+          
+          // PRIORITY 1: Exact amount match - evidence amount = VY- payment amount
+          for (const inv of vendorInvoicesWithPayments) {
+            if (inv.vyPayment.amount === amountPaise) {
+              bestVyPayment = inv.vyPayment;
               matchConfidence = 100;
-              matchMethod = 'invoice_number_global';
-              
-              // Update vendorId to match the actual invoice's vendor
-              const invoiceVendor = await tx.select({ id: vendors.id })
-                .from(vendors)
-                .where(eq(vendors.vendorName, globalVyPayment.invoice.buyerName))
-                .then(r => r[0]);
-              if (invoiceVendor) {
-                actualVendorId = invoiceVendor.id;
-              }
-            } else {
-              // No VY-{invoiceNum} found anywhere - mark as orphan
-              console.log(`⚠️ VY-${invoiceNum} not found in system - storing as orphan`);
+              matchMethod = 'exact_amount_match';
+              break;
             }
           }
           
-          // VENDOR-SPECIFIC: Date proximity fallback when reference is NOT an invoice number
-          if (!bestVyPayment && !hasInvoiceRef) {
+          // PRIORITY 2: If no exact match, find invoice where this evidence contributes to total
+          // Check if this evidence amount + already linked evidence = invoice total
+          if (!bestVyPayment) {
+            for (const inv of vendorInvoicesWithPayments) {
+              // Get sum of already linked evidence for this invoice
+              const linkedEvidenceSum = await tx.select({
+                total: sql<number>`COALESCE(SUM(${paymentEvidence.amount}), 0)`
+              })
+              .from(paymentEvidence)
+              .where(and(
+                eq(paymentEvidence.invoiceId, inv.invoice.id),
+                eq(paymentEvidence.matchStatus, 'matched')
+              ))
+              .then(r => Number(r[0]?.total || 0));
+              
+              const invoiceTotal = inv.vyPayment.amount || 0;
+              const remaining = invoiceTotal - linkedEvidenceSum;
+              
+              // If this evidence amount fills the remaining (or partial), link it
+              if (remaining > 0 && amountPaise <= remaining + 100) { // Allow small tolerance
+                bestVyPayment = inv.vyPayment;
+                matchConfidence = amountPaise === remaining ? 95 : 80;
+                matchMethod = 'cumulative_amount_match';
+                break;
+              }
+            }
+          }
+          
+          // PRIORITY 3: Date proximity fallback (within 7 days)
+          if (!bestVyPayment) {
             let bestDateDiff = Infinity;
-            for (const vyPayment of vyPayments) {
-              const vyDate = new Date(vyPayment.paymentDate);
+            for (const inv of vendorInvoicesWithPayments) {
+              const vyDate = new Date(inv.vyPayment.paymentDate);
               const daysDiff = Math.abs((paymentDate.getTime() - vyDate.getTime()) / (1000 * 60 * 60 * 24));
               
               if (daysDiff <= 7 && daysDiff < bestDateDiff) {
                 bestDateDiff = daysDiff;
-                bestVyPayment = vyPayment;
+                bestVyPayment = inv.vyPayment;
+                matchConfidence = 70 - Math.min(Math.round(daysDiff * 5), 20);
+                matchMethod = 'date_proximity';
               }
-            }
-            
-            if (bestVyPayment) {
-              matchConfidence = 100;
-              if (amountPaise !== bestVyPayment.amount) matchConfidence -= 20;
-              if (bestDateDiff > 0) matchConfidence -= Math.min(Math.round(bestDateDiff * 5), 30);
-              matchMethod = 'date_proximity';
             }
           }
           
           if (bestVyPayment) {
-            
             await tx.insert(paymentEvidence).values({
               parentPaymentId: bestVyPayment.id,
               invoiceId: bestVyPayment.invoiceId,
-              vendorId: actualVendorId, // Use actual vendor from invoice (may differ from fuzzy match)
-              amount: amountPaise, // FULL amount from file
+              vendorId: vendorId,
+              amount: amountPaise,
               receivedOn: paymentDate.toISOString(),
               referenceNumber: referenceNo || null,
               paymentMode: paymentMethod,
               bankName: null,
-              matchConfidence: isDuplicate ? 40 : Math.round(Math.max(matchConfidence, 50)),
+              matchConfidence: isDuplicate ? 40 : matchConfidence,
               matchStatus: isDuplicate ? 'duplicate' : 'matched',
               sourceRow: JSON.stringify({
                 date: paymentDate.toISOString().substring(0, 10),
@@ -1058,7 +1063,7 @@ export async function importVyapaarData(
                 received: receivedAmount,
                 method: paymentMethod,
                 description: description,
-                matchMethod: matchMethod, // 'invoice_number' or 'date_proximity'
+                matchMethod: matchMethod,
                 linkedToVY: bestVyPayment.referenceNumber,
                 isDuplicate: isDuplicate || undefined
               }),
@@ -1070,38 +1075,9 @@ export async function importVyapaarData(
             evidenceLinked = true;
           }
           
-          // If no VY- payment found to link
+          // If no VY- payment found to link - store as orphan
           if (!evidenceLinked) {
-            // If reference had an invoice number but no match, store as orphan (don't link to wrong invoice)
-            if (hasInvoiceRef) {
-              // Store as orphan - this evidence references a different invoice number
-              await tx.insert(paymentEvidence).values({
-                parentPaymentId: null,
-                invoiceId: null,
-                vendorId: vendorId,
-                amount: amountPaise,
-                receivedOn: paymentDate.toISOString(),
-                referenceNumber: referenceNo || null,
-                paymentMode: paymentMethod,
-                bankName: null,
-                matchConfidence: isDuplicate ? 40 : 20,
-                matchStatus: 'orphan',
-                sourceRow: JSON.stringify({
-                  date: paymentDate.toISOString().substring(0, 10),
-                  party: partyName,
-                  reference: referenceNo,
-                  received: receivedAmount,
-                  method: paymentMethod,
-                  description: description,
-                  reason: `Invoice ${referenceNo} not found for this vendor - stored as orphan`,
-                  isDuplicate: isDuplicate || undefined
-                }),
-                importBatchId: `IMPORT-${new Date().toISOString().substring(0, 10)}`,
-                sourceFile: 'Payments.xlsx',
-              });
-              paymentsImported++;
-              if (!isDuplicate) paymentsUnallocated++;
-            } else if (vyPayments.length > 0) {
+            if (vyPayments.length > 0) {
               // No invoice ref - attach to first VY- payment as orphan
               await tx.insert(paymentEvidence).values({
                 parentPaymentId: vyPayments[0].id,
