@@ -968,40 +968,56 @@ export async function importVyapaarData(
           
           let evidenceLinked = false;
           
-          // STRICT MATCHING: Match by invoice number from reference column ONLY
-          // Reference column contains invoice numbers (e.g., "289", "290")
-          // If reference is an invoice number, ONLY link to that invoice's VY- payment
+          // MATCHING STRATEGY:
+          // 1. If Reference is an invoice number, find VY-{number} across ALL vendors (global search)
+          // 2. If no invoice ref, use vendor-specific date proximity matching
           let bestVyPayment = null;
           let matchConfidence = 100;
           let matchMethod = 'none';
           let hasInvoiceRef = false;
+          let actualVendorId = vendorId; // May change if invoice found for different vendor
           
           // Try to extract invoice number from reference
           const invoiceNumMatch = referenceNo.match(/^(\d+)$/);
           if (invoiceNumMatch) {
             hasInvoiceRef = true;
             const invoiceNum = parseInt(invoiceNumMatch[1], 10);
-            // Find VY- payment for this specific invoice number ONLY
-            for (const vyPayment of vyPayments) {
-              // VY- reference format is "VY-{invoiceNumber}"
-              const vyInvoiceNum = vyPayment.referenceNumber?.match(/VY-(\d+)/)?.[1];
-              if (vyInvoiceNum && parseInt(vyInvoiceNum, 10) === invoiceNum) {
-                bestVyPayment = vyPayment;
-                matchConfidence = 100; // Perfect match by invoice number
-                matchMethod = 'invoice_number';
-                break;
-              }
-            }
             
-            // If reference has invoice number but no match found, DON'T fall back
-            // This evidence belongs to a different invoice, keep it orphaned
-            if (!bestVyPayment) {
-              console.log(`⚠️ Evidence ref "${referenceNo}" not found for ${partyName} - marking as orphan (invoice mismatch)`);
+            // GLOBAL SEARCH: Find VY-{invoiceNum} across ALL vendors
+            // This handles cases where fuzzy vendor matching was wrong
+            const globalVyPayment = await tx.select({
+              payment: invoicePayments,
+              invoice: invoices,
+            })
+            .from(invoicePayments)
+            .innerJoin(invoices, eq(invoicePayments.invoiceId, invoices.id))
+            .where(and(
+              eq(invoicePayments.referenceNumber, `VY-${invoiceNum}`),
+              eq(invoicePayments.recordStatus, 1),
+              eq(invoices.recordStatus, 1)
+            ))
+            .then(r => r[0]);
+            
+            if (globalVyPayment) {
+              bestVyPayment = globalVyPayment.payment;
+              matchConfidence = 100;
+              matchMethod = 'invoice_number_global';
+              
+              // Update vendorId to match the actual invoice's vendor
+              const invoiceVendor = await tx.select({ id: vendors.id })
+                .from(vendors)
+                .where(eq(vendors.vendorName, globalVyPayment.invoice.buyerName))
+                .then(r => r[0]);
+              if (invoiceVendor) {
+                actualVendorId = invoiceVendor.id;
+              }
+            } else {
+              // No VY-{invoiceNum} found anywhere - mark as orphan
+              console.log(`⚠️ VY-${invoiceNum} not found in system - storing as orphan`);
             }
           }
           
-          // ONLY use date proximity fallback when reference is NOT an invoice number
-          // (e.g., when reference is empty or contains text like "NEFT123")
+          // VENDOR-SPECIFIC: Date proximity fallback when reference is NOT an invoice number
           if (!bestVyPayment && !hasInvoiceRef) {
             let bestDateDiff = Infinity;
             for (const vyPayment of vyPayments) {
@@ -1027,7 +1043,7 @@ export async function importVyapaarData(
             await tx.insert(paymentEvidence).values({
               parentPaymentId: bestVyPayment.id,
               invoiceId: bestVyPayment.invoiceId,
-              vendorId: vendorId,
+              vendorId: actualVendorId, // Use actual vendor from invoice (may differ from fuzzy match)
               amount: amountPaise, // FULL amount from file
               receivedOn: paymentDate.toISOString(),
               referenceNumber: referenceNo || null,
