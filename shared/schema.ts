@@ -1649,6 +1649,41 @@ export const insertInvoicePaymentSchema = createInsertSchema(invoicePayments).om
 export type InsertInvoicePayment = z.infer<typeof insertInvoicePaymentSchema>;
 export type InvoicePayment = typeof invoicePayments.$inferSelect;
 
+// Payment Evidence - Child records from Payments.xlsx linked to VY- payments
+export const paymentEvidence = pgTable("payment_evidence", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  parentPaymentId: varchar("parent_payment_id").references(() => invoicePayments.id).notNull(),
+  vendorId: varchar("vendor_id").references(() => vendors.id),
+  
+  // Original data from Payments.xlsx
+  amount: integer("amount").notNull(), // In paise
+  receivedOn: timestamp("received_on", { mode: 'string' }),
+  referenceNumber: varchar("reference_number", { length: 100 }),
+  paymentMode: varchar("payment_mode", { length: 50 }), // Cash, NEFT, Cheque, UPI, Bank Transfer
+  bankName: varchar("bank_name", { length: 255 }),
+  
+  // Matching metadata
+  matchConfidence: integer("match_confidence").default(100), // 0-100%
+  matchStatus: varchar("match_status", { length: 20 }).default("matched"), // 'matched', 'partial', 'orphan'
+  sourceRow: text("source_row"), // Original Excel row as JSON for audit
+  
+  // Import tracking
+  importBatchId: varchar("import_batch_id", { length: 100 }),
+  sourceFile: varchar("source_file", { length: 255 }),
+  
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+});
+
+export const insertPaymentEvidenceSchema = createInsertSchema(paymentEvidence).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+});
+
+export type InsertPaymentEvidence = z.infer<typeof insertPaymentEvidenceSchema>;
+export type PaymentEvidence = typeof paymentEvidence.$inferSelect;
+
 // Bank Master for managing multiple bank accounts
 export const banks = pgTable("banks", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
