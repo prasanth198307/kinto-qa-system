@@ -1649,10 +1649,11 @@ export const insertInvoicePaymentSchema = createInsertSchema(invoicePayments).om
 export type InsertInvoicePayment = z.infer<typeof insertInvoicePaymentSchema>;
 export type InvoicePayment = typeof invoicePayments.$inferSelect;
 
-// Payment Evidence - Child records from Payments.xlsx linked to VY- payments
+// Payment Evidence - Child records from Payments.xlsx linked to VY- payments and/or invoices
 export const paymentEvidence = pgTable("payment_evidence", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  parentPaymentId: varchar("parent_payment_id").references(() => invoicePayments.id).notNull(),
+  parentPaymentId: varchar("parent_payment_id").references(() => invoicePayments.id),
+  invoiceId: varchar("invoice_id").references(() => invoices.id),
   vendorId: varchar("vendor_id").references(() => vendors.id),
   
   // Original data from Payments.xlsx
