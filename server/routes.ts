@@ -5323,6 +5323,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get ALL evidence records for a specific invoice (across all payments)
+  app.get('/api/invoice-evidence/:invoiceId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { invoiceId } = req.params;
+      
+      if (!invoiceId || invoiceId.length < 1) {
+        return res.status(400).json({ message: "Invoice ID is required" });
+      }
+      
+      // Verify invoice exists before fetching evidence
+      const invoice = await storage.getInvoice(invoiceId);
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      
+      const evidence = await storage.getPaymentEvidenceByInvoice(invoiceId);
+      
+      // Aggregate summary
+      const evidenceCount = evidence.length;
+      const evidenceTotalAmount = evidence.reduce((sum, e) => sum + (e.amount || 0), 0);
+      const evidenceReferences = evidence
+        .map(e => e.referenceNumber)
+        .filter(Boolean)
+        .join(', ');
+      const evidenceModes = [...new Set(evidence.map(e => e.paymentMode).filter(Boolean))].join(', ');
+      
+      res.json({
+        invoiceId,
+        invoiceNumber: invoice.invoiceNumber,
+        summary: {
+          count: evidenceCount,
+          totalAmount: evidenceTotalAmount,
+          references: evidenceReferences || null,
+          paymentModes: evidenceModes || null,
+        },
+        records: evidence,
+      });
+    } catch (error) {
+      console.error("Error fetching invoice evidence:", error);
+      res.status(500).json({ message: "Failed to fetch invoice evidence" });
+    }
+  });
+
   // Update evidence status (for manual reconciliation)
   app.patch('/api/payment-evidence/:id', requireRole('admin', 'manager'), async (req: any, res) => {
     try {

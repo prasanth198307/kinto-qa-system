@@ -466,6 +466,7 @@ export interface IStorage {
   // Payment Evidence (Payments.xlsx child records linked to VY- payments)
   createPaymentEvidence(evidence: InsertPaymentEvidence): Promise<PaymentEvidence>;
   getPaymentEvidenceByPayment(parentPaymentId: string): Promise<PaymentEvidence[]>;
+  getPaymentEvidenceByInvoice(invoiceId: string): Promise<PaymentEvidence[]>;
   getPaymentEvidenceByVendor(vendorId: string): Promise<PaymentEvidence[]>;
   getAllOrphanEvidence(): Promise<PaymentEvidence[]>;
   updatePaymentEvidence(id: string, updates: Partial<InsertPaymentEvidence>): Promise<PaymentEvidence | undefined>;
@@ -2364,6 +2365,19 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(paymentEvidence)
       .where(and(eq(paymentEvidence.parentPaymentId, parentPaymentId), eq(paymentEvidence.recordStatus, 1)));
+  }
+
+  async getPaymentEvidenceByInvoice(invoiceId: string): Promise<PaymentEvidence[]> {
+    return await db
+      .select()
+      .from(paymentEvidence)
+      .where(and(
+        or(
+          eq(paymentEvidence.invoiceId, invoiceId),
+          sql`${paymentEvidence.parentPaymentId} IN (SELECT id FROM invoice_payments WHERE invoice_id = ${invoiceId})`
+        ),
+        eq(paymentEvidence.recordStatus, 1)
+      ));
   }
 
   async getPaymentEvidenceByVendor(vendorId: string): Promise<PaymentEvidence[]> {
