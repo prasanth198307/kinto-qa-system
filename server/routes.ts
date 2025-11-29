@@ -5266,6 +5266,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Payment Evidence API - for tracking Payments.xlsx records linked to VY- payments
+  // Get orphan evidence records (for reconciliation dashboard)
+  // MUST be before /:paymentId route to avoid "orphans" being matched as paymentId
+  app.get('/api/payment-evidence/orphans', isAuthenticated, async (req: any, res) => {
+    try {
+      const orphans = await storage.getOrphanPaymentEvidence();
+      res.json(orphans);
+    } catch (error) {
+      console.error("Error fetching orphan evidence:", error);
+      res.status(500).json({ message: "Failed to fetch orphan evidence" });
+    }
+  });
+
+  // Get evidence records for a specific payment
+  app.get('/api/payment-evidence/:paymentId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { paymentId } = req.params;
+      const evidence = await storage.getPaymentEvidence(paymentId);
+      res.json(evidence);
+    } catch (error) {
+      console.error("Error fetching payment evidence:", error);
+      res.status(500).json({ message: "Failed to fetch payment evidence" });
+    }
+  });
+
+  // Update evidence status (for manual reconciliation)
+  app.patch('/api/payment-evidence/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { matchStatus, parentPaymentId, matchConfidence } = req.body;
+      
+      const updatedEvidence = await storage.updatePaymentEvidence(id, {
+        matchStatus,
+        parentPaymentId,
+        matchConfidence
+      });
+      
+      await logAudit(req.user?.id, 'UPDATE', 'payment_evidence', id, `Updated evidence status to ${matchStatus}`);
+      res.json(updatedEvidence);
+    } catch (error) {
+      console.error("Error updating payment evidence:", error);
+      res.status(500).json({ message: "Failed to update payment evidence" });
+    }
+  });
+
   // Sales Returns API
   // Get all sales returns
   app.get('/api/sales-returns', isAuthenticated, async (req: any, res) => {
