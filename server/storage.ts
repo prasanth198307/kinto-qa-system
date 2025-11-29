@@ -177,6 +177,9 @@ import {
   type InsertCashRegisterExpenseItem,
   type SalespersonMapping,
   type InsertSalespersonMapping,
+  paymentEvidence,
+  type PaymentEvidence,
+  type InsertPaymentEvidence,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, isNotNull, notInArray, gte, lte, sql } from "drizzle-orm";
@@ -459,6 +462,13 @@ export interface IStorage {
   getPayment(id: string): Promise<InvoicePayment | undefined>;
   getPaymentsByInvoice(invoiceId: string): Promise<InvoicePayment[]>;
   deletePayment(id: string): Promise<void>;
+  
+  // Payment Evidence (Payments.xlsx child records linked to VY- payments)
+  createPaymentEvidence(evidence: InsertPaymentEvidence): Promise<PaymentEvidence>;
+  getPaymentEvidenceByPayment(parentPaymentId: string): Promise<PaymentEvidence[]>;
+  getPaymentEvidenceByVendor(vendorId: string): Promise<PaymentEvidence[]>;
+  getAllOrphanEvidence(): Promise<PaymentEvidence[]>;
+  deletePaymentEvidence(id: string): Promise<void>;
   
   // Sales Returns
   createSalesReturn(salesReturn: InsertSalesReturn): Promise<SalesReturn>;
@@ -2322,6 +2332,37 @@ export class DatabaseStorage implements IStorage {
 
   async deletePayment(id: string): Promise<void> {
     await db.update(invoicePayments).set({ recordStatus: 0, updatedAt: new Date().toISOString() }).where(eq(invoicePayments.id, id));
+  }
+
+  // Payment Evidence (Payments.xlsx child records linked to VY- payments)
+  async createPaymentEvidence(evidence: InsertPaymentEvidence): Promise<PaymentEvidence> {
+    const [created] = await db.insert(paymentEvidence).values(evidence).returning();
+    return created;
+  }
+
+  async getPaymentEvidenceByPayment(parentPaymentId: string): Promise<PaymentEvidence[]> {
+    return await db
+      .select()
+      .from(paymentEvidence)
+      .where(and(eq(paymentEvidence.parentPaymentId, parentPaymentId), eq(paymentEvidence.recordStatus, 1)));
+  }
+
+  async getPaymentEvidenceByVendor(vendorId: string): Promise<PaymentEvidence[]> {
+    return await db
+      .select()
+      .from(paymentEvidence)
+      .where(and(eq(paymentEvidence.vendorId, vendorId), eq(paymentEvidence.recordStatus, 1)));
+  }
+
+  async getAllOrphanEvidence(): Promise<PaymentEvidence[]> {
+    return await db
+      .select()
+      .from(paymentEvidence)
+      .where(and(eq(paymentEvidence.matchStatus, 'orphan'), eq(paymentEvidence.recordStatus, 1)));
+  }
+
+  async deletePaymentEvidence(id: string): Promise<void> {
+    await db.update(paymentEvidence).set({ recordStatus: 0 }).where(eq(paymentEvidence.id, id));
   }
 
   // Sales Returns
