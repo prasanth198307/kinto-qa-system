@@ -966,60 +966,60 @@ export async function importVyapaarData(
                 .orderBy(invoicePayments.paymentDate)
             : [];
           
-          let remainingAmount = amountPaise;
           let evidenceLinked = false;
           
-          // Try to match and link to existing VY- payments
-          // Match by: same vendor, amount match (exact or partial), date within ±7 days
+          // FIXED: Store FULL amount from file, don't split/truncate
+          // Find best matching VY- payment by date proximity (within 7 days)
+          let bestVyPayment = null;
+          let bestDateDiff = Infinity;
+          
           for (const vyPayment of vyPayments) {
-            if (remainingAmount <= 0) break;
-            
             const vyDate = new Date(vyPayment.paymentDate);
             const daysDiff = Math.abs((paymentDate.getTime() - vyDate.getTime()) / (1000 * 60 * 60 * 24));
             
-            // Match if date is within 7 days
-            if (daysDiff <= 7) {
-              // Link this evidence to the VY- payment
-              const evidenceAmount = Math.min(remainingAmount, vyPayment.amount);
-              
-              // Calculate match confidence based on amount and date proximity
-              let matchConfidence = 100;
-              if (evidenceAmount !== vyPayment.amount) matchConfidence -= 20; // Partial amount match
-              if (daysDiff > 0) matchConfidence -= Math.min(daysDiff * 5, 30); // Date proximity penalty
-              
-              await tx.insert(paymentEvidence).values({
-                parentPaymentId: vyPayment.id,
-                invoiceId: vyPayment.invoiceId,
-                vendorId: vendorId,
-                amount: evidenceAmount,
-                receivedOn: paymentDate.toISOString(),
-                referenceNumber: referenceNo || null,
-                paymentMode: paymentMethod,
-                bankName: null,
-                matchConfidence: isDuplicate ? 40 : Math.max(matchConfidence, 50),
-                matchStatus: isDuplicate ? 'duplicate' : 'matched',
-                sourceRow: JSON.stringify({
-                  date: paymentDate.toISOString().substring(0, 10),
-                  party: partyName,
-                  reference: referenceNo,
-                  received: receivedAmount,
-                  method: paymentMethod,
-                  description: description,
-                  isDuplicate: isDuplicate || undefined
-                }),
-                importBatchId: `IMPORT-${new Date().toISOString().substring(0, 10)}`,
-                sourceFile: 'Payments.xlsx',
-              });
-              
-              remainingAmount -= evidenceAmount;
-              paymentsImported++;
-              evidenceLinked = true;
+            if (daysDiff <= 7 && daysDiff < bestDateDiff) {
+              bestDateDiff = daysDiff;
+              bestVyPayment = vyPayment;
             }
+          }
+          
+          if (bestVyPayment) {
+            // Calculate match confidence based on amount and date proximity
+            let matchConfidence = 100;
+            if (amountPaise !== bestVyPayment.amount) matchConfidence -= 20; // Amount mismatch
+            if (bestDateDiff > 0) matchConfidence -= Math.min(bestDateDiff * 5, 30); // Date proximity penalty
+            
+            await tx.insert(paymentEvidence).values({
+              parentPaymentId: bestVyPayment.id,
+              invoiceId: bestVyPayment.invoiceId,
+              vendorId: vendorId,
+              amount: amountPaise, // FULL amount from file
+              receivedOn: paymentDate.toISOString(),
+              referenceNumber: referenceNo || null,
+              paymentMode: paymentMethod,
+              bankName: null,
+              matchConfidence: isDuplicate ? 40 : Math.max(matchConfidence, 50),
+              matchStatus: isDuplicate ? 'duplicate' : 'matched',
+              sourceRow: JSON.stringify({
+                date: paymentDate.toISOString().substring(0, 10),
+                party: partyName,
+                reference: referenceNo,
+                received: receivedAmount,
+                method: paymentMethod,
+                description: description,
+                isDuplicate: isDuplicate || undefined
+              }),
+              importBatchId: `IMPORT-${new Date().toISOString().substring(0, 10)}`,
+              sourceFile: 'Payments.xlsx',
+            });
+            
+            paymentsImported++;
+            evidenceLinked = true;
           }
           
           // If no VY- payment found to link, link evidence to PAID invoices for this vendor
           // This provides audit trail of cash collections that built up to VY- payment totals
-          if (!evidenceLinked && remainingAmount > 0) {
+          if (!evidenceLinked) {
             // Get all paid invoices for this vendor (those with VY- payments), ordered by date (FIFO)
             const paidInvoices = await tx.select({
               invoiceId: invoices.id,
@@ -1058,7 +1058,7 @@ export async function importVyapaarData(
                 parentPaymentId: bestMatch.vyPaymentId,
                 invoiceId: bestMatch.invoiceId,
                 vendorId: vendorId,
-                amount: remainingAmount,
+                amount: amountPaise, // FULL amount from file
                 receivedOn: paymentDate.toISOString(),
                 referenceNumber: referenceNo || null,
                 paymentMode: paymentMethod,
@@ -1086,7 +1086,7 @@ export async function importVyapaarData(
                 parentPaymentId: vyPayments[0].id,
                 invoiceId: vyPayments[0].invoiceId,
                 vendorId: vendorId,
-                amount: remainingAmount,
+                amount: amountPaise, // FULL amount from file
                 receivedOn: paymentDate.toISOString(),
                 referenceNumber: referenceNo || null,
                 paymentMode: paymentMethod,
@@ -1125,7 +1125,7 @@ export async function importVyapaarData(
                   parentPaymentId: null,
                   invoiceId: anyInvoice[0].id,
                   vendorId: vendorId,
-                  amount: remainingAmount,
+                  amount: amountPaise, // FULL amount from file
                   receivedOn: paymentDate.toISOString(),
                   referenceNumber: referenceNo || null,
                   paymentMode: paymentMethod,
