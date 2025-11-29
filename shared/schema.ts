@@ -9,6 +9,7 @@ import {
   text,
   integer,
   numeric,
+  real,
   unique,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
@@ -861,7 +862,7 @@ export const rawMaterialTypes = pgTable("raw_material_types", {
   
   // Calculated fields
   conversionValue: integer("conversion_value"), // Auto-calculated based on method
-  lossPercent: integer("loss_percent").default(0),
+  lossPercent: real("loss_percent").default(0), // Supports decimal percentages like 12.1%
   usableUnits: integer("usable_units"), // Auto-calculated: conversionValue × (1 - loss%)
   
   description: text("description"),
