@@ -60,7 +60,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2, Plus, X, FileText, Search, Filter, Check, ChevronsUpDown, Pencil } from "lucide-react";
+import { Loader2, Plus, X, FileText, Search, Filter, Check, ChevronsUpDown, Pencil, ChevronDown, ChevronRight, Link2, CircleCheck, AlertTriangle, CircleDashed } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const fifoPaymentSchema = z.object({
@@ -86,6 +86,101 @@ const editPaymentSchema = z.object({
 type FIFOPaymentFormData = z.infer<typeof fifoPaymentSchema>;
 type EditPaymentFormData = z.infer<typeof editPaymentSchema>;
 
+// Payment Evidence Row Component - shows Payments.xlsx records linked to a VY- payment
+function PaymentEvidenceRow({ paymentId }: { paymentId: string }) {
+  const { data: evidence = [], isLoading } = useQuery<any[]>({
+    queryKey: ['/api/payment-evidence', paymentId],
+    enabled: !!paymentId,
+  });
+
+  if (isLoading) {
+    return (
+      <TableRow className="bg-muted/30" data-testid={`row-evidence-loading-${paymentId}`}>
+        <TableCell colSpan={9} className="py-2">
+          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Loading evidence...
+          </div>
+        </TableCell>
+      </TableRow>
+    );
+  }
+
+  if (evidence.length === 0) {
+    return (
+      <TableRow className="bg-muted/30" data-testid={`row-evidence-empty-${paymentId}`}>
+        <TableCell colSpan={9} className="py-2">
+          <div className="text-sm text-muted-foreground text-center">
+            No Payments.xlsx records linked to this payment
+          </div>
+        </TableCell>
+      </TableRow>
+    );
+  }
+
+  return (
+    <>
+      {evidence.map((ev: any, idx: number) => {
+        const sourceData = ev.sourceRow ? JSON.parse(ev.sourceRow) : {};
+        const ConfidenceIcon = ev.matchConfidence >= 80 ? CircleCheck : 
+                               ev.matchConfidence >= 50 ? CircleDashed : AlertTriangle;
+        const confidenceColor = ev.matchConfidence >= 80 ? 'text-green-600' : 
+                                ev.matchConfidence >= 50 ? 'text-amber-500' : 'text-red-500';
+        
+        return (
+          <TableRow 
+            key={ev.id} 
+            className="bg-muted/30 text-xs"
+            data-testid={`row-evidence-${ev.id}`}
+          >
+            <TableCell className="pl-10">
+              <div className="flex items-center gap-1">
+                <Badge variant="outline" className="text-xs" data-testid={`badge-evidence-${ev.id}`}>
+                  Evidence {idx + 1}
+                </Badge>
+              </div>
+            </TableCell>
+            <TableCell colSpan={2} className="text-xs text-muted-foreground">
+              {ev.receivedOn ? format(new Date(ev.receivedOn), 'dd MMM yyyy') : '-'}
+            </TableCell>
+            <TableCell className="text-xs" data-testid={`text-evidence-amount-${ev.id}`}>
+              {(ev.amount / 100).toFixed(2)}
+            </TableCell>
+            <TableCell className="text-xs">{ev.paymentMode || '-'}</TableCell>
+            <TableCell className="text-xs">{ev.referenceNumber || sourceData.reference || '-'}</TableCell>
+            <TableCell>
+              <Badge 
+                variant={ev.matchStatus === 'matched' ? 'default' : 'secondary'} 
+                className={cn(
+                  "text-xs",
+                  ev.matchStatus === 'matched' && "bg-green-600 hover:bg-green-700",
+                  ev.matchStatus === 'orphan' && "bg-amber-500 hover:bg-amber-600"
+                )}
+                data-testid={`badge-evidence-status-${ev.id}`}
+              >
+                {ev.matchStatus === 'matched' ? 'Matched' : 'Orphan'}
+              </Badge>
+            </TableCell>
+            <TableCell className="text-xs">
+              <span 
+                className="flex items-center gap-1"
+                title={`Confidence: ${ev.matchConfidence}%`}
+                data-testid={`text-evidence-confidence-${ev.id}`}
+              >
+                <ConfidenceIcon className={cn("w-3 h-3", confidenceColor)} />
+                {ev.matchConfidence}%
+              </span>
+            </TableCell>
+            <TableCell className="text-xs text-muted-foreground">
+              {sourceData.description || 'From Payments.xlsx'}
+            </TableCell>
+          </TableRow>
+        );
+      })}
+    </>
+  );
+}
+
 export default function PaymentManagement() {
   const { toast } = useToast();
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
@@ -103,6 +198,9 @@ export default function PaymentManagement() {
   const [filterVendor, setFilterVendor] = useState("all");
   const [filterMethod, setFilterMethod] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all"); // all, active, cancelled
+  
+  // Track expanded VY- payments to show evidence
+  const [expandedPayments, setExpandedPayments] = useState<Set<string>>(new Set());
 
   const { data: vendors = [] } = useQuery<any[]>({
     queryKey: ['/api/vendors'],
@@ -255,6 +353,19 @@ export default function PaymentManagement() {
   const isVyapaarPayment = (payment: any) => {
     const refNum = payment?.referenceNumber || '';
     return refNum.startsWith('VY-');
+  };
+
+  // Toggle payment evidence visibility
+  const togglePaymentEvidence = (paymentId: string) => {
+    setExpandedPayments(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(paymentId)) {
+        newSet.delete(paymentId);
+      } else {
+        newSet.add(paymentId);
+      }
+      return newSet;
+    });
   };
 
   const onEditSubmit = (data: EditPaymentFormData) => {
@@ -415,56 +526,95 @@ export default function PaymentManagement() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredPayments.map((payment: any) => (
-                    <TableRow key={payment.id} data-testid={`row-payment-${payment.id}`}>
-                      <TableCell className="text-sm">
-                        {format(new Date(payment.paymentDate), 'dd MMM yyyy')}
-                      </TableCell>
-                      <TableCell className="text-sm">{payment.vendorName}</TableCell>
-                      <TableCell className="text-sm font-medium">{payment.invoiceNumber}</TableCell>
-                      <TableCell className="text-sm">₹{(payment.amount / 100).toFixed(2)}</TableCell>
-                      <TableCell className="text-sm">{payment.paymentMethod}</TableCell>
-                      <TableCell className="text-sm">{payment.referenceNumber || '-'}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-xs">
-                          {payment.paymentType}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {payment.cancelledAt ? (
-                          <Badge variant="destructive" className="text-xs">Cancelled</Badge>
-                        ) : (
-                          <Badge variant="default" className="text-xs bg-green-600 hover:bg-green-700">Active</Badge>
+                  {filteredPayments.map((payment: any) => {
+                    const isVyapaar = isVyapaarPayment(payment);
+                    const isExpanded = expandedPayments.has(payment.id);
+                    
+                    return (
+                      <>
+                        <TableRow key={payment.id} data-testid={`row-payment-${payment.id}`}>
+                          <TableCell className="text-sm">
+                            <div className="flex items-center gap-1">
+                              {isVyapaar && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6"
+                                  onClick={() => togglePaymentEvidence(payment.id)}
+                                  data-testid={`button-expand-evidence-${payment.id}`}
+                                  title="View Payments.xlsx evidence"
+                                >
+                                  {isExpanded ? (
+                                    <ChevronDown className="w-4 h-4" />
+                                  ) : (
+                                    <ChevronRight className="w-4 h-4" />
+                                  )}
+                                </Button>
+                              )}
+                              {format(new Date(payment.paymentDate), 'dd MMM yyyy')}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-sm">{payment.vendorName}</TableCell>
+                          <TableCell className="text-sm font-medium">{payment.invoiceNumber}</TableCell>
+                          <TableCell className="text-sm">₹{(payment.amount / 100).toFixed(2)}</TableCell>
+                          <TableCell className="text-sm">{payment.paymentMethod}</TableCell>
+                          <TableCell className="text-sm">
+                            <div className="flex items-center gap-1">
+                              {payment.referenceNumber || '-'}
+                              {isVyapaar && (
+                                <Badge variant="secondary" className="text-xs ml-1">
+                                  <Link2 className="w-3 h-3 mr-1" />
+                                  Vyapaar
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-xs">
+                              {payment.paymentType}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {payment.cancelledAt ? (
+                              <Badge variant="destructive" className="text-xs">Cancelled</Badge>
+                            ) : (
+                              <Badge variant="default" className="text-xs bg-green-600 hover:bg-green-700">Active</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              {!payment.cancelledAt && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleEditPayment(payment)}
+                                  data-testid={`button-edit-${payment.id}`}
+                                >
+                                  <Pencil className="w-4 h-4 mr-1" />
+                                  Edit
+                                </Button>
+                              )}
+                              {!payment.cancelledAt && payment.paymentType !== 'Write-off' && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setCancelPaymentId(payment.id)}
+                                  data-testid={`button-cancel-${payment.id}`}
+                                >
+                                  <X className="w-4 h-4 mr-1" />
+                                  Cancel
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                        {/* Payment Evidence Sub-row */}
+                        {isVyapaar && isExpanded && (
+                          <PaymentEvidenceRow key={`evidence-${payment.id}`} paymentId={payment.id} />
                         )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          {!payment.cancelledAt && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEditPayment(payment)}
-                              data-testid={`button-edit-${payment.id}`}
-                            >
-                              <Pencil className="w-4 h-4 mr-1" />
-                              Edit
-                            </Button>
-                          )}
-                          {!payment.cancelledAt && payment.paymentType !== 'Write-off' && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setCancelPaymentId(payment.id)}
-                              data-testid={`button-cancel-${payment.id}`}
-                            >
-                              <X className="w-4 h-4 mr-1" />
-                              Cancel
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                      </>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>

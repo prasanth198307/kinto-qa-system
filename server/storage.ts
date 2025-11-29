@@ -468,6 +468,7 @@ export interface IStorage {
   getPaymentEvidenceByPayment(parentPaymentId: string): Promise<PaymentEvidence[]>;
   getPaymentEvidenceByVendor(vendorId: string): Promise<PaymentEvidence[]>;
   getAllOrphanEvidence(): Promise<PaymentEvidence[]>;
+  updatePaymentEvidence(id: string, updates: Partial<InsertPaymentEvidence>): Promise<PaymentEvidence | undefined>;
   deletePaymentEvidence(id: string): Promise<void>;
   
   // Sales Returns
@@ -2359,6 +2360,15 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(paymentEvidence)
       .where(and(eq(paymentEvidence.matchStatus, 'orphan'), eq(paymentEvidence.recordStatus, 1)));
+  }
+
+  async updatePaymentEvidence(id: string, updates: Partial<InsertPaymentEvidence>): Promise<PaymentEvidence | undefined> {
+    const [updated] = await db
+      .update(paymentEvidence)
+      .set({ ...updates, updatedAt: new Date().toISOString() })
+      .where(eq(paymentEvidence.id, id))
+      .returning();
+    return updated;
   }
 
   async deletePaymentEvidence(id: string): Promise<void> {

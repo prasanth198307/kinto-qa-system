@@ -5271,7 +5271,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // MUST be before /:paymentId route to avoid "orphans" being matched as paymentId
   app.get('/api/payment-evidence/orphans', isAuthenticated, async (req: any, res) => {
     try {
-      const orphans = await storage.getOrphanPaymentEvidence();
+      const orphans = await storage.getAllOrphanEvidence();
       res.json(orphans);
     } catch (error) {
       console.error("Error fetching orphan evidence:", error);
@@ -5283,7 +5283,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/payment-evidence/:paymentId', isAuthenticated, async (req: any, res) => {
     try {
       const { paymentId } = req.params;
-      const evidence = await storage.getPaymentEvidence(paymentId);
+      
+      if (!paymentId || paymentId.length < 1) {
+        return res.status(400).json({ message: "Payment ID is required" });
+      }
+      
+      // Verify payment exists before fetching evidence
+      const payment = await storage.getPayment(paymentId);
+      if (!payment) {
+        return res.status(404).json({ message: "Payment not found" });
+      }
+      
+      const evidence = await storage.getPaymentEvidenceByPayment(paymentId);
       res.json(evidence);
     } catch (error) {
       console.error("Error fetching payment evidence:", error);
@@ -5295,13 +5306,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/payment-evidence/:id', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const { id } = req.params;
+      
+      if (!id || id.length < 1) {
+        return res.status(400).json({ message: "Evidence ID is required" });
+      }
+      
       const { matchStatus, parentPaymentId, matchConfidence } = req.body;
+      
+      // Validate matchStatus if provided
+      if (matchStatus && !['matched', 'orphan', 'manual'].includes(matchStatus)) {
+        return res.status(400).json({ message: "Invalid match status" });
+      }
       
       const updatedEvidence = await storage.updatePaymentEvidence(id, {
         matchStatus,
         parentPaymentId,
         matchConfidence
       });
+      
+      if (!updatedEvidence) {
+        return res.status(404).json({ message: "Evidence record not found" });
+      }
       
       await logAudit(req.user?.id, 'UPDATE', 'payment_evidence', id, `Updated evidence status to ${matchStatus}`);
       res.json(updatedEvidence);
