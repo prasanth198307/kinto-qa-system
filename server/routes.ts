@@ -14,7 +14,7 @@ import { whatsappService } from "./whatsappService";
 import { whatsappWebhookRouter } from "./whatsappWebhook";
 import { whatsappConversationService } from "./whatsappConversationService";
 import { calculateBOMSuggestions } from "@shared/calculations";
-import { importVyapaarData, clearImportedData } from "./vyapaar-import";
+import { importVyapaarData, clearImportedData, importPaymentsOnly } from "./vyapaar-import";
 import { parseExcelFile, commitImport } from "./cashRegisterImport";
 import { importCashRegisterFromExcel } from "./importCashRegisterFromExcel";
 import { insertCashRegisterDaySchema, insertCashRegisterTransactionSchema, insertCashRegisterExpenseItemSchema, insertSalespersonMappingSchema, cashRegisterDays, cashRegisterTransactions, cashRegisterExpenseItems, expenseVouchers, expenseItems } from "@shared/schema";
@@ -8532,6 +8532,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false,
         message: error.message || 'Failed to clear imported data'
+      });
+    }
+  });
+
+  // Payments-only import endpoint (FIFO matching to existing invoices)
+  app.post('/api/import-payments-only', isAuthenticated, requireRole('admin'), upload.single('paymentsFile'), async (req: any, res: Response) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ 
+          success: false,
+          error: 'Payments file is required'
+        });
+      }
+
+      // Create temporary directory
+      const tmpDir = path.join(process.cwd(), 'tmp', 'uploads');
+      if (!fs.existsSync(tmpDir)) {
+        fs.mkdirSync(tmpDir, { recursive: true });
+      }
+
+      // Save file temporarily
+      const timestamp = Date.now();
+      const paymentsPath = path.join(tmpDir, `payments-${timestamp}.xlsx`);
+      fs.writeFileSync(paymentsPath, req.file.buffer);
+
+      console.log('[PAYMENTS IMPORT] Starting payments-only import...');
+      
+      // Run import
+      const result = await importPaymentsOnly(paymentsPath);
+
+      // Clean up
+      try {
+        fs.unlinkSync(paymentsPath);
+      } catch (cleanupError) {
+        console.error('[PAYMENTS IMPORT] Failed to cleanup temp file:', cleanupError);
+      }
+
+      console.log('[PAYMENTS IMPORT] Import completed:', result);
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error('[PAYMENTS IMPORT] Error:', error);
+      res.status(500).json({ 
+        success: false,
+        message: error.message || 'Payments import failed'
       });
     }
   });

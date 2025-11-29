@@ -1199,3 +1199,308 @@ export async function importVyapaarData(
     };
   });
 }
+
+// Payments-only import function - imports Payments.xlsx and links evidence to existing invoices using FIFO
+export async function importPaymentsOnly(paymentsFilePath: string): Promise<{
+  success: boolean;
+  message: string;
+  stats: {
+    payments: number;
+    paymentsSkipped: number;
+    paymentsUnallocated: number;
+  };
+}> {
+  const XLSX = await import('xlsx');
+  
+  return db.transaction(async (tx) => {
+    console.log('Processing Payments.xlsx file (payments-only import)...');
+    
+    const paymentsWorkbook = XLSX.readFile(paymentsFilePath);
+    const paymentsSheet = paymentsWorkbook.Sheets[paymentsWorkbook.SheetNames[0]];
+    const paymentsData: any[] = XLSX.utils.sheet_to_json(paymentsSheet, { header: 1 });
+    
+    // Find header row dynamically
+    let headerRowIndex = -1;
+    let columnMapping: Record<string, number> = {};
+    
+    for (let i = 0; i < Math.min(10, paymentsData.length); i++) {
+      const row = paymentsData[i];
+      if (!row) continue;
+      
+      const rowStr = JSON.stringify(row).toLowerCase();
+      if (rowStr.includes('date') && rowStr.includes('party')) {
+        headerRowIndex = i;
+        for (let j = 0; j < row.length; j++) {
+          const header = String(row[j] || '').toLowerCase().trim();
+          if (header.includes('date') && !header.includes('due')) columnMapping['date'] = j;
+          else if (header.includes('reference') || header.includes('ref')) columnMapping['reference'] = j;
+          else if (header.includes('party')) columnMapping['party'] = j;
+          else if (header.includes('payment type') || header.includes('mode')) columnMapping['paymentType'] = j;
+          else if (header.includes('received')) columnMapping['received'] = j;
+          else if (header.includes('description') || header.includes('remarks')) columnMapping['description'] = j;
+        }
+        break;
+      }
+    }
+    
+    if (headerRowIndex === -1) {
+      headerRowIndex = 2;
+      columnMapping = { date: 0, reference: 1, party: 2, paymentType: 6, received: 8, description: 12 };
+      console.log('Using positional column mapping (header row not detected)');
+    } else {
+      console.log(`Found header at row ${headerRowIndex + 1}, columns:`, columnMapping);
+    }
+    
+    const paymentRows = paymentsData.slice(headerRowIndex + 1).filter(row => {
+      return row && row[columnMapping['date'] || 0] && row[columnMapping['party'] || 2];
+    });
+    
+    console.log(`Found ${paymentRows.length} payment records to process`);
+    
+    // Get all vendors for fuzzy matching
+    const allVendors = await tx.select().from(vendors);
+    const vendorMap = new Map(allVendors.map(v => [normalize(v.vendorName), v.id]));
+    
+    // Create deduplication signatures
+    const existingPaymentSignatures = new Set<string>();
+    const existingPayments = await tx.select({
+      paymentDate: invoicePayments.paymentDate,
+      amount: invoicePayments.amount,
+      invoiceId: invoicePayments.invoiceId,
+    }).from(invoicePayments);
+    
+    const existingInvoices = await tx.select({
+      id: invoices.id,
+      buyerName: invoices.buyerName,
+    }).from(invoices);
+    const invoiceVendorMap = new Map(existingInvoices.map(inv => [inv.id, inv.buyerName]));
+    
+    for (const payment of existingPayments) {
+      const vendorName = invoiceVendorMap.get(payment.invoiceId) || '';
+      const sig = `${normalize(vendorName)}-${payment.paymentDate?.substring(0, 10)}-${payment.amount}`;
+      existingPaymentSignatures.add(sig);
+    }
+    
+    let paymentsImported = 0;
+    let paymentsSkipped = 0;
+    let paymentsUnallocated = 0;
+    
+    for (const row of paymentRows) {
+      const dateStr = String(row[columnMapping['date'] || 0] || '').trim();
+      const referenceNo = String(row[columnMapping['reference'] || 1] || '').trim();
+      const partyName = String(row[columnMapping['party'] || 2] || '').trim();
+      const paymentMethod = String(row[columnMapping['paymentType'] || 6] || 'Cash').trim();
+      const receivedAmount = Number(row[columnMapping['received'] || 8]) || 0;
+      const description = String(row[columnMapping['description'] || 12] || '').trim();
+      
+      if (!partyName || receivedAmount <= 0) {
+        paymentsSkipped++;
+        continue;
+      }
+      
+      // Parse date
+      let paymentDate: Date;
+      try {
+        if (typeof dateStr === 'number') {
+          paymentDate = new Date((dateStr - 25569) * 86400 * 1000);
+        } else {
+          const parts = dateStr.split(/[\/\-]/);
+          if (parts.length === 3) {
+            if (parts[0].length === 4) {
+              paymentDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+            } else {
+              paymentDate = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+            }
+          } else {
+            paymentDate = new Date(dateStr);
+          }
+        }
+        if (isNaN(paymentDate.getTime())) {
+          paymentDate = new Date();
+        }
+      } catch {
+        paymentDate = new Date();
+      }
+      
+      // Find vendor
+      let vendorId: string | undefined;
+      let matchedVendorName: string | undefined;
+      const normalizedPartyName = normalize(partyName);
+      vendorId = vendorMap.get(normalizedPartyName);
+      
+      if (vendorId) {
+        matchedVendorName = partyName;
+      } else {
+        const fuzzyMatches = Array.from(vendorMap.entries())
+          .filter(([name]) => fuzzyMatch(name, partyName));
+        if (fuzzyMatches.length > 0) {
+          vendorId = fuzzyMatches[0][1];
+          matchedVendorName = fuzzyMatches[0][0];
+        }
+      }
+      
+      if (!vendorId) {
+        console.log(`Skipping payment: vendor not found - "${partyName}"`);
+        paymentsSkipped++;
+        continue;
+      }
+      
+      const amountPaise = Math.round(receivedAmount * 100);
+      const paymentSig = `${normalize(matchedVendorName || partyName)}-${paymentDate.toISOString().substring(0, 10)}-${amountPaise}`;
+      const isDuplicate = existingPaymentSignatures.has(paymentSig);
+      if (isDuplicate) {
+        console.log(`Found duplicate payment (storing as evidence): ${partyName}, ${paymentDate.toISOString().substring(0, 10)}, ₹${receivedAmount}`);
+      }
+      existingPaymentSignatures.add(paymentSig);
+      
+      // Get vendor record
+      const vendorRecord = await tx.select().from(vendors).where(eq(vendors.id, vendorId)).then(r => r[0]);
+      
+      // FIFO MATCHING: Fill oldest invoice first
+      const vendorInvoicesWithPayments = await tx.select({
+        invoice: invoices,
+        vyPayment: invoicePayments,
+      })
+      .from(invoices)
+      .innerJoin(invoicePayments, eq(invoicePayments.invoiceId, invoices.id))
+      .where(and(
+        eq(invoices.buyerName, vendorRecord.vendorName),
+        eq(invoices.recordStatus, 1),
+        sql`${invoicePayments.referenceNumber} LIKE 'VY-%'`,
+        eq(invoicePayments.recordStatus, 1)
+      ))
+      .orderBy(invoices.invoiceDate); // Oldest first (FIFO)
+      
+      let bestVyPayment = null;
+      let matchConfidence = 100;
+      let matchMethod = 'none';
+      
+      // FIFO: Find first invoice with room
+      for (const inv of vendorInvoicesWithPayments) {
+        const linkedEvidenceSum = await tx.select({
+          total: sql<number>`COALESCE(SUM(${paymentEvidence.amount}), 0)`
+        })
+        .from(paymentEvidence)
+        .where(and(
+          eq(paymentEvidence.invoiceId, inv.invoice.id),
+          eq(paymentEvidence.matchStatus, 'matched')
+        ))
+        .then(r => Number(r[0]?.total || 0));
+        
+        const invoiceTotal = inv.vyPayment.amount || 0;
+        const remaining = invoiceTotal - linkedEvidenceSum;
+        
+        if (remaining > 0) {
+          bestVyPayment = inv.vyPayment;
+          if (amountPaise === remaining) {
+            matchConfidence = 100;
+            matchMethod = 'fifo_exact_fill';
+          } else if (amountPaise <= remaining) {
+            matchConfidence = 90;
+            matchMethod = 'fifo_partial_fill';
+          } else {
+            matchConfidence = 70;
+            matchMethod = 'fifo_overflow';
+          }
+          console.log(`FIFO: Linking ₹${receivedAmount} to Invoice ${inv.invoice.invoiceNumber} (remaining: ₹${remaining/100})`);
+          break;
+        }
+      }
+      
+      if (bestVyPayment) {
+        await tx.insert(paymentEvidence).values({
+          parentPaymentId: bestVyPayment.id,
+          invoiceId: bestVyPayment.invoiceId,
+          vendorId: vendorId,
+          amount: amountPaise,
+          receivedOn: paymentDate.toISOString(),
+          referenceNumber: referenceNo || null,
+          paymentMode: paymentMethod,
+          bankName: null,
+          matchConfidence: isDuplicate ? 40 : matchConfidence,
+          matchStatus: isDuplicate ? 'duplicate' : 'matched',
+          sourceRow: JSON.stringify({
+            date: paymentDate.toISOString().substring(0, 10),
+            party: partyName,
+            reference: referenceNo,
+            received: receivedAmount,
+            method: paymentMethod,
+            description: description,
+            matchMethod: matchMethod,
+            linkedToVY: bestVyPayment.referenceNumber,
+            isDuplicate: isDuplicate || undefined
+          }),
+          importBatchId: `IMPORT-${new Date().toISOString().substring(0, 10)}`,
+          sourceFile: 'Payments.xlsx',
+        });
+        paymentsImported++;
+      } else {
+        // Store as orphan
+        const vyPayments = await tx.select()
+          .from(invoicePayments)
+          .innerJoin(invoices, eq(invoicePayments.invoiceId, invoices.id))
+          .where(and(
+            eq(invoices.buyerName, vendorRecord.vendorName),
+            sql`${invoicePayments.referenceNumber} LIKE 'VY-%'`,
+            eq(invoicePayments.recordStatus, 1)
+          ))
+          .limit(1);
+        
+        if (vyPayments.length > 0) {
+          await tx.insert(paymentEvidence).values({
+            parentPaymentId: vyPayments[0].invoice_payments.id,
+            invoiceId: vyPayments[0].invoice_payments.invoiceId,
+            vendorId: vendorId,
+            amount: amountPaise,
+            receivedOn: paymentDate.toISOString(),
+            referenceNumber: referenceNo || null,
+            paymentMode: paymentMethod,
+            bankName: null,
+            matchConfidence: isDuplicate ? 40 : 30,
+            matchStatus: 'orphan',
+            sourceRow: JSON.stringify({
+              date: paymentDate.toISOString().substring(0, 10),
+              party: partyName,
+              reference: referenceNo,
+              received: receivedAmount,
+              method: paymentMethod,
+              description: description,
+              reason: 'No invoice with remaining capacity (FIFO)',
+              isDuplicate: isDuplicate || undefined
+            }),
+            importBatchId: `IMPORT-${new Date().toISOString().substring(0, 10)}`,
+            sourceFile: 'Payments.xlsx',
+          });
+          paymentsImported++;
+          paymentsUnallocated++;
+        } else {
+          console.log(`⚠️ No VY- payments for ${partyName} - skipping`);
+          paymentsSkipped++;
+        }
+      }
+    }
+    
+    console.log(`✅ Payments-only import complete: ${paymentsImported} records, ${paymentsSkipped} skipped, ${paymentsUnallocated} orphaned`);
+    
+    return {
+      success: true,
+      message: 'Payments import completed successfully',
+      stats: {
+        payments: paymentsImported,
+        paymentsSkipped,
+        paymentsUnallocated,
+      },
+    };
+  }).catch((error: any) => {
+    console.error('Payments import failed:', error);
+    return {
+      success: false,
+      message: error.message || 'Payments import failed',
+      stats: {
+        payments: 0,
+        paymentsSkipped: 0,
+        paymentsUnallocated: 0,
+      },
+    };
+  });
+}
