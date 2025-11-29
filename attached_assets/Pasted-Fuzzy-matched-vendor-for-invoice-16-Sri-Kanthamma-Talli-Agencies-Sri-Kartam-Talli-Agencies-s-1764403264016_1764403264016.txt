@@ -1,0 +1,81 @@
+Fuzzy matched vendor for invoice 16: "Sri Kanthamma Talli Agencies (Sri Kartam Talli Agencies)" → "sri kanthamma talli agencies"
+Found 465 invoices in DB for fallback matching
+SaleData has 465 entries for matching
+Matched 465 invoices, 178 with zero received, 0 with no buyer
+Stored 287 Sale Report payments for fallback
+Processing separate Payments file...
+Found header at row 3, columns: {
+  date: 0,
+  reference: 1,
+  party: 2,
+  paymentType: 6,
+  received: 8,
+  description: 12
+}
+Found 316 payment records to process
+Import failed within transaction: error: invalid input syntax for type integer: "93.85416666666667"
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg/lib/client.js:545:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:6372:13
+    at async NodePgSession.transaction (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:142:22)
+    at async importVyapaarData (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:5825:10)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:14600:22 {
+  length: 155,
+  severity: 'ERROR',
+  code: '22P02',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: "unnamed portal parameter $9 = '...'",
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'numutils.c',
+  line: '235',
+  routine: 'pg_strtoint32'
+}
+Import transaction failed: error: invalid input syntax for type integer: "93.85416666666667"
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg/lib/client.js:545:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:6372:13
+    at async NodePgSession.transaction (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:142:22)
+    at async importVyapaarData (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:5825:10)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:14600:22 {
+  length: 155,
+  severity: 'ERROR',
+  code: '22P02',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: "unnamed portal parameter $9 = '...'",
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'numutils.c',
+  line: '235',
+  routine: 'pg_strtoint32'
+}
+[DATA IMPORT] Import completed: {
+  success: false,
+  message: 'invalid input syntax for type integer: "93.85416666666667"',
+  stats: {
+    vendors: 0,
+    products: 0,
+    invoices: 0,
+    vendorTypes: 0,
+    skipped: 0,
+    payments: 0,
+    paymentsSkipped: 0,
+    paymentsUnallocated: 0
+  }
+}
+1:30:39 PM [express] POST /api/import-vyapaar 200 in 3631ms :: {"success":false,"message":"invalid i…
+

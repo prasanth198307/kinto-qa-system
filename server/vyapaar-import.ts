@@ -987,7 +987,7 @@ export async function importVyapaarData(
             // Calculate match confidence based on amount and date proximity
             let matchConfidence = 100;
             if (amountPaise !== bestVyPayment.amount) matchConfidence -= 20; // Amount mismatch
-            if (bestDateDiff > 0) matchConfidence -= Math.min(bestDateDiff * 5, 30); // Date proximity penalty
+            if (bestDateDiff > 0) matchConfidence -= Math.min(Math.round(bestDateDiff * 5), 30); // Date proximity penalty (rounded)
             
             await tx.insert(paymentEvidence).values({
               parentPaymentId: bestVyPayment.id,
@@ -998,7 +998,7 @@ export async function importVyapaarData(
               referenceNumber: referenceNo || null,
               paymentMode: paymentMethod,
               bankName: null,
-              matchConfidence: isDuplicate ? 40 : Math.max(matchConfidence, 50),
+              matchConfidence: isDuplicate ? 40 : Math.round(Math.max(matchConfidence, 50)),
               matchStatus: isDuplicate ? 'duplicate' : 'matched',
               sourceRow: JSON.stringify({
                 date: paymentDate.toISOString().substring(0, 10),
