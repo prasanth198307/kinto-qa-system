@@ -1016,16 +1016,73 @@ export async function importVyapaarData(
             }
           }
           
-          // If no VY- payment found to link, create orphan evidence for manual review
+          // If no VY- payment found to link, link evidence to PAID invoices for this vendor
+          // This provides audit trail of cash collections that built up to VY- payment totals
           if (!evidenceLinked && remainingAmount > 0) {
-            // Find ANY VY- payment for this vendor to attach as orphan
-            const anyVyPayment = vyPayments.length > 0 ? vyPayments[0] : null;
+            // Get all paid invoices for this vendor (those with VY- payments), ordered by date (FIFO)
+            const paidInvoices = await tx.select({
+              invoiceId: invoices.id,
+              invoiceDate: invoices.invoiceDate,
+              vyPaymentId: invoicePayments.id,
+            })
+            .from(invoices)
+            .innerJoin(invoicePayments, eq(invoicePayments.invoiceId, invoices.id))
+            .where(
+              and(
+                eq(invoices.buyerName, vendorRecord?.vendorName || ''),
+                eq(invoices.recordStatus, 1),
+                eq(invoicePayments.recordStatus, 1)
+              )
+            )
+            .orderBy(invoices.invoiceDate);
             
-            if (anyVyPayment) {
-              // Attach as orphan evidence to first VY- payment
+            if (paidInvoices.length > 0) {
+              // Find the best matching paid invoice by date proximity (FIFO preference)
+              let bestMatch = paidInvoices[0]; // Default to oldest
+              let bestDateDiff = Infinity;
+              
+              for (const inv of paidInvoices) {
+                if (inv.invoiceDate) {
+                  const invDate = new Date(inv.invoiceDate);
+                  const dateDiff = Math.abs(paymentDate.getTime() - invDate.getTime()) / (1000 * 60 * 60 * 24);
+                  if (dateDiff < bestDateDiff) {
+                    bestDateDiff = dateDiff;
+                    bestMatch = inv;
+                  }
+                }
+              }
+              
+              // Link evidence to the paid invoice (with VY- payment reference)
               await tx.insert(paymentEvidence).values({
-                parentPaymentId: anyVyPayment.id,
-                invoiceId: anyVyPayment.invoiceId,
+                parentPaymentId: bestMatch.vyPaymentId,
+                invoiceId: bestMatch.invoiceId,
+                vendorId: vendorId,
+                amount: remainingAmount,
+                receivedOn: paymentDate.toISOString(),
+                referenceNumber: referenceNo || null,
+                paymentMode: paymentMethod,
+                bankName: null,
+                matchConfidence: 50, // Medium confidence - linked to paid invoice
+                matchStatus: 'matched', // Now matched to paid invoice
+                sourceRow: JSON.stringify({
+                  date: paymentDate.toISOString().substring(0, 10),
+                  party: partyName,
+                  reference: referenceNo,
+                  received: receivedAmount,
+                  method: paymentMethod,
+                  description: description,
+                  linkedTo: 'Paid invoice (FIFO by date proximity)'
+                }),
+                importBatchId: `IMPORT-${new Date().toISOString().substring(0, 10)}`,
+                sourceFile: 'Payments.xlsx',
+              });
+              paymentsImported++;
+              // Not counting as unallocated since it's now linked to paid invoice
+            } else if (vyPayments.length > 0) {
+              // Fallback: attach as orphan to first VY- payment if no paid invoices found
+              await tx.insert(paymentEvidence).values({
+                parentPaymentId: vyPayments[0].id,
+                invoiceId: vyPayments[0].invoiceId,
                 vendorId: vendorId,
                 amount: remainingAmount,
                 receivedOn: paymentDate.toISOString(),
