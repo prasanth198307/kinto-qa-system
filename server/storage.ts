@@ -182,7 +182,7 @@ import {
   type InsertPaymentEvidence,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, or, isNotNull, notInArray, gte, lte, sql } from "drizzle-orm";
+import { eq, and, or, isNotNull, notInArray, inArray, gte, lte, sql, desc } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 
@@ -470,6 +470,24 @@ export interface IStorage {
   getAllOrphanEvidence(): Promise<PaymentEvidence[]>;
   updatePaymentEvidence(id: string, updates: Partial<InsertPaymentEvidence>): Promise<PaymentEvidence | undefined>;
   deletePaymentEvidence(id: string): Promise<void>;
+  
+  // Enriched Payment Report (payments with evidence metadata for reporting)
+  getPaymentsWithEvidence(options?: {
+    vendorId?: string;
+    invoiceId?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    page?: number;
+    pageSize?: number;
+  }): Promise<{
+    data: any[];
+    meta: {
+      total: number;
+      page: number;
+      pageSize: number;
+      totalPages: number;
+    };
+  }>;
   
   // Sales Returns
   createSalesReturn(salesReturn: InsertSalesReturn): Promise<SalesReturn>;
@@ -2373,6 +2391,149 @@ export class DatabaseStorage implements IStorage {
 
   async deletePaymentEvidence(id: string): Promise<void> {
     await db.update(paymentEvidence).set({ recordStatus: 0 }).where(eq(paymentEvidence.id, id));
+  }
+
+  // Enriched Payment Report - combines payments with evidence metadata
+  async getPaymentsWithEvidence(options?: {
+    vendorId?: string;
+    invoiceId?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    page?: number;
+    pageSize?: number;
+  }): Promise<{
+    data: any[];
+    meta: {
+      total: number;
+      page: number;
+      pageSize: number;
+      totalPages: number;
+    };
+  }> {
+    const page = options?.page || 1;
+    const pageSize = options?.pageSize || 50;
+    const offset = (page - 1) * pageSize;
+    
+    // Build conditions
+    const conditions: any[] = [eq(invoicePayments.recordStatus, 1)];
+    
+    if (options?.invoiceId) {
+      conditions.push(eq(invoicePayments.invoiceId, options.invoiceId));
+    }
+    
+    if (options?.dateFrom) {
+      conditions.push(sql`${invoicePayments.paymentDate}::date >= ${options.dateFrom}::date`);
+    }
+    
+    if (options?.dateTo) {
+      conditions.push(sql`${invoicePayments.paymentDate}::date <= ${options.dateTo}::date`);
+    }
+    
+    if (options?.vendorId) {
+      conditions.push(eq(invoices.vendorId, options.vendorId));
+    }
+    
+    // Get total count
+    const countResult = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(invoicePayments)
+      .leftJoin(invoices, eq(invoicePayments.invoiceId, invoices.id))
+      .where(and(...conditions));
+    
+    const total = countResult[0]?.count || 0;
+    
+    // Get payments with invoice info
+    const payments = await db
+      .select({
+        id: invoicePayments.id,
+        invoiceId: invoicePayments.invoiceId,
+        paymentDate: invoicePayments.paymentDate,
+        amount: invoicePayments.amount,
+        paymentMethod: invoicePayments.paymentMethod,
+        referenceNumber: invoicePayments.referenceNumber,
+        paymentType: invoicePayments.paymentType,
+        bankName: invoicePayments.bankName,
+        remarks: invoicePayments.remarks,
+        recordedBy: invoicePayments.recordedBy,
+        createdAt: invoicePayments.createdAt,
+        invoiceNumber: invoices.invoiceNumber,
+        buyerName: invoices.buyerName,
+        vendorId: invoices.vendorId,
+      })
+      .from(invoicePayments)
+      .leftJoin(invoices, eq(invoicePayments.invoiceId, invoices.id))
+      .where(and(...conditions))
+      .orderBy(desc(invoicePayments.paymentDate))
+      .limit(pageSize)
+      .offset(offset);
+    
+    // Get evidence for these payments in batch
+    const paymentIds = payments.map(p => p.id);
+    
+    let evidenceByPayment: Map<string, any[]> = new Map();
+    
+    if (paymentIds.length > 0) {
+      const allEvidence = await db
+        .select()
+        .from(paymentEvidence)
+        .where(and(
+          inArray(paymentEvidence.parentPaymentId, paymentIds),
+          eq(paymentEvidence.recordStatus, 1)
+        ));
+      
+      // Group evidence by parent payment ID
+      for (const ev of allEvidence) {
+        if (ev.parentPaymentId) {
+          if (!evidenceByPayment.has(ev.parentPaymentId)) {
+            evidenceByPayment.set(ev.parentPaymentId, []);
+          }
+          evidenceByPayment.get(ev.parentPaymentId)!.push(ev);
+        }
+      }
+    }
+    
+    // Enrich payments with evidence
+    const enrichedPayments = payments.map(payment => {
+      const evidence = evidenceByPayment.get(payment.id) || [];
+      
+      // Aggregate evidence metadata
+      const evidenceCount = evidence.length;
+      const evidenceTotalAmount = evidence.reduce((sum, e) => sum + (e.amount || 0), 0);
+      const evidenceReferences = evidence
+        .map(e => e.referenceNumber)
+        .filter(Boolean)
+        .join(', ');
+      const evidenceModes = [...new Set(evidence.map(e => e.paymentMode).filter(Boolean))].join(', ');
+      
+      return {
+        ...payment,
+        // Evidence summary for reporting
+        evidenceCount,
+        evidenceTotalAmount,
+        evidenceReferences: evidenceReferences || null,
+        evidencePaymentModes: evidenceModes || null,
+        // Full evidence records if needed
+        evidenceRecords: evidence.map(e => ({
+          id: e.id,
+          amount: e.amount,
+          receivedOn: e.receivedOn,
+          paymentMode: e.paymentMode,
+          referenceNumber: e.referenceNumber,
+          matchStatus: e.matchStatus,
+          matchConfidence: e.matchConfidence,
+        })),
+      };
+    });
+    
+    return {
+      data: enrichedPayments,
+      meta: {
+        total,
+        page,
+        pageSize,
+        totalPages: Math.ceil(total / pageSize),
+      },
+    };
   }
 
   // Sales Returns

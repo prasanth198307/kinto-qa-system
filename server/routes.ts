@@ -5266,6 +5266,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Enriched Payment Report API - combines payments with evidence metadata for reporting
+  app.get('/api/invoice-payments/with-evidence', isAuthenticated, async (req: any, res) => {
+    try {
+      const { vendorId, invoiceId, dateFrom, dateTo, page, pageSize } = req.query;
+      
+      const result = await storage.getPaymentsWithEvidence({
+        vendorId: vendorId as string,
+        invoiceId: invoiceId as string,
+        dateFrom: dateFrom as string,
+        dateTo: dateTo as string,
+        page: page ? parseInt(page as string) : undefined,
+        pageSize: pageSize ? parseInt(pageSize as string) : undefined,
+      });
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching payments with evidence:", error);
+      res.status(500).json({ message: "Failed to fetch payment report" });
+    }
+  });
+
   // Payment Evidence API - for tracking Payments.xlsx records linked to VY- payments
   // Get orphan evidence records (for reconciliation dashboard)
   // MUST be before /:paymentId route to avoid "orphans" being matched as paymentId
