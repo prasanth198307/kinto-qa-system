@@ -968,26 +968,51 @@ export async function importVyapaarData(
           
           let evidenceLinked = false;
           
-          // FIXED: Store FULL amount from file, don't split/truncate
-          // Find best matching VY- payment by date proximity (within 7 days)
+          // PRIORITY 1: Match by invoice number from reference column
+          // Reference column often contains invoice numbers (e.g., "289", "290")
           let bestVyPayment = null;
-          let bestDateDiff = Infinity;
+          let matchConfidence = 100;
+          let matchMethod = 'none';
           
-          for (const vyPayment of vyPayments) {
-            const vyDate = new Date(vyPayment.paymentDate);
-            const daysDiff = Math.abs((paymentDate.getTime() - vyDate.getTime()) / (1000 * 60 * 60 * 24));
+          // Try to extract invoice number from reference
+          const invoiceNumMatch = referenceNo.match(/^(\d+)$/);
+          if (invoiceNumMatch) {
+            const invoiceNum = parseInt(invoiceNumMatch[1], 10);
+            // Find VY- payment for this specific invoice number
+            for (const vyPayment of vyPayments) {
+              // VY- reference format is "VY-{invoiceNumber}"
+              const vyInvoiceNum = vyPayment.referenceNumber?.match(/VY-(\d+)/)?.[1];
+              if (vyInvoiceNum && parseInt(vyInvoiceNum, 10) === invoiceNum) {
+                bestVyPayment = vyPayment;
+                matchConfidence = 100; // Perfect match by invoice number
+                matchMethod = 'invoice_number';
+                break;
+              }
+            }
+          }
+          
+          // PRIORITY 2: If no invoice match, fall back to date proximity (within 7 days)
+          if (!bestVyPayment) {
+            let bestDateDiff = Infinity;
+            for (const vyPayment of vyPayments) {
+              const vyDate = new Date(vyPayment.paymentDate);
+              const daysDiff = Math.abs((paymentDate.getTime() - vyDate.getTime()) / (1000 * 60 * 60 * 24));
+              
+              if (daysDiff <= 7 && daysDiff < bestDateDiff) {
+                bestDateDiff = daysDiff;
+                bestVyPayment = vyPayment;
+              }
+            }
             
-            if (daysDiff <= 7 && daysDiff < bestDateDiff) {
-              bestDateDiff = daysDiff;
-              bestVyPayment = vyPayment;
+            if (bestVyPayment) {
+              matchConfidence = 100;
+              if (amountPaise !== bestVyPayment.amount) matchConfidence -= 20;
+              if (bestDateDiff > 0) matchConfidence -= Math.min(Math.round(bestDateDiff * 5), 30);
+              matchMethod = 'date_proximity';
             }
           }
           
           if (bestVyPayment) {
-            // Calculate match confidence based on amount and date proximity
-            let matchConfidence = 100;
-            if (amountPaise !== bestVyPayment.amount) matchConfidence -= 20; // Amount mismatch
-            if (bestDateDiff > 0) matchConfidence -= Math.min(Math.round(bestDateDiff * 5), 30); // Date proximity penalty (rounded)
             
             await tx.insert(paymentEvidence).values({
               parentPaymentId: bestVyPayment.id,
@@ -1007,6 +1032,8 @@ export async function importVyapaarData(
                 received: receivedAmount,
                 method: paymentMethod,
                 description: description,
+                matchMethod: matchMethod, // 'invoice_number' or 'date_proximity'
+                linkedToVY: bestVyPayment.referenceNumber,
                 isDuplicate: isDuplicate || undefined
               }),
               importBatchId: `IMPORT-${new Date().toISOString().substring(0, 10)}`,
