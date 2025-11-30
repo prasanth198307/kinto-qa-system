@@ -4685,17 +4685,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 const deductFromThisBatch = Math.min(batch.quantity, remainingToDeduct);
                 const newQuantity = batch.quantity - deductFromThisBatch;
                 
-                await tx.update(finishedGoods)
-                  .set({ 
-                    quantity: newQuantity, 
-                    updatedAt: new Date().toISOString(),
-                    remarks: batch.remarks 
-                      ? `${batch.remarks} | Deducted ${deductFromThisBatch} for reissued invoice ${invoice.invoiceNumber}`
-                      : `Deducted ${deductFromThisBatch} for reissued invoice ${invoice.invoiceNumber}`
-                  })
-                  .where(eq(finishedGoods.id, batch.id));
-                
-                console.log(`[REISSUE_INVENTORY] Deducted ${deductFromThisBatch} units of product ${item.productId} from batch ${batch.batchNumber} (remaining: ${newQuantity})`);
+                // If quantity becomes 0, soft-delete the batch to keep inventory clean
+                if (newQuantity === 0) {
+                  await tx.update(finishedGoods)
+                    .set({ 
+                      quantity: 0,
+                      recordStatus: 0, // Soft delete - batch is exhausted
+                      updatedAt: new Date().toISOString(),
+                      remarks: batch.remarks 
+                        ? `${batch.remarks} | Fully consumed for reissued invoice ${invoice.invoiceNumber}`
+                        : `Fully consumed for reissued invoice ${invoice.invoiceNumber}`
+                    })
+                    .where(eq(finishedGoods.id, batch.id));
+                  
+                  console.log(`[REISSUE_INVENTORY] Batch ${batch.batchNumber} fully consumed and removed (deducted ${deductFromThisBatch} units)`);
+                } else {
+                  await tx.update(finishedGoods)
+                    .set({ 
+                      quantity: newQuantity, 
+                      updatedAt: new Date().toISOString(),
+                      remarks: batch.remarks 
+                        ? `${batch.remarks} | Deducted ${deductFromThisBatch} for reissued invoice ${invoice.invoiceNumber}`
+                        : `Deducted ${deductFromThisBatch} for reissued invoice ${invoice.invoiceNumber}`
+                    })
+                    .where(eq(finishedGoods.id, batch.id));
+                  
+                  console.log(`[REISSUE_INVENTORY] Deducted ${deductFromThisBatch} units of product ${item.productId} from batch ${batch.batchNumber} (remaining: ${newQuantity})`);
+                }
                 
                 remainingToDeduct -= deductFromThisBatch;
               }
