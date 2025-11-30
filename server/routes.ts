@@ -6590,6 +6590,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get pending credit/debit notes for a buyer (used in invoice form)
+  app.get('/api/buyer-adjustments/:buyerName', isAuthenticated, async (req: any, res) => {
+    try {
+      const { buyerName } = req.params;
+      const decodedBuyerName = decodeURIComponent(buyerName);
+      
+      // Get all invoices for this buyer
+      const allInvoices = await storage.getAllInvoices();
+      const buyerInvoices = allInvoices.filter(inv => 
+        inv.buyerName === decodedBuyerName && inv.recordStatus === 1
+      );
+      
+      if (buyerInvoices.length === 0) {
+        return res.json({
+          buyerName: decodedBuyerName,
+          pendingCredits: [],
+          pendingDebits: [],
+          totalCreditAmount: 0,
+          totalDebitAmount: 0,
+          netAdjustment: 0,
+          totalOutstanding: 0,
+        });
+      }
+      
+      const invoiceIds = buyerInvoices.map(inv => inv.id);
+      
+      // Get all credit notes for this buyer's invoices
+      const allCreditNotes = await db.select({
+        id: creditNotes.id,
+        noteNumber: creditNotes.noteNumber,
+        invoiceId: creditNotes.invoiceId,
+        creditDate: creditNotes.creditDate,
+        reason: creditNotes.reason,
+        status: creditNotes.status,
+        grandTotal: creditNotes.grandTotal,
+      })
+      .from(creditNotes)
+      .where(
+        and(
+          eq(creditNotes.recordStatus, 1),
+          eq(creditNotes.status, 'issued'),
+          inArray(creditNotes.invoiceId, invoiceIds)
+        )
+      );
+      
+      // Get all debit notes for this buyer's invoices
+      const allDebitNotes = await db.select({
+        id: debitNotes.id,
+        noteNumber: debitNotes.noteNumber,
+        invoiceId: debitNotes.invoiceId,
+        debitDate: debitNotes.debitDate,
+        reason: debitNotes.reason,
+        status: debitNotes.status,
+        grandTotal: debitNotes.grandTotal,
+      })
+      .from(debitNotes)
+      .where(
+        and(
+          eq(debitNotes.recordStatus, 1),
+          eq(debitNotes.status, 'issued'),
+          inArray(debitNotes.invoiceId, invoiceIds)
+        )
+      );
+      
+      // Calculate totals
+      const totalCreditAmount = allCreditNotes.reduce((sum, cn) => sum + (cn.grandTotal || 0), 0);
+      const totalDebitAmount = allDebitNotes.reduce((sum, dn) => sum + (dn.grandTotal || 0), 0);
+      const netAdjustment = totalDebitAmount - totalCreditAmount; // Positive = buyer owes more, Negative = buyer has credit
+      
+      // Calculate total outstanding (invoices - received - credits + debits)
+      const totalInvoiced = buyerInvoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
+      const totalReceived = buyerInvoices.reduce((sum, inv) => sum + (inv.amountReceived || 0), 0);
+      const totalOutstanding = totalInvoiced - totalReceived - totalCreditAmount + totalDebitAmount;
+      
+      res.json({
+        buyerName: decodedBuyerName,
+        pendingCredits: allCreditNotes.map(cn => ({
+          ...cn,
+          invoiceNumber: buyerInvoices.find(inv => inv.id === cn.invoiceId)?.invoiceNumber,
+        })),
+        pendingDebits: allDebitNotes.map(dn => ({
+          ...dn,
+          invoiceNumber: buyerInvoices.find(inv => inv.id === dn.invoiceId)?.invoiceNumber,
+        })),
+        totalCreditAmount,
+        totalDebitAmount,
+        netAdjustment,
+        totalOutstanding,
+        invoiceCount: buyerInvoices.length,
+      });
+    } catch (error) {
+      console.error("Error fetching buyer adjustments:", error);
+      res.status(500).json({ message: "Failed to fetch buyer adjustments" });
+    }
+  });
+
   // =================== DEBIT NOTES ===================
   // Debit notes are used to INCREASE amounts on previous month invoices
   // (e.g., quantity increases, price increases on old invoices where Cancel & Reissue is not allowed)
