@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Plus, Trash2, X, Printer, FileText } from "lucide-react";
+import { Plus, Trash2, X, Printer, FileText, AlertCircle, CreditCard, TrendingUp, TrendingDown } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -140,6 +141,47 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
   const { data: invoiceItems = [] } = useQuery<any[]>({
     queryKey: invoice?.id ? [`/api/invoice-items/${invoice.id}`] : [],
     enabled: !!invoice?.id, // Only fetch items when editing an existing invoice (not for reissue mode)
+  });
+
+  // Watch buyer name for adjustments lookup
+  const watchedBuyerName = form.watch("buyerName");
+  
+  // Fetch pending credit/debit notes for the selected buyer
+  interface BuyerAdjustments {
+    buyerName: string;
+    pendingCredits: Array<{
+      id: string;
+      noteNumber: string;
+      invoiceNumber?: string;
+      creditDate: string;
+      reason: string;
+      grandTotal: number;
+    }>;
+    pendingDebits: Array<{
+      id: string;
+      noteNumber: string;
+      invoiceNumber?: string;
+      debitDate: string;
+      reason: string;
+      grandTotal: number;
+    }>;
+    totalCreditAmount: number;
+    totalDebitAmount: number;
+    netAdjustment: number;
+    totalOutstanding: number;
+    invoiceCount: number;
+  }
+  
+  const { data: buyerAdjustments, isLoading: isLoadingAdjustments } = useQuery<BuyerAdjustments>({
+    queryKey: ['/api/buyer-adjustments', watchedBuyerName],
+    queryFn: async () => {
+      if (!watchedBuyerName) return null;
+      const encodedName = encodeURIComponent(watchedBuyerName);
+      const res = await fetch(`/api/buyer-adjustments/${encodedName}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch buyer adjustments');
+      return res.json();
+    },
+    enabled: !!watchedBuyerName && watchedBuyerName.length > 0,
   });
 
   // Filter vendors based on vendor type
@@ -934,6 +976,57 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
             </div>
           </div>
         </div>
+
+        {/* Pending Credit/Debit Notes Banner */}
+        {buyerAdjustments && (buyerAdjustments.totalCreditAmount > 0 || buyerAdjustments.totalDebitAmount > 0) && (
+          <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950" data-testid="alert-buyer-adjustments">
+            <CreditCard className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <AlertTitle className="text-blue-800 dark:text-blue-200">
+              Pending Adjustments for {buyerAdjustments.buyerName}
+            </AlertTitle>
+            <AlertDescription className="text-blue-700 dark:text-blue-300">
+              <div className="mt-2 space-y-2 text-sm">
+                {buyerAdjustments.totalCreditAmount > 0 && (
+                  <div className="flex items-center gap-2" data-testid="pending-credits-info">
+                    <TrendingDown className="h-4 w-4 text-green-600" />
+                    <span className="font-medium text-green-700 dark:text-green-400">
+                      Credit Notes: {(buyerAdjustments.totalCreditAmount / 100).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
+                    </span>
+                    <span className="text-muted-foreground">
+                      ({buyerAdjustments.pendingCredits.length} note{buyerAdjustments.pendingCredits.length !== 1 ? 's' : ''})
+                    </span>
+                  </div>
+                )}
+                {buyerAdjustments.totalDebitAmount > 0 && (
+                  <div className="flex items-center gap-2" data-testid="pending-debits-info">
+                    <TrendingUp className="h-4 w-4 text-orange-600" />
+                    <span className="font-medium text-orange-700 dark:text-orange-400">
+                      Debit Notes: {(buyerAdjustments.totalDebitAmount / 100).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
+                    </span>
+                    <span className="text-muted-foreground">
+                      ({buyerAdjustments.pendingDebits.length} note{buyerAdjustments.pendingDebits.length !== 1 ? 's' : ''})
+                    </span>
+                  </div>
+                )}
+                <div className="pt-1 border-t border-blue-200 dark:border-blue-700 mt-2">
+                  <span className="font-semibold">
+                    Net: {buyerAdjustments.netAdjustment >= 0 ? '+' : ''}
+                    {(buyerAdjustments.netAdjustment / 100).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
+                  </span>
+                  <span className="text-muted-foreground ml-2">
+                    {buyerAdjustments.netAdjustment >= 0 
+                      ? '(Customer owes this additional amount)' 
+                      : '(Customer has credit balance)'}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Total Outstanding: {(buyerAdjustments.totalOutstanding / 100).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })} 
+                  {' '}from {buyerAdjustments.invoiceCount} invoice{buyerAdjustments.invoiceCount !== 1 ? 's' : ''}
+                </p>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Ship to Different Address Checkbox */}
         <div className="flex items-center space-x-2">
