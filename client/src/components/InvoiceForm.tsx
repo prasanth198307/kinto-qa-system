@@ -241,6 +241,9 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
     },
   });
 
+  // State to track if we need to sync field array after reset
+  const [pendingItemsSync, setPendingItemsSync] = useState<any[] | null>(null);
+
   // Reset form when invoice prop changes (critical for reissue mode)
   // React Hook Form only applies defaultValues on first mount, so we need to reset
   // when invoice changes to make the form editable with the new data
@@ -270,6 +273,8 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
             unitPrice: 0,
             gstRate: 18,
           }];
+      
+      console.log('[InvoiceForm] Resetting form with invoice data, items:', normalizedItems);
 
       form.reset({
         gatepassId: gatepass?.id || "",
@@ -302,6 +307,9 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         branchName: invoice.branchName || "",
         upiId: invoice.upiId || "",
       });
+      
+      // Schedule items sync for next render cycle to ensure useFieldArray picks it up
+      setPendingItemsSync(normalizedItems);
     }
   }, [invoice, gatepass, form]);
 
@@ -507,10 +515,20 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
     }
   }, [invoice, invoiceItems, gatepassItems, products, finishedGoods, form, isIntrastateSupply]);
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, replace } = useFieldArray({
     control: form.control,
     name: "items",
   });
+
+  // Sync field array when pending items exist (needed for reissue mode)
+  // This ensures useFieldArray picks up items after form.reset()
+  useEffect(() => {
+    if (pendingItemsSync && pendingItemsSync.length > 0) {
+      console.log('[InvoiceForm] Syncing field array with replace(), items:', pendingItemsSync.length);
+      replace(pendingItemsSync);
+      setPendingItemsSync(null);
+    }
+  }, [pendingItemsSync, replace]);
 
   const watchBuyerState = form.watch("buyerStateCode");
   const watchSellerState = form.watch("sellerStateCode");
@@ -1253,6 +1271,13 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
             <div className="col-span-1"></div>
           </div>
 
+          {/* Items - Show message if empty */}
+          {fields.length === 0 && (
+            <div className="p-4 border rounded-md bg-muted/50 text-center text-sm text-muted-foreground">
+              No items added yet. Click "Add Item" to add products.
+            </div>
+          )}
+          
           {/* Items */}
           {fields.map((field, index) => (
             <div key={field.id} className="grid grid-cols-12 gap-2 items-start p-1.5 border rounded-md hover-elevate">
