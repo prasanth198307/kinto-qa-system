@@ -3453,9 +3453,14 @@ function FinishedGoodDialog({
                     <FormControl>
                       <Input 
                         type="number" 
+                        min="0"
                         placeholder="0" 
-                        {...field} 
-                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                        {...field}
+                        value={field.value ?? ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          field.onChange(val === '' ? 0 : parseInt(val, 10));
+                        }}
                         data-testid="input-good-quantity"
                       />
                     </FormControl>
