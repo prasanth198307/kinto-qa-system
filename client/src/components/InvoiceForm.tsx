@@ -138,8 +138,8 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
   });
 
   const { data: invoiceItems = [] } = useQuery<any[]>({
-    queryKey: invoice ? [`/api/invoice-items/${invoice.id}`] : [],
-    enabled: !!invoice,
+    queryKey: invoice?.id ? [`/api/invoice-items/${invoice.id}`] : [],
+    enabled: !!invoice?.id, // Only fetch items when editing an existing invoice (not for reissue mode)
   });
 
   // Filter vendors based on vendor type

@@ -1,0 +1,44 @@
+10:04:50 AM [express] GET /api/gatepasses 304 in 2ms :: {"data":[],"meta":{"page":1,"pageSize":25,"to…
+10:04:50 AM [express] GET /api/invoices 304 in 14ms :: [{"id":"f042fa71-348a-40f6-93bd-3160d74c4d6e",…
+🔹 Request: GET /api/invoice-items/f1f5c0ca-3d78-4bd4-81d7-4e9297a32924
+   Cookie header: connect.sid=s%3A9fc55jkAma05sCcbnVIe9dk0cICFbX9Q.c9tLpNXzb%2BhufW4vGB7YeteCmPuAHPQxvLth2Fo8pWg
+   Session ID: 9fc55jkAma05sCcbnVIe9dk0cICFbX9Q
+   Authenticated: true
+🔹 Request: GET /api/raw-material-issuances
+   Cookie header: connect.sid=s%3A9fc55jkAma05sCcbnVIe9dk0cICFbX9Q.c9tLpNXzb%2BhufW4vGB7YeteCmPuAHPQxvLth2Fo8pWg
+   Session ID: 9fc55jkAma05sCcbnVIe9dk0cICFbX9Q
+   Authenticated: true
+10:04:50 AM [express] GET /api/vendors 304 in 17ms :: [{"id":"16d223bf-ebe0-4ead-aaaf-ca05d7b4b722","…
+10:04:50 AM [express] GET /api/invoice-items/f1f5c0ca-3d78-4bd4-81d7-4e9297a32924 304 in 21ms :: [{"i…
+🔹 Request: GET /api/banks
+   Cookie header: connect.sid=s%3A9fc55jkAma05sCcbnVIe9dk0cICFbX9Q.c9tLpNXzb%2BhufW4vGB7YeteCmPuAHPQxvLth2Fo8pWg
+   Session ID: 9fc55jkAma05sCcbnVIe9dk0cICFbX9Q
+   Authenticated: true
+🔹 Request: GET /api/terms-conditions
+   Cookie header: connect.sid=s%3A9fc55jkAma05sCcbnVIe9dk0cICFbX9Q.c9tLpNXzb%2BhufW4vGB7YeteCmPuAHPQxvLth2Fo8pWg
+   Session ID: 9fc55jkAma05sCcbnVIe9dk0cICFbX9Q
+   Authenticated: true
+🔹 Request: GET /api/finished-goods
+   Cookie header: connect.sid=s%3A9fc55jkAma05sCcbnVIe9dk0cICFbX9Q.c9tLpNXzb%2BhufW4vGB7YeteCmPuAHPQxvLth2Fo8pWg
+   Session ID: 9fc55jkAma05sCcbnVIe9dk0cICFbX9Q
+   Authenticated: true
+🔹 Request: GET /api/invoice-templates/active
+   Cookie header: connect.sid=s%3A9fc55jkAma05sCcbnVIe9dk0cICFbX9Q.c9tLpNXzb%2BhufW4vGB7YeteCmPuAHPQxvLth2Fo8pWg
+   Session ID: 9fc55jkAma05sCcbnVIe9dk0cICFbX9Q
+   Authenticated: true
+10:04:50 AM [express] GET /api/raw-material-issuances 304 in 19ms :: []
+🔹 Request: GET /api/invoice-items/undefined
+   Cookie header: connect.sid=s%3A9fc55jkAma05sCcbnVIe9dk0cICFbX9Q.c9tLpNXzb%2BhufW4vGB7YeteCmPuAHPQxvLth2Fo8pWg
+   Session ID: 9fc55jkAma05sCcbnVIe9dk0cICFbX9Q
+   Authenticated: true
+10:04:50 AM [express] GET /api/invoice-templates/active 304 in 3ms :: [{"id":"a4aa4cb6-1ab3-44fb-bb4a…
+10:04:50 AM [express] GET /api/finished-goods 304 in 4ms :: [{"id":"d29e1297-4e1d-45dc-8b3b-6e33a6444…
+10:04:50 AM [express] GET /api/terms-conditions 304 in 4ms :: [{"id":"e618d50a-c45b-424c-9f80-17ef03a…
+10:04:50 AM [express] GET /api/banks 304 in 4ms :: []
+🔹 Request: GET /api/vendor-types
+   Cookie header: connect.sid=s%3A9fc55jkAma05sCcbnVIe9dk0cICFbX9Q.c9tLpNXzb%2BhufW4vGB7YeteCmPuAHPQxvLth2Fo8pWg
+   Session ID: 9fc55jkAma05sCcbnVIe9dk0cICFbX9Q
+   Authenticated: true
+10:04:50 AM [express] GET /api/invoice-items/undefined 304 in 3ms :: []
+10:04:50 AM [express] GET /api/vendor-types 304 in 3ms :: [{"id":"a736800f-c4da-43a6-91ad-65eed3612b7…
+
