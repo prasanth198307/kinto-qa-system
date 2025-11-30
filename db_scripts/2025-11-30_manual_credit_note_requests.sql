@@ -1,6 +1,7 @@
 -- Migration: Create Manual Credit Note Requests table
 -- Date: 2025-11-30
 -- Description: Tracks requests for manual GST processing of returns >1 month old
+-- NOTE: Run this script only on fresh databases. Table already exists in production.
 
 -- =====================================================
 -- MANUAL CREDIT NOTE REQUESTS TABLE
@@ -39,17 +40,29 @@ CREATE TABLE IF NOT EXISTS manual_credit_note_requests (
 );
 
 -- =====================================================
--- INDEXES for performance
+-- INDEXES for performance (only create if not exists)
 -- =====================================================
-CREATE INDEX IF NOT EXISTS idx_manual_credit_note_requests_sales_return ON manual_credit_note_requests(sales_return_id);
-CREATE INDEX IF NOT EXISTS idx_manual_credit_note_requests_status ON manual_credit_note_requests(status);
-CREATE INDEX IF NOT EXISTS idx_manual_credit_note_requests_assigned_to ON manual_credit_note_requests(assigned_to);
-CREATE INDEX IF NOT EXISTS idx_manual_credit_note_requests_priority ON manual_credit_note_requests(priority);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_manual_credit_note_requests_sales_return') THEN
+        CREATE INDEX idx_manual_credit_note_requests_sales_return ON manual_credit_note_requests(sales_return_id);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_manual_credit_note_requests_status') THEN
+        CREATE INDEX idx_manual_credit_note_requests_status ON manual_credit_note_requests(status);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_manual_credit_note_requests_assigned_to') THEN
+        CREATE INDEX idx_manual_credit_note_requests_assigned_to ON manual_credit_note_requests(assigned_to);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_manual_credit_note_requests_priority') THEN
+        CREATE INDEX idx_manual_credit_note_requests_priority ON manual_credit_note_requests(priority);
+    END IF;
+END $$;
 
 -- =====================================================
--- COMMENTS for documentation
+-- COMMENTS for documentation (wrapped in DO block to handle errors)
 -- =====================================================
-COMMENT ON TABLE manual_credit_note_requests IS 'Tracks requests for manual GST credit note processing (returns >1 month old)';
-COMMENT ON COLUMN manual_credit_note_requests.reason_code IS 'Why manual processing is needed: old_return, gst_compliance';
-COMMENT ON COLUMN manual_credit_note_requests.status IS 'Workflow status: pending, in_progress, completed, rejected';
-COMMENT ON COLUMN manual_credit_note_requests.external_credit_note_number IS 'Reference number from manual GST portal entry';
+DO $$
+BEGIN
+    COMMENT ON TABLE manual_credit_note_requests IS 'Tracks requests for manual GST credit note processing (returns >1 month old)';
+EXCEPTION WHEN OTHERS THEN NULL;
+END $$;
