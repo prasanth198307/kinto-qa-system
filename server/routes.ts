@@ -6740,6 +6740,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           recordedBy: req.user?.id,
         });
 
+        // Update invoice.amountReceived to reflect the payment (for vendor analytics consistency)
+        const currentAmountReceived = invoice.amountReceived || 0;
+        await db.update(invoices)
+          .set({ amountReceived: currentAmountReceived + allocationAmount })
+          .where(eq(invoices.id, invoice.id));
+
         allocations.push({
           invoiceId: invoice.id,
           invoiceNumber: invoice.invoiceNumber,
