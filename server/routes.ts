@@ -5127,6 +5127,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           recordedBy: req.user?.id,
         }).returning();
 
+        // Update invoice amountReceived to reflect the write-off
+        const newAmountReceived = totalPaid + outstandingBalance;
+        await tx.update(invoices)
+          .set({
+            amountReceived: newAmountReceived,
+            updatedAt: new Date().toISOString(),
+          })
+          .where(eq(invoices.id, invoiceId));
+
         return { writeOffPayment, invoice, outstandingBalance };
       });
 
