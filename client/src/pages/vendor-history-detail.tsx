@@ -32,7 +32,8 @@ import {
   TrendingUp,
   TrendingDown,
   Receipt,
-  Calendar
+  Calendar,
+  Printer
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -139,21 +140,33 @@ export default function VendorHistoryDetailPage() {
   return (
     <div className="p-4 md:p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={() => setLocation('/vendor-history')}
-          data-testid="button-back"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold" data-testid="text-page-title">
-            {isLoading ? <Skeleton className="h-7 w-48" /> : data?.vendor.vendorName}
-          </h1>
-          <p className="text-muted-foreground">Transaction history and ledger</p>
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => setLocation('/vendor-history')}
+            className="print:hidden"
+            data-testid="button-back"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold print:text-xl" data-testid="text-page-title">
+              {isLoading ? <Skeleton className="h-7 w-48" /> : data?.vendor.vendorName}
+            </h1>
+            <p className="text-muted-foreground print:text-sm">Transaction history and ledger</p>
+          </div>
         </div>
+        <Button
+          variant="outline"
+          onClick={() => window.print()}
+          className="print:hidden"
+          data-testid="button-print-vendor-ledger"
+        >
+          <Printer className="h-4 w-4 mr-2" />
+          Print Ledger
+        </Button>
       </div>
 
       {/* Vendor Info Card */}
@@ -330,11 +343,11 @@ export default function VendorHistoryDetailPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
           <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
+            <Calendar className="h-5 w-5 print:hidden" />
             Transaction Ledger
           </CardTitle>
           <Select value={filterType} onValueChange={setFilterType}>
-            <SelectTrigger className="w-[180px]" data-testid="select-filter-type">
+            <SelectTrigger className="w-[180px] print:hidden" data-testid="select-filter-type">
               <SelectValue placeholder="Filter by type" />
             </SelectTrigger>
             <SelectContent>
