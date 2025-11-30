@@ -90,8 +90,8 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
         bankName: data.bankName,
         remarks: data.remarks,
       };
-      const response: any = await apiRequest('POST', '/api/invoice-payments/allocate-fifo', payload);
-      return response;
+      const response = await apiRequest('POST', '/api/invoice-payments/allocate-fifo', payload);
+      return await response.json();
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['/api/invoice-payments'] });
