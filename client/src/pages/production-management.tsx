@@ -310,8 +310,15 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
       });
     }
 
-    // Sort by date (newest first)
-    return filtered.sort((a, b) => new Date(b.invoiceDate).getTime() - new Date(a.invoiceDate).getTime());
+    // Sort by date (newest first), then by invoice number (highest first for same date)
+    return filtered.sort((a, b) => {
+      const dateDiff = new Date(b.invoiceDate).getTime() - new Date(a.invoiceDate).getTime();
+      if (dateDiff !== 0) return dateDiff;
+      // For same date, sort by invoice number descending (newest invoice number first)
+      const numA = parseInt(a.invoiceNumber.replace(/\D/g, '')) || 0;
+      const numB = parseInt(b.invoiceNumber.replace(/\D/g, '')) || 0;
+      return numB - numA;
+    });
   }, [invoices, invoiceSearchQuery, selectedVendor, dateFilterType, dateFrom, dateTo, selectedMonth, selectedYear]);
   
   // Reset invoice page to 1 when filters change
