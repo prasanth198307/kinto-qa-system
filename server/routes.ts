@@ -1986,6 +1986,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get pending invoices for a vendor (for FIFO payment allocation preview)
+  app.get('/api/vendors/:id/pending-invoices', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Get vendor
+      const vendor = await storage.getVendor(id);
+      if (!vendor) {
+        return res.status(404).json({ message: "Vendor not found" });
+      }
+
+      // Get all invoices for this vendor
+      const allInvoices = await storage.getAllInvoices();
+      const vendorInvoices = allInvoices.filter(inv => inv.buyerName === vendor.vendorName);
+
+      // Calculate outstanding balance for each invoice
+      const invoicesWithBalance = await Promise.all(
+        vendorInvoices.map(async (invoice) => {
+          const payments = await storage.getPaymentsByInvoice(invoice.id);
+          const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+          const outstanding = invoice.totalAmount - totalPaid;
+          return { 
+            id: invoice.id,
+            invoiceNumber: invoice.invoiceNumber,
+            invoiceDate: invoice.invoiceDate,
+            totalAmount: invoice.totalAmount,
+            totalPaid,
+            outstanding 
+          };
+        })
+      );
+
+      // Filter only invoices with outstanding balance and sort by invoice date (FIFO)
+      const pendingInvoices = invoicesWithBalance
+        .filter(inv => inv.outstanding > 0)
+        .sort((a, b) => new Date(a.invoiceDate).getTime() - new Date(b.invoiceDate).getTime());
+
+      // Calculate totals
+      const totalOutstanding = pendingInvoices.reduce((sum, inv) => sum + inv.outstanding, 0);
+
+      res.json({
+        vendorName: vendor.vendorName,
+        pendingInvoices,
+        totalOutstanding,
+        invoiceCount: pendingInvoices.length
+      });
+    } catch (error) {
+      console.error("Error fetching pending invoices:", error);
+      res.status(500).json({ message: "Failed to fetch pending invoices" });
+    }
+  });
+
   // GST Verification API
   app.post('/api/gst/verify', isAuthenticated, async (req: any, res) => {
     try {

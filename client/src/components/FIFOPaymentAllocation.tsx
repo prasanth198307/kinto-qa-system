@@ -30,9 +30,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { format } from "date-fns";
+import { Loader2, AlertCircle } from "lucide-react";
 
 const fifoPaymentSchema = z.object({
   vendorId: z.string().min(1, "Vendor is required"),
@@ -57,6 +59,7 @@ interface FIFOPaymentAllocationProps {
 export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPaymentAllocationProps) {
   const { toast } = useToast();
   const [allocationPreview, setAllocationPreview] = useState<any>(null);
+  const [selectedVendorId, setSelectedVendorId] = useState<string>("");
 
   const { data: vendors = [] } = useQuery<any[]>({
     queryKey: ['/api/vendors'],
@@ -64,6 +67,24 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
 
   const { data: banks = [] } = useQuery<any[]>({
     queryKey: ['/api/banks'],
+  });
+
+  // Fetch pending invoices when vendor is selected
+  const { data: pendingData, isLoading: isPendingLoading } = useQuery<{
+    vendorName: string;
+    pendingInvoices: Array<{
+      id: string;
+      invoiceNumber: string;
+      invoiceDate: string;
+      totalAmount: number;
+      totalPaid: number;
+      outstanding: number;
+    }>;
+    totalOutstanding: number;
+    invoiceCount: number;
+  }>({
+    queryKey: ['/api/vendors', selectedVendorId, 'pending-invoices'],
+    enabled: !!selectedVendorId,
   });
 
   const form = useForm<FIFOPaymentFormData>({
@@ -135,7 +156,13 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Vendor/Customer</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select 
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          setSelectedVendorId(value);
+                        }} 
+                        value={field.value}
+                      >
                         <FormControl>
                           <SelectTrigger data-testid="select-vendor">
                             <SelectValue placeholder="Select vendor" />
@@ -293,6 +320,7 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                     type="button"
                     onClick={() => {
                       setAllocationPreview(null);
+                      setSelectedVendorId("");
                       form.reset();
                       if (onSuccess) onSuccess();
                     }}
@@ -307,6 +335,83 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
           </Form>
         </CardContent>
       </Card>
+
+      {/* Pending Invoices Preview - Shows when vendor is selected */}
+      {selectedVendorId && !allocationPreview && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">
+              Pending Invoices for {pendingData?.vendorName}
+            </CardTitle>
+            <CardDescription>
+              {isPendingLoading ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading pending invoices...
+                </span>
+              ) : pendingData?.invoiceCount === 0 ? (
+                <span className="flex items-center gap-2 text-yellow-600">
+                  <AlertCircle className="h-4 w-4" />
+                  No pending invoices for this vendor
+                </span>
+              ) : (
+                <span>
+                  {pendingData?.invoiceCount} invoice(s) with outstanding balance of{" "}
+                  <span className="font-semibold text-destructive">
+                    ₹{((pendingData?.totalOutstanding || 0) / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </span>
+                </span>
+              )}
+            </CardDescription>
+          </CardHeader>
+          {pendingData && pendingData.invoiceCount > 0 && (
+            <CardContent className="pt-0">
+              <div className="rounded-md border max-h-48 overflow-y-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">Invoice #</TableHead>
+                      <TableHead className="text-xs">Date</TableHead>
+                      <TableHead className="text-xs text-right">Total</TableHead>
+                      <TableHead className="text-xs text-right">Paid</TableHead>
+                      <TableHead className="text-xs text-right">Outstanding</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pendingData.pendingInvoices.map((invoice, idx) => (
+                      <TableRow key={invoice.id}>
+                        <TableCell className="text-sm font-medium">
+                          {invoice.invoiceNumber}
+                          {idx === 0 && (
+                            <Badge variant="outline" className="ml-2 text-xs">
+                              Oldest
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {format(new Date(invoice.invoiceDate), "dd-MMM-yy")}
+                        </TableCell>
+                        <TableCell className="text-sm text-right">
+                          ₹{(invoice.totalAmount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </TableCell>
+                        <TableCell className="text-sm text-right text-green-600">
+                          ₹{(invoice.totalPaid / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </TableCell>
+                        <TableCell className="text-sm text-right font-medium text-destructive">
+                          ₹{(invoice.outstanding / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Payment will be allocated starting from the oldest invoice (FIFO order)
+              </p>
+            </CardContent>
+          )}
+        </Card>
+      )}
 
       {allocationPreview && (
         <Card>
