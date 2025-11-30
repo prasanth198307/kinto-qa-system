@@ -173,8 +173,8 @@ export default function InvoiceDetail() {
       }
       
       // Use window.location for full page navigation to ensure it works in production
-      // This ensures proper routing in both development and production environments
-      window.location.href = '/?tab=invoices&reissue=true';
+      // Navigate to /production-management which is where the invoices tab lives
+      window.location.href = '/production-management?tab=invoices&reissue=true';
     },
     onError: (error: any) => {
       toast({

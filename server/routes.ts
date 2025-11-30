@@ -4792,6 +4792,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } = invoice;
       
       // Clean invoice items - remove all IDs and references
+      // IMPORTANT: Keep values in DB format (paise/basis points) - the frontend InvoiceForm
+      // will handle conversion in its useEffect (lines 406-444 in InvoiceForm.tsx)
       const cleanItems = items.map(item => {
         const {
           id: itemId,
