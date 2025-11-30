@@ -147,7 +147,8 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
 
   // Handle reissue parameter - pre-fill invoice form with cancelled invoice data
   useEffect(() => {
-    const params = new URLSearchParams(location.split('?')[1] || '');
+    // Use window.location.search to get actual query string (wouter's location doesn't include it)
+    const params = new URLSearchParams(window.location.search);
     const isReissue = params.get('reissue') === 'true';
     const tab = params.get('tab');
     
@@ -181,13 +182,13 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
         sessionStorage.removeItem('reissue-invoice-data');
         sessionStorage.removeItem('is-reissue');
         
-        // Clean up the URL (remove reissue parameter)
+        // Clean up the URL (remove reissue parameter) using window.history
         if (isReissue) {
           params.delete('reissue');
           const cleanUrl = params.toString() 
-            ? `${location.split('?')[0]}?${params.toString()}`
-            : location.split('?')[0];
-          navigate(cleanUrl, { replace: true });
+            ? `${window.location.pathname}?${params.toString()}`
+            : window.location.pathname;
+          window.history.replaceState({}, '', cleanUrl);
         }
         
         toast({
@@ -200,7 +201,7 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
         sessionStorage.removeItem('is-reissue');
       }
     }
-  }, [location, navigate, toast, activeTab]);
+  }, [location, toast, activeTab]);
 
   const { data: issuances = [], isLoading: isLoadingIssuances } = useQuery<RawMaterialIssuance[]>({
     queryKey: ['/api/raw-material-issuances'],
