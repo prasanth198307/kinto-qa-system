@@ -1,0 +1,25 @@
+prasanthdusi@Prasanths-MacBook-Pro kinto-qa-system % npm run build                                                                               
+
+> rest-express@1.0.0 build
+> vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist
+
+vite v7.2.4 building client environment for production...
+✓ 4 modules transformed.
+✗ Build failed in 714ms
+error during build:
+[vite:css] [postcss] Unexpected '/'. Escaping special characters with \ may help.
+file: /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/client/src/index.css:undefined:NaN
+Error: Unexpected '/'. Escaping special characters with \ may help.
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/client/src/index.css:482:3
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/client/src/index.css:482:3
+    at Root._error (/Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/tailwindcss/node_modules/postcss-selector-parser/dist/parser.js:131:16)
+    at Root.error (/Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/tailwindcss/node_modules/postcss-selector-parser/dist/selectors/root.js:30:19)
+    at Parser.error (/Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/tailwindcss/node_modules/postcss-selector-parser/dist/parser.js:598:21)
+    at Parser.unexpected (/Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/tailwindcss/node_modules/postcss-selector-parser/dist/parser.js:612:17)
+    at Parser.combinator (/Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/tailwindcss/node_modules/postcss-selector-parser/dist/parser.js:526:12)
+    at Parser.parse (/Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/tailwindcss/node_modules/postcss-selector-parser/dist/parser.js:900:14)
+    at Parser.loop (/Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/tailwindcss/node_modules/postcss-selector-parser/dist/parser.js:856:12)
+    at new Parser (/Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/tailwindcss/node_modules/postcss-selector-parser/dist/parser.js:124:10)
+    at Processor._root (/Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/tailwindcss/node_modules/postcss-selector-parser/dist/processor.js:40:18)
+    at Processor._runSync (/Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/tailwindcss/node_modules/postcss-selector-parser/dist/processor.js:78:21)
+prasanthdusi@Prasanths-MacBook-Pro kinto-qa-system % 
