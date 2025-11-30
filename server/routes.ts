@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, paymentEvidence, salesReturns, salesReturnItems, creditNotes, creditNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes, vendors, users, insertDocumentCategorySchema, insertDocumentSchema, insertExpenseCategorySchema, insertExpenseVoucherSchema, insertExpenseItemSchema, insertExpenseAttachmentSchema } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, paymentEvidence, salesReturns, salesReturnItems, creditNotes, creditNoteItems, debitNotes, debitNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes, vendors, users, insertDocumentCategorySchema, insertDocumentSchema, insertExpenseCategorySchema, insertExpenseVoucherSchema, insertExpenseItemSchema, insertExpenseAttachmentSchema } from "@shared/schema";
 import { format } from "date-fns";
 import { z } from "zod";
 import path from "path";
@@ -6440,6 +6440,248 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating quick full credit:", error);
       res.status(500).json({ message: "Failed to create credit note" });
+    }
+  });
+
+  // =================== DEBIT NOTES ===================
+  // Debit notes are used to INCREASE amounts on previous month invoices
+  // (e.g., quantity increases, price increases on old invoices where Cancel & Reissue is not allowed)
+  
+  // List all debit notes
+  app.get('/api/debit-notes', isAuthenticated, async (req: any, res) => {
+    try {
+      const debitNotesList = await storage.getAllDebitNotes();
+      res.json(debitNotesList);
+    } catch (error) {
+      console.error("Error fetching debit notes:", error);
+      res.status(500).json({ message: "Failed to fetch debit notes" });
+    }
+  });
+  
+  // Get debit notes for a specific invoice
+  app.get('/api/debit-notes/invoice/:invoiceId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { invoiceId } = req.params;
+      const debitNotesList = await storage.getDebitNotesByInvoice(invoiceId);
+      res.json(debitNotesList);
+    } catch (error) {
+      console.error("Error fetching debit notes for invoice:", error);
+      res.status(500).json({ message: "Failed to fetch debit notes" });
+    }
+  });
+  
+  // Get single debit note with items
+  app.get('/api/debit-notes/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const debitNote = await storage.getDebitNote(id);
+      if (!debitNote) {
+        return res.status(404).json({ message: "Debit note not found" });
+      }
+      
+      const items = await storage.getDebitNoteItems(id);
+      res.json({ ...debitNote, items });
+    } catch (error) {
+      console.error("Error fetching debit note:", error);
+      res.status(500).json({ message: "Failed to fetch debit note" });
+    }
+  });
+  
+  // Correct & Debit - Create debit note for increases (qty or price)
+  app.post('/api/debit-notes/correct-and-debit', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const correctAndDebitSchema = z.object({
+        invoiceId: z.string().min(1, "Invoice ID is required"),
+        reason: z.enum(['quantity_increase', 'price_increase', 'additional_charges', 'other'], { 
+          required_error: "Reason is required" 
+        }),
+        customReason: z.string().optional(),
+        notes: z.string().optional(),
+        items: z.array(z.object({
+          invoiceItemId: z.string().min(1),
+          originalQuantity: z.number().min(0),
+          originalUnitPrice: z.number().min(0),
+          newQuantity: z.number().min(0),
+          newUnitPrice: z.number().min(0),
+        })).min(1, "At least one item is required"),
+      });
+
+      const validationResult = correctAndDebitSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Validation failed", 
+          errors: validationResult.error.errors 
+        });
+      }
+
+      const { invoiceId, reason, customReason, items, notes } = validationResult.data;
+
+      // Fetch invoice
+      const invoice = await storage.getInvoice(invoiceId);
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+
+      // GST Compliance: Debit notes are for PREVIOUS month invoices only
+      // (Current month invoices should use Cancel & Reissue)
+      const now = new Date();
+      const invoiceDate = new Date(invoice.invoiceDate);
+      if (invoiceDate.getMonth() === now.getMonth() && invoiceDate.getFullYear() === now.getFullYear()) {
+        return res.status(400).json({ 
+          message: "Cannot create debit notes for current month invoices. Use 'Cancel & Reissue' instead to modify the invoice directly." 
+        });
+      }
+
+      // Fetch invoice items
+      const invoiceItems_list = await storage.getInvoiceItems(invoiceId);
+      if (!invoiceItems_list || invoiceItems_list.length === 0) {
+        return res.status(404).json({ message: "Invoice has no items" });
+      }
+
+      // Calculate increases and create debit items
+      let subtotal = 0;
+      const debitItems: Array<{
+        invoiceItemId: string;
+        productId: string;
+        description: string;
+        originalQuantity: number;
+        originalUnitPrice: number;
+        additionalQuantity: number;
+        newUnitPrice: number;
+        priceDifferencePerUnit: number;
+        taxableValue: number;
+        cgstRate: number;
+        cgstAmount: number;
+        sgstRate: number;
+        sgstAmount: number;
+        igstRate: number;
+        igstAmount: number;
+        totalAmount: number;
+      }> = [];
+
+      for (const item of items) {
+        const originalAmount = item.originalQuantity * item.originalUnitPrice;
+        const newAmount = item.newQuantity * item.newUnitPrice;
+        const difference = newAmount - originalAmount;
+
+        if (difference > 0) {
+          // Find the original invoice item for GST rates and product details
+          const invoiceItem = invoiceItems_list.find(i => i.id === item.invoiceItemId);
+          if (!invoiceItem) continue;
+
+          // Determine additional quantity and price difference
+          const qtyIncrease = item.newQuantity - item.originalQuantity;
+          const priceIncrease = item.newUnitPrice - item.originalUnitPrice;
+
+          // Calculate taxable value (additional amount being charged)
+          const taxableValue = difference;
+          
+          // Handle null/undefined tax rates for old/ported invoices
+          const safeCgstRate = invoiceItem.cgstRate || 0;
+          const safeSgstRate = invoiceItem.sgstRate || 0;
+          const safeIgstRate = invoiceItem.igstRate || 0;
+          
+          const cgstAmountCalc = Math.round(taxableValue * safeCgstRate / 10000);
+          const sgstAmountCalc = Math.round(taxableValue * safeSgstRate / 10000);
+          const igstAmountCalc = Math.round(taxableValue * safeIgstRate / 10000);
+
+          debitItems.push({
+            invoiceItemId: item.invoiceItemId,
+            productId: invoiceItem.productId,
+            description: invoiceItem.description,
+            originalQuantity: item.originalQuantity,
+            originalUnitPrice: item.originalUnitPrice,
+            additionalQuantity: qtyIncrease > 0 ? qtyIncrease : 0,
+            newUnitPrice: item.newUnitPrice,
+            priceDifferencePerUnit: priceIncrease > 0 ? priceIncrease : 0,
+            taxableValue: taxableValue,
+            cgstRate: safeCgstRate,
+            cgstAmount: cgstAmountCalc,
+            sgstRate: safeSgstRate,
+            sgstAmount: sgstAmountCalc,
+            igstRate: safeIgstRate,
+            igstAmount: igstAmountCalc,
+            totalAmount: taxableValue + cgstAmountCalc + sgstAmountCalc + igstAmountCalc,
+          });
+
+          subtotal += taxableValue;
+        }
+      }
+
+      if (debitItems.length === 0 || subtotal === 0) {
+        return res.status(400).json({ message: "No debit amount calculated. Increase quantities or prices to create a debit note." });
+      }
+
+      // Check for existing debit notes to generate sequence number
+      const existingDebitNotes = await storage.getDebitNotesByInvoice(invoiceId);
+
+      // Sum GST amounts from debit items
+      const cgstAmount = debitItems.reduce((sum, item) => sum + item.cgstAmount, 0);
+      const sgstAmount = debitItems.reduce((sum, item) => sum + item.sgstAmount, 0);
+      const igstAmount = debitItems.reduce((sum, item) => sum + item.igstAmount, 0);
+      const grandTotal = subtotal + cgstAmount + sgstAmount + igstAmount;
+
+      // Generate debit note number
+      const sequence = existingDebitNotes.length + 1;
+      const debitNoteNumber = `DN-${invoice.invoiceNumber}-${sequence.toString().padStart(2, '0')}`;
+
+      // Create debit note in transaction
+      await db.transaction(async (tx) => {
+        const [debitNote] = await tx.insert(debitNotes).values({
+          noteNumber: debitNoteNumber,
+          invoiceId,
+          debitDate: format(new Date(), 'yyyy-MM-dd'),
+          reason: reason === 'other' ? (customReason || 'Additional Charges') : `Correct & Debit: ${reason}`,
+          status: 'issued',
+          subtotal,
+          cgstAmount,
+          sgstAmount,
+          igstAmount,
+          grandTotal,
+          issuedBy: req.user?.id,
+          notes: notes || `Auto-generated debit note for invoice correction`,
+        }).returning();
+
+        // Create debit note items
+        for (const itemData of debitItems) {
+          await tx.insert(debitNoteItems).values({
+            debitNoteId: debitNote.id,
+            invoiceItemId: itemData.invoiceItemId,
+            productId: itemData.productId,
+            description: itemData.description,
+            originalQuantity: itemData.originalQuantity,
+            originalUnitPrice: itemData.originalUnitPrice,
+            additionalQuantity: itemData.additionalQuantity,
+            newUnitPrice: itemData.newUnitPrice,
+            priceDifferencePerUnit: itemData.priceDifferencePerUnit,
+            taxableValue: itemData.taxableValue,
+            cgstRate: itemData.cgstRate,
+            cgstAmount: itemData.cgstAmount,
+            sgstRate: itemData.sgstRate,
+            sgstAmount: itemData.sgstAmount,
+            igstRate: itemData.igstRate,
+            igstAmount: itemData.igstAmount,
+            totalAmount: itemData.totalAmount,
+          });
+        }
+
+        await logAudit(
+          req.user?.id,
+          'CREATE',
+          'debit_notes',
+          debitNote.id,
+          `Correct & Debit note ${debitNoteNumber} created for invoice ${invoice.invoiceNumber}. Reason: ${reason}. Amount: ₹${(grandTotal / 100).toFixed(2)}`
+        );
+      });
+
+      res.json({
+        message: `Debit note ${debitNoteNumber} created successfully`,
+        debitNoteNumber,
+        grandTotal,
+      });
+    } catch (error) {
+      console.error("Error creating correct & debit note:", error);
+      res.status(500).json({ message: "Failed to create debit note" });
     }
   });
 
