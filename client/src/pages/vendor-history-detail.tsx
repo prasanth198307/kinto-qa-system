@@ -137,6 +137,141 @@ export default function VendorHistoryDetailPage() {
     filterType === 'all' || entry.type === filterType
   ) || [];
 
+  const handlePrint = () => {
+    if (!data) return;
+    
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    
+    const getTypeLabel = (type: string) => {
+      switch (type) {
+        case 'invoice': return 'Invoice';
+        case 'credit_note': return 'Credit Note';
+        case 'debit_note': return 'Debit Note';
+        case 'payment': return 'Payment';
+        default: return type;
+      }
+    };
+    
+    const ledgerRows = filteredLedger.map(entry => `
+      <tr>
+        <td style="padding: 8px; border-bottom: 1px solid #e5e5e5;">${formatDate(entry.date)}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #e5e5e5;">${getTypeLabel(entry.type)}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #e5e5e5; font-family: monospace;">${entry.reference}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #e5e5e5;">${entry.description}${entry.reason ? `<br><small>Reason: ${entry.reason}</small>` : ''}${entry.paymentMode ? `<br><small>Mode: ${entry.paymentMode}</small>` : ''}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #e5e5e5; text-align: right; color: ${entry.debit > 0 ? '#dc2626' : '#666'};">${entry.debit > 0 ? formatCurrency(entry.debit) : '-'}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #e5e5e5; text-align: right; color: ${entry.credit > 0 ? '#16a34a' : '#666'};">${entry.credit > 0 ? formatCurrency(entry.credit) : '-'}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #e5e5e5; text-align: right; font-weight: 600; color: ${entry.balance > 0 ? '#ea580c' : entry.balance < 0 ? '#16a34a' : '#333'};">${formatCurrency(entry.balance)}</td>
+      </tr>
+    `).join('');
+    
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Vendor Ledger - ${data.vendor.vendorName}</title>
+        <style>
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; color: #333; }
+          .header { text-align: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #ea580c; }
+          .header h1 { font-size: 24px; color: #ea580c; margin-bottom: 5px; }
+          .header p { color: #666; font-size: 14px; }
+          .vendor-info { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; padding: 15px; background: #f9fafb; border-radius: 8px; }
+          .vendor-info div { font-size: 13px; }
+          .vendor-info label { color: #666; }
+          .vendor-info span { font-weight: 500; }
+          .summary { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px; }
+          .summary-card { padding: 12px; border: 1px solid #e5e5e5; border-radius: 6px; text-align: center; }
+          .summary-card .label { font-size: 11px; color: #666; text-transform: uppercase; margin-bottom: 4px; }
+          .summary-card .value { font-size: 16px; font-weight: 600; }
+          .summary-card .count { font-size: 11px; color: #888; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+          th { background: #f3f4f6; padding: 10px 8px; text-align: left; font-size: 12px; font-weight: 600; border-bottom: 2px solid #e5e5e5; }
+          th:nth-child(5), th:nth-child(6), th:nth-child(7) { text-align: right; }
+          .footer { display: flex; justify-content: space-between; padding: 10px 0; border-top: 2px solid #e5e5e5; font-size: 13px; }
+          .footer .balance { font-weight: 600; color: ${data.summary.currentBalance > 0 ? '#ea580c' : '#16a34a'}; }
+          .print-date { text-align: right; font-size: 11px; color: #888; margin-top: 20px; }
+          @media print { body { padding: 10px; } @page { margin: 1cm; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>KINTO Smart Ops</h1>
+          <p>Vendor Ledger Report</p>
+        </div>
+        
+        <h2 style="font-size: 18px; margin-bottom: 15px;">${data.vendor.vendorName}</h2>
+        
+        <div class="vendor-info">
+          <div><label>Code: </label><span>${data.vendor.vendorCode}</span></div>
+          <div><label>GST: </label><span>${data.vendor.gstNumber || 'N/A'}</span></div>
+          <div><label>Phone: </label><span>${data.vendor.mobileNumber}</span></div>
+          <div><label>Email: </label><span>${data.vendor.email || 'N/A'}</span></div>
+          <div style="grid-column: span 2;"><label>Location: </label><span>${[data.vendor.address, data.vendor.city, data.vendor.state].filter(Boolean).join(', ') || 'N/A'}</span></div>
+        </div>
+        
+        <div class="summary">
+          <div class="summary-card">
+            <div class="label">Total Invoiced</div>
+            <div class="value">${formatCurrency(data.summary.totalInvoiced)}</div>
+            <div class="count">${data.summary.invoiceCount} invoices</div>
+          </div>
+          <div class="summary-card">
+            <div class="label">Payments</div>
+            <div class="value" style="color: #16a34a;">${formatCurrency(data.summary.totalPayments)}</div>
+            <div class="count">${data.summary.paymentCount} payments</div>
+          </div>
+          <div class="summary-card">
+            <div class="label">Credit Notes</div>
+            <div class="value" style="color: #16a34a;">${formatCurrency(data.summary.totalCredits)}</div>
+            <div class="count">${data.summary.creditNoteCount} notes</div>
+          </div>
+          <div class="summary-card">
+            <div class="label">Debit Notes</div>
+            <div class="value" style="color: #ea580c;">${formatCurrency(data.summary.totalDebits)}</div>
+            <div class="count">${data.summary.debitNoteCount} notes</div>
+          </div>
+          <div class="summary-card" style="background: #fef3c7;">
+            <div class="label">Current Balance</div>
+            <div class="value" style="color: ${data.summary.currentBalance > 0 ? '#ea580c' : '#16a34a'};">${formatCurrency(data.summary.currentBalance)}</div>
+            <div class="count">${data.summary.currentBalance > 0 ? 'Outstanding' : data.summary.currentBalance < 0 ? 'Credit Balance' : 'Settled'}</div>
+          </div>
+        </div>
+        
+        <h3 style="font-size: 14px; margin-bottom: 10px;">Transaction Ledger</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Type</th>
+              <th>Reference</th>
+              <th>Description</th>
+              <th style="text-align: right;">Debit</th>
+              <th style="text-align: right;">Credit</th>
+              <th style="text-align: right;">Balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${ledgerRows}
+          </tbody>
+        </table>
+        
+        <div class="footer">
+          <span>Showing ${filteredLedger.length} transactions</span>
+          <span>Closing Balance: <span class="balance">${formatCurrency(data.summary.currentBalance)}</span></span>
+        </div>
+        
+        <div class="print-date">Printed on: ${new Date().toLocaleString('en-IN')}</div>
+        
+        <script>window.onload = function() { window.print(); }</script>
+      </body>
+      </html>
+    `;
+    
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
+
   return (
     <div className="p-4 md:p-6 space-y-6">
       {/* Header */}
@@ -160,8 +295,8 @@ export default function VendorHistoryDetailPage() {
         </div>
         <Button
           variant="outline"
-          onClick={() => window.print()}
-          className="print:hidden"
+          onClick={handlePrint}
+          disabled={isLoading || !data}
           data-testid="button-print-vendor-ledger"
         >
           <Printer className="h-4 w-4 mr-2" />
