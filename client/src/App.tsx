@@ -328,7 +328,7 @@ function ManagerDashboard() {
       case 'dispatch-tracking':
         return <DispatchTracking showHeader={false} />;
       case 'cancelled-invoices':
-        return <CancelledInvoices />;
+        return <CancelledInvoices showHeader={false} />;
       case 'write-off-report':
         return <WriteOffReport />;
       case 'reports':
@@ -668,7 +668,7 @@ function AdminDashboard() {
       case 'credit-notes':
         return <CreditNotes />;
       case 'cancelled-invoices':
-        return <CancelledInvoices />;
+        return <CancelledInvoices showHeader={false} />;
       case 'write-off-report':
         return <WriteOffReport />;
       case 'dispatch-tracking':

@@ -15,11 +15,15 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
-import { FileX, Search, ChevronLeft, ChevronRight, ExternalLink, Filter, X, IndianRupee } from "lucide-react";
+import { FileX, Search, ChevronLeft, ChevronRight, ExternalLink, Filter, X, IndianRupee, ArrowLeft } from "lucide-react";
 import { Link } from "wouter";
 import { GlobalHeader } from "@/components/GlobalHeader";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+
+interface CancelledInvoicesProps {
+  showHeader?: boolean;
+}
 
 interface CancelledInvoice {
   id: string;
@@ -47,7 +51,7 @@ interface PaginatedResponse {
   };
 }
 
-export default function CancelledInvoices() {
+export default function CancelledInvoices({ showHeader = true }: CancelledInvoicesProps = {}) {
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
   const [buyerNameFilter, setBuyerNameFilter] = useState("");
@@ -123,9 +127,19 @@ export default function CancelledInvoices() {
 
   return (
     <>
-      <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />
-      <div className="p-6 mt-16">
+      {showHeader && <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />}
+      <div className={showHeader ? "p-6 mt-16" : "p-6"}>
         <div className="mb-6">
+          {showHeader && (
+            <div className="flex items-center gap-2 mb-4">
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/production-management">
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back to Production
+                </Link>
+              </Button>
+            </div>
+          )}
           <div className="flex items-center gap-2 mb-2">
             <Link href="/" className="text-muted-foreground hover:text-foreground">
               Dashboard
