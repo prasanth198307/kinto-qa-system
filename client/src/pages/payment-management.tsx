@@ -60,7 +60,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2, Plus, X, FileText, Search, Filter, Check, ChevronsUpDown, Pencil, ChevronDown, ChevronRight, Link2, CircleCheck, AlertTriangle, CircleDashed } from "lucide-react";
+import { Loader2, Plus, X, FileText, Search, Filter, Check, ChevronsUpDown, Pencil, ChevronDown, ChevronRight, Link2, CircleCheck, AlertTriangle, CircleDashed, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const fifoPaymentSchema = z.object({
@@ -188,6 +188,7 @@ export default function PaymentManagement() {
   const [cancelPaymentId, setCancelPaymentId] = useState<string | null>(null);
   const [cancellationRemarks, setCancellationRemarks] = useState("");
   const [vendorPopoverOpen, setVendorPopoverOpen] = useState(false);
+  const [selectedVendorId, setSelectedVendorId] = useState<string>("");
   
   // Edit payment state
   const [editPayment, setEditPayment] = useState<any>(null);
@@ -212,6 +213,24 @@ export default function PaymentManagement() {
 
   const { data: paymentsData = [], isLoading } = useQuery<any[]>({
     queryKey: ['/api/invoice-payments/history'],
+  });
+
+  // Fetch pending invoices when vendor is selected (for preview in dialog)
+  const { data: pendingData, isLoading: isPendingLoading } = useQuery<{
+    vendorName: string;
+    pendingInvoices: Array<{
+      id: string;
+      invoiceNumber: string;
+      invoiceDate: string;
+      totalAmount: number;
+      totalPaid: number;
+      outstanding: number;
+    }>;
+    totalOutstanding: number;
+    invoiceCount: number;
+  }>({
+    queryKey: ['/api/vendors', selectedVendorId, 'pending-invoices'],
+    enabled: !!selectedVendorId && showPaymentDialog,
   });
 
   const form = useForm<FIFOPaymentFormData>({
@@ -627,6 +646,7 @@ export default function PaymentManagement() {
         setShowPaymentDialog(open);
         if (!open) {
           setAllocationPreview(null);
+          setSelectedVendorId("");
           form.reset();
         }
       }}>
@@ -681,6 +701,7 @@ export default function PaymentManagement() {
                                       keywords={[vendor.vendorCode, vendor.mobileNumber || '']}
                                       onSelect={() => {
                                         form.setValue("vendorId", vendor.id);
+                                        setSelectedVendorId(vendor.id);
                                         setVendorPopoverOpen(false);
                                       }}
                                       data-testid={`vendor-option-${vendor.vendorCode}`}
@@ -811,6 +832,74 @@ export default function PaymentManagement() {
                     </FormItem>
                   )}
                 />
+
+                {/* Pending Invoices Preview - Shows when vendor is selected */}
+                {selectedVendorId && (
+                  <div className="rounded-lg border p-4 space-y-3 bg-muted/30">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium text-sm">Pending Invoices for {pendingData?.vendorName}</h4>
+                      {isPendingLoading ? (
+                        <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Loading...
+                        </span>
+                      ) : pendingData?.invoiceCount === 0 ? (
+                        <span className="flex items-center gap-2 text-sm text-yellow-600">
+                          <AlertCircle className="h-4 w-4" />
+                          No pending invoices
+                        </span>
+                      ) : (
+                        <Badge variant="secondary">
+                          {pendingData?.invoiceCount} invoice(s) • ₹{((pendingData?.totalOutstanding || 0) / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })} outstanding
+                        </Badge>
+                      )}
+                    </div>
+                    {pendingData && pendingData.invoiceCount > 0 && (
+                      <div className="rounded-md border max-h-40 overflow-y-auto bg-background">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="text-xs py-2">Invoice #</TableHead>
+                              <TableHead className="text-xs py-2">Date</TableHead>
+                              <TableHead className="text-xs text-right py-2">Total</TableHead>
+                              <TableHead className="text-xs text-right py-2">Paid</TableHead>
+                              <TableHead className="text-xs text-right py-2">Outstanding</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {pendingData.pendingInvoices.map((invoice, idx) => (
+                              <TableRow key={invoice.id}>
+                                <TableCell className="text-sm font-medium py-1.5">
+                                  {invoice.invoiceNumber}
+                                  {idx === 0 && (
+                                    <Badge variant="outline" className="ml-2 text-xs">
+                                      Oldest
+                                    </Badge>
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-sm text-muted-foreground py-1.5">
+                                  {format(new Date(invoice.invoiceDate), "dd-MMM-yy")}
+                                </TableCell>
+                                <TableCell className="text-sm text-right py-1.5">
+                                  ₹{(invoice.totalAmount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                </TableCell>
+                                <TableCell className="text-sm text-right text-green-600 py-1.5">
+                                  ₹{(invoice.totalPaid / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                </TableCell>
+                                <TableCell className="text-sm text-right font-medium text-destructive py-1.5">
+                                  ₹{(invoice.outstanding / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      Payment will be allocated starting from the oldest invoice (FIFO order)
+                    </p>
+                  </div>
+                )}
 
                 <DialogFooter>
                   <Button
