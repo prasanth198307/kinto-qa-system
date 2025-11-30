@@ -702,15 +702,12 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         
         toast({
           title: "Invoice Reissued Successfully",
-          description: `New invoice ${response?.invoice?.invoiceNumber || ''} created.`,
+          description: `New invoice ${response?.invoice?.invoiceNumber || ''} created. Check the invoice list.`,
         });
         
-        // Close the dialog first, then navigate
+        // Just close the dialog - the invoices list will refresh automatically
+        // Don't navigate as we're already on the invoices tab
         onClose();
-        
-        // Navigate to sales invoices tab using wouter
-        // This keeps the SPA context and properly updates the active tab
-        navigate('/production-management?tab=invoices');
       } else {
         toast({
           title: "Success",
