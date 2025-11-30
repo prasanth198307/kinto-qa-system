@@ -144,8 +144,13 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
       console.error('Failed to generate UPI QR code:', error);
     }
 
+    const isCancelled = invoice.recordStatus === 0;
+    
     const generateInvoiceHTML = (copyType: string) => `
       <div class="page">
+        ${isCancelled ? `
+          <div class="cancelled-watermark">CANCELLED</div>
+        ` : ''}
         <!-- Title and Copy Type -->
         <div class="title-section">
           <div class="title">Tax Invoice</div>
@@ -417,6 +422,7 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
             }
 
             .page {
+              position: relative;
               width: 210mm;
               padding: 10mm;
               margin: 0 auto;
@@ -426,6 +432,22 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
 
             .page + .page {
               page-break-before: always;
+            }
+
+            /* Cancelled Watermark */
+            .cancelled-watermark {
+              position: absolute;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%) rotate(-45deg);
+              font-size: 100px;
+              font-weight: bold;
+              color: rgba(255, 0, 0, 0.25);
+              pointer-events: none;
+              z-index: 1000;
+              text-transform: uppercase;
+              letter-spacing: 10px;
+              white-space: nowrap;
             }
 
             /* Title Section */
