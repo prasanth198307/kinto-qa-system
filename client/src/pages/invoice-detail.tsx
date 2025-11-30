@@ -62,7 +62,7 @@ interface VendorVendorType {
 
 export default function InvoiceDetail() {
   const { id } = useParams<{ id: string }>();
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
   const { toast } = useToast();
   const { logoutMutation, user } = useAuth();
   const [isCreditNoteDialogOpen, setIsCreditNoteDialogOpen] = useState(false);
@@ -71,12 +71,34 @@ export default function InvoiceDetail() {
   const [isQuickFullCreditOpen, setIsQuickFullCreditOpen] = useState(false);
   const [isCancelReissueConfirmOpen, setIsCancelReissueConfirmOpen] = useState(false);
 
+  // Check if we're viewing a cancelled invoice (from cancelled invoices page)
+  const urlParams = new URLSearchParams(window.location.search);
+  const includeCancelled = urlParams.get('includeCancelled') === 'true';
+
   const { data: invoice, isLoading: isLoadingInvoice } = useQuery<Invoice>({
-    queryKey: ['/api/invoices', id],
+    queryKey: ['/api/invoices', id, includeCancelled],
+    queryFn: async () => {
+      const url = includeCancelled 
+        ? `/api/invoices/${id}?includeCancelled=true`
+        : `/api/invoices/${id}`;
+      const response = await fetch(url, { credentials: 'include' });
+      if (!response.ok) {
+        throw new Error('Invoice not found');
+      }
+      return response.json();
+    },
   });
 
   const { data: items = [] } = useQuery<InvoiceItem[]>({
-    queryKey: ['/api/invoice-items', id],
+    queryKey: ['/api/invoice-items', id, includeCancelled],
+    queryFn: async () => {
+      const url = includeCancelled 
+        ? `/api/invoice-items/${id}?includeCancelled=true`
+        : `/api/invoice-items/${id}`;
+      const response = await fetch(url, { credentials: 'include' });
+      if (!response.ok) return [];
+      return response.json();
+    },
     enabled: !!id,
   });
 

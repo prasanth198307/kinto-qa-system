@@ -284,7 +284,7 @@ export default function CancelledInvoices() {
                         </TableCell>
                         <TableCell>
                           {invoice.replacementInvoiceNumber ? (
-                            <Link href={`/invoices/${invoice.replacementInvoiceId}`}>
+                            <Link href={`/invoice/${invoice.replacementInvoiceId}`}>
                               <Badge 
                                 variant="secondary" 
                                 className="cursor-pointer hover:bg-primary hover:text-primary-foreground"
@@ -298,7 +298,7 @@ export default function CancelledInvoices() {
                           )}
                         </TableCell>
                         <TableCell>
-                          <Link href={`/invoices/${invoice.id}`}>
+                          <Link href={`/invoice/${invoice.id}?includeCancelled=true`}>
                             <Button 
                               variant="ghost" 
                               size="sm"

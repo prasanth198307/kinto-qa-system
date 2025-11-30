@@ -4607,16 +4607,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get single invoice with items
+  // Supports ?includeCancelled=true to view cancelled invoices (read-only)
   app.get('/api/invoices/:id', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const invoice = await storage.getInvoice(id);
+      const includeCancelled = req.query.includeCancelled === 'true';
+      
+      const invoice = await storage.getInvoice(id, includeCancelled);
       if (!invoice) {
         return res.status(404).json({ message: "Invoice not found" });
       }
       
-      // Fetch items for this invoice
-      const items = await storage.getInvoiceItems(id);
+      // Fetch items for this invoice (also include cancelled items if viewing cancelled invoice)
+      const items = await storage.getInvoiceItems(id, includeCancelled);
       
       res.json({ ...invoice, items });
     } catch (error) {
@@ -4860,7 +4863,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/invoice-items/:invoiceId', isAuthenticated, async (req: any, res) => {
     try {
       const { invoiceId } = req.params;
-      const items = await storage.getInvoiceItems(invoiceId);
+      const includeCancelled = req.query.includeCancelled === 'true';
+      const items = await storage.getInvoiceItems(invoiceId, includeCancelled);
       res.json(items);
     } catch (error) {
       console.error("Error fetching invoice items:", error);

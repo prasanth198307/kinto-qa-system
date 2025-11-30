@@ -2212,7 +2212,12 @@ export class DatabaseStorage implements IStorage {
       );
   }
 
-  async getInvoice(id: string): Promise<Invoice | undefined> {
+  async getInvoice(id: string, includeCancelled: boolean = false): Promise<Invoice | undefined> {
+    if (includeCancelled) {
+      // Include cancelled invoices (recordStatus = 0 or 1)
+      const [invoice] = await db.select().from(invoices).where(eq(invoices.id, id));
+      return invoice;
+    }
     const [invoice] = await db.select().from(invoices).where(and(eq(invoices.id, id), eq(invoices.recordStatus, 1)));
     return invoice;
   }
@@ -2252,7 +2257,11 @@ export class DatabaseStorage implements IStorage {
     return newItem;
   }
 
-  async getInvoiceItems(invoiceId: string): Promise<InvoiceItem[]> {
+  async getInvoiceItems(invoiceId: string, includeCancelled: boolean = false): Promise<InvoiceItem[]> {
+    if (includeCancelled) {
+      // Include cancelled items (recordStatus = 0 or 1)
+      return await db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, invoiceId));
+    }
     return await db.select().from(invoiceItems).where(and(eq(invoiceItems.invoiceId, invoiceId), eq(invoiceItems.recordStatus, 1)));
   }
 
