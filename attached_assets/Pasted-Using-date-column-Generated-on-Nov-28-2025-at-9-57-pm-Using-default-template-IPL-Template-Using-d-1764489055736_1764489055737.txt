@@ -1,0 +1,53 @@
+Using date column: Generated on Nov 28, 2025 at 9:57 pm
+Using default template: IPL Template
+Using default terms: zTest
+Import failed within transaction: error: column "original_invoice_id" of relation "invoices" does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg/lib/client.js:545:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:6249:30
+    at async NodePgSession.transaction (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:142:22)
+    at async importVyapaarData (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:5968:10)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:15673:22 {
+  length: 141,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '864',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_target.c',
+  line: '1080',
+  routine: 'checkInsertTargets'
+}
+Import transaction failed: error: column "original_invoice_id" of relation "invoices" does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg/lib/client.js:545:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:6249:30
+    at async NodePgSession.transaction (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:142:22)
+    at async importVyapaarData (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:5968:10)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:15673:22 {
+  length: 141,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '864',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_target.c',
+  line: '1080',
