@@ -1,0 +1,38 @@
+11:38:48 AM [express] GET /api/vendors 304 in 18ms :: [{"id":"16d223bf-ebe0-4ead-aaaf-ca05d7b4b722","…
+🔹 Request: POST /api/clear-imported-data
+   Cookie header: connect.sid=s%3A9fc55jkAma05sCcbnVIe9dk0cICFbX9Q.c9tLpNXzb%2BhufW4vGB7YeteCmPuAHPQxvLth2Fo8pWg
+   Session ID: 9fc55jkAma05sCcbnVIe9dk0cICFbX9Q
+   Authenticated: true
+[DATA CLEAR] Clearing all imported data...
+Clearing all imported data...
+Failed to clear imported data: error: update or delete on table "invoice_items" violates foreign key constraint "debit_note_items_invoice_item_id_fkey" on table "debit_note_items"
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg/lib/client.js:545:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:5937:7
+    at async NodePgSession.transaction (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:142:22)
+    at async clearImportedData (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:5921:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:15349:22 {
+  length: 375,
+  severity: 'ERROR',
+  code: '23503',
+  detail: 'Key (id)=(85d8090a-01e3-4619-bd45-582010d9cfbb) is still referenced from table "debit_note_items".',
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: 'public',
+  table: 'debit_note_items',
+  column: undefined,
+  dataType: undefined,
+  constraint: 'debit_note_items_invoice_item_id_fkey',
+  file: 'ri_triggers.c',
+  line: '2621',
+  routine: 'ri_ReportViolation'
+}
+[DATA CLEAR] Clear completed: {
+  success: false,
+  message: 'update or delete on table "invoice_items" violates foreign key constraint "debit_note_items_invoice_item_id_fkey" on table "debit_note_items"'
+}
+11:38:57 AM [express] POST /api/clear-imported-data 200 in 61ms :: {"success":false,"message":"update…
+

@@ -181,6 +181,8 @@ export async function clearImportedData(): Promise<{
       await tx.execute(sql`DELETE FROM production_reconciliation_items`);
       await tx.execute(sql`DELETE FROM production_reconciliations`);
       await tx.execute(sql`DELETE FROM production_entries`);
+      await tx.execute(sql`DELETE FROM debit_note_items`);
+      await tx.execute(sql`DELETE FROM debit_notes`);
       await tx.execute(sql`DELETE FROM credit_note_items`);
       await tx.execute(sql`DELETE FROM credit_notes`);
       await tx.execute(sql`DELETE FROM sales_return_items`);
@@ -246,6 +248,8 @@ export async function importVyapaarData(
       
       if (invoicesOnlyMode) {
         console.log('Invoices-only mode: Clearing invoice data only (preserving vendors and products)...');
+        await tx.execute(sql`DELETE FROM debit_note_items`);
+        await tx.execute(sql`DELETE FROM debit_notes`);
         await tx.execute(sql`DELETE FROM credit_note_items`);
         await tx.execute(sql`DELETE FROM credit_notes`);
         await tx.execute(sql`DELETE FROM payment_evidence`);
@@ -257,6 +261,8 @@ export async function importVyapaarData(
         await tx.execute(sql`DELETE FROM production_reconciliation_items`);
         await tx.execute(sql`DELETE FROM production_reconciliations`);
         await tx.execute(sql`DELETE FROM production_entries`);
+        await tx.execute(sql`DELETE FROM debit_note_items`);
+        await tx.execute(sql`DELETE FROM debit_notes`);
         await tx.execute(sql`DELETE FROM credit_note_items`);
         await tx.execute(sql`DELETE FROM credit_notes`);
         await tx.execute(sql`DELETE FROM sales_return_items`);
