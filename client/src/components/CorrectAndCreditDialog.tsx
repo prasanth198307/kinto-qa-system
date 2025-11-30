@@ -172,6 +172,9 @@ export function CorrectAndCreditDialog({
     const igstDifference = Math.round(subtotalDifference * igstRate / 10000);
     const grandTotalDifference = subtotalDifference + cgstDifference + sgstDifference + igstDifference;
 
+    // Determine if user is trying to increase amounts (invalid for credit notes)
+    const isIncreasing = totalCorrected > totalOriginal;
+    
     return {
       totalOriginal,
       totalCorrected,
@@ -182,15 +185,23 @@ export function CorrectAndCreditDialog({
       grandTotalDifference,
       itemDifferences,
       hasChanges: subtotalDifference > 0,
+      isIncreasing, // New flag to show better error message
     };
   }, [watchedItemsKey, invoiceItems, cgstRate, sgstRate, igstRate]);
 
   const handleSubmit = async (data: CorrectAndCreditForm) => {
     if (!creditCalculation.hasChanges) {
-      form.setError("root", {
-        type: "manual",
-        message: "No changes detected. Please adjust quantities or prices to create a credit.",
-      });
+      if (creditCalculation.isIncreasing) {
+        form.setError("root", {
+          type: "manual",
+          message: "Credit notes can only REDUCE amounts. To increase quantities or prices, use 'Cancel & Reissue' to create a new invoice.",
+        });
+      } else {
+        form.setError("root", {
+          type: "manual",
+          message: "No changes detected. Please reduce quantities or prices to create a credit.",
+        });
+      }
       return;
     }
 
@@ -450,10 +461,15 @@ export function CorrectAndCreditDialog({
                     <span>{formatCurrency(creditCalculation.grandTotalDifference)}</span>
                   </div>
                 </div>
+              ) : creditCalculation.isIncreasing ? (
+                <div className="flex items-center gap-2 text-destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <span>Credit notes can only REDUCE amounts. To charge more, use "Cancel & Reissue" instead.</span>
+                </div>
               ) : (
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <AlertCircle className="h-4 w-4" />
-                  <span>No changes detected. Adjust quantities or prices to generate a credit.</span>
+                  <span>No changes detected. Reduce quantities or prices to generate a credit.</span>
                 </div>
               )}
             </Card>
