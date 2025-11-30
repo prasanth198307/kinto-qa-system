@@ -921,11 +921,13 @@ const navItemToScreen: Record<string, string> = {
   'variance-analytics': 'Create Finished Goods',
   // Finance & Sales
   'invoices': 'Purchase Orders',
+  'vendor-history': 'Purchase Orders',
   'pending-payments': 'Purchase Orders',
   'payment-management': 'Purchase Orders',
   'credit-notes': 'Purchase Orders',
   'cancelled-invoices': 'Purchase Orders',
   'sales-returns': 'Purchase Orders',
+  'write-off-report': 'Purchase Orders',
   // Dispatch & Logistics
   'gatepasses': 'Purchase Orders',
   'dispatch-tracking': 'Purchase Orders',
