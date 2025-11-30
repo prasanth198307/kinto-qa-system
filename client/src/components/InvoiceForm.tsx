@@ -500,25 +500,13 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
     }
   }, [vendorTypeFilter, filteredVendors, selectedVendorId, form, invoice]);
 
-  // Pre-populate invoice items from gatepass items or existing invoice
+  // Pre-populate invoice items from gatepass items (create mode only)
+  // NOTE: Reissue/edit mode items are handled by the earlier form.reset() useEffect
   useEffect(() => {
-    // Check if invoice has embedded items (e.g., from reissue flow)
-    const itemsToUse = (invoice as any)?.items?.length > 0 ? (invoice as any).items : invoiceItems;
+    // Skip if invoice exists (handled by form.reset() useEffect above)
+    if (invoice) return;
     
-    if (invoice && itemsToUse.length > 0) {
-      // Edit mode or reissue mode - populate from existing invoice items
-      const formItems = itemsToUse.map((item: any) => ({
-        productId: item.productId || "",
-        description: item.description || "",
-        hsnCode: item.hsnCode || "",
-        quantity: item.quantity || 1,
-        unitPrice: (item.unitPrice || 0) / 100, // Convert from paise
-        gstRate: isIntrastateSupply 
-          ? ((item.cgstRate || 0) / 50) // Convert from basis points, cgst+sgst = full rate
-          : ((item.igstRate || 0) / 100), // Convert from basis points
-      }));
-      form.setValue("items", formItems);
-    } else if (gatepassItems.length > 0 && products.length > 0) {
+    if (gatepassItems.length > 0 && products.length > 0) {
       // Create mode - populate from gatepass items
       const formItems = gatepassItems.map(item => {
         const fg = finishedGoods.find(f => f.id === item.finishedGoodId);
@@ -538,7 +526,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       
       form.setValue("items", formItems);
     }
-  }, [invoice, invoiceItems, gatepassItems, products, finishedGoods, form, isIntrastateSupply]);
+  }, [invoice, gatepassItems, products, finishedGoods, form]);
 
   const { fields, append, remove, replace } = useFieldArray({
     control: form.control,
@@ -1461,7 +1449,12 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
               {/* GST Rate */}
               <div className="col-span-1">
                 <Select
-                  value={String(form.watch(`items.${index}.gstRate`) ?? 18)}
+                  value={(() => {
+                    const watchedValue = form.watch(`items.${index}.gstRate`);
+                    const fieldValue = (field as any).gstRate;
+                    const finalValue = watchedValue ?? fieldValue ?? 18;
+                    return String(finalValue);
+                  })()}
                   onValueChange={(value) => form.setValue(`items.${index}.gstRate`, parseFloat(value))}
                 >
                   <SelectTrigger data-testid={`select-gst-rate-${index}`} className="h-9">
