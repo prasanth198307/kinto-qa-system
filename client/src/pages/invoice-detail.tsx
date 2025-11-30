@@ -150,8 +150,9 @@ export default function InvoiceDetail() {
         sessionStorage.setItem('is-reissue', data.isReissue ? 'true' : 'false');
       }
       
-      // Navigate to invoice creation with reissue flag
-      navigate('/?tab=invoices&reissue=true');
+      // Use window.location for full page navigation to ensure it works in production
+      // This ensures proper routing in both development and production environments
+      window.location.href = '/?tab=invoices&reissue=true';
     },
     onError: (error: any) => {
       toast({
