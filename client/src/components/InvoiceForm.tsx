@@ -3,6 +3,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -79,6 +80,7 @@ interface InvoiceFormProps {
 
 export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, onClose }: InvoiceFormProps) {
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   const [isIntrastateSupply, setIsIntrastateSupply] = useState(true);
   const [selectedBankId, setSelectedBankId] = useState<string>("");
   const [showPrintPreview, setShowPrintPreview] = useState(false);
@@ -693,15 +695,22 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       
       // Clear reissue data from sessionStorage
       if (isReissueMode) {
+        // Clear all reissue-related sessionStorage items
+        sessionStorage.removeItem('reissue-invoice-data');
+        sessionStorage.removeItem('is-reissue');
         sessionStorage.removeItem('reissueInvoiceData');
+        
         toast({
           title: "Invoice Reissued Successfully",
-          description: `New invoice ${response?.invoice?.invoiceNumber || ''} created. Redirecting to Sales Invoices...`,
+          description: `New invoice ${response?.invoice?.invoiceNumber || ''} created.`,
         });
-        // Redirect to sales invoices tab after short delay
-        setTimeout(() => {
-          window.location.href = '/production-management?tab=invoices';
-        }, 1000);
+        
+        // Close the dialog first, then navigate
+        onClose();
+        
+        // Navigate to sales invoices tab using wouter
+        // This keeps the SPA context and properly updates the active tab
+        navigate('/production-management?tab=invoices');
       } else {
         toast({
           title: "Success",
