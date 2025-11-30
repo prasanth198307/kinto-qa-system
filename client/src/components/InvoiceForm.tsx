@@ -704,8 +704,12 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
     onSuccess: async (response: any) => {
       console.log('[InvoiceForm] Mutation success, response:', response);
       
-      // Force refetch of invoices list
+      // Force clear cache and refetch of invoices list
+      // Use invalidateQueries to mark as stale, then refetch to get fresh data
+      await queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
+      console.log('[InvoiceForm] Cache invalidated, now refetching...');
       await queryClient.refetchQueries({ queryKey: ['/api/invoices'] });
+      console.log('[InvoiceForm] Refetch complete');
       
       // Clear reissue data from sessionStorage
       if (isReissueMode) {
@@ -716,7 +720,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         
         toast({
           title: "Invoice Reissued Successfully",
-          description: `New invoice ${response?.invoice?.invoiceNumber || ''} created. Refreshing list...`,
+          description: `New invoice ${response?.invoice?.invoiceNumber || ''} created.`,
         });
         
         // Close dialog after refetch completes
