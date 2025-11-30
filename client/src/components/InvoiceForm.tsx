@@ -255,16 +255,31 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       // Prepare items with proper conversion
       const embeddedItems = (invoice as any)?.items || [];
       const normalizedItems = embeddedItems.length > 0 
-        ? embeddedItems.map((item: any) => ({
-            productId: item.productId || "",
-            description: item.description || "",
-            hsnCode: item.hsnCode || "",
-            quantity: item.quantity || 1,
-            unitPrice: (item.unitPrice || 0) / 100, // Convert from paise to rupees
-            gstRate: isIntrastate 
-              ? ((item.cgstRate || 0) / 50) // cgst * 2 / 100 = full rate %
-              : ((item.igstRate || 0) / 100), // Convert from basis points
-          }))
+        ? embeddedItems.map((item: any) => {
+            // Calculate GST rate from basis points
+            // cgstRate/sgstRate are each half of total rate, igstRate is full rate
+            // All stored in basis points (1800 = 18%)
+            let rawGstRate = isIntrastate 
+              ? ((item.cgstRate || 0) * 2 / 100) // cgst * 2 / 100 = full rate %
+              : ((item.igstRate || 0) / 100); // Convert from basis points
+            
+            // Round to nearest valid GST rate (0, 5, 12, 18, 28)
+            const validRates = [0, 5, 12, 18, 28];
+            const gstRate = validRates.reduce((prev, curr) => 
+              Math.abs(curr - rawGstRate) < Math.abs(prev - rawGstRate) ? curr : prev
+            );
+            
+            console.log(`[InvoiceForm] Item GST conversion: cgstRate=${item.cgstRate}, igstRate=${item.igstRate}, raw=${rawGstRate}, final=${gstRate}`);
+            
+            return {
+              productId: item.productId || "",
+              description: item.description || "",
+              hsnCode: item.hsnCode || "",
+              quantity: item.quantity || 1,
+              unitPrice: (item.unitPrice || 0) / 100, // Convert from paise to rupees
+              gstRate,
+            };
+          })
         : [{
             productId: "",
             description: "",
@@ -1556,7 +1571,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
             Cancel
           </Button>
           <Button type="submit" disabled={createInvoiceMutation.isPending} data-testid="button-submit-invoice">
-            {createInvoiceMutation.isPending ? "Saving..." : (invoice ? "Update Invoice" : "Create Invoice")}
+            {createInvoiceMutation.isPending ? "Saving..." : (invoice && !isReissueMode ? "Update Invoice" : "Create Invoice")}
           </Button>
         </div>
       </form>
