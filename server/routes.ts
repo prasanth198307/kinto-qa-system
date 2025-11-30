@@ -6740,20 +6740,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Get invoice IDs for this vendor
         const invoiceIds = vendorInvoices.map(inv => inv.id);
         
-        // Calculate totals
+        // Calculate totals - use amountReceived as authoritative source (matches Vyapaar import)
         const totalInvoiced = vendorInvoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
         const totalReceived = vendorInvoices.reduce((sum, inv) => sum + (inv.amountReceived || 0), 0);
         
-        // Credit notes for this vendor's invoices
+        // Credit notes for this vendor's invoices (issued status only)
         const vendorCredits = allCreditNotes.filter(cn => invoiceIds.includes(cn.invoiceId));
         const totalCredits = vendorCredits.reduce((sum, cn) => sum + (cn.grandTotal || 0), 0);
         
-        // Debit notes for this vendor's invoices
+        // Debit notes for this vendor's invoices (issued status only)
         const vendorDebits = allDebitNotes.filter(dn => invoiceIds.includes(dn.invoiceId));
         const totalDebits = vendorDebits.reduce((sum, dn) => sum + (dn.grandTotal || 0), 0);
         
-        // Outstanding = Invoiced - Received - Credits + Debits
-        const outstanding = totalInvoiced - totalReceived - totalCredits + totalDebits;
+        // Outstanding = Invoiced + Debits - Credits - Received
+        // Formula: What they originally owed + additional charges - reductions - what they paid
+        const outstanding = totalInvoiced + totalDebits - totalCredits - totalReceived;
         
         // Last transaction date
         const lastInvoiceDate = vendorInvoices.length > 0 
@@ -6887,22 +6888,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ));
       }
       
-      // Get payments for these invoices
-      let vendorPayments: any[] = [];
-      if (invoiceIds.length > 0) {
-        vendorPayments = await db.select()
-          .from(invoicePayments)
-          .where(and(
-            eq(invoicePayments.recordStatus, 1),
-            inArray(invoicePayments.invoiceId, invoiceIds)
-          ));
-      }
-      
-      // Build ledger entries
+      // Build ledger entries - use a single-pass approach
       const ledgerEntries: any[] = [];
       
-      // Add invoices to ledger
+      // Add invoices to ledger (with amountReceived as payment info)
       vendorInvoices.forEach(inv => {
+        // Invoice entry - what they owe
         ledgerEntries.push({
           type: 'invoice',
           id: inv.id,
@@ -6913,6 +6904,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           credit: 0,
           status: inv.paymentStatus,
         });
+        
+        // Payment entry - what they paid (using amountReceived as authoritative source)
+        if (inv.amountReceived && inv.amountReceived > 0) {
+          ledgerEntries.push({
+            type: 'payment',
+            id: `pmt-${inv.id}`,
+            date: inv.invoiceDate, // Use invoice date as payment date approximation
+            reference: `PMT-${inv.invoiceNumber}`,
+            description: `Payment received for ${inv.invoiceNumber}`,
+            debit: 0,
+            credit: inv.amountReceived, // Reduces what customer owes
+          });
+        }
       });
       
       // Add credit notes to ledger (reduce what customer owes)
@@ -6947,21 +6951,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       });
       
-      // Add payments to ledger (reduce what customer owes)
-      vendorPayments.forEach(pmt => {
-        const relatedInvoice = vendorInvoices.find(inv => inv.id === pmt.invoiceId);
-        ledgerEntries.push({
-          type: 'payment',
-          id: pmt.id,
-          date: pmt.paymentDate,
-          reference: pmt.referenceNumber || `PMT-${pmt.id.slice(0, 8)}`,
-          description: `Payment received (${pmt.paymentMode || 'N/A'}) for ${relatedInvoice?.invoiceNumber || 'N/A'}`,
-          debit: 0,
-          credit: pmt.amount, // Reduces what customer owes
-          paymentMode: pmt.paymentMode,
-        });
-      });
-      
       // Filter by type if specified
       let filteredEntries = ledgerEntries;
       if (type && type !== 'all') {
@@ -6971,19 +6960,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Sort by date (oldest first for running balance)
       filteredEntries.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
       
-      // Calculate running balance
+      // Calculate running balance from ledger entries
       let runningBalance = 0;
       filteredEntries.forEach(entry => {
         runningBalance += entry.debit - entry.credit;
         entry.balance = runningBalance;
       });
       
-      // Calculate summary totals
+      // Calculate summary totals - use amountReceived as authoritative source (matches Vyapaar)
       const totalInvoiced = vendorInvoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
+      const totalPayments = vendorInvoices.reduce((sum, inv) => sum + (inv.amountReceived || 0), 0);
       const totalCredits = vendorCreditNotes.reduce((sum, cn) => sum + (cn.grandTotal || 0), 0);
       const totalDebits = vendorDebitNotes.reduce((sum, dn) => sum + (dn.grandTotal || 0), 0);
-      const totalPayments = vendorPayments.reduce((sum, p) => sum + p.amount, 0);
-      const currentBalance = totalInvoiced - totalPayments - totalCredits + totalDebits;
+      // Current balance = Invoiced + Debits - Credits - Payments (consistent with list view)
+      const currentBalance = totalInvoiced + totalDebits - totalCredits - totalPayments;
       
       res.json({
         vendor: {
@@ -7006,7 +6996,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           invoiceCount: vendorInvoices.length,
           creditNoteCount: vendorCreditNotes.length,
           debitNoteCount: vendorDebitNotes.length,
-          paymentCount: vendorPayments.length,
+          paymentCount: vendorInvoices.filter(inv => inv.amountReceived && inv.amountReceived > 0).length,
         },
         ledger: filteredEntries.reverse(), // Most recent first for display
       });
