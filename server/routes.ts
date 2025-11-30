@@ -6686,6 +6686,336 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // =================== VENDOR HISTORY ===================
+  // Vendor history provides a complete ledger view of all transactions with a vendor
+  
+  // Get all vendors with summary totals (list view)
+  app.get('/api/vendor-history', isAuthenticated, async (req: any, res) => {
+    try {
+      const { search, page = '1', pageSize = '20', sortBy = 'outstanding', sortOrder = 'desc' } = req.query;
+      const pageNum = parseInt(page as string);
+      const limit = Math.min(parseInt(pageSize as string), 100);
+      const offset = (pageNum - 1) * limit;
+      
+      // Get all active vendors
+      const allVendors = await storage.getAllVendors();
+      const activeVendors = allVendors.filter(v => v.isActive === 'true' && v.recordStatus === 1);
+      
+      // Filter by search if provided
+      let filteredVendors = activeVendors;
+      if (search) {
+        const searchLower = (search as string).toLowerCase();
+        filteredVendors = activeVendors.filter(v => 
+          v.vendorName.toLowerCase().includes(searchLower) ||
+          (v.gstNumber && v.gstNumber.toLowerCase().includes(searchLower)) ||
+          (v.vendorCode && v.vendorCode.toLowerCase().includes(searchLower))
+        );
+      }
+      
+      // Get all invoices for aggregation
+      const allInvoices = await storage.getAllInvoices();
+      const activeInvoices = allInvoices.filter(inv => inv.recordStatus === 1);
+      
+      // Get all credit notes
+      const allCreditNotes = await db.select()
+        .from(creditNotes)
+        .where(and(
+          eq(creditNotes.recordStatus, 1),
+          eq(creditNotes.status, 'issued')
+        ));
+      
+      // Get all debit notes
+      const allDebitNotes = await db.select()
+        .from(debitNotes)
+        .where(and(
+          eq(debitNotes.recordStatus, 1),
+          eq(debitNotes.status, 'issued')
+        ));
+      
+      // Build vendor summaries
+      const vendorSummaries = filteredVendors.map(vendor => {
+        // Get invoices for this vendor (by buyerName match)
+        const vendorInvoices = activeInvoices.filter(inv => inv.buyerName === vendor.vendorName);
+        
+        // Get invoice IDs for this vendor
+        const invoiceIds = vendorInvoices.map(inv => inv.id);
+        
+        // Calculate totals
+        const totalInvoiced = vendorInvoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
+        const totalReceived = vendorInvoices.reduce((sum, inv) => sum + (inv.amountReceived || 0), 0);
+        
+        // Credit notes for this vendor's invoices
+        const vendorCredits = allCreditNotes.filter(cn => invoiceIds.includes(cn.invoiceId));
+        const totalCredits = vendorCredits.reduce((sum, cn) => sum + (cn.grandTotal || 0), 0);
+        
+        // Debit notes for this vendor's invoices
+        const vendorDebits = allDebitNotes.filter(dn => invoiceIds.includes(dn.invoiceId));
+        const totalDebits = vendorDebits.reduce((sum, dn) => sum + (dn.grandTotal || 0), 0);
+        
+        // Outstanding = Invoiced - Received - Credits + Debits
+        const outstanding = totalInvoiced - totalReceived - totalCredits + totalDebits;
+        
+        // Last transaction date
+        const lastInvoiceDate = vendorInvoices.length > 0 
+          ? vendorInvoices.sort((a, b) => new Date(b.invoiceDate).getTime() - new Date(a.invoiceDate).getTime())[0].invoiceDate
+          : null;
+        
+        return {
+          id: vendor.id,
+          vendorCode: vendor.vendorCode,
+          vendorName: vendor.vendorName,
+          gstNumber: vendor.gstNumber,
+          mobileNumber: vendor.mobileNumber,
+          city: vendor.city,
+          state: vendor.state,
+          invoiceCount: vendorInvoices.length,
+          creditNoteCount: vendorCredits.length,
+          debitNoteCount: vendorDebits.length,
+          totalInvoiced,
+          totalReceived,
+          totalCredits,
+          totalDebits,
+          outstanding,
+          lastTransactionDate: lastInvoiceDate,
+        };
+      });
+      
+      // Sort
+      vendorSummaries.sort((a, b) => {
+        let comparison = 0;
+        switch (sortBy) {
+          case 'outstanding':
+            comparison = a.outstanding - b.outstanding;
+            break;
+          case 'invoiceCount':
+            comparison = a.invoiceCount - b.invoiceCount;
+            break;
+          case 'totalInvoiced':
+            comparison = a.totalInvoiced - b.totalInvoiced;
+            break;
+          case 'vendorName':
+            comparison = a.vendorName.localeCompare(b.vendorName);
+            break;
+          case 'lastTransaction':
+            comparison = (a.lastTransactionDate || '').localeCompare(b.lastTransactionDate || '');
+            break;
+          default:
+            comparison = a.outstanding - b.outstanding;
+        }
+        return sortOrder === 'desc' ? -comparison : comparison;
+      });
+      
+      // Calculate totals across all filtered vendors
+      const totals = {
+        totalVendors: vendorSummaries.length,
+        totalInvoiced: vendorSummaries.reduce((sum, v) => sum + v.totalInvoiced, 0),
+        totalReceived: vendorSummaries.reduce((sum, v) => sum + v.totalReceived, 0),
+        totalOutstanding: vendorSummaries.reduce((sum, v) => sum + v.outstanding, 0),
+        vendorsWithBalance: vendorSummaries.filter(v => v.outstanding > 0).length,
+      };
+      
+      // Paginate
+      const paginatedVendors = vendorSummaries.slice(offset, offset + limit);
+      
+      res.json({
+        vendors: paginatedVendors,
+        totals,
+        pagination: {
+          page: pageNum,
+          pageSize: limit,
+          totalItems: vendorSummaries.length,
+          totalPages: Math.ceil(vendorSummaries.length / limit),
+        },
+      });
+    } catch (error) {
+      console.error("Error fetching vendor history:", error);
+      res.status(500).json({ message: "Failed to fetch vendor history" });
+    }
+  });
+  
+  // Get detailed ledger for a specific vendor
+  app.get('/api/vendor-history/:vendorId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { vendorId } = req.params;
+      const { startDate, endDate, type } = req.query;
+      
+      // Get vendor details
+      const vendor = await storage.getVendor(vendorId);
+      if (!vendor) {
+        return res.status(404).json({ message: "Vendor not found" });
+      }
+      
+      // Get all invoices for this vendor
+      const allInvoices = await storage.getAllInvoices();
+      let vendorInvoices = allInvoices.filter(inv => 
+        inv.buyerName === vendor.vendorName && inv.recordStatus === 1
+      );
+      
+      // Filter by date range if provided
+      if (startDate) {
+        vendorInvoices = vendorInvoices.filter(inv => 
+          new Date(inv.invoiceDate) >= new Date(startDate as string)
+        );
+      }
+      if (endDate) {
+        vendorInvoices = vendorInvoices.filter(inv => 
+          new Date(inv.invoiceDate) <= new Date(endDate as string)
+        );
+      }
+      
+      const invoiceIds = vendorInvoices.map(inv => inv.id);
+      
+      // Get credit notes for these invoices
+      let vendorCreditNotes: any[] = [];
+      if (invoiceIds.length > 0) {
+        vendorCreditNotes = await db.select()
+          .from(creditNotes)
+          .where(and(
+            eq(creditNotes.recordStatus, 1),
+            inArray(creditNotes.invoiceId, invoiceIds)
+          ));
+      }
+      
+      // Get debit notes for these invoices
+      let vendorDebitNotes: any[] = [];
+      if (invoiceIds.length > 0) {
+        vendorDebitNotes = await db.select()
+          .from(debitNotes)
+          .where(and(
+            eq(debitNotes.recordStatus, 1),
+            inArray(debitNotes.invoiceId, invoiceIds)
+          ));
+      }
+      
+      // Get payments for these invoices
+      let vendorPayments: any[] = [];
+      if (invoiceIds.length > 0) {
+        vendorPayments = await db.select()
+          .from(invoicePayments)
+          .where(and(
+            eq(invoicePayments.recordStatus, 1),
+            inArray(invoicePayments.invoiceId, invoiceIds)
+          ));
+      }
+      
+      // Build ledger entries
+      const ledgerEntries: any[] = [];
+      
+      // Add invoices to ledger
+      vendorInvoices.forEach(inv => {
+        ledgerEntries.push({
+          type: 'invoice',
+          id: inv.id,
+          date: inv.invoiceDate,
+          reference: inv.invoiceNumber,
+          description: `Invoice ${inv.invoiceNumber}`,
+          debit: inv.totalAmount, // Customer owes us
+          credit: 0,
+          status: inv.paymentStatus,
+        });
+      });
+      
+      // Add credit notes to ledger (reduce what customer owes)
+      vendorCreditNotes.forEach(cn => {
+        const relatedInvoice = vendorInvoices.find(inv => inv.id === cn.invoiceId);
+        ledgerEntries.push({
+          type: 'credit_note',
+          id: cn.id,
+          date: cn.creditDate,
+          reference: cn.noteNumber,
+          description: `Credit Note ${cn.noteNumber} (against ${relatedInvoice?.invoiceNumber || 'N/A'})`,
+          debit: 0,
+          credit: cn.grandTotal, // Reduces what customer owes
+          status: cn.status,
+          reason: cn.reason,
+        });
+      });
+      
+      // Add debit notes to ledger (increase what customer owes)
+      vendorDebitNotes.forEach(dn => {
+        const relatedInvoice = vendorInvoices.find(inv => inv.id === dn.invoiceId);
+        ledgerEntries.push({
+          type: 'debit_note',
+          id: dn.id,
+          date: dn.debitDate,
+          reference: dn.noteNumber,
+          description: `Debit Note ${dn.noteNumber} (against ${relatedInvoice?.invoiceNumber || 'N/A'})`,
+          debit: dn.grandTotal, // Increases what customer owes
+          credit: 0,
+          status: dn.status,
+          reason: dn.reason,
+        });
+      });
+      
+      // Add payments to ledger (reduce what customer owes)
+      vendorPayments.forEach(pmt => {
+        const relatedInvoice = vendorInvoices.find(inv => inv.id === pmt.invoiceId);
+        ledgerEntries.push({
+          type: 'payment',
+          id: pmt.id,
+          date: pmt.paymentDate,
+          reference: pmt.referenceNumber || `PMT-${pmt.id.slice(0, 8)}`,
+          description: `Payment received (${pmt.paymentMode || 'N/A'}) for ${relatedInvoice?.invoiceNumber || 'N/A'}`,
+          debit: 0,
+          credit: pmt.amount, // Reduces what customer owes
+          paymentMode: pmt.paymentMode,
+        });
+      });
+      
+      // Filter by type if specified
+      let filteredEntries = ledgerEntries;
+      if (type && type !== 'all') {
+        filteredEntries = ledgerEntries.filter(e => e.type === type);
+      }
+      
+      // Sort by date (oldest first for running balance)
+      filteredEntries.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      
+      // Calculate running balance
+      let runningBalance = 0;
+      filteredEntries.forEach(entry => {
+        runningBalance += entry.debit - entry.credit;
+        entry.balance = runningBalance;
+      });
+      
+      // Calculate summary totals
+      const totalInvoiced = vendorInvoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
+      const totalCredits = vendorCreditNotes.reduce((sum, cn) => sum + (cn.grandTotal || 0), 0);
+      const totalDebits = vendorDebitNotes.reduce((sum, dn) => sum + (dn.grandTotal || 0), 0);
+      const totalPayments = vendorPayments.reduce((sum, p) => sum + p.amount, 0);
+      const currentBalance = totalInvoiced - totalPayments - totalCredits + totalDebits;
+      
+      res.json({
+        vendor: {
+          id: vendor.id,
+          vendorCode: vendor.vendorCode,
+          vendorName: vendor.vendorName,
+          gstNumber: vendor.gstNumber,
+          address: vendor.address,
+          city: vendor.city,
+          state: vendor.state,
+          mobileNumber: vendor.mobileNumber,
+          email: vendor.email,
+        },
+        summary: {
+          totalInvoiced,
+          totalCredits,
+          totalDebits,
+          totalPayments,
+          currentBalance,
+          invoiceCount: vendorInvoices.length,
+          creditNoteCount: vendorCreditNotes.length,
+          debitNoteCount: vendorDebitNotes.length,
+          paymentCount: vendorPayments.length,
+        },
+        ledger: filteredEntries.reverse(), // Most recent first for display
+      });
+    } catch (error) {
+      console.error("Error fetching vendor ledger:", error);
+      res.status(500).json({ message: "Failed to fetch vendor ledger" });
+    }
+  });
+
   // =================== DEBIT NOTES ===================
   // Debit notes are used to INCREASE amounts on previous month invoices
   // (e.g., quantity increases, price increases on old invoices where Cancel & Reissue is not allowed)
