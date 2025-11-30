@@ -1048,6 +1048,7 @@ export const finishedGoods = pgTable("finished_goods", {
 });
 
 export const insertFinishedGoodSchema = createInsertSchema(finishedGoods, {
+  quantity: z.number().min(0, "Quantity cannot be negative"), // Allow 0 for manual entry
   productionDate: z.union([z.string(), z.date()]).transform(val => {
     if (!val) return new Date();
     if (typeof val === 'string') {

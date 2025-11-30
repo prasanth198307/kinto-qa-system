@@ -3267,7 +3267,6 @@ function FinishedGoodsTab({ searchTerm, onSearchChange }: { searchTerm: string; 
         item={editingItem}
         products={products}
         uoms={uoms}
-        machines={machines}
         users={users}
         onSubmit={(data) => {
           if (editingItem) {
@@ -3309,7 +3308,6 @@ function FinishedGoodDialog({
   item, 
   products,
   uoms,
-  machines,
   users,
   onSubmit, 
   isLoading 
@@ -3319,7 +3317,6 @@ function FinishedGoodDialog({
   item: FinishedGood | null; 
   products: Product[];
   uoms: Uom[];
-  machines: Machine[];
   users: User[];
   onSubmit: (data: z.infer<typeof insertFinishedGoodSchema>) => void;
   isLoading: boolean;
@@ -3332,7 +3329,7 @@ function FinishedGoodDialog({
       productionDate: new Date().toISOString().split('T')[0],
       quantity: 0,
       uomId: undefined,
-      qualityStatus: 'pending',
+      qualityStatus: 'approved', // Default to approved for manual entry
       machineId: undefined,
       operatorId: undefined,
       inspectedBy: undefined,
@@ -3367,7 +3364,7 @@ function FinishedGoodDialog({
           productionDate: new Date().toISOString().split('T')[0],
           quantity: 0,
           uomId: undefined,
-          qualityStatus: 'pending',
+          qualityStatus: 'approved', // Default to approved for manual entry
           machineId: undefined,
           operatorId: undefined,
           inspectedBy: undefined,
@@ -3498,7 +3495,7 @@ function FinishedGoodDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Quality Status</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || 'pending'}>
+                    <Select onValueChange={field.onChange} value={field.value || 'approved'}>
                       <FormControl>
                         <SelectTrigger data-testid="select-good-quality">
                           <SelectValue placeholder="Select Status" />
@@ -3508,56 +3505,6 @@ function FinishedGoodDialog({
                         <SelectItem value="pending">Pending</SelectItem>
                         <SelectItem value="approved">Approved</SelectItem>
                         <SelectItem value="rejected">Rejected</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="machineId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Machine</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ''}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-good-machine">
-                          <SelectValue placeholder="Select Machine" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {machines.filter(m => m.status === 'active').map(machine => (
-                          <SelectItem key={machine.id} value={machine.id}>
-                            {machine.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="operatorId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Operator</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ''}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-good-operator">
-                          <SelectValue placeholder="Select Operator" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {users.filter(u => u.role === 'operator').map(user => (
-                          <SelectItem key={user.id} value={user.id}>
-                            {user.firstName || user.lastName ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : user.username}
-                          </SelectItem>
-                        ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
