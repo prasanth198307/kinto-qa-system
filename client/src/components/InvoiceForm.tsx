@@ -615,11 +615,15 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         // Include original invoice ID for reissue tracking
         // In reissue mode, the cancelled invoice's ID is stored as originalInvoiceId on the invoice prop
         originalInvoiceId: isReissueMode ? (invoice?.id || (invoice as any)?.originalInvoiceId) : null,
+        // For reissued invoices, inherit the status from the original invoice (typically "delivered")
+        // For new invoices, default to "draft"
+        status: isReissueMode ? (invoice?.status || 'delivered') : 'draft',
       };
       
       console.log('[InvoiceForm] Invoice header being sent:', {
         buyerName: invoiceHeader.buyerName,
         originalInvoiceId: invoiceHeader.originalInvoiceId,
+        status: invoiceHeader.status,
         isReissueMode,
         invoiceId: invoice?.id,
       });
