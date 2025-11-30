@@ -1,4 +1,4 @@
-import type { Invoice, InvoiceWithItems, CreditNote } from '@shared/schema';
+import type { Invoice, InvoiceWithItems, CreditNote, DebitNote } from '@shared/schema';
 
 // GST Report Types
 export type GSTReportType = 'GSTR1' | 'GSTR3B';
@@ -11,6 +11,13 @@ export interface CreditNoteWithInvoice {
   items: any[];
 }
 
+// Debit Note with related invoice data for GST reporting
+export interface DebitNoteWithInvoice {
+  debitNote: DebitNote;
+  invoice: Invoice;
+  items: any[];
+}
+
 // API Response Type
 export interface GSTReportAPIResponse {
   invoices: Array<{
@@ -18,6 +25,7 @@ export interface GSTReportAPIResponse {
     items: any[];
   }>;
   creditNotes: CreditNoteWithInvoice[];
+  debitNotes: DebitNoteWithInvoice[];
   hsnSummary: Array<{
     hsnCode: string;
     description: string;
@@ -37,6 +45,7 @@ export interface GSTReportAPIResponse {
     endDate: string;
     totalInvoices: number;
     totalCreditNotes: number;
+    totalDebitNotes: number;
     totalTaxableValue: number;
     totalTax: number;
   };
@@ -234,7 +243,8 @@ export function generateGSTR1(
   period: string,
   companyGSTIN: string,
   hsnSummary?: GSTReportAPIResponse['hsnSummary'],
-  creditNotes?: CreditNoteWithInvoice[]
+  creditNotes?: CreditNoteWithInvoice[],
+  debitNotes?: DebitNoteWithInvoice[]
 ): GSTR1Report {
   const b2bInvoices: B2BInvoice[] = [];
   const b2clInvoices: B2CLInvoice[] = [];
@@ -412,6 +422,81 @@ export function generateGSTR1(
     // Convert CDNR map to array format
     cdnrMap.forEach((notes, ctin) => {
       cdnrNotes.push({ ctin, nt: notes });
+    });
+  }
+
+  // Process Debit Notes for CDNR and CDNUR sections (note type 'D')
+  if (debitNotes && debitNotes.length > 0) {
+    // Group by GSTIN for CDNR (registered dealers)
+    const debitCdnrMap = new Map<string, CDNRNote['nt']>();
+    
+    debitNotes.forEach(({ debitNote, invoice }) => {
+      // Convert from paise to rupees
+      const noteValue = paiseToRupees(debitNote.grandTotal);
+      const taxableValue = paiseToRupees(debitNote.subtotal);
+      const cgstAmount = paiseToRupees(debitNote.cgstAmount);
+      const sgstAmount = paiseToRupees(debitNote.sgstAmount);
+      const igstAmount = paiseToRupees(debitNote.igstAmount);
+      const cessAmount = 0; // Debit notes don't have cess in our schema
+      
+      const totalTax = cgstAmount + sgstAmount + igstAmount;
+      const taxRate = calculateTaxRate(taxableValue, totalTax);
+      
+      const hasBuyerGSTIN = invoice.buyerGstin && invoice.buyerGstin.length === 15;
+      
+      if (hasBuyerGSTIN) {
+        // CDNR - Debit Note for Registered dealer
+        const noteData = {
+          ntty: 'D', // D for Debit Note
+          nt_num: debitNote.noteNumber,
+          nt_dt: formatDateForGST(debitNote.debitDate),
+          val: noteValue,
+          pos: invoice.buyerStateCode || '00',
+          rchrg: invoice.reverseCharge === 1 ? 'Y' : 'N',
+          inv_typ: 'R',
+          inum: invoice.invoiceNumber,
+          idt: formatDateForGST(invoice.invoiceDate),
+          txval: taxableValue,
+          rt: taxRate,
+          csamt: cessAmount,
+          camt: cgstAmount,
+          samt: sgstAmount,
+          iamt: igstAmount,
+        };
+        
+        const gstin = invoice.buyerGstin!;
+        if (!debitCdnrMap.has(gstin)) {
+          debitCdnrMap.set(gstin, []);
+        }
+        debitCdnrMap.get(gstin)!.push(noteData);
+      } else {
+        // CDNUR - Debit Note for Unregistered dealer
+        const cdnurNote: CDNURNote = {
+          ntty: 'D', // D for Debit Note
+          nt_num: debitNote.noteNumber,
+          nt_dt: formatDateForGST(debitNote.debitDate),
+          val: noteValue,
+          pos: invoice.buyerStateCode || '00',
+          inum: invoice.invoiceNumber,
+          idt: formatDateForGST(invoice.invoiceDate),
+          txval: taxableValue,
+          rt: taxRate,
+          csamt: cessAmount,
+          iamt: igstAmount || totalTax,
+        };
+        cdnurNotes.push(cdnurNote);
+      }
+    });
+    
+    // Add debit CDNR entries to the main CDNR array
+    debitCdnrMap.forEach((notes, ctin) => {
+      // Check if this GSTIN already exists in cdnrNotes
+      const existingEntry = cdnrNotes.find(entry => entry.ctin === ctin);
+      if (existingEntry) {
+        existingEntry.nt.push(...notes);
+      } else {
+        cdnrNotes.push({ ctin, nt: notes });
+      }
     });
   }
 

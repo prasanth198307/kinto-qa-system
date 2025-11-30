@@ -4897,6 +4897,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
           };
         })
       );
+
+      // Fetch debit notes for the period
+      const allDebitNotes = await db.select().from(debitNotes)
+        .where(
+          and(
+            eq(debitNotes.recordStatus, 1),
+            eq(debitNotes.status, 'issued'),
+            gte(debitNotes.debitDate, startDate.toISOString().split('T')[0]),
+            lte(debitNotes.debitDate, endDate.toISOString().split('T')[0])
+          )
+        );
+      
+      // Get related invoice data and items for each debit note
+      const debitNotesWithInvoice = await Promise.all(
+        allDebitNotes.map(async (dn) => {
+          const invoice = await storage.getInvoice(dn.invoiceId);
+          const debitItems = await storage.getDebitNoteItems(dn.id);
+          return {
+            debitNote: dn,
+            invoice: invoice!,
+            items: debitItems
+          };
+        })
+      );
       
       // Aggregate HSN summary
       const hsnMap = new Map<string, any>();
@@ -4957,6 +4981,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const response = {
         invoices: invoicesWithItems,
         creditNotes: creditNotesWithInvoice,
+        debitNotes: debitNotesWithInvoice,
         hsnSummary,
         metadata: {
           period: `${month.toString().padStart(2, '0')}${year}`,
@@ -4965,6 +4990,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           endDate: endDate.toISOString(),
           totalInvoices: invoicesWithItems.length,
           totalCreditNotes: creditNotesWithInvoice.length,
+          totalDebitNotes: debitNotesWithInvoice.length,
           totalTaxableValue: Number(totalTaxableValue.toFixed(2)),
           totalTax: Number(totalTax.toFixed(2)),
         },

@@ -1146,7 +1146,8 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                           period, 
                           companyGSTIN, 
                           reportData.hsnSummary,
-                          reportData.creditNotes
+                          reportData.creditNotes,
+                          reportData.debitNotes
                         );
                         exportGSTReportAsJSON(report, 'GSTR1', period);
                       } else if (gstReportType === 'GSTR3B') {
@@ -1182,7 +1183,8 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                           period, 
                           companyGSTIN, 
                           reportData.hsnSummary,
-                          reportData.creditNotes
+                          reportData.creditNotes,
+                          reportData.debitNotes
                         );
                         await exportGSTR1AsExcel(report, period);
                       } else if (gstReportType === 'GSTR3B') {
