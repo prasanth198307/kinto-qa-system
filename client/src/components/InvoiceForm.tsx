@@ -624,26 +624,36 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         invoiceId: invoice?.id,
       });
 
+      console.log('[InvoiceForm] Form data.items gstRates:', data.items.map(item => ({
+        description: item.description,
+        gstRate: item.gstRate,
+        gstRateType: typeof item.gstRate
+      })));
+      
       const invoiceItems = data.items.map((item) => {
+        // Ensure gstRate is a number (form might pass it as string from Select)
+        const gstRate = typeof item.gstRate === 'string' ? parseFloat(item.gstRate) : (item.gstRate || 0);
         const taxableAmount = item.quantity * item.unitPrice;
-        const taxAmount = (taxableAmount * item.gstRate) / 100;
+        const taxAmount = (taxableAmount * gstRate) / 100;
         
-        let cgstRate = 0;
+        let cgstRateValue = 0;
         let cgstAmount = 0;
         let sgstRate = 0;
         let sgstAmount = 0;
-        let igstRate = 0;
+        let igstRateValue = 0;
         let igstAmount = 0;
 
         if (isIntrastateSupply) {
-          cgstRate = (item.gstRate / 2) * 100; // Convert to basis points
-          sgstRate = (item.gstRate / 2) * 100;
+          cgstRateValue = (gstRate / 2) * 100; // Convert to basis points
+          sgstRate = (gstRate / 2) * 100;
           cgstAmount = Math.round((taxAmount / 2) * 100); // Convert to paise
           sgstAmount = Math.round((taxAmount / 2) * 100);
         } else {
-          igstRate = item.gstRate * 100;
+          igstRateValue = gstRate * 100;
           igstAmount = Math.round(taxAmount * 100);
         }
+        
+        console.log(`[InvoiceForm] Item ${item.description}: gstRate=${gstRate}, isIntrastate=${isIntrastateSupply}, cgst=${cgstRateValue}, igst=${igstRateValue}`);
 
         return {
           productId: item.productId,
@@ -655,11 +665,11 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
           unitPrice: Math.round(item.unitPrice * 100), // Convert to paise
           discount: 0,
           taxableAmount: Math.round(taxableAmount * 100),
-          cgstRate,
+          cgstRate: cgstRateValue,
           cgstAmount,
           sgstRate,
           sgstAmount,
-          igstRate,
+          igstRate: igstRateValue,
           igstAmount,
           cessRate: 0,
           cessAmount: 0,
