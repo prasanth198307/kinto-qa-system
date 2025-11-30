@@ -78,6 +78,8 @@ import ExpensesPage from "@/pages/expenses";
 import CashRegisterPage from "@/pages/cash-register";
 import CashRegisterReport from "@/pages/cash-register-report";
 import CashRegisterVoucherPrint from "@/pages/cash-register-voucher-print";
+import VendorHistory from "@/pages/vendor-history";
+import VendorHistoryDetail from "@/pages/vendor-history-detail";
 
 type Role = 'admin' | 'operator' | 'reviewer' | 'manager';
 
@@ -1048,6 +1050,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       label: "Finance & Sales",
       items: [
         { id: "invoices", label: "Sales Invoices", icon: Receipt, onClick: () => setLocation('/') },
+        { id: "vendor-history", label: "Vendor History", icon: History, onClick: () => setLocation('/vendor-history') },
         { id: "pending-payments", label: "Pending Payments", icon: IndianRupee, onClick: () => setLocation('/pending-payments') },
         { id: "payment-management", label: "Payment Management", icon: CreditCard, onClick: () => setLocation('/payment-management') },
         { id: "credit-notes", label: "Credit Notes", icon: FileText, onClick: () => setLocation('/credit-notes') },
@@ -1246,6 +1249,8 @@ function Router() {
       <ProtectedRoute path="/reviewer-dashboard" component={ReviewerDashboardPage} />
       <ProtectedRoute path="/vendor-types" component={VendorTypes} />
       <ProtectedRoute path="/vendor-management" component={VendorManagementPage} />
+      <ProtectedRoute path="/vendor-history" component={VendorHistory} />
+      <ProtectedRoute path="/vendor-history/:vendorId" component={VendorHistoryDetail} />
       <ProtectedRoute path="/invoice/:id" component={InvoiceDetail} />
       <ProtectedRoute path="/dispatch-tracking" component={DispatchTracking} />
       <ProtectedRoute path="/sales-returns" component={SalesReturns} />
