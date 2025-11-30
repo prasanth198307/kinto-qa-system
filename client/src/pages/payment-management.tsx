@@ -257,8 +257,8 @@ export default function PaymentManagement() {
         bankName: data.bankName,
         remarks: data.remarks,
       };
-      const response: any = await apiRequest('POST', '/api/invoice-payments/allocate-fifo', payload);
-      return response;
+      const response = await apiRequest('POST', '/api/invoice-payments/allocate-fifo', payload);
+      return await response.json(); // Parse the JSON response
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['/api/invoice-payments'] });
