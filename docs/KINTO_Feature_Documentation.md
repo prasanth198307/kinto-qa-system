@@ -408,6 +408,107 @@ Visual analysis of production variance trends over time to identify patterns and
 
 ---
 
+## 3.5 Finished Goods
+
+### What is this?
+Finished Goods is where you track all your completed products that are ready for sale. These are products that have passed quality checks and are available for customers.
+
+### Why do you need it?
+- **Know what's ready to sell:** See exactly how much finished stock you have
+- **Quality tracking:** Only quality-approved products appear here
+- **Batch management:** Track products by batch number for traceability
+- **Stock planning:** Know when you need to produce more
+
+### Where to find it?
+
+| How to Navigate | URL |
+|-----------------|-----|
+| **Sidebar** → Production & Inventory → **Finished Goods** | `/` (Finished Goods tab) |
+| Or from Dashboard → Click "Finished Goods" tab | Inventory Management page |
+
+### Screenshot
+![Inventory Management - Finished Goods](../attached_assets/screenshots/10_inventory_management.png)
+
+### Screen Elements
+
+| Element | Type | Description |
+|---------|------|-------------|
+| **+ Add Finished Good** | Button | Record new finished goods from production |
+| **Search** | Input | Find by product name or batch number |
+| **Quality Status Filter** | Dropdown | Filter by Approved/Pending/Rejected |
+| **Date Filter** | Dropdown | Filter by production date range |
+| **Finished Goods Table** | Table | List of all finished goods with details |
+
+### Key Fields Explained
+
+| Field | What It Means | Example |
+|-------|---------------|---------|
+| **Product** | Which product was made | VCI Film 100 micron |
+| **Batch Number** | Unique production batch ID | BATCH-2024-1130-001 |
+| **Quantity** | How much was produced | 500 kg |
+| **Production Date** | When it was made | 30-Nov-2024 |
+| **Quality Status** | Has it passed QC? | Approved ✅ / Pending ⏳ / Rejected ❌ |
+| **Machine** | Which machine made it | Extruder Line 1 |
+| **Operator** | Who made it | Ramesh Kumar |
+
+### Quality Status Flow
+
+```
+Production Complete → Pending QC → Quality Check → Approved/Rejected
+                                         ↓
+                                   If Approved:
+                                   Available for Sale ✅
+                                         ↓
+                                   If Rejected:
+                                   Sent for Rework or Scrap ❌
+```
+
+### Step-by-Step: Add Finished Goods Entry
+
+1. **Navigate:** Sidebar → Production & Inventory → Finished Goods
+2. **Click:** "+ Add Finished Good" button
+3. **Fill Details:**
+
+| Field | What to Enter |
+|-------|---------------|
+| Product | Select from product list |
+| Quantity | How much was produced |
+| Batch Number | Unique batch ID (can be auto-generated) |
+| Production Date | When produced |
+| Machine | Which machine was used |
+| Operator | Who operated the machine |
+| Quality Status | Set to "Pending" initially |
+
+4. **Click:** "Save"
+5. **Result:** Entry appears in the list with "Pending" status
+
+### When Does Finished Goods Inventory Reduce?
+
+| Action | Effect on Finished Goods |
+|--------|-------------------------|
+| Invoice Created | ❌ No change |
+| Gatepass Created | ✅ Stock reduces |
+| Invoice Cancelled | ❌ No automatic return |
+| Gatepass Cancelled | ✅ Stock returns |
+
+> **Important:** Finished goods stock is only deducted when a Gatepass is created, not when an Invoice is created.
+
+### FAQ
+
+**Q: Why can't I see some products in Finished Goods?**
+A: Only products with Quality Status "Approved" can be used in invoices. Check if the item is still "Pending" quality check.
+
+**Q: How do I update quality status?**
+A: Find the entry, click Edit (✏️), and change the Quality Status dropdown.
+
+**Q: What happens to rejected items?**
+A: Rejected items don't appear as available stock. They need to be either reworked (create new batch) or scrapped.
+
+**Q: Can I edit quantity after saving?**
+A: Yes, but only if the goods haven't been dispatched (no gatepass created for those items).
+
+---
+
 # 4. Sales & Invoicing
 
 ## 4.1 Sales Dashboard
