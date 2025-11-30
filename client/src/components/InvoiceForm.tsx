@@ -241,6 +241,70 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
     },
   });
 
+  // Reset form when invoice prop changes (critical for reissue mode)
+  // React Hook Form only applies defaultValues on first mount, so we need to reset
+  // when invoice changes to make the form editable with the new data
+  useEffect(() => {
+    if (invoice) {
+      // Compute the isIntrastate value for GST calculation
+      const isIntrastate = invoice.buyerStateCode === invoice.sellerStateCode;
+      
+      // Prepare items with proper conversion
+      const embeddedItems = (invoice as any)?.items || [];
+      const normalizedItems = embeddedItems.length > 0 
+        ? embeddedItems.map((item: any) => ({
+            productId: item.productId || "",
+            description: item.description || "",
+            hsnCode: item.hsnCode || "",
+            quantity: item.quantity || 1,
+            unitPrice: (item.unitPrice || 0) / 100, // Convert from paise to rupees
+            gstRate: isIntrastate 
+              ? ((item.cgstRate || 0) / 50) // cgst * 2 / 100 = full rate %
+              : ((item.igstRate || 0) / 100), // Convert from basis points
+          }))
+        : [{
+            productId: "",
+            description: "",
+            hsnCode: "",
+            quantity: 1,
+            unitPrice: 0,
+            gstRate: 18,
+          }];
+
+      form.reset({
+        gatepassId: gatepass?.id || "",
+        invoiceDate: new Date(invoice.invoiceDate).toISOString().split('T')[0],
+        invoiceTemplateId: invoice.templateId || "",
+        termsConditionsId: invoice.termsConditionsId || "",
+        sellerName: invoice.sellerName || "Inmoisture Private Limited",
+        sellerAddress: invoice.sellerAddress || "",
+        sellerState: invoice.sellerState || "Karnataka",
+        sellerStateCode: invoice.sellerStateCode || "29",
+        sellerGstin: invoice.sellerGstin || "",
+        sellerPhone: invoice.sellerPhone || "",
+        sellerEmail: invoice.sellerEmail || "",
+        shipToName: invoice.shipToName || "",
+        shipToAddress: invoice.shipToAddress || "",
+        shipToCity: invoice.shipToCity || "",
+        shipToState: invoice.shipToState || "",
+        shipToPincode: invoice.shipToPincode || "",
+        buyerName: invoice.buyerName || "",
+        buyerGstin: invoice.buyerGstin || "",
+        buyerAddress: invoice.buyerAddress || "",
+        buyerState: invoice.buyerState || "Karnataka",
+        buyerStateCode: invoice.buyerStateCode || "29",
+        isCluster: invoice.isCluster || 0,
+        items: normalizedItems,
+        bankName: invoice.bankName || "",
+        bankAccountNumber: invoice.bankAccountNumber || "",
+        bankIfscCode: invoice.bankIfscCode || "",
+        accountHolderName: invoice.accountHolderName || "",
+        branchName: invoice.branchName || "",
+        upiId: invoice.upiId || "",
+      });
+    }
+  }, [invoice, gatepass, form]);
+
   // Watch buyer name for adjustments lookup
   const watchedBuyerName = form.watch("buyerName");
   
