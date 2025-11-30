@@ -33,6 +33,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { GlobalHeader } from "@/components/GlobalHeader";
 import { CreateCreditNoteDialog } from "@/components/CreateCreditNoteDialog";
 import { CorrectAndCreditDialog } from "@/components/CorrectAndCreditDialog";
+import { CorrectAndDebitDialog } from "@/components/CorrectAndDebitDialog";
 import { QuickFullCreditDialog } from "@/components/QuickFullCreditDialog";
 
 interface Vendor {
@@ -66,6 +67,7 @@ export default function InvoiceDetail() {
   const { logoutMutation, user } = useAuth();
   const [isCreditNoteDialogOpen, setIsCreditNoteDialogOpen] = useState(false);
   const [isCorrectAndCreditOpen, setIsCorrectAndCreditOpen] = useState(false);
+  const [isCorrectAndDebitOpen, setIsCorrectAndDebitOpen] = useState(false);
   const [isQuickFullCreditOpen, setIsQuickFullCreditOpen] = useState(false);
   const [isCancelReissueConfirmOpen, setIsCancelReissueConfirmOpen] = useState(false);
 
@@ -331,6 +333,16 @@ export default function InvoiceDetail() {
               >
                 <Calculator className="w-4 h-4 mr-2" />
                 Correct & Credit
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsCorrectAndDebitOpen(true)}
+                className="border-orange-300 text-orange-600 hover:bg-orange-50"
+                data-testid="button-correct-and-debit"
+              >
+                <Calculator className="w-4 h-4 mr-2" />
+                Correct & Debit
               </Button>
               <Button
                 variant="outline"
@@ -661,6 +673,26 @@ export default function InvoiceDetail() {
         sgstRate={safeItems[0]?.sgstRate || 0}
         igstRate={safeItems[0]?.igstRate || 0}
         onSuccess={handleCreditNoteSuccess}
+      />
+
+      {/* Correct & Debit Dialog */}
+      <CorrectAndDebitDialog
+        open={isCorrectAndDebitOpen}
+        onOpenChange={setIsCorrectAndDebitOpen}
+        invoiceId={id!}
+        invoiceNumber={invoice.invoiceNumber}
+        invoiceItems={safeItems}
+        cgstRate={safeItems[0]?.cgstRate || 0}
+        sgstRate={safeItems[0]?.sgstRate || 0}
+        igstRate={safeItems[0]?.igstRate || 0}
+        onSuccess={(debitNoteNumber) => {
+          toast({
+            title: "Debit Note Created",
+            description: `Debit note ${debitNoteNumber} has been created successfully.`,
+          });
+          queryClient.invalidateQueries({ queryKey: ['/api/invoices', id] });
+          queryClient.invalidateQueries({ queryKey: ['/api/debit-notes'] });
+        }}
       />
 
       {/* Quick Full Credit Dialog */}
