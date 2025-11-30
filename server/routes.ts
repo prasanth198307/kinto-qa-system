@@ -4609,36 +4609,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Deduct finished goods inventory for reissued invoice
           // This balances the inventory that was returned when the original invoice was cancelled
+          // Uses multi-batch deduction: if one batch isn't enough, deduct from multiple batches
           for (const item of items) {
             if (item.productId && item.quantity > 0) {
-              // Find the most recent finished goods batch for this product (FIFO - oldest first would be ideal, but we use newest with CANCEL- prefix)
-              // The cancellation created a batch with CANCEL- prefix, so prioritize that
-              const [finishedGood] = await tx.select()
+              let remainingToDeduct = item.quantity;
+              
+              // Get all available batches for this product, prioritizing CANCEL- batches first
+              const availableBatches = await tx.select()
                 .from(finishedGoods)
                 .where(and(
                   eq(finishedGoods.productId, item.productId),
                   eq(finishedGoods.recordStatus, 1),
-                  sql`${finishedGoods.quantity} >= ${item.quantity}`
+                  sql`${finishedGoods.quantity} > 0`
                 ))
-                .orderBy(sql`CASE WHEN ${finishedGoods.batchNumber} LIKE 'CANCEL-%' THEN 0 ELSE 1 END, ${finishedGoods.createdAt} DESC`)
-                .limit(1);
+                .orderBy(sql`CASE WHEN ${finishedGoods.batchNumber} LIKE 'CANCEL-%' THEN 0 ELSE 1 END, ${finishedGoods.createdAt} ASC`);
               
-              if (finishedGood) {
-                const newQuantity = finishedGood.quantity - item.quantity;
+              // Deduct from batches until we've covered the full quantity
+              for (const batch of availableBatches) {
+                if (remainingToDeduct <= 0) break;
+                
+                const deductFromThisBatch = Math.min(batch.quantity, remainingToDeduct);
+                const newQuantity = batch.quantity - deductFromThisBatch;
+                
                 await tx.update(finishedGoods)
                   .set({ 
                     quantity: newQuantity, 
                     updatedAt: new Date().toISOString(),
-                    remarks: finishedGood.remarks 
-                      ? `${finishedGood.remarks} | Deducted for reissued invoice ${invoice.invoiceNumber}`
-                      : `Deducted for reissued invoice ${invoice.invoiceNumber}`
+                    remarks: batch.remarks 
+                      ? `${batch.remarks} | Deducted ${deductFromThisBatch} for reissued invoice ${invoice.invoiceNumber}`
+                      : `Deducted ${deductFromThisBatch} for reissued invoice ${invoice.invoiceNumber}`
                   })
-                  .where(eq(finishedGoods.id, finishedGood.id));
+                  .where(eq(finishedGoods.id, batch.id));
                 
-                console.log(`[REISSUE_INVENTORY] Deducted ${item.quantity} units of product ${item.productId} from batch ${finishedGood.batchNumber} (remaining: ${newQuantity})`);
+                console.log(`[REISSUE_INVENTORY] Deducted ${deductFromThisBatch} units of product ${item.productId} from batch ${batch.batchNumber} (remaining: ${newQuantity})`);
+                
+                remainingToDeduct -= deductFromThisBatch;
+              }
+              
+              // Log if we couldn't deduct the full amount
+              if (remainingToDeduct > 0) {
+                console.warn(`[REISSUE_INVENTORY] Insufficient inventory for product ${item.productId}. Needed: ${item.quantity}, Could only deduct: ${item.quantity - remainingToDeduct}. Shortfall: ${remainingToDeduct}`);
               } else {
-                // No suitable batch found - log warning but continue (inventory may have been manually adjusted)
-                console.warn(`[REISSUE_INVENTORY] Could not find sufficient inventory for product ${item.productId} (needed: ${item.quantity}). Skipping deduction.`);
+                console.log(`[REISSUE_INVENTORY] Successfully deducted ${item.quantity} units of product ${item.productId} for reissued invoice`);
               }
             }
           }
