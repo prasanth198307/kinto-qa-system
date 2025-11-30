@@ -234,7 +234,7 @@ export default function InvoiceDetail() {
 
   // Check if user is admin or manager
   const userRole = (user as any)?.role;
-  const canCreateCreditNote = user && (userRole === 'admin' || userRole === 'manager');
+  const isAdminOrManager = user && (userRole === 'admin' || userRole === 'manager');
   
   // Check if invoice is in current month
   const isCurrentMonth = () => {
@@ -245,11 +245,17 @@ export default function InvoiceDetail() {
            now.getFullYear() === invoiceDate.getFullYear();
   };
   
-  const canCancelAndReissue = canCreateCreditNote && isCurrentMonth();
-  
-  // For old invoices (not current month), show Correct & Credit and Quick Full Credit options
+  // GST Compliance Logic:
+  // - Current month invoices: Use Cancel & Reissue (before GST filing)
+  // - Previous month invoices: Use Credit Notes (after GST filing)
   const isOldInvoice = !isCurrentMonth();
-  const canCorrectAndCredit = canCreateCreditNote && isOldInvoice;
+  
+  // Cancel & Reissue - only for current month invoices
+  const canCancelAndReissue = isAdminOrManager && isCurrentMonth();
+  
+  // Credit Notes - only for previous month invoices (GST compliance)
+  const canCreateCreditNote = isAdminOrManager && isOldInvoice;
+  const canCorrectAndCredit = isAdminOrManager && isOldInvoice;
 
   return (
     <>

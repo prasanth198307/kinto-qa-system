@@ -5861,6 +5861,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Invoice not found" });
       }
 
+      // GST Compliance: Only allow credit notes for previous month invoices
+      const now = new Date();
+      const invoiceDate = new Date(invoice.invoiceDate);
+      if (invoiceDate.getMonth() === now.getMonth() && invoiceDate.getFullYear() === now.getFullYear()) {
+        return res.status(400).json({ 
+          message: "Cannot create credit notes for current month invoices. Use 'Cancel & Reissue' instead for GST compliance." 
+        });
+      }
+
       // Fetch invoice items - authoritative source for prices and quantities
       const invoiceItems_list = await storage.getInvoiceItems(invoiceId);
       if (!invoiceItems_list || invoiceItems_list.length === 0) {
@@ -6029,6 +6038,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const invoice = await storage.getInvoice(invoiceId);
       if (!invoice) {
         return res.status(404).json({ message: "Invoice not found" });
+      }
+
+      // GST Compliance: Only allow credit notes for previous month invoices
+      const now = new Date();
+      const invoiceDate = new Date(invoice.invoiceDate);
+      if (invoiceDate.getMonth() === now.getMonth() && invoiceDate.getFullYear() === now.getFullYear()) {
+        return res.status(400).json({ 
+          message: "Cannot create credit notes for current month invoices. Use 'Cancel & Reissue' instead for GST compliance." 
+        });
       }
 
       // Fetch invoice items
@@ -6251,6 +6269,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const invoice = await storage.getInvoice(invoiceId);
       if (!invoice) {
         return res.status(404).json({ message: "Invoice not found" });
+      }
+
+      // GST Compliance: Only allow credit notes for previous month invoices
+      const now = new Date();
+      const invoiceDate = new Date(invoice.invoiceDate);
+      if (invoiceDate.getMonth() === now.getMonth() && invoiceDate.getFullYear() === now.getFullYear()) {
+        return res.status(400).json({ 
+          message: "Cannot create credit notes for current month invoices. Use 'Cancel & Reissue' instead for GST compliance." 
+        });
       }
 
       // Fetch invoice items
