@@ -4720,36 +4720,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`[CANCEL_REISSUE] Cancelled gatepass ${gatepass.gatepassNumber}`);
         }
         
-        // Return finished goods inventory ONCE per invoice item (outside gatepass loop)
-        // This prevents duplicate inventory returns if multiple gatepasses exist
-        // IMPORTANT: Check if product exists before inserting (handles Vyapaar imports where product may be missing)
-        if (existingGatepasses.length > 0) {
-          for (const item of items) {
-            if (item.productId && item.quantity > 0) {
-              // Verify product exists in products table to avoid foreign key violation
-              const [existingProduct] = await tx.select({ id: products.id })
-                .from(products)
-                .where(eq(products.id, item.productId))
-                .limit(1);
+        // Return finished goods inventory for ALL cancelled invoices (including Vyapaar imports without gatepasses)
+        // Goods were dispatched, so on cancellation they should come back to inventory
+        // IMPORTANT: Check if product exists before inserting (handles cases where product may be missing)
+        for (const item of items) {
+          if (item.productId && item.quantity > 0) {
+            // Verify product exists in products table to avoid foreign key violation
+            const [existingProduct] = await tx.select({ id: products.id })
+              .from(products)
+              .where(eq(products.id, item.productId))
+              .limit(1);
+            
+            if (existingProduct) {
+              const batchNumber = `CANCEL-${invoice.invoiceNumber}-${format(new Date(), 'yyyyMMdd-HHmmss')}`;
+              const hasGatepass = cancelledGatepassNumbers.length > 0;
               
-              if (existingProduct) {
-                const batchNumber = `CANCEL-${invoice.invoiceNumber}-${format(new Date(), 'yyyyMMdd-HHmmss')}`;
-                
-                await tx.insert(finishedGoods).values({
-                  productId: item.productId,
-                  batchNumber,
-                  productionDate: new Date().toISOString(),
-                  quantity: item.quantity,
-                  qualityStatus: 'approved',
-                  remarks: `Inventory returned - Invoice ${invoice.invoiceNumber} cancelled & reissued. Gatepass(es): ${cancelledGatepassNumbers.join(', ')}`,
-                  createdBy: req.user?.id,
-                });
-                
-                console.log(`[INVENTORY] Returned ${item.quantity} units of product ${item.productId} to inventory (Cancel & Reissue)`);
-              } else {
-                // Product not found - skip inventory return but continue with cancellation (compliance priority)
-                console.warn(`[INVENTORY] Skipping inventory return for product ${item.productId} - product not found in master data (Vyapaar import or deleted product)`);
-              }
+              await tx.insert(finishedGoods).values({
+                productId: item.productId,
+                batchNumber,
+                productionDate: new Date().toISOString(),
+                quantity: item.quantity,
+                qualityStatus: 'approved',
+                remarks: hasGatepass 
+                  ? `Inventory returned - Invoice ${invoice.invoiceNumber} cancelled & reissued. Gatepass(es): ${cancelledGatepassNumbers.join(', ')}`
+                  : `Inventory returned - Invoice ${invoice.invoiceNumber} cancelled & reissued (no gatepass - Vyapaar import)`,
+                createdBy: req.user?.id,
+              });
+              
+              console.log(`[INVENTORY] Returned ${item.quantity} units of product ${item.productId} to inventory (Cancel & Reissue${hasGatepass ? '' : ' - Vyapaar import'})`);
+            } else {
+              // Product not found - skip inventory return but continue with cancellation (compliance priority)
+              console.warn(`[INVENTORY] Skipping inventory return for product ${item.productId} - product not found in master data`);
             }
           }
         }
