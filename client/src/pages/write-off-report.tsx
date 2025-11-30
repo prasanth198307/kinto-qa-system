@@ -336,9 +336,11 @@ export default function WriteOffReport() {
                       {writeOffs.map((writeOff) => (
                         <TableRow key={writeOff.id} data-testid={`row-write-off-${writeOff.id}`}>
                           <TableCell className="font-medium">
-                            <Badge variant="outline">
-                              {writeOff.invoiceNumber}
-                            </Badge>
+                            <Link href={`/invoice/${writeOff.invoiceId}`}>
+                              <Badge variant="outline" className="cursor-pointer hover:bg-primary/10">
+                                {writeOff.invoiceNumber}
+                              </Badge>
+                            </Link>
                           </TableCell>
                           <TableCell>
                             {format(new Date(writeOff.invoiceDate), 'dd MMM yyyy')}

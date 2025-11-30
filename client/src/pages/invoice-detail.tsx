@@ -16,7 +16,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ArrowLeft, Edit, Mail, FileText, Printer, Star, Receipt, RefreshCw, Calculator, CreditCard } from "lucide-react";
-import type { Invoice, InvoiceItem, Product, Gatepass } from "@shared/schema";
+import type { Invoice, InvoiceItem, Product, Gatepass, InvoicePayment } from "@shared/schema";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import PrintableInvoice from "@/components/PrintableInvoice";
 import { format } from "date-fns";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -92,6 +100,12 @@ export default function InvoiceDetail() {
     queryKey: ['/api/vendor-vendor-types/batch'],
     retry: false,
     throwOnError: false,
+  });
+
+  // Fetch payment history for this invoice
+  const { data: payments = [] } = useQuery<InvoicePayment[]>({
+    queryKey: ['/api/invoice-payments', id],
+    enabled: !!id,
   });
 
   // Cancel & Reissue mutation - MUST be before early returns to avoid hooks ordering violation
@@ -553,6 +567,60 @@ export default function InvoiceDetail() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Payment History */}
+      {payments.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              Payment History
+              <Badge variant="secondary">{payments.length}</Badge>
+            </CardTitle>
+            <CardDescription>All recorded payments for this invoice</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Method</TableHead>
+                    <TableHead>Reference</TableHead>
+                    <TableHead>Remarks</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {payments.map((payment) => (
+                    <TableRow key={payment.id} data-testid={`row-payment-${payment.id}`}>
+                      <TableCell>
+                        {format(new Date(payment.paymentDate), 'dd MMM yyyy')}
+                      </TableCell>
+                      <TableCell className={payment.paymentType === 'Write-off' ? 'text-destructive font-medium' : 'text-green-600 font-medium'}>
+                        {formatCurrency(payment.amount)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={payment.paymentType === 'Write-off' ? 'destructive' : payment.paymentType === 'Full' ? 'default' : 'secondary'}>
+                          {payment.paymentType}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{payment.paymentMethod}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {payment.referenceNumber || '-'}
+                      </TableCell>
+                      <TableCell className="max-w-[200px] truncate" title={payment.remarks || ''}>
+                        {payment.remarks || '-'}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Remarks */}
       {invoice.remarks && (
