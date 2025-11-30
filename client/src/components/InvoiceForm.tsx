@@ -855,7 +855,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
   const formatCurrency = (amountInPaise: number) => `₹${(amountInPaise / 100).toFixed(2)}`;
 
   return (
-    <Card className="p-4 max-h-[90vh] overflow-y-auto">
+    <Card className="p-4">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-semibold">Generate GST Invoice</h2>
         <div className="flex gap-2">
