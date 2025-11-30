@@ -1,0 +1,41 @@
+🔹 Request: GET /api/invoices
+   Cookie header: connect.sid=s%3AQrob7oyqG3dFcSGmGH-bFgdM21YJ1ZHU.RsfW9QlCc%2Bzr5NLGaBAJQwTtH5y%2Bq2YqTH03Dgj%2FbPI
+   Session ID: Qrob7oyqG3dFcSGmGH-bFgdM21YJ1ZHU
+   Authenticated: true
+2:14:39 PM [express] GET /api/stats/today 304 in 40ms :: {"rawMaterialIssuancesCount":0,"gatepassesC…
+2:14:39 PM [express] GET /api/pm-task-list-templates 304 in 7ms :: []
+2:14:39 PM [express] GET /api/raw-materials 304 in 7ms :: [{"id":"69898f7e-c760-4b3e-9333-666921606e…
+2:14:39 PM [express] GET /api/invoices 304 in 23ms :: [{"id":"366f1511-5db8-4ecb-b373-3652e2bd8917",…
+2:14:39 PM [express] GET /api/pending-payments 304 in 34ms :: {"data":[{"id":"3764fd67-61c1-46f9-a2b…
+🔹 Request: GET /api/production-entries
+   Cookie header: connect.sid=s%3AQrob7oyqG3dFcSGmGH-bFgdM21YJ1ZHU.RsfW9QlCc%2Bzr5NLGaBAJQwTtH5y%2Bq2YqTH03Dgj%2FbPI
+   Session ID: Qrob7oyqG3dFcSGmGH-bFgdM21YJ1ZHU
+   Authenticated: true
+🔹 Request: GET /api/products
+   Cookie header: connect.sid=s%3AQrob7oyqG3dFcSGmGH-bFgdM21YJ1ZHU.RsfW9QlCc%2Bzr5NLGaBAJQwTtH5y%2Bq2YqTH03Dgj%2FbPI
+   Session ID: Qrob7oyqG3dFcSGmGH-bFgdM21YJ1ZHU
+   Authenticated: true
+Error fetching production entries: error: column production_entries.empty_bottles_used does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllProductionEntries (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:3267:25)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:10871:23 {
+  length: 136,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '315',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}

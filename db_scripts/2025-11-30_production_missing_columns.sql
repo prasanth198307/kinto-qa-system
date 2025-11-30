@@ -27,8 +27,10 @@ ALTER TABLE production_reconciliations ADD COLUMN IF NOT EXISTS last_edited_at T
 -- PRODUCTION ENTRIES TABLE
 -- =====================================================
 
--- Add empty bottles produced column
-ALTER TABLE production_entries ADD COLUMN IF NOT EXISTS empty_bottles_produced INTEGER DEFAULT 0 NOT NULL;
+-- Add ALL empty bottles columns (decimal type to match schema)
+ALTER TABLE production_entries ADD COLUMN IF NOT EXISTS empty_bottles_produced NUMERIC(12,2) DEFAULT 0;
+ALTER TABLE production_entries ADD COLUMN IF NOT EXISTS empty_bottles_used NUMERIC(12,2) DEFAULT 0;
+ALTER TABLE production_entries ADD COLUMN IF NOT EXISTS empty_bottles_pending NUMERIC(12,2) DEFAULT 0;
 
 -- =====================================================
 -- VERIFICATION QUERIES
