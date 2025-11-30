@@ -4559,6 +4559,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if this is a reissued invoice (has originalInvoiceId)
       const originalInvoiceId = header.originalInvoiceId || null;
       
+      // For reissued invoices, verify sufficient inventory exists BEFORE creating
+      if (originalInvoiceId) {
+        const insufficientItems: { productId: number; productName: string; needed: number; available: number }[] = [];
+        
+        for (const item of items) {
+          if (item.productId && item.quantity > 0) {
+            // Get total available inventory for this product
+            const inventoryResult = await db.select({
+              totalQuantity: sql<number>`COALESCE(SUM(${finishedGoods.quantity}), 0)`
+            })
+            .from(finishedGoods)
+            .where(and(
+              eq(finishedGoods.productId, item.productId),
+              eq(finishedGoods.recordStatus, 1),
+              sql`${finishedGoods.quantity} > 0`
+            ));
+            
+            const availableQuantity = Number(inventoryResult[0]?.totalQuantity || 0);
+            
+            if (availableQuantity < item.quantity) {
+              // Get product name for better error message
+              const [product] = await db.select({ name: products.name })
+                .from(products)
+                .where(eq(products.id, item.productId))
+                .limit(1);
+              
+              insufficientItems.push({
+                productId: item.productId,
+                productName: product?.name || `Product #${item.productId}`,
+                needed: item.quantity,
+                available: availableQuantity
+              });
+            }
+          }
+        }
+        
+        // Block reissue if any item has insufficient inventory
+        if (insufficientItems.length > 0) {
+          const errorDetails = insufficientItems.map(i => 
+            `${i.productName}: need ${i.needed}, available ${i.available} (short by ${i.needed - i.available})`
+          ).join('; ');
+          
+          console.warn(`[REISSUE_BLOCKED] Insufficient inventory: ${errorDetails}`);
+          
+          return res.status(400).json({ 
+            message: `Cannot reissue invoice - insufficient finished goods inventory`,
+            details: errorDetails,
+            insufficientItems
+          });
+        }
+        
+        console.log(`[REISSUE] Inventory check passed for all ${items.length} items`);
+      }
+      
       // Generate invoice number
       const invoiceNumber = `INV-${Date.now()}`;
       const invoiceData = {
