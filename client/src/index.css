@@ -478,25 +478,52 @@
 
 /* Print Styles - Hide sidebar, header, and navigation elements */
 @media print {
-  /* Hide sidebar completely */
+  /* Hide ALL sidebar elements completely */
+  [data-sidebar],
   [data-sidebar="sidebar"],
+  [data-sidebar="trigger"],
+  [data-sidebar="rail"],
+  [data-sidebar="header"],
+  [data-sidebar="footer"],
+  [data-sidebar="content"],
+  [data-sidebar="group"],
+  [data-sidebar="menu"],
   aside,
   nav,
-  .sidebar {
+  .sidebar,
+  .peer\\/sidebar-wrapper,
+  [class*="sidebar"] {
     display: none !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    max-width: 0 !important;
+    visibility: hidden !important;
+    overflow: hidden !important;
   }
   
   /* Hide header with sidebar toggle and theme toggle */
-  header:has([data-testid="button-sidebar-toggle"]) {
+  header:has([data-testid="button-sidebar-toggle"]),
+  header:has([data-sidebar="trigger"]) {
     display: none !important;
   }
   
-  /* Make main content full width */
-  main {
+  /* Force main content to take full width */
+  main,
+  [data-sidebar="inset"],
+  .flex-1 {
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
+    margin-left: 0 !important;
+    flex: 1 !important;
+  }
+  
+  /* Remove sidebar provider flex layout constraints */
+  body > div,
+  #root,
+  #root > div {
+    display: block !important;
   }
   
   /* Reset page margins for printing */
