@@ -1468,9 +1468,9 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                   onValueChange={(value) => form.setValue(`items.${index}.gstRate`, parseFloat(value))}
                 >
                   <SelectTrigger data-testid={`select-gst-rate-${index}`} className="h-9">
-                    <SelectValue />
+                    <SelectValue placeholder="GST %" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent position="popper" sideOffset={4}>
                     <SelectItem value="0">0%</SelectItem>
                     <SelectItem value="5">5%</SelectItem>
                     <SelectItem value="12">12%</SelectItem>
