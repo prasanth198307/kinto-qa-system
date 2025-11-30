@@ -29,7 +29,8 @@ import {
   ChevronLeft,
   ChevronRight,
   ArrowUpDown,
-  Eye
+  Eye,
+  Printer
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -127,9 +128,18 @@ export default function VendorHistoryPage() {
     <div className="p-4 md:p-6 space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold" data-testid="text-page-title">Vendor History</h1>
-          <p className="text-muted-foreground">View complete transaction history and balances for all vendors</p>
+          <h1 className="text-2xl font-bold print:text-xl" data-testid="text-page-title">Vendor History</h1>
+          <p className="text-muted-foreground print:text-sm">View complete transaction history and balances for all vendors</p>
         </div>
+        <Button
+          variant="outline"
+          onClick={() => window.print()}
+          className="print:hidden"
+          data-testid="button-print-vendor-history"
+        >
+          <Printer className="h-4 w-4 mr-2" />
+          Print Report
+        </Button>
       </div>
 
       {/* Summary Cards */}
@@ -202,8 +212,8 @@ export default function VendorHistoryPage() {
         </Card>
       </div>
 
-      {/* Search and Filters */}
-      <Card>
+      {/* Search and Filters - Hidden in Print */}
+      <Card className="print:hidden">
         <CardContent className="pt-4">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="relative flex-1">
@@ -293,7 +303,7 @@ export default function VendorHistoryPage() {
                     </Button>
                   </TableHead>
                   <TableHead className="text-center">Last Transaction</TableHead>
-                  <TableHead className="w-[80px]">Action</TableHead>
+                  <TableHead className="w-[80px] print:hidden">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -372,7 +382,7 @@ export default function VendorHistoryPage() {
                       <TableCell className="text-center text-sm text-muted-foreground">
                         {formatDate(vendor.lastTransactionDate)}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="print:hidden">
                         <Button
                           size="icon"
                           variant="ghost"
@@ -392,9 +402,9 @@ export default function VendorHistoryPage() {
             </Table>
           </div>
 
-          {/* Pagination */}
+          {/* Pagination - Hidden in Print */}
           {data && data.pagination.totalPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 border-t">
+            <div className="flex items-center justify-between px-4 py-3 border-t print:hidden">
               <div className="text-sm text-muted-foreground">
                 Showing {((data.pagination.page - 1) * data.pagination.pageSize) + 1} to{' '}
                 {Math.min(data.pagination.page * data.pagination.pageSize, data.pagination.totalItems)} of{' '}

@@ -475,3 +475,58 @@
     }
   }
 }
+
+/* Print Styles - Hide sidebar, header, and navigation elements */
+@media print {
+  /* Hide sidebar completely */
+  [data-sidebar="sidebar"],
+  aside,
+  nav,
+  .sidebar {
+    display: none !important;
+  }
+  
+  /* Hide header with sidebar toggle and theme toggle */
+  header:has([data-testid="button-sidebar-toggle"]) {
+    display: none !important;
+  }
+  
+  /* Make main content full width */
+  main {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  /* Reset page margins for printing */
+  @page {
+    margin: 1cm;
+  }
+  
+  /* Ensure table headers repeat on each page */
+  thead {
+    display: table-header-group;
+  }
+  
+  /* Prevent rows from breaking across pages */
+  tr {
+    page-break-inside: avoid;
+  }
+  
+  /* Remove shadows and make backgrounds print-friendly */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+  
+  /* Print date stamp */
+  body::after {
+    content: "Printed on: " attr(data-print-date);
+    position: fixed;
+    bottom: 0.5cm;
+    right: 0.5cm;
+    font-size: 10px;
+    color: #666;
+  }
+}
