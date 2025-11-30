@@ -239,25 +239,30 @@ export default function InvoiceDetail() {
   const isAdminOrManager = user && (userRole === 'admin' || userRole === 'manager');
   
   // Check if invoice is in current month
-  const isCurrentMonth = () => {
-    if (!invoice) return false;
+  // IMPORTANT: Must have invoice loaded to determine this correctly
+  const isCurrentMonth = (): boolean => {
+    if (!invoice || !invoice.invoiceDate) return true; // Default to current month if not loaded (safer - blocks credit/debit)
     const now = new Date();
     const invoiceDate = new Date(invoice.invoiceDate);
-    return now.getMonth() === invoiceDate.getMonth() && 
-           now.getFullYear() === invoiceDate.getFullYear();
+    // Compare month and year
+    const isSameMonth = now.getMonth() === invoiceDate.getMonth() && 
+                        now.getFullYear() === invoiceDate.getFullYear();
+    return isSameMonth;
   };
   
   // GST Compliance Logic:
   // - Current month invoices: Use Cancel & Reissue (before GST filing)
   // - Previous month invoices: Use Credit Notes (after GST filing)
-  const isOldInvoice = !isCurrentMonth();
+  const currentMonthCheck = isCurrentMonth();
+  const isOldInvoice = invoice && invoice.invoiceDate ? !currentMonthCheck : false;
   
-  // Cancel & Reissue - only for current month invoices
-  const canCancelAndReissue = isAdminOrManager && isCurrentMonth();
+  // Cancel & Reissue - only for current month invoices (and invoice must be loaded)
+  const canCancelAndReissue = isAdminOrManager && invoice && currentMonthCheck;
   
   // Credit Notes - only for previous month invoices (GST compliance)
-  const canCreateCreditNote = isAdminOrManager && isOldInvoice;
-  const canCorrectAndCredit = isAdminOrManager && isOldInvoice;
+  // IMPORTANT: Only show these buttons when invoice is fully loaded AND is from a previous month
+  const canCreateCreditNote = isAdminOrManager && invoice && isOldInvoice;
+  const canCorrectAndCredit = isAdminOrManager && invoice && isOldInvoice;
 
   return (
     <>
