@@ -43,6 +43,8 @@ import {
   salesReturnItems,
   creditNotes,
   creditNoteItems,
+  debitNotes,
+  debitNoteItems,
   manualCreditNoteRequests,
   checklistAssignments,
   checklistSubmissions,
@@ -134,6 +136,10 @@ import {
   type InsertCreditNote,
   type CreditNoteItem,
   type InsertCreditNoteItem,
+  type DebitNote,
+  type InsertDebitNote,
+  type DebitNoteItem,
+  type InsertDebitNoteItem,
   type Role,
   type InsertRole,
   type RolePermission,
@@ -519,6 +525,21 @@ export interface IStorage {
   getCreditNoteItems(creditNoteId: string): Promise<CreditNoteItem[]>;
   updateCreditNoteItem(id: string, updates: Partial<InsertCreditNoteItem>): Promise<CreditNoteItem | undefined>;
   deleteCreditNoteItem(id: string): Promise<void>;
+  
+  // Debit Notes
+  createDebitNote(debitNote: InsertDebitNote): Promise<DebitNote>;
+  getAllDebitNotes(): Promise<DebitNote[]>;
+  getDebitNote(id: string): Promise<DebitNote | undefined>;
+  getDebitNoteByNumber(noteNumber: string): Promise<DebitNote | undefined>;
+  getDebitNotesByInvoice(invoiceId: string): Promise<DebitNote[]>;
+  updateDebitNote(id: string, updates: Partial<InsertDebitNote>): Promise<DebitNote | undefined>;
+  deleteDebitNote(id: string): Promise<void>;
+  
+  // Debit Note Items
+  createDebitNoteItem(item: InsertDebitNoteItem): Promise<DebitNoteItem>;
+  getDebitNoteItems(debitNoteId: string): Promise<DebitNoteItem[]>;
+  updateDebitNoteItem(id: string, updates: Partial<InsertDebitNoteItem>): Promise<DebitNoteItem | undefined>;
+  deleteDebitNoteItem(id: string): Promise<void>;
   
   // Checklist Assignments
   createChecklistAssignment(assignment: InsertChecklistAssignment): Promise<ChecklistAssignment>;
@@ -2747,6 +2768,76 @@ export class DatabaseStorage implements IStorage {
 
   async deleteCreditNoteItem(id: string): Promise<void> {
     await db.update(creditNoteItems).set({ recordStatus: 0, updatedAt: new Date().toISOString() }).where(eq(creditNoteItems.id, id));
+  }
+
+  // Debit Notes
+  async createDebitNote(debitNoteData: InsertDebitNote): Promise<DebitNote> {
+    const [created] = await db.insert(debitNotes).values(debitNoteData).returning();
+    return created;
+  }
+
+  async getAllDebitNotes(): Promise<DebitNote[]> {
+    return await db.select().from(debitNotes).where(eq(debitNotes.recordStatus, 1));
+  }
+
+  async getDebitNote(id: string): Promise<DebitNote | undefined> {
+    const [debitNote] = await db.select().from(debitNotes).where(and(eq(debitNotes.id, id), eq(debitNotes.recordStatus, 1)));
+    return debitNote;
+  }
+
+  async getDebitNoteByNumber(noteNumber: string): Promise<DebitNote | undefined> {
+    const [debitNote] = await db.select().from(debitNotes).where(and(eq(debitNotes.noteNumber, noteNumber), eq(debitNotes.recordStatus, 1)));
+    return debitNote;
+  }
+
+  async getDebitNotesByInvoice(invoiceId: string): Promise<DebitNote[]> {
+    return await db.select().from(debitNotes).where(
+      and(
+        eq(debitNotes.invoiceId, invoiceId),
+        eq(debitNotes.recordStatus, 1)
+      )
+    );
+  }
+
+  async updateDebitNote(id: string, updates: Partial<InsertDebitNote>): Promise<DebitNote | undefined> {
+    const [updated] = await db
+      .update(debitNotes)
+      .set({ ...updates, updatedAt: new Date().toISOString() })
+      .where(and(eq(debitNotes.id, id), eq(debitNotes.recordStatus, 1)))
+      .returning();
+    return updated;
+  }
+
+  async deleteDebitNote(id: string): Promise<void> {
+    await db.update(debitNotes).set({ recordStatus: 0, updatedAt: new Date().toISOString() }).where(eq(debitNotes.id, id));
+  }
+
+  // Debit Note Items
+  async createDebitNoteItem(item: InsertDebitNoteItem): Promise<DebitNoteItem> {
+    const [created] = await db.insert(debitNoteItems).values(item).returning();
+    return created;
+  }
+
+  async getDebitNoteItems(debitNoteId: string): Promise<DebitNoteItem[]> {
+    return await db.select().from(debitNoteItems).where(
+      and(
+        eq(debitNoteItems.debitNoteId, debitNoteId),
+        eq(debitNoteItems.recordStatus, 1)
+      )
+    );
+  }
+
+  async updateDebitNoteItem(id: string, updates: Partial<InsertDebitNoteItem>): Promise<DebitNoteItem | undefined> {
+    const [updated] = await db
+      .update(debitNoteItems)
+      .set({ ...updates, updatedAt: new Date().toISOString() })
+      .where(and(eq(debitNoteItems.id, id), eq(debitNoteItems.recordStatus, 1)))
+      .returning();
+    return updated;
+  }
+
+  async deleteDebitNoteItem(id: string): Promise<void> {
+    await db.update(debitNoteItems).set({ recordStatus: 0, updatedAt: new Date().toISOString() }).where(eq(debitNoteItems.id, id));
   }
 
   // Role Management
