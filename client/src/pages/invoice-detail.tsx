@@ -110,6 +110,28 @@ export default function InvoiceDetail() {
     enabled: !!id,
   });
 
+  // Fetch credit notes for this invoice
+  const { data: creditNotes = [] } = useQuery<any[]>({
+    queryKey: ['/api/credit-notes/invoice', id],
+    queryFn: async () => {
+      const res = await fetch(`/api/credit-notes/invoice/${id}`, { credentials: 'include' });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!id,
+  });
+
+  // Fetch debit notes for this invoice
+  const { data: debitNotes = [] } = useQuery<any[]>({
+    queryKey: ['/api/debit-notes/invoice', id],
+    queryFn: async () => {
+      const res = await fetch(`/api/debit-notes/invoice/${id}`, { credentials: 'include' });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!id,
+  });
+
   // Cancel & Reissue mutation - MUST be before early returns to avoid hooks ordering violation
   const cancelAndReissueMutation = useMutation({
     mutationFn: async () => {
@@ -641,6 +663,119 @@ export default function InvoiceDetail() {
                 </TableBody>
               </Table>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Invoice History - Credit Notes, Debit Notes, Cancellation */}
+      {(creditNotes.length > 0 || debitNotes.length > 0 || invoice.recordStatus === 0) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Invoice History
+            </CardTitle>
+            <CardDescription>Credit notes, debit notes, and status changes for this invoice</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Cancellation Status */}
+            {invoice.recordStatus === 0 && (
+              <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Badge variant="destructive">CANCELLED</Badge>
+                  <span className="text-sm text-muted-foreground">
+                    This invoice has been cancelled
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Credit Notes */}
+            {creditNotes.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold flex items-center gap-2">
+                  Credit Notes
+                  <Badge variant="secondary">{creditNotes.length}</Badge>
+                </h4>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Credit Note #</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Reason</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {creditNotes.map((cn: any) => (
+                        <TableRow key={cn.id} data-testid={`row-credit-note-${cn.id}`}>
+                          <TableCell className="font-medium">{cn.noteNumber}</TableCell>
+                          <TableCell>{cn.creditDate ? format(new Date(cn.creditDate), 'dd MMM yyyy') : '-'}</TableCell>
+                          <TableCell>{cn.reason || '-'}</TableCell>
+                          <TableCell>
+                            <Badge variant={cn.status === 'approved' ? 'default' : cn.status === 'draft' ? 'secondary' : 'outline'}>
+                              {cn.status || 'N/A'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right text-destructive font-medium">
+                            -{formatCurrency(cn.grandTotal || 0)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            )}
+
+            {/* Debit Notes */}
+            {debitNotes.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold flex items-center gap-2">
+                  Debit Notes
+                  <Badge variant="secondary">{debitNotes.length}</Badge>
+                </h4>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Debit Note #</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Reason</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {debitNotes.map((dn: any) => (
+                        <TableRow key={dn.id} data-testid={`row-debit-note-${dn.id}`}>
+                          <TableCell className="font-medium">{dn.noteNumber}</TableCell>
+                          <TableCell>{dn.debitDate ? format(new Date(dn.debitDate), 'dd MMM yyyy') : '-'}</TableCell>
+                          <TableCell>{dn.reason || '-'}</TableCell>
+                          <TableCell>
+                            <Badge variant={dn.status === 'approved' ? 'default' : dn.status === 'draft' ? 'secondary' : 'outline'}>
+                              {dn.status || 'N/A'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right text-green-600 font-medium">
+                            +{formatCurrency(dn.grandTotal || 0)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            )}
+
+            {/* No history message */}
+            {creditNotes.length === 0 && debitNotes.length === 0 && invoice.recordStatus !== 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No credit notes or debit notes for this invoice.
+              </p>
+            )}
           </CardContent>
         </Card>
       )}
