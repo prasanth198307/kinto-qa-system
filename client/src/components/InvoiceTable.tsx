@@ -2,9 +2,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Trash2, Edit, DollarSign, FileText, Package, Truck, CheckCircle, Eye } from "lucide-react";
-import type { Invoice, InvoicePayment } from "@shared/schema";
+import type { Invoice } from "@shared/schema";
 import { format } from "date-fns";
-import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import PrintableInvoice from "./PrintableInvoice";
 
@@ -17,18 +16,10 @@ interface InvoiceTableProps {
 }
 
 export default function InvoiceTable({ invoices, isLoading, onEdit, onDelete, onPayment }: InvoiceTableProps) {
-  // Fetch all payments for all invoices
-  const { data: allPayments = [] } = useQuery<InvoicePayment[]>({
-    queryKey: ['/api/invoice-payments'],
-  });
-
-  // Calculate total paid for each invoice
-  const getInvoicePayments = (invoiceId: string) => {
-    return allPayments.filter(p => p.invoiceId === invoiceId);
-  };
-
-  const getTotalPaid = (invoiceId: string) => {
-    return getInvoicePayments(invoiceId).reduce((sum, p) => sum + p.amount, 0);
+  // Use invoice.amountReceived for consistency with invoice detail page and vendor analytics
+  // This is the authoritative source from Vyapaar Sale Report
+  const getTotalPaid = (invoice: Invoice) => {
+    return invoice.amountReceived || 0;
   };
 
   if (isLoading) {
@@ -79,7 +70,7 @@ export default function InvoiceTable({ invoices, isLoading, onEdit, onDelete, on
         </TableHeader>
         <TableBody>
           {invoices.map((invoice) => {
-            const totalPaid = getTotalPaid(invoice.id);
+            const totalPaid = getTotalPaid(invoice);
             const outstanding = invoice.totalAmount - totalPaid;
             const isPaid = outstanding <= 0;
             

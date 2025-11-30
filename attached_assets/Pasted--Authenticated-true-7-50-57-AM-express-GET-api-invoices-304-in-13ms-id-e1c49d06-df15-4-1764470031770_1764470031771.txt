@@ -1,0 +1,40 @@
+   Authenticated: true
+7:50:57 AM [express] GET /api/invoices 304 in 13ms :: [{"id":"e1c49d06-df15-45ea-8daa-8f6817a63da5",…
+7:50:57 AM [express] GET /api/stats/today 304 in 36ms :: {"rawMaterialIssuancesCount":0,"gatepassesC…
+7:50:57 AM [express] GET /api/pm-task-list-templates 304 in 29ms :: []
+🔹 Request: GET /api/analytics/variance
+   Cookie header: connect.sid=s%3AX44mQFKZTRn9QwzUT8TxRkTxscJSi2J4.4M5ifUeQKwkGDmTZVjQnd1iotfBOuG1uNCwIER0tC7U
+   Session ID: X44mQFKZTRn9QwzUT8TxRkTxscJSi2J4
+   Authenticated: true
+Error generating variance analytics: error: column production_reconciliations.rejected_cases does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:11013:35 {
+  length: 140,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '330',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+7:50:59 AM [express] GET /api/analytics/variance 500 in 23ms :: {"message":"Failed to generate varia…
+🔹 Request: GET /api/reports/write-offs
+   Cookie header: connect.sid=s%3AX44mQFKZTRn9QwzUT8TxRkTxscJSi2J4.4M5ifUeQKwkGDmTZVjQnd1iotfBOuG1uNCwIER0tC7U
+   Session ID: X44mQFKZTRn9QwzUT8TxRkTxscJSi2J4
+   Authenticated: true
+Error fetching write-off report: ReferenceError: users is not defined
+    at file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:12340:49
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+7:51:07 AM [express] GET /api/reports/write-offs 500 in 14ms :: {"message":"Failed to fetch write-of…
