@@ -4761,7 +4761,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .where(eq(invoices.id, id));
       });
       
-      // Deep clean invoice data - remove ALL identifying fields to ensure fresh insert
+      // Deep clean invoice data - remove identifying fields but KEEP template and terms
       const { 
         id: invoiceId, 
         invoiceNumber, 
@@ -4769,8 +4769,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdAt, 
         updatedAt, 
         recordStatus,
-        templateId,
-        termsConditionsId,
         ...cleanInvoice 
       } = invoice;
       
