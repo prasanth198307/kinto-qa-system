@@ -92,9 +92,12 @@ export default function PendingPaymentsDashboard({ customerFilter }: PendingPaym
         remarks: 'Outstanding balance written off from Pending Payments dashboard',
       });
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data: any, invoiceId: string) => {
       queryClient.invalidateQueries({ queryKey: ['/api/pending-payments'] });
       queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/invoice-payments'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/invoice-payments', invoiceId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/reports/write-offs'] });
       toast({
         title: "Payment Written Off",
         description: data.message,
