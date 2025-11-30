@@ -257,17 +257,25 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       const normalizedItems = embeddedItems.length > 0 
         ? embeddedItems.map((item: any) => {
             // Calculate GST rate from basis points
-            // cgstRate/sgstRate are each half of total rate, igstRate is full rate
-            // All stored in basis points (1800 = 18%)
-            let rawGstRate = isIntrastate 
-              ? ((item.cgstRate || 0) * 2 / 100) // cgst * 2 / 100 = full rate %
-              : ((item.igstRate || 0) / 100); // Convert from basis points
+            // cgstRate/sgstRate are each half of total rate (for intrastate)
+            // igstRate is full rate (for interstate)
+            // All stored in basis points (900 = 9%, 1800 = 18%)
+            // Try both - use whichever has a non-zero value
+            let rawGstRate = 0;
+            if (item.cgstRate && item.cgstRate > 0) {
+              // Intrastate: cgstRate is half, so multiply by 2
+              rawGstRate = (item.cgstRate * 2) / 100;
+            } else if (item.igstRate && item.igstRate > 0) {
+              // Interstate: igstRate is full rate
+              rawGstRate = item.igstRate / 100;
+            }
             
             // Round to nearest valid GST rate (0, 5, 12, 18, 28)
             const validRates = [0, 5, 12, 18, 28];
-            const gstRate = validRates.reduce((prev, curr) => 
-              Math.abs(curr - rawGstRate) < Math.abs(prev - rawGstRate) ? curr : prev
-            );
+            const gstRate = rawGstRate > 0 
+              ? validRates.reduce((prev, curr) => 
+                  Math.abs(curr - rawGstRate) < Math.abs(prev - rawGstRate) ? curr : prev)
+              : 18; // Default to 18% if no rate found
             
             console.log(`[InvoiceForm] Item GST conversion: cgstRate=${item.cgstRate}, igstRate=${item.igstRate}, raw=${rawGstRate}, final=${gstRate}`);
             
@@ -614,6 +622,8 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         bankIfscCode: data.bankIfscCode || null,
         upiId: data.upiId || null,
         remarks: data.remarks || null,
+        // Include original invoice ID for reissue tracking
+        originalInvoiceId: isReissueMode ? (invoice as any)?.originalInvoiceId : null,
       };
 
       const invoiceItems = data.items.map((item) => {
