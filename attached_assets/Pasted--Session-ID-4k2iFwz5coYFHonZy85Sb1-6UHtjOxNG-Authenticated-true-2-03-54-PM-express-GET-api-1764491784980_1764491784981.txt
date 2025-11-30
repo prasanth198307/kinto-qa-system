@@ -1,0 +1,68 @@
+   Session ID: 4k2iFwz5coYFHonZy85Sb1_6UHtjOxNG
+   Authenticated: true
+2:03:54 PM [express] GET /api/raw-materials 304 in 20ms :: [{"id":"69898f7e-c760-4b3e-9333-666921606…
+2:03:54 PM [express] GET /api/invoices 304 in 19ms :: [{"id":"366f1511-5db8-4ecb-b373-3652e2bd8917",…
+2:03:54 PM [express] GET /api/pending-payments 304 in 24ms :: {"data":[{"id":"3764fd67-61c1-46f9-a2b…
+🔹 Request: GET /api/production-reconciliations
+   Cookie header: connect.sid=s%3A4k2iFwz5coYFHonZy85Sb1_6UHtjOxNG.yKe6iK3JH7a81mqWSMqNrd9TbYJmk8pnsZePt0rV%2FG8
+   Session ID: 4k2iFwz5coYFHonZy85Sb1_6UHtjOxNG
+   Authenticated: true
+Error fetching production reconciliations: error: column "remarks" does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllProductionReconciliations (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:3320:16)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:10936:31 {
+  length: 108,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '268',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+🔹 Request: GET /api/production-entries
+   Cookie header: connect.sid=s%3A4k2iFwz5coYFHonZy85Sb1_6UHtjOxNG.yKe6iK3JH7a81mqWSMqNrd9TbYJmk8pnsZePt0rV%2FG8
+   Session ID: 4k2iFwz5coYFHonZy85Sb1_6UHtjOxNG
+   Authenticated: true
+🔹 Request: GET /api/raw-material-issuances
+   Cookie header: connect.sid=s%3A4k2iFwz5coYFHonZy85Sb1_6UHtjOxNG.yKe6iK3JH7a81mqWSMqNrd9TbYJmk8pnsZePt0rV%2FG8
+   Session ID: 4k2iFwz5coYFHonZy85Sb1_6UHtjOxNG
+   Authenticated: true
+2:03:57 PM [express] GET /api/production-reconciliations 500 in 17ms :: {"message":"Failed to fetch …
+Error fetching production entries: error: column production_entries.empty_bottles_produced does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllProductionEntries (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:3267:25)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:10871:23 {
+  length: 140,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '268',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+2:03:57 PM [express] GET /api/production-entries 500 in 18ms :: {"message":"Failed to fetch producti…
+2:03:57 PM [express] GET /api/
