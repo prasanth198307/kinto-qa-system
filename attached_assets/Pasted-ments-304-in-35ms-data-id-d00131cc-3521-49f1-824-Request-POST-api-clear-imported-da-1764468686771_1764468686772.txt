@@ -1,0 +1,38 @@
+ments 304 in 35ms :: {"data":[{"id":"d00131cc-3521-49f1-824…
+🔹 Request: POST /api/clear-imported-data
+   Cookie header: connect.sid=s%3Ax2mfHFiVzfDITyKN_FOEFIMe61oTRmFO.Yj0ckLBZT%2BUq%2FUl9ezn4J1Q09dRt4ncXDkfb0DRnQgk
+   Session ID: x2mfHFiVzfDITyKN_FOEFIMe61oTRmFO
+   Authenticated: true
+[DATA CLEAR] Clearing all imported data...
+Clearing all imported data...
+Failed to clear imported data: error: update or delete on table "invoice_payments" violates foreign key constraint "payment_evidence_parent_payment_id_fkey" on table "payment_evidence"
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg/lib/client.js:545:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:5804:7
+    at async NodePgSession.transaction (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:142:22)
+    at async clearImportedData (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:5790:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:14840:22 {
+  length: 382,
+  severity: 'ERROR',
+  code: '23503',
+  detail: 'Key (id)=(78efcf23-7a96-4c4e-9623-0fc955e5c7f6) is still referenced from table "payment_evidence".',
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: 'public',
+  table: 'payment_evidence',
+  column: undefined,
+  dataType: undefined,
+  constraint: 'payment_evidence_parent_payment_id_fkey',
+  file: 'ri_triggers.c',
+  line: '2621',
+  routine: 'ri_ReportViolation'
+}
+[DATA CLEAR] Clear completed: {
+  success: false,
+  message: 'update or delete on table "invoice_payments" violates foreign key constraint "payment_evidence_parent_payment_id_fkey" on table "payment_evidence"'
+}
+7:40:46 AM [express] POST /api/clear-imported-data 200 in 42ms :: {"success":false,"message":"update…
+
