@@ -1912,6 +1912,95 @@ export const insertCreditNoteItemSchema = createInsertSchema(creditNoteItems).om
 export type InsertCreditNoteItem = z.infer<typeof insertCreditNoteItemSchema>;
 export type CreditNoteItem = typeof creditNoteItems.$inferSelect;
 
+// Debit Notes - for invoice adjustments when charging MORE (qty/price increases on old invoices)
+export const debitNotes = pgTable("debit_notes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  noteNumber: varchar("note_number", { length: 100 }).unique().notNull(), // DN-{invoiceNumber}-{seq}
+  
+  // References
+  invoiceId: varchar("invoice_id").references(() => invoices.id).notNull(),
+  
+  // Debit details
+  debitDate: date("debit_date").notNull(),
+  reason: varchar("reason", { length: 255 }).notNull(), // quantity_increase, price_increase, additional_charges, other
+  status: varchar("status", { length: 50 }).default('draft').notNull(), // draft, issued, cancelled
+  
+  // Financial totals (in paise)
+  subtotal: integer("subtotal").notNull(),
+  cgstAmount: integer("cgst_amount").default(0).notNull(),
+  sgstAmount: integer("sgst_amount").default(0).notNull(),
+  igstAmount: integer("igst_amount").default(0).notNull(),
+  grandTotal: integer("grand_total").notNull(),
+  
+  // Metadata
+  issuedBy: varchar("issued_by").references(() => users.id),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  notes: text("notes"),
+  
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
+});
+
+export const insertDebitNoteSchema = createInsertSchema(debitNotes, {
+  debitDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format"),
+}).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertDebitNote = z.infer<typeof insertDebitNoteSchema>;
+export type DebitNote = typeof debitNotes.$inferSelect;
+
+// Debit Note Items (Detail/Line Items)
+export const debitNoteItems = pgTable("debit_note_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  debitNoteId: varchar("debit_note_id").references(() => debitNotes.id).notNull(),
+  
+  // Product reference
+  invoiceItemId: varchar("invoice_item_id").references(() => invoiceItems.id),
+  productId: varchar("product_id").references(() => products.id).notNull(),
+  description: text("description").notNull(),
+  
+  // Original values from invoice (for reference)
+  originalQuantity: integer("original_quantity").notNull(),
+  originalUnitPrice: integer("original_unit_price").notNull(),
+  
+  // Additional/difference values (in paise)
+  additionalQuantity: integer("additional_quantity").default(0).notNull(), // Extra quantity being charged
+  newUnitPrice: integer("new_unit_price").notNull(), // New price (if price increase)
+  priceDifferencePerUnit: integer("price_difference_per_unit").default(0).notNull(), // Price increase per unit
+  
+  // Calculated totals
+  taxableValue: integer("taxable_value").notNull(), // (additionalQty * newPrice) + (origQty * priceDiff)
+  
+  // GST breakdown
+  cgstRate: integer("cgst_rate").default(0).notNull(), // Percentage (e.g., 900 = 9%)
+  cgstAmount: integer("cgst_amount").default(0).notNull(),
+  sgstRate: integer("sgst_rate").default(0).notNull(),
+  sgstAmount: integer("sgst_amount").default(0).notNull(),
+  igstRate: integer("igst_rate").default(0).notNull(),
+  igstAmount: integer("igst_amount").default(0).notNull(),
+  
+  totalAmount: integer("total_amount").notNull(), // taxableValue + GST amounts
+  
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
+});
+
+export const insertDebitNoteItemSchema = createInsertSchema(debitNoteItems).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertDebitNoteItem = z.infer<typeof insertDebitNoteItemSchema>;
+export type DebitNoteItem = typeof debitNoteItems.$inferSelect;
+
 // Manual Credit Note Requests - for tracking >1 month returns requiring manual GST processing
 export const manualCreditNoteRequests = pgTable("manual_credit_note_requests", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
