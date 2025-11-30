@@ -4722,22 +4722,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Return finished goods inventory ONCE per invoice item (outside gatepass loop)
         // This prevents duplicate inventory returns if multiple gatepasses exist
+        // IMPORTANT: Check if product exists before inserting (handles Vyapaar imports where product may be missing)
         if (existingGatepasses.length > 0) {
           for (const item of items) {
             if (item.productId && item.quantity > 0) {
-              const batchNumber = `CANCEL-${invoice.invoiceNumber}-${format(new Date(), 'yyyyMMdd-HHmmss')}`;
+              // Verify product exists in products table to avoid foreign key violation
+              const [existingProduct] = await tx.select({ id: products.id })
+                .from(products)
+                .where(eq(products.id, item.productId))
+                .limit(1);
               
-              await tx.insert(finishedGoods).values({
-                productId: item.productId,
-                batchNumber,
-                productionDate: new Date().toISOString(),
-                quantity: item.quantity,
-                qualityStatus: 'approved',
-                remarks: `Inventory returned - Invoice ${invoice.invoiceNumber} cancelled & reissued. Gatepass(es): ${cancelledGatepassNumbers.join(', ')}`,
-                createdBy: req.user?.id,
-              });
-              
-              console.log(`[INVENTORY] Returned ${item.quantity} units of product ${item.productId} to inventory (Cancel & Reissue)`);
+              if (existingProduct) {
+                const batchNumber = `CANCEL-${invoice.invoiceNumber}-${format(new Date(), 'yyyyMMdd-HHmmss')}`;
+                
+                await tx.insert(finishedGoods).values({
+                  productId: item.productId,
+                  batchNumber,
+                  productionDate: new Date().toISOString(),
+                  quantity: item.quantity,
+                  qualityStatus: 'approved',
+                  remarks: `Inventory returned - Invoice ${invoice.invoiceNumber} cancelled & reissued. Gatepass(es): ${cancelledGatepassNumbers.join(', ')}`,
+                  createdBy: req.user?.id,
+                });
+                
+                console.log(`[INVENTORY] Returned ${item.quantity} units of product ${item.productId} to inventory (Cancel & Reissue)`);
+              } else {
+                // Product not found - skip inventory return but continue with cancellation (compliance priority)
+                console.warn(`[INVENTORY] Skipping inventory return for product ${item.productId} - product not found in master data (Vyapaar import or deleted product)`);
+              }
             }
           }
         }
@@ -5705,14 +5717,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           } else if (inspection.disposition === 'scrap' || inspection.condition === 'damaged') {
             // Create damaged inventory record
-            await tx.insert(finishedGoods).values([{
-              productId: item.productId,
-              batchNumber: `${item.batchNumber}-DAMAGED`,
-              quantity: item.quantityReturned,
-              qualityStatus: 'rejected',
-              remarks: `Returned goods - Damaged/Scrapped`,
-              createdBy: req.user?.id,
-            }]);
+            // IMPORTANT: Check if product exists before inserting (handles Vyapaar imports where product may be missing)
+            const [product] = await tx.select().from(products)
+              .where(eq(products.id, item.productId));
+            
+            if (product) {
+              await tx.insert(finishedGoods).values([{
+                productId: item.productId,
+                batchNumber: `${item.batchNumber}-DAMAGED`,
+                quantity: item.quantityReturned,
+                qualityStatus: 'rejected',
+                remarks: `Returned goods - Damaged/Scrapped`,
+                createdBy: req.user?.id,
+              }]);
+            } else {
+              console.warn(`[INVENTORY] Skipping damaged goods record for product ${item.productId} - product not found in master data (Vyapaar import or deleted product)`);
+            }
           }
         }
         
@@ -6307,21 +6327,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           
           // Return finished goods inventory for quantity reductions only
+          // IMPORTANT: Check if product exists before inserting (handles Vyapaar imports where product may be missing)
           if (itemData.productId && itemData.qtyReturned > 0) {
-            const batchNumber = `CORRECT-${invoice.invoiceNumber}-${format(new Date(), 'yyyyMMdd-HHmmss')}`;
+            // Verify product exists in products table to avoid foreign key violation
+            const [existingProduct] = await tx.select({ id: products.id })
+              .from(products)
+              .where(eq(products.id, itemData.productId))
+              .limit(1);
             
-            await tx.insert(finishedGoods).values({
-              productId: itemData.productId,
-              batchNumber,
-              productionDate: new Date().toISOString(),
-              quantity: itemData.qtyReturned,
-              qualityStatus: 'approved',
-              remarks: `Inventory returned - Correct & Credit note ${creditNoteNumber} for invoice ${invoice.invoiceNumber}. Qty reduced by ${itemData.qtyReturned}`,
-              createdBy: req.user?.id,
-            });
-            
-            totalQtyReturned += itemData.qtyReturned;
-            console.log(`[INVENTORY] Returned ${itemData.qtyReturned} units of product ${itemData.productId} to inventory (Correct & Credit)`);
+            if (existingProduct) {
+              const batchNumber = `CORRECT-${invoice.invoiceNumber}-${format(new Date(), 'yyyyMMdd-HHmmss')}`;
+              
+              await tx.insert(finishedGoods).values({
+                productId: itemData.productId,
+                batchNumber,
+                productionDate: new Date().toISOString(),
+                quantity: itemData.qtyReturned,
+                qualityStatus: 'approved',
+                remarks: `Inventory returned - Correct & Credit note ${creditNoteNumber} for invoice ${invoice.invoiceNumber}. Qty reduced by ${itemData.qtyReturned}`,
+                createdBy: req.user?.id,
+              });
+              
+              totalQtyReturned += itemData.qtyReturned;
+              console.log(`[INVENTORY] Returned ${itemData.qtyReturned} units of product ${itemData.productId} to inventory (Correct & Credit)`);
+            } else {
+              // Product not found - skip inventory return but continue with credit note (compliance priority)
+              console.warn(`[INVENTORY] Skipping inventory return for product ${itemData.productId} - product not found in master data (Vyapaar import or deleted product)`);
+            }
           }
         }
 
@@ -6486,20 +6518,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           
           // Return finished goods inventory for this item (full credit means goods returned)
+          // IMPORTANT: Check if product exists before inserting (handles Vyapaar imports where product may be missing)
           if (invoiceItem.productId && invoiceItem.quantity > 0) {
-            const batchNumber = `CREDIT-${invoice.invoiceNumber}-${format(new Date(), 'yyyyMMdd-HHmmss')}`;
+            // Verify product exists in products table to avoid foreign key violation
+            const [existingProduct] = await tx.select({ id: products.id })
+              .from(products)
+              .where(eq(products.id, invoiceItem.productId))
+              .limit(1);
             
-            await tx.insert(finishedGoods).values({
-              productId: invoiceItem.productId,
-              batchNumber,
-              productionDate: new Date().toISOString(),
-              quantity: invoiceItem.quantity,
-              qualityStatus: 'approved',
-              remarks: `Inventory returned - Full credit note ${creditNoteNumber} for invoice ${invoice.invoiceNumber}`,
-              createdBy: req.user?.id,
-            });
-            
-            console.log(`[INVENTORY] Returned ${invoiceItem.quantity} units of product ${invoiceItem.productId} to inventory (Quick Full Credit)`);
+            if (existingProduct) {
+              const batchNumber = `CREDIT-${invoice.invoiceNumber}-${format(new Date(), 'yyyyMMdd-HHmmss')}`;
+              
+              await tx.insert(finishedGoods).values({
+                productId: invoiceItem.productId,
+                batchNumber,
+                productionDate: new Date().toISOString(),
+                quantity: invoiceItem.quantity,
+                qualityStatus: 'approved',
+                remarks: `Inventory returned - Full credit note ${creditNoteNumber} for invoice ${invoice.invoiceNumber}`,
+                createdBy: req.user?.id,
+              });
+              
+              console.log(`[INVENTORY] Returned ${invoiceItem.quantity} units of product ${invoiceItem.productId} to inventory (Quick Full Credit)`);
+            } else {
+              // Product not found - skip inventory return but continue with credit note (compliance priority)
+              console.warn(`[INVENTORY] Skipping inventory return for product ${invoiceItem.productId} - product not found in master data (Vyapaar import or deleted product)`);
+            }
           }
         }
 
