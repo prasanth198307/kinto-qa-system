@@ -234,8 +234,8 @@ export default function InvoiceDetail() {
     queryClient.invalidateQueries({ queryKey: ['/api/credit-notes'] });
   };
 
-  // Check if user is admin or manager
-  const userRole = (user as any)?.role;
+  // Check if user is admin or manager (case-insensitive comparison)
+  const userRole = ((user as any)?.role || '').toLowerCase();
   const isAdminOrManager = user && (userRole === 'admin' || userRole === 'manager');
   
   // Check if invoice is in current month
