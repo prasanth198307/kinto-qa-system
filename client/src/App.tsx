@@ -897,6 +897,54 @@ function PaymentManagementPage() {
   );
 }
 
+// Wrapper component for Vendor History with full admin navigation
+function VendorHistoryPage() {
+  const { user, logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('vendor-history');
+  
+  const navSections = getAdminNavSections(setLocation, (user as any)?.role);
+  
+  return (
+    <DashboardShell
+      title="Vendor History"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={(viewId) => {
+        setActiveView(viewId);
+      }}
+    >
+      <VendorHistory />
+    </DashboardShell>
+  );
+}
+
+// Wrapper component for Vendor History Detail with full admin navigation
+function VendorHistoryDetailPage() {
+  const { user, logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('vendor-history');
+  
+  const navSections = getAdminNavSections(setLocation, (user as any)?.role);
+  
+  return (
+    <DashboardShell
+      title="Vendor History"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={(viewId) => {
+        setActiveView(viewId);
+      }}
+    >
+      <VendorHistoryDetail />
+    </DashboardShell>
+  );
+}
+
 // Permission mapping: maps nav item IDs to screen names from the permissions system
 const navItemToScreen: Record<string, string> = {
   // Dashboard & Analytics
@@ -1252,8 +1300,8 @@ function Router() {
       <ProtectedRoute path="/reviewer-dashboard" component={ReviewerDashboardPage} />
       <ProtectedRoute path="/vendor-types" component={VendorTypes} />
       <ProtectedRoute path="/vendor-management" component={VendorManagementPage} />
-      <ProtectedRoute path="/vendor-history" component={VendorHistory} />
-      <ProtectedRoute path="/vendor-history/:vendorId" component={VendorHistoryDetail} />
+      <ProtectedRoute path="/vendor-history" component={VendorHistoryPage} />
+      <ProtectedRoute path="/vendor-history/:vendorId" component={VendorHistoryDetailPage} />
       <ProtectedRoute path="/invoice/:id" component={InvoiceDetail} />
       <ProtectedRoute path="/dispatch-tracking" component={DispatchTracking} />
       <ProtectedRoute path="/sales-returns" component={SalesReturns} />
