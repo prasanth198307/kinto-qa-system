@@ -669,6 +669,13 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         };
       });
 
+      console.log('[InvoiceForm] Creating invoice with items:', invoiceItems.map(item => ({
+        productId: item.productId,
+        gstRate: `cgst=${item.cgstRate}, igst=${item.igstRate}`,
+        taxableAmount: item.taxableAmount,
+        totalAmount: item.totalAmount
+      })));
+      
       // In reissue mode, always create a NEW invoice (POST) even if invoice prop exists
       if (isReissueMode || !invoice || !invoice.id) {
         // Create mode - new invoice
@@ -681,13 +688,27 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         return await apiRequest('PATCH', `/api/invoices/${invoice.id}`, invoiceHeader);
       }
     },
-    onSuccess: () => {
+    onSuccess: (response: any) => {
       queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
-      toast({
-        title: "Success",
-        description: invoice ? "Invoice updated successfully" : "Invoice created successfully",
-      });
-      onClose();
+      
+      // Clear reissue data from sessionStorage
+      if (isReissueMode) {
+        sessionStorage.removeItem('reissueInvoiceData');
+        toast({
+          title: "Invoice Reissued Successfully",
+          description: `New invoice ${response?.invoice?.invoiceNumber || ''} created. Redirecting to Sales Invoices...`,
+        });
+        // Redirect to sales invoices tab after short delay
+        setTimeout(() => {
+          window.location.href = '/production-management?tab=invoices';
+        }, 1000);
+      } else {
+        toast({
+          title: "Success",
+          description: invoice ? "Invoice updated successfully" : "Invoice created successfully",
+        });
+        onClose();
+      }
     },
     onError: (error: any) => {
       toast({
