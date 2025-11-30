@@ -1999,24 +1999,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get all invoices for this vendor
       const allInvoices = await storage.getAllInvoices();
-      const vendorInvoices = allInvoices.filter(inv => inv.buyerName === vendor.vendorName);
+      const vendorInvoices = allInvoices.filter(inv => inv.buyerName === vendor.vendorName && inv.recordStatus === 1);
 
-      // Calculate outstanding balance for each invoice
-      const invoicesWithBalance = await Promise.all(
-        vendorInvoices.map(async (invoice) => {
-          const payments = await storage.getPaymentsByInvoice(invoice.id);
-          const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-          const outstanding = invoice.totalAmount - totalPaid;
-          return { 
-            id: invoice.id,
-            invoiceNumber: invoice.invoiceNumber,
-            invoiceDate: invoice.invoiceDate,
-            totalAmount: invoice.totalAmount,
-            totalPaid,
-            outstanding 
-          };
-        })
-      );
+      // Calculate outstanding balance for each invoice using invoice.amountReceived (same as vendor analytics)
+      // This is the source of truth from Vyapaar Sale Report
+      const invoicesWithBalance = vendorInvoices.map((invoice) => {
+        const totalPaid = invoice.amountReceived || 0;
+        const outstanding = invoice.totalAmount - totalPaid;
+        return { 
+          id: invoice.id,
+          invoiceNumber: invoice.invoiceNumber,
+          invoiceDate: invoice.invoiceDate,
+          totalAmount: invoice.totalAmount,
+          totalPaid,
+          outstanding 
+        };
+      });
 
       // Filter only invoices with outstanding balance and sort by invoice date (FIFO)
       const pendingInvoices = invoicesWithBalance
