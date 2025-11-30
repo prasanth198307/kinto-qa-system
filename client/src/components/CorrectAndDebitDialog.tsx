@@ -121,6 +121,9 @@ export function CorrectAndDebitDialog({
   const debitCalculation = useMemo(() => {
     let totalOriginal = 0;
     let totalNew = 0;
+    let totalCgstDifference = 0;
+    let totalSgstDifference = 0;
+    let totalIgstDifference = 0;
     const itemDifferences: Array<{
       invoiceItemId: string;
       productName: string;
@@ -129,6 +132,9 @@ export function CorrectAndDebitDialog({
       difference: number;
       additionalQuantity: number;
       priceIncrease: number;
+      cgstDifference: number;
+      sgstDifference: number;
+      igstDifference: number;
     }> = [];
 
     watchedItems.forEach((item, index) => {
@@ -148,6 +154,19 @@ export function CorrectAndDebitDialog({
       totalNew += newAmount;
 
       if (difference > 0) {
+        // Use item-level GST rates (critical for Vyapaar imports where invoice-level rates are NULL)
+        const itemCgstRate = invoiceItem.cgstRate || 0;
+        const itemSgstRate = invoiceItem.sgstRate || 0;
+        const itemIgstRate = invoiceItem.igstRate || 0;
+        
+        const itemCgstDiff = Math.round(difference * itemCgstRate / 10000);
+        const itemSgstDiff = Math.round(difference * itemSgstRate / 10000);
+        const itemIgstDiff = Math.round(difference * itemIgstRate / 10000);
+        
+        totalCgstDifference += itemCgstDiff;
+        totalSgstDifference += itemSgstDiff;
+        totalIgstDifference += itemIgstDiff;
+
         itemDifferences.push({
           invoiceItemId: item.invoiceItemId,
           productName: invoiceItem.description,
@@ -156,15 +175,15 @@ export function CorrectAndDebitDialog({
           difference,
           additionalQuantity: newQty - origQty > 0 ? newQty - origQty : 0,
           priceIncrease: newPrice - origPrice > 0 ? newPrice - origPrice : 0,
+          cgstDifference: itemCgstDiff,
+          sgstDifference: itemSgstDiff,
+          igstDifference: itemIgstDiff,
         });
       }
     });
 
     const subtotalDifference = totalNew - totalOriginal;
-    const cgstDifference = Math.round(subtotalDifference * cgstRate / 10000);
-    const sgstDifference = Math.round(subtotalDifference * sgstRate / 10000);
-    const igstDifference = Math.round(subtotalDifference * igstRate / 10000);
-    const grandTotalDifference = subtotalDifference + cgstDifference + sgstDifference + igstDifference;
+    const grandTotalDifference = subtotalDifference + totalCgstDifference + totalSgstDifference + totalIgstDifference;
 
     const isDecreasing = totalNew < totalOriginal;
     
@@ -172,15 +191,15 @@ export function CorrectAndDebitDialog({
       totalOriginal,
       totalNew,
       subtotalDifference,
-      cgstDifference,
-      sgstDifference,
-      igstDifference,
+      cgstDifference: totalCgstDifference,
+      sgstDifference: totalSgstDifference,
+      igstDifference: totalIgstDifference,
       grandTotalDifference,
       itemDifferences,
       hasChanges: subtotalDifference > 0,
       isDecreasing,
     };
-  }, [watchedItemsKey, invoiceItems, cgstRate, sgstRate, igstRate]);
+  }, [watchedItemsKey, invoiceItems]);
 
   const handleSubmit = async (data: CorrectAndDebitForm) => {
     if (!debitCalculation.hasChanges) {

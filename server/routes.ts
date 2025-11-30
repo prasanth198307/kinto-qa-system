@@ -2001,16 +2001,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allInvoices = await storage.getAllInvoices();
       const vendorInvoices = allInvoices.filter(inv => inv.buyerName === vendor.vendorName && inv.recordStatus === 1);
 
-      // Calculate outstanding balance for each invoice using invoice.amountReceived (same as vendor analytics)
-      // This is the source of truth from Vyapaar Sale Report
+      // Get all credit notes and debit notes for outstanding balance calculation
+      const allCreditNotes = await db.select().from(creditNotes).where(
+        and(eq(creditNotes.recordStatus, 1), eq(creditNotes.status, 'issued'))
+      );
+      const allDebitNotes = await db.select().from(debitNotes).where(
+        and(eq(debitNotes.recordStatus, 1), eq(debitNotes.status, 'issued'))
+      );
+
+      // Group credit/debit notes by invoice ID
+      const creditNotesByInvoice = new Map<string, number>();
+      allCreditNotes.forEach(cn => {
+        const current = creditNotesByInvoice.get(cn.invoiceId) || 0;
+        creditNotesByInvoice.set(cn.invoiceId, current + cn.grandTotal);
+      });
+
+      const debitNotesByInvoice = new Map<string, number>();
+      allDebitNotes.forEach(dn => {
+        const current = debitNotesByInvoice.get(dn.invoiceId) || 0;
+        debitNotesByInvoice.set(dn.invoiceId, current + dn.grandTotal);
+      });
+
+      // Calculate outstanding balance for each invoice
+      // Formula: outstanding = (totalAmount + debitNotes) - creditNotes - amountReceived
       const invoicesWithBalance = vendorInvoices.map((invoice) => {
         const totalPaid = invoice.amountReceived || 0;
-        const outstanding = invoice.totalAmount - totalPaid;
+        const creditNoteTotal = creditNotesByInvoice.get(invoice.id) || 0;
+        const debitNoteTotal = debitNotesByInvoice.get(invoice.id) || 0;
+        const effectiveTotal = invoice.totalAmount + debitNoteTotal - creditNoteTotal;
+        const outstanding = Math.max(0, effectiveTotal - totalPaid);
         return { 
           id: invoice.id,
           invoiceNumber: invoice.invoiceNumber,
           invoiceDate: invoice.invoiceDate,
           totalAmount: invoice.totalAmount,
+          effectiveTotal,
+          creditNoteTotal,
+          debitNoteTotal,
           totalPaid,
           outstanding 
         };
@@ -4962,17 +4989,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allInvoices = await storage.getAllInvoices();
       const allPayments = await storage.getAllPayments();
       
-      // Calculate outstanding balance for each invoice using amountReceived (source of truth from Sale Report)
+      // Get all credit notes and debit notes for outstanding balance calculation
+      const allCreditNotes = await db.select().from(creditNotes).where(
+        and(eq(creditNotes.recordStatus, 1), eq(creditNotes.status, 'issued'))
+      );
+      const allDebitNotes = await db.select().from(debitNotes).where(
+        and(eq(debitNotes.recordStatus, 1), eq(debitNotes.status, 'issued'))
+      );
+
+      // Group credit/debit notes by invoice ID
+      const creditNotesByInvoice = new Map<string, number>();
+      allCreditNotes.forEach(cn => {
+        const current = creditNotesByInvoice.get(cn.invoiceId) || 0;
+        creditNotesByInvoice.set(cn.invoiceId, current + cn.grandTotal);
+      });
+
+      const debitNotesByInvoice = new Map<string, number>();
+      allDebitNotes.forEach(dn => {
+        const current = debitNotesByInvoice.get(dn.invoiceId) || 0;
+        debitNotesByInvoice.set(dn.invoiceId, current + dn.grandTotal);
+      });
+      
+      // Calculate outstanding balance for each invoice
+      // Formula: outstanding = (totalAmount + debitNotes) - creditNotes - amountReceived
       const invoicesWithBalance = allInvoices.map(invoice => {
-        // Use invoice.amountReceived as source of truth (from Sale Report)
         const totalPaid = invoice.amountReceived || 0;
-        const outstandingBalance = Math.max(0, invoice.totalAmount - totalPaid);
+        const creditNoteTotal = creditNotesByInvoice.get(invoice.id) || 0;
+        const debitNoteTotal = debitNotesByInvoice.get(invoice.id) || 0;
+        const effectiveTotal = invoice.totalAmount + debitNoteTotal - creditNoteTotal;
+        const outstandingBalance = Math.max(0, effectiveTotal - totalPaid);
         
         return {
           ...invoice,
           totalPaid,
+          creditNoteTotal,
+          debitNoteTotal,
+          effectiveTotal,
           outstandingBalance,
-          isOverpaid: (invoice.totalAmount - totalPaid) < 0,
+          isOverpaid: (effectiveTotal - totalPaid) < 0,
         };
       });
       
@@ -6854,6 +6908,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get all invoice items for quantity calculations
       const allItems = await db.select().from(invoiceItems).where(eq(invoiceItems.recordStatus, 1));
 
+      // Get all credit notes and debit notes for outstanding balance calculation
+      const allCreditNotes = await db.select().from(creditNotes).where(
+        and(eq(creditNotes.recordStatus, 1), eq(creditNotes.status, 'issued'))
+      );
+      const allDebitNotes = await db.select().from(debitNotes).where(
+        and(eq(debitNotes.recordStatus, 1), eq(debitNotes.status, 'issued'))
+      );
+
+      // Group credit/debit notes by invoice ID
+      const creditNotesByInvoice = new Map<string, number>();
+      allCreditNotes.forEach(cn => {
+        const current = creditNotesByInvoice.get(cn.invoiceId) || 0;
+        creditNotesByInvoice.set(cn.invoiceId, current + cn.grandTotal);
+      });
+
+      const debitNotesByInvoice = new Map<string, number>();
+      allDebitNotes.forEach(dn => {
+        const current = debitNotesByInvoice.get(dn.invoiceId) || 0;
+        debitNotesByInvoice.set(dn.invoiceId, current + dn.grandTotal);
+      });
+
       // Calculate analytics for each vendor
       const vendorAnalytics = await Promise.all(allVendors.map(async (vendor) => {
         // Find invoices for this vendor (where buyerName matches vendorName)
@@ -6870,9 +6945,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const vendorItems = allItems.filter(item => invoiceIds.has(item.invoiceId));
         const totalQuantity = vendorItems.reduce((sum, item) => sum + item.quantity, 0);
 
-        // Calculate outstanding balance using invoice.amountReceived (source of truth from Sale Report)
+        // Calculate outstanding balance including credit notes and debit notes
+        // Formula: outstanding = max(0, (totalAmount + debitNotes) - creditNotes - amountReceived)
         const totalPaid = vendorInvoices.reduce((sum, inv) => sum + (inv.amountReceived || 0), 0);
-        const outstandingBalance = totalRevenue - totalPaid;
+        const totalCredits = vendorInvoices.reduce((sum, inv) => sum + (creditNotesByInvoice.get(inv.id) || 0), 0);
+        const totalDebits = vendorInvoices.reduce((sum, inv) => sum + (debitNotesByInvoice.get(inv.id) || 0), 0);
+        const outstandingBalance = Math.max(0, (totalRevenue + totalDebits) - totalCredits - totalPaid);
 
         // Get vendor types for this vendor
         const vendorTypeIds = vendorTypeLinks
