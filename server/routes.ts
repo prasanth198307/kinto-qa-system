@@ -4600,11 +4600,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         // If this is a reissued invoice, update the cancelled invoice to link back
+        // AND deduct inventory (to balance what was returned during cancellation)
         if (originalInvoiceId) {
           await tx.update(invoices)
             .set({ replacedByInvoiceId: invoice.id })
             .where(eq(invoices.id, originalInvoiceId));
           console.log(`[REISSUE] Linked cancelled invoice ${originalInvoiceId} → new invoice ${invoice.id}`);
+          
+          // Deduct finished goods inventory for reissued invoice
+          // This balances the inventory that was returned when the original invoice was cancelled
+          for (const item of items) {
+            if (item.productId && item.quantity > 0) {
+              // Find the most recent finished goods batch for this product (FIFO - oldest first would be ideal, but we use newest with CANCEL- prefix)
+              // The cancellation created a batch with CANCEL- prefix, so prioritize that
+              const [finishedGood] = await tx.select()
+                .from(finishedGoods)
+                .where(and(
+                  eq(finishedGoods.productId, item.productId),
+                  eq(finishedGoods.recordStatus, 1),
+                  sql`${finishedGoods.quantity} >= ${item.quantity}`
+                ))
+                .orderBy(sql`CASE WHEN ${finishedGoods.batchNumber} LIKE 'CANCEL-%' THEN 0 ELSE 1 END, ${finishedGoods.createdAt} DESC`)
+                .limit(1);
+              
+              if (finishedGood) {
+                const newQuantity = finishedGood.quantity - item.quantity;
+                await tx.update(finishedGoods)
+                  .set({ 
+                    quantity: newQuantity, 
+                    updatedAt: new Date().toISOString(),
+                    remarks: finishedGood.remarks 
+                      ? `${finishedGood.remarks} | Deducted for reissued invoice ${invoice.invoiceNumber}`
+                      : `Deducted for reissued invoice ${invoice.invoiceNumber}`
+                  })
+                  .where(eq(finishedGoods.id, finishedGood.id));
+                
+                console.log(`[REISSUE_INVENTORY] Deducted ${item.quantity} units of product ${item.productId} from batch ${finishedGood.batchNumber} (remaining: ${newQuantity})`);
+              } else {
+                // No suitable batch found - log warning but continue (inventory may have been manually adjusted)
+                console.warn(`[REISSUE_INVENTORY] Could not find sufficient inventory for product ${item.productId} (needed: ${item.quantity}). Skipping deduction.`);
+              }
+            }
+          }
         }
         
         return invoice;
