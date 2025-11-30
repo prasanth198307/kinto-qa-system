@@ -4576,7 +4576,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Wrap in transaction
       const result = await db.transaction(async (tx) => {
         // Create invoice header
+        console.log('[CREATE_INVOICE] Inserting with data:', JSON.stringify({ 
+          recordStatus: invoiceData.recordStatus, 
+          buyerName: invoiceData.buyerName,
+          originalInvoiceId: invoiceData.originalInvoiceId 
+        }));
         const [invoice] = await tx.insert(invoices).values([invoiceData]).returning();
+        console.log('[CREATE_INVOICE] Created invoice:', JSON.stringify({ 
+          id: invoice.id, 
+          invoiceNumber: invoice.invoiceNumber, 
+          recordStatus: invoice.recordStatus,
+          originalInvoiceId: invoice.originalInvoiceId
+        }));
         
         // Create invoice items
         for (const item of items) {

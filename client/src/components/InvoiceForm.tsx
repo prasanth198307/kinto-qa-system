@@ -613,8 +613,16 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         upiId: data.upiId || null,
         remarks: data.remarks || null,
         // Include original invoice ID for reissue tracking
-        originalInvoiceId: isReissueMode ? (invoice as any)?.originalInvoiceId : null,
+        // In reissue mode, the cancelled invoice's ID is stored as originalInvoiceId on the invoice prop
+        originalInvoiceId: isReissueMode ? (invoice?.id || (invoice as any)?.originalInvoiceId) : null,
       };
+      
+      console.log('[InvoiceForm] Invoice header being sent:', {
+        buyerName: invoiceHeader.buyerName,
+        originalInvoiceId: invoiceHeader.originalInvoiceId,
+        isReissueMode,
+        invoiceId: invoice?.id,
+      });
 
       const invoiceItems = data.items.map((item) => {
         const taxableAmount = item.quantity * item.unitPrice;
