@@ -677,17 +677,25 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       // In reissue mode, always create a NEW invoice (POST) even if invoice prop exists
       if (isReissueMode || !invoice || !invoice.id) {
         // Create mode - new invoice
-        return await apiRequest('POST', '/api/invoices', {
+        const response = await apiRequest('POST', '/api/invoices', {
           header: invoiceHeader,
           items: invoiceItems,
         });
+        const result = await response.json();
+        console.log('[InvoiceForm] Invoice created successfully:', result);
+        return result;
       } else {
         // Edit mode - update existing invoice
-        return await apiRequest('PATCH', `/api/invoices/${invoice.id}`, invoiceHeader);
+        const response = await apiRequest('PATCH', `/api/invoices/${invoice.id}`, invoiceHeader);
+        const result = await response.json();
+        return result;
       }
     },
-    onSuccess: (response: any) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
+    onSuccess: async (response: any) => {
+      console.log('[InvoiceForm] Mutation success, response:', response);
+      
+      // Force refetch of invoices list
+      await queryClient.refetchQueries({ queryKey: ['/api/invoices'] });
       
       // Clear reissue data from sessionStorage
       if (isReissueMode) {
@@ -698,11 +706,10 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         
         toast({
           title: "Invoice Reissued Successfully",
-          description: `New invoice ${response?.invoice?.invoiceNumber || ''} created. Check the invoice list.`,
+          description: `New invoice ${response?.invoice?.invoiceNumber || ''} created. Refreshing list...`,
         });
         
-        // Just close the dialog - the invoices list will refresh automatically
-        // Don't navigate as we're already on the invoices tab
+        // Close dialog after refetch completes
         onClose();
       } else {
         toast({
