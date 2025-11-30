@@ -464,6 +464,7 @@ function AdminDashboard() {
       label: "Finance & Sales",
       items: [
         { id: "invoices", label: "Sales Invoices", icon: Receipt },
+        { id: "vendor-history", label: "Vendor History", icon: History },
         { id: "pending-payments", label: "Pending Payments", icon: IndianRupee },
         { id: "payment-management", label: "Payment Management", icon: CreditCard },
         { id: "credit-notes", label: "Credit Notes", icon: FileText },
