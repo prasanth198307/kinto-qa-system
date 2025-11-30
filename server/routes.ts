@@ -5708,12 +5708,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
               // Create new finished good record for returned items
               await tx.insert(finishedGoods).values([{
                 productId: item.productId,
-                batchNumber: `${item.batchNumber}-RETURNED`,
+                batchNumber: `${item.batchNumber || 'RETURN'}-RETURNED`,
+                productionDate: new Date().toISOString(),
                 quantity: item.quantityReturned,
                 qualityStatus: 'approved',
                 remarks: `Returned goods from sales return - Good condition`,
                 createdBy: req.user?.id,
               }]);
+              console.log(`[INVENTORY] Restocked ${item.quantityReturned} units of product ${item.productId} (Sales Return - Good condition)`);
+            } else {
+              console.warn(`[INVENTORY] Skipping restock for product ${item.productId} - product not found in master data (Vyapaar import or deleted product)`);
             }
           } else if (inspection.disposition === 'scrap' || inspection.condition === 'damaged') {
             // Create damaged inventory record
@@ -5724,12 +5728,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (product) {
               await tx.insert(finishedGoods).values([{
                 productId: item.productId,
-                batchNumber: `${item.batchNumber}-DAMAGED`,
+                batchNumber: `${item.batchNumber || 'RETURN'}-DAMAGED`,
+                productionDate: new Date().toISOString(),
                 quantity: item.quantityReturned,
                 qualityStatus: 'rejected',
                 remarks: `Returned goods - Damaged/Scrapped`,
                 createdBy: req.user?.id,
               }]);
+              console.log(`[INVENTORY] Recorded ${item.quantityReturned} damaged units of product ${item.productId} (Sales Return)`);
             } else {
               console.warn(`[INVENTORY] Skipping damaged goods record for product ${item.productId} - product not found in master data (Vyapaar import or deleted product)`);
             }
