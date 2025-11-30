@@ -1264,7 +1264,13 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                     const availableFG = finishedGoodsInventory.filter(fg => fg.productId === value);
                     const totalAvailable = availableFG.reduce((sum, fg) => sum + (fg.quantity || 0), 0);
                     
-                    if (availableFG.length === 0 || totalAvailable === 0) {
+                    // Skip stock check in reissue/edit mode - items already came from valid invoice
+                    // Also skip if the current item already has this product selected (user is just viewing)
+                    const currentProductId = form.watch(`items.${index}.productId`);
+                    const isExistingItem = currentProductId === value;
+                    const skipStockCheck = isReissueMode || !!invoice || isExistingItem;
+                    
+                    if (!skipStockCheck && (availableFG.length === 0 || totalAvailable === 0)) {
                       toast({
                         title: "No Stock Available",
                         description: "This product has no finished goods in inventory.",
@@ -1277,18 +1283,21 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                     const product = products.find(p => p.id === value);
                     if (product) {
                       form.setValue(`items.${index}.description`, product.productName);
-                      // Auto-fill base price from Product Master (convert from paise to rupees)
-                      if (product.basePrice) {
+                      // Auto-fill base price from Product Master (convert from paise to rupees) - only for NEW items
+                      if (product.basePrice && !isExistingItem) {
                         form.setValue(`items.${index}.unitPrice`, product.basePrice / 100);
                       }
-                      // Auto-fill HSN code if available
-                      if (product.hsnCode) {
+                      // Auto-fill HSN code if available - only for NEW items
+                      if (product.hsnCode && !isExistingItem) {
                         form.setValue(`items.${index}.hsnCode`, product.hsnCode);
                       }
-                      toast({
-                        title: "Stock Available",
-                        description: `Available: ${totalAvailable} units${product.basePrice ? ` | Price: ₹${(product.basePrice / 100).toFixed(2)}` : ''}`,
-                      });
+                      // Show stock info (but don't block)
+                      if (totalAvailable > 0) {
+                        toast({
+                          title: "Stock Available",
+                          description: `Available: ${totalAvailable} units${product.basePrice ? ` | Price: ₹${(product.basePrice / 100).toFixed(2)}` : ''}`,
+                        });
+                      }
                     }
                   }}
                 >
