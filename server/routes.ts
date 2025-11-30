@@ -4556,6 +4556,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "At least one invoice item is required" });
       }
       
+      // Check if this is a reissued invoice (has originalInvoiceId)
+      const originalInvoiceId = header.originalInvoiceId || null;
+      
       // Generate invoice number
       const invoiceNumber = `INV-${Date.now()}`;
       const invoiceData = {
@@ -4564,6 +4567,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         dateOfSupply: validatedHeader.dateOfSupply ? new Date(validatedHeader.dateOfSupply).toISOString() : null,
         invoiceNumber,
         generatedBy: req.user?.id,
+        originalInvoiceId, // Link to cancelled invoice if this is a reissue
       };
       
       // Wrap in transaction
@@ -4579,6 +4583,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           
           await tx.insert(invoiceItems).values(validatedItem);
+        }
+        
+        // If this is a reissued invoice, update the cancelled invoice to link back
+        if (originalInvoiceId) {
+          await tx.update(invoices)
+            .set({ replacedByInvoiceId: invoice.id })
+            .where(eq(invoices.id, originalInvoiceId));
+          console.log(`[REISSUE] Linked cancelled invoice ${originalInvoiceId} → new invoice ${invoice.id}`);
         }
         
         return invoice;
@@ -4755,9 +4767,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
         
-        // Cancel the invoice (soft delete)
+        // Cancel the invoice (soft delete) with tracking info
         await tx.update(invoices)
-          .set({ recordStatus: 0 })
+          .set({ 
+            recordStatus: 0,
+            cancelledAt: new Date().toISOString(),
+            cancelledBy: req.user?.id || null,
+          })
           .where(eq(invoices.id, id));
       });
       
@@ -4790,9 +4806,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Invoice cancelled successfully. Redirecting to create new invoice...",
         invoiceData: {
           ...cleanInvoice,
-          items: cleanItems
+          items: cleanItems,
+          originalInvoiceId: id  // Link to the cancelled invoice
         },
-        isReissue: true  // Explicit flag to differentiate from edit mode
+        isReissue: true,  // Explicit flag to differentiate from edit mode
+        cancelledInvoiceId: id  // ID of the cancelled invoice (for updating replacedByInvoiceId later)
       });
     } catch (error) {
       console.error("Error in cancel & reissue:", error);

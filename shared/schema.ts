@@ -1501,6 +1501,12 @@ export const invoices = pgTable("invoices", {
   receivedBy: varchar("received_by", { length: 255 }), // POD: Who received the goods
   podRemarks: text("pod_remarks"), // POD: Delivery remarks (breakage, short delivery, etc.)
   
+  // Cancel & Reissue Tracking
+  originalInvoiceId: varchar("original_invoice_id"), // For reissued invoice: points to the cancelled invoice it replaced
+  replacedByInvoiceId: varchar("replaced_by_invoice_id"), // For cancelled invoice: points to the new replacement invoice
+  cancelledAt: timestamp("cancelled_at", { mode: 'string' }), // When the invoice was cancelled
+  cancelledBy: varchar("cancelled_by").references(() => users.id), // Who cancelled the invoice
+  
   recordStatus: integer("record_status").default(1).notNull(),
   generatedBy: varchar("generated_by").references(() => users.id),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),

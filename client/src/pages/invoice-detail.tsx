@@ -667,8 +667,8 @@ export default function InvoiceDetail() {
         </Card>
       )}
 
-      {/* Invoice History - Credit Notes, Debit Notes, Cancellation */}
-      {(creditNotes.length > 0 || debitNotes.length > 0 || invoice.recordStatus === 0) && (
+      {/* Invoice History - Credit Notes, Debit Notes, Cancellation, Reissue */}
+      {(creditNotes.length > 0 || debitNotes.length > 0 || invoice.recordStatus === 0 || (invoice as any).originalInvoiceId) && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -680,12 +680,51 @@ export default function InvoiceDetail() {
           <CardContent className="space-y-4">
             {/* Cancellation Status */}
             {invoice.recordStatus === 0 && (
-              <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+              <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg space-y-2">
                 <div className="flex items-center gap-2">
                   <Badge variant="destructive">CANCELLED</Badge>
                   <span className="text-sm text-muted-foreground">
                     This invoice has been cancelled
+                    {(invoice as any).cancelledAt && (
+                      <> on {format(new Date((invoice as any).cancelledAt), 'dd MMM yyyy, HH:mm')}</>
+                    )}
                   </span>
+                </div>
+                {(invoice as any).replacedByInvoiceId && (
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">Replaced by: </span>
+                    <Button 
+                      variant="link" 
+                      className="p-0 h-auto text-primary"
+                      onClick={() => navigate(`/invoice/${(invoice as any).replacedByInvoiceId}`)}
+                      data-testid="link-replacement-invoice"
+                    >
+                      View Replacement Invoice
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Original Invoice Link (for reissued invoices) */}
+            {(invoice as any).originalInvoiceId && (
+              <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="border-blue-500 text-blue-600">REISSUED</Badge>
+                  <span className="text-sm text-muted-foreground">
+                    This invoice was created to replace a cancelled invoice
+                  </span>
+                </div>
+                <div className="text-sm mt-2">
+                  <span className="text-muted-foreground">Original cancelled invoice: </span>
+                  <Button 
+                    variant="link" 
+                    className="p-0 h-auto text-primary"
+                    onClick={() => navigate(`/invoice/${(invoice as any).originalInvoiceId}`)}
+                    data-testid="link-original-invoice"
+                  >
+                    View Original Invoice
+                  </Button>
                 </div>
               </div>
             )}
