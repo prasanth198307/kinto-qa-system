@@ -143,47 +143,6 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
     enabled: !!invoice?.id, // Only fetch items when editing an existing invoice (not for reissue mode)
   });
 
-  // Watch buyer name for adjustments lookup
-  const watchedBuyerName = form.watch("buyerName");
-  
-  // Fetch pending credit/debit notes for the selected buyer
-  interface BuyerAdjustments {
-    buyerName: string;
-    pendingCredits: Array<{
-      id: string;
-      noteNumber: string;
-      invoiceNumber?: string;
-      creditDate: string;
-      reason: string;
-      grandTotal: number;
-    }>;
-    pendingDebits: Array<{
-      id: string;
-      noteNumber: string;
-      invoiceNumber?: string;
-      debitDate: string;
-      reason: string;
-      grandTotal: number;
-    }>;
-    totalCreditAmount: number;
-    totalDebitAmount: number;
-    netAdjustment: number;
-    totalOutstanding: number;
-    invoiceCount: number;
-  }
-  
-  const { data: buyerAdjustments, isLoading: isLoadingAdjustments } = useQuery<BuyerAdjustments>({
-    queryKey: ['/api/buyer-adjustments', watchedBuyerName],
-    queryFn: async () => {
-      if (!watchedBuyerName) return null;
-      const encodedName = encodeURIComponent(watchedBuyerName);
-      const res = await fetch(`/api/buyer-adjustments/${encodedName}`, { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to fetch buyer adjustments');
-      return res.json();
-    },
-    enabled: !!watchedBuyerName && watchedBuyerName.length > 0,
-  });
-
   // Filter vendors based on vendor type
   const filteredVendors = useMemo(() => {
     const activeVendors = vendors.filter(v => v.isActive === 'true');
@@ -280,6 +239,47 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       branchName: "",
       upiId: "",
     },
+  });
+
+  // Watch buyer name for adjustments lookup
+  const watchedBuyerName = form.watch("buyerName");
+  
+  // Fetch pending credit/debit notes for the selected buyer
+  interface BuyerAdjustments {
+    buyerName: string;
+    pendingCredits: Array<{
+      id: string;
+      noteNumber: string;
+      invoiceNumber?: string;
+      creditDate: string;
+      reason: string;
+      grandTotal: number;
+    }>;
+    pendingDebits: Array<{
+      id: string;
+      noteNumber: string;
+      invoiceNumber?: string;
+      debitDate: string;
+      reason: string;
+      grandTotal: number;
+    }>;
+    totalCreditAmount: number;
+    totalDebitAmount: number;
+    netAdjustment: number;
+    totalOutstanding: number;
+    invoiceCount: number;
+  }
+  
+  const { data: buyerAdjustments } = useQuery<BuyerAdjustments>({
+    queryKey: ['/api/buyer-adjustments', watchedBuyerName],
+    queryFn: async () => {
+      if (!watchedBuyerName) return null;
+      const encodedName = encodeURIComponent(watchedBuyerName);
+      const res = await fetch(`/api/buyer-adjustments/${encodedName}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch buyer adjustments');
+      return res.json();
+    },
+    enabled: !!watchedBuyerName && watchedBuyerName.length > 0,
   });
 
   // Auto-select default template and terms & conditions on load
