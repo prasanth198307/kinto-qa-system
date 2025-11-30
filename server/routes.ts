@@ -4568,7 +4568,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         invoiceNumber,
         generatedBy: req.user?.id,
         originalInvoiceId, // Link to cancelled invoice if this is a reissue
+        recordStatus: 1, // Explicitly set to active (important for reissued invoices)
       };
+      
+      console.log(`[CREATE_INVOICE] Creating invoice for ${validatedHeader.buyerName}, originalInvoiceId=${originalInvoiceId}, recordStatus=1`);
       
       // Wrap in transaction
       const result = await db.transaction(async (tx) => {
