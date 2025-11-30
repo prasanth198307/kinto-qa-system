@@ -6167,14 +6167,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .filter(cn => cn.status === 'issued')
         .reduce((sum, cn) => sum + cn.grandTotal, 0);
 
-      // Calculate GST amounts (use invoice-level rates, handle null for old invoices)
-      const invoiceCgstRate = invoice.cgstRate || 0;
-      const invoiceSgstRate = invoice.sgstRate || 0;
-      const invoiceIgstRate = invoice.igstRate || 0;
-      
-      const cgstAmount = Math.round(subtotal * invoiceCgstRate / 10000);
-      const sgstAmount = Math.round(subtotal * invoiceSgstRate / 10000);
-      const igstAmount = Math.round(subtotal * invoiceIgstRate / 10000);
+      // Sum GST amounts from credit items (calculated from item-level rates)
+      // This is more accurate than using nullable invoice-level rates
+      const cgstAmount = creditItems.reduce((sum, item) => sum + item.cgstAmount, 0);
+      const sgstAmount = creditItems.reduce((sum, item) => sum + item.sgstAmount, 0);
+      const igstAmount = creditItems.reduce((sum, item) => sum + item.igstAmount, 0);
       const grandTotal = subtotal + cgstAmount + sgstAmount + igstAmount;
 
       // Check if new credit would exceed invoice amount
@@ -6324,19 +6321,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Credit the remaining amount (which should be the full amount if no prior credits)
-      const subtotal = invoice.subtotal - existingCreditNotes
+      // Calculate credit amounts by summing from invoice ITEMS (authoritative source)
+      // Invoice-level rates may be null for Vyapaar-imported invoices
+      const existingCreditSubtotal = existingCreditNotes
         .filter(cn => cn.status === 'issued')
         .reduce((sum, cn) => sum + cn.subtotal, 0);
       
-      // Handle null/undefined tax rates for old/ported invoices
-      const safeCgstRate = invoice.cgstRate || 0;
-      const safeSgstRate = invoice.sgstRate || 0;
-      const safeIgstRate = invoice.igstRate || 0;
+      // Sum GST from invoice items (this is where Vyapaar import stores GST data)
+      let itemsSubtotal = 0;
+      let itemsCgstAmount = 0;
+      let itemsSgstAmount = 0;
+      let itemsIgstAmount = 0;
       
-      const cgstAmount = Math.round(subtotal * safeCgstRate / 10000);
-      const sgstAmount = Math.round(subtotal * safeSgstRate / 10000);
-      const igstAmount = Math.round(subtotal * safeIgstRate / 10000);
+      for (const item of invoiceItems_list) {
+        const lineTotal = item.quantity * item.unitPrice;
+        const discountAmount = item.discount || 0;
+        itemsSubtotal += lineTotal - discountAmount;
+        itemsCgstAmount += item.cgstAmount || 0;
+        itemsSgstAmount += item.sgstAmount || 0;
+        itemsIgstAmount += item.igstAmount || 0;
+      }
+      
+      // Credit the remaining amount (full amount if no prior credits)
+      const subtotal = itemsSubtotal - existingCreditSubtotal;
+      const cgstAmount = itemsCgstAmount;
+      const sgstAmount = itemsSgstAmount;
+      const igstAmount = itemsIgstAmount;
       const grandTotal = subtotal + cgstAmount + sgstAmount + igstAmount;
 
       // Generate credit note number
