@@ -342,6 +342,8 @@ function TemplateDialog({
     defaultBankAccountNumber: '',
     defaultBankIfscCode: '',
     defaultBranchName: '',
+    defaultSignatureImage: '',
+    authorizedSignatoryName: '',
     isActive: true,
     isDefault: false,
   });
@@ -370,6 +372,28 @@ function TemplateDialog({
     }
   };
 
+  const handleSignatureUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        alert('Please upload an image file (PNG, JPG, or SVG)');
+        return;
+      }
+      
+      if (file.size > 1 * 1024 * 1024) {
+        alert('Signature image should be less than 1MB');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const signatureDataUrl = reader.result as string;
+        setFormData({ ...formData, defaultSignatureImage: signatureDataUrl });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   useEffect(() => {
     if (editingItem) {
       setFormData({
@@ -386,6 +410,8 @@ function TemplateDialog({
         defaultBankAccountNumber: editingItem.defaultBankAccountNumber || '',
         defaultBankIfscCode: editingItem.defaultBankIfscCode || '',
         defaultBranchName: editingItem.defaultBranchName || '',
+        defaultSignatureImage: editingItem.defaultSignatureImage || '',
+        authorizedSignatoryName: editingItem.authorizedSignatoryName || '',
         isActive: editingItem.isActive === 1,
         isDefault: editingItem.isDefault === 1,
       });
@@ -404,6 +430,8 @@ function TemplateDialog({
         defaultBankAccountNumber: '',
         defaultBankIfscCode: '',
         defaultBranchName: '',
+        defaultSignatureImage: '',
+        authorizedSignatoryName: '',
         isActive: true,
         isDefault: false,
       });
@@ -613,6 +641,67 @@ function TemplateDialog({
                     onChange={(e) => setFormData({ ...formData, defaultBranchName: e.target.value })}
                     data-testid="input-bank-branch"
                   />
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t pt-4">
+              <h3 className="text-lg font-semibold mb-3">Authorized Signatory</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="authorizedSignatoryName">Signatory Name</Label>
+                  <Input
+                    id="authorizedSignatoryName"
+                    placeholder="e.g., John Doe (Director)"
+                    value={formData.authorizedSignatoryName}
+                    onChange={(e) => setFormData({ ...formData, authorizedSignatoryName: e.target.value })}
+                    data-testid="input-signatory-name"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="signatureImage">Digital Signature Image</Label>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => document.getElementById('signature-upload')?.click()}
+                      data-testid="button-upload-signature"
+                    >
+                      Upload Signature
+                    </Button>
+                    <input
+                      id="signature-upload"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleSignatureUpload}
+                      className="hidden"
+                    />
+                    {formData.defaultSignatureImage && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setFormData({ ...formData, defaultSignatureImage: '' })}
+                        data-testid="button-remove-signature"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                  {formData.defaultSignatureImage && (
+                    <div className="mt-2 p-2 border rounded bg-white">
+                      <img 
+                        src={formData.defaultSignatureImage} 
+                        alt="Signature Preview" 
+                        className="max-h-16 object-contain"
+                        data-testid="img-signature-preview"
+                      />
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Upload a transparent PNG of the signature for best results
+                  </p>
                 </div>
               </div>
             </div>
