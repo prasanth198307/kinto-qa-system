@@ -1,4 +1,3 @@
-import { useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { type Gatepass, type GatepassItem, type Product, type Vendor, type FinishedGood, type Invoice } from "@shared/schema";
 import { Button } from "@/components/ui/button";
@@ -10,7 +9,6 @@ interface PrintableGatepassProps {
 }
 
 export default function PrintableGatepass({ gatepass }: PrintableGatepassProps) {
-  const printRef = useRef<HTMLDivElement>(null);
 
   const { data: items = [] } = useQuery<GatepassItem[]>({
     queryKey: ['/api/gatepass-items', gatepass.id],
@@ -50,9 +48,6 @@ export default function PrintableGatepass({ gatepass }: PrintableGatepassProps) 
   };
 
   const handlePrint = () => {
-    const printContent = printRef.current;
-    if (!printContent) return;
-
     const printWindow = window.open('', '', 'width=800,height=600');
     if (!printWindow) return;
 
