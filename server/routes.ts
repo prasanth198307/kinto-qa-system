@@ -3001,34 +3001,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Fetch product details if linked
       let product = null;
       let bomItems = [];
+      let bomConfiguration = null;
       if (issuance.productId) {
         product = await storage.getProduct(issuance.productId);
         if (product) {
           // Fetch BOM with enriched type data
-          const bom = await storage.getProductBom(issuance.productId);
-          
-          // Enrich BOM with raw material type details for conversion calculations
-          bomItems = await Promise.all(
-            bom.map(async (bomItem) => {
-              const material = await storage.getRawMaterial(bomItem.rawMaterialId);
-              let typeDetails = null;
-              if (material?.typeId) {
-                typeDetails = await storage.getRawMaterialType(material.typeId);
-              }
-              return {
-                ...bomItem,
-                material,
-                typeDetails
-              };
-            })
+          // Use bomConfigurationId from issuance if available (for multi-BOM support)
+          const bomResult = await storage.getProductBomWithTypes(
+            issuance.productId, 
+            issuance.bomConfigurationId || undefined
           );
+          
+          // Get configuration details from the BOM result metadata
+          if (bomResult.metadata?.configurationId) {
+            bomConfiguration = await storage.getBomConfiguration(bomResult.metadata.configurationId);
+          }
+          
+          // Use the enriched BOM items from getProductBomWithTypes
+          bomItems = bomResult.items;
         }
       }
       
       res.json({
         issuance: { ...issuance, items },
         product,
-        bomItems
+        bomItems,
+        bomConfiguration, // Include BOM configuration name for display
       });
     } catch (error) {
       console.error("Error fetching issuance summary:", error);
