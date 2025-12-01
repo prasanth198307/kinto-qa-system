@@ -26,7 +26,8 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
     queryKey: ['/api/uom'],
   });
 
-  const { data: template, isLoading: isLoadingTemplate } = useQuery<any>({
+  // Fetch specific template if invoice has one
+  const { data: specificTemplate, isLoading: isLoadingSpecificTemplate } = useQuery<any>({
     queryKey: ['/api/invoice-templates', invoice.templateId],
     queryFn: async () => {
       if (!invoice.templateId) return null;
@@ -36,6 +37,15 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
     },
     enabled: !!invoice.templateId,
   });
+
+  // Always fetch default template as fallback
+  const { data: defaultTemplate, isLoading: isLoadingDefaultTemplate } = useQuery<any>({
+    queryKey: ['/api/invoice-templates/default'],
+  });
+
+  // Use specific template if available, otherwise fall back to default
+  const template = specificTemplate || defaultTemplate;
+  const isLoadingTemplate = isLoadingSpecificTemplate || isLoadingDefaultTemplate;
 
   const { data: termsConditions } = useQuery<TermsConditions | null>({
     queryKey: ['/api/terms-conditions', invoice.termsConditionsId],
