@@ -14,6 +14,7 @@ import {
   type Uom,
   type Product,
   type ProductBom,
+  type ProductBomConfiguration,
   type ProductFormData,
   type RawMaterial,
   type RawMaterialType,
@@ -569,9 +570,9 @@ function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSea
   }, [productTypes]);
 
   const saveProductWithBomMutation = useMutation({
-    mutationFn: async ({ mode, id, data }: { mode: 'create' | 'update'; id?: string; data: ProductFormData }) => {
-      // Extract BOM items from submitted form data
-      const { bomItems, ...productData } = data;
+    mutationFn: async ({ mode, id, data }: { mode: 'create' | 'update'; id?: string; data: ProductFormData & { bomConfigurationId?: string | null } }) => {
+      // Extract BOM items and configuration ID from submitted form data
+      const { bomItems, bomConfigurationId, ...productData } = data;
       
       // Step 0: Validate BOM BEFORE product save to prevent orphaned products
       if (bomItems && bomItems.length > 0) {
@@ -620,6 +621,7 @@ function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSea
             quantityRequired: String(item.quantityRequired),  // Must be string for Drizzle-Zod numeric schema
             uom: item.uom?.trim() || null,  // Send null instead of empty string for nullable fields
             notes: item.notes?.trim() || null,  // Send null instead of empty string for nullable fields
+            configurationId: bomConfigurationId || null,  // Include configuration ID if present
           }));
           const response = await apiRequest('POST', `/api/products/${productId}/bom`, bomPayload);
           await response.json();  // Consume response
@@ -966,6 +968,12 @@ function ProductDialog({
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("info");
   const [bomSaving, setBomSaving] = useState(false);
+  
+  // Multi-BOM Configuration state
+  const [selectedConfigId, setSelectedConfigId] = useState<string | null>(null);
+  const [newConfigName, setNewConfigName] = useState("");
+  const [newConfigDescription, setNewConfigDescription] = useState("");
+  const [showNewConfigForm, setShowNewConfigForm] = useState(false);
 
   // Fetch material types for BOM dropdown (instead of raw materials)
   const { data: materialTypesForBom = [] } = useQuery<RawMaterialType[]>({
@@ -979,16 +987,80 @@ function ProductDialog({
     enabled: open,
   });
 
-  // Fetch existing BOM when editing
-  const { data: existingBom = [] } = useQuery<any[]>({
-    queryKey: ['/api/products', item?.id, 'bom'],
+  // Fetch BOM configurations for this product
+  const { data: bomConfigurations = [], refetch: refetchConfigs } = useQuery<ProductBomConfiguration[]>({
+    queryKey: ['/api/products', item?.id, 'bom-configurations'],
     queryFn: async () => {
       if (!item?.id) return [];
-      const response = await fetch(`/api/products/${item.id}/bom`);
+      const response = await fetch(`/api/products/${item.id}/bom-configurations`, { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch BOM configurations');
+      return response.json();
+    },
+    enabled: open && !!item?.id,
+  });
+
+  // Fetch existing BOM when editing (filtered by configuration if selected)
+  const { data: existingBom = [], refetch: refetchBom } = useQuery<any[]>({
+    queryKey: ['/api/products', item?.id, 'bom', selectedConfigId],
+    queryFn: async () => {
+      if (!item?.id) return [];
+      const url = selectedConfigId 
+        ? `/api/products/${item.id}/bom?configurationId=${selectedConfigId}`
+        : `/api/products/${item.id}/bom`;
+      const response = await fetch(url, { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch BOM');
       return response.json();
     },
     enabled: open && !!item?.id,
+  });
+
+  // Create configuration mutation
+  const createConfigMutation = useMutation({
+    mutationFn: async (data: { configName: string; description: string }) => {
+      return await apiRequest('POST', `/api/products/${item?.id}/bom-configurations`, data);
+    },
+    onSuccess: async (response) => {
+      const newConfig = await response.json();
+      toast({ title: "Success", description: "BOM configuration created successfully" });
+      refetchConfigs();
+      setSelectedConfigId(newConfig.id);
+      setNewConfigName("");
+      setNewConfigDescription("");
+      setShowNewConfigForm(false);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Delete configuration mutation
+  const deleteConfigMutation = useMutation({
+    mutationFn: async (configId: string) => {
+      return await apiRequest('DELETE', `/api/products/${item?.id}/bom-configurations/${configId}`);
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "BOM configuration deleted successfully" });
+      refetchConfigs();
+      setSelectedConfigId(null);
+      replace([]); // Clear BOM items when config is deleted
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Set default configuration mutation
+  const setDefaultConfigMutation = useMutation({
+    mutationFn: async (configId: string) => {
+      return await apiRequest('POST', `/api/products/${item?.id}/bom-configurations/${configId}/set-default`);
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Default configuration updated" });
+      refetchConfigs();
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
   });
 
   const form = useForm<ProductFormData>({
@@ -1104,15 +1176,35 @@ function ProductDialog({
         });
       }
       setActiveTab("info");
+      // Reset BOM configuration state
+      setSelectedConfigId(null);
+      setShowNewConfigForm(false);
+      setNewConfigName("");
+      setNewConfigDescription("");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, item?.id]); // Only reset when dialog opens or editing different item
 
-  // Effect 2: Hydrate BOM field array when BOM data loads (separate to avoid tab reset)
+  // Effect 2: Auto-select default configuration when configurations load
+  useEffect(() => {
+    if (open && item && bomConfigurations.length > 0 && !selectedConfigId) {
+      const defaultConfig = bomConfigurations.find(c => c.isDefault === 1);
+      if (defaultConfig) {
+        setSelectedConfigId(defaultConfig.id);
+      }
+    }
+  }, [open, item, bomConfigurations, selectedConfigId]);
+
+  // Effect 3: Hydrate BOM field array when BOM data loads (separate to avoid tab reset)
   useEffect(() => {
     if (open && item) {
-      if (existingBom.length > 0) {
-        const hydratedBom = existingBom.map(bom => {
+      // Filter BOM by selected configuration
+      const filteredBom = selectedConfigId 
+        ? existingBom.filter(bom => bom.configurationId === selectedConfigId || bom.configuration_id === selectedConfigId)
+        : existingBom.filter(bom => !bom.configurationId && !bom.configuration_id); // Legacy BOM without configuration
+        
+      if (filteredBom.length > 0) {
+        const hydratedBom = filteredBom.map(bom => {
           const quantityStr = bom.quantityRequired || bom.quantity_required;
           // Support both new materialTypeId and legacy rawMaterialId
           // If materialTypeId exists, use it. Otherwise try to get typeId from raw material
@@ -1136,12 +1228,12 @@ function ProductDialog({
         });
         replace(hydratedBom);
       } else {
-        // Clear BOM array when editing product with no BOM
+        // Clear BOM array when editing product with no BOM for selected config
         replace([]);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [existingBom, open, item?.id, rawMaterials]); // When BOM data changes or dialog opens for edit
+  }, [existingBom, open, item?.id, rawMaterials, selectedConfigId]); // When BOM data changes or dialog opens for edit or config changes
 
   const handleAddBomRow = () => {
     append({ materialTypeId: '', quantityRequired: 0, uom: '', notes: '' } as any, { shouldFocus: false });
@@ -1149,8 +1241,12 @@ function ProductDialog({
 
   const handleSubmit = async (data: ProductFormData) => {
     // Pass the complete form data (including bomItems) to parent's onSubmit
-    // Parent will handle the two-step mutation (product save + BOM bulk replace)
-    onSubmit(data);
+    // Include the selected configuration ID for BOM items
+    const submitData = {
+      ...data,
+      bomConfigurationId: selectedConfigId, // Pass selected config ID
+    };
+    onSubmit(submitData as ProductFormData);
   };
 
   return (
@@ -1728,109 +1824,268 @@ function ProductDialog({
               </div>)}
 
               {activeTab === 'bom' && (<div className="space-y-4 mt-4">
-                <div className="rounded-lg border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Material Type</TableHead>
-                        <TableHead>Quantity Required</TableHead>
-                        <TableHead>UOM</TableHead>
-                        <TableHead>Notes</TableHead>
-                        <TableHead className="w-20">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {fields.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                            No BOM items. Click "Add Row" to add material types.
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        fields.map((field, index) => {
-                          // Use watched values for proper reactivity
-                          const bomItem = watchedBomItems?.[index] || {};
-                          return (
-                            <TableRow key={field.id}>
-                              <TableCell>
-                                <Select 
-                                  value={bomItem.materialTypeId || ''} 
-                                  onValueChange={(value) => form.setValue(`bomItems.${index}.materialTypeId` as any, value)}
-                                >
-                                  <SelectTrigger data-testid={`select-bom-material-${index}`}>
-                                    <SelectValue placeholder="Select material type" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {materialTypesForBom.filter(mt => mt.isActive === 1).map(mt => (
-                                      <SelectItem key={mt.id} value={mt.id}>
-                                        {mt.typeName} ({mt.baseUnit})
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </TableCell>
-                              <TableCell>
-                                <Input 
-                                  type="number" 
-                                  step="0.01"
-                                  placeholder="0" 
-                                  value={bomItem.quantityRequired || ''} 
-                                  onChange={(e) => form.setValue(`bomItems.${index}.quantityRequired` as any, parseFloat(e.target.value) || 0)}
-                                  data-testid={`input-bom-quantity-${index}`}
-                                />
-                              </TableCell>
-                              <TableCell>
-                                <Select 
-                                  value={bomItem.uom || ''} 
-                                  onValueChange={(value) => form.setValue(`bomItems.${index}.uom` as any, value)}
-                                >
-                                  <SelectTrigger data-testid={`select-bom-uom-${index}`}>
-                                    <SelectValue placeholder="Select UOM" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {uoms.map(uom => (
-                                      <SelectItem key={uom.id} value={uom.name}>
-                                        {uom.name}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </TableCell>
-                              <TableCell>
-                                <Input 
-                                  placeholder="Optional notes" 
-                                  value={bomItem.notes || ''} 
-                                  onChange={(e) => form.setValue(`bomItems.${index}.notes` as any, e.target.value)}
-                                  data-testid={`input-bom-notes-${index}`}
-                                />
-                              </TableCell>
-                              <TableCell>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => remove(index)}
-                                  data-testid={`button-delete-bom-${index}`}
-                                >
-                                  <Minus className="h-4 w-4" />
-                                </Button>
+                {/* BOM Configuration Management - Only show for editing existing products */}
+                {item?.id && (
+                  <div className="space-y-4 p-4 rounded-lg border bg-muted/30">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <Label className="text-sm font-medium">BOM Configurations</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Create multiple material configurations (e.g., "Standard - 21gm Preform", "Economy - 19.2gm Preform")
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowNewConfigForm(!showNewConfigForm)}
+                        data-testid="button-toggle-new-config"
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        New Configuration
+                      </Button>
+                    </div>
+
+                    {/* New Configuration Form */}
+                    {showNewConfigForm && (
+                      <div className="space-y-3 p-3 rounded border bg-background">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-xs">Configuration Name *</Label>
+                            <Input
+                              placeholder="e.g., Standard - 21gm Preform"
+                              value={newConfigName}
+                              onChange={(e) => setNewConfigName(e.target.value)}
+                              data-testid="input-new-config-name"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Description</Label>
+                            <Input
+                              placeholder="Optional description"
+                              value={newConfigDescription}
+                              onChange={(e) => setNewConfigDescription(e.target.value)}
+                              data-testid="input-new-config-description"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={!newConfigName.trim() || createConfigMutation.isPending}
+                            onClick={() => createConfigMutation.mutate({ configName: newConfigName.trim(), description: newConfigDescription.trim() })}
+                            data-testid="button-create-config"
+                          >
+                            {createConfigMutation.isPending ? 'Creating...' : 'Create Configuration'}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setShowNewConfigForm(false);
+                              setNewConfigName("");
+                              setNewConfigDescription("");
+                            }}
+                            data-testid="button-cancel-new-config"
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Configuration List */}
+                    {bomConfigurations.length > 0 ? (
+                      <div className="space-y-2">
+                        <Label className="text-xs text-muted-foreground">Select configuration to edit:</Label>
+                        <div className="flex flex-wrap gap-2">
+                          {bomConfigurations.map((config) => (
+                            <div 
+                              key={config.id} 
+                              className={`flex items-center gap-1 p-2 rounded border cursor-pointer transition-colors ${
+                                selectedConfigId === config.id 
+                                  ? 'bg-primary text-primary-foreground border-primary' 
+                                  : 'bg-background hover:bg-muted'
+                              }`}
+                              onClick={() => setSelectedConfigId(config.id)}
+                              data-testid={`config-tab-${config.id}`}
+                            >
+                              <span className="text-sm font-medium">{config.configName}</span>
+                              {config.isDefault === 1 && (
+                                <Badge variant="secondary" className="text-xs">Default</Badge>
+                              )}
+                              {selectedConfigId === config.id && (
+                                <div className="flex items-center ml-2 gap-1">
+                                  {config.isDefault !== 1 && (
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-5 w-5"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setDefaultConfigMutation.mutate(config.id);
+                                      }}
+                                      title="Set as default"
+                                      data-testid={`button-set-default-${config.id}`}
+                                    >
+                                      <Check className="h-3 w-3" />
+                                    </Button>
+                                  )}
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-5 w-5 text-destructive"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (window.confirm(`Delete "${config.configName}" configuration? This will also delete all BOM items in this configuration.`)) {
+                                        deleteConfigMutation.mutate(config.id);
+                                      }
+                                    }}
+                                    title="Delete configuration"
+                                    data-testid={`button-delete-config-${config.id}`}
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground italic">
+                        No configurations yet. Create your first configuration to organize BOM items.
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* BOM Items Table */}
+                {(!item?.id || selectedConfigId || bomConfigurations.length === 0) && (
+                  <>
+                    {item?.id && selectedConfigId && (
+                      <div className="flex items-center gap-2">
+                        <Label className="text-sm font-medium">
+                          BOM Items for: {bomConfigurations.find(c => c.id === selectedConfigId)?.configName}
+                        </Label>
+                      </div>
+                    )}
+                    <div className="rounded-lg border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Material Type</TableHead>
+                            <TableHead>Quantity Required</TableHead>
+                            <TableHead>UOM</TableHead>
+                            <TableHead>Notes</TableHead>
+                            <TableHead className="w-20">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {fields.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                                No BOM items. Click "Add Row" to add material types.
                               </TableCell>
                             </TableRow>
-                          );
-                        })
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={handleAddBomRow}
-                  data-testid="button-add-bom-row"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Row
-                </Button>
+                          ) : (
+                            fields.map((field, index) => {
+                              const bomItem = watchedBomItems?.[index] || {};
+                              return (
+                                <TableRow key={field.id}>
+                                  <TableCell>
+                                    <Select 
+                                      value={bomItem.materialTypeId || ''} 
+                                      onValueChange={(value) => form.setValue(`bomItems.${index}.materialTypeId` as any, value)}
+                                    >
+                                      <SelectTrigger data-testid={`select-bom-material-${index}`}>
+                                        <SelectValue placeholder="Select material type" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {materialTypesForBom.filter(mt => mt.isActive === 1).map(mt => (
+                                          <SelectItem key={mt.id} value={mt.id}>
+                                            {mt.typeName} ({mt.baseUnit})
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </TableCell>
+                                  <TableCell>
+                                    <Input 
+                                      type="number" 
+                                      step="0.01"
+                                      placeholder="0" 
+                                      value={bomItem.quantityRequired || ''} 
+                                      onChange={(e) => form.setValue(`bomItems.${index}.quantityRequired` as any, parseFloat(e.target.value) || 0)}
+                                      data-testid={`input-bom-quantity-${index}`}
+                                    />
+                                  </TableCell>
+                                  <TableCell>
+                                    <Select 
+                                      value={bomItem.uom || ''} 
+                                      onValueChange={(value) => form.setValue(`bomItems.${index}.uom` as any, value)}
+                                    >
+                                      <SelectTrigger data-testid={`select-bom-uom-${index}`}>
+                                        <SelectValue placeholder="Select UOM" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {uoms.map(uom => (
+                                          <SelectItem key={uom.id} value={uom.name}>
+                                            {uom.name}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </TableCell>
+                                  <TableCell>
+                                    <Input 
+                                      placeholder="Optional notes" 
+                                      value={bomItem.notes || ''} 
+                                      onChange={(e) => form.setValue(`bomItems.${index}.notes` as any, e.target.value)}
+                                      data-testid={`input-bom-notes-${index}`}
+                                    />
+                                  </TableCell>
+                                  <TableCell>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => remove(index)}
+                                      data-testid={`button-delete-bom-${index}`}
+                                    >
+                                      <Minus className="h-4 w-4" />
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={handleAddBomRow}
+                      disabled={item?.id && bomConfigurations.length > 0 && !selectedConfigId}
+                      data-testid="button-add-bom-row"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Row
+                    </Button>
+                  </>
+                )}
+                
+                {/* Message when no config is selected but configs exist */}
+                {item?.id && bomConfigurations.length > 0 && !selectedConfigId && (
+                  <p className="text-sm text-muted-foreground text-center py-4 italic">
+                    Please select a configuration above to view and edit its BOM items.
+                  </p>
+                )}
               </div>)}
             </div>
 

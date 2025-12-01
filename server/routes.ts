@@ -1860,6 +1860,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Bulk replace: Atomically replace all BOM items using transaction
         console.log(`[BOM] Bulk replacing BOM for product ${productId} with ${req.body.length} items`);
         
+        // Check if any item has configurationId (use new bulkReplaceProductBom)
+        const hasConfigurationId = req.body.some((item: any) => item.configurationId);
+        
         // Validate all items BEFORE any database operations
         const bomItemSchema = insertProductBomSchema.omit({ productId: true });
         const validatedItems = req.body.map((item: any, index: any) => {
@@ -1873,8 +1876,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         });
         
-        // Atomic replace using transaction
-        const createdItems = await storage.replaceProductBom(productId, validatedItems);
+        // Use bulkReplaceProductBom if configurationId is present (handles config-scoped delete)
+        // Otherwise use legacy replaceProductBom
+        let createdItems;
+        if (hasConfigurationId && validatedItems.length > 0) {
+          const configId = validatedItems[0].configurationId;
+          const itemsWithProductId = validatedItems.map((item: any) => ({
+            ...item,
+            productId,
+          }));
+          createdItems = await storage.bulkReplaceProductBom(productId, itemsWithProductId, configId);
+        } else {
+          createdItems = await storage.replaceProductBom(productId, validatedItems);
+        }
         
         console.log(`[BOM] Successfully replaced BOM with ${createdItems.length} items`);
         return res.json({ message: "BOM replaced successfully", items: createdItems });
