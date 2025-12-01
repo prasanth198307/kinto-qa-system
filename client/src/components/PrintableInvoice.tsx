@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { type Invoice, type InvoiceItem, type Product, type TermsConditions } from "@shared/schema";
+import { type Invoice, type InvoiceItem, type Product, type TermsConditions, type Gatepass, type GatepassItem, type FinishedGood } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Printer } from "lucide-react";
 import { format } from "date-fns";
@@ -40,6 +40,24 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
   const { data: termsConditions } = useQuery<TermsConditions | null>({
     queryKey: ['/api/terms-conditions', invoice.termsConditionsId],
     enabled: !!invoice.termsConditionsId,
+  });
+
+  // Fetch gatepass linked to this invoice to get batch numbers
+  const { data: gatepasses = [] } = useQuery<Gatepass[]>({
+    queryKey: ['/api/gatepasses'],
+  });
+
+  const relatedGatepass = gatepasses.find(g => g.invoiceId === invoice.id);
+
+  // Fetch gatepass items if gatepass exists
+  const { data: gatepassItems = [] } = useQuery<GatepassItem[]>({
+    queryKey: ['/api/gatepass-items', relatedGatepass?.id],
+    enabled: !!relatedGatepass?.id,
+  });
+
+  // Fetch finished goods to get batch numbers
+  const { data: finishedGoods = [] } = useQuery<FinishedGood[]>({
+    queryKey: ['/api/finished-goods'],
   });
 
   const getProductName = (productId: string): string => {
@@ -217,6 +235,7 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
               <th>#</th>
               <th style="text-align:left;">Item name</th>
               <th>HSN/SAC</th>
+              ${gatepassItems.length > 0 ? '<th>Batch No.</th>' : ''}
               <th>Quantity</th>
               <th>Unit</th>
               <th>Price/Unit (₹)</th>
@@ -232,11 +251,23 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
               const productName = getProductName(item.productId);
               const uom = uoms.find(u => u.id === item.uomId);
               const unit = uom?.name || 'Nos';
+              
+              // Find batch numbers for this product from gatepass items
+              const productGpItems = gatepassItems.filter(gpi => {
+                const fg = finishedGoods.find(f => f.id === gpi.finishedGoodId);
+                return fg?.productId === item.productId || gpi.productId === item.productId;
+              });
+              const batchNumbers = productGpItems.map(gpi => {
+                const fg = finishedGoods.find(f => f.id === gpi.finishedGoodId);
+                return fg?.batchNumber || '-';
+              }).filter((b, i, arr) => arr.indexOf(b) === i).join(', ');
+              
               return `
               <tr>
                 <td>${idx + 1}</td>
                 <td style="text-align:left;">${item.description}</td>
                 <td>${item.hsnCode || item.sacCode || '-'}</td>
+                ${gatepassItems.length > 0 ? `<td style="font-family:monospace;font-size:10px;">${batchNumbers || '-'}</td>` : ''}
                 <td>${item.quantity}</td>
                 <td>${unit}</td>
                 <td>${formatCurrency(item.unitPrice)}</td>
@@ -248,7 +279,7 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
           </tbody>
           <tfoot>
             <tr class="total-row">
-              <td colspan="8" style="text-align:right;"><strong>Total</strong></td>
+              <td colspan="${gatepassItems.length > 0 ? '9' : '8'}" style="text-align:right;"><strong>Total</strong></td>
               <td><strong>${formatCurrency(invoice.totalAmount)}</strong></td>
             </tr>
           </tfoot>
