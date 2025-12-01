@@ -231,18 +231,50 @@ export function calculateSuggestedQuantity(input: BOMCalculationInput, rawMateri
 }
 
 /**
+ * Extended result for type-based BOM calculations
+ * Includes selection status when there are multiple raw material options
+ */
+export interface BOMCalculationResultExtended extends BOMCalculationResult {
+  typeId: string | null;
+  typeName: string | null;
+  availableRawMaterials: Array<{
+    id: string;
+    materialCode: string | null;
+    materialName: string | null;
+    currentStock: number;
+  }>;
+  selectionRequired: boolean; // True if user must select from multiple options
+  outOfStock: boolean; // True if no raw materials have stock
+}
+
+/**
  * Batch calculate suggested quantities for multiple BOM items
+ * Supports both:
+ * - New type-based BOM (materialTypeId with availableRawMaterials)
+ * - Legacy material-based BOM (rawMaterialId directly)
  */
 export function calculateBOMSuggestions(
   plannedOutput: number,
   bomItems: Array<{
-    bom: { rawMaterialId: string; quantityRequired: number; uom: string | null };
+    bom: { 
+      rawMaterialId?: string | null; 
+      materialTypeId?: string | null;
+      quantityRequired: number; 
+      uom: string | null 
+    };
     material: any;
     type: any;
-    effectiveUomId?: string | null; // UUID from material.uomId or type.uomId
+    typeId?: string | null;
+    effectiveUomId?: string | null;
+    availableRawMaterials?: Array<{
+      id: string;
+      materialCode: string | null;
+      materialName: string | null;
+      currentStock: number;
+    }>;
   }>
-): Map<string, BOMCalculationResult> {
-  const results = new Map<string, BOMCalculationResult>();
+): Map<string, BOMCalculationResultExtended> {
+  const results = new Map<string, BOMCalculationResultExtended>();
   
   // Guard against invalid input
   if (!bomItems || !Array.isArray(bomItems) || bomItems.length === 0) {
@@ -250,8 +282,8 @@ export function calculateBOMSuggestions(
   }
   
   for (const item of bomItems) {
-    // Skip invalid items (missing bom data)
-    if (!item || !item.bom || !item.bom.rawMaterialId) {
+    // Skip items missing BOM data
+    if (!item || !item.bom) {
       console.warn('[BOM Calculation] Skipping invalid BOM item', item);
       continue;
     }
@@ -262,30 +294,65 @@ export function calculateBOMSuggestions(
     // Parse and validate quantityRequired
     const quantityRequired = Number(item.bom.quantityRequired);
     if (isNaN(quantityRequired) || quantityRequired < 0) {
-      console.warn('[BOM Calculation] Invalid quantityRequired for material', item.bom.rawMaterialId, item.bom.quantityRequired);
-      // Add item with manual entry required
-      results.set(item.bom.rawMaterialId, {
-        rawMaterialId: item.bom.rawMaterialId,
-        uomId,
-        suggestedQuantity: 0,
-        calculationBasis: 'manual',
-        calculationDetails: 'Manual entry required (invalid quantity)',
-        roundedQuantity: 0,
-      });
+      console.warn('[BOM Calculation] Invalid quantityRequired', item.bom);
       continue;
     }
     
-    const result = calculateSuggestedQuantity(
+    // Determine the raw material to use
+    const availableRawMaterials = item.availableRawMaterials || [];
+    let selectedRawMaterialId: string = '';
+    let selectionRequired = false;
+    let outOfStock = false;
+    
+    if (item.bom.rawMaterialId && !item.bom.materialTypeId) {
+      // Legacy: Direct raw material reference
+      selectedRawMaterialId = item.bom.rawMaterialId;
+    } else if (availableRawMaterials.length === 1) {
+      // New type-based: Auto-select single available raw material
+      selectedRawMaterialId = availableRawMaterials[0].id;
+    } else if (availableRawMaterials.length > 1) {
+      // Multiple options: Leave unselected, require user to choose (FIFO policy)
+      // The availableRawMaterials are already sorted by receivedDate (oldest first)
+      selectionRequired = true;
+      // Don't auto-select - leave rawMaterialId empty for user to choose
+    } else {
+      // No stock available for this type
+      outOfStock = true;
+    }
+    
+    // Calculate suggested quantity using type conversion formulas
+    const baseResult = calculateSuggestedQuantity(
       {
         plannedOutput,
         quantityRequired,
         typeConversion: item.type || null,
       },
-      item.bom.rawMaterialId,
+      selectedRawMaterialId,
       uomId
     );
     
-    results.set(item.bom.rawMaterialId, result);
+    // Create key based on type or material (prefer typeId for new entries)
+    const resultKey = item.typeId || item.bom.materialTypeId || item.bom.rawMaterialId || `bom-${results.size}`;
+    
+    // Extended result with type info
+    const extendedResult: BOMCalculationResultExtended = {
+      ...baseResult,
+      rawMaterialId: selectedRawMaterialId, // Override with selected material
+      typeId: item.typeId || item.bom.materialTypeId || null,
+      typeName: item.type?.name || null,
+      availableRawMaterials,
+      selectionRequired,
+      outOfStock,
+    };
+    
+    // Add out-of-stock note to calculation details
+    if (outOfStock) {
+      extendedResult.calculationDetails = `No stock available for ${item.type?.name || 'this material type'}`;
+      extendedResult.suggestedQuantity = 0;
+      extendedResult.roundedQuantity = 0;
+    }
+    
+    results.set(resultKey, extendedResult);
   }
   
   return results;

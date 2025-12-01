@@ -173,7 +173,7 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
 
     console.log('[BOM Auto-Populate] Calculating suggestions...');
     // Calculate suggested quantities using the shared calculation utility
-    // calculateBOMSuggestions returns a Map<materialId, suggestion>
+    // calculateBOMSuggestions returns a Map<key, suggestion> with extended type info
     const suggestionsMap = calculateBOMSuggestions(plannedOutput, bomData.items);
     console.log('[BOM Auto-Populate] Suggestions calculated', { 
       suggestionsCount: suggestionsMap.size,
@@ -181,17 +181,31 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
     });
 
     // Convert Map to array for form structure
-    const bomItems = Array.from(suggestionsMap.values()).map(suggestion => ({
-      rawMaterialId: suggestion.rawMaterialId,
-      productId: selectedProductId || "",
-      quantityIssued: suggestion.roundedQuantity, // Pre-fill with suggested (rounded up)
-      suggestedQuantity: suggestion.suggestedQuantity,
-      calculationBasis: suggestion.calculationBasis,
-      uomId: suggestion.uomId || "",
-      remarks: suggestion.calculationDetails || "",
-    }));
+    // Include items requiring selection (user must choose raw material)
+    // Exclude out-of-stock items
+    const bomItems = Array.from(suggestionsMap.values())
+      .filter(suggestion => !suggestion.outOfStock) // Exclude out-of-stock only
+      .map(suggestion => ({
+        rawMaterialId: suggestion.rawMaterialId || "", // Empty if selection required
+        productId: selectedProductId || "",
+        quantityIssued: suggestion.rawMaterialId ? suggestion.roundedQuantity : 0, // Pre-fill only if material selected
+        suggestedQuantity: suggestion.suggestedQuantity,
+        calculationBasis: suggestion.calculationBasis,
+        uomId: suggestion.uomId || "",
+        remarks: suggestion.calculationDetails || "",
+        // Extended fields for UI
+        _typeId: suggestion.typeId,
+        _typeName: suggestion.typeName,
+        _availableRawMaterials: suggestion.availableRawMaterials,
+        _selectionRequired: suggestion.selectionRequired,
+        _outOfStock: suggestion.outOfStock,
+      }));
 
     console.log('[BOM Auto-Populate] BOM items created', { count: bomItems.length, bomItems });
+
+    // Check for out-of-stock or selection-required items
+    const outOfStockCount = Array.from(suggestionsMap.values()).filter(s => s.outOfStock).length;
+    const selectionRequiredCount = Array.from(suggestionsMap.values()).filter(s => s.selectionRequired).length;
 
     // Update items state and form
     if (bomItems.length > 0) {
@@ -199,12 +213,27 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
       setItems(bomItems);
       form.setValue('items', bomItems);
       
+      let description = `${bomItems.length} materials auto-populated from product BOM`;
+      if (selectionRequiredCount > 0) {
+        description += ` (${selectionRequiredCount} with multiple stock options)`;
+      }
+      if (outOfStockCount > 0) {
+        description += ` (${outOfStockCount} out of stock)`;
+      }
+      
       toast({
         title: "BOM Loaded",
-        description: `${bomItems.length} materials auto-populated from product BOM`,
+        description,
       });
     } else {
       console.log('[BOM Auto-Populate] No BOM items to populate');
+      if (outOfStockCount > 0) {
+        toast({
+          title: "No Stock Available",
+          description: `${outOfStockCount} materials in BOM have no available stock`,
+          variant: "destructive",
+        });
+      }
     }
   }, [bomData, plannedOutput, selectedProductId, issuance, form, toast]);
 

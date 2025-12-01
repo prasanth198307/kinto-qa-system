@@ -303,6 +303,15 @@ export interface IStorage {
       bom: typeof productBom.$inferSelect;
       material: (typeof rawMaterials.$inferSelect) | null;
       type: (typeof rawMaterialTypes.$inferSelect) | null;
+      typeId: string | null;
+      effectiveUomId: string | null;
+      availableRawMaterials: Array<{
+        id: string;
+        materialCode: string | null;
+        materialName: string | null;
+        currentStock: number;
+        receivedDate: string | null;
+      }>;
     }>;
     metadata: {
       productId: string;
@@ -1357,47 +1366,124 @@ export class DatabaseStorage implements IStorage {
       throw new Error('Product not found');
     }
 
-    // Fetch BOM items with raw material and type conversion data
+    // Get BOM items
     const bomItems = await db
       .select()
       .from(productBom)
-      .leftJoin(
-        rawMaterials,
-        and(
-          eq(productBom.rawMaterialId, rawMaterials.id),
-          eq(rawMaterials.recordStatus, 1)
-        )
-      )
-      .leftJoin(
-        rawMaterialTypes,
-        and(
-          eq(rawMaterials.typeId, rawMaterialTypes.id),
-          eq(rawMaterialTypes.recordStatus, 1)
-        )
-      )
       .where(and(
         eq(productBom.productId, productId),
         eq(productBom.recordStatus, 1)
       ))
       .orderBy(productBom.createdAt);
 
-    // Transform into structured format with effective UOM ID resolution
-    const items = bomItems.map(item => {
-      // Resolve effective UOM ID from type (raw materials don't have direct uomId)
-      const effectiveUomId = item.raw_material_types?.uomId || null;
+    // Collect all type IDs and raw material IDs needed from BOM
+    const neededTypeIds = new Set<string>();
+    const neededRawMaterialIds = new Set<string>();
+    
+    for (const bomItem of bomItems) {
+      if (bomItem.materialTypeId) {
+        neededTypeIds.add(bomItem.materialTypeId);
+      }
+      if (bomItem.rawMaterialId) {
+        neededRawMaterialIds.add(bomItem.rawMaterialId);
+      }
+    }
+
+    // Fetch only needed raw materials (by ID or by type)
+    let relevantRawMaterials: (typeof rawMaterials.$inferSelect)[] = [];
+    if (neededRawMaterialIds.size > 0 || neededTypeIds.size > 0) {
+      relevantRawMaterials = await db
+        .select()
+        .from(rawMaterials)
+        .where(and(
+          eq(rawMaterials.recordStatus, 1),
+          or(
+            neededRawMaterialIds.size > 0 ? inArray(rawMaterials.id, Array.from(neededRawMaterialIds)) : undefined,
+            neededTypeIds.size > 0 ? inArray(rawMaterials.typeId, Array.from(neededTypeIds)) : undefined
+          )
+        ));
+    }
+    
+    // Get types for referenced materials (for legacy entries)
+    const legacyTypeIds = new Set<string>();
+    for (const rm of relevantRawMaterials) {
+      if (rm.typeId && !neededTypeIds.has(rm.typeId)) {
+        legacyTypeIds.add(rm.typeId);
+      }
+    }
+    
+    // Fetch only needed types
+    const allNeededTypeIds = [...neededTypeIds, ...legacyTypeIds];
+    let relevantTypes: (typeof rawMaterialTypes.$inferSelect)[] = [];
+    if (allNeededTypeIds.length > 0) {
+      relevantTypes = await db
+        .select()
+        .from(rawMaterialTypes)
+        .where(and(
+          eq(rawMaterialTypes.recordStatus, 1),
+          inArray(rawMaterialTypes.id, allNeededTypeIds)
+        ));
+    }
+
+    // Create lookup maps
+    const rawMaterialMap = new Map(relevantRawMaterials.map(rm => [rm.id, rm]));
+    const typeMap = new Map(relevantTypes.map(t => [t.id, t]));
+
+    // Transform into structured format
+    const items = bomItems.map(bomItem => {
+      // Resolve material type ID: use materialTypeId (new) or get from rawMaterialId (legacy)
+      let resolvedTypeId: string | null = null;
+      let material: typeof rawMaterials.$inferSelect | null = null;
+      
+      if (bomItem.materialTypeId) {
+        // New approach: materialTypeId directly
+        resolvedTypeId = bomItem.materialTypeId;
+      } else if (bomItem.rawMaterialId) {
+        // Legacy: get type from raw material
+        material = rawMaterialMap.get(bomItem.rawMaterialId) || null;
+        resolvedTypeId = material?.typeId || null;
+      }
+      
+      // Get type details
+      const typeData = resolvedTypeId ? typeMap.get(resolvedTypeId) || null : null;
+      
+      // Get effective UOM ID from type
+      const effectiveUomId = typeData?.uomId || null;
+      
+      // Find all available raw materials of this type with stock
+      // Sort by receivedDate (oldest first) for FIFO policy
+      const availableRawMaterials = resolvedTypeId 
+        ? relevantRawMaterials
+            .filter(rm => rm.typeId === resolvedTypeId && (Number(rm.currentStock) > 0 || Number(rm.closingStock) > 0))
+            .sort((a, b) => {
+              // Sort by receivedDate (oldest first), null dates at end
+              const dateA = a.receivedDate ? new Date(a.receivedDate).getTime() : Infinity;
+              const dateB = b.receivedDate ? new Date(b.receivedDate).getTime() : Infinity;
+              return dateA - dateB;
+            })
+            .map(rm => ({
+              id: rm.id,
+              materialCode: rm.materialCode,
+              materialName: rm.materialName,
+              currentStock: Number(rm.currentStock) || Number(rm.closingStock) || 0,
+              receivedDate: rm.receivedDate,
+            }))
+        : [];
       
       return {
-        bom: item.product_bom,
-        material: item.raw_materials || null,
-        type: item.raw_material_types || null,
-        effectiveUomId, // UUID for database FK constraints
+        bom: bomItem,
+        material: material,
+        type: typeData,
+        typeId: resolvedTypeId,
+        effectiveUomId,
+        availableRawMaterials,
       };
     });
 
     // Get latest update timestamp from BOM items
     const lastUpdatedAt = bomItems.length > 0
       ? new Date(Math.max(...bomItems.map(i => {
-          const dateStr = i.product_bom.updatedAt || i.product_bom.createdAt;
+          const dateStr = i.updatedAt || i.createdAt;
           return dateStr ? new Date(dateStr).getTime() : 0;
         })))
       : null;
