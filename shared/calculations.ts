@@ -48,7 +48,7 @@ export interface BOMCalculationResult {
  * Formula: (quantityPerUnit × plannedOutput ÷ usableUnitsPerBase)
  * 
  * Example: Preform 21g in 25kg bags
- * - baseUnitWeight: 25000g (25kg bag)
+ * - baseUnitWeight: 25kg bag = 25000g (auto-converted)
  * - weightPerDerivedUnit: 21g per preform
  * - pcsPerBag: 25000 / 21 = 1190 pcs
  * - usableUnits: 1190 × (1 - 0.05) = 1130 pcs (after 5% loss)
@@ -61,8 +61,23 @@ function calculateFormulaBased(input: BOMCalculationInput): number {
     return 0; // Missing required data
   }
   
+  // Auto-detect and convert base unit weight to same unit as derived unit weight
+  // If baseUnitWeight appears to be in kg (small number like 25, 50) and 
+  // weightPerDerivedUnit appears to be in grams (like 21, 19.5), convert base to grams
+  let baseWeightInGrams = typeConversion.baseUnitWeight;
+  const derivedWeight = typeConversion.weightPerDerivedUnit;
+  
+  // Heuristic: If base weight is much smaller than derived weight ratio suggests,
+  // it's likely in kg and needs conversion to grams
+  // e.g., base=25 (kg), derived=21 (g) → 25/21 = 1.19 pcs/bag (clearly wrong)
+  // After conversion: 25000/21 = 1190 pcs/bag (correct)
+  if (baseWeightInGrams <= 100 && derivedWeight < 100 && (baseWeightInGrams / derivedWeight) < 10) {
+    // Base unit is likely in kg, convert to grams
+    baseWeightInGrams = baseWeightInGrams * 1000;
+  }
+  
   // Calculate pieces per base unit
-  const pcsPerBase = typeConversion.baseUnitWeight / typeConversion.weightPerDerivedUnit;
+  const pcsPerBase = baseWeightInGrams / derivedWeight;
   
   // Apply loss percentage (ensure it doesn't make usableUnits zero or negative)
   const lossPercent = Math.min(typeConversion.lossPercent || 0, 99); // Cap at 99%
