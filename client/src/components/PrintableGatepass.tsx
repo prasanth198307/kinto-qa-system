@@ -48,9 +48,6 @@ export default function PrintableGatepass({ gatepass }: PrintableGatepassProps) 
   };
 
   const handlePrint = () => {
-    const printWindow = window.open('', '', 'width=800,height=600');
-    if (!printWindow) return;
-
     const formattedDate = format(new Date(gatepass.gatepassDate), 'dd/MM/yyyy');
 
     const generateGatepassHTML = (copyType: string, copyFor: string) => `
@@ -141,7 +138,7 @@ export default function PrintableGatepass({ gatepass }: PrintableGatepassProps) 
       </div>
     `;
 
-    printWindow.document.write(`
+    const htmlContent = `
       <html>
         <head>
           <title>Gatepass - ${gatepass.gatepassNumber}</title>
@@ -360,15 +357,32 @@ export default function PrintableGatepass({ gatepass }: PrintableGatepassProps) 
           ${generateGatepassHTML('TRIPLICATE', 'OFFICE')}
         </body>
       </html>
-    `);
+    `;
 
-    printWindow.document.close();
-    printWindow.focus();
-    
-    setTimeout(() => {
-      printWindow.print();
-      printWindow.close();
-    }, 250);
+    // Create iframe for printing
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'absolute';
+    iframe.style.top = '-10000px';
+    iframe.style.left = '-10000px';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    document.body.appendChild(iframe);
+
+    const iframeDoc = iframe.contentWindow?.document;
+    if (iframeDoc) {
+      iframeDoc.open();
+      iframeDoc.write(htmlContent);
+      iframeDoc.close();
+
+      iframe.onload = () => {
+        setTimeout(() => {
+          iframe.contentWindow?.print();
+          setTimeout(() => {
+            document.body.removeChild(iframe);
+          }, 1000);
+        }, 250);
+      };
+    }
   };
 
   return (
