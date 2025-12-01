@@ -1702,19 +1702,19 @@ function ProductDialog({
                     name="basePrice"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Base Price (Paise)</FormLabel>
+                        <FormLabel>Base Price (₹)</FormLabel>
                         <FormControl>
                           <Input 
                             type="number" 
                             step="0.01"
-                            placeholder="50000" 
+                            placeholder="94.50" 
                             {...field} 
-                            value={field.value || ''} 
-                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                            value={field.value ? (Number(field.value) / 100).toFixed(2) : ''} 
+                            onChange={(e) => field.onChange(e.target.value ? Math.round(parseFloat(e.target.value) * 100) : undefined)}
                             data-testid="input-base-price"
                           />
                         </FormControl>
-                        <FormDescription className="text-xs">Price in paise (₹500 = 50000 paise)</FormDescription>
+                        <FormDescription className="text-xs">Enter price in rupees (e.g., 94.50 for ₹94.50)</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -1744,15 +1744,15 @@ function ProductDialog({
 
                 {calculatedTotalPrice !== undefined && (
                   <FormItem>
-                    <FormLabel>Total Price with GST (Paise)</FormLabel>
+                    <FormLabel>Total Price with GST (₹)</FormLabel>
                     <Input 
-                      value={calculatedTotalPrice} 
+                      value={(calculatedTotalPrice / 100).toFixed(2)} 
                       disabled 
                       className="bg-muted font-semibold"
                       data-testid="display-total-price"
                     />
                     <FormDescription className="text-xs">
-                      ₹{(calculatedTotalPrice / 100).toFixed(2)} (Auto-calculated)
+                      ₹{(calculatedTotalPrice / 100).toFixed(2)} (Auto-calculated from Base Price + GST)
                     </FormDescription>
                   </FormItem>
                 )}
