@@ -3,8 +3,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, type RawMaterial, type Product, type Uom, type RawMaterialIssuance, type RawMaterialIssuanceItem } from "@shared/schema";
-import { calculateBOMSuggestions } from "@shared/calculations";
+import { type RawMaterial, type Product, type Uom, type RawMaterialIssuance, type RawMaterialIssuanceItem } from "@shared/schema";
+import { calculateBOMSuggestions, type LotAllocation, type BOMCalculationResultExtended } from "@shared/calculations";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
@@ -14,9 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, AlertCircle } from "lucide-react";
+import { Plus, Trash2, AlertCircle, Package, Calendar } from "lucide-react";
 
-// UI-friendly form schema - handles empty strings, undefined, and coerces types
 const formHeaderSchema = z.object({
   issuanceDate: z.coerce.date(),
   issuedTo: z.string().min(1, "Issued To is required"),
@@ -43,21 +42,109 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
+interface ExtendedFormItem {
+  rawMaterialId: string;
+  productId: string;
+  quantityIssued: number;
+  suggestedQuantity: number | undefined;
+  calculationBasis: 'formula-based' | 'direct-value' | 'output-coverage' | 'manual' | undefined;
+  uomId: string;
+  remarks: string;
+  _typeId?: string | null;
+  _typeName?: string | null;
+  _allocations?: LotAllocation[];
+  _allocationSummary?: string;
+  _insufficientStock?: boolean;
+  _totalAvailableStock?: number;
+  _isBomItem?: boolean;
+}
+
 interface RawMaterialIssuanceFormProps {
   issuance: RawMaterialIssuance | null;
   onClose: () => void;
 }
 
+function BatchAllocationDisplay({ 
+  allocations, 
+  allocationSummary, 
+  insufficientStock,
+  totalAvailableStock,
+  quantityIssued 
+}: { 
+  allocations: LotAllocation[];
+  allocationSummary: string;
+  insufficientStock: boolean;
+  totalAvailableStock: number;
+  quantityIssued: number;
+}) {
+  const usedAllocations = allocations.filter(a => a.allocatedQuantity > 0);
+  
+  if (usedAllocations.length === 0) {
+    return (
+      <div className="text-sm text-muted-foreground flex items-center gap-1">
+        <AlertCircle className="w-4 h-4 text-yellow-500" />
+        No stock available
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="text-xs text-muted-foreground font-medium">FIFO Allocation (Oldest First):</div>
+      <div className="space-y-1">
+        {usedAllocations.map((allocation, idx) => (
+          <div 
+            key={allocation.rawMaterialId} 
+            className="flex items-center gap-2 text-sm bg-muted/50 rounded px-2 py-1"
+            data-testid={`allocation-${idx}`}
+          >
+            <Package className="w-3 h-3 text-muted-foreground" />
+            <Badge variant="outline" className="text-xs font-mono">
+              {allocation.batchCode}
+            </Badge>
+            {allocation.receivedDate && (
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Calendar className="w-3 h-3" />
+                {new Date(allocation.receivedDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+              </span>
+            )}
+            <span className="ml-auto font-medium">
+              {allocation.allocatedQuantity.toFixed(2)}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              (of {allocation.availableStock})
+            </span>
+          </div>
+        ))}
+      </div>
+      
+      {insufficientStock && (
+        <div className="flex items-center gap-1 text-sm text-destructive">
+          <AlertCircle className="w-4 h-4" />
+          Insufficient stock: need {quantityIssued}, have {totalAvailableStock}
+        </div>
+      )}
+      
+      {usedAllocations.length > 1 && (
+        <div className="text-xs text-muted-foreground italic">
+          Production will use material from {usedAllocations.length} batches
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMaterialIssuanceFormProps) {
   const { toast } = useToast();
-  const [items, setItems] = useState([{ 
+  const [items, setItems] = useState<ExtendedFormItem[]>([{ 
     rawMaterialId: "", 
     productId: "", 
     quantityIssued: 0,
     suggestedQuantity: undefined,
     calculationBasis: undefined,
     uomId: "", 
-    remarks: "" 
+    remarks: "",
+    _isBomItem: false,
   }]);
 
   const { data: issuanceItems = [] } = useQuery<RawMaterialIssuanceItem[]>({
@@ -88,21 +175,37 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
         plannedOutput: undefined,
         remarks: "",
       },
-      items: items,
+      items: items.map(i => ({
+        rawMaterialId: i.rawMaterialId,
+        productId: i.productId,
+        quantityIssued: i.quantityIssued,
+        suggestedQuantity: i.suggestedQuantity,
+        calculationBasis: i.calculationBasis,
+        uomId: i.uomId,
+        remarks: i.remarks,
+      })),
     },
   });
 
-  // Watch header values for BOM auto-population (MUST be after useForm)
   const watchedHeader = form.watch('header');
   const selectedProductId = watchedHeader?.productId;
   const plannedOutput = watchedHeader?.plannedOutput;
 
-  // Fetch BOM data when product is selected
   const { data: bomData, isLoading: isBomLoading } = useQuery<{
     items: Array<{
       bom: any;
       material: any;
       type: any;
+      typeId?: string | null;
+      effectiveUomId?: string | null;
+      availableRawMaterials?: Array<{
+        id: string;
+        materialCode: string | null;
+        materialName: string | null;
+        currentStock: number;
+        receivedDate: string | null;
+        batchCode: string | null;
+      }>;
     }>;
     metadata: {
       productId: string;
@@ -117,14 +220,15 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
 
   useEffect(() => {
     if (issuance && issuanceItems.length > 0) {
-      const mappedItems = issuanceItems.map(item => ({
+      const mappedItems: ExtendedFormItem[] = issuanceItems.map(item => ({
         rawMaterialId: item.rawMaterialId,
-        productId: item.productId,
+        productId: item.productId || "",
         quantityIssued: Number(item.quantityIssued) || 0,
         suggestedQuantity: item.suggestedQuantity ? Number(item.suggestedQuantity) : undefined,
         calculationBasis: item.calculationBasis as 'formula-based' | 'direct-value' | 'output-coverage' | 'manual' | undefined,
         uomId: item.uomId || "",
         remarks: item.remarks || "",
+        _isBomItem: false,
       }));
       
       setItems(mappedItems);
@@ -137,129 +241,151 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
           plannedOutput: issuance.plannedOutput ? Number(issuance.plannedOutput) : undefined,
           remarks: issuance.remarks || "",
         },
-        items: mappedItems,
+        items: mappedItems.map(i => ({
+          rawMaterialId: i.rawMaterialId,
+          productId: i.productId,
+          quantityIssued: i.quantityIssued,
+          suggestedQuantity: i.suggestedQuantity,
+          calculationBasis: i.calculationBasis,
+          uomId: i.uomId,
+          remarks: i.remarks,
+        })),
       });
     }
   }, [issuance, issuanceItems, form]);
 
-  // Auto-populate items when BOM data and planned output are available
   useEffect(() => {
-    console.log('[BOM Auto-Populate] useEffect triggered', {
-      issuance: !!issuance,
-      bomData: !!bomData,
-      bomDataItems: bomData?.items?.length || 0,
-      plannedOutput,
-      selectedProductId
-    });
+    if (issuance) return;
+    if (!bomData || !bomData.items || !plannedOutput || plannedOutput <= 0) return;
 
-    // Only auto-populate for new issuances (not editing existing ones)
-    if (issuance) {
-      console.log('[BOM Auto-Populate] Skipping - editing existing issuance');
-      return;
-    }
-
-    // Require both product and planned output to calculate suggestions
-    if (!bomData || !bomData.items || !plannedOutput || plannedOutput <= 0) {
-      console.log('[BOM Auto-Populate] Conditions not met', {
-        hasBomData: !!bomData,
-        hasItems: !!bomData?.items,
-        itemsLength: bomData?.items?.length,
-        plannedOutput,
-        plannedOutputType: typeof plannedOutput,
-        isPlannedOutputValid: plannedOutput > 0
-      });
-      return;
-    }
-
-    console.log('[BOM Auto-Populate] Calculating suggestions...');
-    // Calculate suggested quantities using the shared calculation utility
-    // calculateBOMSuggestions returns a Map<key, suggestion> with extended type info
     const suggestionsMap = calculateBOMSuggestions(plannedOutput, bomData.items);
-    console.log('[BOM Auto-Populate] Suggestions calculated', { 
-      suggestionsCount: suggestionsMap.size,
-      suggestions: Array.from(suggestionsMap.values())
-    });
-
-    // Convert Map to array for form structure
-    // Include items requiring selection (user must choose raw material)
-    // Exclude out-of-stock items
-    const bomItems = Array.from(suggestionsMap.values())
-      .filter(suggestion => !suggestion.outOfStock) // Exclude out-of-stock only
+    
+    const bomItems: ExtendedFormItem[] = Array.from(suggestionsMap.values())
+      .filter(suggestion => !suggestion.outOfStock)
       .map(suggestion => ({
-        rawMaterialId: suggestion.rawMaterialId || "", // Empty if selection required
+        rawMaterialId: suggestion.rawMaterialId || suggestion.allocations[0]?.rawMaterialId || "",
         productId: selectedProductId || "",
-        quantityIssued: suggestion.rawMaterialId ? suggestion.roundedQuantity : 0, // Pre-fill only if material selected
+        quantityIssued: suggestion.roundedQuantity,
         suggestedQuantity: suggestion.suggestedQuantity,
         calculationBasis: suggestion.calculationBasis,
         uomId: suggestion.uomId || "",
         remarks: suggestion.calculationDetails || "",
-        // Extended fields for UI
         _typeId: suggestion.typeId,
         _typeName: suggestion.typeName,
-        _availableRawMaterials: suggestion.availableRawMaterials,
-        _selectionRequired: suggestion.selectionRequired,
-        _outOfStock: suggestion.outOfStock,
+        _allocations: suggestion.allocations,
+        _allocationSummary: suggestion.allocationSummary,
+        _insufficientStock: suggestion.insufficientStock,
+        _totalAvailableStock: suggestion.totalAvailableStock,
+        _isBomItem: true,
       }));
 
-    console.log('[BOM Auto-Populate] BOM items created', { count: bomItems.length, bomItems });
-
-    // Check for out-of-stock or selection-required items
     const outOfStockCount = Array.from(suggestionsMap.values()).filter(s => s.outOfStock).length;
-    const selectionRequiredCount = Array.from(suggestionsMap.values()).filter(s => s.selectionRequired).length;
 
-    // Update items state and form
     if (bomItems.length > 0) {
-      console.log('[BOM Auto-Populate] Setting items and showing toast');
       setItems(bomItems);
-      form.setValue('items', bomItems);
+      form.setValue('items', bomItems.map(i => ({
+        rawMaterialId: i.rawMaterialId,
+        productId: i.productId,
+        quantityIssued: i.quantityIssued,
+        suggestedQuantity: i.suggestedQuantity,
+        calculationBasis: i.calculationBasis,
+        uomId: i.uomId,
+        remarks: i.remarks,
+      })));
       
       let description = `${bomItems.length} materials auto-populated from product BOM`;
-      if (selectionRequiredCount > 0) {
-        description += ` (${selectionRequiredCount} with multiple stock options)`;
+      const multiBatchCount = bomItems.filter(i => (i._allocations?.filter(a => a.allocatedQuantity > 0).length || 0) > 1).length;
+      if (multiBatchCount > 0) {
+        description += ` (${multiBatchCount} using multiple batches)`;
       }
       if (outOfStockCount > 0) {
         description += ` (${outOfStockCount} out of stock)`;
       }
       
       toast({
-        title: "BOM Loaded",
+        title: "BOM Loaded with FIFO Allocation",
         description,
       });
-    } else {
-      console.log('[BOM Auto-Populate] No BOM items to populate');
-      if (outOfStockCount > 0) {
-        toast({
-          title: "No Stock Available",
-          description: `${outOfStockCount} materials in BOM have no available stock`,
-          variant: "destructive",
-        });
-      }
+    } else if (outOfStockCount > 0) {
+      toast({
+        title: "No Stock Available",
+        description: `${outOfStockCount} materials in BOM have no available stock`,
+        variant: "destructive",
+      });
     }
   }, [bomData, plannedOutput, selectedProductId, issuance, form, toast]);
 
+  const recalculateAllocations = (index: number, newQuantity: number) => {
+    const item = items[index];
+    if (!item._isBomItem || !bomData) return;
+    
+    const bomItem = bomData.items.find(b => 
+      (b.typeId === item._typeId) || (b.bom?.materialTypeId === item._typeId)
+    );
+    if (!bomItem?.availableRawMaterials) return;
+
+    let remainingToAllocate = newQuantity;
+    let totalAvailable = 0;
+    const newAllocations: LotAllocation[] = [];
+
+    for (const rm of bomItem.availableRawMaterials) {
+      totalAvailable += rm.currentStock;
+      const allocated = Math.min(remainingToAllocate, rm.currentStock);
+      remainingToAllocate -= allocated;
+      
+      const batchCode = rm.batchCode || (rm.receivedDate 
+        ? `LOT-${new Date(rm.receivedDate).toISOString().slice(0, 10).replace(/-/g, '')}`
+        : 'Unknown');
+      
+      newAllocations.push({
+        rawMaterialId: rm.id,
+        materialCode: rm.materialCode,
+        materialName: rm.materialName,
+        batchCode,
+        receivedDate: rm.receivedDate,
+        availableStock: rm.currentStock,
+        allocatedQuantity: allocated,
+        remainingStock: rm.currentStock - allocated,
+      });
+    }
+
+    const newItems = [...items];
+    newItems[index] = {
+      ...item,
+      quantityIssued: newQuantity,
+      rawMaterialId: newAllocations[0]?.rawMaterialId || item.rawMaterialId,
+      _allocations: newAllocations,
+      _insufficientStock: remainingToAllocate > 0,
+      _totalAvailableStock: totalAvailable,
+      _allocationSummary: newAllocations
+        .filter(a => a.allocatedQuantity > 0)
+        .map(a => `${a.batchCode}: ${a.allocatedQuantity.toFixed(2)}`)
+        .join(' + ') || 'No stock',
+    };
+    setItems(newItems);
+    form.setValue(`items.${index}.quantityIssued`, newQuantity);
+    form.setValue(`items.${index}.rawMaterialId`, newItems[index].rawMaterialId);
+  };
+
   const saveMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      // Transform UI form data to API format
-      // UUIDs (productId, uomId): empty string → null to prevent FK violations
-      // Text (productionReference, remarks): empty string → "" for non-nullable string columns
-      // Numbers: preserve 0, convert undefined/NaN → null
       const apiPayload = {
         header: {
           issuanceDate: data.header.issuanceDate instanceof Date ? data.header.issuanceDate.toISOString() : data.header.issuanceDate,
           issuedTo: data.header.issuedTo,
-          productId: data.header.productId?.trim() || null, // UUID: empty → null
-          productionReference: data.header.productionReference?.trim() || "", // String: empty → ""
+          productId: data.header.productId?.trim() || null,
+          productionReference: data.header.productionReference?.trim() || "",
           plannedOutput: Number.isFinite(data.header.plannedOutput) ? data.header.plannedOutput : null,
-          remarks: data.header.remarks?.trim() || "", // String: empty → ""
+          remarks: data.header.remarks?.trim() || "",
         },
         items: data.items.map(item => ({
-          rawMaterialId: item.rawMaterialId, // Required, never null
-          productId: item.productId?.trim() || null, // UUID: empty → null
-          quantityIssued: item.quantityIssued, // Required number
+          rawMaterialId: item.rawMaterialId,
+          productId: item.productId?.trim() || null,
+          quantityIssued: item.quantityIssued,
           suggestedQuantity: item.suggestedQuantity || null,
           calculationBasis: item.calculationBasis || null,
-          uomId: item.uomId?.trim() || null, // UUID: empty → null to prevent FK violation
-          remarks: item.remarks?.trim() || "", // String: empty → ""
+          uomId: item.uomId?.trim() || null,
+          remarks: item.remarks?.trim() || "",
         })),
       };
       
@@ -289,24 +415,41 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
   });
 
   const addItem = () => {
-    const newItems = [...items, { 
+    const newItems: ExtendedFormItem[] = [...items, { 
       rawMaterialId: "", 
       productId: "", 
       quantityIssued: 0,
       suggestedQuantity: undefined,
-      calculationBasis: 'manual' as const,
+      calculationBasis: 'manual',
       uomId: "", 
-      remarks: "" 
+      remarks: "",
+      _isBomItem: false,
     }];
     setItems(newItems);
-    form.setValue('items', newItems);
+    form.setValue('items', newItems.map(i => ({
+      rawMaterialId: i.rawMaterialId,
+      productId: i.productId,
+      quantityIssued: i.quantityIssued,
+      suggestedQuantity: i.suggestedQuantity,
+      calculationBasis: i.calculationBasis,
+      uomId: i.uomId,
+      remarks: i.remarks,
+    })));
   };
 
   const removeItem = (index: number) => {
     if (items.length > 1) {
       const newItems = items.filter((_, i) => i !== index);
       setItems(newItems);
-      form.setValue('items', newItems);
+      form.setValue('items', newItems.map(i => ({
+        rawMaterialId: i.rawMaterialId,
+        productId: i.productId,
+        quantityIssued: i.quantityIssued,
+        suggestedQuantity: i.suggestedQuantity,
+        calculationBasis: i.calculationBasis,
+        uomId: i.uomId,
+        remarks: i.remarks,
+      })));
     }
   };
 
@@ -319,7 +462,8 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
       suggestedQuantity: undefined,
       calculationBasis: undefined,
       uomId: "", 
-      remarks: "" 
+      remarks: "",
+      _isBomItem: false,
     }]);
     onClose();
   };
@@ -331,11 +475,11 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
   return (
     <Card className="p-4 mb-4">
       <div className="mb-4">
-        <h3 className="text-lg font-semibold">
+        <h3 className="text-lg font-semibold" data-testid="form-title">
           {issuance ? 'Edit Raw Material Issuance' : 'Create Raw Material Issuance'}
         </h3>
         <p className="text-sm text-muted-foreground mt-1">
-          {issuance ? 'Update issuance details and line items' : 'Issue multiple raw materials in one transaction'}
+          {issuance ? 'Update issuance details and line items' : 'Issue multiple raw materials in one transaction. Select a product and planned output for automatic BOM-based allocation.'}
         </p>
       </div>
 
@@ -383,7 +527,7 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
                 name="header.productId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Product (Optional)</FormLabel>
+                    <FormLabel>Product (for BOM auto-load)</FormLabel>
                     <Select 
                       onValueChange={(value) => field.onChange(value === "none" ? undefined : value)} 
                       value={field.value || "none"}
@@ -409,6 +553,28 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
 
               <FormField
                 control={form.control}
+                name="header.plannedOutput"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Planned Output (triggers BOM calculation)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={field.value || ""} 
+                        onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                        placeholder="e.g., 12000 bottles" 
+                        data-testid="input-planned-output" 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
                 name="header.productionReference"
                 render={({ field }) => (
                   <FormItem>
@@ -419,28 +585,6 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
                         value={field.value || ""} 
                         placeholder="Batch ID / FG Name / Shift No" 
                         data-testid="input-production-reference" 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="header.plannedOutput"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Planned Output (Optional)</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={field.value || ""} 
-                        onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                        placeholder="Expected production quantity" 
-                        data-testid="input-planned-output" 
                       />
                     </FormControl>
                     <FormMessage />
@@ -469,19 +613,36 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
               <h4 className="font-semibold text-sm">Material Items</h4>
               <Button type="button" variant="outline" size="sm" onClick={addItem} data-testid="button-add-item">
                 <Plus className="w-4 h-4 mr-2" />
-                Add off-BOM Item
+                Add Manual Item
               </Button>
             </div>
 
-            {items.map((_, index) => (
+            {isBomLoading && selectedProductId && (
+              <div className="text-sm text-muted-foreground p-4 border rounded-md">
+                Loading BOM data...
+              </div>
+            )}
+
+            {items.map((item, index) => (
               <Card key={index} className="p-4">
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <h5 className="text-sm font-medium">Item {index + 1}</h5>
-                      {items[index]?.calculationBasis && items[index].calculationBasis !== 'manual' && (
-                        <Badge variant="secondary" className="text-xs" data-testid={`badge-calculation-${index}`}>
-                          {items[index].calculationBasis}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h5 className="text-sm font-medium">
+                        {item._isBomItem && item._typeName ? (
+                          <>Material Type: <span className="text-primary">{item._typeName}</span></>
+                        ) : (
+                          `Item ${index + 1}`
+                        )}
+                      </h5>
+                      {item._isBomItem && (
+                        <Badge variant="secondary" className="text-xs" data-testid={`badge-bom-${index}`}>
+                          From BOM
+                        </Badge>
+                      )}
+                      {item.calculationBasis && item.calculationBasis !== 'manual' && (
+                        <Badge variant="outline" className="text-xs" data-testid={`badge-calculation-${index}`}>
+                          {item.calculationBasis}
                         </Badge>
                       )}
                     </div>
@@ -489,7 +650,7 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
                       <Button
                         type="button"
                         variant="ghost"
-                        size="sm"
+                        size="icon"
                         onClick={() => removeItem(index)}
                         data-testid={`button-remove-item-${index}`}
                       >
@@ -499,63 +660,60 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.rawMaterialId`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Raw Material</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger data-testid={`select-raw-material-${index}`}>
-                                <SelectValue placeholder="Select material" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {rawMaterials.map((material) => (
-                                <SelectItem key={material.id} value={material.id}>
-                                  {material.materialName} (Stock: {material.currentStock || 0})
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.productId`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Product</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger data-testid={`select-product-${index}`}>
-                                <SelectValue placeholder="Select product" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {products.map((product) => (
-                                <SelectItem key={product.id} value={product.id}>
-                                  {product.productName}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {items[index]?.suggestedQuantity !== undefined && (
-                      <div className="space-y-1">
-                        <label className="text-sm font-medium">Suggested Quantity</label>
-                        <div className="flex items-center h-9 px-3 border rounded-md bg-muted text-sm" data-testid={`display-suggested-${index}`}>
-                          {items[index].suggestedQuantity?.toFixed(2) || '0.00'}
+                    {item._isBomItem ? (
+                      <>
+                        <div className="space-y-1">
+                          <label className="text-sm font-medium">Selected Batch (FIFO - Oldest First)</label>
+                          <div className="flex items-center h-9 px-3 border rounded-md bg-muted text-sm" data-testid={`display-batch-${index}`}>
+                            {item._allocations && item._allocations[0] ? (
+                              <span className="flex items-center gap-2">
+                                <Badge variant="outline" className="font-mono text-xs">
+                                  {item._allocations[0].batchCode}
+                                </Badge>
+                                <span className="text-muted-foreground">
+                                  {item._allocations[0].materialName}
+                                </span>
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">No batch available</span>
+                            )}
+                          </div>
                         </div>
-                      </div>
+
+                        {item.suggestedQuantity !== undefined && (
+                          <div className="space-y-1">
+                            <label className="text-sm font-medium">BOM Suggested Quantity</label>
+                            <div className="flex items-center h-9 px-3 border rounded-md bg-muted text-sm" data-testid={`display-suggested-${index}`}>
+                              {item.suggestedQuantity.toFixed(2)}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.rawMaterialId`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Raw Material</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger data-testid={`select-raw-material-${index}`}>
+                                  <SelectValue placeholder="Select material" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {rawMaterials.map((material) => (
+                                  <SelectItem key={material.id} value={material.id}>
+                                    {material.materialName} (Stock: {material.currentStock || 0})
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     )}
 
                     <FormField
@@ -563,12 +721,21 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
                       name={`items.${index}.quantityIssued`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Quantity Issued (Actual)</FormLabel>
+                          <FormLabel>Quantity to Issue</FormLabel>
                           <FormControl>
                             <Input
                               type="number"
-                              {...field}
-                              onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                              min="0"
+                              step="0.01"
+                              value={field.value || ""}
+                              onChange={(e) => {
+                                const newValue = parseFloat(e.target.value) || 0;
+                                if (item._isBomItem) {
+                                  recalculateAllocations(index, newValue);
+                                } else {
+                                  field.onChange(newValue);
+                                }
+                              }}
                               data-testid={`input-quantity-${index}`}
                             />
                           </FormControl>
@@ -602,20 +769,59 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
                       )}
                     />
 
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.remarks`}
-                      render={({ field }) => (
-                        <FormItem className="md:col-span-2">
-                          <FormLabel>Item Remarks (Optional)</FormLabel>
-                          <FormControl>
-                            <Input {...field} value={field.value || ""} data-testid={`input-item-remarks-${index}`} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    {!item._isBomItem && (
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.productId`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Product (Optional)</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value || ""}>
+                              <FormControl>
+                                <SelectTrigger data-testid={`select-product-${index}`}>
+                                  <SelectValue placeholder="Select product" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {products.map((product) => (
+                                  <SelectItem key={product.id} value={product.id}>
+                                    {product.productName}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
                   </div>
+
+                  {item._isBomItem && item._allocations && item._allocations.length > 0 && (
+                    <div className="mt-3 pt-3 border-t">
+                      <BatchAllocationDisplay 
+                        allocations={item._allocations}
+                        allocationSummary={item._allocationSummary || ""}
+                        insufficientStock={item._insufficientStock || false}
+                        totalAvailableStock={item._totalAvailableStock || 0}
+                        quantityIssued={item.quantityIssued}
+                      />
+                    </div>
+                  )}
+
+                  <FormField
+                    control={form.control}
+                    name={`items.${index}.remarks`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Item Remarks (Optional)</FormLabel>
+                        <FormControl>
+                          <Input {...field} value={field.value || ""} data-testid={`input-item-remarks-${index}`} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
               </Card>
             ))}

@@ -57,7 +57,7 @@ export interface BOMCalculationResult {
 function calculateFormulaBased(input: BOMCalculationInput): number {
   const { typeConversion, plannedOutput, quantityRequired } = input;
   
-  if (!typeConversion.baseUnitWeight || !typeConversion.weightPerDerivedUnit) {
+  if (!typeConversion || !typeConversion.baseUnitWeight || !typeConversion.weightPerDerivedUnit) {
     return 0; // Missing required data
   }
   
@@ -89,6 +89,8 @@ function calculateFormulaBased(input: BOMCalculationInput): number {
  */
 function calculateDirectValue(input: BOMCalculationInput): number {
   const { typeConversion, plannedOutput, quantityRequired } = input;
+  
+  if (!typeConversion) return 0;
   
   const pcsPerBase = typeConversion.derivedValuePerBase || typeConversion.pcsPerBase;
   
@@ -122,7 +124,7 @@ function calculateDirectValue(input: BOMCalculationInput): number {
 function calculateOutputCoverage(input: BOMCalculationInput): number {
   const { typeConversion, plannedOutput } = input;
   
-  if (!typeConversion.outputUnitsCovered) {
+  if (!typeConversion || !typeConversion.outputUnitsCovered) {
     return 0; // Missing required data
   }
   
