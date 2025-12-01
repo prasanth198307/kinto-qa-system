@@ -4267,17 +4267,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get single invoice template
-  app.get('/api/invoice-templates/:id', requireRole('admin'), async (req: any, res) => {
+  // Get single invoice template (isAuthenticated for read - needed for printing)
+  app.get('/api/invoice-templates/:id', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
       const template = await storage.getInvoiceTemplate(id);
       if (!template) {
         return res.status(404).json({ message: "Invoice template not found" });
       }
-      console.log('[Template Fetch] ID:', id);
-      console.log('[Template Fetch] Has signature:', !!template.defaultSignatureImage);
-      console.log('[Template Fetch] Signatory name:', template.authorizedSignatoryName);
       res.json(template);
     } catch (error) {
       console.error("Error fetching invoice template:", error);
