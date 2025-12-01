@@ -531,6 +531,18 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
   };
 
   const onSubmit = (data: FormData) => {
+    // Defensive validation: Ensure all items have valid rawMaterialId
+    const invalidItems = data.items.filter((item, index) => !item.rawMaterialId || item.rawMaterialId.trim() === '');
+    if (invalidItems.length > 0) {
+      const invalidCount = invalidItems.length;
+      toast({
+        title: "Missing Raw Materials",
+        description: `${invalidCount} item(s) have no raw material selected. Please select a raw material for each line or remove items without stock.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    
     saveMutation.mutate(data);
   };
 

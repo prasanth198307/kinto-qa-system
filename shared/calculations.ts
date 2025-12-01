@@ -462,11 +462,17 @@ export function calculateBOMSuggestions(
     if (item.bom.rawMaterialId && !item.bom.materialTypeId) {
       // Legacy: Direct raw material reference
       selectedRawMaterialId = item.bom.rawMaterialId;
-    } else if (allocations.length > 0 && allocations[0].allocatedQuantity > 0) {
-      // Use oldest batch with allocation as the primary material
-      selectedRawMaterialId = allocations[0].rawMaterialId;
-      // Selection required if allocation spans multiple batches
-      selectionRequired = allocations.filter(a => a.allocatedQuantity > 0).length > 1;
+    } else if (allocations.length > 0) {
+      // Find the first allocation with actual quantity (not just tracking entries with 0)
+      const firstAllocatedBatch = allocations.find(a => a.allocatedQuantity > 0);
+      if (firstAllocatedBatch) {
+        selectedRawMaterialId = firstAllocatedBatch.rawMaterialId;
+        // Selection required if allocation spans multiple batches with actual quantities
+        selectionRequired = allocations.filter(a => a.allocatedQuantity > 0).length > 1;
+      } else if (allocations[0]) {
+        // Fallback: use first batch ID even if no allocation (for material type reference)
+        selectedRawMaterialId = allocations[0].rawMaterialId;
+      }
     }
     
     // Create key based on type or material (prefer typeId for new entries)
