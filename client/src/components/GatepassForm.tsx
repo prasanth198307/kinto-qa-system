@@ -681,16 +681,26 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
               <div className="flex justify-between items-center">
                 <h4 className="font-semibold text-sm">
                   Finished Goods Items
-                  <span className="ml-2 text-xs text-muted-foreground">(Auto-populated from Invoice)</span>
+                  <span className="ml-2 text-xs text-muted-foreground">(Select batches for dispatch - you can add multiple batches per product)</span>
                 </h4>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addItem}
+                  data-testid="button-add-batch"
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Add Batch
+                </Button>
               </div>
 
-              {items.map((_, index) => (
+              {items.map((item, index) => (
               <Card key={index} className="p-4">
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <h5 className="text-sm font-medium">Item {index + 1}</h5>
-                    {items.length > 1 && !selectedInvoiceId && (
+                    {items.length > 1 && (
                       <Button
                         type="button"
                         variant="ghost"
@@ -738,7 +748,7 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Product</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value} disabled={!!selectedInvoiceId}>
+                          <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger data-testid={`select-product-${index}`}>
                                 <SelectValue placeholder="Select product" />
@@ -768,8 +778,6 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                               type="number"
                               {...field}
                               onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                              readOnly={!!selectedInvoiceId}
-                              className={selectedInvoiceId ? "bg-muted" : ""}
                               data-testid={`input-quantity-${index}`}
                             />
                           </FormControl>
