@@ -978,6 +978,8 @@ export const rawMaterials = pgTable("raw_materials", {
   receivedQuantity: integer("received_quantity"), // For ongoing mode: received quantity
   returnedQuantity: integer("returned_quantity"), // For ongoing mode: returned quantity
   adjustments: integer("adjustments"), // For ongoing mode: adjustments (+/-)
+  receivedDate: date("received_date"), // Date when material was received (for FIFO tracking)
+  batchCode: varchar("batch_code", { length: 50 }), // System-generated lot code (e.g., LOT-20241115)
   isActive: varchar("is_active").default('true'),
   recordStatus: integer("record_status").default(1).notNull(),
   createdBy: varchar("created_by").references(() => users.id),
@@ -1000,12 +1002,63 @@ export const insertRawMaterialSchema = createInsertSchema(rawMaterials, {
   receivedQuantity: z.number().optional(),
   returnedQuantity: z.number().optional(),
   adjustments: z.number().optional(),
+  receivedDate: z.string().optional(), // Date when material was received
+  batchCode: z.string().optional(), // Auto-generated lot code
 }).omit({
   id: true,
   recordStatus: true,
   createdAt: true,
   updatedAt: true,
 });
+
+/**
+ * Generate a batch code from a received date
+ * Format: LOT-YYYYMMDD (e.g., LOT-20241115)
+ * For multiple entries on same date, can append sequence: LOT-20241115-001
+ */
+export function generateBatchCode(receivedDate: Date | string | null, sequence?: number): string {
+  if (!receivedDate) {
+    // Fallback to current date if no received date
+    receivedDate = new Date();
+  }
+  
+  const date = typeof receivedDate === 'string' ? new Date(receivedDate) : receivedDate;
+  
+  if (isNaN(date.getTime())) {
+    // Invalid date, use current date
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+    return sequence ? `LOT-${dateStr}-${String(sequence).padStart(3, '0')}` : `LOT-${dateStr}`;
+  }
+  
+  const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+  return sequence ? `LOT-${dateStr}-${String(sequence).padStart(3, '0')}` : `LOT-${dateStr}`;
+}
+
+/**
+ * Format a batch code for display with received date
+ * Returns user-friendly format like "LOT-20241115 (Nov 15, 2024)"
+ */
+export function formatBatchCodeDisplay(batchCode: string | null, receivedDate: string | null): string {
+  if (!batchCode && !receivedDate) return 'Unknown Batch';
+  
+  // If no batch code, generate from received date
+  const code = batchCode || (receivedDate ? generateBatchCode(receivedDate) : 'Unknown');
+  
+  if (receivedDate) {
+    const date = new Date(receivedDate);
+    if (!isNaN(date.getTime())) {
+      const formatted = date.toLocaleDateString('en-IN', { 
+        day: 'numeric', 
+        month: 'short', 
+        year: 'numeric' 
+      });
+      return `${code} (${formatted})`;
+    }
+  }
+  
+  return code;
+}
 
 export type InsertRawMaterial = z.infer<typeof insertRawMaterialSchema>;
 export type RawMaterial = typeof rawMaterials.$inferSelect;
