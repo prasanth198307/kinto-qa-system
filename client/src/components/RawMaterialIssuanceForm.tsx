@@ -418,6 +418,7 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
           productionReference: data.header.productionReference?.trim() || "",
           plannedOutput: Number.isFinite(data.header.plannedOutput) ? data.header.plannedOutput : null,
           remarks: data.header.remarks?.trim() || "",
+          bomConfigurationId: selectedConfigId || null, // Track which BOM configuration was used
         },
         items: data.items.map(item => ({
           rawMaterialId: item.rawMaterialId,
