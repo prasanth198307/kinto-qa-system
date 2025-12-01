@@ -231,8 +231,23 @@ export function calculateSuggestedQuantity(input: BOMCalculationInput, rawMateri
 }
 
 /**
+ * FIFO lot allocation entry
+ * Shows how much quantity is allocated from each batch
+ */
+export interface LotAllocation {
+  rawMaterialId: string;
+  materialCode: string | null;
+  materialName: string | null;
+  batchCode: string | null;
+  receivedDate: string | null;
+  availableStock: number;
+  allocatedQuantity: number;
+  remainingStock: number;
+}
+
+/**
  * Extended result for type-based BOM calculations
- * Includes selection status when there are multiple raw material options
+ * Includes FIFO allocation breakdown when quantity spans multiple batches
  */
 export interface BOMCalculationResultExtended extends BOMCalculationResult {
   typeId: string | null;
@@ -242,9 +257,107 @@ export interface BOMCalculationResultExtended extends BOMCalculationResult {
     materialCode: string | null;
     materialName: string | null;
     currentStock: number;
+    receivedDate: string | null;
+    batchCode: string | null;
   }>;
-  selectionRequired: boolean; // True if user must select from multiple options
+  selectionRequired: boolean; // True if user must select from multiple options (deprecated - use allocations)
   outOfStock: boolean; // True if no raw materials have stock
+  
+  // FIFO allocation breakdown
+  allocations: LotAllocation[]; // Ordered oldest-first, shows how quantity is distributed
+  totalAvailableStock: number; // Sum of all available stock across batches
+  insufficientStock: boolean; // True if suggested quantity exceeds available stock
+  allocationSummary: string; // Human-readable summary e.g. "LOT-20241015: 50kg + LOT-20241120: 30kg"
+}
+
+/**
+ * Generate batch code from received date if not already set
+ */
+function getBatchCode(batchCode: string | null, receivedDate: string | null): string {
+  if (batchCode) return batchCode;
+  if (!receivedDate) return 'Unknown';
+  
+  const date = new Date(receivedDate);
+  if (isNaN(date.getTime())) return 'Unknown';
+  
+  const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+  return `LOT-${dateStr}`;
+}
+
+/**
+ * Calculate FIFO allocation for a given quantity across available batches
+ * Returns allocation array ordered oldest-first
+ */
+function calculateFIFOAllocation(
+  suggestedQuantity: number,
+  availableRawMaterials: Array<{
+    id: string;
+    materialCode: string | null;
+    materialName: string | null;
+    currentStock: number;
+    receivedDate: string | null;
+    batchCode: string | null;
+  }>
+): { allocations: LotAllocation[]; totalAvailableStock: number; insufficientStock: boolean; allocationSummary: string } {
+  const allocations: LotAllocation[] = [];
+  let remainingToAllocate = suggestedQuantity;
+  let totalAvailableStock = 0;
+  
+  // Materials are already sorted by receivedDate (oldest first)
+  for (const rm of availableRawMaterials) {
+    totalAvailableStock += rm.currentStock;
+    
+    if (remainingToAllocate <= 0) {
+      // No more to allocate, but still track available stock
+      allocations.push({
+        rawMaterialId: rm.id,
+        materialCode: rm.materialCode,
+        materialName: rm.materialName,
+        batchCode: getBatchCode(rm.batchCode, rm.receivedDate),
+        receivedDate: rm.receivedDate,
+        availableStock: rm.currentStock,
+        allocatedQuantity: 0,
+        remainingStock: rm.currentStock,
+      });
+      continue;
+    }
+    
+    const allocatedFromThis = Math.min(remainingToAllocate, rm.currentStock);
+    remainingToAllocate -= allocatedFromThis;
+    
+    allocations.push({
+      rawMaterialId: rm.id,
+      materialCode: rm.materialCode,
+      materialName: rm.materialName,
+      batchCode: getBatchCode(rm.batchCode, rm.receivedDate),
+      receivedDate: rm.receivedDate,
+      availableStock: rm.currentStock,
+      allocatedQuantity: allocatedFromThis,
+      remainingStock: rm.currentStock - allocatedFromThis,
+    });
+  }
+  
+  const insufficientStock = remainingToAllocate > 0;
+  
+  // Generate human-readable summary
+  const usedAllocations = allocations.filter(a => a.allocatedQuantity > 0);
+  let allocationSummary = '';
+  if (usedAllocations.length === 0) {
+    allocationSummary = 'No stock available';
+  } else if (usedAllocations.length === 1) {
+    const a = usedAllocations[0];
+    allocationSummary = `${a.batchCode}: ${a.allocatedQuantity.toFixed(2)}`;
+  } else {
+    allocationSummary = usedAllocations
+      .map(a => `${a.batchCode}: ${a.allocatedQuantity.toFixed(2)}`)
+      .join(' + ');
+  }
+  
+  if (insufficientStock) {
+    allocationSummary += ` (Short: ${remainingToAllocate.toFixed(2)})`;
+  }
+  
+  return { allocations, totalAvailableStock, insufficientStock, allocationSummary };
 }
 
 /**
@@ -252,6 +365,8 @@ export interface BOMCalculationResultExtended extends BOMCalculationResult {
  * Supports both:
  * - New type-based BOM (materialTypeId with availableRawMaterials)
  * - Legacy material-based BOM (rawMaterialId directly)
+ * 
+ * Returns FIFO allocation breakdown showing how quantity is distributed across batches
  */
 export function calculateBOMSuggestions(
   plannedOutput: number,
@@ -271,6 +386,8 @@ export function calculateBOMSuggestions(
       materialCode: string | null;
       materialName: string | null;
       currentStock: number;
+      receivedDate: string | null;
+      batchCode: string | null;
     }>;
   }>
 ): Map<string, BOMCalculationResultExtended> {
@@ -300,49 +417,56 @@ export function calculateBOMSuggestions(
     
     // Determine the raw material to use
     const availableRawMaterials = item.availableRawMaterials || [];
-    let selectedRawMaterialId: string = '';
-    let selectionRequired = false;
-    let outOfStock = false;
-    
-    if (item.bom.rawMaterialId && !item.bom.materialTypeId) {
-      // Legacy: Direct raw material reference
-      selectedRawMaterialId = item.bom.rawMaterialId;
-    } else if (availableRawMaterials.length === 1) {
-      // New type-based: Auto-select single available raw material
-      selectedRawMaterialId = availableRawMaterials[0].id;
-    } else if (availableRawMaterials.length > 1) {
-      // Multiple options: Leave unselected, require user to choose (FIFO policy)
-      // The availableRawMaterials are already sorted by receivedDate (oldest first)
-      selectionRequired = true;
-      // Don't auto-select - leave rawMaterialId empty for user to choose
-    } else {
-      // No stock available for this type
-      outOfStock = true;
-    }
+    let outOfStock = availableRawMaterials.length === 0;
     
     // Calculate suggested quantity using type conversion formulas
+    // Use empty rawMaterialId as we'll allocate across batches
     const baseResult = calculateSuggestedQuantity(
       {
         plannedOutput,
         quantityRequired,
         typeConversion: item.type || null,
       },
-      selectedRawMaterialId,
+      '', // rawMaterialId will be determined by FIFO allocation
       uomId
     );
+    
+    // Calculate FIFO allocation across batches
+    const { allocations, totalAvailableStock, insufficientStock, allocationSummary } = 
+      calculateFIFOAllocation(baseResult.roundedQuantity, availableRawMaterials);
+    
+    // For backward compatibility: select first batch (oldest) for rawMaterialId
+    // This is the primary batch that will be used
+    let selectedRawMaterialId = '';
+    let selectionRequired = false;
+    
+    if (item.bom.rawMaterialId && !item.bom.materialTypeId) {
+      // Legacy: Direct raw material reference
+      selectedRawMaterialId = item.bom.rawMaterialId;
+    } else if (allocations.length > 0 && allocations[0].allocatedQuantity > 0) {
+      // Use oldest batch with allocation as the primary material
+      selectedRawMaterialId = allocations[0].rawMaterialId;
+      // Selection required if allocation spans multiple batches
+      selectionRequired = allocations.filter(a => a.allocatedQuantity > 0).length > 1;
+    }
     
     // Create key based on type or material (prefer typeId for new entries)
     const resultKey = item.typeId || item.bom.materialTypeId || item.bom.rawMaterialId || `bom-${results.size}`;
     
-    // Extended result with type info
+    // Extended result with type info and FIFO allocation
     const extendedResult: BOMCalculationResultExtended = {
       ...baseResult,
-      rawMaterialId: selectedRawMaterialId, // Override with selected material
+      rawMaterialId: selectedRawMaterialId,
       typeId: item.typeId || item.bom.materialTypeId || null,
       typeName: item.type?.name || null,
       availableRawMaterials,
       selectionRequired,
       outOfStock,
+      // FIFO allocation fields
+      allocations,
+      totalAvailableStock,
+      insufficientStock,
+      allocationSummary,
     };
     
     // Add out-of-stock note to calculation details
@@ -350,6 +474,8 @@ export function calculateBOMSuggestions(
       extendedResult.calculationDetails = `No stock available for ${item.type?.name || 'this material type'}`;
       extendedResult.suggestedQuantity = 0;
       extendedResult.roundedQuantity = 0;
+    } else if (insufficientStock) {
+      extendedResult.calculationDetails += ` (Insufficient stock: need ${baseResult.roundedQuantity}, have ${totalAvailableStock})`;
     }
     
     results.set(resultKey, extendedResult);

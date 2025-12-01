@@ -311,6 +311,7 @@ export interface IStorage {
         materialName: string | null;
         currentStock: number;
         receivedDate: string | null;
+        batchCode: string | null;
       }>;
     }>;
     metadata: {
@@ -1467,6 +1468,7 @@ export class DatabaseStorage implements IStorage {
               materialName: rm.materialName,
               currentStock: Number(rm.currentStock) || Number(rm.closingStock) || 0,
               receivedDate: rm.receivedDate,
+              batchCode: rm.batchCode,
             }))
         : [];
       
