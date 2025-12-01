@@ -1706,10 +1706,11 @@ function ProductDialog({
                         <FormControl>
                           <Input 
                             type="number" 
+                            step="0.01"
                             placeholder="50000" 
                             {...field} 
                             value={field.value || ''} 
-                            onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
                             data-testid="input-base-price"
                           />
                         </FormControl>
