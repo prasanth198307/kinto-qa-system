@@ -134,6 +134,14 @@ function BatchAllocationDisplay({
   );
 }
 
+interface BomConfiguration {
+  id: string;
+  productId: string;
+  configName: string;
+  description?: string | null;
+  isDefault: number;
+}
+
 export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMaterialIssuanceFormProps) {
   const { toast } = useToast();
   const [items, setItems] = useState<ExtendedFormItem[]>([{ 
@@ -146,6 +154,7 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
     remarks: "",
     _isBomItem: false,
   }]);
+  const [selectedConfigId, setSelectedConfigId] = useState<string | undefined>(undefined);
 
   const { data: issuanceItems = [] } = useQuery<RawMaterialIssuanceItem[]>({
     queryKey: ['/api/raw-material-issuance-items', issuance?.id],
@@ -191,6 +200,29 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
   const selectedProductId = watchedHeader?.productId;
   const plannedOutput = watchedHeader?.plannedOutput;
 
+  // Fetch BOM configurations for selected product
+  const { data: bomConfigurations = [], isLoading: isConfigLoading } = useQuery<BomConfiguration[]>({
+    queryKey: ['/api/products', selectedProductId, 'bom-configurations'],
+    enabled: !!selectedProductId && selectedProductId !== "",
+  });
+
+  // Auto-select default configuration when product changes
+  useEffect(() => {
+    if (bomConfigurations.length > 0 && !selectedConfigId) {
+      const defaultConfig = bomConfigurations.find(c => c.isDefault === 1);
+      if (defaultConfig) {
+        setSelectedConfigId(defaultConfig.id);
+      } else if (bomConfigurations.length === 1) {
+        setSelectedConfigId(bomConfigurations[0].id);
+      }
+    }
+  }, [bomConfigurations, selectedConfigId]);
+
+  // Reset config when product changes
+  useEffect(() => {
+    setSelectedConfigId(undefined);
+  }, [selectedProductId]);
+
   const { data: bomData, isLoading: isBomLoading } = useQuery<{
     items: Array<{
       bom: any;
@@ -212,9 +244,13 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
       productName: string;
       totalItems: number;
       lastUpdatedAt: Date | null;
+      configurationId?: string | null;
+      configurationName?: string | null;
     };
   }>({
-    queryKey: ['/api/products', selectedProductId, 'bom-with-types'],
+    queryKey: selectedConfigId 
+      ? ['/api/products', selectedProductId, 'bom-with-types', { configurationId: selectedConfigId }]
+      : ['/api/products', selectedProductId, 'bom-with-types'],
     enabled: !!selectedProductId && selectedProductId !== "",
   });
 
@@ -293,7 +329,12 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
         remarks: i.remarks,
       })));
       
-      let description = `${bomItems.length} materials auto-populated from product BOM`;
+      let description = `${bomItems.length} materials auto-populated`;
+      if (bomData.metadata.configurationName) {
+        description += ` from "${bomData.metadata.configurationName}" BOM`;
+      } else {
+        description += ` from product BOM`;
+      }
       const multiBatchCount = bomItems.filter(i => (i._allocations?.filter(a => a.allocatedQuantity > 0).length || 0) > 1).length;
       if (multiBatchCount > 0) {
         description += ` (${multiBatchCount} using multiple batches)`;
@@ -550,6 +591,41 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
                   </FormItem>
                 )}
               />
+
+              {/* BOM Configuration Selector - only shows when product has multiple configs */}
+              {selectedProductId && bomConfigurations.length > 0 && (
+                <FormItem>
+                  <FormLabel>BOM Configuration</FormLabel>
+                  <Select 
+                    onValueChange={(value) => setSelectedConfigId(value === "none" ? undefined : value)} 
+                    value={selectedConfigId || "none"}
+                    disabled={isConfigLoading}
+                  >
+                    <FormControl>
+                      <SelectTrigger data-testid="select-bom-config">
+                        <SelectValue placeholder={isConfigLoading ? "Loading..." : "Select BOM configuration"} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {bomConfigurations.length === 0 && (
+                        <SelectItem value="none">-- No configurations --</SelectItem>
+                      )}
+                      {bomConfigurations.map((config) => (
+                        <SelectItem key={config.id} value={config.id}>
+                          {config.configName}
+                          {config.isDefault === 1 && " (Default)"}
+                          {config.description && ` - ${config.description}`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {bomConfigurations.length > 1 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      This product has {bomConfigurations.length} BOM configurations. Select the one to use for this issuance.
+                    </p>
+                  )}
+                </FormItem>
+              )}
 
               <FormField
                 control={form.control}
