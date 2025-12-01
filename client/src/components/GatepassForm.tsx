@@ -283,12 +283,60 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
     onClose();
   };
 
+  // Calculate quantity summary per product
+  const getQuantitySummary = () => {
+    const summary: Record<string, { productName: string; invoiceQty: number; dispatchedQty: number }> = {};
+    
+    // Get invoice quantities per product
+    invoiceItems.forEach(invItem => {
+      const product = products.find(p => p.id === invItem.productId);
+      if (product) {
+        summary[invItem.productId] = {
+          productName: product.productName,
+          invoiceQty: invItem.quantity,
+          dispatchedQty: 0
+        };
+      }
+    });
+    
+    // Sum up dispatched quantities per product from current items
+    items.forEach(item => {
+      if (item.productId && summary[item.productId]) {
+        summary[item.productId].dispatchedQty += item.quantityDispatched || 0;
+      }
+    });
+    
+    return summary;
+  };
+
+  const quantitySummary = getQuantitySummary();
+  const hasQuantityMismatch = Object.values(quantitySummary).some(
+    s => s.dispatchedQty !== s.invoiceQty
+  );
+
   const onSubmit = (data: FormData) => {
     // Alert if no invoice selected
     if (!selectedInvoiceId) {
       toast({
         title: "Invoice Required",
         description: "Please select an invoice to add items before creating the gatepass.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate quantity match for each product
+    const mismatches: string[] = [];
+    Object.values(quantitySummary).forEach(s => {
+      if (s.dispatchedQty !== s.invoiceQty) {
+        mismatches.push(`${s.productName}: Invoice ${s.invoiceQty}, Dispatching ${s.dispatchedQty}`);
+      }
+    });
+
+    if (mismatches.length > 0) {
+      toast({
+        title: "Quantity Mismatch",
+        description: `The following products don't match invoice quantities:\n${mismatches.join('\n')}`,
         variant: "destructive",
       });
       return;
@@ -721,6 +769,39 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
 
           {selectedInvoiceId && (
             <div className="space-y-3">
+              {/* Quantity Summary Section */}
+              {Object.keys(quantitySummary).length > 0 && (
+                <Card className={`p-3 ${hasQuantityMismatch ? 'border-destructive bg-destructive/5' : 'border-green-500 bg-green-50 dark:bg-green-950/20'}`}>
+                  <h4 className="font-semibold text-sm mb-2">
+                    Quantity Summary
+                    {hasQuantityMismatch ? (
+                      <span className="ml-2 text-destructive text-xs">(Mismatch - Please adjust quantities)</span>
+                    ) : (
+                      <span className="ml-2 text-green-600 text-xs">(All quantities match)</span>
+                    )}
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {Object.entries(quantitySummary).map(([productId, summary]) => {
+                      const isMatch = summary.dispatchedQty === summary.invoiceQty;
+                      return (
+                        <div 
+                          key={productId} 
+                          className={`flex justify-between items-center p-2 rounded text-sm ${
+                            isMatch ? 'bg-green-100 dark:bg-green-900/30' : 'bg-destructive/10'
+                          }`}
+                        >
+                          <span className="font-medium">{summary.productName}</span>
+                          <span className={isMatch ? 'text-green-700 dark:text-green-400' : 'text-destructive font-semibold'}>
+                            {summary.dispatchedQty} / {summary.invoiceQty}
+                            {isMatch ? ' ✓' : ` (${summary.dispatchedQty > summary.invoiceQty ? '+' : ''}${summary.dispatchedQty - summary.invoiceQty})`}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </Card>
+              )}
+
               <div className="flex justify-between items-center">
                 <h4 className="font-semibold text-sm">
                   Finished Goods Items
