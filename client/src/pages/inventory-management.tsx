@@ -2196,6 +2196,7 @@ function RawMaterialsTab({ searchTerm, onSearchChange }: { searchTerm: string; o
         onOpenChange={setIsDialogOpen}
         item={editingItem}
         uoms={uoms}
+        materials={materials}
         onSubmit={(data) => {
           if (editingItem) {
             updateMutation.mutate({ id: editingItem.id, data });
@@ -2235,6 +2236,7 @@ function RawMaterialDialog({
   onOpenChange, 
   item, 
   uoms,
+  materials,
   onSubmit, 
   isLoading 
 }: { 
@@ -2242,11 +2244,13 @@ function RawMaterialDialog({
   onOpenChange: (open: boolean) => void; 
   item: RawMaterial | null; 
   uoms: Uom[];
+  materials: RawMaterial[];
   onSubmit: (data: z.infer<typeof insertRawMaterialSchema>) => void;
   isLoading: boolean;
 }) {
   const { toast } = useToast();
   const [selectedTypeDetails, setSelectedTypeDetails] = useState<RawMaterialType | null>(null);
+  const [existingTypeStock, setExistingTypeStock] = useState<number>(0);
   
   const form = useForm<z.infer<typeof insertRawMaterialSchema>>({
     resolver: zodResolver(insertRawMaterialSchema.extend({
@@ -2290,17 +2294,40 @@ function RawMaterialDialog({
   const returnedQuantity = form.watch('returnedQuantity');
   const adjustments = form.watch('adjustments');
 
-  // Auto-fetch Material Type details when type is selected
+  // Auto-fetch Material Type details and existing stock when type is selected
   useEffect(() => {
     if (selectedTypeId && selectedTypeId !== '') {
       const typeDetails = materialTypes.find(t => t.id === selectedTypeId);
       if (typeDetails) {
         setSelectedTypeDetails(typeDetails);
       }
+      
+      // Only check for existing stock when adding new material (not editing)
+      if (!item) {
+        // Calculate total existing stock for this material type
+        const existingMaterialsForType = materials.filter(m => m.typeId === selectedTypeId);
+        const totalExistingStock = existingMaterialsForType.reduce((sum, m) => {
+          // Use currentStock or calculate from closingStock
+          return sum + (Number(m.currentStock) || Number(m.closingStock) || 0);
+        }, 0);
+        
+        setExistingTypeStock(totalExistingStock);
+        
+        // If there's existing stock, auto-switch to Ongoing Inventory mode and prefill
+        if (totalExistingStock > 0) {
+          form.setValue('isOpeningStockOnly', 0); // Switch to Ongoing Inventory
+          form.setValue('openingStock', totalExistingStock);
+        } else {
+          // No existing stock - default to Opening Stock Only mode
+          form.setValue('isOpeningStockOnly', 1);
+          form.setValue('openingStock', 0);
+        }
+      }
     } else {
       setSelectedTypeDetails(null);
+      setExistingTypeStock(0);
     }
-  }, [selectedTypeId, materialTypes]);
+  }, [selectedTypeId, materialTypes, materials, item, form]);
 
   // Auto-calculate closing stock when relevant fields change
   useEffect(() => {
@@ -2531,7 +2558,14 @@ function RawMaterialDialog({
             {/* Stock Management Section */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium text-foreground">Stock Management</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-medium text-foreground">Stock Management</h3>
+                  {!item && existingTypeStock > 0 && (
+                    <Badge variant="secondary" className="text-xs">
+                      Existing: {existingTypeStock} {selectedTypeDetails?.baseUnit || 'units'}
+                    </Badge>
+                  )}
+                </div>
                 <FormField
                   control={form.control}
                   name="isOpeningStockOnly"
@@ -2551,6 +2585,14 @@ function RawMaterialDialog({
                   )}
                 />
               </div>
+
+              {/* Info message for existing stock */}
+              {!item && existingTypeStock > 0 && (
+                <div className="text-sm text-muted-foreground bg-blue-50 dark:bg-blue-950/30 p-3 rounded-md border border-blue-200 dark:border-blue-900">
+                  This material type already has <strong>{existingTypeStock} {selectedTypeDetails?.baseUnit || 'units'}</strong> in inventory. 
+                  The Opening Stock is prefilled with the current balance. Add received quantities to update inventory.
+                </div>
+              )}
 
               {isOpeningStockOnly === 1 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
