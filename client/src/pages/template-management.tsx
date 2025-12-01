@@ -487,6 +487,8 @@ function TemplateDialog({
       isActive: formData.isActive ? 1 : 0,
       isDefault: formData.isDefault ? 1 : 0,
     };
+    console.log('[Template Submit] Signature present:', !!submitData.defaultSignatureImage);
+    console.log('[Template Submit] Signature length:', submitData.defaultSignatureImage?.length || 0);
     onSubmit(submitData);
   };
 

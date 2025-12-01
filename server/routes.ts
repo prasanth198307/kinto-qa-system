@@ -4300,7 +4300,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/invoice-templates/:id', requireRole('admin'), async (req: any, res) => {
     try {
       const { id } = req.params;
+      console.log('[Template Update] ID:', id);
+      console.log('[Template Update] Signature present:', !!req.body.defaultSignatureImage);
+      console.log('[Template Update] Signature length:', req.body.defaultSignatureImage?.length || 0);
       const updated = await storage.updateInvoiceTemplate(id, req.body);
+      console.log('[Template Update] After DB - Signature present:', !!updated?.defaultSignatureImage);
       if (!updated) {
         return res.status(404).json({ message: "Invoice template not found" });
       }
