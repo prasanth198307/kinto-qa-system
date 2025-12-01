@@ -167,7 +167,10 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
 
   // Auto-populate finished goods items from invoice items
   useEffect(() => {
-    if (invoiceItems.length > 0 && selectedInvoiceId) {
+    if (invoiceItems.length > 0 && selectedInvoiceId && uoms.length > 0) {
+      // Find default "Cases" UOM
+      const casesUom = uoms.find(u => u.name?.toLowerCase() === 'cases' || u.name?.toLowerCase() === 'case');
+      
       const mappedItems = invoiceItems.map(invItem => {
         // Find matching finished good by product
         const matchingFG = finishedGoods.find(fg => fg.productId === invItem.productId);
@@ -177,7 +180,7 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
           finishedGoodId: matchingFG?.id || "",
           productId: invItem.productId,
           quantityDispatched: invItem.quantity,
-          uomId: invItem.uomId || matchingProduct?.uomId || "",
+          uomId: casesUom?.id || invItem.uomId || matchingProduct?.uomId || "",
           remarks: invItem.description || "",
         };
       });
@@ -185,7 +188,7 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
       setItems(mappedItems);
       form.setValue("items", mappedItems);
     }
-  }, [invoiceItems, selectedInvoiceId, finishedGoods, products, form]);
+  }, [invoiceItems, selectedInvoiceId, finishedGoods, products, uoms, form]);
 
   const saveMutation = useMutation({
     mutationFn: async (data: FormData) => {
@@ -214,21 +217,61 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
     },
   });
 
+  // Find default "Cases" UOM
+  const defaultCasesUom = uoms.find(u => u.name?.toLowerCase() === 'cases' || u.name?.toLowerCase() === 'case');
+
   const addItem = () => {
-    const newItems = [...items, { 
+    // Get current form values to preserve edits
+    const currentFormItems = form.getValues('items') || [];
+    const newItem = { 
       finishedGoodId: "", 
       productId: "", 
       quantityDispatched: 0, 
-      uomId: "", 
+      uomId: defaultCasesUom?.id || "", 
       remarks: "" 
-    }];
+    };
+    // Ensure all items have remarks as string (not undefined)
+    const normalizedItems = currentFormItems.map(item => ({
+      ...item,
+      remarks: item.remarks || ""
+    }));
+    const newItems = [...normalizedItems, newItem];
     setItems(newItems);
     form.setValue('items', newItems);
   };
 
+  // Handle finished good selection - auto-populate product and UOM
+  const handleFinishedGoodChange = (index: number, finishedGoodId: string) => {
+    const fg = finishedGoods.find(f => f.id === finishedGoodId);
+    if (fg) {
+      // Get current items from form to preserve other edits
+      const currentItems = form.getValues('items') || [];
+      // Normalize to ensure remarks is always a string
+      const normalizedItems = currentItems.map(item => ({
+        ...item,
+        remarks: item.remarks || ""
+      }));
+      normalizedItems[index] = {
+        ...normalizedItems[index],
+        finishedGoodId: finishedGoodId,
+        productId: fg.productId,
+        uomId: defaultCasesUom?.id || normalizedItems[index].uomId || "",
+      };
+      setItems(normalizedItems);
+      form.setValue('items', normalizedItems);
+    }
+  };
+
   const removeItem = (index: number) => {
     if (items.length > 1) {
-      const newItems = items.filter((_, i) => i !== index);
+      // Get current form values to preserve edits
+      const currentFormItems = form.getValues('items') || [];
+      // Normalize to ensure remarks is always a string
+      const normalizedItems = currentFormItems.map(item => ({
+        ...item,
+        remarks: item.remarks || ""
+      }));
+      const newItems = normalizedItems.filter((_, i) => i !== index);
       setItems(newItems);
       form.setValue('items', newItems);
     }
@@ -713,25 +756,28 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <FormField
                       control={form.control}
                       name={`items.${index}.finishedGoodId`}
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Finished Good</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
+                        <FormItem className="md:col-span-2">
+                          <FormLabel>Finished Good (Product + Batch)</FormLabel>
+                          <Select 
+                            onValueChange={(value) => handleFinishedGoodChange(index, value)} 
+                            value={field.value}
+                          >
                             <FormControl>
                               <SelectTrigger data-testid={`select-finished-good-${index}`}>
-                                <SelectValue placeholder="Select finished good" />
+                                <SelectValue placeholder="Select batch to dispatch" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {finishedGoods.map((fg) => {
+                              {finishedGoods.filter(fg => fg.quantity > 0).map((fg) => {
                                 const product = products.find(p => p.id === fg.productId);
                                 return (
                                   <SelectItem key={fg.id} value={fg.id}>
-                                    {product?.productName || 'Unknown'} - Batch: {fg.batchNumber} (Qty: {fg.quantity})
+                                    {product?.productName || 'Unknown'} - Batch: {fg.batchNumber} (Available: {fg.quantity})
                                   </SelectItem>
                                 );
                               })}
@@ -742,27 +788,13 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                       )}
                     />
 
+                    {/* Hidden field for productId - auto-populated from finished good */}
                     <FormField
                       control={form.control}
                       name={`items.${index}.productId`}
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Product</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger data-testid={`select-product-${index}`}>
-                                <SelectValue placeholder="Select product" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {products.map((product) => (
-                                <SelectItem key={product.id} value={product.id}>
-                                  {product.productName}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
+                        <FormItem className="hidden">
+                          <Input type="hidden" {...field} />
                         </FormItem>
                       )}
                     />
