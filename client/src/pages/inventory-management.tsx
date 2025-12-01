@@ -1761,7 +1761,7 @@ function ProductDialog({
                                     <SelectValue placeholder="Select material type" />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {materialTypesForBom.filter(mt => mt.isActive === 'true').map(mt => (
+                                    {materialTypesForBom.filter(mt => mt.isActive === 1).map(mt => (
                                       <SelectItem key={mt.id} value={mt.id}>
                                         {mt.typeName} ({mt.baseUnit})
                                       </SelectItem>
