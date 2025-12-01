@@ -1763,6 +1763,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/products/:productId/bom-with-types', isAuthenticated, async (req: any, res) => {
     try {
       const { productId } = req.params;
+      const { configurationId } = req.query;
       
       // Validate productId format (must be valid UUID)
       const uuidSchema = z.string().uuid({ message: "Invalid product ID format - must be a valid UUID" });
@@ -1775,7 +1776,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const bomData = await storage.getProductBomWithTypes(productId);
+      const bomData = await storage.getProductBomWithTypes(productId, configurationId as string | undefined);
       res.json(bomData);
     } catch (error) {
       if (error instanceof Error && error.message === 'Product not found') {
@@ -1783,6 +1784,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.error("Error fetching product BOM with types:", error);
       res.status(500).json({ message: "Failed to fetch product BOM with conversion data" });
+    }
+  });
+
+  // Product BOM Configurations API - Get all configurations for a product
+  app.get('/api/products/:productId/bom-configurations', isAuthenticated, async (req: any, res) => {
+    try {
+      const { productId } = req.params;
+      const configs = await storage.getBomConfigurations(productId);
+      res.json(configs);
+    } catch (error) {
+      console.error("Error fetching BOM configurations:", error);
+      res.status(500).json({ message: "Failed to fetch BOM configurations" });
+    }
+  });
+
+  // Create a new BOM configuration for a product
+  app.post('/api/products/:productId/bom-configurations', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { productId } = req.params;
+      const configData = { ...req.body, productId };
+      const created = await storage.createBomConfiguration(configData);
+      res.json(created);
+    } catch (error) {
+      console.error("Error creating BOM configuration:", error);
+      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to create BOM configuration" });
+    }
+  });
+
+  // Update a BOM configuration
+  app.patch('/api/products/:productId/bom-configurations/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const updated = await storage.updateBomConfiguration(id, req.body);
+      if (!updated) {
+        return res.status(404).json({ message: "BOM configuration not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating BOM configuration:", error);
+      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to update BOM configuration" });
+    }
+  });
+
+  // Delete a BOM configuration (and its BOM items)
+  app.delete('/api/products/:productId/bom-configurations/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteBomConfiguration(id);
+      res.json({ message: "BOM configuration deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting BOM configuration:", error);
+      res.status(500).json({ message: "Failed to delete BOM configuration" });
+    }
+  });
+
+  // Set default configuration for a product
+  app.post('/api/products/:productId/bom-configurations/:id/set-default', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { productId, id } = req.params;
+      await storage.setDefaultBomConfiguration(productId, id);
+      res.json({ message: "Default configuration updated successfully" });
+    } catch (error) {
+      console.error("Error setting default BOM configuration:", error);
+      res.status(500).json({ message: "Failed to set default BOM configuration" });
     }
   });
 
