@@ -171,7 +171,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       invoiceDate: new Date(invoice.invoiceDate).toISOString().split('T')[0],
       invoiceTemplateId: invoice.templateId || "",
       termsConditionsId: invoice.termsConditionsId || "",
-      sellerName: invoice.sellerName || "KINTO Manufacturing",
+      sellerName: invoice.sellerName || "Inmoisture Private Limited",
       sellerAddress: invoice.sellerAddress || "Industrial Area, Phase 1",
       sellerState: invoice.sellerState || "Karnataka",
       sellerStateCode: invoice.sellerStateCode || "29",
@@ -208,7 +208,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       invoiceDate: new Date().toISOString().split('T')[0],
       invoiceTemplateId: "",
       termsConditionsId: "",
-      sellerName: "KINTO Manufacturing",
+      sellerName: "Inmoisture Private Limited",
       sellerAddress: "Industrial Area, Phase 1",
       sellerState: "Karnataka",
       sellerStateCode: "29",
@@ -914,7 +914,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         </div>
 
         <div style="margin-top: 60px; text-align: right;">
-          <p>For ${data.sellerName || 'KINTO Manufacturing'}</p>
+          <p>For ${data.sellerName || 'Inmoisture Private Limited'}</p>
           <br><br>
           <p>_______________________</p>
           <p>Authorized Signatory</p>

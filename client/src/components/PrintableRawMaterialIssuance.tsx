@@ -238,7 +238,7 @@ export default function PrintableRawMaterialIssuance({ issuance }: PrintableRawM
       <div ref={printRef} style={{ display: 'none' }}>
         <div className="page">
           <div className="header">
-            <div className="company-name">KINTO MANUFACTURING</div>
+            <div className="company-name">INMOISTURE PRIVATE LIMITED</div>
             <div className="document-title">Raw Material Issuance</div>
             <div className="issuance-number">Issuance No: {issuance.issuanceNumber}</div>
           </div>

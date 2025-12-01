@@ -279,7 +279,7 @@ export default function PrintablePurchaseOrder({ po }: PrintablePurchaseOrderPro
       <div ref={printRef} style={{ display: 'none' }}>
         <div className="page">
           <div className="header">
-            <div className="company-name">KINTO MANUFACTURING</div>
+            <div className="company-name">INMOISTURE PRIVATE LIMITED</div>
             <div className="document-title">PURCHASE ORDER</div>
             <div className="po-number">PO Number: {po.poNumber}</div>
             <div style={{ fontSize: '12px', marginTop: '5px' }}>Date: {formattedDate}</div>
@@ -369,7 +369,7 @@ export default function PrintablePurchaseOrder({ po }: PrintablePurchaseOrderPro
             <div className="terms-title">Terms & Conditions:</div>
             <ol className="terms-list">
               <li>Payment terms: As per agreed terms with supplier</li>
-              <li>Delivery should be made to KINTO Manufacturing facility</li>
+              <li>Delivery should be made to Inmoisture Private Limited facility</li>
               <li>All items must be inspected upon delivery</li>
               <li>Supplier must provide warranty/guarantee as applicable</li>
               <li>Any discrepancies must be reported within 7 days of delivery</li>

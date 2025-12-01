@@ -303,7 +303,7 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
         <button onclick="window.print()" class="print-btn no-print">Print Gatepass</button>
         
         <div class="header">
-          <div class="company-name">KINTO MANUFACTURING</div>
+          <div class="company-name">INMOISTURE PRIVATE LIMITED</div>
           <div>DELIVERY GATEPASS</div>
           <div class="gatepass-number">GP No: ${gatepass?.gatepassNumber || 'NEW'}</div>
         </div>

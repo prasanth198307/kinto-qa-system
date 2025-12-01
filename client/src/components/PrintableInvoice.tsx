@@ -117,7 +117,7 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
     let upiQRCodeDataUrl = '';
     try {
       let upiString = '';
-      const payeeName = encodeURIComponent(accountHolderName || invoice.sellerName || 'KINTO');
+      const payeeName = encodeURIComponent(accountHolderName || invoice.sellerName || 'Inmoisture Private Limited');
       
       if (upiId) {
         // Use UPI ID if available
@@ -165,7 +165,7 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
             </div>
           ` : ''}
           <div class="company-info">
-            <div class="company-name">${invoice.sellerName || 'KINTO Manufacturing Pvt Ltd'}</div>
+            <div class="company-name">${invoice.sellerName || 'Inmoisture Private Limited'}</div>
             <div>${invoice.sellerAddress || ''}</div>
             <div class="company-contact">
               ${invoice.sellerPhone ? `Phone: ${invoice.sellerPhone}` : ''}
