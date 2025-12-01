@@ -16,7 +16,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ArrowLeft, Edit, Mail, FileText, Printer, Star, Receipt, RefreshCw, Calculator, CreditCard } from "lucide-react";
-import type { Invoice, InvoiceItem, Product, Gatepass, InvoicePayment } from "@shared/schema";
+import type { Invoice, InvoiceItem, Product, Gatepass, InvoicePayment, GatepassItem, FinishedGood } from "@shared/schema";
 import {
   Table,
   TableBody,
@@ -108,6 +108,21 @@ export default function InvoiceDetail() {
 
   const { data: gatepasses = [] } = useQuery<Gatepass[]>({
     queryKey: ['/api/gatepasses'],
+  });
+
+  // Find related gatepass early to fetch its items
+  const safeGatepassesEarly = Array.isArray(gatepasses) ? gatepasses : [];
+  const relatedGatepassId = safeGatepassesEarly.find(g => g.invoiceId === id)?.id;
+
+  // Fetch gatepass items to show batch numbers
+  const { data: gatepassItems = [] } = useQuery<GatepassItem[]>({
+    queryKey: ['/api/gatepass-items', relatedGatepassId],
+    enabled: !!relatedGatepassId,
+  });
+
+  // Fetch finished goods to get batch numbers
+  const { data: finishedGoods = [] } = useQuery<FinishedGood[]>({
+    queryKey: ['/api/finished-goods'],
   });
 
   // Fetch all vendors to find the one matching this invoice's buyer
@@ -556,6 +571,53 @@ export default function InvoiceDetail() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Dispatch Batch Numbers - Show when gatepass exists */}
+      {relatedGatepass && gatepassItems.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              Loaded Batch Numbers
+            </CardTitle>
+            <CardDescription>
+              Batch numbers loaded in vehicle for Gatepass {relatedGatepass.gatepassNumber}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left p-3 font-semibold">#</th>
+                    <th className="text-left p-3 font-semibold">Product</th>
+                    <th className="text-left p-3 font-semibold">Batch Number</th>
+                    <th className="text-right p-3 font-semibold">Quantity Dispatched</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {gatepassItems.map((gpItem, index) => {
+                    const finishedGood = finishedGoods.find(fg => fg.id === gpItem.finishedGoodId);
+                    const product = safeProducts.find(p => p.id === finishedGood?.productId || p.id === gpItem.productId);
+                    return (
+                      <tr key={gpItem.id} className="border-b" data-testid={`row-batch-${index + 1}`}>
+                        <td className="p-3">{index + 1}</td>
+                        <td className="p-3">{product?.productName || 'Unknown Product'}</td>
+                        <td className="p-3">
+                          <Badge variant="outline" className="font-mono">
+                            {finishedGood?.batchNumber || '-'}
+                          </Badge>
+                        </td>
+                        <td className="p-3 text-right">{gpItem.quantityDispatched}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Tax Summary */}
       <div className="grid gap-6 md:grid-cols-2">
