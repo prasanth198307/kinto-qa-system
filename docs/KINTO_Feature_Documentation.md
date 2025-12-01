@@ -570,14 +570,14 @@ When you click on any invoice, you see its complete details plus available actio
 ## 4.4 Cancel & Reissue Invoice
 
 ### What is this?
-If you made a mistake in an invoice, you can cancel it and create a new one.
+If you made a mistake in an invoice, you can cancel it and create a new corrected one. The system maintains a complete audit trail linking the cancelled invoice to its replacement.
 
 ### When to use?
 - **Current month invoice** only
-- **Before gatepass** is created
 - Wrong price entered
 - Wrong quantity
 - Wrong customer
+- Wrong GST rate
 
 ### GST Rule (Very Important!)
 
@@ -586,6 +586,39 @@ If you made a mistake in an invoice, you can cancel it and create a new one.
 | **Current Month** | Cancel & Reissue | GST return not yet filed |
 | **Previous Month** | Credit Note (for reduction) | GST return already filed |
 | **Previous Month** | Debit Note (for increase) | GST return already filed |
+
+### How Cancel & Reissue Works
+
+1. **Go to Invoice Detail** → Click on invoice number
+2. **Click "Cancel & Reissue"** button
+3. **Enter cancellation reason** → Confirm
+4. **Form opens with original data** → Make corrections
+5. **Save reissued invoice** → New invoice number assigned
+
+### Inventory Handling During Cancel & Reissue
+
+| Step | Action | Inventory Effect |
+|------|--------|------------------|
+| Cancel Original | Goods returned | +Quantity added back |
+| Create Reissued | Goods re-dispatched | -Quantity deducted |
+| **Net Effect** | | **Zero** (balanced) |
+
+**Scenarios:**
+
+| Scenario | Cancel | Reissue | Net Effect |
+|----------|--------|---------|------------|
+| Same quantity | +100 | -100 | 0 |
+| Less quantity | +100 | -80 | +20 remain in stock |
+| More quantity | +100 | -120 | -20 from other batches |
+
+> **Note:** If reissued invoice has MORE quantity than original, system automatically deducts from other available batches. If not enough stock, reissue is blocked.
+
+### Audit Trail
+
+The system maintains links between cancelled and reissued invoices:
+- Cancelled invoice shows "Replaced by: INV-xxx"
+- Reissued invoice shows "Replaces: INV-xxx"
+- Both visible in **Cancelled Invoices Report**
 
 ---
 
@@ -622,29 +655,37 @@ Dispatched → Already reduced
 ## 5.2 Dispatch Tracking
 
 ### What is this?
-Track where your goods are - from warehouse to customer's door. A 5-stage journey.
+Track where your goods are - from warehouse to customer's door. A complete journey from invoice creation to delivery.
 
 ### Screenshot
 ![Dispatch Tracking](../attached_assets/screenshots/19_dispatch_tracking.png)
 
-### The 5-Stage Journey
+### The Complete Dispatch Workflow
 
 ```
-Stage 1          Stage 2          Stage 3          Stage 4          Stage 5
-INVOICE    →    GATEPASS    →    DISPATCHED   →   IN TRANSIT   →   DELIVERED
-CREATED         CREATED          (Left Gate)      (On the way)      (POD Done)
-   📄              📦               🚚               🛣️               ✅
+Step 1           Step 2              Step 3           Step 4           Step 5
+DRAFT      →    READY FOR GP   →    DISPATCHED   →   IN TRANSIT   →   DELIVERED
+(Invoice)       (Approved)          (Gatepass)       (On the way)      (POD Done)
+   📝              📦✓                 🚚               🛣️               ✅
 ```
 
-### Stage Details
+### Step-by-Step Process
 
-| Stage | Status | Who Updates | Description |
-|-------|--------|-------------|-------------|
-| 1 | Invoice Created | Auto | Invoice saved |
-| 2 | Gatepass Created | Warehouse | Goods packed, gatepass issued |
-| 3 | Dispatched | Logistics | Vehicle left premises |
-| 4 | In Transit | System | Goods in transport |
-| 5 | Delivered (POD) | Driver/Customer | Proof of delivery captured |
+| Step | Status | Screen | Action | Description |
+|------|--------|--------|--------|-------------|
+| 1 | Draft | Sales Invoices | Create Invoice | Invoice saved, not yet approved for dispatch |
+| 2 | Ready for GP | Sales Invoices | Click 📦✓ button | Approve invoice for gatepass creation |
+| 3 | Dispatched | Gatepasses | Create Gatepass | Goods packed, vehicle loaded, inventory deducted |
+| 4 | In Transit | Auto | - | Goods in transport |
+| 5 | Delivered | Dispatch Tracking | Mark Delivered / Add POD | Proof of delivery captured |
+
+### How to Mark Invoice Ready for Gatepass
+
+1. Go to **Production → Sales Invoices**
+2. Find the invoice with **Draft** status
+3. Click the **blue package icon** (📦✓) in the Actions column
+4. Confirm → Status changes to **Ready for GP**
+5. Now the invoice appears in the Gatepass form dropdown
 
 ---
 
