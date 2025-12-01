@@ -2294,6 +2294,9 @@ function RawMaterialDialog({
   const returnedQuantity = form.watch('returnedQuantity');
   const adjustments = form.watch('adjustments');
 
+  // Track if user manually selected a type (vs loaded from editing)
+  const [userChangedType, setUserChangedType] = useState(false);
+  
   // Auto-fetch Material Type details and existing stock when type is selected
   useEffect(() => {
     if (selectedTypeId && selectedTypeId !== '') {
@@ -2303,7 +2306,8 @@ function RawMaterialDialog({
       }
       
       // Only check for existing stock when adding new material (not editing)
-      if (!item) {
+      // And only when user actively changed the type selection
+      if (!item && userChangedType) {
         // Calculate total existing stock for this material type
         const existingMaterialsForType = materials.filter(m => m.typeId === selectedTypeId);
         const totalExistingStock = existingMaterialsForType.reduce((sum, m) => {
@@ -2327,7 +2331,7 @@ function RawMaterialDialog({
       setSelectedTypeDetails(null);
       setExistingTypeStock(0);
     }
-  }, [selectedTypeId, materialTypes, materials, item, form]);
+  }, [selectedTypeId, materialTypes, materials, item, form, userChangedType]);
 
   // Auto-calculate closing stock when relevant fields change
   useEffect(() => {
@@ -2356,29 +2360,43 @@ function RawMaterialDialog({
   useEffect(() => {
     if (open) {
       if (item) {
+        // When editing, load existing values properly
+        // Use explicit check for isOpeningStockOnly since 0 is a valid value
+        const stockMode = item.isOpeningStockOnly !== undefined && item.isOpeningStockOnly !== null 
+          ? item.isOpeningStockOnly 
+          : 1;
+        
         form.reset({
           materialCode: item.materialCode || undefined,
           materialName: item.materialName || '',
           description: item.description || '',
           category: item.category || '',
           typeId: item.typeId || '',
-          isOpeningStockOnly: item.isOpeningStockOnly || 1,
-          openingStock: item.openingStock || 0,
+          isOpeningStockOnly: stockMode,
+          openingStock: Number(item.openingStock) || 0,
           openingDate: item.openingDate || undefined,
-          closingStock: item.closingStock || undefined,
-          closingStockUsable: item.closingStockUsable || undefined,
-          receivedQuantity: item.receivedQuantity || 0,
-          returnedQuantity: item.returnedQuantity || 0,
-          adjustments: item.adjustments || 0,
+          closingStock: item.closingStock !== undefined ? Number(item.closingStock) : undefined,
+          closingStockUsable: item.closingStockUsable !== undefined ? Number(item.closingStockUsable) : undefined,
+          receivedQuantity: Number(item.receivedQuantity) || 0,
+          returnedQuantity: Number(item.returnedQuantity) || 0,
+          adjustments: Number(item.adjustments) || 0,
           uomId: item.uomId || undefined,
-          currentStock: item.currentStock || 0,
-          reorderLevel: item.reorderLevel || undefined,
-          maxStockLevel: item.maxStockLevel || undefined,
-          unitCost: item.unitCost || undefined,
+          currentStock: Number(item.currentStock) || 0,
+          reorderLevel: item.reorderLevel !== undefined ? Number(item.reorderLevel) : undefined,
+          maxStockLevel: item.maxStockLevel !== undefined ? Number(item.maxStockLevel) : undefined,
+          unitCost: item.unitCost !== undefined ? Number(item.unitCost) : undefined,
           location: item.location || '',
           supplier: item.supplier || '',
           isActive: item.isActive || 'true',
         });
+        
+        // Also set the type details for editing mode
+        if (item.typeId) {
+          const typeDetails = materialTypes.find(t => t.id === item.typeId);
+          if (typeDetails) {
+            setSelectedTypeDetails(typeDetails);
+          }
+        }
       } else {
         form.reset({
           materialCode: undefined,
@@ -2404,9 +2422,11 @@ function RawMaterialDialog({
           isActive: 'true',
         });
         setSelectedTypeDetails(null);
+        setExistingTypeStock(0);
+        setUserChangedType(false);
       }
     }
-  }, [item, open, form]);
+  }, [item, open, form, materialTypes]);
 
   const handleSubmit = (data: z.infer<typeof insertRawMaterialSchema>) => {
     if (!selectedTypeDetails) {
@@ -2487,7 +2507,16 @@ function RawMaterialDialog({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Material Type *</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value || ''}>
+                      <Select 
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          // Mark that user manually changed the type
+                          if (!item) {
+                            setUserChangedType(true);
+                          }
+                        }} 
+                        value={field.value || ''}
+                      >
                         <FormControl>
                           <SelectTrigger data-testid="select-material-type">
                             <SelectValue placeholder="Select Material Type" />
