@@ -3800,12 +3800,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Create gatepass header
         const [gatepass] = await tx.insert(gatepasses).values([gatepassData]).returning();
         
-        // If gatepass is linked to an invoice, update invoice status to "dispatched"
-        if (gatepass.invoiceId) {
-          await tx.update(invoices)
-            .set({ status: 'dispatched' })
-            .where(eq(invoices.id, gatepass.invoiceId));
-        }
+        // NOTE: Invoice status stays at 'ready_for_gatepass' until vehicle exit is recorded
+        // The vehicle exit endpoint will update invoice status to 'dispatched'
+        // This follows the 5-stage dispatch workflow:
+        // ready_for_gatepass -> Create Gatepass (generated) -> Record Exit (vehicle_out, dispatched) -> POD (delivered)
         
         // Create items and deduct inventory for each
         for (const item of items) {
