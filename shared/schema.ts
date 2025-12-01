@@ -703,10 +703,38 @@ export const insertProductSchema = createInsertSchema(products).omit({
 export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type Product = typeof products.$inferSelect;
 
+// Product BOM Configurations (Multiple BOM variants per product)
+export const productBomConfigurations = pgTable("product_bom_configurations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  productId: varchar("product_id").references(() => products.id, { onDelete: 'cascade' }).notNull(),
+  configName: varchar("config_name", { length: 255 }).notNull(), // e.g., "Standard - 21gm Preform", "Economy - 19.2gm Preform"
+  description: text("description"),
+  isDefault: integer("is_default").default(0).notNull(), // 0 = No, 1 = Yes (only one default per product)
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
+}, (table) => ({
+  productIdIdx: index("product_bom_configurations_product_id_idx").on(table.productId),
+  isDefaultIdx: index("product_bom_configurations_is_default_idx").on(table.isDefault),
+  recordStatusIdx: index("product_bom_configurations_record_status_idx").on(table.recordStatus),
+}));
+
+export const insertProductBomConfigurationSchema = createInsertSchema(productBomConfigurations).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertProductBomConfiguration = z.infer<typeof insertProductBomConfigurationSchema>;
+export type ProductBomConfiguration = typeof productBomConfigurations.$inferSelect;
+
 // Product Bill of Materials (BOM)
 export const productBom = pgTable("product_bom", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   productId: varchar("product_id").references(() => products.id, { onDelete: 'cascade' }).notNull(),
+  configurationId: varchar("configuration_id").references(() => productBomConfigurations.id, { onDelete: 'cascade' }), // Links to BOM configuration (null = legacy/default)
   rawMaterialId: varchar("raw_material_id").references(() => rawMaterials.id), // Legacy - nullable for migration
   materialTypeId: varchar("material_type_id").references(() => rawMaterialTypes.id), // New - references material type
   quantityRequired: numeric("quantity_required", { precision: 12, scale: 6 }).notNull(), // Quantity needed (supports fractions)
@@ -717,6 +745,7 @@ export const productBom = pgTable("product_bom", {
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 }, (table) => ({
   productIdIdx: index("product_bom_product_id_idx").on(table.productId),
+  configurationIdIdx: index("product_bom_configuration_id_idx").on(table.configurationId),
   rawMaterialIdIdx: index("product_bom_raw_material_id_idx").on(table.rawMaterialId),
   materialTypeIdIdx: index("product_bom_material_type_id_idx").on(table.materialTypeId),
   recordStatusIdx: index("product_bom_record_status_idx").on(table.recordStatus),
@@ -1140,6 +1169,7 @@ export const rawMaterialIssuance = pgTable("raw_material_issuance", {
   issuanceDate: timestamp("issuance_date", { mode: 'string' }).notNull(),
   issuedTo: varchar("issued_to", { length: 255 }),
   productId: varchar("product_id").references(() => products.id), // Product being manufactured
+  bomConfigurationId: varchar("bom_configuration_id").references(() => productBomConfigurations.id), // Which BOM configuration was used
   productionReference: varchar("production_reference", { length: 255 }), // Batch ID / FG Name / Shift No
   plannedOutput: numeric("planned_output", { precision: 12, scale: 2 }), // Expected production quantity
   remarks: text("remarks"),
