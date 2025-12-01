@@ -738,7 +738,20 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                 </Button>
               </div>
 
-              {items.map((item, index) => (
+              {items.map((item, index) => {
+                // Get already selected batch IDs (excluding current item)
+                const currentFormItems = form.getValues('items') || [];
+                const selectedBatchIds = currentFormItems
+                  .filter((_, i) => i !== index)
+                  .map(item => item.finishedGoodId)
+                  .filter(id => id);
+                
+                // Get available quantity for current batch
+                const currentBatchId = currentFormItems[index]?.finishedGoodId;
+                const currentBatch = finishedGoods.find(fg => fg.id === currentBatchId);
+                const availableQty = currentBatch?.quantity || 0;
+                
+                return (
               <Card key={index} className="p-4">
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
@@ -773,14 +786,17 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {finishedGoods.filter(fg => fg.quantity > 0).map((fg) => {
-                                const product = products.find(p => p.id === fg.productId);
-                                return (
-                                  <SelectItem key={fg.id} value={fg.id}>
-                                    {product?.productName || 'Unknown'} - Batch: {fg.batchNumber} (Available: {fg.quantity})
-                                  </SelectItem>
-                                );
-                              })}
+                              {finishedGoods
+                                .filter(fg => fg.quantity > 0)
+                                .filter(fg => !selectedBatchIds.includes(fg.id) || fg.id === field.value)
+                                .map((fg) => {
+                                  const product = products.find(p => p.id === fg.productId);
+                                  return (
+                                    <SelectItem key={fg.id} value={fg.id}>
+                                      {product?.productName || 'Unknown'} - Batch: {fg.batchNumber} (Available: {fg.quantity})
+                                    </SelectItem>
+                                  );
+                                })}
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -802,20 +818,41 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                     <FormField
                       control={form.control}
                       name={`items.${index}.quantityDispatched`}
-                      render={({ field }) => (
+                      render={({ field }) => {
+                        const enteredQty = field.value || 0;
+                        const exceedsAvailable = currentBatchId && enteredQty > availableQty;
+                        
+                        return (
                         <FormItem>
                           <FormLabel>Quantity Dispatched</FormLabel>
                           <FormControl>
                             <Input
                               type="number"
                               {...field}
-                              onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                              onChange={(e) => {
+                                const newQty = parseInt(e.target.value) || 0;
+                                if (currentBatchId && newQty > availableQty) {
+                                  toast({
+                                    title: "Quantity Exceeds Available",
+                                    description: `Only ${availableQty} available in this batch. Entered: ${newQty}`,
+                                    variant: "destructive",
+                                  });
+                                }
+                                field.onChange(newQty);
+                              }}
+                              className={exceedsAvailable ? "border-destructive" : ""}
                               data-testid={`input-quantity-${index}`}
                             />
                           </FormControl>
+                          {exceedsAvailable && (
+                            <p className="text-sm text-destructive">
+                              Exceeds available: {availableQty}
+                            </p>
+                          )}
                           <FormMessage />
                         </FormItem>
-                      )}
+                        );
+                      }}
                     />
 
                     <FormField
@@ -859,7 +896,8 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                   </div>
                 </div>
               </Card>
-            ))}
+              );
+            })}
             </div>
           )}
 
