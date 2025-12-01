@@ -4275,6 +4275,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!template) {
         return res.status(404).json({ message: "Invoice template not found" });
       }
+      console.log('[Template Fetch] ID:', id);
+      console.log('[Template Fetch] Has signature:', !!template.defaultSignatureImage);
+      console.log('[Template Fetch] Signatory name:', template.authorizedSignatoryName);
       res.json(template);
     } catch (error) {
       console.error("Error fetching invoice template:", error);
