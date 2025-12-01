@@ -427,7 +427,7 @@ function TemplateDialog({
       reader.onloadend = async () => {
         const signatureDataUrl = reader.result as string;
         const processedSignature = await removeSignatureBackground(signatureDataUrl);
-        setFormData({ ...formData, defaultSignatureImage: processedSignature });
+        setFormData(prev => ({ ...prev, defaultSignatureImage: processedSignature }));
       };
       reader.readAsDataURL(file);
     }
