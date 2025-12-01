@@ -390,7 +390,7 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
           <!-- Signature Section (Right) -->
           <div class="signature-section">
             <div class="company-for-line">For <strong>${invoice.sellerName || 'Inmoisture Private Limited'}:</strong></div>
-            ${template?.defaultSignatureImage ? `
+            ${(invoice.includeSignature === 1 || invoice.includeSignature === undefined) && template?.defaultSignatureImage ? `
               <div class="signature-image">
                 <img src="${template.defaultSignatureImage}" alt="Authorized Signature" style="max-height: 50px; object-fit: contain;" />
               </div>
