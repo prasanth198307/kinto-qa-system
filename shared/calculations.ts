@@ -48,16 +48,24 @@ export interface BOMCalculationResult {
  * Formula: (quantityPerUnit × plannedOutput ÷ usableUnitsPerBase)
  * 
  * Example: Preform 21g in 25kg bags
- * - baseUnitWeight: 25kg bag = 25000g (auto-converted)
- * - weightPerDerivedUnit: 21g per preform
- * - pcsPerBag: 25000 / 21 = 1190 pcs
- * - usableUnits: 1190 × (1 - 0.05) = 1130 pcs (after 5% loss)
- * - For 12,000 bottles: (1 × 12000 ÷ 1130) = 10.6 bags
+ * - usableUnits: 1131 (pre-calculated in DB with loss % applied)
+ * - For 12,000 bottles: (1 × 12000 ÷ 1131) = 10.6 bags
  */
 function calculateFormulaBased(input: BOMCalculationInput): number {
   const { typeConversion, plannedOutput, quantityRequired } = input;
   
-  if (!typeConversion || !typeConversion.baseUnitWeight || !typeConversion.weightPerDerivedUnit) {
+  if (!typeConversion) {
+    return 0; // Missing required data
+  }
+  
+  // Priority 1: Use pre-calculated usableUnits from database (already has loss % applied)
+  if (typeConversion.usableUnits && typeConversion.usableUnits > 0) {
+    const required = (quantityRequired * plannedOutput) / typeConversion.usableUnits;
+    return required;
+  }
+  
+  // Priority 2: Calculate from base weights if usableUnits not available
+  if (!typeConversion.baseUnitWeight || !typeConversion.weightPerDerivedUnit) {
     return 0; // Missing required data
   }
   
@@ -69,28 +77,22 @@ function calculateFormulaBased(input: BOMCalculationInput): number {
   
   // Heuristic: If base weight is much smaller than derived weight ratio suggests,
   // it's likely in kg and needs conversion to grams
-  // e.g., base=25 (kg), derived=21 (g) → 25/21 = 1.19 pcs/bag (clearly wrong)
-  // After conversion: 25000/21 = 1190 pcs/bag (correct)
   if (baseWeightInGrams <= 100 && derivedWeight < 100 && (baseWeightInGrams / derivedWeight) < 10) {
-    // Base unit is likely in kg, convert to grams
     baseWeightInGrams = baseWeightInGrams * 1000;
   }
   
   // Calculate pieces per base unit
   const pcsPerBase = baseWeightInGrams / derivedWeight;
   
-  // Apply loss percentage (ensure it doesn't make usableUnits zero or negative)
-  const lossPercent = Math.min(typeConversion.lossPercent || 0, 99); // Cap at 99%
+  // Apply loss percentage
+  const lossPercent = Math.min(typeConversion.lossPercent || 0, 99);
   const usableUnits = pcsPerBase * (1 - lossPercent / 100);
   
-  // Guard against divide by zero
   if (usableUnits <= 0) {
     return 0;
   }
   
-  // Calculate required quantity
   const required = (quantityRequired * plannedOutput) / usableUnits;
-  
   return required;
 }
 
