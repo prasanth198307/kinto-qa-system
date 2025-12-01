@@ -656,9 +656,9 @@ export const products = pgTable("products", {
   netVolume: integer("net_volume"), // In ml (whole numbers)
   
   // Pricing & Tax Information
-  basePrice: integer("base_price"), // Price per Base Unit (excluding GST, in paise)
+  basePrice: numeric("base_price", { precision: 12, scale: 2 }), // Price per Base Unit (excluding GST, in paise - allows decimals like 94.5)
   gstPercent: numeric("gst_percent", { precision: 5, scale: 2 }), // GST percentage (e.g., 18.5%)
-  totalPrice: integer("total_price"), // Auto-calculated (including GST, in paise)
+  totalPrice: numeric("total_price", { precision: 12, scale: 2 }), // Auto-calculated (including GST, in paise - allows decimals)
   mrp: integer("mrp"), // MRP (Printed Price) in paise
   hsnCode: varchar("hsn_code", { length: 50 }),
   sacCode: varchar("sac_code", { length: 50 }),
