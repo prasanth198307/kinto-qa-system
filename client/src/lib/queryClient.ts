@@ -32,13 +32,19 @@ export const getQueryFn: <T>(options: {
     // Build URL from queryKey, handling both simple paths and query parameters
     let url: string;
     
+    // Check if last element is an object (query parameters)
+    const lastElement = queryKey[queryKey.length - 1];
+    const hasQueryParams = typeof lastElement === 'object' && lastElement !== null && !Array.isArray(lastElement);
+    
     if (queryKey.length === 1) {
       // Simple path: ['/api/invoices']
       url = queryKey[0] as string;
-    } else if (queryKey.length === 2 && typeof queryKey[1] === 'object' && queryKey[1] !== null) {
-      // Path with query params: ['/api/invoices', { page: 1, pageSize: 25 }]
-      const basePath = queryKey[0] as string;
-      const params = queryKey[1] as Record<string, any>;
+    } else if (hasQueryParams) {
+      // Path segments with query params at the end
+      // e.g., ['/api/products', 'abc123', 'bom-with-types', { configurationId: 'xyz' }]
+      // or ['/api/invoices', { page: 1, pageSize: 25 }]
+      const pathSegments = queryKey.slice(0, -1) as string[];
+      const params = lastElement as Record<string, any>;
       const searchParams = new URLSearchParams();
       
       for (const [key, value] of Object.entries(params)) {
@@ -47,6 +53,7 @@ export const getQueryFn: <T>(options: {
         }
       }
       
+      const basePath = pathSegments.join("/");
       url = searchParams.toString() 
         ? `${basePath}?${searchParams.toString()}`
         : basePath;
