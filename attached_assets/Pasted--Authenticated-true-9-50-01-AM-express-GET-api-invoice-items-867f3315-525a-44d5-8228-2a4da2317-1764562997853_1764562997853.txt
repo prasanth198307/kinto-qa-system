@@ -1,0 +1,41 @@
+   Authenticated: true
+9:50:01 AM [express] GET /api/invoice-items/867f3315-525a-44d5-8228-2a4da2317c88 304 in 3ms :: [{"id…
+9:50:01 AM [express] GET /api/invoice-items/dff5f442-a6a4-453e-a61b-80e48210b41a 304 in 4ms :: [{"id…
+9:50:01 AM [express] GET /api/invoice-items/5e1ee21d-8b1d-4f48-baed-85c05250c365 304 in 4ms :: [{"id…
+9:50:01 AM [express] GET /api/invoice-items/33da1e27-cf95-4331-9e90-87b320d0b97d 304 in 4ms :: [{"id…
+🔹 Request: GET /api/invoice-items/51102a60-c730-4cc5-918d-736406500a2e
+   Cookie header: connect.sid=s%3AvTfrIKznVQvihiQpH6gwjAOcf2sxdwFJ.rgtu7I3sYPrFg8mOn1%2Bpj7%2FXs6zeTAjELlVzNOPGYas
+   Session ID: vTfrIKznVQvihiQpH6gwjAOcf2sxdwFJ
+   Authenticated: true
+🔹 Request: GET /api/invoice-items/0e23bfa3-cdd9-4844-9b36-a9a728f7f9dc
+   Cookie header: connect.sid=s%3AvTfrIKznVQvihiQpH6gwjAOcf2sxdwFJ.rgtu7I3sYPrFg8mOn1%2Bpj7%2FXs6zeTAjELlVzNOPGYas
+   Session ID: vTfrIKznVQvihiQpH6gwjAOcf2sxdwFJ
+   Authenticated: true
+9:50:01 AM [express] GET /api/invoice-items/51102a60-c730-4cc5-918d-736406500a2e 304 in 2ms :: [{"id…
+🔹 Request: GET /api/invoice-items/1dd360c1-3978-4786-a4a6-a03aecf9bbef
+   Cookie header: connect.sid=s%3AvTfrIKznVQvihiQpH6gwjAOcf2sxdwFJ.rgtu7I3sYPrFg8mOn1%2Bpj7%2FXs6zeTAjELlVzNOPGYas
+   Session ID: vTfrIKznVQvihiQpH6gwjAOcf2sxdwFJ
+   Authenticated: true
+🔹 Request: GET /api/invoice-items/7aa5520d-638a-4217-af48-7581970a1382
+   Cookie header: connect.sid=s%3AvTfrIKznVQvihiQpH6gwjAOcf2sxdwFJ.rgtu7I3sYPrFg8mOn1%2Bpj7%2FXs6zeTAjELlVzNOPGYas
+   Session ID: vTfrIKznVQvihiQpH6gwjAOcf2sxdwFJ
+   Authenticated: true
+🔹 Request: GET /api/finished-goods
+   Cookie header: connect.sid=s%3AvTfrIKznVQvihiQpH6gwjAOcf2sxdwFJ.rgtu7I3sYPrFg8mOn1%2Bpj7%2FXs6zeTAjELlVzNOPGYas
+   Session ID: vTfrIKznVQvihiQpH6gwjAOcf2sxdwFJ
+   Authenticated: true
+9:50:01 AM [express] GET /api/invoice-items/1dd360c1-3978-4786-a4a6-a03aecf9bbef 304 in 3ms :: [{"id…
+9:50:01 AM [express] GET /api/invoice-items/0e23bfa3-cdd9-4844-9b36-a9a728f7f9dc 304 in 4ms :: [{"id…
+🔹 Request: GET /api/vendors
+   Cookie header: connect.sid=s%3AvTfrIKznVQvihiQpH6gwjAOcf2sxdwFJ.rgtu7I3sYPrFg8mOn1%2Bpj7%2FXs6zeTAjELlVzNOPGYas
+   Session ID: vTfrIKznVQvihiQpH6gwjAOcf2sxdwFJ
+   Authenticated: true
+9:50:01 AM [express] GET /api/invoice-items/7aa5520d-638a-4217-af48-7581970a1382 304 in 4ms :: [{"id…
+9:50:01 AM [express] GET /api/finished-goods 304 in 4ms :: [{"id":"e5b36612-d538-4049-9407-d4a28f43a…
+🔹 Request: GET /api/invoices/available
+   Cookie header: connect.sid=s%3AvTfrIKznVQvihiQpH6gwjAOcf2sxdwFJ.rgtu7I3sYPrFg8mOn1%2Bpj7%2FXs6zeTAjELlVzNOPGYas
+   Session ID: vTfrIKznVQvihiQpH6gwjAOcf2sxdwFJ
+   Authenticated: true
+9:50:01 AM [express] GET /api/vendors 304 in 5ms :: [{"id":"aeedb522-642c-4e72-9a58-1f6b33e1d4ab","v…
+9:50:01 AM [express] GET /api/invoices/available 304 in 4ms :: []
+
