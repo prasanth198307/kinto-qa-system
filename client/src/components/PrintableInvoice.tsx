@@ -765,15 +765,26 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
 
             /* Signature Section */
             .signature-section {
-              text-align: right;
+              text-align: center;
               border: 1px solid #000;
               padding: 8px;
               font-size: 9px;
             }
 
             .company-for-line {
-              margin-bottom: 5px;
+              margin-bottom: 8px;
               text-align: left;
+            }
+            
+            .signature-image {
+              margin: 10px auto;
+              min-height: 40px;
+            }
+            
+            .signature-image img {
+              max-height: 50px;
+              object-fit: contain;
+              background: transparent;
             }
 
             .signature-space {

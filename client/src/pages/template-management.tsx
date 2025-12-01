@@ -390,17 +390,25 @@ function TemplateDialog({
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const data = imageData.data;
 
-        // Lower threshold to handle gray paper backgrounds (200 catches most grays)
-        const threshold = 200;
-
+        // Aggressive background removal for paper/gray backgrounds
         for (let i = 0; i < data.length; i += 4) {
           const r = data[i];
           const g = data[i + 1];
           const b = data[i + 2];
 
-          // Make light/gray pixels transparent
-          if (r > threshold && g > threshold && b > threshold) {
-            data[i + 3] = 0;
+          // Calculate brightness (0-255)
+          const brightness = (r + g + b) / 3;
+          
+          // Calculate how "gray" the pixel is (low = grayish, high = colorful)
+          const maxChannel = Math.max(r, g, b);
+          const minChannel = Math.min(r, g, b);
+          const colorfulness = maxChannel - minChannel;
+          
+          // Remove pixels that are:
+          // 1. Very light (brightness > 180) OR
+          // 2. Light grayish (brightness > 140 AND colorfulness < 40)
+          if (brightness > 180 || (brightness > 140 && colorfulness < 40)) {
+            data[i + 3] = 0; // Make transparent
           }
         }
 
