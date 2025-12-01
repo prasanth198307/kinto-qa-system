@@ -18,6 +18,7 @@ import {
   productCategories,
   productTypes,
   products,
+  productBomConfigurations,
   productBom,
   vendors,
   vendorTypes,
@@ -86,6 +87,8 @@ import {
   type InsertProductType,
   type Product,
   type InsertProduct,
+  type ProductBomConfiguration,
+  type InsertProductBomConfiguration,
   type ProductBom,
   type InsertProductBom,
   type Vendor,
@@ -295,10 +298,18 @@ export interface IStorage {
   updateProduct(id: string, product: Partial<InsertProduct>): Promise<Product | undefined>;
   deleteProduct(id: string): Promise<void>;
   
+  // Product BOM Configurations (Multiple BOM variants per product)
+  createBomConfiguration(config: InsertProductBomConfiguration): Promise<ProductBomConfiguration>;
+  getBomConfigurations(productId: string): Promise<ProductBomConfiguration[]>;
+  getBomConfiguration(id: string): Promise<ProductBomConfiguration | undefined>;
+  updateBomConfiguration(id: string, config: Partial<InsertProductBomConfiguration>): Promise<ProductBomConfiguration | undefined>;
+  deleteBomConfiguration(id: string): Promise<void>;
+  setDefaultBomConfiguration(productId: string, configId: string): Promise<void>;
+  
   // Product Bill of Materials (BOM)
   createProductBomItem(bomItem: InsertProductBom): Promise<ProductBom>;
   getProductBom(productId: string): Promise<any[]>; // Returns enriched data with raw material details
-  getProductBomWithTypes(productId: string): Promise<{
+  getProductBomWithTypes(productId: string, configurationId?: string): Promise<{
     items: Array<{
       bom: typeof productBom.$inferSelect;
       material: (typeof rawMaterials.$inferSelect) | null;
@@ -319,12 +330,14 @@ export interface IStorage {
       productName: string | null;
       totalItems: number;
       lastUpdatedAt: Date | null;
+      configurationId: string | null;
+      configurationName: string | null;
     };
   }>;
   getProductBomItem(id: string): Promise<ProductBom | undefined>;
   updateProductBomItem(id: string, bomItem: Partial<InsertProductBom>): Promise<ProductBom | undefined>;
   deleteProductBomItem(id: string): Promise<void>;
-  bulkReplaceProductBom(productId: string, bomItems: InsertProductBom[]): Promise<ProductBom[]>;
+  bulkReplaceProductBom(productId: string, bomItems: InsertProductBom[], configurationId?: string): Promise<ProductBom[]>;
   
   // Vendor Master
   createVendor(vendor: InsertVendor): Promise<Vendor>;
@@ -1306,6 +1319,116 @@ export class DatabaseStorage implements IStorage {
       .where(eq(products.id, id));
   }
 
+  // Product BOM Configurations (Multiple BOM variants per product)
+  async createBomConfiguration(config: InsertProductBomConfiguration): Promise<ProductBomConfiguration> {
+    // Validate product exists
+    const [product] = await db
+      .select()
+      .from(products)
+      .where(and(eq(products.id, config.productId), eq(products.recordStatus, 1)));
+    
+    if (!product) {
+      throw new Error("Product not found");
+    }
+
+    // If this is set as default, unset any existing default for this product
+    if (config.isDefault === 1) {
+      await db
+        .update(productBomConfigurations)
+        .set({ isDefault: 0, updatedAt: new Date().toISOString() })
+        .where(and(
+          eq(productBomConfigurations.productId, config.productId),
+          eq(productBomConfigurations.recordStatus, 1)
+        ));
+    }
+
+    const [created] = await db.insert(productBomConfigurations).values(config).returning();
+    return created;
+  }
+
+  async getBomConfigurations(productId: string): Promise<ProductBomConfiguration[]> {
+    return await db
+      .select()
+      .from(productBomConfigurations)
+      .where(and(
+        eq(productBomConfigurations.productId, productId),
+        eq(productBomConfigurations.recordStatus, 1)
+      ))
+      .orderBy(productBomConfigurations.createdAt);
+  }
+
+  async getBomConfiguration(id: string): Promise<ProductBomConfiguration | undefined> {
+    const [config] = await db
+      .select()
+      .from(productBomConfigurations)
+      .where(and(
+        eq(productBomConfigurations.id, id),
+        eq(productBomConfigurations.recordStatus, 1)
+      ));
+    return config;
+  }
+
+  async updateBomConfiguration(id: string, config: Partial<InsertProductBomConfiguration>): Promise<ProductBomConfiguration | undefined> {
+    // If setting as default, unset existing default first
+    if (config.isDefault === 1) {
+      const existing = await this.getBomConfiguration(id);
+      if (existing) {
+        await db
+          .update(productBomConfigurations)
+          .set({ isDefault: 0, updatedAt: new Date().toISOString() })
+          .where(and(
+            eq(productBomConfigurations.productId, existing.productId),
+            eq(productBomConfigurations.recordStatus, 1),
+            sql`${productBomConfigurations.id} != ${id}`
+          ));
+      }
+    }
+
+    const [updated] = await db
+      .update(productBomConfigurations)
+      .set({ ...config, updatedAt: new Date().toISOString() })
+      .where(and(
+        eq(productBomConfigurations.id, id),
+        eq(productBomConfigurations.recordStatus, 1)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async deleteBomConfiguration(id: string): Promise<void> {
+    // Soft delete the configuration and its BOM items
+    await db
+      .update(productBomConfigurations)
+      .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
+      .where(eq(productBomConfigurations.id, id));
+    
+    // Also soft delete associated BOM items
+    await db
+      .update(productBom)
+      .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
+      .where(eq(productBom.configurationId, id));
+  }
+
+  async setDefaultBomConfiguration(productId: string, configId: string): Promise<void> {
+    // Unset all defaults for this product
+    await db
+      .update(productBomConfigurations)
+      .set({ isDefault: 0, updatedAt: new Date().toISOString() })
+      .where(and(
+        eq(productBomConfigurations.productId, productId),
+        eq(productBomConfigurations.recordStatus, 1)
+      ));
+    
+    // Set the new default
+    await db
+      .update(productBomConfigurations)
+      .set({ isDefault: 1, updatedAt: new Date().toISOString() })
+      .where(and(
+        eq(productBomConfigurations.id, configId),
+        eq(productBomConfigurations.recordStatus, 1)
+      ));
+  }
+
   // Product Bill of Materials (BOM)
   async createProductBomItem(bomItem: InsertProductBom): Promise<ProductBom> {
     // Validate that productId exists
@@ -1356,7 +1479,7 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  async getProductBomWithTypes(productId: string) {
+  async getProductBomWithTypes(productId: string, configurationId?: string) {
     // Validate product exists and get metadata
     const [product] = await db
       .select()
@@ -1367,14 +1490,56 @@ export class DatabaseStorage implements IStorage {
       throw new Error('Product not found');
     }
 
+    // Get BOM configuration details if specified
+    let configName: string | null = null;
+    let effectiveConfigId: string | null = configurationId || null;
+    
+    if (configurationId) {
+      const [config] = await db
+        .select()
+        .from(productBomConfigurations)
+        .where(and(
+          eq(productBomConfigurations.id, configurationId),
+          eq(productBomConfigurations.recordStatus, 1)
+        ));
+      if (config) {
+        configName = config.configName;
+      }
+    } else {
+      // If no configurationId provided, try to find default configuration
+      const [defaultConfig] = await db
+        .select()
+        .from(productBomConfigurations)
+        .where(and(
+          eq(productBomConfigurations.productId, productId),
+          eq(productBomConfigurations.isDefault, 1),
+          eq(productBomConfigurations.recordStatus, 1)
+        ));
+      if (defaultConfig) {
+        effectiveConfigId = defaultConfig.id;
+        configName = defaultConfig.configName;
+      }
+    }
+
+    // Build query conditions for BOM items
+    const bomConditions = [
+      eq(productBom.productId, productId),
+      eq(productBom.recordStatus, 1)
+    ];
+    
+    // Filter by configuration if specified (or if we found a default)
+    if (effectiveConfigId) {
+      bomConditions.push(eq(productBom.configurationId, effectiveConfigId));
+    } else {
+      // If no configuration specified and no default, get items without configuration (legacy)
+      bomConditions.push(sql`${productBom.configurationId} IS NULL`);
+    }
+
     // Get BOM items
     const bomItems = await db
       .select()
       .from(productBom)
-      .where(and(
-        eq(productBom.productId, productId),
-        eq(productBom.recordStatus, 1)
-      ))
+      .where(and(...bomConditions))
       .orderBy(productBom.createdAt);
 
     // Collect all type IDs and raw material IDs needed from BOM
@@ -1497,6 +1662,8 @@ export class DatabaseStorage implements IStorage {
         productName: product.productName,
         totalItems: items.length,
         lastUpdatedAt,
+        configurationId: effectiveConfigId,
+        configurationName: configName,
       },
     };
   }
@@ -1590,7 +1757,7 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async bulkReplaceProductBom(productId: string, bomItems: InsertProductBom[]): Promise<ProductBom[]> {
+  async bulkReplaceProductBom(productId: string, bomItems: InsertProductBom[], configurationId?: string): Promise<ProductBom[]> {
     // Validate that productId exists
     const [product] = await db
       .select()
@@ -1601,27 +1768,59 @@ export class DatabaseStorage implements IStorage {
       throw new Error("Product not found");
     }
 
-    // Check for duplicate raw materials in the input
-    const rawMaterialIds = bomItems.map(item => item.rawMaterialId);
-    const uniqueRawMaterialIds = [...new Set(rawMaterialIds)];
-    if (rawMaterialIds.length !== uniqueRawMaterialIds.length) {
-      throw new Error("Duplicate raw materials found in BOM. Each raw material can only be added once.");
+    // If configurationId provided, validate it exists
+    if (configurationId) {
+      const [config] = await db
+        .select()
+        .from(productBomConfigurations)
+        .where(and(
+          eq(productBomConfigurations.id, configurationId),
+          eq(productBomConfigurations.recordStatus, 1)
+        ));
+      if (!config) {
+        throw new Error("BOM configuration not found");
+      }
+    }
+
+    // Check for duplicate material types in the input
+    const materialTypeIds = bomItems.filter(item => item.materialTypeId).map(item => item.materialTypeId);
+    const uniqueMaterialTypeIds = [...new Set(materialTypeIds)];
+    if (materialTypeIds.length !== uniqueMaterialTypeIds.length) {
+      throw new Error("Duplicate material types found in BOM. Each material type can only be added once per configuration.");
     }
     
     // Use transaction to ensure atomicity
     return await db.transaction(async (tx) => {
-      // PHYSICALLY delete existing BOM items for this product
-      // (not soft-delete, because unique index includes soft-deleted records)
-      await tx
-        .delete(productBom)
-        .where(eq(productBom.productId, productId));
+      // PHYSICALLY delete existing BOM items for this product and configuration
+      if (configurationId) {
+        await tx
+          .delete(productBom)
+          .where(and(
+            eq(productBom.productId, productId),
+            eq(productBom.configurationId, configurationId)
+          ));
+      } else {
+        // Delete items without configuration (legacy)
+        await tx
+          .delete(productBom)
+          .where(and(
+            eq(productBom.productId, productId),
+            sql`${productBom.configurationId} IS NULL`
+          ));
+      }
       
       // Insert new BOM items
       if (bomItems.length === 0) {
         return [];
       }
       
-      const created = await tx.insert(productBom).values(bomItems).returning();
+      const bomItemsWithConfig = bomItems.map(item => ({
+        ...item,
+        productId,
+        configurationId: configurationId || null,
+      }));
+      
+      const created = await tx.insert(productBom).values(bomItemsWithConfig).returning();
       return created;
     });
   }
