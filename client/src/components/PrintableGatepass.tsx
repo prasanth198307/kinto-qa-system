@@ -359,29 +359,45 @@ export default function PrintableGatepass({ gatepass }: PrintableGatepassProps) 
       </html>
     `;
 
-    // Create iframe for printing
+    // Create iframe for printing - more reliable approach
+    const existingFrame = document.getElementById('gatepass-print-frame');
+    if (existingFrame) {
+      document.body.removeChild(existingFrame);
+    }
+
     const iframe = document.createElement('iframe');
-    iframe.style.position = 'absolute';
-    iframe.style.top = '-10000px';
-    iframe.style.left = '-10000px';
+    iframe.id = 'gatepass-print-frame';
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
     iframe.style.width = '0';
     iframe.style.height = '0';
+    iframe.style.border = 'none';
     document.body.appendChild(iframe);
 
-    const iframeDoc = iframe.contentWindow?.document;
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
     if (iframeDoc) {
       iframeDoc.open();
       iframeDoc.write(htmlContent);
       iframeDoc.close();
 
-      iframe.onload = () => {
+      // Use requestAnimationFrame to ensure content is rendered
+      requestAnimationFrame(() => {
         setTimeout(() => {
-          iframe.contentWindow?.print();
+          try {
+            iframe.contentWindow?.focus();
+            iframe.contentWindow?.print();
+          } catch (e) {
+            console.error('Print failed:', e);
+          }
+          // Cleanup after print dialog closes
           setTimeout(() => {
-            document.body.removeChild(iframe);
-          }, 1000);
-        }, 250);
-      };
+            if (document.body.contains(iframe)) {
+              document.body.removeChild(iframe);
+            }
+          }, 2000);
+        }, 300);
+      });
     }
   };
 
