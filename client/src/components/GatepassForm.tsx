@@ -356,6 +356,7 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
 
   const generatePrintHTML = (data: FormData) => {
     const vendor = vendors.find(v => v.id === data.header.vendorId);
+    const formattedDate = new Date(data.header.gatepassDate).toLocaleDateString('en-IN');
     
     return `
       <!DOCTYPE html>
@@ -364,8 +365,8 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
         <title>Gatepass - ${gatepass?.gatepassNumber || 'New'}</title>
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: Arial, sans-serif; padding: 20px; }
-          .no-print { display: block; margin-bottom: 20px; }
+          body { font-family: Arial, sans-serif; font-size: 11px; line-height: 1.3; color: #333; }
+          .no-print { display: block; margin-bottom: 20px; padding: 10px; }
           @media print { .no-print { display: none; } }
           .print-btn {
             background: #007bff;
@@ -376,108 +377,122 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
             cursor: pointer;
             font-size: 14px;
           }
-          .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #000; padding-bottom: 15px; }
-          .company-name { font-size: 24px; font-weight: bold; margin-bottom: 5px; }
-          .gatepass-number { font-size: 18px; font-weight: bold; margin: 10px 0; }
-          .details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0; }
-          .detail-item { padding: 8px 0; border-bottom: 1px solid #ddd; }
-          .detail-label { font-weight: bold; margin-right: 10px; }
-          table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-          th, td { padding: 10px; text-align: left; border: 1px solid #ddd; }
-          th { background: #f0f0f0; font-weight: bold; }
-          .signature-section { margin-top: 60px; display: flex; justify-content: space-between; }
-          .signature-box { text-align: center; }
-          .signature-line { border-top: 1px solid #000; margin-top: 50px; padding-top: 5px; }
+          .gp-page { width: 210mm; padding: 12mm 15mm; margin: 0 auto; background: white; }
+          .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 8px; margin-bottom: 10px; }
+          .company-name { font-size: 20px; font-weight: bold; letter-spacing: 1px; }
+          .subtitle { font-size: 12px; color: #555; margin-top: 3px; }
+          .copy-label { text-align: center; font-size: 11px; font-weight: bold; background: #f5f5f5; border: 1px solid #ddd; padding: 4px 10px; display: block; width: fit-content; margin: 8px auto; }
+          .gp-number { text-align: center; font-size: 13px; margin-bottom: 12px; }
+          .details-grid { display: flex; gap: 15px; margin-bottom: 12px; }
+          .left-col { flex: 1; }
+          .right-col { flex: 1; }
+          .info-table { width: 100%; border-collapse: collapse; }
+          .info-table td { padding: 4px 6px; border: 1px solid #ddd; }
+          .info-table .label { font-weight: bold; width: 90px; background: #f9f9f9; }
+          .customer-box { border: 1px solid #ddd; padding: 8px; height: 100%; background: #fafafa; }
+          .box-title { font-weight: bold; font-size: 10px; color: #666; margin-bottom: 5px; text-transform: uppercase; }
+          .customer-name { font-weight: bold; font-size: 12px; margin-bottom: 4px; }
+          .customer-detail { font-size: 10px; margin-bottom: 2px; }
+          .customer-address { font-size: 10px; color: #555; margin-top: 4px; word-wrap: break-word; overflow-wrap: break-word; }
+          .items-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+          .items-table th, .items-table td { border: 1px solid #333; padding: 6px 8px; }
+          .items-table th { background: #f0f0f0; font-weight: bold; font-size: 10px; }
+          .items-table td { font-size: 11px; }
+          .remarks-section { font-size: 10px; padding: 6px 8px; background: #f9f9f9; border: 1px solid #ddd; margin: 10px 0; }
+          .signature-section { display: flex; justify-content: space-between; margin-top: 30px; padding-top: 10px; }
+          .sig-box { text-align: center; width: 30%; }
+          .sig-line { border-bottom: 1px solid #333; height: 40px; margin-bottom: 5px; }
+          .sig-label { font-size: 10px; font-weight: bold; }
+          .footer { margin-top: 20px; text-align: center; font-size: 9px; color: #666; }
         </style>
       </head>
       <body>
-        <button onclick="window.print()" class="print-btn no-print">Print Gatepass</button>
-        
-        <div class="header">
-          <div class="company-name">INMOISTURE PRIVATE LIMITED</div>
-          <div>DELIVERY GATEPASS</div>
-          <div class="gatepass-number">GP No: ${gatepass?.gatepassNumber || 'NEW'}</div>
+        <div class="no-print">
+          <button onclick="window.print()" class="print-btn">Print Gatepass</button>
         </div>
+        
+        <div class="gp-page">
+          <div class="header">
+            <div class="company-name">INMOISTURE PRIVATE LIMITED</div>
+            <div class="subtitle">Gate Pass for Finished Goods Dispatch</div>
+          </div>
 
-        <div class="details-grid">
-          <div class="detail-item">
-            <span class="detail-label">Date:</span>
-            <span>${new Date(data.header.gatepassDate).toLocaleDateString()}</span>
+          <div class="copy-label">PREVIEW</div>
+
+          <div class="gp-number">Gate Pass No: <strong>${gatepass?.gatepassNumber || 'NEW'}</strong></div>
+
+          <div class="details-grid">
+            <div class="left-col">
+              <table class="info-table">
+                <tr><td class="label">Date:</td><td>${formattedDate}</td></tr>
+                <tr><td class="label">Vehicle No:</td><td><strong>${data.header.vehicleNumber}</strong></td></tr>
+                <tr><td class="label">Driver:</td><td>${data.header.driverName}</td></tr>
+                <tr><td class="label">Contact:</td><td>${data.header.driverContact || '-'}</td></tr>
+                <tr><td class="label">Transporter:</td><td>${data.header.transporterName || '-'}</td></tr>
+              </table>
+            </div>
+            <div class="right-col">
+              <div class="customer-box">
+                <div class="box-title">Customer Details</div>
+                <div class="customer-name">${vendor?.vendorName || data.header.customerName || '-'}</div>
+                ${vendor?.mobileNumber ? `<div class="customer-detail">Mobile: ${vendor.mobileNumber}</div>` : ''}
+                ${vendor?.gstNumber ? `<div class="customer-detail">GST: ${vendor.gstNumber}</div>` : ''}
+                ${vendor?.address ? `<div class="customer-address">${vendor.address}</div>` : ''}
+                ${data.header.destination ? `<div class="customer-detail"><strong>Destination:</strong> ${data.header.destination}</div>` : ''}
+              </div>
+            </div>
           </div>
-          <div class="detail-item">
-            <span class="detail-label">Customer:</span>
-            <span>${data.header.customerName}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Vehicle Number:</span>
-            <span>${data.header.vehicleNumber}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Driver Name:</span>
-            <span>${data.header.driverName}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Driver Contact:</span>
-            <span>${data.header.driverContact}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Transporter:</span>
-            <span>${data.header.transporterName}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Destination:</span>
-            <span>${data.header.destination}</span>
-          </div>
-          ${vendor ? `
-          <div class="detail-item">
-            <span class="detail-label">Vendor:</span>
-            <span>${vendor.vendorName}</span>
+
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th style="width:40px;">#</th>
+                <th style="text-align:left;">Product Name</th>
+                <th style="width:70px;">Qty</th>
+                <th style="width:80px;">UOM</th>
+                <th style="text-align:left;">Remarks</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.items.map((item, index) => {
+                const product = products.find(p => p.id === item.productId);
+                const uom = uoms.find(u => u.id === item.uomId);
+                return `
+                <tr>
+                  <td style="text-align:center;">${index + 1}</td>
+                  <td>${product?.productName || 'N/A'}</td>
+                  <td style="text-align:center;">${item.quantityDispatched}</td>
+                  <td style="text-align:center;">${uom?.name || 'N/A'}</td>
+                  <td>${item.remarks || '-'}</td>
+                </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+
+          ${data.header.remarks ? `
+          <div class="remarks-section">
+            <strong>Remarks:</strong> ${data.header.remarks}
           </div>
           ` : ''}
-        </div>
 
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Product</th>
-              <th>Quantity</th>
-              <th>UOM</th>
-              <th>Remarks</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${data.items.map((item, index) => {
-              const product = products.find(p => p.id === item.productId);
-              const uom = uoms.find(u => u.id === item.uomId);
-              return `
-              <tr>
-                <td>${index + 1}</td>
-                <td>${product?.productName || 'N/A'}</td>
-                <td>${item.quantityDispatched}</td>
-                <td>${uom?.name || 'N/A'}</td>
-                <td>${item.remarks || '-'}</td>
-              </tr>
-              `;
-            }).join('')}
-          </tbody>
-        </table>
-
-        ${data.header.remarks ? `
-        <div style="margin: 20px 0;">
-          <strong>Remarks:</strong> ${data.header.remarks}
-        </div>
-        ` : ''}
-
-        <div class="signature-section">
-          <div class="signature-box">
-            <div class="signature-line">Prepared By</div>
+          <div class="signature-section">
+            <div class="sig-box">
+              <div class="sig-line"></div>
+              <div class="sig-label">Receiver's Signature</div>
+            </div>
+            <div class="sig-box">
+              <div class="sig-line"></div>
+              <div class="sig-label">Security/Gate</div>
+            </div>
+            <div class="sig-box">
+              <div class="sig-line"></div>
+              <div class="sig-label">Authorized Signatory</div>
+            </div>
           </div>
-          <div class="signature-box">
-            <div class="signature-line">Checked By</div>
-          </div>
-          <div class="signature-box">
-            <div class="signature-line">Authorized Signatory</div>
+
+          <div class="footer">
+            This is a computer-generated gate pass. Please verify all details before accepting goods.
           </div>
         </div>
       </body>
