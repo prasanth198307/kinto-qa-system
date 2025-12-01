@@ -31,7 +31,9 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
     queryKey: ['/api/invoice-templates', invoice.templateId],
     queryFn: async () => {
       if (!invoice.templateId) return null;
-      const response = await fetch(`/api/invoice-templates/${invoice.templateId}`);
+      const response = await fetch(`/api/invoice-templates/${invoice.templateId}`, {
+        credentials: 'include'
+      });
       if (!response.ok) throw new Error('Failed to fetch template');
       return response.json();
     },
