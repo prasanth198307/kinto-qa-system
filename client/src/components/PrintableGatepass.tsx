@@ -1,8 +1,9 @@
 import { useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { type Gatepass, type GatepassItem, type Product, type Vendor, type FinishedGood } from "@shared/schema";
+import { type Gatepass, type GatepassItem, type Product, type Vendor, type FinishedGood, type Invoice } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Printer } from "lucide-react";
+import { format } from "date-fns";
 
 interface PrintableGatepassProps {
   gatepass: Gatepass;
@@ -27,10 +28,14 @@ export default function PrintableGatepass({ gatepass }: PrintableGatepassProps) 
     queryKey: ['/api/vendors'],
   });
 
+  const { data: invoice } = useQuery<Invoice>({
+    queryKey: ['/api/invoices', gatepass.invoiceId],
+    enabled: !!gatepass.invoiceId,
+  });
+
   const vendor = vendors.find(v => v.id === gatepass.vendorId);
 
   const getProductName = (item: GatepassItem): string => {
-    // First try to get product through finished good
     const fg = finishedGoods.find(f => f.id === item.finishedGoodId);
     const product = fg 
       ? products.find(p => p.id === fg.productId) 
@@ -40,7 +45,6 @@ export default function PrintableGatepass({ gatepass }: PrintableGatepassProps) 
   };
 
   const getBatchNumber = (item: GatepassItem): string => {
-    // Get batch number from finished good
     const fg = finishedGoods.find(f => f.id === item.finishedGoodId);
     return fg?.batchNumber || '-';
   };
@@ -52,152 +56,313 @@ export default function PrintableGatepass({ gatepass }: PrintableGatepassProps) 
     const printWindow = window.open('', '', 'width=800,height=600');
     if (!printWindow) return;
 
+    const formattedDate = format(new Date(gatepass.gatepassDate), 'dd/MM/yyyy');
+
+    const generateGatepassHTML = (copyType: string, copyFor: string) => `
+      <div class="gp-page">
+        <div class="header">
+          <div class="company-name">INMOISTURE PRIVATE LIMITED</div>
+          <div class="subtitle">Gate Pass for Finished Goods Dispatch</div>
+        </div>
+
+        <div class="copy-label">${copyType} - ${copyFor}</div>
+
+        <div class="gp-number">Gate Pass No: <strong>${gatepass.gatepassNumber}</strong></div>
+
+        <div class="details-grid">
+          <div class="left-col">
+            <table class="info-table">
+              <tr><td class="label">Date:</td><td>${formattedDate}</td></tr>
+              <tr><td class="label">Vehicle No:</td><td><strong>${gatepass.vehicleNumber}</strong></td></tr>
+              <tr><td class="label">Driver:</td><td>${gatepass.driverName}</td></tr>
+              <tr><td class="label">Contact:</td><td>${gatepass.driverContact || '-'}</td></tr>
+              <tr><td class="label">Transporter:</td><td>${gatepass.transporterName || '-'}</td></tr>
+            </table>
+          </div>
+          <div class="right-col">
+            <div class="customer-box">
+              <div class="box-title">Customer Details</div>
+              <div class="customer-name">${vendor?.vendorName || gatepass.customerName || '-'}</div>
+              ${vendor?.mobileNumber ? `<div class="customer-detail">Mobile: ${vendor.mobileNumber}</div>` : ''}
+              ${vendor?.gstNumber ? `<div class="customer-detail">GST: ${vendor.gstNumber}</div>` : ''}
+              ${vendor?.address ? `<div class="customer-address">${vendor.address}</div>` : ''}
+              ${gatepass.destination ? `<div class="customer-detail"><strong>Destination:</strong> ${gatepass.destination}</div>` : ''}
+            </div>
+          </div>
+        </div>
+
+        ${invoice?.invoiceNumber ? `<div class="invoice-ref">Invoice No: <strong>${invoice.invoiceNumber}</strong></div>` : ''}
+
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th style="width:40px;">#</th>
+              <th style="text-align:left;">Product Name</th>
+              <th style="width:100px;">Batch No.</th>
+              <th style="width:70px;">Qty</th>
+              <th style="text-align:left;">Remarks</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${items.map((item, index) => `
+              <tr>
+                <td style="text-align:center;">${index + 1}</td>
+                <td>${getProductName(item)}</td>
+                <td style="text-align:center;">${getBatchNumber(item)}</td>
+                <td style="text-align:center;">${item.quantityDispatched}</td>
+                <td>${item.remarks || '-'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+
+        ${gatepass.casesCount ? `<div class="cases-info">Total Cases/Boxes: <strong>${gatepass.casesCount}</strong></div>` : ''}
+        ${gatepass.securitySealNo ? `<div class="seal-info">Security Seal No: <strong>${gatepass.securitySealNo}</strong></div>` : ''}
+
+        ${gatepass.remarks ? `
+          <div class="remarks-section">
+            <strong>Remarks:</strong> ${gatepass.remarks}
+          </div>
+        ` : ''}
+
+        <div class="signature-section">
+          <div class="sig-box">
+            <div class="sig-line"></div>
+            <div class="sig-label">Receiver's Signature</div>
+          </div>
+          <div class="sig-box">
+            <div class="sig-line"></div>
+            <div class="sig-label">Security/Gate</div>
+          </div>
+          <div class="sig-box">
+            <div class="sig-line"></div>
+            <div class="sig-label">Authorized Signatory</div>
+          </div>
+        </div>
+
+        <div class="footer">
+          This is a computer-generated gate pass. Please verify all details before accepting goods.
+        </div>
+      </div>
+    `;
+
     printWindow.document.write(`
       <html>
         <head>
           <title>Gatepass - ${gatepass.gatepassNumber}</title>
           <style>
-            * {
-              margin: 0;
-              padding: 0;
-              box-sizing: border-box;
-            }
+            * { margin: 0; padding: 0; box-sizing: border-box; }
             
             body {
               font-family: Arial, sans-serif;
-              font-size: 12px;
-              line-height: 1.4;
+              font-size: 11px;
+              line-height: 1.3;
+              color: #333;
             }
 
-            .page {
+            .gp-page {
               width: 210mm;
-              min-height: 297mm;
-              padding: 15mm;
+              min-height: 270mm;
+              padding: 12mm 15mm;
               margin: 0 auto;
               background: white;
-              page-break-after: always;
             }
 
-            .page:last-child {
-              page-break-after: auto;
+            .gp-page + .gp-page {
+              page-break-before: always;
             }
 
             .header {
               text-align: center;
-              margin-bottom: 20px;
-              border-bottom: 2px solid #000;
-              padding-bottom: 10px;
+              border-bottom: 2px solid #333;
+              padding-bottom: 8px;
+              margin-bottom: 10px;
             }
 
             .company-name {
-              font-size: 24px;
+              font-size: 20px;
               font-weight: bold;
-              margin-bottom: 5px;
+              letter-spacing: 1px;
             }
 
-            .copy-type {
-              font-size: 16px;
-              font-weight: bold;
-              margin: 10px 0;
-              padding: 5px;
-              background: #f0f0f0;
-              border: 1px solid #000;
+            .subtitle {
+              font-size: 12px;
+              color: #555;
+              margin-top: 3px;
             }
 
-            .gatepass-number {
-              font-size: 18px;
+            .copy-label {
+              text-align: center;
+              font-size: 11px;
               font-weight: bold;
-              margin: 10px 0;
+              background: #f5f5f5;
+              border: 1px solid #ddd;
+              padding: 4px 10px;
+              display: inline-block;
+              margin: 8px auto;
+              display: block;
+              width: fit-content;
             }
 
-            .details-section {
-              margin: 20px 0;
+            .gp-number {
+              text-align: center;
+              font-size: 13px;
+              margin-bottom: 12px;
             }
 
             .details-grid {
-              display: grid;
-              grid-template-columns: 1fr 1fr;
-              gap: 10px;
-              margin-bottom: 20px;
-            }
-
-            .detail-item {
               display: flex;
-              padding: 5px 0;
-              border-bottom: 1px solid #ddd;
+              gap: 15px;
+              margin-bottom: 12px;
             }
 
-            .detail-label {
-              font-weight: bold;
-              width: 140px;
-              flex-shrink: 0;
-            }
-
-            .detail-value {
+            .left-col {
               flex: 1;
+            }
+
+            .right-col {
+              flex: 1;
+            }
+
+            .info-table {
+              width: 100%;
+              border-collapse: collapse;
+            }
+
+            .info-table td {
+              padding: 4px 6px;
+              border: 1px solid #ddd;
+            }
+
+            .info-table .label {
+              font-weight: bold;
+              width: 90px;
+              background: #f9f9f9;
+            }
+
+            .customer-box {
+              border: 1px solid #ddd;
+              padding: 8px;
+              height: 100%;
+              background: #fafafa;
+            }
+
+            .box-title {
+              font-weight: bold;
+              font-size: 10px;
+              color: #666;
+              margin-bottom: 5px;
+              text-transform: uppercase;
+            }
+
+            .customer-name {
+              font-weight: bold;
+              font-size: 12px;
+              margin-bottom: 4px;
+            }
+
+            .customer-detail {
+              font-size: 10px;
+              margin-bottom: 2px;
+            }
+
+            .customer-address {
+              font-size: 10px;
+              color: #555;
+              margin-top: 4px;
+              word-wrap: break-word;
+              overflow-wrap: break-word;
+            }
+
+            .invoice-ref {
+              font-size: 11px;
+              margin-bottom: 10px;
+              padding: 4px 8px;
+              background: #e8f4e8;
+              border: 1px solid #c3e0c3;
+              display: inline-block;
             }
 
             .items-table {
               width: 100%;
               border-collapse: collapse;
-              margin: 20px 0;
+              margin-bottom: 10px;
             }
 
             .items-table th,
             .items-table td {
-              border: 1px solid #000;
-              padding: 8px;
-              text-align: left;
+              border: 1px solid #333;
+              padding: 6px 8px;
             }
 
             .items-table th {
               background: #f0f0f0;
               font-weight: bold;
+              font-size: 10px;
             }
 
             .items-table td {
-              vertical-align: top;
+              font-size: 11px;
+            }
+
+            .cases-info, .seal-info {
+              font-size: 11px;
+              margin-bottom: 5px;
+            }
+
+            .remarks-section {
+              font-size: 10px;
+              padding: 6px 8px;
+              background: #f9f9f9;
+              border: 1px solid #ddd;
+              margin: 10px 0;
             }
 
             .signature-section {
-              margin-top: 40px;
-              display: grid;
-              grid-template-columns: 1fr 1fr 1fr;
-              gap: 20px;
+              display: flex;
+              justify-content: space-between;
+              margin-top: 30px;
+              padding-top: 10px;
             }
 
-            .signature-box {
+            .sig-box {
               text-align: center;
-              padding-top: 40px;
-              border-top: 1px solid #000;
+              width: 30%;
             }
 
-            .signature-label {
+            .sig-line {
+              border-bottom: 1px solid #333;
+              height: 40px;
+              margin-bottom: 5px;
+            }
+
+            .sig-label {
+              font-size: 10px;
               font-weight: bold;
-              margin-top: 5px;
+            }
+
+            .footer {
+              margin-top: 20px;
+              text-align: center;
+              font-size: 9px;
+              color: #666;
             }
 
             @media print {
-              body {
-                margin: 0;
-                padding: 0;
-              }
-
-              .page {
-                margin: 0;
-                border: none;
-                width: 100%;
-                min-height: 100vh;
-              }
-
-              .no-print {
-                display: none !important;
+              body { margin: 0; padding: 0; }
+              .gp-page { 
+                margin: 0; 
+                width: 100%; 
+                min-height: auto;
+                padding: 10mm;
               }
             }
           </style>
         </head>
         <body>
-          ${printContent.innerHTML}
+          ${generateGatepassHTML('ORIGINAL', 'CUSTOMER')}
+          ${generateGatepassHTML('DUPLICATE', 'TRANSPORTER')}
+          ${generateGatepassHTML('TRIPLICATE', 'OFFICE')}
         </body>
       </html>
     `);
@@ -211,161 +376,15 @@ export default function PrintableGatepass({ gatepass }: PrintableGatepassProps) 
     }, 250);
   };
 
-  const renderGatepassCopy = (copyType: string) => {
-    const formattedDate = new Date(gatepass.gatepassDate).toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
-
-    return (
-      <div className="page" key={copyType}>
-        <div className="header">
-          <div className="company-name">INMOISTURE PRIVATE LIMITED</div>
-          <div style={{ fontSize: '14px', marginTop: '5px' }}>Gate Pass for Finished Goods Dispatch</div>
-          <div className="copy-type">{copyType}</div>
-          <div className="gatepass-number">Gate Pass No: {gatepass.gatepassNumber}</div>
-        </div>
-
-        <div className="details-section">
-          <div className="details-grid">
-            <div className="detail-item">
-              <span className="detail-label">Date:</span>
-              <span className="detail-value">{formattedDate}</span>
-            </div>
-            <div className="detail-item">
-              <span className="detail-label">Vehicle No:</span>
-              <span className="detail-value">{gatepass.vehicleNumber}</span>
-            </div>
-            <div className="detail-item">
-              <span className="detail-label">Driver Name:</span>
-              <span className="detail-value">{gatepass.driverName}</span>
-            </div>
-            <div className="detail-item">
-              <span className="detail-label">Driver Contact:</span>
-              <span className="detail-value">{gatepass.driverContact || '-'}</span>
-            </div>
-            <div className="detail-item">
-              <span className="detail-label">Transporter:</span>
-              <span className="detail-value">{gatepass.transporterName || '-'}</span>
-            </div>
-            <div className="detail-item">
-              <span className="detail-label">Destination:</span>
-              <span className="detail-value">{gatepass.destination || '-'}</span>
-            </div>
-          </div>
-
-          {vendor ? (
-            <div style={{ marginBottom: '20px', padding: '10px', background: '#f9f9f9', border: '1px solid #ddd' }}>
-              <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>Customer/Vendor Details:</div>
-              <div className="details-grid">
-                <div className="detail-item">
-                  <span className="detail-label">Name:</span>
-                  <span className="detail-value">{vendor.vendorName}</span>
-                </div>
-                <div className="detail-item">
-                  <span className="detail-label">Mobile:</span>
-                  <span className="detail-value">{vendor.mobileNumber}</span>
-                </div>
-                <div className="detail-item">
-                  <span className="detail-label">GST No:</span>
-                  <span className="detail-value">{vendor.gstNumber || '-'}</span>
-                </div>
-                <div className="detail-item">
-                  <span className="detail-label">Address:</span>
-                  <span className="detail-value">{vendor.address || '-'}</span>
-                </div>
-              </div>
-            </div>
-          ) : (
-            gatepass.customerName && (
-              <div style={{ marginBottom: '20px' }}>
-                <div className="detail-item">
-                  <span className="detail-label">Customer:</span>
-                  <span className="detail-value">{gatepass.customerName}</span>
-                </div>
-              </div>
-            )
-          )}
-
-          {gatepass.invoiceNumber && (
-            <div className="detail-item">
-              <span className="detail-label">Invoice No:</span>
-              <span className="detail-value">{gatepass.invoiceNumber}</span>
-            </div>
-          )}
-        </div>
-
-        <table className="items-table">
-          <thead>
-            <tr>
-              <th style={{ width: '50px' }}>Sr. No.</th>
-              <th>Product Name</th>
-              <th style={{ width: '120px' }}>Batch No.</th>
-              <th style={{ width: '80px' }}>Quantity</th>
-              <th>Remarks</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item, index) => {
-              return (
-                <tr key={item.id}>
-                  <td style={{ textAlign: 'center' }}>{index + 1}</td>
-                  <td>{getProductName(item)}</td>
-                  <td style={{ textAlign: 'center' }}>{getBatchNumber(item)}</td>
-                  <td style={{ textAlign: 'center' }}>{item.quantityDispatched}</td>
-                  <td>{item.remarks || '-'}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-
-        {gatepass.remarks && (
-          <div style={{ marginTop: '20px' }}>
-            <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>Remarks:</div>
-            <div style={{ padding: '8px', border: '1px solid #ddd', background: '#f9f9f9' }}>
-              {gatepass.remarks}
-            </div>
-          </div>
-        )}
-
-        <div className="signature-section">
-          <div className="signature-box">
-            <div className="signature-label">Prepared By</div>
-          </div>
-          <div className="signature-box">
-            <div className="signature-label">Checked By</div>
-          </div>
-          <div className="signature-box">
-            <div className="signature-label">Authorized Signatory</div>
-          </div>
-        </div>
-
-        <div style={{ marginTop: '30px', fontSize: '10px', textAlign: 'center', color: '#666' }}>
-          This is a computer-generated gate pass. Please verify all details before accepting goods.
-        </div>
-      </div>
-    );
-  };
-
   return (
-    <>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handlePrint}
-        data-testid={`button-print-gatepass-${gatepass.id}`}
-      >
-        <Printer className="w-4 h-4 mr-2" />
-        Print
-      </Button>
-
-      <div ref={printRef} style={{ display: 'none' }}>
-        {renderGatepassCopy('ORIGINAL')}
-        {renderGatepassCopy('DUPLICATE')}
-        {renderGatepassCopy('TRIPLICATE')}
-      </div>
-    </>
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={handlePrint}
+      data-testid={`button-print-gatepass-${gatepass.id}`}
+    >
+      <Printer className="w-4 h-4 mr-2" />
+      Print
+    </Button>
   );
 }
