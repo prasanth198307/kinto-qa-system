@@ -372,7 +372,45 @@ function TemplateDialog({
     }
   };
 
-  const handleSignatureUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const removeSignatureBackground = (imageDataUrl: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(imageDataUrl);
+          return;
+        }
+
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+
+        const threshold = 240;
+
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+
+          if (r > threshold && g > threshold && b > threshold) {
+            data[i + 3] = 0;
+          }
+        }
+
+        ctx.putImageData(imageData, 0, 0);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.onerror = () => resolve(imageDataUrl);
+      img.src = imageDataUrl;
+    });
+  };
+
+  const handleSignatureUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       if (!file.type.startsWith('image/')) {
@@ -386,9 +424,10 @@ function TemplateDialog({
       }
 
       const reader = new FileReader();
-      reader.onloadend = () => {
+      reader.onloadend = async () => {
         const signatureDataUrl = reader.result as string;
-        setFormData({ ...formData, defaultSignatureImage: signatureDataUrl });
+        const processedSignature = await removeSignatureBackground(signatureDataUrl);
+        setFormData({ ...formData, defaultSignatureImage: processedSignature });
       };
       reader.readAsDataURL(file);
     }
