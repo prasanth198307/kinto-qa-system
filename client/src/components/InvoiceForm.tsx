@@ -57,6 +57,9 @@ const invoiceFormSchema = z.object({
   branchName: z.string().optional(),
   upiId: z.string().optional(),
   
+  // Signature settings
+  includeSignature: z.number().optional(),
+  
   items: z.array(z.object({
     productId: z.string().min(1, "Product is required"),
     description: z.string().min(1, "Description is required"),
@@ -203,6 +206,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       accountHolderName: invoice.accountHolderName || "",
       branchName: invoice.branchName || "",
       upiId: invoice.upiId || "",
+      includeSignature: invoice.includeSignature ?? 1,
     } : {
       gatepassId: gatepass?.id || "",
       invoiceDate: new Date().toISOString().split('T')[0],
@@ -240,6 +244,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       accountHolderName: "",
       branchName: "",
       upiId: "",
+      includeSignature: 1,
     },
   });
 
@@ -331,6 +336,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         accountHolderName: invoice.accountHolderName || "",
         branchName: invoice.branchName || "",
         upiId: invoice.upiId || "",
+        includeSignature: invoice.includeSignature ?? 1,
       });
       
       // Schedule items sync for next render cycle to ensure useFieldArray picks it up
@@ -612,6 +618,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         bankIfscCode: data.bankIfscCode || null,
         upiId: data.upiId || null,
         remarks: data.remarks || null,
+        includeSignature: data.includeSignature ?? 1,
         // Include original invoice ID for reissue tracking
         // In reissue mode, the cancelled invoice's ID is stored as originalInvoiceId on the invoice prop
         originalInvoiceId: isReissueMode ? (invoice?.id || (invoice as any)?.originalInvoiceId) : null,
@@ -1615,6 +1622,21 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
               </>
             )}
           </div>
+        </div>
+
+        {/* Signature Settings */}
+        <div className="flex items-center space-x-2 py-2 border rounded-md px-3 bg-muted/30">
+          <input
+            type="checkbox"
+            id="includeSignature"
+            checked={form.watch("includeSignature") === 1}
+            onChange={(e) => form.setValue("includeSignature", e.target.checked ? 1 : 0)}
+            className="rounded border-gray-300 h-4 w-4"
+            data-testid="checkbox-include-signature"
+          />
+          <Label htmlFor="includeSignature" className="cursor-pointer text-sm">
+            Include digital signature on printed invoice
+          </Label>
         </div>
 
         {/* Remarks */}
