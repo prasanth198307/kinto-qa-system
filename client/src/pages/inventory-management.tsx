@@ -978,6 +978,11 @@ function ProductDialog({
   const [newConfigName, setNewConfigName] = useState("");
   const [newConfigDescription, setNewConfigDescription] = useState("");
   const [showNewConfigForm, setShowNewConfigForm] = useState(false);
+  
+  // Edit configuration state
+  const [editingConfigId, setEditingConfigId] = useState<string | null>(null);
+  const [editConfigName, setEditConfigName] = useState("");
+  const [editConfigDescription, setEditConfigDescription] = useState("");
 
   // Fetch material types for BOM dropdown (instead of raw materials)
   const { data: materialTypesForBom = [] } = useQuery<RawMaterialType[]>({
@@ -1061,6 +1066,23 @@ function ProductDialog({
     onSuccess: () => {
       toast({ title: "Success", description: "Default configuration updated" });
       refetchConfigs();
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Update configuration mutation
+  const updateConfigMutation = useMutation({
+    mutationFn: async ({ configId, data }: { configId: string; data: { configName: string; description: string } }) => {
+      return await apiRequest('PATCH', `/api/products/${item?.id}/bom-configurations/${configId}`, data);
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "BOM configuration updated successfully" });
+      refetchConfigs();
+      setEditingConfigId(null);
+      setEditConfigName("");
+      setEditConfigDescription("");
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -1943,6 +1965,22 @@ function ProductDialog({
                                     type="button"
                                     variant="ghost"
                                     size="icon"
+                                    className="h-5 w-5"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditingConfigId(config.id);
+                                      setEditConfigName(config.configName);
+                                      setEditConfigDescription(config.description || "");
+                                    }}
+                                    title="Edit configuration"
+                                    data-testid={`button-edit-config-${config.id}`}
+                                  >
+                                    <Pencil className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
                                     className="h-5 w-5 text-destructive"
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -1960,6 +1998,60 @@ function ProductDialog({
                             </div>
                           ))}
                         </div>
+                        
+                        {/* Edit Configuration Form */}
+                        {editingConfigId && (
+                          <div className="space-y-3 p-3 rounded border bg-muted/50">
+                            <Label className="text-xs font-medium">Edit Configuration</Label>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="space-y-1">
+                                <Label className="text-xs">Configuration Name *</Label>
+                                <Input
+                                  placeholder="e.g., Standard - 21gm Preform"
+                                  value={editConfigName}
+                                  onChange={(e) => setEditConfigName(e.target.value)}
+                                  data-testid="input-edit-config-name"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs">Description</Label>
+                                <Input
+                                  placeholder="Optional description"
+                                  value={editConfigDescription}
+                                  onChange={(e) => setEditConfigDescription(e.target.value)}
+                                  data-testid="input-edit-config-description"
+                                />
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                type="button"
+                                size="sm"
+                                disabled={!editConfigName.trim() || updateConfigMutation.isPending}
+                                onClick={() => updateConfigMutation.mutate({ 
+                                  configId: editingConfigId, 
+                                  data: { configName: editConfigName.trim(), description: editConfigDescription.trim() } 
+                                })}
+                                data-testid="button-update-config"
+                              >
+                                {updateConfigMutation.isPending ? 'Updating...' : 'Update Configuration'}
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setEditingConfigId(null);
+                                  setEditConfigName("");
+                                  setEditConfigDescription("");
+                                }}
+                                data-testid="button-cancel-edit-config"
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <p className="text-sm text-muted-foreground italic">
