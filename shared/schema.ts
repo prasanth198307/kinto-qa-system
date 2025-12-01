@@ -707,7 +707,8 @@ export type Product = typeof products.$inferSelect;
 export const productBom = pgTable("product_bom", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   productId: varchar("product_id").references(() => products.id, { onDelete: 'cascade' }).notNull(),
-  rawMaterialId: varchar("raw_material_id").references(() => rawMaterials.id).notNull(),
+  rawMaterialId: varchar("raw_material_id").references(() => rawMaterials.id), // Legacy - nullable for migration
+  materialTypeId: varchar("material_type_id").references(() => rawMaterialTypes.id), // New - references material type
   quantityRequired: numeric("quantity_required", { precision: 12, scale: 6 }).notNull(), // Quantity needed (supports fractions)
   uom: varchar("uom", { length: 50 }), // Unit of measure (kg, pcs, etc.)
   notes: text("notes"),
@@ -717,6 +718,7 @@ export const productBom = pgTable("product_bom", {
 }, (table) => ({
   productIdIdx: index("product_bom_product_id_idx").on(table.productId),
   rawMaterialIdIdx: index("product_bom_raw_material_id_idx").on(table.rawMaterialId),
+  materialTypeIdIdx: index("product_bom_material_type_id_idx").on(table.materialTypeId),
   recordStatusIdx: index("product_bom_record_status_idx").on(table.recordStatus),
 }));
 
@@ -734,12 +736,14 @@ export type ProductBom = typeof productBom.$inferSelect;
 export const productFormSchema = insertProductSchema.extend({
   bomItems: z.array(
     insertProductBomSchema.pick({
+      materialTypeId: true,
       rawMaterialId: true,
       quantityRequired: true,
       uom: true,
       notes: true,
     }).extend({
-      rawMaterialId: z.string().min(1, "Raw material is required"),
+      materialTypeId: z.string().min(1, "Material type is required"),
+      rawMaterialId: z.string().optional().nullable(), // Legacy support
       quantityRequired: z.coerce.number().min(0, "Quantity must be positive"),
       uom: z.string().optional(),
       notes: z.string().optional(),

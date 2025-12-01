@@ -577,15 +577,15 @@ function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSea
       if (bomItems && bomItems.length > 0) {
         const invalidRows: number[] = [];
         bomItems.forEach((item, index) => {
-          const hasRawMaterial = item.rawMaterialId && item.rawMaterialId.trim() !== '';
+          const hasMaterialType = item.materialTypeId && item.materialTypeId.trim() !== '';
           const hasValidQuantity = item.quantityRequired && Number(item.quantityRequired) > 0;
-          if (!hasRawMaterial || !hasValidQuantity) {
+          if (!hasMaterialType || !hasValidQuantity) {
             invalidRows.push(index + 1);
           }
         });
 
         if (invalidRows.length > 0) {
-          throw new Error(`BOM validation failed: Row(s) ${invalidRows.join(', ')} have missing raw material or invalid quantity. Please complete or remove these rows before saving.`);
+          throw new Error(`BOM validation failed: Row(s) ${invalidRows.join(', ')} have missing material type or invalid quantity. Please complete or remove these rows before saving.`);
         }
       }
       
@@ -616,7 +616,7 @@ function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSea
       if (bomItems && bomItems.length > 0) {
         try {
           const bomPayload = bomItems.map(item => ({
-            rawMaterialId: item.rawMaterialId.trim(),
+            materialTypeId: item.materialTypeId.trim(),
             quantityRequired: String(item.quantityRequired),  // Must be string for Drizzle-Zod numeric schema
             uom: item.uom?.trim() || null,  // Send null instead of empty string for nullable fields
             notes: item.notes?.trim() || null,  // Send null instead of empty string for nullable fields
@@ -967,7 +967,13 @@ function ProductDialog({
   const [activeTab, setActiveTab] = useState("info");
   const [bomSaving, setBomSaving] = useState(false);
 
-  // Fetch raw materials for BOM dropdown
+  // Fetch material types for BOM dropdown (instead of raw materials)
+  const { data: materialTypesForBom = [] } = useQuery<RawMaterialType[]>({
+    queryKey: ['/api/raw-material-types'],
+    enabled: open,
+  });
+  
+  // Also fetch raw materials for legacy support
   const { data: rawMaterials = [] } = useQuery<RawMaterial[]>({
     queryKey: ['/api/raw-materials'],
     enabled: open,
@@ -1108,8 +1114,21 @@ function ProductDialog({
       if (existingBom.length > 0) {
         const hydratedBom = existingBom.map(bom => {
           const quantityStr = bom.quantityRequired || bom.quantity_required;
+          // Support both new materialTypeId and legacy rawMaterialId
+          // If materialTypeId exists, use it. Otherwise try to get typeId from raw material
+          let typeId = bom.materialTypeId || bom.material_type_id || '';
+          
+          // Fallback: If no materialTypeId but has rawMaterialId, find the type from raw material
+          if (!typeId && (bom.rawMaterialId || bom.raw_material_id)) {
+            const rmId = bom.rawMaterialId || bom.raw_material_id;
+            const rm = rawMaterials.find(r => r.id === rmId);
+            if (rm && rm.typeId) {
+              typeId = rm.typeId;
+            }
+          }
+          
           return {
-            rawMaterialId: bom.rawMaterialId || bom.raw_material_id || '',
+            materialTypeId: typeId,
             quantityRequired: quantityStr ? parseFloat(quantityStr) : 0,
             uom: bom.uom || '',
             notes: bom.notes || '',
@@ -1122,10 +1141,10 @@ function ProductDialog({
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [existingBom, open, item?.id]); // When BOM data changes or dialog opens for edit
+  }, [existingBom, open, item?.id, rawMaterials]); // When BOM data changes or dialog opens for edit
 
   const handleAddBomRow = () => {
-    append({ rawMaterialId: '', quantityRequired: 0, uom: '', notes: '' } as any, { shouldFocus: false });
+    append({ materialTypeId: '', quantityRequired: 0, uom: '', notes: '' } as any, { shouldFocus: false });
   };
 
   const handleSubmit = async (data: ProductFormData) => {
@@ -1713,7 +1732,7 @@ function ProductDialog({
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Raw Material</TableHead>
+                        <TableHead>Material Type</TableHead>
                         <TableHead>Quantity Required</TableHead>
                         <TableHead>UOM</TableHead>
                         <TableHead>Notes</TableHead>
@@ -1724,7 +1743,7 @@ function ProductDialog({
                       {fields.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                            No BOM items. Click "Add Row" to add raw materials.
+                            No BOM items. Click "Add Row" to add material types.
                           </TableCell>
                         </TableRow>
                       ) : (
@@ -1735,16 +1754,16 @@ function ProductDialog({
                             <TableRow key={field.id}>
                               <TableCell>
                                 <Select 
-                                  value={bomItem.rawMaterialId || ''} 
-                                  onValueChange={(value) => form.setValue(`bomItems.${index}.rawMaterialId` as any, value)}
+                                  value={bomItem.materialTypeId || ''} 
+                                  onValueChange={(value) => form.setValue(`bomItems.${index}.materialTypeId` as any, value)}
                                 >
                                   <SelectTrigger data-testid={`select-bom-material-${index}`}>
-                                    <SelectValue placeholder="Select material" />
+                                    <SelectValue placeholder="Select material type" />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {rawMaterials.filter(rm => rm.recordStatus === 1).map(rm => (
-                                      <SelectItem key={rm.id} value={rm.id}>
-                                        {rm.materialCode} - {rm.materialName}
+                                    {materialTypesForBom.filter(mt => mt.isActive === 'true').map(mt => (
+                                      <SelectItem key={mt.id} value={mt.id}>
+                                        {mt.typeName} ({mt.baseUnit})
                                       </SelectItem>
                                     ))}
                                   </SelectContent>
