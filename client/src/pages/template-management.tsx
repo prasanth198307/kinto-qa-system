@@ -366,14 +366,14 @@ function TemplateDialog({
       const reader = new FileReader();
       reader.onloadend = () => {
         const logoDataUrl = reader.result as string;
-        setFormData({ ...formData, logoUrl: logoDataUrl });
+        setFormData(prev => ({ ...prev, logoUrl: logoDataUrl }));
       };
       reader.readAsDataURL(file);
     }
   };
 
   const removeSignatureBackground = (imageDataUrl: string): Promise<string> => {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
@@ -390,20 +390,23 @@ function TemplateDialog({
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const data = imageData.data;
 
-        const threshold = 240;
+        // Lower threshold to handle gray paper backgrounds (200 catches most grays)
+        const threshold = 200;
 
         for (let i = 0; i < data.length; i += 4) {
           const r = data[i];
           const g = data[i + 1];
           const b = data[i + 2];
 
+          // Make light/gray pixels transparent
           if (r > threshold && g > threshold && b > threshold) {
             data[i + 3] = 0;
           }
         }
 
         ctx.putImageData(imageData, 0, 0);
-        resolve(canvas.toDataURL('image/png'));
+        const result = canvas.toDataURL('image/png');
+        resolve(result);
       };
       img.onerror = () => resolve(imageDataUrl);
       img.src = imageDataUrl;
@@ -500,7 +503,7 @@ function TemplateDialog({
               <Input
                 id="templateName"
                 value={formData.templateName}
-                onChange={(e) => setFormData({ ...formData, templateName: e.target.value })}
+                onChange={(e) => setFormData(prev => ({ ...prev, templateName: e.target.value }))}
                 required
                 data-testid="input-template-name"
               />
@@ -514,7 +517,7 @@ function TemplateDialog({
                   type="url"
                   placeholder="https://example.com/logo.png or /path/to/logo.png"
                   value={formData.logoUrl}
-                  onChange={(e) => setFormData({ ...formData, logoUrl: e.target.value })}
+                  onChange={(e) => setFormData(prev => ({ ...prev, logoUrl: e.target.value }))}
                   data-testid="input-logo-url"
                   className="flex-1"
                 />
@@ -554,7 +557,7 @@ function TemplateDialog({
                 <Checkbox
                   id="isActive"
                   checked={formData.isActive}
-                  onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked as boolean })}
+                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isActive: checked as boolean }))}
                   data-testid="checkbox-is-active"
                 />
                 <Label htmlFor="isActive">Active</Label>
@@ -563,7 +566,7 @@ function TemplateDialog({
                 <Checkbox
                   id="isDefault"
                   checked={formData.isDefault}
-                  onCheckedChange={(checked) => setFormData({ ...formData, isDefault: checked as boolean })}
+                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isDefault: checked as boolean }))}
                   data-testid="checkbox-is-default"
                 />
                 <Label htmlFor="isDefault">Set as Default</Label>
@@ -578,7 +581,7 @@ function TemplateDialog({
                   <Input
                     id="defaultSellerName"
                     value={formData.defaultSellerName}
-                    onChange={(e) => setFormData({ ...formData, defaultSellerName: e.target.value })}
+                    onChange={(e) => setFormData(prev => ({ ...prev, defaultSellerName: e.target.value }))}
                     required
                     data-testid="input-seller-name"
                   />
@@ -588,7 +591,7 @@ function TemplateDialog({
                   <Input
                     id="defaultSellerGstin"
                     value={formData.defaultSellerGstin}
-                    onChange={(e) => setFormData({ ...formData, defaultSellerGstin: e.target.value })}
+                    onChange={(e) => setFormData(prev => ({ ...prev, defaultSellerGstin: e.target.value }))}
                     required
                     data-testid="input-seller-gstin"
                   />
@@ -598,7 +601,7 @@ function TemplateDialog({
                   <Textarea
                     id="defaultSellerAddress"
                     value={formData.defaultSellerAddress}
-                    onChange={(e) => setFormData({ ...formData, defaultSellerAddress: e.target.value })}
+                    onChange={(e) => setFormData(prev => ({ ...prev, defaultSellerAddress: e.target.value }))}
                     data-testid="input-seller-address"
                   />
                 </div>
@@ -607,7 +610,7 @@ function TemplateDialog({
                   <Input
                     id="defaultSellerState"
                     value={formData.defaultSellerState}
-                    onChange={(e) => setFormData({ ...formData, defaultSellerState: e.target.value })}
+                    onChange={(e) => setFormData(prev => ({ ...prev, defaultSellerState: e.target.value }))}
                     data-testid="input-seller-state"
                   />
                 </div>
@@ -616,7 +619,7 @@ function TemplateDialog({
                   <Input
                     id="defaultSellerStateCode"
                     value={formData.defaultSellerStateCode}
-                    onChange={(e) => setFormData({ ...formData, defaultSellerStateCode: e.target.value })}
+                    onChange={(e) => setFormData(prev => ({ ...prev, defaultSellerStateCode: e.target.value }))}
                     data-testid="input-seller-state-code"
                   />
                 </div>
@@ -625,7 +628,7 @@ function TemplateDialog({
                   <Input
                     id="defaultSellerPhone"
                     value={formData.defaultSellerPhone}
-                    onChange={(e) => setFormData({ ...formData, defaultSellerPhone: e.target.value })}
+                    onChange={(e) => setFormData(prev => ({ ...prev, defaultSellerPhone: e.target.value }))}
                     data-testid="input-seller-phone"
                   />
                 </div>
@@ -635,7 +638,7 @@ function TemplateDialog({
                     id="defaultSellerEmail"
                     type="email"
                     value={formData.defaultSellerEmail}
-                    onChange={(e) => setFormData({ ...formData, defaultSellerEmail: e.target.value })}
+                    onChange={(e) => setFormData(prev => ({ ...prev, defaultSellerEmail: e.target.value }))}
                     data-testid="input-seller-email"
                   />
                 </div>
@@ -650,7 +653,7 @@ function TemplateDialog({
                   <Input
                     id="defaultBankName"
                     value={formData.defaultBankName}
-                    onChange={(e) => setFormData({ ...formData, defaultBankName: e.target.value })}
+                    onChange={(e) => setFormData(prev => ({ ...prev, defaultBankName: e.target.value }))}
                     data-testid="input-bank-name"
                   />
                 </div>
@@ -659,7 +662,7 @@ function TemplateDialog({
                   <Input
                     id="defaultBankAccountNumber"
                     value={formData.defaultBankAccountNumber}
-                    onChange={(e) => setFormData({ ...formData, defaultBankAccountNumber: e.target.value })}
+                    onChange={(e) => setFormData(prev => ({ ...prev, defaultBankAccountNumber: e.target.value }))}
                     data-testid="input-bank-account-number"
                   />
                 </div>
@@ -668,7 +671,7 @@ function TemplateDialog({
                   <Input
                     id="defaultBankIfscCode"
                     value={formData.defaultBankIfscCode}
-                    onChange={(e) => setFormData({ ...formData, defaultBankIfscCode: e.target.value })}
+                    onChange={(e) => setFormData(prev => ({ ...prev, defaultBankIfscCode: e.target.value }))}
                     data-testid="input-bank-ifsc"
                   />
                 </div>
@@ -677,7 +680,7 @@ function TemplateDialog({
                   <Input
                     id="defaultBranchName"
                     value={formData.defaultBranchName}
-                    onChange={(e) => setFormData({ ...formData, defaultBranchName: e.target.value })}
+                    onChange={(e) => setFormData(prev => ({ ...prev, defaultBranchName: e.target.value }))}
                     data-testid="input-bank-branch"
                   />
                 </div>
@@ -693,7 +696,7 @@ function TemplateDialog({
                     id="authorizedSignatoryName"
                     placeholder="e.g., John Doe (Director)"
                     value={formData.authorizedSignatoryName}
-                    onChange={(e) => setFormData({ ...formData, authorizedSignatoryName: e.target.value })}
+                    onChange={(e) => setFormData(prev => ({ ...prev, authorizedSignatoryName: e.target.value }))}
                     data-testid="input-signatory-name"
                   />
                 </div>
@@ -721,7 +724,7 @@ function TemplateDialog({
                         type="button"
                         variant="ghost"
                         size="icon"
-                        onClick={() => setFormData({ ...formData, defaultSignatureImage: '' })}
+                        onClick={() => setFormData(prev => ({ ...prev, defaultSignatureImage: '' }))}
                         data-testid="button-remove-signature"
                       >
                         <X className="w-4 h-4" />
@@ -1036,20 +1039,20 @@ function TCDialog({
   };
 
   const addPoint = () => {
-    setFormData({ ...formData, terms: [...formData.terms, ''] });
+    setFormData(prev => ({ ...prev, terms: [...prev.terms, ''] }));
   };
 
   const removePoint = (index: number) => {
-    setFormData({
-      ...formData,
-      terms: formData.terms.filter((_, i) => i !== index),
-    });
+    setFormData(prev => ({
+      ...prev,
+      terms: prev.terms.filter((_, i) => i !== index),
+    }));
   };
 
   const updatePoint = (index: number, value: string) => {
     const newTerms = [...formData.terms];
     newTerms[index] = value;
-    setFormData({ ...formData, terms: newTerms });
+    setFormData(prev => ({ ...prev, terms: newTerms }));
   };
 
   return (
@@ -1065,7 +1068,7 @@ function TCDialog({
               <Input
                 id="tcName"
                 value={formData.tcName}
-                onChange={(e) => setFormData({ ...formData, tcName: e.target.value })}
+                onChange={(e) => setFormData(prev => ({ ...prev, tcName: e.target.value }))}
                 required
                 data-testid="input-tc-name"
               />
@@ -1076,7 +1079,7 @@ function TCDialog({
                 <Checkbox
                   id="isActive"
                   checked={formData.isActive}
-                  onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked as boolean })}
+                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isActive: checked as boolean }))}
                   data-testid="checkbox-tc-is-active"
                 />
                 <Label htmlFor="isActive">Active</Label>
@@ -1085,7 +1088,7 @@ function TCDialog({
                 <Checkbox
                   id="isDefault"
                   checked={formData.isDefault}
-                  onCheckedChange={(checked) => setFormData({ ...formData, isDefault: checked as boolean })}
+                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isDefault: checked as boolean }))}
                   data-testid="checkbox-tc-is-default"
                 />
                 <Label htmlFor="isDefault">Set as Default</Label>
