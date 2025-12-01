@@ -739,15 +739,14 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
               </div>
 
               {items.map((item, index) => {
-                // Get already selected batch IDs (excluding current item)
-                const currentFormItems = form.getValues('items') || [];
-                const selectedBatchIds = currentFormItems
+                // Get already selected batch IDs (excluding current item) - use items state directly
+                const selectedBatchIds = items
                   .filter((_, i) => i !== index)
                   .map(item => item.finishedGoodId)
                   .filter(id => id);
                 
                 // Get available quantity for current batch
-                const currentBatchId = currentFormItems[index]?.finishedGoodId;
+                const currentBatchId = items[index]?.finishedGoodId;
                 const currentBatch = finishedGoods.find(fg => fg.id === currentBatchId);
                 const availableQty = currentBatch?.quantity || 0;
                 
