@@ -2378,6 +2378,7 @@ function RawMaterialDialog({
           closingStock: item.closingStock !== undefined ? Number(item.closingStock) : undefined,
           closingStockUsable: item.closingStockUsable !== undefined ? Number(item.closingStockUsable) : undefined,
           receivedQuantity: Number(item.receivedQuantity) || 0,
+          receivedDate: item.receivedDate || undefined,
           returnedQuantity: Number(item.returnedQuantity) || 0,
           adjustments: Number(item.adjustments) || 0,
           uomId: item.uomId || undefined,
@@ -2410,6 +2411,7 @@ function RawMaterialDialog({
           closingStock: undefined,
           closingStockUsable: undefined,
           receivedQuantity: 0,
+          receivedDate: undefined,
           returnedQuantity: 0,
           adjustments: 0,
           uomId: undefined,
@@ -2713,6 +2715,27 @@ function RawMaterialDialog({
                         </FormControl>
                         <FormDescription className="text-xs">
                           Quantity received
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="receivedDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Received Date</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="date" 
+                            {...field} 
+                            value={field.value || ''} 
+                            data-testid="input-received-date"
+                          />
+                        </FormControl>
+                        <FormDescription className="text-xs">
+                          Date material was received
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
