@@ -5,7 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { FileText, Package, Truck, CheckCircle, Clock } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { FileText, Package, Truck, CheckCircle, Clock, Search, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import type { Invoice, Gatepass, PaginatedResponse } from "@shared/schema";
 import PrintableInvoice from "@/components/PrintableInvoice";
@@ -33,19 +35,44 @@ interface DispatchTrackingProps {
 }
 
 export default function DispatchTracking({ showHeader = true }: DispatchTrackingProps = {}) {
-  const search = useSearch();
+  const urlSearch = useSearch();
   const [, setLocation] = useLocation();
   const { logoutMutation } = useAuth();
   const [showGatepassForm, setShowGatepassForm] = useState(false);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
   
   // Parse pagination params from URL
-  const params = useMemo(() => new URLSearchParams(search), [search]);
+  const params = useMemo(() => new URLSearchParams(urlSearch), [urlSearch]);
   const currentPage = parseInt(params.get('page') || '1');
   const currentPageSize = parseInt(params.get('pageSize') || '25');
   
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    if (debouncedSearch && currentPage !== 1) {
+      const newParams = new URLSearchParams(urlSearch);
+      newParams.set('page', '1');
+      setLocation(`?${newParams.toString()}`);
+    }
+  }, [debouncedSearch]);
+  
   const { data: invoiceData, isLoading: invoicesLoading } = useQuery<PaginatedResponse<Invoice>>({
-    queryKey: ['/api/invoices', { page: currentPage, pageSize: currentPageSize }],
+    queryKey: ['/api/invoices', { 
+      page: currentPage, 
+      pageSize: currentPageSize, 
+      sortBy: 'invoiceDate', 
+      sortOrder: 'desc', 
+      ...(debouncedSearch ? { search: debouncedSearch } : {})
+    }],
   });
 
   const { data: gatepasses = [], isLoading: gatepassesLoading } = useQuery<Gatepass[]>({
@@ -57,17 +84,17 @@ export default function DispatchTracking({ showHeader = true }: DispatchTracking
 
   // Detect invoice parameter in URL and auto-open gatepass form
   useEffect(() => {
-    const params = new URLSearchParams(search);
+    const params = new URLSearchParams(urlSearch);
     const invoiceId = params.get('invoice');
     if (invoiceId) {
       setSelectedInvoiceId(invoiceId);
       setShowGatepassForm(true);
     }
-  }, [search]);
+  }, [urlSearch]);
   
   // Pagination handlers - preserve existing query params
   const handlePageChange = (newPage: number) => {
-    const newParams = new URLSearchParams(search);
+    const newParams = new URLSearchParams(urlSearch);
     newParams.set('page', newPage.toString());
     // Preserve pageSize if it exists
     if (!newParams.has('pageSize')) {
@@ -77,7 +104,7 @@ export default function DispatchTracking({ showHeader = true }: DispatchTracking
   };
   
   const handlePageSizeChange = (newPageSize: number) => {
-    const newParams = new URLSearchParams(search);
+    const newParams = new URLSearchParams(urlSearch);
     newParams.set('page', '1'); // Reset to page 1 when changing page size
     newParams.set('pageSize', newPageSize.toString());
     // All other params like 'invoice' are automatically preserved by URLSearchParams
@@ -196,8 +223,33 @@ export default function DispatchTracking({ showHeader = true }: DispatchTracking
         <TabsContent value="invoices" className="space-y-4 mt-4">
           <Card>
             <CardHeader>
-              <CardTitle>Invoice Dispatch Status</CardTitle>
-              <CardDescription>Track invoices through the dispatch lifecycle</CardDescription>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <CardTitle>Invoice Dispatch Status</CardTitle>
+                  <CardDescription>Track invoices through the dispatch lifecycle</CardDescription>
+                </div>
+                <div className="relative w-full md:w-72">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search invoice number or buyer..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 pr-9"
+                    data-testid="input-search-invoice"
+                  />
+                  {searchQuery && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6"
+                      onClick={() => setSearchQuery("")}
+                      data-testid="button-clear-search"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">

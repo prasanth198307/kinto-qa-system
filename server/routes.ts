@@ -4388,7 +4388,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all invoices
   app.get('/api/invoices', isAuthenticated, async (req: any, res) => {
     try {
-      const { page, pageSize, sortBy, sortOrder, ...filters } = req.query;
+      const { page, pageSize, sortBy, sortOrder, search, ...filters } = req.query;
       
       // If pagination params exist, use paginated endpoint
       if (page !== undefined && pageSize !== undefined) {
@@ -4408,6 +4408,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
             inv.buyerName.toLowerCase().includes((filters.buyerName as string).toLowerCase())
           );
         }
+        
+        // Apply search filter for invoice number
+        if (search) {
+          const searchLower = (search as string).toLowerCase();
+          allInvoices = allInvoices.filter(inv => 
+            inv.invoiceNumber.toLowerCase().includes(searchLower) ||
+            inv.buyerName.toLowerCase().includes(searchLower)
+          );
+        }
+        
+        // Sort by date descending (newest first) by default
+        const sortField = paginationParams.sortBy || 'invoiceDate';
+        const sortDirection = paginationParams.sortOrder || 'desc';
+        
+        allInvoices.sort((a, b) => {
+          let valA: any, valB: any;
+          
+          if (sortField === 'invoiceDate') {
+            valA = new Date(a.invoiceDate).getTime();
+            valB = new Date(b.invoiceDate).getTime();
+          } else if (sortField === 'invoiceNumber') {
+            valA = a.invoiceNumber;
+            valB = b.invoiceNumber;
+          } else if (sortField === 'buyerName') {
+            valA = a.buyerName.toLowerCase();
+            valB = b.buyerName.toLowerCase();
+          } else if (sortField === 'totalAmount') {
+            valA = a.totalAmount;
+            valB = b.totalAmount;
+          } else {
+            valA = a.invoiceDate;
+            valB = b.invoiceDate;
+          }
+          
+          if (sortDirection === 'asc') {
+            return valA > valB ? 1 : valA < valB ? -1 : 0;
+          } else {
+            return valA < valB ? 1 : valA > valB ? -1 : 0;
+          }
+        });
         
         // Calculate pagination metadata
         const totalItems = allInvoices.length;
@@ -4440,8 +4480,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // No pagination - return all invoices (for backwards compatibility)
-      const allInvoices = await storage.getAllInvoices();
+      // No pagination - return all invoices sorted by date descending (for backwards compatibility)
+      let allInvoices = await storage.getAllInvoices();
+      
+      // Sort by date descending (newest first)
+      allInvoices.sort((a, b) => new Date(b.invoiceDate).getTime() - new Date(a.invoiceDate).getTime());
+      
       res.json(allInvoices);
     } catch (error) {
       console.error("Error fetching invoices:", error);
