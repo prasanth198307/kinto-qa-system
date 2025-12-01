@@ -882,21 +882,21 @@ export const rawMaterialTypes = pgTable("raw_material_types", {
   
   // Base Unit fields (common to all methods)
   baseUnit: varchar("base_unit", { length: 50 }), // Bag, Kg, Box, Roll, Litre
-  baseUnitWeight: integer("base_unit_weight"), // Weight of base unit (e.g., 25 for 25kg bag)
+  baseUnitWeight: real("base_unit_weight"), // Weight of base unit (e.g., 25 for 25kg bag) - supports decimals
   
   // Derived Unit fields (for formula-based and direct-value)
   derivedUnit: varchar("derived_unit", { length: 50 }), // Piece, Bottle, Case
-  weightPerDerivedUnit: integer("weight_per_derived_unit"), // For formula-based (e.g., 21g per preform)
-  derivedValuePerBase: integer("derived_value_per_base"), // For direct-value (e.g., 7000 pcs per box)
+  weightPerDerivedUnit: real("weight_per_derived_unit"), // For formula-based (e.g., 19.5g per preform) - supports decimals
+  derivedValuePerBase: real("derived_value_per_base"), // For direct-value (e.g., 7000 pcs per box) - supports decimals
   
   // Output Coverage fields (for output-coverage method)
   outputType: varchar("output_type", { length: 50 }), // Bottle, Case
-  outputUnitsCovered: integer("output_units_covered"), // How many output units one base unit covers
+  outputUnitsCovered: real("output_units_covered"), // How many output units one base unit covers - supports decimals
   
   // Calculated fields
-  conversionValue: integer("conversion_value"), // Auto-calculated based on method
+  conversionValue: real("conversion_value"), // Auto-calculated based on method - supports decimals
   lossPercent: real("loss_percent").default(0), // Supports decimal percentages like 12.1%
-  usableUnits: integer("usable_units"), // Auto-calculated: conversionValue × (1 - loss%)
+  usableUnits: real("usable_units"), // Auto-calculated: conversionValue × (1 - loss%) - supports decimals
   
   description: text("description"),
   isActive: integer("is_active").default(1).notNull(), // 1 = Active, 0 = Inactive
