@@ -1468,6 +1468,10 @@ export const invoiceTemplates = pgTable("invoice_templates", {
   defaultBranchName: varchar("default_branch_name", { length: 255 }),
   defaultUpiId: varchar("default_upi_id", { length: 100 }),
   
+  // Signature Details
+  defaultSignatureImage: text("default_signature_image"), // Base64 encoded signature image
+  authorizedSignatoryName: varchar("authorized_signatory_name", { length: 255 }),
+  
   // Template Settings
   isDefault: integer("is_default").default(0).notNull(), // 1 template can be marked as default
   isActive: integer("is_active").default(1).notNull(),
