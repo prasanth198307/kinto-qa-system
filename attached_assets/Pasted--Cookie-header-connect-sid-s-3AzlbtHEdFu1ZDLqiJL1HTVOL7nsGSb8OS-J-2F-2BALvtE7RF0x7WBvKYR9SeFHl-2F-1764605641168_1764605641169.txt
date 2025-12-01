@@ -1,0 +1,52 @@
+   Cookie header: connect.sid=s%3AzlbtHEdFu1ZDLqiJL1HTVOL7nsGSb8OS.J%2F%2BALvtE7RF0x7WBvKYR9SeFHl%2FamucfUZgLtKZx5lc
+   Session ID: zlbtHEdFu1ZDLqiJL1HTVOL7nsGSb8OS
+   Authenticated: true
+9:43:33 PM [express] PATCH /api/products/046f0d79-7490-464a-9f51-bb70a9e0128d 200 in 28ms :: {"id":"…
+🔹 Request: POST /api/products/046f0d79-7490-464a-9f51-bb70a9e0128d/bom
+   Cookie header: connect.sid=s%3AzlbtHEdFu1ZDLqiJL1HTVOL7nsGSb8OS.J%2F%2BALvtE7RF0x7WBvKYR9SeFHl%2FamucfUZgLtKZx5lc
+   Session ID: zlbtHEdFu1ZDLqiJL1HTVOL7nsGSb8OS
+   Authenticated: true
+[BOM] Bulk replacing BOM for product 046f0d79-7490-464a-9f51-bb70a9e0128d with 1 items
+Error creating BOM item: error: null value in column "raw_material_id" of relation "product_bom" violates not-null constraint
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg/lib/client.js:545:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:3252:27
+    at async NodePgSession.transaction (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:142:22)
+    at async DatabaseStorage.bulkReplaceProductBom (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:3232:16)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:10255:26 {
+  length: 459,
+  severity: 'ERROR',
+  code: '23502',
+  detail: 'Failing row contains (2f13c3de-248f-4855-aa8b-0a40a0def857, 046f0d79-7490-464a-9f51-bb70a9e0128d, null, 12, null, null, 1, 2025-12-01 21:43:33.319417, 2025-12-01 21:43:33.319417, Pieces, 63273f0c-efb4-40d5-868c-32899c2c8a98, f1a4e168-7bdb-4bdc-9630-719a640ea97c).',
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: 'public',
+  table: 'product_bom',
+  column: 'raw_material_id',
+  dataType: undefined,
+  constraint: undefined,
+  file: 'execMain.c',
+  line: '2029',
+  routine: 'ExecConstraints'
+}
+9:43:33 PM [express] POST /api/products/046f0d79-7490-464a-9f51-bb70a9e0128d/bom 500 in 22ms :: {"me…
+🔹 Request: GET /api/products/046f0d79-7490-464a-9f51-bb70a9e0128d/bom-configurations
+   Cookie header: connect.sid=s%3AzlbtHEdFu1ZDLqiJL1HTVOL7nsGSb8OS.J%2F%2BALvtE7RF0x7WBvKYR9SeFHl%2FamucfUZgLtKZx5lc
+   Session ID: zlbtHEdFu1ZDLqiJL1HTVOL7nsGSb8OS
+   Authenticated: true
+9:43:33 PM [express] GET /api/products/046f0d79-7490-464a-9f51-bb70a9e0128d/bom-configurations 304 i…
+🔹 Request: GET /api/products/046f0d79-7490-464a-9f51-bb70a9e0128d/bom
+   Cookie header: connect.sid=s%3AzlbtHEdFu1ZDLqiJL1HTVOL7nsGSb8OS.J%2F%2BALvtE7RF0x7WBvKYR9SeFHl%2FamucfUZgLtKZx5lc
+   Session ID: zlbtHEdFu1ZDLqiJL1HTVOL7nsGSb8OS
+   Authenticated: true
+🔹 Request: GET /api/products
+   Cookie header: connect.sid=s%3AzlbtHEdFu1ZDLqiJL1HTVOL7nsGSb8OS.J%2F%2BALvtE7RF0x7WBvKYR9SeFHl%2FamucfUZgLtKZx5lc
+   Session ID: zlbtHEdFu1ZDLqiJL1HTVOL7nsGSb8OS
+   Authenticated: true
+9:43:33 PM [express] GET /api/products 200 in 17ms :: {"data":[{"id":"e7ea51d0-8a2a-4685-abab-620cba…
+9:43:33 PM [express] GET /api/products/046f0d79-7490-464a-9f51-bb70a9e0128d/bom 304 in 19ms :: []
+
