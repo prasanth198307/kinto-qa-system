@@ -1244,7 +1244,6 @@ function ProductDialog({
   };
 
   const handleSubmit = async (data: ProductFormData) => {
-    console.log('[ProductDialog] Form submitted with data:', data);
     // Pass the complete form data (including bomItems) to parent's onSubmit
     // Include the selected configuration ID for BOM items
     const submitData = {
@@ -1253,12 +1252,6 @@ function ProductDialog({
     };
     onSubmit(submitData as ProductFormData);
   };
-  
-  // Debug: Log form errors when they change
-  const formErrors = form.formState.errors;
-  if (Object.keys(formErrors).length > 0) {
-    console.log('[ProductDialog] Form validation errors:', formErrors);
-  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
