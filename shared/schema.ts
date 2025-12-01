@@ -1576,6 +1576,9 @@ export const invoices = pgTable("invoices", {
   upiId: varchar("upi_id", { length: 100 }),
   authorizedSignatoryName: varchar("authorized_signatory_name", { length: 255 }),
   
+  // Signature Settings
+  includeSignature: integer("include_signature").default(1).notNull(), // 1 = include signature, 0 = no signature
+  
   // Other Details
   placeOfSupply: varchar("place_of_supply", { length: 100 }),
   reverseCharge: integer("reverse_charge").default(0).notNull(),
