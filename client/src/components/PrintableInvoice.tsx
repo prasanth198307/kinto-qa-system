@@ -72,10 +72,16 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
   const isIntrastate = invoice.sellerStateCode === invoice.buyerStateCode;
 
   const handlePrint = async () => {
-    console.log('🖨️ Print button clicked!', { invoiceId: invoice.id, hasTemplate: !!invoice.templateId, isLoading: isLoadingTemplate });
+    console.log('🖨️ Print button clicked!', { 
+      invoiceId: invoice.id, 
+      hasTemplateId: !!invoice.templateId, 
+      isLoadingTemplate,
+      hasTemplate: !!template,
+      hasSignature: !!template?.defaultSignatureImage
+    });
 
-    // Wait for template to load if templateId exists
-    if (invoice.templateId && isLoadingTemplate) {
+    // Wait for template to load (either specific or default)
+    if (isLoadingTemplate) {
       console.log('⏳ Template still loading...');
       toast({
         title: "Please wait",
@@ -85,7 +91,11 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
       return;
     }
     
-    console.log('✅ Template loaded, generating HTML...', { template });
+    console.log('✅ Template loaded, generating HTML...', { 
+      template,
+      hasSignature: !!template?.defaultSignatureImage,
+      signatureLength: template?.defaultSignatureImage?.length 
+    });
 
     // Calculate HSN-wise tax summary
     const hsnSummary = items.reduce((acc: any[], item) => {
