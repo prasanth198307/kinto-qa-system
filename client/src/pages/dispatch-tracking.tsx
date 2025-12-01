@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useSearch, useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { FileText, Package, Truck, CheckCircle, Clock, Search, X } from "lucide-react";
+import { FileText, Package, Truck, CheckCircle, Clock, Search, X, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import type { Invoice, Gatepass, PaginatedResponse } from "@shared/schema";
@@ -17,6 +17,8 @@ import GatepassForm from "@/components/GatepassForm";
 import { GlobalHeader } from "@/components/GlobalHeader";
 import { useAuth } from "@/hooks/use-auth";
 import { DataTablePagination } from "@/components/DataTablePagination";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 const statusConfig = {
   // Invoice statuses
@@ -38,10 +40,36 @@ export default function DispatchTracking({ showHeader = true }: DispatchTracking
   const urlSearch = useSearch();
   const [, setLocation] = useLocation();
   const { logoutMutation } = useAuth();
+  const { toast } = useToast();
   const [showGatepassForm, setShowGatepassForm] = useState(false);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  
+  // Vehicle exit mutation
+  const vehicleExitMutation = useMutation({
+    mutationFn: async (gatepassId: string) => {
+      return await apiRequest('PATCH', `/api/gatepasses/${gatepassId}/vehicle-exit`, {
+        outTime: new Date().toISOString(),
+        verifiedBy: 'System'
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/gatepasses'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
+      toast({
+        title: "Vehicle Exit Recorded",
+        description: "Gatepass status updated to Vehicle Out. Invoice is now dispatched.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to record vehicle exit",
+      });
+    },
+  });
   
   // Debounce search input
   useEffect(() => {
@@ -361,7 +389,21 @@ export default function DispatchTracking({ showHeader = true }: DispatchTracking
                             </div>
                           </td>
                           <td className="p-3">
-                            <PrintableGatepass gatepass={gatepass} />
+                            <div className="flex items-center gap-2">
+                              {gatepass.status === 'generated' && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => vehicleExitMutation.mutate(gatepass.id)}
+                                  disabled={vehicleExitMutation.isPending}
+                                  className="bg-orange-600 hover:bg-orange-700"
+                                  data-testid={`button-vehicle-exit-${gatepass.id}`}
+                                >
+                                  <LogOut className="w-4 h-4 mr-1" />
+                                  {vehicleExitMutation.isPending ? "Recording..." : "Record Exit"}
+                                </Button>
+                              )}
+                              <PrintableGatepass gatepass={gatepass} />
+                            </div>
                           </td>
                         </tr>
                       ))
