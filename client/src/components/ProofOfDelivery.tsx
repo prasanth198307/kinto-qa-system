@@ -138,9 +138,9 @@ export default function ProofOfDelivery() {
     setPodSignature("");
   };
 
-  // Fetch gatepasses
-  const { data: gatepasses = [], isLoading: gatepassLoading } = useQuery<Gatepass[]>({
-    queryKey: ['/api/gatepasses'],
+  // Fetch gatepasses (paginated response)
+  const { data: gatepassData, isLoading: gatepassLoading } = useQuery<PaginatedResponse<Gatepass>>({
+    queryKey: ['/api/gatepasses', { page: 1, pageSize: 100 }],
   });
 
   // Fetch dispatched invoices (pending delivery)
@@ -148,9 +148,10 @@ export default function ProofOfDelivery() {
     queryKey: ['/api/invoices', { page: 1, pageSize: 100, status: 'dispatched', sortBy: 'invoiceDate', sortOrder: 'desc' }],
   });
 
-  // Filter gatepasses with "vehicle_out" status (ready for POD) - use Array.isArray for safety
-  const safeGatepasses = Array.isArray(gatepasses) ? gatepasses : [];
-  const deliveryPendingGatepasses = safeGatepasses.filter((gp) => gp.status === "vehicle_out");
+  // Extract gatepasses array from paginated response
+  const gatepasses = Array.isArray(gatepassData?.data) ? gatepassData.data : [];
+  // Filter gatepasses with "vehicle_out" status (ready for POD)
+  const deliveryPendingGatepasses = gatepasses.filter((gp) => gp.status === "vehicle_out");
   
   // Get dispatched invoices (pending delivery)
   const dispatchedInvoices = Array.isArray(invoiceData?.data) ? invoiceData.data : [];

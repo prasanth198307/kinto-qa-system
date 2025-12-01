@@ -75,11 +75,12 @@ export default function DispatchTracking({ showHeader = true }: DispatchTracking
     }],
   });
 
-  const { data: gatepasses = [], isLoading: gatepassesLoading } = useQuery<Gatepass[]>({
-    queryKey: ['/api/gatepasses'],
+  const { data: gatepassData, isLoading: gatepassesLoading } = useQuery<PaginatedResponse<Gatepass>>({
+    queryKey: ['/api/gatepasses', { page: 1, pageSize: 100 }],
   });
   
   const invoices = Array.isArray(invoiceData?.data) ? invoiceData.data : [];
+  const gatepasses = Array.isArray(gatepassData?.data) ? gatepassData.data : [];
   const paginationMeta = invoiceData?.meta;
 
   // Detect invoice parameter in URL and auto-open gatepass form
@@ -137,23 +138,20 @@ export default function DispatchTracking({ showHeader = true }: DispatchTracking
   };
 
   // Statistics (use aggregate stats from API for accurate totals across all pages)
-  // Use Array.isArray checks for safety
-  const safeInvoices = Array.isArray(invoices) ? invoices : [];
-  const safeGatepasses = Array.isArray(gatepasses) ? gatepasses : [];
   
   const invoiceStats = {
-    total: paginationMeta?.totalItems || safeInvoices.length,
-    draft: (paginationMeta as any)?.aggregateStats?.draft || safeInvoices.filter(i => i.status === 'draft').length,
-    readyForGatepass: (paginationMeta as any)?.aggregateStats?.ready_for_gatepass || safeInvoices.filter(i => i.status === 'ready_for_gatepass').length,
-    dispatched: (paginationMeta as any)?.aggregateStats?.dispatched || safeInvoices.filter(i => i.status === 'dispatched').length,
-    delivered: (paginationMeta as any)?.aggregateStats?.delivered || safeInvoices.filter(i => i.status === 'delivered').length,
+    total: paginationMeta?.totalItems || invoices.length,
+    draft: (paginationMeta as any)?.aggregateStats?.draft || invoices.filter(i => i.status === 'draft').length,
+    readyForGatepass: (paginationMeta as any)?.aggregateStats?.ready_for_gatepass || invoices.filter(i => i.status === 'ready_for_gatepass').length,
+    dispatched: (paginationMeta as any)?.aggregateStats?.dispatched || invoices.filter(i => i.status === 'dispatched').length,
+    delivered: (paginationMeta as any)?.aggregateStats?.delivered || invoices.filter(i => i.status === 'delivered').length,
   };
 
   const gatepassStats = {
-    total: safeGatepasses.length,
-    generated: safeGatepasses.filter(g => g.status === 'generated').length,
-    vehicleOut: safeGatepasses.filter(g => g.status === 'vehicle_out').length,
-    delivered: safeGatepasses.filter(g => g.status === 'delivered').length,
+    total: gatepasses.length,
+    generated: gatepasses.filter(g => g.status === 'generated').length,
+    vehicleOut: gatepasses.filter(g => g.status === 'vehicle_out').length,
+    delivered: gatepasses.filter(g => g.status === 'delivered').length,
   };
 
   if (invoicesLoading || gatepassesLoading) {
@@ -266,14 +264,14 @@ export default function DispatchTracking({ showHeader = true }: DispatchTracking
                     </tr>
                   </thead>
                   <tbody>
-                    {safeInvoices.length === 0 ? (
+                    {invoices.length === 0 ? (
                       <tr>
                         <td colSpan={7} className="text-center p-6 text-muted-foreground">
                           No invoices found
                         </td>
                       </tr>
                     ) : (
-                      safeInvoices.map((invoice) => (
+                      invoices.map((invoice) => (
                         <tr key={invoice.id} className="border-b hover-elevate" data-testid={`row-invoice-${invoice.id}`}>
                           <td className="p-3 font-medium">{invoice.invoiceNumber}</td>
                           <td className="p-3">{invoice.buyerName}</td>
@@ -335,14 +333,14 @@ export default function DispatchTracking({ showHeader = true }: DispatchTracking
                     </tr>
                   </thead>
                   <tbody>
-                    {safeGatepasses.length === 0 ? (
+                    {gatepasses.length === 0 ? (
                       <tr>
                         <td colSpan={7} className="text-center p-6 text-muted-foreground">
                           No gate passes found
                         </td>
                       </tr>
                     ) : (
-                      safeGatepasses.map((gatepass) => (
+                      gatepasses.map((gatepass) => (
                         <tr key={gatepass.id} className="border-b hover-elevate" data-testid={`row-gatepass-${gatepass.id}`}>
                           <td className="p-3 font-medium">{gatepass.gatepassNumber}</td>
                           <td className="p-3">{gatepass.vehicleNumber}</td>
