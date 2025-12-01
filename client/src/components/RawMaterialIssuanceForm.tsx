@@ -196,9 +196,29 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
     },
   });
 
-  const watchedHeader = form.watch('header');
-  const selectedProductId = watchedHeader?.productId;
-  const plannedOutput = watchedHeader?.plannedOutput;
+  // Use state-based tracking for Safari compatibility
+  // react-hook-form's watch() doesn't reliably trigger useEffect in Safari
+  const [selectedProductId, setSelectedProductId] = useState<string | undefined>(undefined);
+  const [plannedOutput, setPlannedOutput] = useState<number | undefined>(undefined);
+
+  // Subscribe to form changes for Safari compatibility
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (name === 'header.productId' || name === 'header' || !name) {
+        const newProductId = value.header?.productId;
+        if (newProductId !== selectedProductId) {
+          setSelectedProductId(newProductId);
+        }
+      }
+      if (name === 'header.plannedOutput' || name === 'header' || !name) {
+        const newPlannedOutput = value.header?.plannedOutput;
+        if (newPlannedOutput !== plannedOutput) {
+          setPlannedOutput(newPlannedOutput);
+        }
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form, selectedProductId, plannedOutput]);
 
   // Fetch BOM configurations for selected product
   const { data: bomConfigurations = [], isLoading: isConfigLoading } = useQuery<BomConfiguration[]>({
