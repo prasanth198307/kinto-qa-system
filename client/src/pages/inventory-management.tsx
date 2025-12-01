@@ -572,21 +572,25 @@ function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSea
   const saveProductWithBomMutation = useMutation({
     mutationFn: async ({ mode, id, data }: { mode: 'create' | 'update'; id?: string; data: ProductFormData & { bomConfigurationId?: string | null } }) => {
       // Extract BOM items and configuration ID from submitted form data
-      const { bomItems, bomConfigurationId, ...productData } = data;
+      const { bomItems: rawBomItems, bomConfigurationId, ...productData } = data;
       
-      // Step 0: Validate BOM BEFORE product save to prevent orphaned products
+      // Filter out empty/incomplete BOM rows (those without materialTypeId)
+      const bomItems = (rawBomItems || []).filter(item => 
+        item.materialTypeId && item.materialTypeId.trim() !== ''
+      );
+      
+      // Step 0: Validate remaining BOM items for valid quantity
       if (bomItems && bomItems.length > 0) {
         const invalidRows: number[] = [];
         bomItems.forEach((item, index) => {
-          const hasMaterialType = item.materialTypeId && item.materialTypeId.trim() !== '';
           const hasValidQuantity = item.quantityRequired && Number(item.quantityRequired) > 0;
-          if (!hasMaterialType || !hasValidQuantity) {
+          if (!hasValidQuantity) {
             invalidRows.push(index + 1);
           }
         });
 
         if (invalidRows.length > 0) {
-          throw new Error(`BOM validation failed: Row(s) ${invalidRows.join(', ')} have missing material type or invalid quantity. Please complete or remove these rows before saving.`);
+          throw new Error(`BOM validation failed: Row(s) ${invalidRows.join(', ')} have invalid quantity. Please enter valid quantity values before saving.`);
         }
       }
       

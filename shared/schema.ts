@@ -771,11 +771,11 @@ export const productFormSchema = insertProductSchema.extend({
       uom: true,
       notes: true,
     }).extend({
-      materialTypeId: z.string().min(1, "Material type is required"),
+      materialTypeId: z.string().optional().nullable(), // Allow empty during form edit, validate on submit
       rawMaterialId: z.string().optional().nullable(), // Legacy support
       quantityRequired: z.coerce.number().min(0, "Quantity must be positive"),
-      uom: z.string().optional(),
-      notes: z.string().optional(),
+      uom: z.string().optional().nullable(),
+      notes: z.string().optional().nullable(),
     })
   ).default([]),
 });
