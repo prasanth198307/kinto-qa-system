@@ -483,6 +483,26 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
     },
   });
 
+  const markReadyForGatepassMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest('PATCH', `/api/invoices/${id}/status`, { status: 'ready_for_gatepass' });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
+      toast({
+        title: "Success",
+        description: "Invoice marked as Ready for Gatepass. You can now create a gatepass for it.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update invoice status",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleEditIssuance = (issuance: RawMaterialIssuance) => {
     setEditingIssuance(issuance);
     setShowIssuanceForm(true);
@@ -513,6 +533,12 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
   const handleDeleteInvoice = (invoice: Invoice) => {
     if (confirm("Are you sure you want to delete this invoice?")) {
       deleteInvoiceMutation.mutate(invoice.id);
+    }
+  };
+
+  const handleMarkReadyForGatepass = (invoice: Invoice) => {
+    if (confirm("Mark this invoice as Ready for Gatepass? You will be able to create a gatepass for it.")) {
+      markReadyForGatepassMutation.mutate(invoice.id);
     }
   };
 
@@ -1173,6 +1199,7 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
                 onEdit={handleEditInvoice}
                 onDelete={handleDeleteInvoice}
                 onPayment={handlePayment}
+                onMarkReadyForGatepass={handleMarkReadyForGatepass}
               />
               
               {/* Pagination Controls - only show when there are results */}

@@ -1,7 +1,7 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Edit, DollarSign, FileText, Package, Truck, CheckCircle, Eye } from "lucide-react";
+import { Trash2, Edit, DollarSign, FileText, Package, Truck, CheckCircle, Eye, PackageCheck } from "lucide-react";
 import type { Invoice } from "@shared/schema";
 import { format } from "date-fns";
 import { Link } from "wouter";
@@ -13,9 +13,10 @@ interface InvoiceTableProps {
   onEdit?: (invoice: Invoice) => void;
   onDelete?: (invoice: Invoice) => void;
   onPayment?: (invoice: Invoice) => void;
+  onMarkReadyForGatepass?: (invoice: Invoice) => void;
 }
 
-export default function InvoiceTable({ invoices, isLoading, onEdit, onDelete, onPayment }: InvoiceTableProps) {
+export default function InvoiceTable({ invoices, isLoading, onEdit, onDelete, onPayment, onMarkReadyForGatepass }: InvoiceTableProps) {
   // Use invoice.amountReceived for consistency with invoice detail page and vendor analytics
   // This is the authoritative source from Vyapaar Sale Report
   const getTotalPaid = (invoice: Invoice) => {
@@ -122,6 +123,17 @@ export default function InvoiceTable({ invoices, isLoading, onEdit, onDelete, on
                         title="Record Payment"
                       >
                         <DollarSign className="w-4 h-4 text-green-600" />
+                      </Button>
+                    )}
+                    {onMarkReadyForGatepass && invoice.status === 'draft' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onMarkReadyForGatepass(invoice)}
+                        data-testid={`button-ready-gatepass-${invoice.id}`}
+                        title="Mark Ready for Gatepass"
+                      >
+                        <PackageCheck className="w-4 h-4 text-blue-600" />
                       </Button>
                     )}
                     {onEdit && (
