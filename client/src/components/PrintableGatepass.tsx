@@ -39,6 +39,12 @@ export default function PrintableGatepass({ gatepass }: PrintableGatepassProps) 
     return product?.productName || item.productId || 'Unknown Product';
   };
 
+  const getBatchNumber = (item: GatepassItem): string => {
+    // Get batch number from finished good
+    const fg = finishedGoods.find(f => f.id === item.finishedGoodId);
+    return fg?.batchNumber || '-';
+  };
+
   const handlePrint = () => {
     const printContent = printRef.current;
     if (!printContent) return;
@@ -215,7 +221,7 @@ export default function PrintableGatepass({ gatepass }: PrintableGatepassProps) 
     return (
       <div className="page" key={copyType}>
         <div className="header">
-          <div className="company-name">KINTO MANUFACTURING</div>
+          <div className="company-name">INMOISTURE PRIVATE LIMITED</div>
           <div style={{ fontSize: '14px', marginTop: '5px' }}>Gate Pass for Finished Goods Dispatch</div>
           <div className="copy-type">{copyType}</div>
           <div className="gatepass-number">Gate Pass No: {gatepass.gatepassNumber}</div>
@@ -295,7 +301,8 @@ export default function PrintableGatepass({ gatepass }: PrintableGatepassProps) 
             <tr>
               <th style={{ width: '50px' }}>Sr. No.</th>
               <th>Product Name</th>
-              <th style={{ width: '100px' }}>Quantity</th>
+              <th style={{ width: '120px' }}>Batch No.</th>
+              <th style={{ width: '80px' }}>Quantity</th>
               <th>Remarks</th>
             </tr>
           </thead>
@@ -305,6 +312,7 @@ export default function PrintableGatepass({ gatepass }: PrintableGatepassProps) 
                 <tr key={item.id}>
                   <td style={{ textAlign: 'center' }}>{index + 1}</td>
                   <td>{getProductName(item)}</td>
+                  <td style={{ textAlign: 'center' }}>{getBatchNumber(item)}</td>
                   <td style={{ textAlign: 'center' }}>{item.quantityDispatched}</td>
                   <td>{item.remarks || '-'}</td>
                 </tr>
