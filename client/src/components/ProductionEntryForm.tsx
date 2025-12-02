@@ -278,16 +278,46 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
   const calculateExpectedQuantity = (bomItem: any): number => {
     if (!producedQuantity || !bomItem.typeDetails) return 0;
 
-    const suggestions = calculateBOMSuggestions(Number(producedQuantity), [bomItem]);
-    return suggestions.get(bomItem.rawMaterialId)?.suggestedQuantity || 0;
+    // Transform bomItem to the structure calculateBOMSuggestions expects
+    // issuanceSummary.bomItems has spread ...item.bom + typeDetails + typeId
+    // calculateBOMSuggestions expects { bom: {...}, type: {...}, typeId: ... }
+    const transformedItem = {
+      bom: {
+        rawMaterialId: bomItem.rawMaterialId,
+        materialTypeId: bomItem.materialTypeId,
+        quantityRequired: bomItem.quantityRequired,
+        uom: bomItem.uom,
+      },
+      material: bomItem.material,
+      type: bomItem.typeDetails, // typeDetails -> type
+      typeId: bomItem.typeId || bomItem.materialTypeId,
+      effectiveUomId: bomItem.effectiveUomId,
+      availableRawMaterials: bomItem.availableRawMaterials,
+    };
+
+    const suggestions = calculateBOMSuggestions(Number(producedQuantity), [transformedItem]);
+    // The result map uses typeId || materialTypeId || rawMaterialId as key
+    const key = bomItem.typeId || bomItem.materialTypeId || bomItem.rawMaterialId;
+    return suggestions.get(key)?.suggestedQuantity || 0;
   };
 
-  const getIssuedQuantity = (materialId: string): number => {
+  const getIssuedQuantity = (bomItem: any): number => {
     if (!issuanceSummary?.issuance?.items) return 0;
     
-    const issuedItem = issuanceSummary.issuance.items.find(
-      item => item.rawMaterialId === materialId
-    );
+    // Match issuance items by:
+    // 1. Direct rawMaterialId match (if BOM has specific raw material)
+    // 2. Or check if issued raw material is in BOM's availableRawMaterials list
+    const issuedItem = issuanceSummary.issuance.items.find(item => {
+      // Direct match by rawMaterialId
+      if (bomItem.rawMaterialId && item.rawMaterialId === bomItem.rawMaterialId) {
+        return true;
+      }
+      // Match by material type - check if issued material is in available list
+      if (bomItem.availableRawMaterials) {
+        return bomItem.availableRawMaterials.some((rm: any) => rm.id === item.rawMaterialId);
+      }
+      return false;
+    });
     return issuedItem ? Number(issuedItem.quantityIssued) : 0;
   };
 
@@ -799,7 +829,7 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
                     <TableBody>
                       {issuanceSummary.bomItems.map((bomItem) => {
                         const expected = calculateExpectedQuantity(bomItem);
-                        const issued = getIssuedQuantity(bomItem.rawMaterialId);
+                        const issued = getIssuedQuantity(bomItem);
                         const variance = calculateVariance(expected, issued);
                         
                         return (
