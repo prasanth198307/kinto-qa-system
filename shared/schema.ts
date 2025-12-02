@@ -1190,6 +1190,8 @@ export const insertRawMaterialIssuanceSchema = createInsertSchema(rawMaterialIss
     return val;
   }),
   issuedTo: z.string().optional().transform(val => !val || val.trim() === '' ? undefined : val),
+  productId: z.string().optional().transform(val => !val || val.trim() === '' ? undefined : val),
+  bomConfigurationId: z.string().optional().transform(val => !val || val.trim() === '' ? undefined : val),
   productionReference: z.string().optional().transform(val => !val || val.trim() === '' ? undefined : val),
   remarks: z.string().optional().transform(val => !val || val.trim() === '' ? undefined : val),
   plannedOutput: z.union([
