@@ -73,8 +73,8 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
   const emptyBottlesProduced = form.watch('emptyBottlesProduced');
   const emptyBottlesUsed = form.watch('emptyBottlesUsed');
   
-  // State for additional used bottles (beyond cases)
-  const [additionalUsed, setAdditionalUsed] = useState<number>(0);
+  // State for additional produced bottles (from other sources, not from preform blow molding)
+  const [additionalProduced, setAdditionalProduced] = useState<number>(0);
 
   // Calculate bottles from issuance based on preform-type materials
   // Formula: Σ (quantityIssued × usableUnits) for preform materials
@@ -142,24 +142,25 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
   
   const usedFromCases = calculateUsedFromCases();
 
-  // Auto-set "Used" field = Used from Cases + Additional Used
+  // Auto-set "Used" field = Used from Cases only (no additional used)
   useEffect(() => {
-    const totalUsed = usedFromCases.total + additionalUsed;
-    form.setValue('emptyBottlesUsed', totalUsed);
-  }, [usedFromCases.total, additionalUsed, form]);
+    form.setValue('emptyBottlesUsed', usedFromCases.total);
+  }, [usedFromCases.total, form]);
 
-  // Auto-calculate pending when opening, produced, or used changes
-  // Formula: Pending = Opening + Produced - Used
+  // Auto-calculate pending when opening, produced, additional produced, or used changes
+  // Formula: Pending = Opening + Produced + Additional Produced - Used
   // Note: "From Issuance" is just a reference (potential bottles from preforms)
   // Actual bottles come from blow molding, entered in "Produced"
+  // Additional Produced = bottles from other sources (not from preforms)
   useEffect(() => {
     const opening = Number(emptyBottlesOpening) || 0;
     const produced = Number(emptyBottlesProduced) || 0;
+    const additional = additionalProduced || 0;
     const used = Number(emptyBottlesUsed) || 0;
-    const availableBottles = opening + produced;
-    const pending = opening + produced - used;
+    const availableBottles = opening + produced + additional;
+    const pending = availableBottles - used;
     
-    // Validate: Used cannot exceed available bottles (Opening + Produced)
+    // Validate: Used cannot exceed available bottles
     if (used > availableBottles) {
       form.setError('emptyBottlesUsed', {
         type: 'manual',
@@ -170,7 +171,7 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
     }
     
     form.setValue('emptyBottlesPending', Math.max(0, pending));
-  }, [emptyBottlesOpening, emptyBottlesProduced, emptyBottlesUsed, form]);
+  }, [emptyBottlesOpening, emptyBottlesProduced, additionalProduced, emptyBottlesUsed, form]);
 
   // Set opening balance from last production entry when data loads (for new entries)
   useEffect(() => {
@@ -535,27 +536,42 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
                 name="emptyBottlesProduced"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Additional Produced</FormLabel>
+                    <FormLabel>Produced (Blow-molded)</FormLabel>
                     <FormControl>
                       <Input 
                         type="number" 
-                        step="0.01" 
+                        step="1" 
                         {...field}
                         onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                         data-testid="input-empty-bottles-produced"
                       />
                     </FormControl>
                     <p className="text-xs text-muted-foreground">
-                      Extra bottles (beyond issuance)
+                      From preform blow molding
                     </p>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              {/* Used from Cases - Auto-calculated */}
+              {/* Additional Produced - From other sources */}
               <div className="space-y-2">
-                <label className="text-sm font-medium">Used (from Cases)</label>
+                <label className="text-sm font-medium">Additional Produced</label>
+                <Input 
+                  type="number" 
+                  step="1"
+                  value={additionalProduced}
+                  onChange={(e) => setAdditionalProduced(parseFloat(e.target.value) || 0)}
+                  data-testid="input-empty-bottles-additional-produced"
+                />
+                <p className="text-xs text-muted-foreground">
+                  From other sources
+                </p>
+              </div>
+
+              {/* Used - Auto-calculated from Cases */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Used (for Filling)</label>
                 <Input 
                   type="number" 
                   value={usedFromCases.total}
@@ -565,24 +581,9 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
                 />
                 {usedFromCases.bottlesPerCase > 0 && (
                   <p className="text-xs text-green-600 dark:text-green-400">
-                    = {usedFromCases.casesProduced.toLocaleString()} × {usedFromCases.bottlesPerCase}
+                    = {usedFromCases.casesProduced.toLocaleString()} cases × {usedFromCases.bottlesPerCase}
                   </p>
                 )}
-              </div>
-
-              {/* Additional Used - Manual entry */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Additional Used</label>
-                <Input 
-                  type="number" 
-                  step="1"
-                  value={additionalUsed}
-                  onChange={(e) => setAdditionalUsed(parseFloat(e.target.value) || 0)}
-                  data-testid="input-empty-bottles-additional-used"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Extra bottles used
-                </p>
               </div>
 
               <FormField
@@ -614,18 +615,18 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
             <div className="mt-3 pt-3 border-t text-sm space-y-1">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">
-                  <strong>Available:</strong> Opening ({Number(emptyBottlesOpening).toLocaleString()}) + Produced ({Number(emptyBottlesProduced).toLocaleString()})
+                  <strong>Available:</strong> Opening ({Number(emptyBottlesOpening).toLocaleString()}) + Produced ({Number(emptyBottlesProduced).toLocaleString()}) + Additional ({additionalProduced.toLocaleString()})
                 </span>
                 <span className="font-medium">
-                  = {(Number(emptyBottlesOpening) + Number(emptyBottlesProduced)).toLocaleString()}
+                  = {(Number(emptyBottlesOpening) + Number(emptyBottlesProduced) + additionalProduced).toLocaleString()}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">
-                  <strong>Total Used:</strong> Cases ({usedFromCases.total.toLocaleString()}) + Additional ({additionalUsed.toLocaleString()})
+                  <strong>Used:</strong> For filling {usedFromCases.casesProduced.toLocaleString()} cases
                 </span>
                 <span className="font-medium text-red-600 dark:text-red-400">
-                  = {(usedFromCases.total + additionalUsed).toLocaleString()}
+                  = {usedFromCases.total.toLocaleString()}
                 </span>
               </div>
               <div className="flex justify-between border-t pt-1">
