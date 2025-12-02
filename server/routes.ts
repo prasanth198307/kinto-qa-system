@@ -3440,6 +3440,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { header, items } = req.body;
       
+      console.log('[RECONCILIATION] Header received:', JSON.stringify(header, null, 2));
+      console.log('[RECONCILIATION] Items received:', JSON.stringify(items, null, 2));
+      
       // Validate header
       const validatedHeader = insertProductionReconciliationSchema.parse(header);
       
@@ -3528,6 +3531,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ reconciliation: result, message: "Production reconciliation created successfully" });
     } catch (error) {
       if (error instanceof z.ZodError) {
+        console.error('[RECONCILIATION] Validation error:', JSON.stringify(error.errors, null, 2));
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
       }
       console.error("Error creating production reconciliation:", error);
