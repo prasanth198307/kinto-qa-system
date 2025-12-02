@@ -48,7 +48,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Pencil, Trash2, Search, Package, Layers, Box, CheckCircle, Users, Minus, Check, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Package, Layers, Box, CheckCircle, Users, Minus, Check, X, Printer } from "lucide-react";
 import VendorManagement from "@/components/VendorManagement";
 import BankManagement from "@/components/BankManagement";
 import { GlobalHeader } from "@/components/GlobalHeader";
@@ -2208,6 +2208,9 @@ function RawMaterialsTab({ searchTerm, onSearchChange }: { searchTerm: string; o
   const [currentPage, setCurrentPage] = useState(1);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+  const [printLabelOpen, setPrintLabelOpen] = useState(false);
+  const [printItem, setPrintItem] = useState<RawMaterial | null>(null);
+  const [labelQuantity, setLabelQuantity] = useState(1);
   const itemsPerPage = 10;
 
   // Filter states
@@ -2335,6 +2338,133 @@ function RawMaterialsTab({ searchTerm, onSearchChange }: { searchTerm: string; o
     }
   };
 
+  const handlePrintLabel = (item: RawMaterial) => {
+    if (!(item as any).batchCode) {
+      toast({ 
+        title: "No Batch Code", 
+        description: "This material doesn't have a batch code. Edit the material and set a date to generate one.",
+        variant: "destructive"
+      });
+      return;
+    }
+    setPrintItem(item);
+    setLabelQuantity(1);
+    setPrintLabelOpen(true);
+  };
+
+  const executePrint = () => {
+    if (!printItem) return;
+    
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      toast({ title: "Error", description: "Please allow pop-ups for printing", variant: "destructive" });
+      return;
+    }
+    
+    const batchCode = (printItem as any).batchCode || 'N/A';
+    const materialName = printItem.materialName;
+    const materialCode = printItem.materialCode;
+    const category = printItem.category || '';
+    const receivedDate = (printItem as any).receivedDate || (printItem as any).openingDate || '';
+    
+    // Generate multiple labels
+    let labelsHtml = '';
+    for (let i = 0; i < labelQuantity; i++) {
+      labelsHtml += `
+        <div class="label">
+          <div class="batch-code">${batchCode}</div>
+          <div class="material-name">${materialName}</div>
+          <div class="material-code">${materialCode}</div>
+          ${category ? `<div class="category">${category}</div>` : ''}
+          ${receivedDate ? `<div class="date">Date: ${new Date(receivedDate).toLocaleDateString('en-IN')}</div>` : ''}
+        </div>
+      `;
+    }
+    
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Print Labels - ${batchCode}</title>
+        <style>
+          @page {
+            size: 100mm 50mm;
+            margin: 2mm;
+          }
+          body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+          }
+          .label {
+            width: 96mm;
+            height: 46mm;
+            border: 1px dashed #ccc;
+            padding: 4mm;
+            margin: 2mm auto;
+            page-break-after: always;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+          }
+          .label:last-child {
+            page-break-after: avoid;
+          }
+          .batch-code {
+            font-size: 24px;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 2px;
+            margin-bottom: 4mm;
+            padding: 2mm 4mm;
+            border: 2px solid #000;
+            background: #f5f5f5;
+          }
+          .material-name {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 2mm;
+          }
+          .material-code {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 1mm;
+          }
+          .category {
+            font-size: 10px;
+            color: #888;
+            margin-bottom: 1mm;
+          }
+          .date {
+            font-size: 10px;
+            color: #666;
+          }
+          @media print {
+            body { -webkit-print-color-adjust: exact; }
+            .label { border: 1px dashed #ccc; }
+          }
+        </style>
+      </head>
+      <body>
+        ${labelsHtml}
+        <script>
+          window.onload = function() {
+            window.print();
+            window.onafterprint = function() { window.close(); };
+          }
+        </script>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+    
+    setPrintLabelOpen(false);
+    toast({ title: "Print Initiated", description: `Printing ${labelQuantity} label(s) for ${batchCode}` });
+  };
+
   const getUomName = (uomId: string | null) => {
     if (!uomId) return '-';
     const uom = uoms.find(u => u.id === uomId);
@@ -2450,6 +2580,7 @@ function RawMaterialsTab({ searchTerm, onSearchChange }: { searchTerm: string; o
               <TableRow>
                 <TableHead>Material Code</TableHead>
                 <TableHead>Name</TableHead>
+                <TableHead>Batch Code</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead>Base Unit</TableHead>
                 <TableHead>Conversion</TableHead>
@@ -2464,17 +2595,18 @@ function RawMaterialsTab({ searchTerm, onSearchChange }: { searchTerm: string; o
                   <TableRow key={i}>
                     <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-28" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-28" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-16" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-24 ml-auto" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-32 ml-auto" /></TableCell>
                   </TableRow>
                 ))
               ) : paginatedItems.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                     {materials.length === 0 
                       ? "No raw materials found. Add your first raw material to get started."
                       : "No raw materials match your search criteria. Try adjusting your filters."}
@@ -2485,6 +2617,15 @@ function RawMaterialsTab({ searchTerm, onSearchChange }: { searchTerm: string; o
                   <TableRow key={item.id} data-testid={`row-material-${item.id}`}>
                     <TableCell className="font-medium" data-testid={`text-code-${item.id}`}>{item.materialCode}</TableCell>
                     <TableCell data-testid={`text-name-${item.id}`}>{item.materialName}</TableCell>
+                    <TableCell data-testid={`text-batch-${item.id}`}>
+                      {(item as any).batchCode ? (
+                        <Badge variant="outline" className="font-mono text-xs">
+                          {(item as any).batchCode}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">Not set</span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-muted-foreground" data-testid={`text-category-${item.id}`}>
                       {item.category || '-'}
                     </TableCell>
@@ -2511,7 +2652,16 @@ function RawMaterialsTab({ searchTerm, onSearchChange }: { searchTerm: string; o
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handlePrintLabel(item)}
+                          title="Print Label"
+                          data-testid={`button-print-${item.id}`}
+                        >
+                          <Printer className="h-4 w-4" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -2561,6 +2711,54 @@ function RawMaterialsTab({ searchTerm, onSearchChange }: { searchTerm: string; o
           </Button>
         </div>
       )}
+
+      {/* Print Label Dialog */}
+      <Dialog open={printLabelOpen} onOpenChange={setPrintLabelOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Print Batch Labels</DialogTitle>
+            <DialogDescription>
+              Configure and print labels for this raw material batch.
+            </DialogDescription>
+          </DialogHeader>
+          {printItem && (
+            <div className="space-y-4">
+              <div className="p-4 border rounded-lg bg-muted/50 text-center">
+                <div className="text-2xl font-mono font-bold mb-2">
+                  {(printItem as any).batchCode}
+                </div>
+                <div className="text-sm font-medium">{printItem.materialName}</div>
+                <div className="text-xs text-muted-foreground">{printItem.materialCode}</div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="label-quantity">Number of Labels</Label>
+                <Input
+                  id="label-quantity"
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={labelQuantity}
+                  onChange={(e) => setLabelQuantity(Math.max(1, Math.min(100, parseInt(e.target.value) || 1)))}
+                  data-testid="input-label-quantity"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Print multiple labels for bags/rolls (max 100)
+                </p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPrintLabelOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={executePrint} data-testid="button-execute-print">
+              <Printer className="h-4 w-4 mr-2" />
+              Print {labelQuantity} Label{labelQuantity > 1 ? 's' : ''}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <RawMaterialDialog
         open={isDialogOpen}
