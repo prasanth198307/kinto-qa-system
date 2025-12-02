@@ -124,23 +124,94 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
     }
   }, [watchedProductionId, selectedProductionId]);
 
+  // Filter productions for selected issuance (defined early for use in calculations)
+  // In edit mode, ensure the current production entry is always available even if not in filtered list
+  let filteredProductions = productions.filter(p => p.issuanceId === selectedIssuanceId);
+  
+  if (reconciliation && reconciliation.productionEntryId) {
+    const currentProduction = productions.find(p => p.id === reconciliation.productionEntryId);
+    if (currentProduction && !filteredProductions.find(p => p.id === currentProduction.id)) {
+      filteredProductions = [currentProduction, ...filteredProductions];
+    }
+  }
+
+  // Get selected production entry data
+  const selectedProduction = filteredProductions.find(p => p.id === selectedProductionId);
+  const producedCases = selectedProduction ? Number(selectedProduction.producedQuantity) || 0 : 0;
+
+  // Calculate expected usage from BOM for each material
+  const calculateExpectedUsage = (rawMaterialId: string): number => {
+    if (!issuanceSummary?.bomItems || !producedCases) return 0;
+    
+    // Find BOM item for this raw material (check both direct and type-based match)
+    const bomItem = issuanceSummary.bomItems.find((b: any) => {
+      // Direct raw material match
+      if (b.rawMaterialId === rawMaterialId) return true;
+      // Check if raw material belongs to BOM's material type
+      if (b.availableRawMaterials) {
+        return b.availableRawMaterials.some((rm: any) => rm.id === rawMaterialId);
+      }
+      return false;
+    });
+    
+    if (!bomItem) return 0;
+    
+    // Expected = Produced Cases × BOM quantity per case
+    const quantityPerCase = Number(bomItem.quantityRequired || bomItem.bom?.quantityRequired) || 0;
+    return Math.round(producedCases * quantityPerCase * 100) / 100;
+  };
+
   // Auto-populate items when issuance is selected (create mode only)
+  // Now uses expected usage from BOM instead of issued quantity
   useEffect(() => {
     // Only auto-fill in create mode, when summary is loaded, and items are empty
     // Prevent auto-fill during edit mode even if items get cleared
     if (issuanceSummary && !reconciliation && items.length === 0 && selectedIssuanceId) {
-      const issuanceItems = issuanceSummary.issuance.items.map((item: any) => ({
-        rawMaterialId: item.rawMaterialId,
-        issuanceItemId: item.id,
-        quantityIssued: Number(item.quantityIssued) || 0,
-        quantityUsed: Number(item.quantityIssued) || 0,
-        quantityReturned: 0,
-        quantityPending: 0,
-        remarks: "",
-      }));
+      const issuanceItems = issuanceSummary.issuance.items.map((item: any) => {
+        const issued = Number(item.quantityIssued) || 0;
+        const expectedUsed = calculateExpectedUsage(item.rawMaterialId);
+        // Use expected if available, otherwise fall back to issued
+        const used = expectedUsed > 0 ? expectedUsed : issued;
+        // Suggest returned: what's left after expected usage (pending defaults to 0)
+        const suggestedReturned = Math.max(0, issued - used);
+        
+        return {
+          rawMaterialId: item.rawMaterialId,
+          issuanceItemId: item.id,
+          quantityIssued: issued,
+          quantityUsed: used,
+          quantityReturned: suggestedReturned,
+          quantityPending: 0, // Hopper - user editable
+          remarks: "",
+        };
+      });
       setItems(issuanceItems);
     }
-  }, [issuanceSummary, reconciliation, items.length, selectedIssuanceId]);
+  }, [issuanceSummary, reconciliation, items.length, selectedIssuanceId, producedCases]);
+
+  // Recalculate used and suggested returned when production entry changes
+  useEffect(() => {
+    if (!reconciliation && selectedProductionId && items.length > 0 && issuanceSummary) {
+      const updatedItems = items.map(item => {
+        const expectedUsed = calculateExpectedUsage(item.rawMaterialId);
+        const issued = item.quantityIssued || 0;
+        const pending = item.quantityPending || 0;
+        
+        // Only update if we have a valid expected calculation
+        if (expectedUsed > 0) {
+          const used = expectedUsed;
+          const suggestedReturned = Math.max(0, issued - used - pending);
+          return {
+            ...item,
+            quantityUsed: used,
+            quantityReturned: suggestedReturned,
+          };
+        }
+        return item;
+      });
+      setItems(updatedItems);
+    }
+  }, [selectedProductionId, producedCases]);
 
   const createMutation = useMutation({
     mutationFn: async (data: { header: HeaderFormData; items: ItemFormData[] }) => {
@@ -246,7 +317,19 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
 
   const updateItem = (index: number, field: keyof ItemFormData, value: any) => {
     const updatedItems = [...items];
-    updatedItems[index] = { ...updatedItems[index], [field]: value };
+    const item = { ...updatedItems[index], [field]: value };
+    
+    // When Used or Hopper (pending) changes, auto-suggest returned
+    // This keeps the balance: Issued = Used + Hopper + Returned
+    if (field === 'quantityPending' || field === 'quantityUsed') {
+      const issued = item.quantityIssued || 0;
+      const used = field === 'quantityUsed' ? (value || 0) : (item.quantityUsed || 0);
+      const pending = field === 'quantityPending' ? (value || 0) : (item.quantityPending || 0);
+      // Suggested returned = Issued - Used - Hopper
+      item.quantityReturned = Math.max(0, issued - used - pending);
+    }
+    
+    updatedItems[index] = item;
     setItems(updatedItems);
   };
 
@@ -254,16 +337,18 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
     return used - returned - pending;
   };
 
-  // Filter productions for selected issuance
-  // In edit mode, ensure the current production entry is always available even if not in filtered list
-  let filteredProductions = productions.filter(p => p.issuanceId === selectedIssuanceId);
-  
-  if (reconciliation && reconciliation.productionEntryId) {
-    const currentProduction = productions.find(p => p.id === reconciliation.productionEntryId);
-    if (currentProduction && !filteredProductions.find(p => p.id === currentProduction.id)) {
-      filteredProductions = [currentProduction, ...filteredProductions];
-    }
-  }
+  // Calculate variance: Issued - Used - Returned - Pending (should be 0 if all accounted)
+  const calculateVariance = (issued: number, used: number, returned: number, pending: number): number => {
+    return issued - used - returned - pending;
+  };
+
+  // Get material name from issuance summary
+  const getMaterialName = (rawMaterialId: string): string => {
+    const issuanceItem = issuanceSummary?.issuance.items.find(
+      (i: any) => i.rawMaterialId === rawMaterialId
+    );
+    return issuanceItem?.materialName || issuanceItem?.rawMaterial?.materialName || rawMaterialId.substring(0, 8) + '...';
+  };
 
   return (
     <div className="space-y-4">
@@ -440,74 +525,93 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
                           <TableRow>
                             <TableHead>Material</TableHead>
                             <TableHead className="text-right">Issued</TableHead>
+                            <TableHead className="text-right">Expected</TableHead>
                             <TableHead className="text-right">Used</TableHead>
-                            <TableHead className="text-right">Returned</TableHead>
-                            <TableHead className="text-right">Pending</TableHead>
-                            <TableHead className="text-right">Net Consumed</TableHead>
+                            <TableHead className="text-right bg-amber-50 dark:bg-amber-950">Left in Hopper</TableHead>
+                            <TableHead className="text-right">To Return</TableHead>
+                            <TableHead className="text-right">Variance</TableHead>
                             <TableHead>Remarks</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {items.map((item, index) => {
-                            const material = issuanceSummary?.issuance.items.find(
-                              (i: any) => i.rawMaterialId === item.rawMaterialId
-                            );
-                            const netConsumed = calculateNetConsumed(
-                              item.quantityUsed || 0,
-                              item.quantityReturned || 0,
-                              item.quantityPending || 0
-                            );
+                            const issued = item.quantityIssued || 0;
+                            const used = item.quantityUsed || 0;
+                            const returned = item.quantityReturned || 0;
+                            const pending = item.quantityPending || 0; // Hopper
+                            const expected = calculateExpectedUsage(item.rawMaterialId);
+                            const variance = calculateVariance(issued, used, returned, pending);
+                            const usageVariance = expected > 0 ? used - expected : 0;
+                            const variancePercent = issued > 0 ? ((variance / issued) * 100).toFixed(1) : '0';
 
                             return (
                               <TableRow key={index}>
                                 <TableCell className="font-medium">
-                                  {material?.rawMaterialId || item.rawMaterialId}
+                                  {getMaterialName(item.rawMaterialId)}
                                 </TableCell>
                                 <TableCell className="text-right">
-                                  <Badge variant="outline">{item.quantityIssued}</Badge>
+                                  <Badge variant="outline">{issued}</Badge>
                                 </TableCell>
                                 <TableCell className="text-right">
+                                  <Badge variant="secondary" className="text-xs">
+                                    {expected > 0 ? expected.toFixed(2) : '-'}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex flex-col items-end gap-1">
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      step="0.01"
+                                      value={used}
+                                      onChange={(e) => updateItem(index, 'quantityUsed', Number(e.target.value))}
+                                      className="w-20 text-right"
+                                      data-testid={`input-used-${index}`}
+                                    />
+                                    {expected > 0 && usageVariance !== 0 && (
+                                      <span className={`text-xs ${usageVariance > 0 ? 'text-red-500' : 'text-green-500'}`}>
+                                        {usageVariance > 0 ? '+' : ''}{usageVariance.toFixed(2)}
+                                      </span>
+                                    )}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-right bg-amber-50 dark:bg-amber-950">
                                   <Input
                                     type="number"
                                     min="0"
-                                    step="1"
-                                    value={item.quantityUsed || 0}
-                                    onChange={(e) => updateItem(index, 'quantityUsed', Number(e.target.value))}
-                                    className="w-24 text-right"
-                                    data-testid={`input-used-${index}`}
+                                    step="0.01"
+                                    value={pending}
+                                    onChange={(e) => updateItem(index, 'quantityPending', Number(e.target.value))}
+                                    className="w-20 text-right border-amber-300 dark:border-amber-700"
+                                    data-testid={`input-hopper-${index}`}
+                                    placeholder="Hopper"
                                   />
                                 </TableCell>
                                 <TableCell className="text-right">
                                   <Input
                                     type="number"
                                     min="0"
-                                    step="1"
-                                    value={item.quantityReturned || 0}
+                                    step="0.01"
+                                    value={returned}
                                     onChange={(e) => updateItem(index, 'quantityReturned', Number(e.target.value))}
-                                    className="w-24 text-right"
+                                    className="w-20 text-right"
                                     data-testid={`input-returned-${index}`}
                                   />
                                 </TableCell>
                                 <TableCell className="text-right">
-                                  <Input
-                                    type="number"
-                                    min="0"
-                                    step="1"
-                                    value={item.quantityPending || 0}
-                                    onChange={(e) => updateItem(index, 'quantityPending', Number(e.target.value))}
-                                    className="w-24 text-right"
-                                    data-testid={`input-pending-${index}`}
-                                  />
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  <div className="flex items-center justify-end gap-2">
-                                    <Calculator className="h-3 w-3 text-muted-foreground" />
+                                  <div className="flex items-center justify-end gap-1">
                                     <Badge 
-                                      variant={netConsumed < 0 ? "destructive" : "secondary"}
-                                      data-testid={`badge-consumed-${index}`}
+                                      variant={variance === 0 ? "secondary" : variance > 0 ? "outline" : "destructive"}
+                                      className={variance === 0 ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300" : ""}
+                                      data-testid={`badge-variance-${index}`}
                                     >
-                                      {netConsumed}
+                                      {variance === 0 ? '✓' : variance.toFixed(2)}
                                     </Badge>
+                                    {variance !== 0 && (
+                                      <span className="text-xs text-muted-foreground">
+                                        ({variancePercent}%)
+                                      </span>
+                                    )}
                                   </div>
                                 </TableCell>
                                 <TableCell>
@@ -516,7 +620,7 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
                                     value={item.remarks || ""}
                                     onChange={(e) => updateItem(index, 'remarks', e.target.value)}
                                     placeholder="Notes"
-                                    className="w-full"
+                                    className="w-24"
                                     data-testid={`input-item-remarks-${index}`}
                                   />
                                 </TableCell>
@@ -534,15 +638,21 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
                       <div className="flex gap-2">
                         <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5" />
                         <div className="text-sm text-blue-900 dark:text-blue-100 space-y-1">
-                          <p className="font-medium">Net Consumed = Used - Returned - Pending</p>
+                          <p className="font-medium">Variance = Issued - Used - Hopper - Returned (should be 0)</p>
                           <p className="text-blue-700 dark:text-blue-300">
-                            • <strong>Used:</strong> Total quantity actually used in production
+                            • <strong>Expected:</strong> Calculated from BOM based on cases produced
                           </p>
                           <p className="text-blue-700 dark:text-blue-300">
-                            • <strong>Returned:</strong> Materials physically returned to inventory (adds to stock)
+                            • <strong>Used:</strong> Actual quantity consumed in production
                           </p>
                           <p className="text-blue-700 dark:text-blue-300">
-                            • <strong>Pending:</strong> Materials in-process or pending return (tracked but not in stock)
+                            • <strong>Left in Hopper:</strong> Material remaining in machine for next cycle (reusable)
+                          </p>
+                          <p className="text-blue-700 dark:text-blue-300">
+                            • <strong>To Return:</strong> Material to be physically returned to inventory
+                          </p>
+                          <p className="text-blue-700 dark:text-blue-300">
+                            • <strong>Variance:</strong> Unaccounted material (✓ = fully reconciled, 2% acceptable threshold)
                           </p>
                           {reconciliation && (
                             <p className="text-blue-700 dark:text-blue-300 mt-2">
