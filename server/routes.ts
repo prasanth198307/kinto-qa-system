@@ -362,7 +362,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         : 'http://localhost:5000';
       const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
 
-      // Send email via SendGrid
+      // Send email via Office 365 SMTP or SendGrid
       const sendEmail = async () => {
         const subject = 'Password Reset - KINTO Smart Ops';
         const htmlBody = `
@@ -403,33 +403,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
 </html>
         `;
 
-        // Check if SendGrid is configured
-        if (!process.env.SENDGRID_API_KEY) {
-          console.log('\n' + '='.repeat(60));
-          console.log('[PASSWORD RESET - NO SENDGRID CONFIGURED]');
-          console.log('='.repeat(60));
-          console.log(`To: ${email}`);
-          console.log(`Subject: ${subject}`);
-          console.log(`Reset URL: ${resetUrl}`);
-          console.log('='.repeat(60) + '\n');
+        // Check if Office 365 SMTP is configured
+        if (process.env.OFFICE365_EMAIL && process.env.OFFICE365_PASSWORD) {
+          const nodemailer = await import('nodemailer');
+          
+          const transporter = nodemailer.default.createTransport({
+            host: 'smtp.office365.com',
+            port: 587,
+            secure: false, // TLS
+            auth: {
+              user: process.env.OFFICE365_EMAIL,
+              pass: process.env.OFFICE365_PASSWORD, // App password if MFA enabled
+            },
+            tls: {
+              ciphers: 'SSLv3',
+              rejectUnauthorized: false
+            }
+          });
+
+          await transporter.sendMail({
+            from: `"KINTO Smart Ops" <${process.env.OFFICE365_EMAIL}>`,
+            to: email,
+            subject,
+            html: htmlBody
+          });
+
+          console.log(`[AUTH] Password reset email sent via Office 365 to: ${email}`);
           return;
         }
 
-        // Send via SendGrid
-        const sgMail = await import('@sendgrid/mail');
-        sgMail.default.setApiKey(process.env.SENDGRID_API_KEY);
+        // Fallback: Check if SendGrid is configured
+        if (process.env.SENDGRID_API_KEY) {
+          const sgMail = await import('@sendgrid/mail');
+          sgMail.default.setApiKey(process.env.SENDGRID_API_KEY);
 
-        await sgMail.default.send({
-          to: email,
-          from: {
-            email: process.env.SENDGRID_FROM_EMAIL || 'noreply@kinto.com',
-            name: 'KINTO Smart Ops'
-          },
-          subject,
-          html: htmlBody
-        });
+          await sgMail.default.send({
+            to: email,
+            from: {
+              email: process.env.SENDGRID_FROM_EMAIL || 'noreply@kinto.com',
+              name: 'KINTO Smart Ops'
+            },
+            subject,
+            html: htmlBody
+          });
 
-        console.log(`[AUTH] Password reset email sent to: ${email}`);
+          console.log(`[AUTH] Password reset email sent via SendGrid to: ${email}`);
+          return;
+        }
+
+        // No email service configured - log to console
+        console.log('\n' + '='.repeat(60));
+        console.log('[PASSWORD RESET - NO EMAIL SERVICE CONFIGURED]');
+        console.log('Set OFFICE365_EMAIL + OFFICE365_PASSWORD for Office 365');
+        console.log('Or set SENDGRID_API_KEY for SendGrid');
+        console.log('='.repeat(60));
+        console.log(`To: ${email}`);
+        console.log(`Subject: ${subject}`);
+        console.log(`Reset URL: ${resetUrl}`);
+        console.log('='.repeat(60) + '\n');
       };
 
       await sendEmail();
