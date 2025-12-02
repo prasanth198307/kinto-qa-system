@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import NotFound from "@/pages/not-found";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { usePermissions } from "@/hooks/use-permissions";
+import { useFilteredNavigation } from "@/hooks/use-filtered-navigation";
 import { ProtectedRoute } from "@/lib/protected-route";
 import AuthPage from "@/pages/auth-page";
 import ResetPasswordPage from "@/pages/reset-password";
@@ -207,7 +208,7 @@ function OperatorDashboard() {
 }
 
 function ReviewerDashboard() {
-  const { user, logoutMutation } = useAuth();
+  const { logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
   const [activeView, setActiveView] = useState('overview');
 
@@ -215,8 +216,8 @@ function ReviewerDashboard() {
     logoutMutation.mutate();
   };
 
-  // Use the same navigation as admin dashboard for consistency, filtered by role
-  const navSections = getAdminNavSections(setLocation, (user as any)?.role);
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
 
   const renderContent = () => {
     switch (activeView) {
@@ -226,6 +227,10 @@ function ReviewerDashboard() {
         return <ReviewerDashboardPage />;
     }
   };
+
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
 
   return (
     <DashboardShell
@@ -244,7 +249,7 @@ function ReviewerDashboard() {
 }
 
 function ManagerDashboard() {
-  const { user, logoutMutation } = useAuth();
+  const { logoutMutation } = useAuth();
   const [location, setLocation] = useLocation();
   const [activeView, setActiveView] = useState('overview');
   const mockRecords = [
@@ -269,8 +274,8 @@ function ManagerDashboard() {
     logoutMutation.mutate();
   };
 
-  // Use the same navigation as admin dashboard for consistency, filtered by role
-  const navSections = getAdminNavSections(setLocation, (user as any)?.role);
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
 
   const renderContent = () => {
     switch (activeView) {
@@ -350,6 +355,10 @@ function ManagerDashboard() {
         );
     }
   };
+
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
 
   return (
     <DashboardShell
@@ -1066,14 +1075,18 @@ function AuthenticatedApp() {
   return <CustomRoleDashboard roleName={(user as any).role} />;
 }
 
-// Wrapper component for Vendor Management with full admin navigation
+// Wrapper component for Vendor Management with filtered navigation
 function VendorManagementPage() {
   const { logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
   const [activeView, setActiveView] = useState('vendors');
   
-  // Use the same navigation as admin dashboard for consistency
-  const navSections = getAdminNavSections(setLocation);
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
   
   return (
     <DashboardShell
@@ -1091,14 +1104,18 @@ function VendorManagementPage() {
   );
 }
 
-// Wrapper component for Reports with full admin navigation
+// Wrapper component for Reports with filtered navigation
 function ReportsPage() {
-  const { user, logoutMutation } = useAuth();
+  const { logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
   const [activeView, setActiveView] = useState('reports');
   
-  // Use the same navigation as admin dashboard for consistency, filtered by role
-  const navSections = getAdminNavSections(setLocation, (user as any)?.role);
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
   
   return (
     <DashboardShell
@@ -1116,14 +1133,18 @@ function ReportsPage() {
   );
 }
 
-// Wrapper component for Pending Payments with full admin navigation
+// Wrapper component for Pending Payments with filtered navigation
 function PendingPaymentsPage() {
-  const { user, logoutMutation } = useAuth();
+  const { logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
   const [activeView, setActiveView] = useState('pending-payments');
   
-  // Use the same navigation as admin dashboard for consistency, filtered by role
-  const navSections = getAdminNavSections(setLocation, (user as any)?.role);
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
   
   return (
     <DashboardShell
@@ -1141,13 +1162,18 @@ function PendingPaymentsPage() {
   );
 }
 
-// Wrapper component for Payment Management with full admin navigation
+// Wrapper component for Payment Management with filtered navigation
 function PaymentManagementPage() {
-  const { user, logoutMutation } = useAuth();
+  const { logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
   const [activeView, setActiveView] = useState('payment-management');
   
-  const navSections = getAdminNavSections(setLocation, (user as any)?.role);
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
   
   return (
     <DashboardShell
@@ -1165,13 +1191,18 @@ function PaymentManagementPage() {
   );
 }
 
-// Wrapper component for Vendor History with full admin navigation
+// Wrapper component for Vendor History with filtered navigation
 function VendorHistoryPage() {
-  const { user, logoutMutation } = useAuth();
+  const { logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
   const [activeView, setActiveView] = useState('vendor-history');
   
-  const navSections = getAdminNavSections(setLocation, (user as any)?.role);
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
   
   return (
     <DashboardShell
@@ -1189,13 +1220,18 @@ function VendorHistoryPage() {
   );
 }
 
-// Wrapper component for Vendor History Detail with full admin navigation
+// Wrapper component for Vendor History Detail with filtered navigation
 function VendorHistoryDetailPage() {
-  const { user, logoutMutation } = useAuth();
+  const { logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
   const [activeView, setActiveView] = useState('vendor-history');
   
-  const navSections = getAdminNavSections(setLocation, (user as any)?.role);
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
   
   return (
     <DashboardShell
@@ -1542,13 +1578,18 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
   return filterNavSectionsByRole(allSections, userRole);
 }
 
-// Wrapper component for Vendor Analytics with full admin navigation
+// Wrapper component for Vendor Analytics with filtered navigation
 function VendorAnalyticsPage() {
-  const { user, logoutMutation } = useAuth();
+  const { logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
   const [activeView, setActiveView] = useState('vendor-analytics');
   
-  const navSections = getAdminNavSections(setLocation, (user as any)?.role);
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
   
   return (
     <DashboardShell
@@ -1566,13 +1607,18 @@ function VendorAnalyticsPage() {
   );
 }
 
-// Wrapper component for Documents page
+// Wrapper component for Documents page with filtered navigation
 function DocumentsPageWrapper() {
-  const { user, logoutMutation } = useAuth();
+  const { logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
   const [activeView, setActiveView] = useState('documents');
   
-  const navSections = getAdminNavSections(setLocation, (user as any)?.role);
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
   
   return (
     <DashboardShell
@@ -1591,13 +1637,18 @@ function DocumentsPageWrapper() {
   );
 }
 
-// Wrapper component for Expenses page
+// Wrapper component for Expenses page with filtered navigation
 function ExpensesPageWrapper() {
-  const { user, logoutMutation } = useAuth();
+  const { logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
   const [activeView, setActiveView] = useState('expenses');
   
-  const navSections = getAdminNavSections(setLocation, (user as any)?.role);
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
   
   return (
     <DashboardShell
@@ -1615,13 +1666,18 @@ function ExpensesPageWrapper() {
   );
 }
 
-// Wrapper component for Cash Register page
+// Wrapper component for Cash Register page with filtered navigation
 function CashRegisterPageWrapper() {
-  const { user, logoutMutation } = useAuth();
+  const { logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
   const [activeView, setActiveView] = useState('cash-register');
   
-  const navSections = getAdminNavSections(setLocation, (user as any)?.role);
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
   
   return (
     <DashboardShell
@@ -1639,13 +1695,18 @@ function CashRegisterPageWrapper() {
   );
 }
 
-// Wrapper component for Cash Register Report page
+// Wrapper component for Cash Register Report page with filtered navigation
 function CashRegisterReportWrapper() {
-  const { user, logoutMutation } = useAuth();
+  const { logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
   const [activeView, setActiveView] = useState('cash-register-report');
   
-  const navSections = getAdminNavSections(setLocation, (user as any)?.role);
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
   
   return (
     <DashboardShell
