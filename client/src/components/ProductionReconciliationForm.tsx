@@ -314,29 +314,32 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
     }
   }, [issuanceSummary, reconciliation, items.length, selectedIssuanceId]);
 
-  // When production entry is selected, update "Used" to production demand
-  // This is the actual usage based on what was produced
+  // When production entry is selected, pull Used and Hopper from production entry
+  // Production entry already has: emptyBottlesUsed (formula result) and emptyBottlesPending
   useEffect(() => {
-    if (!reconciliation && selectedProductionId && items.length > 0 && producedCases > 0) {
+    if (!reconciliation && selectedProductionId && items.length > 0 && selectedProduction) {
       const updatedItems = items.map(item => {
-        const issued = item.quantityIssued || 0;
-        const productionDemand = calculateProductionDemand(item.rawMaterialId);
+        const issuedBags = item.quantityIssued || 0;
+        const piecesPerBag = getPiecesPerBag(item.rawMaterialId);
+        const issuedPieces = piecesPerBag > 0 ? issuedBags * piecesPerBag : issuedBags;
         
-        // If production demand is available, use it as "Used"
-        // Otherwise keep what was issued as default
-        const used = productionDemand > 0 ? Math.min(productionDemand, issued) : issued;
-        const pending = item.quantityPending || 0;
-        const suggestedReturned = Math.max(0, issued - used - pending);
+        // Pull Used and Hopper directly from production entry (already calculated there)
+        const usedFromProduction = productionEmptyBottlesUsed;
+        const hopperFromProduction = productionEmptyBottlesPending;
+        
+        // Calculate suggested returned: Issued (pieces) - Used - Hopper
+        const suggestedReturned = Math.max(0, issuedPieces - usedFromProduction - hopperFromProduction);
         
         return {
           ...item,
-          quantityUsed: used,
+          quantityUsed: usedFromProduction,
+          quantityPending: hopperFromProduction,
           quantityReturned: suggestedReturned,
         };
       });
       setItems(updatedItems);
     }
-  }, [selectedProductionId, producedCases]);
+  }, [selectedProductionId, productionEmptyBottlesUsed, productionEmptyBottlesPending]);
 
 
   const createMutation = useMutation({
