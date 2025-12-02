@@ -46,7 +46,7 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
     queryKey: ['/api/production-entries'],
   });
 
-  // Calculate which issuances have production entries and how many shifts
+  // Calculate which issuances have production entries and for which shifts
   const issuanceProductionStatus = productionEntries.reduce((acc: Record<string, string[]>, pe: any) => {
     if (pe.issuanceId) {
       if (!acc[pe.issuanceId]) {
@@ -59,13 +59,16 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
     return acc;
   }, {});
 
-  // Filter issuances: hide those with all 3 shifts completed, mark partial ones
+  // Watch the selected shift to filter issuances dynamically
+  const selectedShift = form.watch('shift');
+
+  // Filter issuances: hide those that already have a production entry for the selected shift
   const availableIssuances = issuances.filter(iss => {
     const completedShifts = issuanceProductionStatus[iss.id!] || [];
     // If editing, always show the current entry's issuance
     if (entry && entry.issuanceId === iss.id) return true;
-    // Hide if all 3 shifts are done (A, B, General)
-    return completedShifts.length < 3;
+    // Hide if the selected shift already has a production entry for this issuance
+    return !completedShifts.includes(selectedShift);
   });
 
   // Fetch UOMs for finished goods UOM selection
@@ -447,14 +450,14 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
                     <SelectContent>
                       {availableIssuances.map((iss) => {
                         const completedShifts = issuanceProductionStatus[iss.id!] || [];
-                        const hasEntries = completedShifts.length > 0;
+                        const otherShiftsDone = completedShifts.filter(s => s !== selectedShift);
                         return (
                           <SelectItem key={iss.id} value={iss.id!}>
                             <div className="flex items-center gap-2">
                               <span>{iss.issuanceNumber} - {new Date(iss.issuanceDate).toLocaleDateString()}</span>
-                              {hasEntries && (
-                                <Badge variant="secondary" className="text-xs">
-                                  {completedShifts.join(', ')} done
+                              {otherShiftsDone.length > 0 && (
+                                <Badge variant="outline" className="text-xs">
+                                  {otherShiftsDone.join(', ')} done
                                 </Badge>
                               )}
                             </div>
@@ -463,7 +466,7 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
                       })}
                       {availableIssuances.length === 0 && (
                         <div className="p-2 text-sm text-muted-foreground text-center">
-                          No available issuances (all have production entries)
+                          No issuances available for Shift {selectedShift}
                         </div>
                       )}
                     </SelectContent>
