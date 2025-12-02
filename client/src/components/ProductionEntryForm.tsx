@@ -190,7 +190,8 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
       form.clearErrors('emptyBottlesUsed');
     }
     
-    form.setValue('emptyBottlesPending', Math.max(0, pending));
+    // Allow negative pending to show deficit clearly
+    form.setValue('emptyBottlesPending', pending);
   }, [emptyBottlesOpening, emptyBottlesProduced, additionalProduced, emptyBottlesUsed, bottlesFromIssuance.total, form]);
 
   // Set opening balance from last production entry when data loads (for new entries)
@@ -250,7 +251,14 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
   });
 
   const onSubmit = (data: FormData) => {
-    createMutation.mutate(data);
+    // Include Additional Produced in the emptyBottlesProduced field
+    // Total Produced = Blow-molded + Additional Produced
+    const totalProduced = (Number(data.emptyBottlesProduced) || 0) + additionalProduced;
+    const submissionData = {
+      ...data,
+      emptyBottlesProduced: totalProduced,
+    };
+    createMutation.mutate(submissionData as FormData);
   };
 
   const handleIssuanceChange = (issuanceId: string) => {
@@ -680,25 +688,29 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
               <FormField
                 control={form.control}
                 name="emptyBottlesPending"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Pending (Closing)</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number" 
-                        step="0.01" 
-                        {...field}
-                        readOnly
-                        className="bg-muted font-medium"
-                        data-testid="input-empty-bottles-pending"
-                      />
-                    </FormControl>
-                    <p className="text-xs text-muted-foreground">
-                      = Available - Total Used
-                    </p>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const pendingValue = Number(field.value) || 0;
+                  const isDeficit = pendingValue < 0;
+                  return (
+                    <FormItem>
+                      <FormLabel>Pending (Closing)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          step="0.01" 
+                          {...field}
+                          readOnly
+                          className={`font-medium ${isDeficit ? 'bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400' : 'bg-muted'}`}
+                          data-testid="input-empty-bottles-pending"
+                        />
+                      </FormControl>
+                      <p className={`text-xs ${isDeficit ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`}>
+                        {isDeficit ? 'Deficit! Need more bottles' : '= Available - Total Used'}
+                      </p>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
             </div>
             
@@ -722,9 +734,16 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
               </div>
               <div className="flex justify-between border-t pt-1">
                 <span className="font-semibold">Pending (Closing):</span>
-                <span className="font-bold text-primary">
-                  {Number(form.watch('emptyBottlesPending')).toLocaleString()}
-                </span>
+                {(() => {
+                  const pending = Number(form.watch('emptyBottlesPending')) || 0;
+                  const isDeficit = pending < 0;
+                  return (
+                    <span className={`font-bold ${isDeficit ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                      {pending.toLocaleString()}
+                      {isDeficit && ' (Deficit)'}
+                    </span>
+                  );
+                })()}
               </div>
             </div>
           </Card>
