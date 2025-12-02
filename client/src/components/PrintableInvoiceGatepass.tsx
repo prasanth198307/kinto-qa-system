@@ -40,10 +40,28 @@ export default function PrintableInvoiceGatepass({ invoice, gatepass }: Printabl
     queryKey: ['/api/uom'],
   });
 
-  const { data: template, isLoading: isLoadingTemplate } = useQuery<any>({
+  // Fetch specific template if invoice has one
+  const { data: specificTemplate, isLoading: isLoadingSpecificTemplate } = useQuery<any>({
     queryKey: ['/api/invoice-templates', invoice.templateId],
+    queryFn: async () => {
+      if (!invoice.templateId) return null;
+      const response = await fetch(`/api/invoice-templates/${invoice.templateId}`, {
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Failed to fetch template');
+      return response.json();
+    },
     enabled: !!invoice.templateId,
   });
+
+  // Always fetch default template as fallback
+  const { data: defaultTemplate, isLoading: isLoadingDefaultTemplate } = useQuery<any>({
+    queryKey: ['/api/invoice-templates/default'],
+  });
+
+  // Use specific template if available, otherwise fall back to default
+  const template = specificTemplate || defaultTemplate;
+  const isLoadingTemplate = isLoadingSpecificTemplate || isLoadingDefaultTemplate;
 
   const { data: termsConditions } = useQuery<TermsConditions | null>({
     queryKey: ['/api/terms-conditions', invoice.termsConditionsId],
@@ -77,7 +95,8 @@ export default function PrintableInvoiceGatepass({ invoice, gatepass }: Printabl
   const isIntrastate = invoice.sellerStateCode === invoice.buyerStateCode;
 
   const handlePrint = async () => {
-    if (invoice.templateId && isLoadingTemplate) {
+    // Wait for template to load (either specific or default)
+    if (isLoadingTemplate) {
       toast({
         title: "Please wait",
         description: "Template is still loading...",
