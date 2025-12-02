@@ -264,6 +264,7 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
     
     const submissionData = {
       ...data,
+      productId: issuanceSummary?.issuance?.productId || null,
       emptyBottlesProduced: totalProduced,
       derivedUnits: derivedUnits,
     };
