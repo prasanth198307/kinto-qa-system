@@ -1613,8 +1613,12 @@ export class DatabaseStorage implements IStorage {
       // Get type details
       const typeData = resolvedTypeId ? typeMap.get(resolvedTypeId) || null : null;
       
-      // Get effective UOM ID from type
-      const effectiveUomId = typeData?.uomId || null;
+      // Get effective UOM ID from the first available raw material of this type
+      // Raw materials have uomId; types do not have uomId column
+      const firstMaterialOfType = resolvedTypeId 
+        ? relevantRawMaterials.find(rm => rm.typeId === resolvedTypeId && rm.uomId)
+        : null;
+      const effectiveUomId = material?.uomId || firstMaterialOfType?.uomId || null;
       
       // Find all available raw materials of this type with stock
       // Sort by receivedDate (oldest first) for FIFO policy

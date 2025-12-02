@@ -424,8 +424,9 @@ export function calculateBOMSuggestions(
       continue;
     }
     
-    // Resolve UOM ID: effectiveUomId (UUID) or legacy display name as fallback
-    const uomId = item.effectiveUomId || item.bom.uom;
+    // Only use effectiveUomId (valid UUID) - don't fallback to bom.uom (display name text)
+    // The bom.uom field contains text like "Pieces" which is not a valid foreign key
+    const uomId = item.effectiveUomId || null;
     
     // Parse and validate quantityRequired
     const quantityRequired = Number(item.bom.quantityRequired);
