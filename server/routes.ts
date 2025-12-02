@@ -2985,18 +2985,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/raw-material-issuances/:id', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const { id } = req.params;
-      const validatedData = insertRawMaterialIssuanceSchema.partial().parse(req.body);
-      const issuance = await storage.updateRawMaterialIssuance(id, validatedData);
-      if (!issuance) {
-        return res.status(404).json({ message: "Raw material issuance not found" });
+      const { header, items } = req.body;
+      
+      // Handle both formats: { header, items } or flat object
+      let headerData = header || req.body;
+      
+      // Extract header fields for issuance update
+      const updateData: any = {};
+      if (headerData.issuanceDate) updateData.issuanceDate = headerData.issuanceDate;
+      if (headerData.issuedTo !== undefined) updateData.issuedTo = headerData.issuedTo;
+      if (headerData.productId !== undefined) updateData.productId = headerData.productId || null;
+      if (headerData.bomConfigurationId !== undefined) updateData.bomConfigurationId = headerData.bomConfigurationId || null;
+      if (headerData.plannedOutput !== undefined) updateData.plannedOutput = headerData.plannedOutput ? String(headerData.plannedOutput) : null;
+      if (headerData.productionReference !== undefined) updateData.productionReference = headerData.productionReference || null;
+      if (headerData.remarks !== undefined) updateData.remarks = headerData.remarks || null;
+      
+      // Check if there's anything to update in header
+      if (Object.keys(updateData).length === 0 && !items) {
+        return res.status(400).json({ message: "No data provided for update" });
       }
-      res.json(issuance);
+      
+      // Use transaction for atomic update of header and items
+      const result = await db.transaction(async (tx) => {
+        let issuance = null;
+        
+        // Update header if there are fields to update
+        if (Object.keys(updateData).length > 0) {
+          const [updated] = await tx.update(rawMaterialIssuance)
+            .set(updateData)
+            .where(eq(rawMaterialIssuance.id, id))
+            .returning();
+          issuance = updated;
+        } else {
+          // Just fetch existing issuance
+          const [existing] = await tx.select().from(rawMaterialIssuance).where(eq(rawMaterialIssuance.id, id));
+          issuance = existing;
+        }
+        
+        if (!issuance) {
+          throw new Error("Raw material issuance not found");
+        }
+        
+        // Update items if provided
+        if (items && Array.isArray(items)) {
+          // Delete existing items
+          await tx.delete(rawMaterialIssuanceItems).where(eq(rawMaterialIssuanceItems.issuanceId, id));
+          
+          // Insert new items
+          for (const item of items) {
+            if (!item.rawMaterialId) {
+              console.warn('[UPDATE] Skipping item with empty rawMaterialId');
+              continue;
+            }
+            
+            await tx.insert(rawMaterialIssuanceItems).values({
+              issuanceId: id,
+              rawMaterialId: item.rawMaterialId,
+              productId: item.productId || null,
+              quantityIssued: String(item.quantityIssued),
+              suggestedQuantity: item.suggestedQuantity ? String(item.suggestedQuantity) : null,
+              calculationBasis: item.calculationBasis || null,
+              uomId: item.uomId || null,
+              remarks: item.remarks || null,
+            });
+          }
+        }
+        
+        // Fetch updated items
+        const updatedItems = await tx.select().from(rawMaterialIssuanceItems).where(eq(rawMaterialIssuanceItems.issuanceId, id));
+        
+        return { ...issuance, items: updatedItems };
+      });
+      
+      res.json({ issuance: result, message: "Issuance updated successfully" });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
       }
       console.error("Error updating raw material issuance:", error);
-      res.status(500).json({ message: "Failed to update raw material issuance" });
+      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to update raw material issuance" });
     }
   });
 
