@@ -805,7 +805,21 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Raw Material</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
+                            <Select 
+                              onValueChange={(value) => {
+                                field.onChange(value);
+                                // Auto-populate UOM from raw material
+                                const selectedMaterial = rawMaterials.find(m => m.id === value);
+                                if (selectedMaterial?.uomId) {
+                                  form.setValue(`items.${index}.uomId`, selectedMaterial.uomId);
+                                  // Also update local items state
+                                  setItems(prev => prev.map((item, i) => 
+                                    i === index ? { ...item, rawMaterialId: value, uomId: selectedMaterial.uomId! } : item
+                                  ));
+                                }
+                              }} 
+                              value={field.value}
+                            >
                               <FormControl>
                                 <SelectTrigger data-testid={`select-raw-material-${index}`}>
                                   <SelectValue placeholder="Select material" />
@@ -853,30 +867,39 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
                       )}
                     />
 
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.uomId`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Unit of Measure</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value || ""}>
-                            <FormControl>
-                              <SelectTrigger data-testid={`select-uom-${index}`}>
-                                <SelectValue placeholder="Select UOM" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {uoms.map((uom) => (
-                                <SelectItem key={uom.id} value={uom.id}>
-                                  {uom.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    {item._isBomItem ? (
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium">Unit of Measure</label>
+                        <div className="flex items-center h-9 px-3 border rounded-md bg-muted text-sm" data-testid={`display-uom-${index}`}>
+                          {uoms.find(u => u.id === item.uomId)?.name || item.uomId || "—"}
+                        </div>
+                      </div>
+                    ) : (
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.uomId`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Unit of Measure</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value || ""}>
+                              <FormControl>
+                                <SelectTrigger data-testid={`select-uom-${index}`}>
+                                  <SelectValue placeholder="Select UOM" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {uoms.map((uom) => (
+                                  <SelectItem key={uom.id} value={uom.id}>
+                                    {uom.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
 
                     {!item._isBomItem && (
                       <FormField
