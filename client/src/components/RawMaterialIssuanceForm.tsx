@@ -430,11 +430,16 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
 
   const saveMutation = useMutation({
     mutationFn: async (data: FormData) => {
+      // Validate product is selected (required for production entry linking)
+      if (!data.header.productId || data.header.productId.trim() === '') {
+        throw new Error('Product selection is required for issuance');
+      }
+      
       const apiPayload = {
         header: {
           issuanceDate: data.header.issuanceDate instanceof Date ? data.header.issuanceDate.toISOString() : data.header.issuanceDate,
           issuedTo: data.header.issuedTo,
-          productId: data.header.productId?.trim() || null,
+          productId: data.header.productId.trim(),
           productionReference: data.header.productionReference?.trim() || "",
           plannedOutput: Number.isFinite(data.header.plannedOutput) ? data.header.plannedOutput : null,
           remarks: data.header.remarks?.trim() || "",
@@ -599,20 +604,20 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
               <FormField
                 control={form.control}
                 name="header.productId"
+                rules={{ required: "Product is required for issuance" }}
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Product (for BOM auto-load)</FormLabel>
+                    <FormLabel>Product <span className="text-destructive">*</span></FormLabel>
                     <Select 
-                      onValueChange={(value) => field.onChange(value === "none" ? undefined : value)} 
-                      value={field.value || "none"}
+                      onValueChange={(value) => field.onChange(value)} 
+                      value={field.value || ""}
                     >
                       <FormControl>
                         <SelectTrigger data-testid="select-product">
-                          <SelectValue placeholder="Select product to auto-load BOM" />
+                          <SelectValue placeholder="Select product (required)" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="none">-- None --</SelectItem>
                         {products.map((product) => (
                           <SelectItem key={product.id} value={product.id}>
                             {product.productName} ({product.productCode})
