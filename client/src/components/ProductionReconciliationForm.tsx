@@ -191,73 +191,35 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
   };
 
   // Auto-populate items when issuance is selected (create mode only)
-  // Now uses expected usage from BOM instead of issued quantity
+  // RULE: Used + Hopper + Returned = Issued (no variance means perfectly balanced)
   useEffect(() => {
     // Only auto-fill in create mode, when summary is loaded, and items are empty
-    // Prevent auto-fill during edit mode even if items get cleared
     if (issuanceSummary && !reconciliation && items.length === 0 && selectedIssuanceId) {
       const issuanceItems = issuanceSummary.issuance.items.map((item: any) => {
         const issued = Number(item.quantityIssued) || 0;
-        const expectedUsed = calculateExpectedUsage(item.rawMaterialId);
-        // Use expected if available, otherwise fall back to issued
-        const used = expectedUsed > 0 ? expectedUsed : issued;
-        // Suggest returned: what's left after expected usage (pending defaults to 0)
-        const suggestedReturned = Math.max(0, issued - used);
         
+        // Default: assume everything issued was used, nothing in hopper or to return
+        // User will adjust based on actual production
         return {
           rawMaterialId: item.rawMaterialId,
           issuanceItemId: item.id,
           quantityIssued: issued,
-          quantityUsed: used,
-          quantityReturned: suggestedReturned,
-          quantityPending: 0, // Hopper - user editable
+          quantityUsed: issued, // Default: all issued was used
+          quantityReturned: 0,  // Default: nothing to return
+          quantityPending: 0,   // Default: nothing in hopper
           remarks: "",
         };
       });
       setItems(issuanceItems);
     }
-  }, [issuanceSummary, reconciliation, items.length, selectedIssuanceId, producedCases]);
+  }, [issuanceSummary, reconciliation, items.length, selectedIssuanceId]);
 
-  // Recalculate used, hopper, and suggested returned when production entry changes
-  // Pull ACTUAL values from production entry (already entered by operator)
+  // When production entry is selected, show expected usage for reference
+  // But DON'T auto-override user values - let them enter actual values
   useEffect(() => {
-    if (!reconciliation && selectedProductionId && items.length > 0 && issuanceSummary && selectedProduction) {
-      const updatedItems = items.map(item => {
-        const issued = item.quantityIssued || 0;
-        
-        // For preform materials (tracked as empty bottles in production entry):
-        // Pull actual Used and Hopper values from production entry
-        // emptyBottlesUsed = bottles used for filling (which came from preforms)
-        // emptyBottlesPending = bottles left in hopper (unused preforms that became bottles)
-        const actualUsed = productionEmptyBottlesUsed > 0 ? productionEmptyBottlesUsed : calculateExpectedUsage(item.rawMaterialId);
-        const actualHopper = productionEmptyBottlesPending;
-        
-        // Only update if we have valid data from production entry or BOM
-        if (actualUsed > 0 || actualHopper > 0) {
-          const suggestedReturned = Math.max(0, issued - actualUsed - actualHopper);
-          return {
-            ...item,
-            quantityUsed: actualUsed,
-            quantityPending: actualHopper,
-            quantityReturned: suggestedReturned,
-          };
-        }
-        
-        // Fallback to BOM calculation if no production entry data
-        const expectedUsed = calculateExpectedUsage(item.rawMaterialId);
-        if (expectedUsed > 0) {
-          const pending = item.quantityPending || 0;
-          const suggestedReturned = Math.max(0, issued - expectedUsed - pending);
-          return {
-            ...item,
-            quantityUsed: expectedUsed,
-            quantityReturned: suggestedReturned,
-          };
-        }
-        return item;
-      });
-      setItems(updatedItems);
-    }
+    // This effect is intentionally minimal - we don't auto-populate from production entry
+    // because the reconciliation is about what actually happened with the ISSUANCE
+    // The production entry tells us what was produced, not what materials were used/returned
   }, [selectedProductionId, producedCases, productionEmptyBottlesUsed, productionEmptyBottlesPending]);
 
   const createMutation = useMutation({
@@ -694,18 +656,18 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
                       <div className="flex gap-2">
                         <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5" />
                         <div className="text-sm text-blue-900 dark:text-blue-100 space-y-1">
-                          <p className="font-medium">Values auto-populated from Production Entry</p>
+                          <p className="font-medium">Material Reconciliation Rule</p>
                           <p className="text-blue-700 dark:text-blue-300">
-                            • <strong>Used & Hopper:</strong> Pulled from production entry (no re-entry needed)
+                            • <strong>Issued = Used + Hopper + Returned</strong> (must balance)
                           </p>
                           <p className="text-blue-700 dark:text-blue-300">
-                            • <strong>To Return:</strong> Auto-calculated: Issued - Used - Hopper
+                            • <strong>Variance = 0:</strong> Perfect balance (green ✓)
                           </p>
                           <p className="text-blue-700 dark:text-blue-300">
-                            • <strong>Variance:</strong> Checked against loss % from Raw Material Type (e.g., 2% for preforms)
+                            • <strong>Variance ≠ 0:</strong> Loss or discrepancy. Green if within loss % threshold, Red if exceeds.
                           </p>
                           <p className="text-blue-700 dark:text-blue-300">
-                            • <strong>Green ✓:</strong> Within tolerance | <strong className="text-red-600">Red:</strong> Exceeds acceptable loss
+                            • <strong>Expected:</strong> What BOM says should be used for {producedCases} cases
                           </p>
                           {reconciliation && (
                             <p className="text-blue-700 dark:text-blue-300 mt-2">
