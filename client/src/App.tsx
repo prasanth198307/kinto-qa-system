@@ -364,6 +364,250 @@ function ManagerDashboard() {
   );
 }
 
+// Dashboard for custom roles - uses AdminDashboard layout with role-based filtering
+function CustomRoleDashboard({ roleName }: { roleName: string }) {
+  const { logoutMutation } = useAuth();
+  const [location, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('overview');
+  const [isPMDialogOpen, setIsPMDialogOpen] = useState(false);
+  const [isExecutionDialogOpen, setIsExecutionDialogOpen] = useState(false);
+  const [selectedPlanForExecution, setSelectedPlanForExecution] = useState<any>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.split('?')[1] || '');
+    const tab = params.get('tab');
+    
+    if (tab) {
+      const validTabs = ['invoices', 'gatepasses', 'raw-material-issuance'];
+      if (validTabs.includes(tab)) {
+        setActiveView(tab);
+      }
+    }
+  }, [location]);
+
+  const { data: maintenancePlans = [] } = useQuery<any[]>({
+    queryKey: ['/api/maintenance-plans'],
+  });
+
+  const mockMaintenanceTasks = maintenancePlans.length > 0 
+    ? maintenancePlans.map((plan: any) => {
+        const isActive = plan.isActive === true || plan.isActive === 'true';
+        const isOverdue = plan.nextDueDate && new Date(plan.nextDueDate) < new Date();
+        const status = !isActive ? 'completed' : (isOverdue ? 'overdue' : 'upcoming');
+        return {
+          id: plan.id,
+          machine: plan.machineId || 'Unassigned',
+          taskType: plan.planName,
+          scheduledDate: plan.nextDueDate ? new Date(plan.nextDueDate).toLocaleDateString() : 'Not scheduled',
+          status: status as 'upcoming' | 'overdue' | 'completed',
+          assignedTo: plan.assignedTo || 'Unassigned',
+          planData: plan,
+        };
+      })
+    : [];
+
+  const handleCompletePM = (task: any) => {
+    if (task.planData) {
+      setSelectedPlanForExecution(task.planData);
+      setIsExecutionDialogOpen(true);
+    }
+  };
+
+  const handleLogout = () => {
+    logoutMutation.mutate();
+  };
+
+  // Use role-filtered navigation sections
+  const navSections = getAdminNavSections(setLocation, roleName);
+
+  const renderContent = () => {
+    switch (activeView) {
+      case 'overview':
+        return (
+          <div className="p-4 space-y-6">
+            <AdminDashboardOverview onNavigateToTab={setActiveView} />
+            <TodayProductionStats />
+            <PendingPaymentsDashboard />
+            <InventorySummaryDashboard />
+          </div>
+        );
+      case 'sales-dashboard':
+        return (
+          <div className="p-4">
+            <SalesDashboard />
+          </div>
+        );
+      case 'vendor-analytics':
+        setLocation('/vendor-analytics');
+        return null;
+      case 'reports':
+        return <Reports showHeader={false} />;
+      case 'users':
+        return (
+          <div className="p-4">
+            <AdminUserManagement />
+          </div>
+        );
+      case 'role-permissions':
+        return (
+          <div className="p-4">
+            <RoleManagement />
+          </div>
+        );
+      case 'machines':
+        return (
+          <div className="p-4">
+            <AdminMachineConfig />
+          </div>
+        );
+      case 'checklists':
+        return (
+          <div className="p-4">
+            <AdminChecklistBuilder />
+          </div>
+        );
+      case 'checklist-assignments':
+        return (
+          <div className="p-4">
+            <ManagerChecklistAssignment />
+          </div>
+        );
+      case 'machine-startup-reminders':
+        return <MachineStartupReminders />;
+      case 'whatsapp-analytics':
+        return <WhatsAppAnalytics />;
+      case 'spare-parts':
+        return (
+          <div className="p-4">
+            <AdminSparePartsManagement />
+          </div>
+        );
+      case 'machine-types':
+        return (
+          <div className="p-4">
+            <AdminMachineTypeConfig />
+          </div>
+        );
+      case 'pm-templates':
+        return (
+          <div className="p-4">
+            <AdminPMTaskListTemplates />
+          </div>
+        );
+      case 'maintenance':
+        return (
+          <div className="p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold">Preventive Maintenance</h2>
+              <Button onClick={() => setIsPMDialogOpen(true)} data-testid="button-add-maintenance">
+                <Plus className="h-4 w-4 mr-1" />
+                Schedule PM
+              </Button>
+            </div>
+            <MaintenanceSchedule tasks={mockMaintenanceTasks} onComplete={handleCompletePM} />
+          </div>
+        );
+      case 'pm-history':
+        return (
+          <div className="p-4">
+            <PMHistoryView />
+          </div>
+        );
+      case 'purchase-orders':
+        return (
+          <div className="p-4">
+            <PurchaseOrderManagement />
+          </div>
+        );
+      case 'uom':
+      case 'products':
+      case 'raw-materials':
+      case 'finished-goods':
+      case 'vendors':
+        return <InventoryManagement activeTab={activeView} />;
+      case 'product-categories':
+        return <ProductCategories />;
+      case 'product-types':
+        return <ProductTypes />;
+      case 'vendor-types':
+        return <VendorTypes />;
+      case 'raw-material-types':
+        return <RawMaterialTypeMaster />;
+      case 'raw-material-issuance':
+      case 'gatepasses':
+      case 'invoices':
+        return <ProductionManagement activeTab={activeView} />;
+      case 'production-entries':
+        return <ProductionEntries />;
+      case 'production-reconciliations':
+        return <ProductionReconciliations />;
+      case 'variance-analytics':
+        return <VarianceAnalytics />;
+      case 'sales-returns':
+        return <SalesReturns />;
+      case 'pending-payments':
+        return <PendingPayments />;
+      case 'payment-management':
+        return <PaymentManagement />;
+      case 'credit-notes':
+        return <CreditNotes />;
+      case 'cancelled-invoices':
+        return <CancelledInvoices showHeader={false} />;
+      case 'write-off-report':
+        return <WriteOffReport />;
+      case 'dispatch-tracking':
+        return <DispatchTracking showHeader={false} />;
+      case 'notification-settings':
+        return <NotificationSettings />;
+      case 'data-import':
+        return <DataImport />;
+      case 'roles':
+        return (
+          <div className="p-4">
+            <RoleManagement />
+          </div>
+        );
+      case 'templates':
+        return (
+          <div className="p-4">
+            <TemplateManagement />
+          </div>
+        );
+      default:
+        return (
+          <div className="p-4 space-y-6">
+            <AdminDashboardOverview onNavigateToTab={setActiveView} />
+            <TodayProductionStats />
+            <PendingPaymentsDashboard />
+            <InventorySummaryDashboard />
+          </div>
+        );
+    }
+  };
+
+  return (
+    <>
+      <DashboardShell
+        title={`${roleName} Dashboard`}
+        onLogoutClick={handleLogout}
+        notificationCount={0}
+        navSections={navSections}
+        activeView={activeView}
+        onNavigate={setActiveView}
+      >
+        {renderContent()}
+      </DashboardShell>
+      {isExecutionDialogOpen && selectedPlanForExecution && (
+        <PMExecutionDialog
+          open={isExecutionDialogOpen}
+          onOpenChange={setIsExecutionDialogOpen}
+          plan={selectedPlanForExecution}
+        />
+      )}
+    </>
+  );
+}
+
 function AdminDashboard() {
   const { logoutMutation } = useAuth();
   const [location, setLocation] = useLocation();
@@ -789,14 +1033,13 @@ function AuthenticatedApp() {
 
   const role = ((user as any).role as string).toLowerCase() as Role;
 
-  return (
-    <>
-      {role === 'operator' && <OperatorDashboard />}
-      {role === 'reviewer' && <ReviewerDashboard />}
-      {role === 'manager' && <ManagerDashboard />}
-      {role === 'admin' && <AdminDashboard />}
-    </>
-  );
+  if (role === 'operator') return <OperatorDashboard />;
+  if (role === 'reviewer') return <ReviewerDashboard />;
+  if (role === 'manager') return <ManagerDashboard />;
+  if (role === 'admin') return <AdminDashboard />;
+  
+  // Custom roles - use AdminDashboard layout with role-based nav filtering
+  return <CustomRoleDashboard roleName={(user as any).role} />;
 }
 
 // Wrapper component for Vendor Management with full admin navigation
