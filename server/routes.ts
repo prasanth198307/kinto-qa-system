@@ -18,7 +18,7 @@ import { importVyapaarData, clearImportedData, importPaymentsOnly } from "./vyap
 import { parseExcelFile, commitImport } from "./cashRegisterImport";
 import { importCashRegisterFromExcel } from "./importCashRegisterFromExcel";
 import { insertCashRegisterDaySchema, insertCashRegisterTransactionSchema, insertCashRegisterExpenseItemSchema, insertSalespersonMappingSchema, cashRegisterDays, cashRegisterTransactions, cashRegisterExpenseItems, expenseVouchers, expenseItems } from "@shared/schema";
-import { sql } from "drizzle-orm";
+import { sql, and, eq } from "drizzle-orm";
 
 // Simple audit logging function
 async function logAudit(userId: string | undefined, action: string, table: string, recordId: string, description: string) {
@@ -3372,11 +3372,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const calculatedPending = opening + produced - used;
       
+      // Get or default UOM (use "Case" as default for finished goods)
+      let uomId = validatedEntry.uomId;
+      if (!uomId) {
+        // Try to get "Case" UOM as default
+        const uomList = await storage.getAllUom();
+        const caseUom = uomList.find((u: any) => u.name.toLowerCase() === 'case');
+        uomId = caseUom?.id;
+      }
+      
+      // Generate batch number if not provided: YYMMDD-<productCode>-<shift>-<sequence>
+      let batchNumber = validatedEntry.batchNumber;
+      if (!batchNumber && issuance.productId) {
+        const dateStr = new Date(validatedEntry.productionDate).toISOString().split('T')[0].replace(/-/g, '').slice(2); // YYMMDD
+        const productCode = product?.productCode || 'PROD';
+        const shift = validatedEntry.shift || 'G';
+        // Get count of production entries for this product/date/shift to generate sequence
+        const existingCount = await db.select({ count: sql<number>`count(*)` })
+          .from(productionEntries)
+          .where(and(
+            eq(productionEntries.productId, issuance.productId),
+            sql`DATE(production_date) = DATE(${validatedEntry.productionDate})`,
+            eq(productionEntries.shift, validatedEntry.shift)
+          ));
+        const sequence = (Number(existingCount[0]?.count) || 0) + 1;
+        batchNumber = `${dateStr}-${productCode}-${shift}-${String(sequence).padStart(3, '0')}`;
+      }
+      
       // Create production entry with calculated values
       // IMPORTANT: productId comes from the linked issuance, not from the frontend
       const productionEntry = await storage.createProductionEntry({
         ...validatedEntry,
         productId: issuance.productId || undefined, // Get productId from the linked issuance (convert null to undefined)
+        uomId: uomId || undefined, // UOM for finished goods
+        batchNumber: batchNumber || undefined, // Auto-generated or provided batch number
         emptyBottlesPending: calculatedPending, // Use server-calculated pending
         derivedUnits: derivedUnits !== null ? derivedUnits : undefined,
         createdBy: req.user?.id,
@@ -3385,14 +3414,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Automatically add produced goods to Finished Goods inventory
       if (issuance.productId && validatedEntry.producedQuantity > 0) {
         try {
-          // Generate batch number: IssuanceNumber-Date-Shift
-          const dateStr = new Date(validatedEntry.productionDate).toISOString().split('T')[0];
-          const batchNumber = `${issuance.issuanceNumber}-${dateStr}-${validatedEntry.shift}`;
+          // Use batch number from production entry (already generated above)
+          const finishedGoodBatch = batchNumber || `${issuance.issuanceNumber}-${new Date(validatedEntry.productionDate).toISOString().split('T')[0]}-${validatedEntry.shift}`;
           
           // Create finished good record
           await storage.createFinishedGood({
             productId: issuance.productId,
-            batchNumber,
+            batchNumber: finishedGoodBatch,
             productionDate: validatedEntry.productionDate,
             quantity: Math.floor(Number(validatedEntry.producedQuantity)), // Convert to integer
             qualityStatus: 'pending', // Needs inspection/approval
@@ -3402,7 +3430,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             createdBy: req.user?.id,
           });
           
-          console.log(`[INVENTORY] Auto-added ${validatedEntry.producedQuantity} units of product ${issuance.productId} to Finished Goods (Batch: ${batchNumber})`);
+          console.log(`[INVENTORY] Auto-added ${validatedEntry.producedQuantity} units of product ${issuance.productId} to Finished Goods (Batch: ${finishedGoodBatch})`);
         } catch (inventoryError) {
           console.error("[INVENTORY WARNING] Failed to auto-update Finished Goods:", inventoryError);
           // Don't fail the production entry creation if inventory update fails
