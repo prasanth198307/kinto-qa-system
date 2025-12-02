@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import type { CashRegisterDay, CashRegisterTransaction, CashRegisterExpenseItem, PaginationMeta } from "@shared/schema";
 import { DataTablePagination } from "@/components/DataTablePagination";
+import { useAuth } from "@/hooks/use-auth";
 
 interface DayWithTransactions extends CashRegisterDay {
   transactions?: (CashRegisterTransaction & { items?: CashRegisterExpenseItem[] })[];
@@ -73,6 +74,8 @@ function formatCurrency(paise: number): string {
 
 export default function CashRegisterPage() {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const isAdmin = (user as any)?.role?.toLowerCase() === 'admin';
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedDay, setSelectedDay] = useState<DayWithTransactions | null>(null);
@@ -1311,7 +1314,7 @@ export default function CashRegisterPage() {
           <p className="text-muted-foreground">Track daily cash flow - receipts, expenses, and transfers</p>
         </div>
         <div className="flex gap-2">
-          {days.length > 0 && (
+          {isAdmin && days.length > 0 && (
             <AlertDialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
               <AlertDialogTrigger asChild>
                 <Button variant="destructive" data-testid="button-clear-data">
@@ -1341,6 +1344,7 @@ export default function CashRegisterPage() {
             </AlertDialog>
           )}
           
+          {isAdmin && (
           <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" data-testid="button-import">
@@ -1458,6 +1462,7 @@ export default function CashRegisterPage() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          )}
 
           <Button onClick={handleCreateNewDay} disabled={createDayMutation.isPending} data-testid="button-new-day">
             <Plus className="w-4 h-4 mr-2" />
