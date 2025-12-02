@@ -46,6 +46,7 @@ export default function AdminUserManagement() {
   const [editRole, setEditRole] = useState('');
   
   // Create user form state
+  const [newUserUsername, setNewUserUsername] = useState('');
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserMobileNumber, setNewUserMobileNumber] = useState('');
   const [newUserPassword, setNewUserPassword] = useState('');
@@ -87,7 +88,7 @@ export default function AdminUserManagement() {
   });
 
   const createUserMutation = useMutation({
-    mutationFn: async (userData: { email: string; mobileNumber: string; password: string; firstName: string; lastName: string; role: string }) => {
+    mutationFn: async (userData: { username?: string; email: string; mobileNumber: string; password: string; firstName: string; lastName: string; role: string }) => {
       return await apiRequest('POST', '/api/users', userData);
     },
     onSuccess: () => {
@@ -159,6 +160,7 @@ export default function AdminUserManagement() {
   };
 
   const resetCreateForm = () => {
+    setNewUserUsername('');
     setNewUserEmail('');
     setNewUserMobileNumber('');
     setNewUserPassword('');
@@ -188,6 +190,7 @@ export default function AdminUserManagement() {
     }
 
     createUserMutation.mutate({
+      username: newUserUsername.trim() || undefined,
       email: newUserEmail,
       mobileNumber: newUserMobileNumber,
       password: newUserPassword,
@@ -337,10 +340,21 @@ export default function AdminUserManagement() {
           <DialogHeader>
             <DialogTitle>Create New User</DialogTitle>
             <DialogDescription>
-              Add a new user to the system. Username will be auto-generated from email.
+              Add a new user to the system. Enter a custom username or leave blank to auto-generate.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="username">Username</Label>
+              <Input
+                id="username"
+                placeholder="Enter username (optional)"
+                value={newUserUsername}
+                onChange={(e) => setNewUserUsername(e.target.value)}
+                data-testid="input-username"
+              />
+              <p className="text-xs text-muted-foreground">Leave blank to auto-generate from email</p>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email *</Label>
               <Input

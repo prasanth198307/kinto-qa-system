@@ -377,7 +377,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/users', requireRole('admin'), async (req: any, res) => {
     try {
-      const { email, password, firstName, lastName, role, mobileNumber } = req.body;
+      const { email, password, firstName, lastName, role, mobileNumber, username: providedUsername } = req.body;
 
       // Validate required fields
       if (!email || !password || !mobileNumber) {
@@ -389,8 +389,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Mobile number must be 10 digits" });
       }
 
-      // Validate role
-      if (!['admin', 'operator', 'reviewer', 'manager'].includes(role)) {
+      // Validate role - check if role exists in database (allows custom roles)
+      const validRole = await storage.getRoleByName(role);
+      if (!validRole) {
         return res.status(400).json({ message: "Invalid role" });
       }
 
@@ -400,26 +401,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "User with this email already exists" });
       }
 
-      // Get role ID from database
-      const validRole = await storage.getRoleByName(role);
-      if (!validRole) {
-        return res.status(400).json({ message: "Invalid role" });
-      }
-
-      // Generate username from email (part before @) with random 2-digit suffix
-      const emailPrefix = email.split('@')[0];
-      const randomDigits = Math.floor(10 + Math.random() * 90); // Generates 10-99
-      const username = `${emailPrefix}${randomDigits}`;
-
-      // Check if username already exists (very unlikely with random suffix)
-      const existingUsername = await storage.getUserByUsername(username);
-      if (existingUsername) {
-        // Extremely rare case - generate new random digits
-        const newRandomDigits = Math.floor(10 + Math.random() * 90);
-        const newUsername = `${emailPrefix}${newRandomDigits}`;
-        return res.status(400).json({ 
-          message: `Username conflict detected. Please try creating the user again. Suggested username: ${newUsername}` 
-        });
+      // Use provided username or generate from email
+      let username: string;
+      if (providedUsername && providedUsername.trim()) {
+        username = providedUsername.trim();
+        // Check if provided username already exists
+        const existingUsername = await storage.getUserByUsername(username);
+        if (existingUsername) {
+          return res.status(400).json({ message: "Username already taken. Please choose a different username." });
+        }
+      } else {
+        // Generate username from email (part before @) with random 2-digit suffix
+        const emailPrefix = email.split('@')[0];
+        const randomDigits = Math.floor(10 + Math.random() * 90); // Generates 10-99
+        username = `${emailPrefix}${randomDigits}`;
+        
+        // Check if auto-generated username already exists (very unlikely with random suffix)
+        const existingUsername = await storage.getUserByUsername(username);
+        if (existingUsername) {
+          // Extremely rare case - generate new random digits
+          const newRandomDigits = Math.floor(10 + Math.random() * 90);
+          username = `${emailPrefix}${newRandomDigits}`;
+        }
       }
 
       // Hash password
