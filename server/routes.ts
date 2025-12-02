@@ -3515,10 +3515,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get default UOM (Case) for reconciliation items - use inherited UOM from production entry first
       let defaultUomId = inheritedUomId;
       if (!defaultUomId) {
-        const [defaultUom] = await db.select().from(uom)
-          .where(and(eq(uom.name, 'Case'), eq(uom.recordStatus, 1)))
-          .limit(1);
-        defaultUomId = defaultUom?.id || null;
+        // Use storage layer to get Case UOM as default
+        const uomList = await storage.getAllUoms();
+        const caseUom = uomList.find((u: any) => u.name.toLowerCase() === 'case' && u.recordStatus === 1);
+        defaultUomId = caseUom?.id || null;
       }
       
       // Wrap everything in a transaction for atomicity
