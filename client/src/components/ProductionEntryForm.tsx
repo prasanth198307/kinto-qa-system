@@ -73,16 +73,69 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
   const emptyBottlesProduced = form.watch('emptyBottlesProduced');
   const emptyBottlesUsed = form.watch('emptyBottlesUsed');
 
-  // Auto-calculate pending when opening, produced, or used changes
-  // Also validate that Used <= Opening + Produced
+  // Calculate bottles from issuance based on preform-type materials
+  // Formula: Σ (quantityIssued × usableUnits) for preform materials
+  const calculateBottlesFromIssuance = (): { total: number; breakdown: { name: string; qty: number; usableUnits: number; bottles: number }[] } => {
+    if (!issuanceSummary?.issuance?.items || !issuanceSummary?.bomItems) {
+      return { total: 0, breakdown: [] };
+    }
+    
+    const breakdown: { name: string; qty: number; usableUnits: number; bottles: number }[] = [];
+    let total = 0;
+    
+    // Match each issuance item to its BOM item to get type details
+    for (const item of issuanceSummary.issuance.items) {
+      // Find matching BOM item for this raw material
+      const bomItem = issuanceSummary.bomItems.find(bom => 
+        bom.rawMaterialId === item.rawMaterialId || 
+        (bom.availableRawMaterials && bom.availableRawMaterials.some((rm: any) => rm.id === item.rawMaterialId))
+      );
+      
+      if (bomItem?.typeDetails) {
+        const typeDetails = bomItem.typeDetails;
+        // Only count materials that produce empty bottles/pieces (preforms)
+        // Check if derivedUnit is Piece, Bottle, or similar
+        const derivedUnit = typeDetails.derivedUnit?.toLowerCase() || '';
+        const typeName = typeDetails.typeName?.toLowerCase() || '';
+        
+        const isPreformType = 
+          derivedUnit.includes('piece') || 
+          derivedUnit.includes('bottle') ||
+          typeName.includes('preform') ||
+          typeName.includes('pet');
+        
+        if (isPreformType && typeDetails.usableUnits) {
+          const qty = Number(item.quantityIssued) || 0;
+          const usableUnits = Number(typeDetails.usableUnits) || 0;
+          const bottles = Math.round(qty * usableUnits);
+          
+          breakdown.push({
+            name: typeDetails.typeName || 'Unknown',
+            qty,
+            usableUnits,
+            bottles
+          });
+          total += bottles;
+        }
+      }
+    }
+    
+    return { total, breakdown };
+  };
+  
+  const bottlesFromIssuance = calculateBottlesFromIssuance();
+
+  // Auto-calculate pending when opening, from issuance, produced, or used changes
+  // Formula: Pending = Opening + From Issuance + Produced - Used
   useEffect(() => {
     const opening = Number(emptyBottlesOpening) || 0;
+    const fromIssuance = bottlesFromIssuance.total;
     const produced = Number(emptyBottlesProduced) || 0;
     const used = Number(emptyBottlesUsed) || 0;
-    const availableBottles = opening + produced;
-    const pending = opening + produced - used;
+    const availableBottles = opening + fromIssuance + produced;
+    const pending = opening + fromIssuance + produced - used;
     
-    // Validate: Used cannot exceed available bottles (Opening + Produced)
+    // Validate: Used cannot exceed available bottles (Opening + From Issuance + Produced)
     if (used > availableBottles) {
       form.setError('emptyBottlesUsed', {
         type: 'manual',
@@ -93,7 +146,7 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
     }
     
     form.setValue('emptyBottlesPending', Math.max(0, pending));
-  }, [emptyBottlesOpening, emptyBottlesProduced, emptyBottlesUsed, form]);
+  }, [emptyBottlesOpening, emptyBottlesProduced, emptyBottlesUsed, bottlesFromIssuance.total, form]);
 
   // Set opening balance from last production entry when data loads (for new entries)
   useEffect(() => {
@@ -370,6 +423,25 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
           <Card className="p-6">
             <h3 className="text-lg font-semibold mb-4">Empty Bottles Tracking</h3>
             
+            {/* From Issuance Calculation Display */}
+            {bottlesFromIssuance.total > 0 && (
+              <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-sm font-medium text-blue-700 dark:text-blue-300">From Issuance (Auto-calculated)</span>
+                    <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{bottlesFromIssuance.total.toLocaleString()}</p>
+                  </div>
+                  <div className="text-right text-xs text-blue-600 dark:text-blue-400">
+                    {bottlesFromIssuance.breakdown.map((item, idx) => (
+                      <div key={idx}>
+                        {item.name}: {item.qty} × {item.usableUnits.toLocaleString()} = {item.bottles.toLocaleString()}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <div className="grid grid-cols-4 gap-4">
               <FormField
                 control={form.control}
@@ -407,7 +479,7 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
                 name="emptyBottlesProduced"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Produced</FormLabel>
+                    <FormLabel>Additional Produced</FormLabel>
                     <FormControl>
                       <Input 
                         type="number" 
@@ -417,6 +489,9 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
                         data-testid="input-empty-bottles-produced"
                       />
                     </FormControl>
+                    <p className="text-xs text-muted-foreground">
+                      Extra bottles (beyond issuance)
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -427,8 +502,9 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
                 name="emptyBottlesUsed"
                 render={({ field }) => {
                   const opening = Number(emptyBottlesOpening) || 0;
+                  const fromIssuance = bottlesFromIssuance.total;
                   const produced = Number(emptyBottlesProduced) || 0;
-                  const availableBottles = opening + produced;
+                  const availableBottles = opening + fromIssuance + produced;
                   return (
                     <FormItem>
                       <FormLabel>Used</FormLabel>
@@ -443,7 +519,7 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
                         />
                       </FormControl>
                       <p className="text-xs text-muted-foreground">
-                        Max: {availableBottles.toLocaleString()} (Opening + Produced)
+                        Max: {availableBottles.toLocaleString()}
                       </p>
                       <FormMessage />
                     </FormItem>
@@ -468,13 +544,21 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
                       />
                     </FormControl>
                     <p className="text-xs text-muted-foreground">
-                      = Opening + Produced - Used
+                      = Opening{bottlesFromIssuance.total > 0 ? ' + Issuance' : ''} + Produced - Used
                     </p>
                     <FormMessage />
                   </FormItem>
                 )}
               />
             </div>
+            
+            {/* Summary calculation */}
+            {bottlesFromIssuance.total > 0 && (
+              <div className="mt-3 pt-3 border-t text-sm text-muted-foreground">
+                <strong>Total Available:</strong> {(Number(emptyBottlesOpening) + bottlesFromIssuance.total + Number(emptyBottlesProduced)).toLocaleString()} 
+                = Opening ({Number(emptyBottlesOpening).toLocaleString()}) + From Issuance ({bottlesFromIssuance.total.toLocaleString()}) + Produced ({Number(emptyBottlesProduced).toLocaleString()})
+              </div>
+            )}
           </Card>
 
           {/* BOM Variance Analysis */}

@@ -3195,28 +3195,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Calculate derivedUnits if product is linked
       let derivedUnits = null;
+      let product = null;
       if (issuance.productId) {
-        const product = await storage.getProduct(issuance.productId);
+        product = await storage.getProduct(issuance.productId);
         if (product && product.usableDerivedUnits) {
           // derivedUnits = producedQuantity × usableDerivedUnits from Product Master
           derivedUnits = Number(validatedEntry.producedQuantity) * Number(product.usableDerivedUnits);
         }
       }
       
+      // Calculate bottles from issuance (preform materials)
+      // Formula: Σ (quantityIssued × usableUnits) for preform-type materials
+      let bottlesFromIssuance = 0;
+      if (issuance.productId) {
+        try {
+          const items = await storage.getIssuanceItems(validatedEntry.issuanceId);
+          const bomResult = await storage.getProductBomWithTypes(issuance.productId, issuance.bomConfigurationId || undefined);
+          
+          for (const item of items) {
+            // Find matching BOM item to get type details
+            const bomItem = bomResult.items.find((bom: any) => 
+              bom.bom?.rawMaterialId === item.rawMaterialId ||
+              (bom.availableRawMaterials && bom.availableRawMaterials.some((rm: any) => rm.id === item.rawMaterialId))
+            );
+            
+            if (bomItem?.type) {
+              const typeDetails = bomItem.type;
+              const derivedUnit = (typeDetails.derivedUnit || '').toLowerCase();
+              const typeName = (typeDetails.typeName || '').toLowerCase();
+              
+              // Check if this is a preform-type material (produces empty bottles)
+              const isPreformType = 
+                derivedUnit.includes('piece') || 
+                derivedUnit.includes('bottle') ||
+                typeName.includes('preform') ||
+                typeName.includes('pet');
+              
+              if (isPreformType && typeDetails.usableUnits) {
+                const qty = Number(item.quantityIssued) || 0;
+                const usableUnits = Number(typeDetails.usableUnits) || 0;
+                bottlesFromIssuance += Math.round(qty * usableUnits);
+              }
+            }
+          }
+        } catch (e) {
+          console.log("[EMPTY BOTTLES] Could not calculate bottles from issuance:", e);
+        }
+      }
+      
       // Server-side calculation and validation of pending bottles
+      // Formula: Pending = Opening + From Issuance + Produced - Used
       const opening = Number(validatedEntry.emptyBottlesOpening) || 0;
       const produced = Number(validatedEntry.emptyBottlesProduced) || 0;
       const used = Number(validatedEntry.emptyBottlesUsed) || 0;
-      const availableBottles = opening + produced;
+      const availableBottles = opening + bottlesFromIssuance + produced;
       
-      // Validate: Used cannot exceed available bottles (Opening + Produced)
+      // Validate: Used cannot exceed available bottles (Opening + From Issuance + Produced)
       if (used > availableBottles) {
         return res.status(400).json({ 
-          message: `Invalid empty bottles data: Used (${used}) cannot exceed available bottles (${availableBottles} = Opening ${opening} + Produced ${produced})` 
+          message: `Invalid empty bottles data: Used (${used}) cannot exceed available bottles (${availableBottles} = Opening ${opening} + From Issuance ${bottlesFromIssuance} + Produced ${produced})` 
         });
       }
       
-      const calculatedPending = opening + produced - used;
+      const calculatedPending = opening + bottlesFromIssuance + produced - used;
       
       // Create production entry with calculated values
       const productionEntry = await storage.createProductionEntry({
