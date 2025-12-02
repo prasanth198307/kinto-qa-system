@@ -138,6 +138,10 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
   // Get selected production entry data
   const selectedProduction = filteredProductions.find(p => p.id === selectedProductionId);
   const producedCases = selectedProduction ? Number(selectedProduction.producedQuantity) || 0 : 0;
+  
+  // Get empty bottles data from production entry (already entered by operator)
+  const productionEmptyBottlesUsed = selectedProduction ? Number(selectedProduction.emptyBottlesUsed) || 0 : 0;
+  const productionEmptyBottlesPending = selectedProduction ? Number(selectedProduction.emptyBottlesPending) || 0 : 0;
 
   // Calculate expected usage from BOM for each material
   const calculateExpectedUsage = (rawMaterialId: string): number => {
@@ -189,21 +193,39 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
     }
   }, [issuanceSummary, reconciliation, items.length, selectedIssuanceId, producedCases]);
 
-  // Recalculate used and suggested returned when production entry changes
+  // Recalculate used, hopper, and suggested returned when production entry changes
+  // Pull ACTUAL values from production entry (already entered by operator)
   useEffect(() => {
-    if (!reconciliation && selectedProductionId && items.length > 0 && issuanceSummary) {
+    if (!reconciliation && selectedProductionId && items.length > 0 && issuanceSummary && selectedProduction) {
       const updatedItems = items.map(item => {
-        const expectedUsed = calculateExpectedUsage(item.rawMaterialId);
         const issued = item.quantityIssued || 0;
-        const pending = item.quantityPending || 0;
         
-        // Only update if we have a valid expected calculation
-        if (expectedUsed > 0) {
-          const used = expectedUsed;
-          const suggestedReturned = Math.max(0, issued - used - pending);
+        // For preform materials (tracked as empty bottles in production entry):
+        // Pull actual Used and Hopper values from production entry
+        // emptyBottlesUsed = bottles used for filling (which came from preforms)
+        // emptyBottlesPending = bottles left in hopper (unused preforms that became bottles)
+        const actualUsed = productionEmptyBottlesUsed > 0 ? productionEmptyBottlesUsed : calculateExpectedUsage(item.rawMaterialId);
+        const actualHopper = productionEmptyBottlesPending;
+        
+        // Only update if we have valid data from production entry or BOM
+        if (actualUsed > 0 || actualHopper > 0) {
+          const suggestedReturned = Math.max(0, issued - actualUsed - actualHopper);
           return {
             ...item,
-            quantityUsed: used,
+            quantityUsed: actualUsed,
+            quantityPending: actualHopper,
+            quantityReturned: suggestedReturned,
+          };
+        }
+        
+        // Fallback to BOM calculation if no production entry data
+        const expectedUsed = calculateExpectedUsage(item.rawMaterialId);
+        if (expectedUsed > 0) {
+          const pending = item.quantityPending || 0;
+          const suggestedReturned = Math.max(0, issued - expectedUsed - pending);
+          return {
+            ...item,
+            quantityUsed: expectedUsed,
             quantityReturned: suggestedReturned,
           };
         }
@@ -211,7 +233,7 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
       });
       setItems(updatedItems);
     }
-  }, [selectedProductionId, producedCases]);
+  }, [selectedProductionId, producedCases, productionEmptyBottlesUsed, productionEmptyBottlesPending]);
 
   const createMutation = useMutation({
     mutationFn: async (data: { header: HeaderFormData; items: ItemFormData[] }) => {
@@ -638,21 +660,15 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
                       <div className="flex gap-2">
                         <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5" />
                         <div className="text-sm text-blue-900 dark:text-blue-100 space-y-1">
-                          <p className="font-medium">Variance = Issued - Used - Hopper - Returned (should be 0)</p>
+                          <p className="font-medium">Values auto-populated from Production Entry</p>
                           <p className="text-blue-700 dark:text-blue-300">
-                            • <strong>Expected:</strong> Calculated from BOM based on cases produced
+                            • <strong>Used & Hopper:</strong> Pulled from production entry (no re-entry needed)
                           </p>
                           <p className="text-blue-700 dark:text-blue-300">
-                            • <strong>Used:</strong> Actual quantity consumed in production
+                            • <strong>To Return:</strong> Auto-calculated: Issued - Used - Hopper
                           </p>
                           <p className="text-blue-700 dark:text-blue-300">
-                            • <strong>Left in Hopper:</strong> Material remaining in machine for next cycle (reusable)
-                          </p>
-                          <p className="text-blue-700 dark:text-blue-300">
-                            • <strong>To Return:</strong> Material to be physically returned to inventory
-                          </p>
-                          <p className="text-blue-700 dark:text-blue-300">
-                            • <strong>Variance:</strong> Unaccounted material (✓ = fully reconciled, 2% acceptable threshold)
+                            • <strong>Variance:</strong> Should be 0 when fully balanced (2% acceptable threshold)
                           </p>
                           {reconciliation && (
                             <p className="text-blue-700 dark:text-blue-300 mt-2">
