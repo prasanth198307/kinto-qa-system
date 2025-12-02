@@ -447,21 +447,52 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
           <Card className="p-6">
             <h3 className="text-lg font-semibold mb-4">Empty Bottles Tracking</h3>
             
-            {/* From Issuance - Reference Only (potential bottles from preforms) */}
+            {/* Preform Issuance & Variance Analysis */}
             {bottlesFromIssuance.total > 0 && (
               <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-md">
-                <div className="flex items-center justify-between">
+                <div className="grid grid-cols-3 gap-4">
+                  {/* Potential from Issuance */}
                   <div>
-                    <span className="text-sm font-medium text-amber-700 dark:text-amber-300">Potential Bottles (from Preforms Issued)</span>
+                    <span className="text-sm font-medium text-amber-700 dark:text-amber-300">Potential (from Preforms)</span>
                     <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{bottlesFromIssuance.total.toLocaleString()}</p>
-                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">Reference only - enter actual blow-molded bottles in "Produced"</p>
+                    <div className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                      {bottlesFromIssuance.breakdown.map((item, idx) => (
+                        <div key={idx}>
+                          {item.qty} bags × {item.usableUnits.toLocaleString()}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div className="text-right text-xs text-amber-600 dark:text-amber-400">
-                    {bottlesFromIssuance.breakdown.map((item, idx) => (
-                      <div key={idx}>
-                        {item.name}: {item.qty} × {item.usableUnits.toLocaleString()} = {item.bottles.toLocaleString()}
-                      </div>
-                    ))}
+                  
+                  {/* Actually Produced */}
+                  <div>
+                    <span className="text-sm font-medium text-green-700 dark:text-green-300">Actually Produced</span>
+                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">{Number(emptyBottlesProduced).toLocaleString()}</p>
+                    <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                      From blow molding
+                    </p>
+                  </div>
+                  
+                  {/* Variance - Left in Hopper / To Return */}
+                  <div>
+                    <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Left in Hopper / Return</span>
+                    {(() => {
+                      const variance = bottlesFromIssuance.total - Number(emptyBottlesProduced);
+                      const firstBreakdown = bottlesFromIssuance.breakdown[0];
+                      const bagsToReturn = firstBreakdown && firstBreakdown.usableUnits > 0 
+                        ? (variance / firstBreakdown.usableUnits).toFixed(2) 
+                        : '0';
+                      return (
+                        <>
+                          <p className={`text-2xl font-bold ${variance > 0 ? 'text-blue-600 dark:text-blue-400' : variance < 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`}>
+                            {variance.toLocaleString()} pcs
+                          </p>
+                          <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                            ≈ {bagsToReturn} bags to return
+                          </p>
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
