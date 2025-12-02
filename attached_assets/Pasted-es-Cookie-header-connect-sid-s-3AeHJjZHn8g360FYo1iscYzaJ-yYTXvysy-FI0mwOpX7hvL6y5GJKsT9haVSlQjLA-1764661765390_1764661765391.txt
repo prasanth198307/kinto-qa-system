@@ -1,0 +1,55 @@
+es
+   Cookie header: connect.sid=s%3AeHJjZHn8g360FYo1iscYzaJ_yYTXvysy.FI0mwOpX7hvL6y5GJKsT9haVSlQjLAwXKMIfY%2Bk36CU
+   Session ID: eHJjZHn8g360FYo1iscYzaJ_yYTXvysy
+   Authenticated: true
+🔹 Request: GET /api/production-entries
+   Cookie header: connect.sid=s%3AeHJjZHn8g360FYo1iscYzaJ_yYTXvysy.FI0mwOpX7hvL6y5GJKsT9haVSlQjLAwXKMIfY%2Bk36CU
+   Session ID: eHJjZHn8g360FYo1iscYzaJ_yYTXvysy
+   Authenticated: true
+1:17:50 PM [express] GET /api/raw-material-issuances 304 in 9ms :: [{"id":"804dd6ac-2268-438a-acdd-6…
+1:17:50 PM [express] GET /api/production-entries 304 in 9ms :: [{"id":"63e6645a-053a-4d5f-8e81-93855…
+🔹 Request: GET /api/raw-material-issuances/804dd6ac-2268-438a-acdd-6975e0163b57/summary
+   Cookie header: connect.sid=s%3AeHJjZHn8g360FYo1iscYzaJ_yYTXvysy.FI0mwOpX7hvL6y5GJKsT9haVSlQjLAwXKMIfY%2Bk36CU
+   Session ID: eHJjZHn8g360FYo1iscYzaJ_yYTXvysy
+   Authenticated: true
+1:17:53 PM [express] GET /api/raw-material-issuances/804dd6ac-2268-438a-acdd-6975e0163b57/summary 30…
+🔹 Request: POST /api/production-reconciliations
+   Cookie header: connect.sid=s%3AeHJjZHn8g360FYo1iscYzaJ_yYTXvysy.FI0mwOpX7hvL6y5GJKsT9haVSlQjLAwXKMIfY%2Bk36CU
+   Session ID: eHJjZHn8g360FYo1iscYzaJ_yYTXvysy
+   Authenticated: true
+[RECONCILIATION] Header received: {
+  "reconciliationDate": "2025-12-02T07:47:50.355Z",
+  "shift": "A",
+  "issuanceId": "804dd6ac-2268-438a-acdd-6975e0163b57",
+  "productionEntryId": "63e6645a-053a-4d5f-8e81-938553b216f3",
+  "producedCases": 0,
+  "rejectedCases": 0,
+  "emptyBottlesProduced": 0,
+  "emptyBottlesUsed": 0,
+  "emptyBottlesPending": 0,
+  "remarks": ""
+}
+[RECONCILIATION] Items received: [
+  {
+    "rawMaterialId": "4d52e38d-82aa-447e-bbf3-07badc844d7e",
+    "issuanceItemId": "ada98aec-5f1a-4260-aa08-5e8153aec2ee",
+    "quantityIssued": "11",
+    "quantityUsed": "10800",
+    "quantityReturned": "1190",
+    "quantityPending": "510",
+    "remarks": ""
+  }
+]
+[RECONCILIATION] Validation error: [
+  {
+    "code": "invalid_type",
+    "expected": "string",
+    "received": "undefined",
+    "path": [
+      "reconciliationNumber"
+    ],
+    "message": "Required"
+  }
+]
+1:18:14 PM [express] POST /api/production-reconciliations 400 in 31ms :: {"message":"Invalid data","…
+

@@ -2288,6 +2288,11 @@ export const insertProductionReconciliationSchema = createInsertSchema(productio
   }),
 }).omit({
   id: true,
+  reconciliationNumber: true,  // Auto-generated on backend
+  editCount: true,             // Managed by backend
+  lastEditedBy: true,          // Managed by backend
+  lastEditedAt: true,          // Managed by backend
+  createdBy: true,             // Set from session
   recordStatus: true,
   createdAt: true,
   updatedAt: true,
