@@ -8,6 +8,7 @@ import {
 } from '@shared/schema';
 import { sql, eq, and, ilike } from 'drizzle-orm';
 import * as XLSX from 'xlsx';
+import { readFileSync } from 'fs';
 
 interface CreditNoteHeaderRow {
   date: string;
@@ -107,7 +108,9 @@ export async function importCreditNotesFromExcel(filePath: string): Promise<{
   };
 
   try {
-    const workbook = XLSX.readFile(filePath);
+    // Use fs.readFileSync + XLSX.read for ESM compatibility
+    const fileBuffer = readFileSync(filePath);
+    const workbook = XLSX.read(fileBuffer, { type: 'buffer' });
     
     const customReportSheet = workbook.Sheets['Custom Report'];
     const itemDetailsSheet = workbook.Sheets['Item Details'];
