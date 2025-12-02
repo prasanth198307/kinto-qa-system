@@ -1,0 +1,43 @@
+npm[884916]: 12:13:14 PM [express] GET /api/invoices 304 in 27ms :: []
+Dec 02 12:13:14 iplvnic1 npm[884916]: 12:13:14 PM [express] GET /api/stats/today 304 in 38ms :: {"rawMaterialIssuancesCount":0,"gatepassesC…
+Dec 02 12:13:14 iplvnic1 npm[884916]: 12:13:14 PM [express] GET /api/finished-goods 304 in 29ms :: []
+Dec 02 12:13:14 iplvnic1 npm[884916]: 🔹 Request: GET /api/pending-payments
+Dec 02 12:13:14 iplvnic1 npm[884916]:    Cookie header: connect.sid=s%3A9XiR0vXBXakciKakfgaSmS9ktXD1dTVq.v99FRYKpy7ZtuG7BO2xD2GTYfgRaPNKQP01C81AW64E
+Dec 02 12:13:14 iplvnic1 npm[884916]:    Session ID: 9XiR0vXBXakciKakfgaSmS9ktXD1dTVq
+Dec 02 12:13:14 iplvnic1 npm[884916]:    Authenticated: true
+Dec 02 12:13:14 iplvnic1 npm[884916]: 🔹 Request: GET /api/raw-materials
+Dec 02 12:13:14 iplvnic1 npm[884916]:    Cookie header: connect.sid=s%3A9XiR0vXBXakciKakfgaSmS9ktXD1dTVq.v99FRYKpy7ZtuG7BO2xD2GTYfgRaPNKQP01C81AW64E
+Dec 02 12:13:14 iplvnic1 npm[884916]:    Session ID: 9XiR0vXBXakciKakfgaSmS9ktXD1dTVq
+Dec 02 12:13:14 iplvnic1 npm[884916]:    Authenticated: true
+Dec 02 12:13:14 iplvnic1 npm[884916]: 🔹 Request: GET /api/products
+Dec 02 12:13:14 iplvnic1 npm[884916]:    Cookie header: connect.sid=s%3A9XiR0vXBXakciKakfgaSmS9ktXD1dTVq.v99FRYKpy7ZtuG7BO2xD2GTYfgRaPNKQP01C81AW64E
+Dec 02 12:13:14 iplvnic1 npm[884916]:    Session ID: 9XiR0vXBXakciKakfgaSmS9ktXD1dTVq
+Dec 02 12:13:14 iplvnic1 npm[884916]:    Authenticated: true
+Dec 02 12:13:14 iplvnic1 npm[884916]: 🔹 Request: GET /api/pm-task-list-templates
+Dec 02 12:13:14 iplvnic1 npm[884916]:    Cookie header: connect.sid=s%3A9XiR0vXBXakciKakfgaSmS9ktXD1dTVq.v99FRYKpy7ZtuG7BO2xD2GTYfgRaPNKQP01C81AW64E
+Dec 02 12:13:14 iplvnic1 npm[884916]:    Session ID: 9XiR0vXBXakciKakfgaSmS9ktXD1dTVq
+Dec 02 12:13:14 iplvnic1 npm[884916]:    Authenticated: true
+Dec 02 12:13:14 iplvnic1 npm[884916]: 12:13:14 PM [express] GET /api/products 304 in 17ms :: []
+Dec 02 12:13:14 iplvnic1 npm[884916]: 12:13:14 PM [express] GET /api/raw-materials 304 in 39ms :: [{"id":"69898f7e-c760-4b3e-9333-666921606…
+Dec 02 12:13:14 iplvnic1 npm[884916]: 12:13:14 PM [express] GET /api/pending-payments 304 in 41ms :: {"data":[],"meta":{"page":1,"pageSize"…
+Dec 02 12:13:14 iplvnic1 npm[884916]: 12:13:14 PM [express] GET /api/pm-task-list-templates 304 in 22ms :: []
+Dec 02 12:13:15 iplvnic1 npm[884916]: 🔹 Request: GET /api/invoices
+Dec 02 12:13:15 iplvnic1 npm[884916]:    Cookie header: connect.sid=s%3A9XiR0vXBXakciKakfgaSmS9ktXD1dTVq.v99FRYKpy7ZtuG7BO2xD2GTYfgRaPNKQP01C81AW64E
+Dec 02 12:13:15 iplvnic1 npm[884916]:    Session ID: 9XiR0vXBXakciKakfgaSmS9ktXD1dTVq
+Dec 02 12:13:15 iplvnic1 npm[884916]:    Authenticated: true
+Dec 02 12:13:15 iplvnic1 npm[884916]: 🔹 Request: GET /api/raw-material-issuances
+Dec 02 12:13:15 iplvnic1 npm[884916]:    Cookie header: connect.sid=s%3A9XiR0vXBXakciKakfgaSmS9ktXD1dTVq.v99FRYKpy7ZtuG7BO2xD2GTYfgRaPNKQP01C81AW64E
+Dec 02 12:13:15 iplvnic1 npm[884916]:    Session ID: 9XiR0vXBXakciKakfgaSmS9ktXD1dTVq
+Dec 02 12:13:15 iplvnic1 npm[884916]:    Authenticated: true
+Dec 02 12:13:15 iplvnic1 npm[884916]: 🔹 Request: GET /api/gatepasses
+Dec 02 12:13:15 iplvnic1 npm[884916]:    Cookie header: connect.sid=s%3A9XiR0vXBXakciKakfgaSmS9ktXD1dTVq.v99FRYKpy7ZtuG7BO2xD2GTYfgRaPNKQP01C81AW64E
+Dec 02 12:13:15 iplvnic1 npm[884916]:    Session ID: 9XiR0vXBXakciKakfgaSmS9ktXD1dTVq
+Dec 02 12:13:15 iplvnic1 npm[884916]:    Authenticated: true
+Dec 02 12:13:15 iplvnic1 npm[884916]: 12:13:15 PM [express] GET /api/invoices 304 in 15ms :: []
+Dec 02 12:13:15 iplvnic1 npm[884916]: 🔹 Request: GET /api/vendors
+Dec 02 12:13:15 iplvnic1 npm[884916]:    Cookie header: connect.sid=s%3A9XiR0vXBXakciKakfgaSmS9ktXD1dTVq.v99FRYKpy7ZtuG7BO2xD2GTYfgRaPNKQP01C81AW64E
+Dec 02 12:13:15 iplvnic1 npm[884916]:    Session ID: 9XiR0vXBXakciKakfgaSmS9ktXD1dTVq
+Dec 02 12:13:15 iplvnic1 npm[884916]:    Authenticated: true
+Dec 02 12:13:15 iplvnic1 npm[884916]: 12:13:15 PM [express] GET /api/raw-material-issuances 304 in 17ms :: []
+Dec 02 12:13:15 iplvnic1 npm[884916]: 12:13:15 PM [express] GET /api/gatepasses 304 in 17ms :: {"data":[],"meta":{"page":1,"pageSize":25,"t…
+Dec 02 12:13:15 iplvnic1 npm[884916]: 12:13:15 PM [express] GET /api/vendors 200 in 12ms :: []
