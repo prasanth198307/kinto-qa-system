@@ -3371,8 +3371,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const calculatedPending = opening + produced - used;
       
       // Create production entry with calculated values
+      // IMPORTANT: productId comes from the linked issuance, not from the frontend
       const productionEntry = await storage.createProductionEntry({
         ...validatedEntry,
+        productId: issuance.productId, // Get productId from the linked issuance
         emptyBottlesPending: calculatedPending, // Use server-calculated pending
         derivedUnits: derivedUnits !== null ? derivedUnits : undefined,
         createdBy: req.user?.id,
