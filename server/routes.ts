@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import crypto from "crypto";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, paymentEvidence, salesReturns, salesReturnItems, creditNotes, creditNoteItems, debitNotes, debitNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes, vendors, users, uom, insertDocumentCategorySchema, insertDocumentSchema, insertExpenseCategorySchema, insertExpenseVoucherSchema, insertExpenseItemSchema, insertExpenseAttachmentSchema } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, paymentEvidence, salesReturns, salesReturnItems, creditNotes, creditNoteItems, debitNotes, debitNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes, vendors, users, uom, insertDocumentCategorySchema, insertDocumentSchema, insertExpenseCategorySchema, insertExpenseVoucherSchema, insertExpenseItemSchema, insertExpenseAttachmentSchema, rolePermissions } from "@shared/schema";
 import { format } from "date-fns";
 import { z } from "zod";
 import path from "path";
@@ -91,6 +91,37 @@ function isAuthenticated(req: Request, res: Response, next: NextFunction) {
   res.status(401).json({ message: "Unauthorized" });
 }
 
+// Mapping of API endpoints to screen keys for permission checking
+// This allows custom roles with database permissions to access these endpoints
+const endpointToScreenKey: Record<string, string> = {
+  '/api/sales-analytics': 'sales_dashboard',
+  '/api/invoices': 'invoices',
+  '/api/vendors': 'vendors',
+  '/api/credit-notes': 'credit_notes',
+  '/api/gatepasses': 'gatepasses',
+  '/api/dispatch': 'dispatch_tracking',
+  '/api/sales-returns': 'sales_returns',
+  '/api/reports': 'reports',
+  '/api/products': 'products',
+  '/api/raw-materials': 'raw_materials',
+  '/api/production': 'production',
+  '/api/inventory': 'inventory',
+  '/api/machines': 'machines',
+  '/api/users': 'users',
+  '/api/roles': 'roles',
+  '/api/checklist': 'checklists',
+  '/api/documents': 'documents',
+  '/api/expenses': 'expenses',
+  '/api/cash-register': 'cash_register',
+  '/api/pending-payments': 'pending_payments',
+  '/api/payment-management': 'payment_management',
+  '/api/vendor-analytics': 'vendor_analytics',
+  '/api/vendor-types': 'vendor_types',
+};
+
+// Standard roles that are handled by name matching (case-insensitive)
+const STANDARD_ROLES = ['admin', 'manager', 'operator', 'reviewer'];
+
 // Role-based authorization middleware
 function requireRole(...allowedRoles: string[]) {
   return async (req: any, res: Response, next: NextFunction) => {
@@ -125,18 +156,60 @@ function requireRole(...allowedRoles: string[]) {
         return res.status(403).json({ message: "Forbidden: Invalid role" });
       }
 
-      // Case-insensitive role comparison
+      // Case-insensitive role comparison for standard roles
       const userRoleLower = role.name.toLowerCase();
-      const hasAccess = allowedRoles.some(r => r.toLowerCase() === userRoleLower);
+      const hasStandardRoleAccess = allowedRoles.some(r => r.toLowerCase() === userRoleLower);
       
-      if (!hasAccess) {
-        console.log(`[AUDIT] User ${user.id} with role ${role.name} denied access to ${req.path} (requires: ${allowedRoles.join(', ')})`);
-        return res.status(403).json({ message: "Forbidden: Insufficient permissions" });
+      if (hasStandardRoleAccess) {
+        // Standard role match - allow access
+        req.userRole = role.name;
+        return next();
       }
 
-      // Store validated role in request for downstream use
-      req.userRole = role.name;
-      next();
+      // Check if this is a custom role (not a standard role)
+      const isCustomRole = !STANDARD_ROLES.includes(userRoleLower);
+      
+      if (isCustomRole) {
+        // For custom roles, check database permissions
+        // Find the screen key for this endpoint
+        const pathBase = req.path.split('?')[0]; // Remove query params
+        let screenKey: string | undefined;
+        
+        // Try exact match first
+        screenKey = endpointToScreenKey[pathBase];
+        
+        // If no exact match, try prefix matching (e.g., /api/invoices/123 -> /api/invoices)
+        if (!screenKey) {
+          for (const [endpoint, key] of Object.entries(endpointToScreenKey)) {
+            if (pathBase.startsWith(endpoint)) {
+              screenKey = key;
+              break;
+            }
+          }
+        }
+        
+        if (screenKey) {
+          // Check if the custom role has can_view permission for this screen
+          const permission = await db.select()
+            .from(rolePermissions)
+            .where(and(
+              eq(rolePermissions.roleId, user.roleId),
+              eq(rolePermissions.screenKey, screenKey),
+              eq(rolePermissions.recordStatus, 1)
+            ))
+            .limit(1);
+          
+          if (permission.length > 0 && permission[0].canView === 1) {
+            console.log(`[AUDIT] Custom role ${role.name} granted access to ${req.path} via screen permission ${screenKey}`);
+            req.userRole = role.name;
+            return next();
+          }
+        }
+      }
+      
+      console.log(`[AUDIT] User ${user.id} with role ${role.name} denied access to ${req.path} (requires: ${allowedRoles.join(', ')})`);
+      return res.status(403).json({ message: "Forbidden: Insufficient permissions" });
+
     } catch (error) {
       console.error(`[AUDIT] Role check error for ${req.path}:`, error);
       res.status(500).json({ message: "Internal server error" });
