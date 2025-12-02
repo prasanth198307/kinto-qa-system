@@ -125,6 +125,27 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
   
   const bottlesFromIssuance = calculateBottlesFromIssuance();
 
+  // Calculate bottles used from cases produced
+  // Formula: Cases Produced × Bottles Per Case (from product's derivedValuePerBase)
+  const calculateUsedFromCases = (): { total: number; casesProduced: number; bottlesPerCase: number } => {
+    const casesProduced = Number(producedQuantity) || 0;
+    const bottlesPerCase = Number(issuanceSummary?.product?.derivedValuePerBase) || 0;
+    return {
+      total: Math.round(casesProduced * bottlesPerCase),
+      casesProduced,
+      bottlesPerCase
+    };
+  };
+  
+  const usedFromCases = calculateUsedFromCases();
+
+  // Auto-set "Used" field when cases produced or product changes
+  useEffect(() => {
+    if (usedFromCases.bottlesPerCase > 0 && usedFromCases.casesProduced > 0) {
+      form.setValue('emptyBottlesUsed', usedFromCases.total);
+    }
+  }, [usedFromCases.total, usedFromCases.bottlesPerCase, form]);
+
   // Auto-calculate pending when opening, from issuance, produced, or used changes
   // Formula: Pending = Opening + From Issuance + Produced - Used
   useEffect(() => {
@@ -505,9 +526,10 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
                   const fromIssuance = bottlesFromIssuance.total;
                   const produced = Number(emptyBottlesProduced) || 0;
                   const availableBottles = opening + fromIssuance + produced;
+                  const isAutoCalculated = usedFromCases.bottlesPerCase > 0;
                   return (
                     <FormItem>
-                      <FormLabel>Used</FormLabel>
+                      <FormLabel>Used (from Cases)</FormLabel>
                       <FormControl>
                         <Input 
                           type="number" 
@@ -515,12 +537,19 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
                           max={availableBottles}
                           {...field}
                           onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                          className={isAutoCalculated ? "bg-muted" : ""}
                           data-testid="input-empty-bottles-used"
                         />
                       </FormControl>
-                      <p className="text-xs text-muted-foreground">
-                        Max: {availableBottles.toLocaleString()}
-                      </p>
+                      {isAutoCalculated ? (
+                        <p className="text-xs text-green-600 dark:text-green-400">
+                          = {usedFromCases.casesProduced.toLocaleString()} cases × {usedFromCases.bottlesPerCase} bottles/case
+                        </p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">
+                          Max: {availableBottles.toLocaleString()}
+                        </p>
+                      )}
                       <FormMessage />
                     </FormItem>
                   );
