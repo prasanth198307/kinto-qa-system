@@ -2248,6 +2248,7 @@ export const productionReconciliations = pgTable("production_reconciliations", {
   // Links to source documents (FK with cascading rules)
   issuanceId: varchar("issuance_id").references(() => rawMaterialIssuance.id, { onUpdate: "cascade", onDelete: "restrict" }).notNull(),
   productionEntryId: varchar("production_entry_id").references(() => productionEntries.id, { onUpdate: "cascade", onDelete: "restrict" }).notNull(),
+  productId: varchar("product_id").references(() => products.id), // Auto-populated from production entry
   
   // Finished goods summary (auto-populated from production)
   producedCases: integer("produced_cases").notNull(), // From production entry
@@ -2289,6 +2290,7 @@ export const insertProductionReconciliationSchema = createInsertSchema(productio
 }).omit({
   id: true,
   reconciliationNumber: true,  // Auto-generated on backend
+  productId: true,             // Auto-populated from production entry
   editCount: true,             // Managed by backend
   lastEditedBy: true,          // Managed by backend
   lastEditedAt: true,          // Managed by backend

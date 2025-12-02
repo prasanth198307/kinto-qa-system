@@ -3457,12 +3457,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Raw material issuance not found" });
       }
       
-      // Verify production entry exists if linked
+      // Verify production entry exists and get productId
+      let productId: string | null = null;
       if (validatedHeader.productionEntryId) {
         const production = await storage.getProductionEntry(validatedHeader.productionEntryId);
         if (!production) {
           return res.status(404).json({ message: "Production entry not found" });
         }
+        productId = production.productId || issuance.productId || null;
+      } else {
+        productId = issuance.productId || null;
       }
       
       // Check for duplicate reconciliation (issuance + shift)
@@ -3484,6 +3488,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ...validatedHeader,
           reconciliationDate: validatedHeader.reconciliationDate ? new Date(validatedHeader.reconciliationDate).toISOString() : new Date().toISOString(),
           reconciliationNumber,
+          productId,  // Auto-populated from production entry or issuance
           editCount: 0,
           createdBy: req.user?.id,
         }]).returning();
