@@ -180,7 +180,7 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
         </div>
 
         <!-- Company Header -->
-        <div class="company-header">
+        <div class="company-header${template?.logoUrl ? ' has-logo' : ''}">
           ${template?.logoUrl ? `
             <div class="company-logo">
               <img src="${template.logoUrl}" alt="Company Logo" />
@@ -502,13 +502,17 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
 
             /* Company Header */
             .company-header {
+              border: 1px solid #000;
+              padding: 8px;
+              margin-bottom: 10px;
+              text-align: center;
+            }
+
+            .company-header.has-logo {
               display: flex;
               align-items: center;
               justify-content: center;
               gap: 15px;
-              border: 1px solid #000;
-              padding: 8px;
-              margin-bottom: 10px;
             }
 
             .company-logo {
@@ -523,7 +527,6 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
 
             .company-info {
               text-align: center;
-              flex-grow: 1;
             }
 
             .company-name {
