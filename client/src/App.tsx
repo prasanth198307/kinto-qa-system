@@ -1724,6 +1724,151 @@ function CashRegisterReportWrapper() {
   );
 }
 
+// Wrapper component for Credit Notes page with filtered navigation
+function CreditNotesPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('credit-notes');
+  
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
+  
+  return (
+    <DashboardShell
+      title="Credit Notes"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={(viewId) => {
+        setActiveView(viewId);
+      }}
+    >
+      <CreditNotes />
+    </DashboardShell>
+  );
+}
+
+// Wrapper component for Sales Returns page with filtered navigation
+function SalesReturnsPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('sales-returns');
+  
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
+  
+  return (
+    <DashboardShell
+      title="Sales Returns"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={(viewId) => {
+        setActiveView(viewId);
+      }}
+    >
+      <SalesReturns />
+    </DashboardShell>
+  );
+}
+
+// Wrapper component for Write-Off Report page with filtered navigation
+function WriteOffReportPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('write-off-report');
+  
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
+  
+  return (
+    <DashboardShell
+      title="Write-Off Report"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={(viewId) => {
+        setActiveView(viewId);
+      }}
+    >
+      <WriteOffReport />
+    </DashboardShell>
+  );
+}
+
+// Wrapper component for Dispatch Tracking page with filtered navigation
+function DispatchTrackingPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('dispatch-tracking');
+  
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
+  
+  return (
+    <DashboardShell
+      title="Dispatch Tracking"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={(viewId) => {
+        setActiveView(viewId);
+      }}
+    >
+      <DispatchTracking showHeader={false} />
+    </DashboardShell>
+  );
+}
+
+// Wrapper component for Cancelled Invoices page with filtered navigation
+function CancelledInvoicesPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('cancelled-invoices');
+  
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
+  
+  return (
+    <DashboardShell
+      title="Cancelled Invoices"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={(viewId) => {
+        setActiveView(viewId);
+      }}
+    >
+      <CancelledInvoices showHeader={false} />
+    </DashboardShell>
+  );
+}
+
 function Router() {
   return (
     <Switch>
@@ -1736,11 +1881,11 @@ function Router() {
       <ProtectedRoute path="/vendor-history" component={VendorHistoryPage} />
       <ProtectedRoute path="/vendor-history/:vendorId" component={VendorHistoryDetailPage} />
       <ProtectedRoute path="/invoice/:id" component={InvoiceDetail} />
-      <ProtectedRoute path="/dispatch-tracking" component={DispatchTracking} />
-      <ProtectedRoute path="/sales-returns" component={SalesReturns} />
-      <ProtectedRoute path="/credit-notes" component={CreditNotes} />
-      <ProtectedRoute path="/cancelled-invoices" component={CancelledInvoices} />
-      <ProtectedRoute path="/write-off-report" component={WriteOffReport} />
+      <ProtectedRoute path="/dispatch-tracking" component={DispatchTrackingPageWrapper} />
+      <ProtectedRoute path="/sales-returns" component={SalesReturnsPageWrapper} />
+      <ProtectedRoute path="/credit-notes" component={CreditNotesPageWrapper} />
+      <ProtectedRoute path="/cancelled-invoices" component={CancelledInvoicesPageWrapper} />
+      <ProtectedRoute path="/write-off-report" component={WriteOffReportPageWrapper} />
       <ProtectedRoute path="/pending-payments" component={PendingPaymentsPage} />
       <ProtectedRoute path="/payment-management" component={PaymentManagementPage} />
       <ProtectedRoute path="/vendor-analytics" component={VendorAnalyticsPage} />
