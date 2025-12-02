@@ -158,16 +158,36 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
     });
   };
 
-  // Calculate expected usage from BOM for each material
-  const calculateExpectedUsage = (rawMaterialId: string): number => {
+  // Calculate expected usage from BOM based on PRODUCTION (what was actually produced)
+  const calculateProductionDemand = (rawMaterialId: string): number => {
     if (!producedCases) return 0;
     
     const bomItem = findBomItem(rawMaterialId);
     if (!bomItem) return 0;
     
-    // Expected = Produced Cases × BOM quantity per case
+    // Production Demand = Produced Cases × BOM quantity per case
     const quantityPerCase = Number(bomItem.quantityRequired || bomItem.bom?.quantityRequired) || 0;
     return Math.round(producedCases * quantityPerCase * 100) / 100;
+  };
+
+  // Get issuance capacity in cases (how many cases was the issuance planned for)
+  const getIssuanceCapacity = (): number => {
+    if (!issuanceSummary?.issuance) return 0;
+    // The issuance is made for a planned output quantity (cases)
+    return Number(issuanceSummary.issuance.plannedOutput) || 0;
+  };
+
+  // Calculate expected usage from BOM based on ISSUANCE capacity (what store issued for)
+  const calculateExpectedFromIssuance = (rawMaterialId: string): number => {
+    const issuanceCapacity = getIssuanceCapacity();
+    if (!issuanceCapacity) return 0;
+    
+    const bomItem = findBomItem(rawMaterialId);
+    if (!bomItem) return 0;
+    
+    // Expected from Issuance = Issuance Capacity (cases) × BOM quantity per case
+    const quantityPerCase = Number(bomItem.quantityRequired || bomItem.bom?.quantityRequired) || 0;
+    return Math.round(issuanceCapacity * quantityPerCase * 100) / 100;
   };
 
   // Get acceptable loss percent from raw material type (default 2%)
@@ -214,13 +234,30 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
     }
   }, [issuanceSummary, reconciliation, items.length, selectedIssuanceId]);
 
-  // When production entry is selected, show expected usage for reference
-  // But DON'T auto-override user values - let them enter actual values
+  // When production entry is selected, update "Used" to production demand
+  // This is the actual usage based on what was produced
   useEffect(() => {
-    // This effect is intentionally minimal - we don't auto-populate from production entry
-    // because the reconciliation is about what actually happened with the ISSUANCE
-    // The production entry tells us what was produced, not what materials were used/returned
-  }, [selectedProductionId, producedCases, productionEmptyBottlesUsed, productionEmptyBottlesPending]);
+    if (!reconciliation && selectedProductionId && items.length > 0 && producedCases > 0) {
+      const updatedItems = items.map(item => {
+        const issued = item.quantityIssued || 0;
+        const productionDemand = calculateProductionDemand(item.rawMaterialId);
+        
+        // If production demand is available, use it as "Used"
+        // Otherwise keep what was issued as default
+        const used = productionDemand > 0 ? Math.min(productionDemand, issued) : issued;
+        const pending = item.quantityPending || 0;
+        const suggestedReturned = Math.max(0, issued - used - pending);
+        
+        return {
+          ...item,
+          quantityUsed: used,
+          quantityReturned: suggestedReturned,
+        };
+      });
+      setItems(updatedItems);
+    }
+  }, [selectedProductionId, producedCases]);
+
 
   const createMutation = useMutation({
     mutationFn: async (data: { header: HeaderFormData; items: ItemFormData[] }) => {
@@ -534,7 +571,18 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
                           <TableRow>
                             <TableHead>Material</TableHead>
                             <TableHead className="text-right">Issued</TableHead>
-                            <TableHead className="text-right">Expected</TableHead>
+                            <TableHead className="text-right">
+                              <div className="flex flex-col items-end">
+                                <span>Expected</span>
+                                <span className="text-xs text-muted-foreground font-normal">(from Issuance)</span>
+                              </div>
+                            </TableHead>
+                            <TableHead className="text-right">
+                              <div className="flex flex-col items-end">
+                                <span>Prod. Demand</span>
+                                <span className="text-xs text-muted-foreground font-normal">({producedCases} cases)</span>
+                              </div>
+                            </TableHead>
                             <TableHead className="text-right">Used</TableHead>
                             <TableHead className="text-right bg-amber-50 dark:bg-amber-950">Left in Hopper</TableHead>
                             <TableHead className="text-right">To Return</TableHead>
@@ -548,9 +596,9 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
                             const used = item.quantityUsed || 0;
                             const returned = item.quantityReturned || 0;
                             const pending = item.quantityPending || 0; // Hopper
-                            const expected = calculateExpectedUsage(item.rawMaterialId);
+                            const expectedFromIssuance = calculateExpectedFromIssuance(item.rawMaterialId);
+                            const productionDemand = calculateProductionDemand(item.rawMaterialId);
                             const variance = calculateVariance(issued, used, returned, pending);
-                            const usageVariance = expected > 0 ? used - expected : 0;
                             const variancePercent = issued > 0 ? Math.abs((variance / issued) * 100) : 0;
                             const acceptableLoss = getAcceptableLossPercent(item.rawMaterialId);
                             const isWithinTolerance = variancePercent <= acceptableLoss;
@@ -565,26 +613,24 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
                                 </TableCell>
                                 <TableCell className="text-right">
                                   <Badge variant="secondary" className="text-xs">
-                                    {expected > 0 ? expected.toFixed(2) : '-'}
+                                    {expectedFromIssuance > 0 ? expectedFromIssuance.toFixed(0) : '-'}
                                   </Badge>
                                 </TableCell>
                                 <TableCell className="text-right">
-                                  <div className="flex flex-col items-end gap-1">
-                                    <Input
-                                      type="number"
-                                      min="0"
-                                      step="0.01"
-                                      value={used}
-                                      onChange={(e) => updateItem(index, 'quantityUsed', Number(e.target.value))}
-                                      className="w-20 text-right"
-                                      data-testid={`input-used-${index}`}
-                                    />
-                                    {expected > 0 && usageVariance !== 0 && (
-                                      <span className={`text-xs ${usageVariance > 0 ? 'text-red-500' : 'text-green-500'}`}>
-                                        {usageVariance > 0 ? '+' : ''}{usageVariance.toFixed(2)}
-                                      </span>
-                                    )}
-                                  </div>
+                                  <Badge variant="outline" className="text-xs bg-blue-50 dark:bg-blue-950">
+                                    {productionDemand > 0 ? productionDemand.toFixed(0) : '-'}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={used}
+                                    onChange={(e) => updateItem(index, 'quantityUsed', Number(e.target.value))}
+                                    className="w-20 text-right"
+                                    data-testid={`input-used-${index}`}
+                                  />
                                 </TableCell>
                                 <TableCell className="text-right bg-amber-50 dark:bg-amber-950">
                                   <Input
@@ -658,16 +704,16 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
                         <div className="text-sm text-blue-900 dark:text-blue-100 space-y-1">
                           <p className="font-medium">Material Reconciliation Rule</p>
                           <p className="text-blue-700 dark:text-blue-300">
-                            • <strong>Issued = Used + Hopper + Returned</strong> (must balance)
+                            • <strong>Issued = Used + Hopper + Returned + Loss</strong>
                           </p>
                           <p className="text-blue-700 dark:text-blue-300">
-                            • <strong>Variance = 0:</strong> Perfect balance (green ✓)
+                            • <strong>Expected (from Issuance):</strong> BOM × {getIssuanceCapacity()} cases (planned output)
                           </p>
                           <p className="text-blue-700 dark:text-blue-300">
-                            • <strong>Variance ≠ 0:</strong> Loss or discrepancy. Green if within loss % threshold, Red if exceeds.
+                            • <strong>Prod. Demand:</strong> BOM × {producedCases} cases (actually produced)
                           </p>
                           <p className="text-blue-700 dark:text-blue-300">
-                            • <strong>Expected:</strong> What BOM says should be used for {producedCases} cases
+                            • <strong>Variance:</strong> Green ✓ if within loss %, Red if exceeds threshold
                           </p>
                           {reconciliation && (
                             <p className="text-blue-700 dark:text-blue-300 mt-2">
