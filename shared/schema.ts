@@ -1272,6 +1272,7 @@ export const productionEntries = pgTable("production_entries", {
   shift: varchar("shift", { length: 20 }).notNull(), // A, B, or General
   producedQuantity: numeric("produced_quantity", { precision: 12, scale: 2 }).notNull(), // Actual output
   rejectedQuantity: numeric("rejected_quantity", { precision: 12, scale: 2 }).default('0'),
+  emptyBottlesOpening: numeric("empty_bottles_opening", { precision: 12, scale: 2 }).default('0'),
   emptyBottlesProduced: numeric("empty_bottles_produced", { precision: 12, scale: 2 }).default('0'),
   emptyBottlesUsed: numeric("empty_bottles_used", { precision: 12, scale: 2 }).default('0'),
   emptyBottlesPending: numeric("empty_bottles_pending", { precision: 12, scale: 2 }).default('0'),
@@ -1319,6 +1320,14 @@ export const insertProductionEntrySchema = createInsertSchema(productionEntries,
   ]).refine(val => val >= 0, {
     message: "Rejected quantity must be non-negative"
   }).optional(),
+  emptyBottlesOpening: z.union([
+    z.string().transform(val => {
+      if (!val || val.trim() === '') return 0;
+      const num = parseFloat(val);
+      return isNaN(num) ? 0 : num;
+    }),
+    z.number()
+  ]).optional(),
   emptyBottlesProduced: z.union([
     z.string().transform(val => {
       if (!val || val.trim() === '') return 0;
