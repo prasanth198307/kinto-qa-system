@@ -77,13 +77,18 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
   const [additionalProduced, setAdditionalProduced] = useState<number>(0);
 
   // Calculate bottles from issuance based on preform-type materials
-  // Formula: Σ (quantityIssued × usableUnits) for preform materials
-  const calculateBottlesFromIssuance = (): { total: number; breakdown: { name: string; qty: number; usableUnits: number; bottles: number }[] } => {
+  // Formula: Σ (quantityIssued × conversionValue) for preform materials
+  // Note: Use conversionValue (full potential) NOT usableUnits (which has loss % applied)
+  // Loss % is for reconciliation variance check, not for potential calculation
+  const calculateBottlesFromIssuance = (): { 
+    total: number; 
+    breakdown: { name: string; qty: number; conversionValue: number; bottles: number; lossPercent: number }[] 
+  } => {
     if (!issuanceSummary?.issuance?.items || !issuanceSummary?.bomItems) {
       return { total: 0, breakdown: [] };
     }
     
-    const breakdown: { name: string; qty: number; usableUnits: number; bottles: number }[] = [];
+    const breakdown: { name: string; qty: number; conversionValue: number; bottles: number; lossPercent: number }[] = [];
     let total = 0;
     
     // Match each issuance item to its BOM item to get type details
@@ -107,16 +112,20 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
           typeName.includes('preform') ||
           typeName.includes('pet');
         
-        if (isPreformType && typeDetails.usableUnits) {
+        // Use conversionValue (full potential) instead of usableUnits (which has loss % applied)
+        const conversionValue = Number(typeDetails.conversionValue) || Number(typeDetails.usableUnits) || 0;
+        const lossPercent = Number(typeDetails.lossPercent) || 0;
+        
+        if (isPreformType && conversionValue > 0) {
           const qty = Number(item.quantityIssued) || 0;
-          const usableUnits = Number(typeDetails.usableUnits) || 0;
-          const bottles = Math.round(qty * usableUnits);
+          const bottles = Math.round(qty * conversionValue);
           
           breakdown.push({
             name: typeDetails.typeName || 'Unknown',
             qty,
-            usableUnits,
-            bottles
+            conversionValue,
+            bottles,
+            lossPercent
           });
           total += bottles;
         }
@@ -462,15 +471,15 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
             {/* Preform Issuance & Variance Analysis */}
             {bottlesFromIssuance.total > 0 && (
               <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-md">
-                <div className="grid grid-cols-3 gap-4">
-                  {/* Potential from Issuance */}
+                <div className="grid grid-cols-4 gap-4">
+                  {/* Potential from Issuance (full conversion, no loss %) */}
                   <div>
-                    <span className="text-sm font-medium text-amber-700 dark:text-amber-300">Potential (from Preforms)</span>
+                    <span className="text-sm font-medium text-amber-700 dark:text-amber-300">Potential (100%)</span>
                     <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{bottlesFromIssuance.total.toLocaleString()}</p>
                     <div className="text-xs text-amber-600 dark:text-amber-400 mt-1">
                       {bottlesFromIssuance.breakdown.map((item, idx) => (
                         <div key={idx}>
-                          {item.qty} bags × {item.usableUnits.toLocaleString()}
+                          {item.qty} bags × {item.conversionValue.toLocaleString()}
                         </div>
                       ))}
                     </div>
@@ -503,13 +512,13 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
                   
                   {/* Variance - Left in Hopper / To Return */}
                   <div>
-                    <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Left in Hopper / Return</span>
+                    <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Left in Hopper</span>
                     {(() => {
                       const totalProduced = Number(emptyBottlesProduced) + additionalProduced;
                       const variance = bottlesFromIssuance.total - totalProduced;
                       const firstBreakdown = bottlesFromIssuance.breakdown[0];
-                      const bagsToReturn = firstBreakdown && firstBreakdown.usableUnits > 0 
-                        ? (variance / firstBreakdown.usableUnits).toFixed(2) 
+                      const bagsToReturn = firstBreakdown && firstBreakdown.conversionValue > 0 
+                        ? (variance / firstBreakdown.conversionValue).toFixed(2) 
                         : '0';
                       return (
                         <>
@@ -519,6 +528,34 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
                           <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
                             ≈ {bagsToReturn} bags to return
                           </p>
+                        </>
+                      );
+                    })()}
+                  </div>
+                  
+                  {/* Variance % - Check against 2% threshold */}
+                  <div>
+                    <span className="text-sm font-medium text-purple-700 dark:text-purple-300">Variance %</span>
+                    {(() => {
+                      const totalProduced = Number(emptyBottlesProduced) + additionalProduced;
+                      const potential = bottlesFromIssuance.total;
+                      const variance = potential - totalProduced;
+                      const variancePercent = potential > 0 ? (variance / potential) * 100 : 0;
+                      const isWithinLimit = variancePercent <= 2;
+                      const storedLoss = bottlesFromIssuance.breakdown[0]?.lossPercent || 0;
+                      return (
+                        <>
+                          <p className={`text-2xl font-bold ${isWithinLimit ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                            {variancePercent.toFixed(2)}%
+                          </p>
+                          <p className={`text-xs mt-1 ${isWithinLimit ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                            {isWithinLimit ? '✓ Within 2% limit' : '⚠ Exceeds 2% limit'}
+                          </p>
+                          {storedLoss > 0 && (
+                            <p className="text-xs text-muted-foreground">
+                              (Expected loss: {storedLoss}%)
+                            </p>
+                          )}
                         </>
                       );
                     })()}
