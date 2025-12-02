@@ -487,11 +487,11 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
           <Card className="p-6">
             <h3 className="text-lg font-semibold mb-4">Empty Bottles Tracking</h3>
             
-            {/* Preform Issuance & Variance Analysis */}
+            {/* Preform Issuance & Hopper Analysis */}
             {bottlesFromIssuance.total > 0 && (
               <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-md">
-                <div className="grid grid-cols-4 gap-4">
-                  {/* Potential from Issuance (full conversion, no loss %) */}
+                <div className="grid grid-cols-5 gap-4">
+                  {/* Potential from Issuance (full conversion) */}
                   <div>
                     <span className="text-sm font-medium text-amber-700 dark:text-amber-300">Potential (100%)</span>
                     <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{bottlesFromIssuance.total.toLocaleString()}</p>
@@ -529,52 +529,70 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
                     })()}
                   </div>
                   
-                  {/* Variance - Left in Hopper / To Return */}
+                  {/* Left in Hopper - Reusable for next day */}
                   <div>
                     <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Left in Hopper</span>
                     {(() => {
                       const totalProduced = Number(emptyBottlesProduced) + additionalProduced;
-                      const variance = bottlesFromIssuance.total - totalProduced;
-                      const firstBreakdown = bottlesFromIssuance.breakdown[0];
-                      const bagsToReturn = firstBreakdown && firstBreakdown.conversionValue > 0 
-                        ? (variance / firstBreakdown.conversionValue).toFixed(2) 
-                        : '0';
+                      const leftInHopper = bottlesFromIssuance.total - totalProduced;
                       return (
                         <>
-                          <p className={`text-2xl font-bold ${variance > 0 ? 'text-blue-600 dark:text-blue-400' : variance < 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`}>
-                            {variance.toLocaleString()} pcs
+                          <p className={`text-2xl font-bold ${leftInHopper >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}`}>
+                            {leftInHopper.toLocaleString()} pcs
                           </p>
                           <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                            ≈ {bagsToReturn} bags to return
+                            Reusable for next day
                           </p>
                         </>
                       );
                     })()}
                   </div>
                   
-                  {/* Variance % - Check against 2% threshold */}
+                  {/* Bags to Return - Full bags only */}
                   <div>
-                    <span className="text-sm font-medium text-purple-700 dark:text-purple-300">Variance %</span>
+                    <span className="text-sm font-medium text-purple-700 dark:text-purple-300">Bags to Return</span>
                     {(() => {
                       const totalProduced = Number(emptyBottlesProduced) + additionalProduced;
-                      const potential = bottlesFromIssuance.total;
-                      const variance = potential - totalProduced;
-                      const variancePercent = potential > 0 ? (variance / potential) * 100 : 0;
-                      const isWithinLimit = variancePercent <= 2;
-                      const storedLoss = bottlesFromIssuance.breakdown[0]?.lossPercent || 0;
+                      const leftInHopper = bottlesFromIssuance.total - totalProduced;
+                      const firstBreakdown = bottlesFromIssuance.breakdown[0];
+                      const conversionValue = firstBreakdown?.conversionValue || 1;
+                      const fullBagsToReturn = Math.floor(leftInHopper / conversionValue);
+                      const remainingInHopper = leftInHopper - (fullBagsToReturn * conversionValue);
                       return (
                         <>
-                          <p className={`text-2xl font-bold ${isWithinLimit ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                            {variancePercent.toFixed(2)}%
+                          <p className={`text-2xl font-bold ${fullBagsToReturn > 0 ? 'text-purple-600 dark:text-purple-400' : 'text-muted-foreground'}`}>
+                            {fullBagsToReturn} bags
                           </p>
-                          <p className={`text-xs mt-1 ${isWithinLimit ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                            {isWithinLimit ? '✓ Within 2% limit' : '⚠ Exceeds 2% limit'}
+                          <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
+                            = {(fullBagsToReturn * conversionValue).toLocaleString()} pcs
                           </p>
-                          {storedLoss > 0 && (
-                            <p className="text-xs text-muted-foreground">
-                              (Expected loss: {storedLoss}%)
-                            </p>
-                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
+                  
+                  {/* Remaining in Hopper - Carries forward */}
+                  <div>
+                    <span className="text-sm font-medium text-teal-700 dark:text-teal-300">Hopper Carry Forward</span>
+                    {(() => {
+                      const totalProduced = Number(emptyBottlesProduced) + additionalProduced;
+                      const leftInHopper = bottlesFromIssuance.total - totalProduced;
+                      const firstBreakdown = bottlesFromIssuance.breakdown[0];
+                      const conversionValue = firstBreakdown?.conversionValue || 1;
+                      const fullBagsToReturn = Math.floor(leftInHopper / conversionValue);
+                      const remainingInHopper = leftInHopper - (fullBagsToReturn * conversionValue);
+                      const carryForwardPercent = conversionValue > 0 ? (remainingInHopper / conversionValue) * 100 : 0;
+                      return (
+                        <>
+                          <p className="text-2xl font-bold text-teal-600 dark:text-teal-400">
+                            {remainingInHopper.toLocaleString()} pcs
+                          </p>
+                          <p className="text-xs text-teal-600 dark:text-teal-400 mt-1">
+                            ≈ {carryForwardPercent.toFixed(0)}% of 1 bag
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Use in next issuance
+                          </p>
                         </>
                       );
                     })()}
