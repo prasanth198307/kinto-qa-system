@@ -114,7 +114,8 @@ const endpointToScreenKey: Record<string, string> = {
   '/api/expenses': 'expenses',
   '/api/cash-register': 'cash_register',
   '/api/pending-payments': 'pending_payments',
-  '/api/payment-management': 'payment_management',
+  '/api/payment-management': 'payments',
+  '/api/invoice-payments': 'payments',
   '/api/vendor-analytics': 'vendor_analytics',
   '/api/vendor-types': 'vendor_types',
 };
