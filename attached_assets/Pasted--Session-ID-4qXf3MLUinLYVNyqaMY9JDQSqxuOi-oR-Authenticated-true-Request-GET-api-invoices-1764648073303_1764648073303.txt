@@ -1,0 +1,71 @@
+   Session ID: 4qXf3MLUinLYVNyqaMY9JDQSqxuOi_oR
+   Authenticated: true
+🔹 Request: GET /api/invoices
+   Cookie header: connect.sid=s%3A4qXf3MLUinLYVNyqaMY9JDQSqxuOi_oR.d6MO7Hg%2FjQlQgg5JZh7WS1MqhaB0UYE4bacI46PzJP4
+   Session ID: 4qXf3MLUinLYVNyqaMY9JDQSqxuOi_oR
+   Authenticated: true
+9:13:28 AM [express] GET /api/stats/today 304 in 22ms :: {"rawMaterialIssuancesCount":1,"gatepassesC…
+9:13:28 AM [express] GET /api/products 304 in 8ms :: [{"id":"e7ea51d0-8a2a-4685-abab-620cbae616ee","…
+9:13:28 AM [express] GET /api/raw-materials 304 in 22ms :: [{"id":"69898f7e-c760-4b3e-9333-666921606…
+9:13:28 AM [express] GET /api/invoices 304 in 21ms :: [{"id":"e23a4329-011b-444c-8ea2-161ae360ad6b",…
+9:13:28 AM [express] GET /api/pending-payments 304 in 27ms :: {"data":[{"id":"95cd09ab-8ab8-4729-855…
+🔹 Request: GET /api/production-entries
+   Cookie header: connect.sid=s%3A4qXf3MLUinLYVNyqaMY9JDQSqxuOi_oR.d6MO7Hg%2FjQlQgg5JZh7WS1MqhaB0UYE4bacI46PzJP4
+   Session ID: 4qXf3MLUinLYVNyqaMY9JDQSqxuOi_oR
+   Authenticated: true
+Error fetching production entries: error: column production_entries.empty_bottles_pending does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllProductionEntries (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:3525:25)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:11257:23 {
+  length: 226,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: 'Perhaps you meant to reference the column "production_entries.empty_bottles_opening".',
+  position: '358',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+9:13:32 AM [express] GET /api/production-entries 500 in 15ms :: {"message":"Failed to fetch producti…
+🔹 Request: GET /api/production-entries/opening-bottles
+   Cookie header: connect.sid=s%3A4qXf3MLUinLYVNyqaMY9JDQSqxuOi_oR.d6MO7Hg%2FjQlQgg5JZh7WS1MqhaB0UYE4bacI46PzJP4
+   Session ID: 4qXf3MLUinLYVNyqaMY9JDQSqxuOi_oR
+   Authenticated: true
+🔹 Request: GET /api/raw-material-issuances
+   Cookie header: connect.sid=s%3A4qXf3MLUinLYVNyqaMY9JDQSqxuOi_oR.d6MO7Hg%2FjQlQgg5JZh7WS1MqhaB0UYE4bacI46PzJP4
+   Session ID: 4qXf3MLUinLYVNyqaMY9JDQSqxuOi_oR
+   Authenticated: true
+Error fetching opening bottles balance: error: column production_entries.empty_bottles_pending does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllProductionEntries (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:3525:25)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:11266:23 {
+  length: 226,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: 'Perhaps you meant to reference the column "production_entries.empty_bottles_opening".',
+  position: '358',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
