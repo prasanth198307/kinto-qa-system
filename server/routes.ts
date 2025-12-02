@@ -11384,6 +11384,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update cash register transaction
+  app.put('/api/cash-register/transactions/:id', isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { amount, reference, description, transferTo, sourceType } = req.body;
+      
+      const transaction = await storage.getCashRegisterTransaction(id);
+      if (!transaction) {
+        return res.status(404).json({ message: 'Transaction not found' });
+      }
+      
+      const day = await storage.getCashRegisterDay(transaction.dayId);
+      if (!day) {
+        return res.status(404).json({ message: 'Cash register day not found' });
+      }
+      
+      if (day.status !== 'open') {
+        return res.status(400).json({ message: 'Cannot update transactions on a closed or locked day' });
+      }
+      
+      // Calculate the difference in amount to update day totals
+      const oldAmount = transaction.amount || 0;
+      const newAmount = amount !== undefined ? Math.round(parseFloat(amount)) : oldAmount;
+      const amountDifference = newAmount - oldAmount;
+      
+      // Update day totals based on transaction type
+      const dayUpdates: any = {};
+      
+      switch (transaction.transactionType) {
+        case 'deposit':
+          dayUpdates.totalDeposits = Math.max(0, day.totalDeposits + amountDifference);
+          break;
+        case 'cash_received':
+          dayUpdates.totalCashReceived = Math.max(0, day.totalCashReceived + amountDifference);
+          break;
+        case 'expense':
+          dayUpdates.totalExpenses = Math.max(0, day.totalExpenses + amountDifference);
+          break;
+        case 'transfer':
+          dayUpdates.totalTransfers = Math.max(0, day.totalTransfers + amountDifference);
+          break;
+      }
+      
+      // Recalculate closing balance
+      dayUpdates.closingBalance = day.openingBalance + 
+        (dayUpdates.totalCashReceived ?? day.totalCashReceived) - 
+        (dayUpdates.totalExpenses ?? day.totalExpenses) - 
+        (dayUpdates.totalTransfers ?? day.totalTransfers);
+      
+      // Update the day
+      await storage.updateCashRegisterDay(day.id, dayUpdates);
+      
+      // Update the transaction
+      const txnUpdates: any = {};
+      if (amount !== undefined) txnUpdates.amount = newAmount;
+      if (reference !== undefined) txnUpdates.reference = reference;
+      if (description !== undefined) txnUpdates.description = description;
+      if (transferTo !== undefined) txnUpdates.transferTo = transferTo;
+      if (sourceType !== undefined) txnUpdates.sourceType = sourceType;
+      
+      const updated = await storage.updateCashRegisterTransaction(id, txnUpdates);
+      
+      await logAudit(req.user?.id, 'UPDATE', 'cash_register_transactions', id, 
+        `Transaction updated: ${transaction.transactionType} - old amount: ${oldAmount}, new amount: ${newAmount}`);
+      
+      res.json(updated);
+    } catch (error: any) {
+      console.error('[CASH_REGISTER] Error updating transaction:', error);
+      res.status(500).json({ message: error.message || 'Failed to update transaction' });
+    }
+  });
+
   // Delete cash register transaction
   app.delete('/api/cash-register/transactions/:id', isAuthenticated, async (req: any, res: Response) => {
     try {

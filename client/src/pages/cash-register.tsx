@@ -241,6 +241,52 @@ export default function CashRegisterPage() {
     },
   });
 
+  // Update transaction mutation
+  const updateTransactionMutation = useMutation({
+    mutationFn: async (data: { id: string; amount?: number; reference?: string; description?: string; transferTo?: string; sourceType?: string }) => {
+      const response = await apiRequest('PUT', `/api/cash-register/transactions/${data.id}`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/cash-register/days'] });
+      if (selectedDay) {
+        viewDayDetails(selectedDay.id);
+      }
+      toast({ title: "Success", description: "Transaction updated" });
+      setEditingTransaction(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Edit transaction state
+  const [editingTransaction, setEditingTransaction] = useState<{ id: string; type: string; amount: string; reference: string; description: string; transferTo: string; sourceType: string } | null>(null);
+
+  const startEditTransaction = (txn: CashRegisterTransaction & { items?: CashRegisterExpenseItem[] }) => {
+    setEditingTransaction({
+      id: txn.id,
+      type: txn.transactionType,
+      amount: ((txn.amount || 0) / 100).toString(),
+      reference: txn.reference || '',
+      description: txn.description || '',
+      transferTo: txn.transferTo || '',
+      sourceType: txn.sourceType || 'sale_cash',
+    });
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingTransaction) return;
+    updateTransactionMutation.mutate({
+      id: editingTransaction.id,
+      amount: Math.round(parseFloat(editingTransaction.amount || '0') * 100),
+      reference: editingTransaction.reference,
+      description: editingTransaction.description,
+      transferTo: editingTransaction.transferTo,
+      sourceType: editingTransaction.sourceType,
+    });
+  };
+
   const handleCreateNewDay = () => {
     const today = format(new Date(), 'yyyy-MM-dd');
     const openingBalance = getPreviousDayClosingBalance();
@@ -695,6 +741,11 @@ export default function CashRegisterPage() {
                             </label>
                           )}
                           {isDayOpen && (
+                            <Button size="icon" variant="ghost" onClick={() => startEditTransaction(txn)} data-testid={`button-edit-cash-${txn.id}`}>
+                              <Edit className="w-4 h-4 text-muted-foreground" />
+                            </Button>
+                          )}
+                          {isDayOpen && (
                             <Button size="icon" variant="ghost" onClick={() => deleteTransactionMutation.mutate(txn.id)} data-testid={`button-delete-cash-${txn.id}`}>
                               <Trash2 className="w-4 h-4 text-muted-foreground" />
                             </Button>
@@ -861,6 +912,11 @@ export default function CashRegisterPage() {
                             </label>
                           )}
                           {isDayOpen && (
+                            <Button size="icon" variant="ghost" onClick={() => startEditTransaction(txn)} data-testid={`button-edit-expense-${txn.id}`}>
+                              <Edit className="w-4 h-4 text-muted-foreground" />
+                            </Button>
+                          )}
+                          {isDayOpen && (
                             <Button size="icon" variant="ghost" onClick={() => deleteTransactionMutation.mutate(txn.id)} data-testid={`button-delete-expense-${txn.id}`}>
                               <Trash2 className="w-4 h-4 text-muted-foreground" />
                             </Button>
@@ -956,6 +1012,11 @@ export default function CashRegisterPage() {
                                 <span><Paperclip className="w-4 h-4 text-muted-foreground" /></span>
                               </Button>
                             </label>
+                          )}
+                          {isDayOpen && (
+                            <Button size="icon" variant="ghost" onClick={() => startEditTransaction(txn)} data-testid={`button-edit-transfer-${txn.id}`}>
+                              <Edit className="w-4 h-4 text-muted-foreground" />
+                            </Button>
                           )}
                           {isDayOpen && (
                             <Button size="icon" variant="ghost" onClick={() => deleteTransactionMutation.mutate(txn.id)} data-testid={`button-delete-transfer-${txn.id}`}>
@@ -1067,11 +1128,11 @@ export default function CashRegisterPage() {
                                 variant="destructive"
                                 onClick={() => {
                                   const shortage = calculatedClosing - Math.round(parseFloat(actualBalance) * 100);
-                                  setNewExpense({ 
+                                  setExpenseItems([{ 
                                     amount: (shortage / 100).toString(), 
                                     reference: 'Reconciliation Adjustment', 
                                     description: 'Cash shortage during reconciliation' 
-                                  });
+                                  }]);
                                   setIsAddingExpense(true);
                                   setIsReconcileOpen(false);
                                   toast({ title: "Add Expense", description: "Record the shortage as an expense, then close the day" });
@@ -1140,6 +1201,103 @@ export default function CashRegisterPage() {
             </CardContent>
           </Card>
         )}
+
+        {/* Edit Transaction Dialog */}
+        <Dialog open={!!editingTransaction} onOpenChange={(open) => !open && setEditingTransaction(null)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Edit Transaction</DialogTitle>
+              <DialogDescription>
+                Update the {editingTransaction?.type === 'cash_received' ? 'cash received' : editingTransaction?.type === 'expense' ? 'expense' : 'transfer'} transaction.
+              </DialogDescription>
+            </DialogHeader>
+            
+            {editingTransaction && (
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-amount">Amount (₹)</Label>
+                  <Input
+                    id="edit-amount"
+                    type="number"
+                    step="0.01"
+                    value={editingTransaction.amount}
+                    onChange={(e) => setEditingTransaction(prev => prev ? { ...prev, amount: e.target.value } : null)}
+                    data-testid="input-edit-amount"
+                  />
+                </div>
+                
+                {editingTransaction.type === 'cash_received' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-source-type">Source Type</Label>
+                    <Select 
+                      value={editingTransaction.sourceType} 
+                      onValueChange={(value) => setEditingTransaction(prev => prev ? { ...prev, sourceType: value } : null)}
+                    >
+                      <SelectTrigger id="edit-source-type" data-testid="select-edit-source-type">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="sale_cash">Sale Cash</SelectItem>
+                        <SelectItem value="secondary_sale">Secondary Sale</SelectItem>
+                        <SelectItem value="upi">UPI</SelectItem>
+                        <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                
+                {editingTransaction.type === 'transfer' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-transfer-to">Transfer To</Label>
+                    <Input
+                      id="edit-transfer-to"
+                      value={editingTransaction.transferTo}
+                      onChange={(e) => setEditingTransaction(prev => prev ? { ...prev, transferTo: e.target.value } : null)}
+                      placeholder="e.g., TULASI, Bank"
+                      data-testid="input-edit-transfer-to"
+                    />
+                  </div>
+                )}
+                
+                <div className="space-y-2">
+                  <Label htmlFor="edit-reference">Reference</Label>
+                  <Input
+                    id="edit-reference"
+                    value={editingTransaction.reference}
+                    onChange={(e) => setEditingTransaction(prev => prev ? { ...prev, reference: e.target.value } : null)}
+                    placeholder="Optional reference"
+                    data-testid="input-edit-reference"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="edit-description">Description</Label>
+                  <Input
+                    id="edit-description"
+                    value={editingTransaction.description}
+                    onChange={(e) => setEditingTransaction(prev => prev ? { ...prev, description: e.target.value } : null)}
+                    placeholder="Optional description"
+                    data-testid="input-edit-description"
+                  />
+                </div>
+              </div>
+            )}
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditingTransaction(null)} data-testid="button-cancel-edit">
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleSaveEdit}
+                disabled={updateTransactionMutation.isPending}
+                data-testid="button-save-edit"
+              >
+                {updateTransactionMutation.isPending ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
