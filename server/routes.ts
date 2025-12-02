@@ -15,6 +15,7 @@ import { whatsappWebhookRouter } from "./whatsappWebhook";
 import { whatsappConversationService } from "./whatsappConversationService";
 import { calculateBOMSuggestions } from "@shared/calculations";
 import { importVyapaarData, clearImportedData, importPaymentsOnly } from "./vyapaar-import";
+import { importCreditNotesFromExcel } from "./creditnote-import";
 import { parseExcelFile, commitImport } from "./cashRegisterImport";
 import { importCashRegisterFromExcel } from "./importCashRegisterFromExcel";
 import { insertCashRegisterDaySchema, insertCashRegisterTransactionSchema, insertCashRegisterExpenseItemSchema, insertSalespersonMappingSchema, cashRegisterDays, cashRegisterTransactions, cashRegisterExpenseItems, expenseVouchers, expenseItems } from "@shared/schema";
@@ -10243,6 +10244,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false,
         message: error.message || 'Failed to clear imported data'
+      });
+    }
+  });
+
+  // Credit Notes import endpoint (from Vyapaar export)
+  app.post('/api/import-credit-notes', isAuthenticated, requireRole('admin'), upload.single('creditNotesFile'), async (req: any, res: Response) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ 
+          success: false,
+          message: 'Credit Notes file is required'
+        });
+      }
+
+      // Create temporary directory
+      const tmpDir = path.join(process.cwd(), 'tmp', 'uploads');
+      if (!fs.existsSync(tmpDir)) {
+        fs.mkdirSync(tmpDir, { recursive: true });
+      }
+
+      // Save file temporarily
+      const timestamp = Date.now();
+      const filePath = path.join(tmpDir, `creditnotes-${timestamp}.xlsx`);
+      fs.writeFileSync(filePath, req.file.buffer);
+
+      console.log('[CREDIT NOTES IMPORT] Starting import...');
+      
+      // Run import
+      const result = await importCreditNotesFromExcel(filePath);
+
+      // Clean up
+      try {
+        fs.unlinkSync(filePath);
+      } catch (cleanupError) {
+        console.error('[CREDIT NOTES IMPORT] Failed to cleanup temp file:', cleanupError);
+      }
+
+      console.log('[CREDIT NOTES IMPORT] Import completed:', result);
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error('[CREDIT NOTES IMPORT] Error:', error);
+      res.status(500).json({ 
+        success: false,
+        message: error.message || 'Credit notes import failed'
       });
     }
   });

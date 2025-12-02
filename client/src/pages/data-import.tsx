@@ -36,6 +36,19 @@ interface ImportResult {
   };
 }
 
+interface CreditNoteImportResult {
+  success: boolean;
+  message: string;
+  stats: {
+    creditNotes: number;
+    creditNoteItems: number;
+    skippedNotes: number;
+    skippedItems: number;
+    unmatchedVendors: string[];
+    unmatchedProducts: string[];
+  };
+}
+
 export default function DataImport() {
   const { toast } = useToast();
   const [partyFile, setPartyFile] = useState<File | null>(null);
@@ -46,6 +59,10 @@ export default function DataImport() {
   const [importSuccessful, setImportSuccessful] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
   const [showClearInvoicesDialog, setShowClearInvoicesDialog] = useState(false);
+  
+  const [creditNotesFile, setCreditNotesFile] = useState<File | null>(null);
+  const [creditNotesResult, setCreditNotesResult] = useState<CreditNoteImportResult | null>(null);
+  const [creditNotesSuccessful, setCreditNotesSuccessful] = useState(false);
 
   const importMutation = useMutation({
     mutationFn: async (formData: FormData) => {
@@ -177,6 +194,54 @@ export default function DataImport() {
     },
   });
 
+  const creditNotesImportMutation = useMutation({
+    mutationFn: async (formData: FormData) => {
+      const response = await fetch('/api/import-credit-notes', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        let errorMessage = 'Import failed';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch (parseError) {
+          console.error('Failed to parse error response:', parseError);
+        }
+        throw new Error(errorMessage);
+      }
+
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.message || 'Import failed');
+      }
+      
+      return result as CreditNoteImportResult;
+    },
+    onSuccess: (data: CreditNoteImportResult) => {
+      setCreditNotesResult(data);
+      setCreditNotesSuccessful(true);
+      
+      queryClient.invalidateQueries({ queryKey: ['/api/credit-notes'] });
+      
+      toast({
+        title: "Credit Notes Import Successful",
+        description: `Imported ${data.stats.creditNotes} credit notes with ${data.stats.creditNoteItems} items`,
+      });
+    },
+    onError: (error: Error) => {
+      setCreditNotesResult(null);
+      setCreditNotesSuccessful(false);
+      toast({
+        title: "Import Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleImport = () => {
     if (!saleFile) {
       toast({
@@ -201,6 +266,23 @@ export default function DataImport() {
 
     setImportResult(null);
     importMutation.mutate(formData);
+  };
+
+  const handleCreditNotesImport = () => {
+    if (!creditNotesFile) {
+      toast({
+        title: "Missing File",
+        description: "Please upload a Credit Notes Excel file",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('creditNotesFile', creditNotesFile);
+
+    setCreditNotesResult(null);
+    creditNotesImportMutation.mutate(formData);
   };
 
   const handleClearData = () => {
@@ -533,6 +615,156 @@ export default function DataImport() {
 
       <Card>
         <CardHeader>
+          <CardTitle data-testid="title-credit-notes-import">Credit Notes Import</CardTitle>
+          <CardDescription>
+            Import Credit Notes from Vyapaar Custom Report export
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertTitle>Requirements</AlertTitle>
+            <AlertDescription>
+              The Excel file must contain "Custom Report" and "Item Details" sheets from Vyapaar.
+              Vendors and products must already exist in the system for matching.
+            </AlertDescription>
+          </Alert>
+          
+          <div className="space-y-2">
+            <Label htmlFor="credit-notes-file" data-testid="label-credit-notes-file">
+              Credit Notes Excel File
+            </Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="credit-notes-file"
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={(e) => setCreditNotesFile(e.target.files?.[0] || null)}
+                disabled={creditNotesImportMutation.isPending || creditNotesSuccessful}
+                data-testid="input-credit-notes-file"
+              />
+              {creditNotesFile && (
+                <CheckCircle2 className="h-5 w-5 text-green-600" data-testid="icon-credit-notes-file-selected" />
+              )}
+            </div>
+            {creditNotesFile && (
+              <p className="text-sm text-muted-foreground" data-testid="text-credit-notes-filename">
+                Selected: {creditNotesFile.name}
+              </p>
+            )}
+          </div>
+
+          <div className="flex gap-2">
+            <Button
+              onClick={handleCreditNotesImport}
+              disabled={!creditNotesFile || creditNotesImportMutation.isPending || creditNotesSuccessful}
+              className="gap-2"
+              data-testid="button-import-credit-notes"
+            >
+              {creditNotesImportMutation.isPending ? (
+                <>
+                  <Progress className="h-4 w-4" />
+                  Importing...
+                </>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4" />
+                  Import Credit Notes
+                </>
+              )}
+            </Button>
+            {creditNotesSuccessful && (
+              <Button
+                onClick={() => {
+                  setCreditNotesSuccessful(false);
+                  setCreditNotesFile(null);
+                  setCreditNotesResult(null);
+                }}
+                variant="outline"
+                className="gap-2"
+                data-testid="button-reset-credit-notes-import"
+              >
+                Reset
+              </Button>
+            )}
+          </div>
+
+          {creditNotesImportMutation.isPending && (
+            <div className="space-y-2" data-testid="credit-notes-import-progress">
+              <Progress value={undefined} className="w-full" />
+              <p className="text-sm text-center text-muted-foreground">
+                Processing Credit Notes...
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {creditNotesResult && (
+        <Card data-testid="card-credit-notes-results">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2" data-testid="title-credit-notes-results">
+              {creditNotesResult.success ? (
+                <>
+                  <CheckCircle2 className="h-5 w-5 text-green-600" />
+                  Credit Notes Import Successful
+                </>
+              ) : (
+                <>
+                  <AlertCircle className="h-5 w-5 text-destructive" />
+                  Credit Notes Import Failed
+                </>
+              )}
+            </CardTitle>
+            <CardDescription data-testid="description-credit-notes-results">
+              {creditNotesResult.message}
+            </CardDescription>
+          </CardHeader>
+          {creditNotesResult.success && (
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <div className="space-y-1" data-testid="stat-credit-notes">
+                  <p className="text-sm text-muted-foreground">Credit Notes</p>
+                  <p className="text-2xl font-bold">{creditNotesResult.stats.creditNotes}</p>
+                </div>
+                <div className="space-y-1" data-testid="stat-credit-note-items">
+                  <p className="text-sm text-muted-foreground">Line Items</p>
+                  <p className="text-2xl font-bold">{creditNotesResult.stats.creditNoteItems}</p>
+                </div>
+                <div className="space-y-1" data-testid="stat-skipped-notes">
+                  <p className="text-sm text-muted-foreground">Skipped Notes</p>
+                  <p className="text-2xl font-bold">{creditNotesResult.stats.skippedNotes}</p>
+                </div>
+                <div className="space-y-1" data-testid="stat-skipped-items">
+                  <p className="text-sm text-muted-foreground">Skipped Items</p>
+                  <p className="text-2xl font-bold">{creditNotesResult.stats.skippedItems}</p>
+                </div>
+              </div>
+              {creditNotesResult.stats.unmatchedVendors.length > 0 && (
+                <Alert className="mt-4" variant="destructive" data-testid="alert-unmatched-vendors">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Unmatched Vendors</AlertTitle>
+                  <AlertDescription>
+                    {creditNotesResult.stats.unmatchedVendors.join(', ')}
+                  </AlertDescription>
+                </Alert>
+              )}
+              {creditNotesResult.stats.unmatchedProducts.length > 0 && (
+                <Alert className="mt-4" variant="destructive" data-testid="alert-unmatched-products">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Unmatched Products</AlertTitle>
+                  <AlertDescription>
+                    {creditNotesResult.stats.unmatchedProducts.join(', ')}
+                  </AlertDescription>
+                </Alert>
+              )}
+            </CardContent>
+          )}
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader>
           <CardTitle data-testid="title-instructions">How to Export from Vyapaar</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
@@ -560,6 +792,15 @@ export default function DataImport() {
               <p className="font-medium">Item Details Report</p>
               <p className="text-muted-foreground">
                 Go to Reports → Item Details → Export to Excel
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-2">
+            <FileSpreadsheet className="h-5 w-5 mt-0.5 text-muted-foreground flex-shrink-0" />
+            <div>
+              <p className="font-medium">Credit Notes Report</p>
+              <p className="text-muted-foreground">
+                Go to Reports → Credit Notes → Custom Report → Export to Excel (include Item Details)
               </p>
             </div>
           </div>

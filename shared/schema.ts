@@ -1956,8 +1956,9 @@ export const creditNotes = pgTable("credit_notes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   noteNumber: varchar("note_number", { length: 100 }).unique().notNull(), // CN-{invoiceNumber}-{seq}
   
-  // References
-  invoiceId: varchar("invoice_id").references(() => invoices.id).notNull(),
+  // References - invoiceId optional for imported legacy credit notes
+  invoiceId: varchar("invoice_id").references(() => invoices.id),
+  vendorId: varchar("vendor_id").references(() => vendors.id), // Required when invoiceId is null (for imports)
   salesReturnId: varchar("sales_return_id").references(() => salesReturns.id),
   
   // Credit details
