@@ -314,27 +314,34 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
     }
   }, [issuanceSummary, reconciliation, items.length, selectedIssuanceId]);
 
-  // When production entry is selected, pull Used and Hopper from production entry
-  // Production entry already has: emptyBottlesUsed (formula result) and emptyBottlesPending
+  // When production entry is selected, pull Used and calculate Returned/Hopper from production entry
+  // Production entry has: emptyBottlesUsed (total produced) and emptyBottlesPending (left in hopper)
+  // We calculate: Returned = full bags from hopper, Hopper Carry Forward = remaining pieces
   useEffect(() => {
     if (!reconciliation && selectedProductionId && items.length > 0 && selectedProduction) {
       const updatedItems = items.map(item => {
-        const issuedBags = item.quantityIssued || 0;
         const piecesPerBag = getPiecesPerBag(item.rawMaterialId);
-        const issuedPieces = piecesPerBag > 0 ? issuedBags * piecesPerBag : issuedBags;
         
-        // Pull Used and Hopper directly from production entry (already calculated there)
-        const usedFromProduction = productionEmptyBottlesUsed;
-        const hopperFromProduction = productionEmptyBottlesPending;
+        // Pull values from production entry
+        const usedFromProduction = productionEmptyBottlesUsed;  // Total Produced (pieces)
+        const leftInHopper = productionEmptyBottlesPending;     // Left in Hopper (pieces)
         
-        // Calculate suggested returned: Issued (pieces) - Used - Hopper
-        const suggestedReturned = Math.max(0, issuedPieces - usedFromProduction - hopperFromProduction);
+        // Calculate full bags to return and remaining hopper (same logic as ProductionEntryForm)
+        let fullBagsToReturnPieces = 0;
+        let hopperCarryForward = leftInHopper;
         
+        if (piecesPerBag > 0 && leftInHopper > 0) {
+          const fullBags = Math.floor(leftInHopper / piecesPerBag);
+          fullBagsToReturnPieces = fullBags * piecesPerBag;  // Convert bags back to pieces for storage
+          hopperCarryForward = leftInHopper - fullBagsToReturnPieces;
+        }
+        
+        // All quantities stored in pieces for consistent variance calculation
         return {
           ...item,
-          quantityUsed: usedFromProduction,
-          quantityPending: hopperFromProduction,
-          quantityReturned: suggestedReturned,
+          quantityUsed: usedFromProduction,           // Pieces used/produced
+          quantityReturned: fullBagsToReturnPieces,   // Pieces to return (full bags worth)
+          quantityPending: hopperCarryForward,        // Pieces remaining in hopper (carry forward)
         };
       });
       setItems(updatedItems);
@@ -675,8 +682,8 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
                             <TableHead className="text-right">Used (pcs)</TableHead>
                             <TableHead className="text-right bg-amber-50 dark:bg-amber-950">
                               <div className="flex flex-col items-end">
-                                <span>In Hopper</span>
-                                <span className="text-xs text-amber-700 dark:text-amber-300 font-normal">(bags)</span>
+                                <span>Hopper C/F</span>
+                                <span className="text-xs text-amber-700 dark:text-amber-300 font-normal">(pcs)</span>
                               </div>
                             </TableHead>
                             <TableHead className="text-right">
@@ -743,49 +750,23 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
                                   />
                                 </TableCell>
                                 <TableCell className="text-right bg-amber-50 dark:bg-amber-950">
-                                  {(() => {
-                                    const piecesPerBag = getPiecesPerBag(item.rawMaterialId);
-                                    const hopperBags = piecesToBags(pending, item.rawMaterialId);
-                                    return (
-                                      <div className="flex flex-col items-end gap-1">
-                                        {piecesPerBag > 0 ? (
-                                          <>
-                                            <div className="flex items-center gap-1">
-                                              <Input
-                                                type="number"
-                                                min="0"
-                                                step="0.01"
-                                                value={hopperBags || ''}
-                                                onChange={(e) => {
-                                                  const bags = Number(e.target.value) || 0;
-                                                  const pieces = bagsToPieces(bags, item.rawMaterialId);
-                                                  updateItem(index, 'quantityPending', pieces);
-                                                }}
-                                                className="w-16 text-right border-amber-300 dark:border-amber-700"
-                                                data-testid={`input-hopper-bags-${index}`}
-                                                placeholder="0.00"
-                                              />
-                                              <span className="text-xs text-amber-700 dark:text-amber-300">bags</span>
-                                            </div>
-                                            <span className="text-xs text-muted-foreground">
-                                              = {pending} pcs
-                                            </span>
-                                          </>
-                                        ) : (
-                                          <Input
-                                            type="number"
-                                            min="0"
-                                            step="0.01"
-                                            value={pending}
-                                            onChange={(e) => updateItem(index, 'quantityPending', Number(e.target.value))}
-                                            className="w-20 text-right border-amber-300 dark:border-amber-700"
-                                            data-testid={`input-hopper-${index}`}
-                                            placeholder="Hopper"
-                                          />
-                                        )}
-                                      </div>
-                                    );
-                                  })()}
+                                  <div className="flex flex-col items-end gap-1">
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      step="1"
+                                      value={pending || ''}
+                                      onChange={(e) => updateItem(index, 'quantityPending', Number(e.target.value))}
+                                      className="w-20 text-right border-amber-300 dark:border-amber-700"
+                                      data-testid={`input-hopper-${index}`}
+                                      placeholder="0"
+                                    />
+                                    {piecesPerBag > 0 && pending > 0 && (
+                                      <span className="text-xs text-amber-600 dark:text-amber-400">
+                                        ≈ {(pending / piecesPerBag * 100).toFixed(0)}% of bag
+                                      </span>
+                                    )}
+                                  </div>
                                 </TableCell>
                                 <TableCell className="text-right">
                                   {(() => {
