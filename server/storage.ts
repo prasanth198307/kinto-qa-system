@@ -1592,9 +1592,17 @@ export class DatabaseStorage implements IStorage {
         ));
     }
 
+    // Fetch all UOMs for lookup by name (needed to resolve baseUnit text to UOM ID)
+    const allUoms = await db
+      .select()
+      .from(uom)
+      .where(eq(uom.recordStatus, 1));
+
     // Create lookup maps
     const rawMaterialMap = new Map(relevantRawMaterials.map(rm => [rm.id, rm]));
     const typeMap = new Map(relevantTypes.map(t => [t.id, t]));
+    // UOM lookup by lowercase name for case-insensitive matching
+    const uomByNameMap = new Map(allUoms.map(u => [u.name?.toLowerCase(), u.id]));
 
     // Transform into structured format
     const items = bomItems.map(bomItem => {
@@ -1616,16 +1624,22 @@ export class DatabaseStorage implements IStorage {
       
       // Get effective UOM ID:
       // 1. From raw material's uomId if set
-      // 2. Or from material type's baseUnit (look up UOM by name)
-      // 3. Or from first available raw material of this type
+      // 2. From material type's baseUnit (look up UOM by name from database)
+      // 3. From first available raw material of this type
       const firstMaterialOfType = resolvedTypeId 
         ? relevantRawMaterials.find(rm => rm.typeId === resolvedTypeId && rm.uomId)
         : null;
       
-      // If type has baseUnit, we'll pass it as a hint for UOM lookup
       // The baseUnit is the issuance unit (e.g., "Bag" for preforms)
-      const effectiveUomId = material?.uomId || firstMaterialOfType?.uomId || null;
       const baseUnitHint = typeData?.baseUnit || null;
+      
+      // Look up UOM ID by baseUnit name if raw material doesn't have uomId set
+      const uomIdFromBaseUnit = baseUnitHint 
+        ? uomByNameMap.get(baseUnitHint.toLowerCase()) || null
+        : null;
+      
+      // Priority: material's uomId > UOM from baseUnit lookup > first material's uomId
+      const effectiveUomId = material?.uomId || uomIdFromBaseUnit || firstMaterialOfType?.uomId || null;
       
       // Find all available raw materials of this type with stock
       // Sort by receivedDate (oldest first) for FIFO policy
