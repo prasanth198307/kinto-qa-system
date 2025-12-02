@@ -17,9 +17,6 @@ ALTER TABLE production_entries ADD COLUMN IF NOT EXISTS empty_bottles_produced N
 ALTER TABLE production_entries ADD COLUMN IF NOT EXISTS empty_bottles_used NUMERIC(12,2) DEFAULT 0;
 ALTER TABLE production_entries ADD COLUMN IF NOT EXISTS empty_bottles_pending NUMERIC(12,2) DEFAULT 0;
 
--- Make product_id nullable (if constraint exists)
-ALTER TABLE production_entries ALTER COLUMN product_id DROP NOT NULL;
-
 -- Verify columns were added
 SELECT 'production_entries columns:' as info;
 SELECT column_name, data_type, is_nullable, column_default
