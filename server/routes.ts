@@ -12142,8 +12142,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Excel import - preview
-  app.post('/api/cash-register/import/preview', isAuthenticated, requireRole('Admin', 'Finance'), documentUpload.single('file'), async (req: any, res: Response) => {
+  // Excel import - preview (admin only)
+  app.post('/api/cash-register/import/preview', isAuthenticated, requireRole('admin'), documentUpload.single('file'), async (req: any, res: Response) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: 'No file uploaded' });
@@ -12169,8 +12169,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Excel import - commit
-  app.post('/api/cash-register/import/commit', isAuthenticated, requireRole('Admin', 'Finance'), async (req: any, res: Response) => {
+  // Excel import - commit (admin only)
+  app.post('/api/cash-register/import/commit', isAuthenticated, requireRole('admin'), async (req: any, res: Response) => {
     try {
       const { rows, fileName } = req.body;
       
@@ -12192,8 +12192,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Bulk import from attached Excel file (for all sheets)
-  app.post('/api/cash-register/import/bulk', isAuthenticated, requireRole('Admin', 'Finance'), async (req: any, res: Response) => {
+  // Bulk import from attached Excel file (admin only)
+  app.post('/api/cash-register/import/bulk', isAuthenticated, requireRole('admin'), async (req: any, res: Response) => {
     try {
       const { filePath } = req.body;
       
@@ -12597,8 +12597,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Clear all cash register data
-  app.post('/api/cash-register/clear-data', isAuthenticated, requireRole('Admin'), async (req: any, res: Response) => {
+  // Clear all cash register data (admin only)
+  app.post('/api/cash-register/clear-data', isAuthenticated, requireRole('admin'), async (req: any, res: Response) => {
     try {
       console.log('[CASH_REGISTER] Clearing all cash register data...');
       
