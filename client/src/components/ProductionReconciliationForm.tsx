@@ -210,6 +210,55 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
     return 2; // Default 2%
   };
 
+  // Get pieces per bag from material type (for conversion display)
+  const getPiecesPerBag = (rawMaterialId: string): number => {
+    const bomItem = findBomItem(rawMaterialId);
+    if (!bomItem) return 0;
+    
+    const typeDetails = bomItem.typeDetails || bomItem.type;
+    if (typeDetails) {
+      // Check different conversion methods
+      // For direct-value: derivedValuePerBase = pieces per bag
+      if (typeDetails.derivedValuePerBase) {
+        return Number(typeDetails.derivedValuePerBase) || 0;
+      }
+      // For formula-based: calculate from weight
+      if (typeDetails.baseUnitWeight && typeDetails.weightPerDerivedUnit) {
+        const baseWeight = Number(typeDetails.baseUnitWeight) || 0;
+        const weightPerPiece = Number(typeDetails.weightPerDerivedUnit) || 0;
+        if (weightPerPiece > 0) {
+          return Math.round((baseWeight * 1000) / weightPerPiece); // Convert kg to grams
+        }
+      }
+      // Check conversionValue directly
+      if (typeDetails.conversionValue) {
+        return Number(typeDetails.conversionValue) || 0;
+      }
+    }
+    
+    // Check raw material itself
+    const rawMaterial = bomItem.availableRawMaterials?.find((rm: any) => rm.id === rawMaterialId);
+    if (rawMaterial?.conversionValue) {
+      return Number(rawMaterial.conversionValue) || 0;
+    }
+    
+    return 0;
+  };
+
+  // Convert pieces to bags (decimal)
+  const piecesToBags = (pieces: number, rawMaterialId: string): number => {
+    const piecesPerBag = getPiecesPerBag(rawMaterialId);
+    if (piecesPerBag <= 0) return 0;
+    return Math.round((pieces / piecesPerBag) * 100) / 100; // 2 decimal places
+  };
+
+  // Convert bags to pieces
+  const bagsToPieces = (bags: number, rawMaterialId: string): number => {
+    const piecesPerBag = getPiecesPerBag(rawMaterialId);
+    if (piecesPerBag <= 0) return 0;
+    return Math.round(bags * piecesPerBag);
+  };
+
   // Auto-populate items when issuance is selected (create mode only)
   // RULE: Used + Hopper + Returned = Issued (no variance means perfectly balanced)
   useEffect(() => {
@@ -583,9 +632,19 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
                                 <span className="text-xs text-muted-foreground font-normal">({producedCases} cases)</span>
                               </div>
                             </TableHead>
-                            <TableHead className="text-right">Used</TableHead>
-                            <TableHead className="text-right bg-amber-50 dark:bg-amber-950">Left in Hopper</TableHead>
-                            <TableHead className="text-right">To Return</TableHead>
+                            <TableHead className="text-right">Used (pcs)</TableHead>
+                            <TableHead className="text-right bg-amber-50 dark:bg-amber-950">
+                              <div className="flex flex-col items-end">
+                                <span>In Hopper</span>
+                                <span className="text-xs text-amber-700 dark:text-amber-300 font-normal">(bags)</span>
+                              </div>
+                            </TableHead>
+                            <TableHead className="text-right">
+                              <div className="flex flex-col items-end">
+                                <span>To Return</span>
+                                <span className="text-xs text-muted-foreground font-normal">(bags)</span>
+                              </div>
+                            </TableHead>
                             <TableHead className="text-right">Variance</TableHead>
                             <TableHead>Remarks</TableHead>
                           </TableRow>
@@ -633,27 +692,93 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
                                   />
                                 </TableCell>
                                 <TableCell className="text-right bg-amber-50 dark:bg-amber-950">
-                                  <Input
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    value={pending}
-                                    onChange={(e) => updateItem(index, 'quantityPending', Number(e.target.value))}
-                                    className="w-20 text-right border-amber-300 dark:border-amber-700"
-                                    data-testid={`input-hopper-${index}`}
-                                    placeholder="Hopper"
-                                  />
+                                  {(() => {
+                                    const piecesPerBag = getPiecesPerBag(item.rawMaterialId);
+                                    const hopperBags = piecesToBags(pending, item.rawMaterialId);
+                                    return (
+                                      <div className="flex flex-col items-end gap-1">
+                                        {piecesPerBag > 0 ? (
+                                          <>
+                                            <div className="flex items-center gap-1">
+                                              <Input
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                value={hopperBags || ''}
+                                                onChange={(e) => {
+                                                  const bags = Number(e.target.value) || 0;
+                                                  const pieces = bagsToPieces(bags, item.rawMaterialId);
+                                                  updateItem(index, 'quantityPending', pieces);
+                                                }}
+                                                className="w-16 text-right border-amber-300 dark:border-amber-700"
+                                                data-testid={`input-hopper-bags-${index}`}
+                                                placeholder="0.00"
+                                              />
+                                              <span className="text-xs text-amber-700 dark:text-amber-300">bags</span>
+                                            </div>
+                                            <span className="text-xs text-muted-foreground">
+                                              = {pending} pcs
+                                            </span>
+                                          </>
+                                        ) : (
+                                          <Input
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            value={pending}
+                                            onChange={(e) => updateItem(index, 'quantityPending', Number(e.target.value))}
+                                            className="w-20 text-right border-amber-300 dark:border-amber-700"
+                                            data-testid={`input-hopper-${index}`}
+                                            placeholder="Hopper"
+                                          />
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
                                 </TableCell>
                                 <TableCell className="text-right">
-                                  <Input
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    value={returned}
-                                    onChange={(e) => updateItem(index, 'quantityReturned', Number(e.target.value))}
-                                    className="w-20 text-right"
-                                    data-testid={`input-returned-${index}`}
-                                  />
+                                  {(() => {
+                                    const piecesPerBag = getPiecesPerBag(item.rawMaterialId);
+                                    const returnBags = piecesToBags(returned, item.rawMaterialId);
+                                    return (
+                                      <div className="flex flex-col items-end gap-1">
+                                        {piecesPerBag > 0 ? (
+                                          <>
+                                            <div className="flex items-center gap-1">
+                                              <Input
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                value={returnBags || ''}
+                                                onChange={(e) => {
+                                                  const bags = Number(e.target.value) || 0;
+                                                  const pieces = bagsToPieces(bags, item.rawMaterialId);
+                                                  updateItem(index, 'quantityReturned', pieces);
+                                                }}
+                                                className="w-16 text-right"
+                                                data-testid={`input-returned-bags-${index}`}
+                                                placeholder="0.00"
+                                              />
+                                              <span className="text-xs text-muted-foreground">bags</span>
+                                            </div>
+                                            <span className="text-xs text-muted-foreground">
+                                              = {returned} pcs
+                                            </span>
+                                          </>
+                                        ) : (
+                                          <Input
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            value={returned}
+                                            onChange={(e) => updateItem(index, 'quantityReturned', Number(e.target.value))}
+                                            className="w-20 text-right"
+                                            data-testid={`input-returned-${index}`}
+                                          />
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
                                 </TableCell>
                                 <TableCell className="text-right">
                                   <div className="flex flex-col items-end gap-0.5">
