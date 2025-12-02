@@ -148,17 +148,28 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
   }, [usedFromCases.total, form]);
 
   // Auto-calculate pending when opening, produced, additional produced, or used changes
-  // Formula: Pending = Opening + Produced + Additional Produced - Used
-  // Note: "From Issuance" is just a reference (potential bottles from preforms)
-  // Actual bottles come from blow molding, entered in "Produced"
-  // Additional Produced = bottles from other sources (not from preforms)
+  // Formula: Pending = Opening + Total Produced - Used
+  // Total Produced = Blow-molded + Additional Produced
+  // Validation: Total Produced cannot exceed Potential (from preforms issued)
   useEffect(() => {
     const opening = Number(emptyBottlesOpening) || 0;
-    const produced = Number(emptyBottlesProduced) || 0;
+    const blowMolded = Number(emptyBottlesProduced) || 0;
     const additional = additionalProduced || 0;
+    const totalProduced = blowMolded + additional;
     const used = Number(emptyBottlesUsed) || 0;
-    const availableBottles = opening + produced + additional;
+    const availableBottles = opening + totalProduced;
     const pending = availableBottles - used;
+    const potential = bottlesFromIssuance.total;
+    
+    // Validate: Total Produced cannot exceed Potential from preforms
+    if (potential > 0 && totalProduced > potential) {
+      form.setError('emptyBottlesProduced', {
+        type: 'manual',
+        message: `Total produced (${totalProduced.toLocaleString()}) cannot exceed potential from preforms (${potential.toLocaleString()})`
+      });
+    } else {
+      form.clearErrors('emptyBottlesProduced');
+    }
     
     // Validate: Used cannot exceed available bottles
     if (used > availableBottles) {
@@ -171,7 +182,7 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
     }
     
     form.setValue('emptyBottlesPending', Math.max(0, pending));
-  }, [emptyBottlesOpening, emptyBottlesProduced, additionalProduced, emptyBottlesUsed, form]);
+  }, [emptyBottlesOpening, emptyBottlesProduced, additionalProduced, emptyBottlesUsed, bottlesFromIssuance.total, form]);
 
   // Set opening balance from last production entry when data loads (for new entries)
   useEffect(() => {
@@ -465,20 +476,37 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
                     </div>
                   </div>
                   
-                  {/* Actually Produced */}
+                  {/* Total Produced (Blow-molded + Additional) */}
                   <div>
-                    <span className="text-sm font-medium text-green-700 dark:text-green-300">Actually Produced</span>
-                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">{Number(emptyBottlesProduced).toLocaleString()}</p>
-                    <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                      From blow molding
-                    </p>
+                    <span className="text-sm font-medium text-green-700 dark:text-green-300">Total Produced</span>
+                    {(() => {
+                      const totalProduced = Number(emptyBottlesProduced) + additionalProduced;
+                      const potential = bottlesFromIssuance.total;
+                      const isOverLimit = totalProduced > potential;
+                      return (
+                        <>
+                          <p className={`text-2xl font-bold ${isOverLimit ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                            {totalProduced.toLocaleString()}
+                          </p>
+                          <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                            = {Number(emptyBottlesProduced).toLocaleString()} + {additionalProduced.toLocaleString()}
+                          </p>
+                          {isOverLimit && (
+                            <p className="text-xs text-red-600 dark:text-red-400 font-medium">
+                              Exceeds potential!
+                            </p>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                   
                   {/* Variance - Left in Hopper / To Return */}
                   <div>
                     <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Left in Hopper / Return</span>
                     {(() => {
-                      const variance = bottlesFromIssuance.total - Number(emptyBottlesProduced);
+                      const totalProduced = Number(emptyBottlesProduced) + additionalProduced;
+                      const variance = bottlesFromIssuance.total - totalProduced;
                       const firstBreakdown = bottlesFromIssuance.breakdown[0];
                       const bagsToReturn = firstBreakdown && firstBreakdown.usableUnits > 0 
                         ? (variance / firstBreakdown.usableUnits).toFixed(2) 
