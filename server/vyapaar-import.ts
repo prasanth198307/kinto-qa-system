@@ -281,20 +281,25 @@ export async function importVyapaarData(
         await tx.execute(sql`DELETE FROM products`);
       }
     
-      // Dynamically import XLSX for Mac compatibility
-      const { default: XLSX } = await import('xlsx');
+      // Dynamically import XLSX and fs for ESM compatibility
+      const XLSX = await import('xlsx');
+      const { readFileSync } = await import('fs');
       
-      // Read Excel files
-      const saleWorkbook = XLSX.readFile(saleFilePath);
+      // Read Excel files using readFileSync + XLSX.read for ESM compatibility
+      const saleBuffer = readFileSync(saleFilePath);
+      const saleWorkbook = XLSX.read(saleBuffer, { type: 'buffer' });
       
       // Support both 2-file and 3-file formats
       // If itemFilePath is provided, use it; otherwise, items are in saleFilePath (second sheet or same sheet)
-      const itemWorkbook = itemFilePath ? XLSX.readFile(itemFilePath) : saleWorkbook;
+      const itemWorkbook = itemFilePath 
+        ? XLSX.read(readFileSync(itemFilePath), { type: 'buffer' }) 
+        : saleWorkbook;
       
       // Party data is optional - if not provided, use existing vendors
       let partyData: PartyData[] = [];
       if (partyFilePath) {
-        const partyWorkbook = XLSX.readFile(partyFilePath);
+        const partyBuffer = readFileSync(partyFilePath);
+        const partyWorkbook = XLSX.read(partyBuffer, { type: 'buffer' });
         partyData = XLSX.utils.sheet_to_json(partyWorkbook.Sheets[partyWorkbook.SheetNames[0]]);
       }
       
@@ -1220,11 +1225,14 @@ export async function importPaymentsOnly(paymentsFilePath: string): Promise<{
   };
 }> {
   const XLSX = await import('xlsx');
+  const { readFileSync } = await import('fs');
   
   return db.transaction(async (tx) => {
     console.log('Processing Payments.xlsx file (payments-only import)...');
     
-    const paymentsWorkbook = XLSX.readFile(paymentsFilePath);
+    // Use readFileSync + XLSX.read for ESM compatibility
+    const paymentsBuffer = readFileSync(paymentsFilePath);
+    const paymentsWorkbook = XLSX.read(paymentsBuffer, { type: 'buffer' });
     const paymentsSheet = paymentsWorkbook.Sheets[paymentsWorkbook.SheetNames[0]];
     const paymentsData: any[] = XLSX.utils.sheet_to_json(paymentsSheet, { header: 1 });
     
