@@ -11446,6 +11446,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const updated = await storage.updateCashRegisterTransaction(id, txnUpdates);
       
+      // For expense transactions, also update expense items if amount changed
+      if (transaction.transactionType === 'expense' && amount !== undefined && amountDifference !== 0) {
+        const expenseItemsList = await storage.getCashRegisterExpenseItems(id);
+        
+        if (expenseItemsList.length === 1) {
+          // Single item: update its amount directly
+          await storage.updateCashRegisterExpenseItem(expenseItemsList[0].id, { 
+            amount: newAmount 
+          });
+        } else if (expenseItemsList.length > 1) {
+          // Multiple items: distribute the change proportionally with remainder correction
+          const totalItemAmount = expenseItemsList.reduce((sum, item) => sum + item.amount, 0);
+          
+          if (totalItemAmount > 0) {
+            // Calculate proportional amounts, tracking allocated total
+            const newAmounts: number[] = [];
+            let allocatedTotal = 0;
+            
+            for (let i = 0; i < expenseItemsList.length; i++) {
+              const item = expenseItemsList[i];
+              if (i === expenseItemsList.length - 1) {
+                // Last item gets the remainder to ensure sum matches exactly
+                newAmounts.push(newAmount - allocatedTotal);
+              } else {
+                const ratio = item.amount / totalItemAmount;
+                const newItemAmount = Math.round(newAmount * ratio);
+                newAmounts.push(newItemAmount);
+                allocatedTotal += newItemAmount;
+              }
+            }
+            
+            // Apply the calculated amounts
+            for (let i = 0; i < expenseItemsList.length; i++) {
+              await storage.updateCashRegisterExpenseItem(expenseItemsList[i].id, { 
+                amount: newAmounts[i] 
+              });
+            }
+          } else {
+            // Zero-sum case: distribute equally across all items
+            const equalShare = Math.floor(newAmount / expenseItemsList.length);
+            const remainder = newAmount - (equalShare * expenseItemsList.length);
+            
+            for (let i = 0; i < expenseItemsList.length; i++) {
+              // Last item gets any remainder
+              const itemAmount = i === expenseItemsList.length - 1 
+                ? equalShare + remainder 
+                : equalShare;
+              await storage.updateCashRegisterExpenseItem(expenseItemsList[i].id, { 
+                amount: itemAmount 
+              });
+            }
+          }
+        }
+        
+        // Recalculate day discrepancy to update items_mismatch flag
+        await recalculateDayDiscrepancy(day.id);
+      }
+      
       await logAudit(req.user?.id, 'UPDATE', 'cash_register_transactions', id, 
         `Transaction updated: ${transaction.transactionType} - old amount: ${oldAmount}, new amount: ${newAmount}`);
       
