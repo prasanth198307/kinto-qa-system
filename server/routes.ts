@@ -3777,18 +3777,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { dateFrom, dateTo, productId, batchId, shift } = req.query;
 
+      console.log('[RECONCILIATION_REPORT] Query params:', { dateFrom, dateTo, productId, batchId, shift });
+
       // Build where conditions
       const conditions = [eq(productionReconciliations.recordStatus, 1)];
       
       if (dateFrom) {
-        const fromDate = new Date(dateFrom as string);
-        fromDate.setHours(0, 0, 0, 0);
-        conditions.push(gte(productionReconciliations.reconciliationDate, fromDate.toISOString()));
+        // Use the date string directly for comparison (YYYY-MM-DD format)
+        conditions.push(gte(productionReconciliations.reconciliationDate, dateFrom as string));
+        console.log('[RECONCILIATION_REPORT] dateFrom filter:', dateFrom);
       }
       if (dateTo) {
-        const toDate = new Date(dateTo as string);
-        toDate.setHours(23, 59, 59, 999); // Include the entire day
-        conditions.push(lte(productionReconciliations.reconciliationDate, toDate.toISOString()));
+        // Add one day to include the entire "to" date
+        const toDateObj = new Date(dateTo as string);
+        toDateObj.setDate(toDateObj.getDate() + 1);
+        const toDateStr = toDateObj.toISOString().split('T')[0]; // YYYY-MM-DD
+        conditions.push(lte(productionReconciliations.reconciliationDate, toDateStr));
+        console.log('[RECONCILIATION_REPORT] dateTo filter:', toDateStr);
       }
       if (shift && shift !== 'all') {
         conditions.push(eq(productionReconciliations.shift, shift as string));
@@ -3806,6 +3811,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .leftJoin(productionEntries, eq(productionReconciliations.productionEntryId, productionEntries.id))
         .where(and(...conditions))
         .orderBy(desc(productionReconciliations.reconciliationDate));
+
+      console.log('[RECONCILIATION_REPORT] Found reconciliations:', reconciliations.length);
+      if (reconciliations.length > 0) {
+        console.log('[RECONCILIATION_REPORT] First reconciliation:', JSON.stringify(reconciliations[0].reconciliation, null, 2));
+      }
 
       // Apply product/batch filters
       let filteredReconciliations = reconciliations;
