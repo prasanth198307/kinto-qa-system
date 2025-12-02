@@ -41,6 +41,33 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
     queryKey: ['/api/raw-material-issuances'],
   });
 
+  // Fetch all production entries to filter out completed issuances
+  const { data: productionEntries = [] } = useQuery<any[]>({
+    queryKey: ['/api/production-entries'],
+  });
+
+  // Calculate which issuances have production entries and how many shifts
+  const issuanceProductionStatus = productionEntries.reduce((acc: Record<string, string[]>, pe: any) => {
+    if (pe.issuanceId) {
+      if (!acc[pe.issuanceId]) {
+        acc[pe.issuanceId] = [];
+      }
+      if (pe.shift && !acc[pe.issuanceId].includes(pe.shift)) {
+        acc[pe.issuanceId].push(pe.shift);
+      }
+    }
+    return acc;
+  }, {});
+
+  // Filter issuances: hide those with all 3 shifts completed, mark partial ones
+  const availableIssuances = issuances.filter(iss => {
+    const completedShifts = issuanceProductionStatus[iss.id!] || [];
+    // If editing, always show the current entry's issuance
+    if (entry && entry.issuanceId === iss.id) return true;
+    // Hide if all 3 shifts are done (A, B, General)
+    return completedShifts.length < 3;
+  });
+
   // Fetch UOMs for finished goods UOM selection
   const { data: uomList = [] } = useQuery<{ id: string; name: string; abbreviation?: string }[]>({
     queryKey: ['/api/uoms'],
@@ -418,11 +445,27 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {issuances.map((iss) => (
-                        <SelectItem key={iss.id} value={iss.id!}>
-                          {iss.issuanceNumber} - {new Date(iss.issuanceDate).toLocaleDateString()}
-                        </SelectItem>
-                      ))}
+                      {availableIssuances.map((iss) => {
+                        const completedShifts = issuanceProductionStatus[iss.id!] || [];
+                        const hasEntries = completedShifts.length > 0;
+                        return (
+                          <SelectItem key={iss.id} value={iss.id!}>
+                            <div className="flex items-center gap-2">
+                              <span>{iss.issuanceNumber} - {new Date(iss.issuanceDate).toLocaleDateString()}</span>
+                              {hasEntries && (
+                                <Badge variant="secondary" className="text-xs">
+                                  {completedShifts.join(', ')} done
+                                </Badge>
+                              )}
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
+                      {availableIssuances.length === 0 && (
+                        <div className="p-2 text-sm text-muted-foreground text-center">
+                          No available issuances (all have production entries)
+                        </div>
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />
