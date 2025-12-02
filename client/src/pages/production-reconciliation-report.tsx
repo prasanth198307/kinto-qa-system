@@ -68,9 +68,17 @@ export default function ProductionReconciliationReport() {
     queryKey: ['/api/production-entries'],
   });
 
+  // Build query params - only include non-"all" values
+  const queryParams: Record<string, string> = {};
+  if (dateFrom) queryParams.dateFrom = dateFrom;
+  if (dateTo) queryParams.dateTo = dateTo;
+  if (selectedProduct && selectedProduct !== 'all') queryParams.productId = selectedProduct;
+  if (selectedBatch && selectedBatch !== 'all') queryParams.batchId = selectedBatch;
+  if (selectedShift && selectedShift !== 'all') queryParams.shift = selectedShift;
+
   // Fetch report data
-  const { data: reportResponse, isLoading, refetch } = useQuery<{ reportData: ReportData[] }>({
-    queryKey: ['/api/reports/production-reconciliation', { dateFrom, dateTo, productId: selectedProduct, batchId: selectedBatch, shift: selectedShift }],
+  const { data: reportResponse, isLoading, refetch, isFetching } = useQuery<{ reportData: ReportData[] }>({
+    queryKey: ['/api/reports/production-reconciliation', queryParams],
     enabled: false, // Only fetch when user clicks Generate Report
   });
 
@@ -484,10 +492,10 @@ export default function ProductionReconciliationReport() {
           <div className="flex gap-4">
             <Button 
               onClick={handleGenerateReport} 
-              disabled={isLoading}
+              disabled={isLoading || isFetching}
               data-testid="button-generate-report"
             >
-              {isLoading ? "Generating..." : "Generate Report"}
+              {(isLoading || isFetching) ? "Generating..." : "Generate Report"}
             </Button>
             {reportGenerated && reportData.length > 0 && (
               <>
