@@ -1869,18 +1869,192 @@ function CancelledInvoicesPageWrapper() {
   );
 }
 
+// Wrapper component for Checklists page with filtered navigation
+function ChecklistsPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('checklists');
+  
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
+  
+  return (
+    <DashboardShell
+      title="Checklists"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={(viewId) => {
+        setActiveView(viewId);
+      }}
+    >
+      <ChecklistsPage />
+    </DashboardShell>
+  );
+}
+
+// Wrapper component for Reviewer Dashboard page with filtered navigation
+function ReviewerDashboardPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('overview');
+  
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
+  
+  return (
+    <DashboardShell
+      title="Reviewer Dashboard"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={(viewId) => {
+        setActiveView(viewId);
+      }}
+    >
+      <ReviewerDashboardPage />
+    </DashboardShell>
+  );
+}
+
+// Wrapper component for Vendor Types page with filtered navigation
+function VendorTypesPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('vendor-types');
+  
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
+  
+  return (
+    <DashboardShell
+      title="Vendor Types"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={(viewId) => {
+        setActiveView(viewId);
+      }}
+    >
+      <VendorTypes />
+    </DashboardShell>
+  );
+}
+
+// Wrapper component for Invoice Detail page with filtered navigation
+function InvoiceDetailPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('invoices');
+  
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
+  
+  return (
+    <DashboardShell
+      title="Invoice Details"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={(viewId) => {
+        setActiveView(viewId);
+      }}
+    >
+      <InvoiceDetail />
+    </DashboardShell>
+  );
+}
+
+// Wrapper component for Production Management page with filtered navigation
+function ProductionManagementPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('production-entries');
+  
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
+  
+  return (
+    <DashboardShell
+      title="Production Management"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={(viewId) => {
+        setActiveView(viewId);
+      }}
+    >
+      <ProductionManagement />
+    </DashboardShell>
+  );
+}
+
+// Wrapper component for Production Reconciliation Report page with filtered navigation
+function ProductionReconciliationReportWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('production-reconciliation-report');
+  
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
+  
+  return (
+    <DashboardShell
+      title="Production Reconciliation Report"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={(viewId) => {
+        setActiveView(viewId);
+      }}
+    >
+      <ProductionReconciliationReport />
+    </DashboardShell>
+  );
+}
+
 function Router() {
   return (
     <Switch>
       <Route path="/auth" component={AuthPage} />
       <Route path="/reset-password" component={ResetPasswordPage} />
-      <ProtectedRoute path="/checklists" component={ChecklistsPage} />
-      <ProtectedRoute path="/reviewer-dashboard" component={ReviewerDashboardPage} />
-      <ProtectedRoute path="/vendor-types" component={VendorTypes} />
+      <ProtectedRoute path="/checklists" component={ChecklistsPageWrapper} />
+      <ProtectedRoute path="/reviewer-dashboard" component={ReviewerDashboardPageWrapper} />
+      <ProtectedRoute path="/vendor-types" component={VendorTypesPageWrapper} />
       <ProtectedRoute path="/vendor-management" component={VendorManagementPage} />
       <ProtectedRoute path="/vendor-history" component={VendorHistoryPage} />
       <ProtectedRoute path="/vendor-history/:vendorId" component={VendorHistoryDetailPage} />
-      <ProtectedRoute path="/invoice/:id" component={InvoiceDetail} />
+      <ProtectedRoute path="/invoice/:id" component={InvoiceDetailPageWrapper} />
       <ProtectedRoute path="/dispatch-tracking" component={DispatchTrackingPageWrapper} />
       <ProtectedRoute path="/sales-returns" component={SalesReturnsPageWrapper} />
       <ProtectedRoute path="/credit-notes" component={CreditNotesPageWrapper} />
@@ -1890,8 +2064,8 @@ function Router() {
       <ProtectedRoute path="/payment-management" component={PaymentManagementPage} />
       <ProtectedRoute path="/vendor-analytics" component={VendorAnalyticsPage} />
       <ProtectedRoute path="/reports" component={ReportsPage} />
-      <ProtectedRoute path="/production-management" component={ProductionManagement} />
-      <ProtectedRoute path="/reports/production-reconciliation" component={ProductionReconciliationReport} />
+      <ProtectedRoute path="/production-management" component={ProductionManagementPageWrapper} />
+      <ProtectedRoute path="/reports/production-reconciliation" component={ProductionReconciliationReportWrapper} />
       <ProtectedRoute path="/documents" component={DocumentsPageWrapper} />
       <ProtectedRoute path="/expenses" component={ExpensesPageWrapper} />
       <ProtectedRoute path="/cash-register" component={CashRegisterPageWrapper} />
