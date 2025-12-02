@@ -25,6 +25,7 @@ import {
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { usePermissions } from "@/hooks/use-permissions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -60,6 +61,7 @@ interface InventoryManagementProps {
 
 export default function InventoryManagement({ activeTab: externalActiveTab }: InventoryManagementProps = {}) {
   const { user, logoutMutation } = useAuth();
+  const { role, canAccessScreen, isLoading: permissionsLoading } = usePermissions();
   const [activeTab, setActiveTab] = useState(externalActiveTab || "uom");
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -70,13 +72,25 @@ export default function InventoryManagement({ activeTab: externalActiveTab }: In
     }
   }, [externalActiveTab]);
 
-  if (!user || !['admin', 'manager'].includes((user.role || '').toLowerCase())) {
+  // Check access using database permissions
+  const roleLower = (role || (user as any)?.role || '').toLowerCase();
+  const hasAccess = roleLower === 'admin' || roleLower === 'manager' || canAccessScreen('inventory_management');
+
+  if (permissionsLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!user || !hasAccess) {
     return (
       <>
         <div className="min-h-screen flex items-center justify-center p-4">
           <Card className="p-8 max-w-md text-center space-y-4">
             <h2 className="text-2xl font-bold text-destructive">Access Denied</h2>
-            <p className="text-muted-foreground">You do not have permission to access Inventory Management. This feature is only available to Admin and Manager roles.</p>
+            <p className="text-muted-foreground">You do not have permission to access Inventory Management. Please contact your administrator to request access.</p>
           </Card>
         </div>
       </>
