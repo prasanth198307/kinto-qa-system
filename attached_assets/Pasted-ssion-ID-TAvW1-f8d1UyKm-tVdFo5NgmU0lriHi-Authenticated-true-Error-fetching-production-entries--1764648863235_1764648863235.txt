@@ -1,0 +1,65 @@
+ssion ID: TAvW1_-f8d1UyKm-tVdFo5NgmU0lriHi
+   Authenticated: true
+Error fetching production entries: error: column production_entries.remarks does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllProductionEntries (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:3525:25)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:11257:23 {
+  length: 125,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '404',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+9:36:57 AM [express] GET /api/production-entries 500 in 21ms :: {"message":"Failed to fetch producti…
+🔹 Request: GET /api/production-entries/opening-bottles
+   Cookie header: connect.sid=s%3ATAvW1_-f8d1UyKm-tVdFo5NgmU0lriHi.E8lseIXAuqzQa3PJEGVaDeFKFdM9GkPfzWbnFWAIDAI
+   Session ID: TAvW1_-f8d1UyKm-tVdFo5NgmU0lriHi
+   Authenticated: true
+🔹 Request: GET /api/raw-material-issuances
+   Cookie header: connect.sid=s%3ATAvW1_-f8d1UyKm-tVdFo5NgmU0lriHi.E8lseIXAuqzQa3PJEGVaDeFKFdM9GkPfzWbnFWAIDAI
+   Session ID: TAvW1_-f8d1UyKm-tVdFo5NgmU0lriHi
+   Authenticated: true
+Error fetching opening bottles balance: error: column production_entries.remarks does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllProductionEntries (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:3525:25)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:11266:23 {
+  length: 125,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '404',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+9:36:59 AM [express] GET /api/production-entries/opening-bottles 500 in 10ms :: {"message":"Failed t…
+9:36:59 AM [express] GET /api/raw-material-issuances 304 in 11ms :: [{"id":"5a421b65-f904-4b13-8ddb-…
+🔹 Request: GET /api/raw-material-issuances/5a421b65-f904-4b13-8ddb-72f014185778/summary
+   Cookie header: connect.sid=s%3ATAvW1_-f8d1UyKm-tVdFo5NgmU0lriHi.E8lseIXAuqzQa3PJEGVaDeFKFdM9GkPfzWbnFWAIDAI
+   Session ID: TAvW1_-f8d1UyKm-tVdFo5NgmU0lriHi
+   Authenticated: true
