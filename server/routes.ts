@@ -3481,6 +3481,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate reconciliation number
       const reconciliationNumber = `REC-${Date.now()}`;
       
+      // Get default UOM (Case) for reconciliation items
+      const [defaultUom] = await db.select().from(uom)
+        .where(and(eq(uom.name, 'Case'), eq(uom.recordStatus, 1)))
+        .limit(1);
+      const defaultUomId = defaultUom?.id || null;
+      
       // Wrap everything in a transaction for atomicity
       const result = await db.transaction(async (tx) => {
         // Create reconciliation header
@@ -3497,7 +3503,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         for (const item of items) {
           const validatedItem = insertProductionReconciliationItemSchema.parse({
             ...item,
-            reconciliationId: reconciliation.id
+            reconciliationId: reconciliation.id,
+            uomId: item.uomId || defaultUomId,  // Default to Case UOM
           });
           
           // Create reconciliation item
