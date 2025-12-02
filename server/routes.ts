@@ -3485,14 +3485,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Raw material issuance not found" });
       }
       
-      // Verify production entry exists and get productId
+      // Verify production entry exists and get productId and uomId
       let productId: string | null = null;
+      let inheritedUomId: string | null = null;
       if (validatedHeader.productionEntryId) {
         const production = await storage.getProductionEntry(validatedHeader.productionEntryId);
         if (!production) {
           return res.status(404).json({ message: "Production entry not found" });
         }
         productId = production.productId || issuance.productId || null;
+        inheritedUomId = production.uomId || null; // Inherit UOM from production entry
       } else {
         productId = issuance.productId || null;
       }
@@ -3509,11 +3511,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate reconciliation number
       const reconciliationNumber = `REC-${Date.now()}`;
       
-      // Get default UOM (Case) for reconciliation items
-      const [defaultUom] = await db.select().from(uom)
-        .where(and(eq(uom.name, 'Case'), eq(uom.recordStatus, 1)))
-        .limit(1);
-      const defaultUomId = defaultUom?.id || null;
+      // Get default UOM (Case) for reconciliation items - use inherited UOM from production entry first
+      let defaultUomId = inheritedUomId;
+      if (!defaultUomId) {
+        const [defaultUom] = await db.select().from(uom)
+          .where(and(eq(uom.name, 'Case'), eq(uom.recordStatus, 1)))
+          .limit(1);
+        defaultUomId = defaultUom?.id || null;
+      }
       
       // Wrap everything in a transaction for atomicity
       const result = await db.transaction(async (tx) => {
