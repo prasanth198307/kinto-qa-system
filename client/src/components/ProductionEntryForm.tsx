@@ -257,6 +257,31 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async (data: FormData & { id: string }) => {
+      return await apiRequest('PUT', `/api/production-entries/${data.id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/production-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/production-entries/opening-bottles'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/finished-goods'], exact: false });
+      toast({
+        title: "Success",
+        description: "Production entry updated successfully",
+      });
+      onClose();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update production entry",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const isEditMode = !!entry;
+
   const onSubmit = (data: FormData) => {
     // Include Additional Produced in the emptyBottlesProduced field
     // Total Produced = Blow-molded + Additional Produced
@@ -287,7 +312,12 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
       emptyBottlesProduced: totalProduced,
       derivedUnits: derivedUnits,
     };
-    createMutation.mutate(submissionData as any);
+    
+    if (isEditMode && entry?.id) {
+      updateMutation.mutate({ ...submissionData, id: entry.id } as any);
+    } else {
+      createMutation.mutate(submissionData as any);
+    }
   };
 
   const handleIssuanceChange = (issuanceId: string) => {
@@ -983,10 +1013,13 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
             </Button>
             <Button 
               type="submit" 
-              disabled={createMutation.isPending}
+              disabled={createMutation.isPending || updateMutation.isPending}
               data-testid="button-submit"
             >
-              {createMutation.isPending ? "Creating..." : "Create Production Entry"}
+              {isEditMode 
+                ? (updateMutation.isPending ? "Updating..." : "Update Production Entry")
+                : (createMutation.isPending ? "Creating..." : "Create Production Entry")
+              }
             </Button>
           </div>
         </form>

@@ -3454,6 +3454,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update Production Entry
+  app.put('/api/production-entries/:id', requireRole('admin', 'manager', 'operator'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Get existing entry
+      const existingEntry = await storage.getProductionEntry(id);
+      if (!existingEntry) {
+        return res.status(404).json({ message: "Production entry not found" });
+      }
+      
+      // Validate update data
+      const updateSchema = insertProductionEntrySchema.partial();
+      const validatedData = updateSchema.parse(req.body);
+      
+      // Update the entry
+      const updatedEntry = await storage.updateProductionEntry(id, {
+        ...validatedData,
+        productionDate: validatedData.productionDate ? new Date(validatedData.productionDate).toISOString() : existingEntry.productionDate,
+      });
+      
+      res.json({ entry: updatedEntry, message: "Production entry updated successfully" });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error updating production entry:", error);
+      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to update production entry" });
+    }
+  });
+
   // Production Reconciliation Routes
   app.get('/api/production-reconciliations', isAuthenticated, async (req: any, res) => {
     try {
