@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import NotFound from "@/pages/not-found";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
+import { usePermissions } from "@/hooks/use-permissions";
 import { ProtectedRoute } from "@/lib/protected-route";
 import AuthPage from "@/pages/auth-page";
 import ResetPasswordPage from "@/pages/reset-password";
@@ -364,9 +365,10 @@ function ManagerDashboard() {
   );
 }
 
-// Dashboard for custom roles - uses AdminDashboard layout with role-based filtering
+// Dashboard for custom roles - uses AdminDashboard layout with database-based permission filtering
 function CustomRoleDashboard({ roleName }: { roleName: string }) {
   const { logoutMutation } = useAuth();
+  const { permissions, isLoading: permissionsLoading } = usePermissions();
   const [location, setLocation] = useLocation();
   const [activeView, setActiveView] = useState('overview');
   const [isPMDialogOpen, setIsPMDialogOpen] = useState(false);
@@ -417,8 +419,30 @@ function CustomRoleDashboard({ roleName }: { roleName: string }) {
     logoutMutation.mutate();
   };
 
-  // Use role-filtered navigation sections
-  const navSections = getAdminNavSections(setLocation, roleName);
+  // Get all navigation sections, then filter by database permissions for custom roles
+  const allNavSections = getAdminNavSections(setLocation);
+  const navSections = filterNavSectionsWithDbPermissions(allNavSections, permissions);
+
+  // Show loading state while permissions are being fetched
+  if (permissionsLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  // If no permissions granted, show access message
+  if (navSections.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="p-8 max-w-md text-center space-y-4">
+          <h2 className="text-2xl font-bold">Welcome, {roleName}</h2>
+          <p className="text-muted-foreground">No screens have been assigned to your role yet. Please contact your administrator to grant access to specific screens.</p>
+        </Card>
+      </div>
+    );
+  }
 
   const renderContent = () => {
     switch (activeView) {
@@ -1189,7 +1213,68 @@ function VendorHistoryDetailPage() {
   );
 }
 
-// Permission mapping: maps nav item IDs to screen names from the permissions system
+// Permission mapping: maps nav item IDs to database screen_keys
+const navItemToScreenKey: Record<string, string> = {
+  // Dashboard & Analytics
+  'overview': 'dashboard',
+  'sales-dashboard': 'sales_dashboard',
+  'vendor-analytics': 'vendor_analytics',
+  'reports': 'reports',
+  // Quality & Checklists
+  'checklists': 'checklist_templates',
+  'checklist-assignments': 'checklist_assignments',
+  'machine-startup-reminders': 'machine_startup_reminders',
+  'whatsapp-analytics': 'whatsapp_analytics',
+  // Production & Inventory
+  'products': 'products',
+  'product-categories': 'product_categories',
+  'product-types': 'product_types',
+  'raw-materials': 'raw_materials',
+  'finished-goods': 'finished_goods',
+  'raw-material-issuance': 'raw_material_issuance',
+  'production-entries': 'production_entries',
+  'production-reconciliations': 'production_reconciliations',
+  'production-reconciliation-report': 'production_reconciliation_report',
+  'variance-analytics': 'variance_analytics',
+  // Finance & Sales
+  'invoices': 'invoices',
+  'vendor-history': 'vendors',
+  'pending-payments': 'pending_payments',
+  'payment-management': 'payments',
+  'credit-notes': 'credit_notes',
+  'cancelled-invoices': 'cancelled_invoices_report',
+  'sales-returns': 'sales_returns',
+  'write-off-report': 'payment_writeoff',
+  // Dispatch & Logistics
+  'gatepasses': 'gatepasses',
+  'dispatch-tracking': 'dispatch_tracking',
+  // Cash & Expenses
+  'cash-register': 'cash_register',
+  'cash-register-report': 'cash_register_report',
+  'expenses': 'expenses',
+  'documents': 'documents',
+  // Maintenance
+  'maintenance': 'maintenance_plans',
+  'pm-history': 'pm_history',
+  'purchase-orders': 'purchase_orders',
+  // Master Data
+  'users': 'users',
+  'role-permissions': 'roles',
+  'vendors': 'vendors',
+  'vendor-types': 'vendor_types',
+  'machines': 'machines',
+  'machine-types': 'machine_types',
+  'spare-parts': 'spare_parts',
+  'pm-templates': 'pm_templates',
+  'uom': 'uom',
+  'raw-material-types': 'raw_material_types',
+  'template-management': 'template_management',
+  // Settings
+  'notification-settings': 'notification_settings',
+  'data-import': 'data_import',
+};
+
+// Legacy permission mapping for backward compatibility with default roles
 const navItemToScreen: Record<string, string> = {
   // Dashboard & Analytics
   'overview': 'Overview',
@@ -1270,7 +1355,7 @@ const screenPermissions: Record<string, { admin: boolean; manager: boolean; oper
   'Final Approval': { admin: true, manager: true, operator: false, reviewer: false },
 };
 
-// Check if a nav item is accessible for a given role
+// Check if a nav item is accessible for a given role (for default roles)
 function canAccessNavItem(itemId: string, role: string): boolean {
   const screenName = navItemToScreen[itemId];
   if (!screenName) return true; // If not mapped, show it (safe default)
@@ -1284,23 +1369,63 @@ function canAccessNavItem(itemId: string, role: string): boolean {
   if (roleLower === 'operator') return permissions.operator;
   if (roleLower === 'reviewer') return permissions.reviewer;
   
-  // Custom roles (like InventoryManager, Billing Manager) - show all sections
-  // Their specific permissions are managed through Role Permissions screen
-  return true;
+  // Custom roles - return false so they use database permissions check
+  return false;
+}
+
+// Check if a nav item is accessible using database permissions
+interface Permission {
+  screenKey: string;
+  canView: boolean;
+  canCreate: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+}
+
+function canAccessNavItemWithDbPermissions(itemId: string, dbPermissions: Permission[]): boolean {
+  const screenKey = navItemToScreenKey[itemId];
+  if (!screenKey) return false; // If not mapped, hide it for custom roles
+  
+  const permission = dbPermissions.find(p => p.screenKey === screenKey);
+  return permission?.canView === true;
 }
 
 // Filter nav sections based on user's role
 function filterNavSectionsByRole(sections: NavSection[], role: string): NavSection[] {
   if (!sections || !Array.isArray(sections)) return [];
   
+  const roleLower = role.toLowerCase();
+  const isDefaultRole = ['admin', 'manager', 'operator', 'reviewer'].includes(roleLower);
+  
+  // For default roles, use the hardcoded permission matrix
+  if (isDefaultRole) {
+    const filtered = sections
+      .map(section => ({
+        ...section,
+        items: section.items.filter(item => canAccessNavItem(item.id, role))
+      }))
+      .filter(section => section.items.length > 0);
+      
+    return filtered.length > 0 ? filtered : sections;
+  }
+  
+  // For custom roles, return empty (will be filtered by filterNavSectionsWithDbPermissions)
+  return [];
+}
+
+// Filter nav sections using database permissions (for custom roles)
+function filterNavSectionsWithDbPermissions(sections: NavSection[], dbPermissions: Permission[]): NavSection[] {
+  if (!sections || !Array.isArray(sections)) return [];
+  if (!dbPermissions || dbPermissions.length === 0) return [];
+  
   const filtered = sections
     .map(section => ({
       ...section,
-      items: section.items.filter(item => canAccessNavItem(item.id, role))
+      items: section.items.filter(item => canAccessNavItemWithDbPermissions(item.id, dbPermissions))
     }))
-    .filter(section => section.items.length > 0); // Hide empty sections
+    .filter(section => section.items.length > 0);
     
-  return filtered.length > 0 ? filtered : sections; // Fallback to all sections if filter removes everything
+  return filtered;
 }
 
 // Shared admin navigation sections factory - matches main dashboard navigation
