@@ -3203,11 +3203,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Server-side calculation of pending bottles: opening + produced - used (min 0)
+      // Server-side calculation and validation of pending bottles
       const opening = Number(validatedEntry.emptyBottlesOpening) || 0;
       const produced = Number(validatedEntry.emptyBottlesProduced) || 0;
       const used = Number(validatedEntry.emptyBottlesUsed) || 0;
-      const calculatedPending = Math.max(0, opening + produced - used);
+      const availableBottles = opening + produced;
+      
+      // Validate: Used cannot exceed available bottles (Opening + Produced)
+      if (used > availableBottles) {
+        return res.status(400).json({ 
+          message: `Invalid empty bottles data: Used (${used}) cannot exceed available bottles (${availableBottles} = Opening ${opening} + Produced ${produced})` 
+        });
+      }
+      
+      const calculatedPending = opening + produced - used;
       
       // Create production entry with calculated values
       const productionEntry = await storage.createProductionEntry({

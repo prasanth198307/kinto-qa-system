@@ -74,11 +74,24 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
   const emptyBottlesUsed = form.watch('emptyBottlesUsed');
 
   // Auto-calculate pending when opening, produced, or used changes
+  // Also validate that Used <= Opening + Produced
   useEffect(() => {
     const opening = Number(emptyBottlesOpening) || 0;
     const produced = Number(emptyBottlesProduced) || 0;
     const used = Number(emptyBottlesUsed) || 0;
+    const availableBottles = opening + produced;
     const pending = opening + produced - used;
+    
+    // Validate: Used cannot exceed available bottles (Opening + Produced)
+    if (used > availableBottles) {
+      form.setError('emptyBottlesUsed', {
+        type: 'manual',
+        message: `Cannot use more than available (${availableBottles.toLocaleString()} bottles)`
+      });
+    } else {
+      form.clearErrors('emptyBottlesUsed');
+    }
+    
     form.setValue('emptyBottlesPending', Math.max(0, pending));
   }, [emptyBottlesOpening, emptyBottlesProduced, emptyBottlesUsed, form]);
 
@@ -412,21 +425,30 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
               <FormField
                 control={form.control}
                 name="emptyBottlesUsed"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Used</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number" 
-                        step="0.01" 
-                        {...field}
-                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                        data-testid="input-empty-bottles-used"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const opening = Number(emptyBottlesOpening) || 0;
+                  const produced = Number(emptyBottlesProduced) || 0;
+                  const availableBottles = opening + produced;
+                  return (
+                    <FormItem>
+                      <FormLabel>Used</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          step="0.01" 
+                          max={availableBottles}
+                          {...field}
+                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                          data-testid="input-empty-bottles-used"
+                        />
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground">
+                        Max: {availableBottles.toLocaleString()} (Opening + Produced)
+                      </p>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
 
               <FormField
