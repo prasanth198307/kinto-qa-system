@@ -859,7 +859,10 @@ export class DatabaseStorage implements IStorage {
     const [role] = await db
       .select({ id: roles.id, name: roles.name })
       .from(roles)
-      .where(and(eq(roles.name, roleName), eq(roles.recordStatus, 1)));
+      .where(and(
+        sql`LOWER(${roles.name}) = LOWER(${roleName})`,
+        eq(roles.recordStatus, 1)
+      ));
     return role;
   }
 
