@@ -3244,20 +3244,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Server-side calculation and validation of pending bottles
-      // Formula: Pending = Opening + From Issuance + Produced - Used
+      // Formula: Pending = Opening + Produced - Used
+      // Note: "From Issuance" is just a reference (potential bottles from preforms)
+      // Actual bottles come from blow molding, entered in "Produced"
       const opening = Number(validatedEntry.emptyBottlesOpening) || 0;
       const produced = Number(validatedEntry.emptyBottlesProduced) || 0;
       const used = Number(validatedEntry.emptyBottlesUsed) || 0;
-      const availableBottles = opening + bottlesFromIssuance + produced;
+      const availableBottles = opening + produced;
       
-      // Validate: Used cannot exceed available bottles (Opening + From Issuance + Produced)
+      // Validate: Used cannot exceed available bottles (Opening + Produced)
       if (used > availableBottles) {
         return res.status(400).json({ 
-          message: `Invalid empty bottles data: Used (${used}) cannot exceed available bottles (${availableBottles} = Opening ${opening} + From Issuance ${bottlesFromIssuance} + Produced ${produced})` 
+          message: `Invalid empty bottles data: Used (${used}) cannot exceed available bottles (${availableBottles} = Opening ${opening} + Produced ${produced})` 
         });
       }
       
-      const calculatedPending = opening + bottlesFromIssuance + produced - used;
+      const calculatedPending = opening + produced - used;
       
       // Create production entry with calculated values
       const productionEntry = await storage.createProductionEntry({

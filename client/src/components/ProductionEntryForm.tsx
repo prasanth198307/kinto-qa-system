@@ -148,17 +148,18 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
     form.setValue('emptyBottlesUsed', totalUsed);
   }, [usedFromCases.total, additionalUsed, form]);
 
-  // Auto-calculate pending when opening, from issuance, produced, or used changes
-  // Formula: Pending = Opening + From Issuance + Produced - Used
+  // Auto-calculate pending when opening, produced, or used changes
+  // Formula: Pending = Opening + Produced - Used
+  // Note: "From Issuance" is just a reference (potential bottles from preforms)
+  // Actual bottles come from blow molding, entered in "Produced"
   useEffect(() => {
     const opening = Number(emptyBottlesOpening) || 0;
-    const fromIssuance = bottlesFromIssuance.total;
     const produced = Number(emptyBottlesProduced) || 0;
     const used = Number(emptyBottlesUsed) || 0;
-    const availableBottles = opening + fromIssuance + produced;
-    const pending = opening + fromIssuance + produced - used;
+    const availableBottles = opening + produced;
+    const pending = opening + produced - used;
     
-    // Validate: Used cannot exceed available bottles (Opening + From Issuance + Produced)
+    // Validate: Used cannot exceed available bottles (Opening + Produced)
     if (used > availableBottles) {
       form.setError('emptyBottlesUsed', {
         type: 'manual',
@@ -169,7 +170,7 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
     }
     
     form.setValue('emptyBottlesPending', Math.max(0, pending));
-  }, [emptyBottlesOpening, emptyBottlesProduced, emptyBottlesUsed, bottlesFromIssuance.total, form]);
+  }, [emptyBottlesOpening, emptyBottlesProduced, emptyBottlesUsed, form]);
 
   // Set opening balance from last production entry when data loads (for new entries)
   useEffect(() => {
@@ -446,15 +447,16 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
           <Card className="p-6">
             <h3 className="text-lg font-semibold mb-4">Empty Bottles Tracking</h3>
             
-            {/* From Issuance Calculation Display */}
+            {/* From Issuance - Reference Only (potential bottles from preforms) */}
             {bottlesFromIssuance.total > 0 && (
-              <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
+              <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-md">
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="text-sm font-medium text-blue-700 dark:text-blue-300">From Issuance (Auto-calculated)</span>
-                    <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{bottlesFromIssuance.total.toLocaleString()}</p>
+                    <span className="text-sm font-medium text-amber-700 dark:text-amber-300">Potential Bottles (from Preforms Issued)</span>
+                    <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{bottlesFromIssuance.total.toLocaleString()}</p>
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">Reference only - enter actual blow-molded bottles in "Produced"</p>
                   </div>
-                  <div className="text-right text-xs text-blue-600 dark:text-blue-400">
+                  <div className="text-right text-xs text-amber-600 dark:text-amber-400">
                     {bottlesFromIssuance.breakdown.map((item, idx) => (
                       <div key={idx}>
                         {item.name}: {item.qty} × {item.usableUnits.toLocaleString()} = {item.bottles.toLocaleString()}
@@ -581,12 +583,10 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
             <div className="mt-3 pt-3 border-t text-sm space-y-1">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">
-                  <strong>Available:</strong> Opening ({Number(emptyBottlesOpening).toLocaleString()}) 
-                  {bottlesFromIssuance.total > 0 && <> + Issuance ({bottlesFromIssuance.total.toLocaleString()})</>} 
-                  + Produced ({Number(emptyBottlesProduced).toLocaleString()})
+                  <strong>Available:</strong> Opening ({Number(emptyBottlesOpening).toLocaleString()}) + Produced ({Number(emptyBottlesProduced).toLocaleString()})
                 </span>
                 <span className="font-medium">
-                  = {(Number(emptyBottlesOpening) + bottlesFromIssuance.total + Number(emptyBottlesProduced)).toLocaleString()}
+                  = {(Number(emptyBottlesOpening) + Number(emptyBottlesProduced)).toLocaleString()}
                 </span>
               </div>
               <div className="flex justify-between">
