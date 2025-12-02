@@ -8004,6 +8004,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Fetch all invoices
       const allInvoices = await storage.getAllInvoices();
       
+      // Fetch credit notes for net revenue calculation
+      const allCreditNotes = await db.select().from(creditNotes).where(
+        and(eq(creditNotes.recordStatus, 1), eq(creditNotes.status, 'issued'))
+      );
+      
+      // Group credit notes by invoice ID
+      const creditNotesByInvoice = new Map<string, number>();
+      allCreditNotes.forEach(cn => {
+        if (cn.invoiceId) {
+          const current = creditNotesByInvoice.get(cn.invoiceId) || 0;
+          creditNotesByInvoice.set(cn.invoiceId, current + cn.grandTotal);
+        }
+      });
+      
+      // Group credit notes by vendor ID (for imported credit notes without invoice link)
+      const creditNotesByVendor = new Map<string, number>();
+      allCreditNotes.forEach(cn => {
+        if (cn.vendorId && !cn.invoiceId) {
+          const current = creditNotesByVendor.get(cn.vendorId) || 0;
+          creditNotesByVendor.set(cn.vendorId, current + cn.grandTotal);
+        }
+      });
+      
       // Filter invoices based on period type
       let yearInvoices;
       let currentYear: number;
@@ -8033,6 +8056,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const invoiceIds = new Set(yearInvoices.map(inv => inv.id));
       const allItems = await db.select().from(invoiceItems).where(eq(invoiceItems.recordStatus, 1));
       const allInvoiceItems = allItems.filter(item => invoiceIds.has(item.invoiceId));
+      
+      // Fetch vendors for vendor-linked credit notes
+      const allVendors = await storage.getAllVendors();
 
       // Helper function to get period key and index from date
       const getPeriodInfo = (date: Date, periodType: string) => {
@@ -8068,9 +8094,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           periodData[periodInfo.key] = { revenue: 0, quantity: 0, invoiceCount: 0, index: periodInfo.index };
         }
 
-        periodData[periodInfo.key].revenue += invoice.totalAmount;
+        // Calculate net revenue = gross - credit notes for this invoice
+        const invoiceCredits = creditNotesByInvoice.get(invoice.id) || 0;
+        const netRevenue = invoice.totalAmount - invoiceCredits;
+        
+        periodData[periodInfo.key].revenue += netRevenue;
         periodData[periodInfo.key].invoiceCount += 1;
       });
+      
+      // Also subtract vendor-linked credit notes (distributed across periods proportionally)
+      // For simplicity, we subtract them from the total at the end
 
       // Add quantities from invoice items
       allInvoiceItems.forEach(item => {
@@ -8093,21 +8126,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         periodIndex: data.index,
       })).sort((a, b) => a.periodIndex - b.periodIndex);
 
-      // Calculate totals
+      // Calculate total vendor-linked credit notes (for credit notes without invoice link)
+      let totalVendorCredits = 0;
+      creditNotesByVendor.forEach((creditAmount) => {
+        totalVendorCredits += creditAmount;
+      });
+      
+      // Calculate totals (subtracting vendor-linked credit notes)
+      const grossTotalRevenue = analytics.reduce((sum, p) => sum + p.revenue, 0);
+      const netTotalRevenue = Math.max(0, grossTotalRevenue - totalVendorCredits);
+      
       const totals = {
-        totalRevenue: analytics.reduce((sum, p) => sum + p.revenue, 0),
+        totalRevenue: netTotalRevenue,
         totalQuantity: analytics.reduce((sum, p) => sum + p.quantity, 0),
         totalInvoices: analytics.reduce((sum, p) => sum + p.invoiceCount, 0),
-        avgOrderValue: analytics.length > 0 ? analytics.reduce((sum, p) => sum + p.revenue, 0) / analytics.reduce((sum, p) => sum + p.invoiceCount, 0) : 0,
+        avgOrderValue: analytics.length > 0 ? netTotalRevenue / analytics.reduce((sum, p) => sum + p.invoiceCount, 0) : 0,
       };
 
       // Calculate vendor type breakdown (same logic as vendor-analytics)
-      // Get all vendors and vendor types
-      const allVendors = await storage.getAllVendors();
+      // Get vendor types
       const allVendorTypes = await storage.getAllVendorTypes();
       const vendorTypeLinks = await db.select().from(vendorVendorTypes).where(eq(vendorVendorTypes.recordStatus, 1));
 
-      // Build vendor type breakdown by primary type only
+      // Build vendor type breakdown by primary type only (with net revenue)
       const typeBreakdown: Record<string, { count: Set<string>; revenue: number }> = {};
       
       yearInvoices.forEach(invoice => {
@@ -8127,7 +8168,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 typeBreakdown[primaryType.name] = { count: new Set(), revenue: 0 };
               }
               typeBreakdown[primaryType.name].count.add(vendor.id);
-              typeBreakdown[primaryType.name].revenue += invoice.totalAmount;
+              // Use net revenue (gross - credit notes)
+              const invoiceCredits = creditNotesByInvoice.get(invoice.id) || 0;
+              typeBreakdown[primaryType.name].revenue += (invoice.totalAmount - invoiceCredits);
+            }
+          }
+        }
+      });
+      
+      // Subtract vendor-linked credit notes from type breakdown
+      creditNotesByVendor.forEach((creditAmount, vendorId) => {
+        const vendor = allVendors.find(v => v.id === vendorId);
+        if (vendor) {
+          const primaryTypeLink = vendorTypeLinks.find(link => 
+            link.vendorId === vendor.id && link.isPrimary === 1 && link.recordStatus === 1
+          );
+          if (primaryTypeLink) {
+            const primaryType = allVendorTypes.find(vt => vt.id === primaryTypeLink.vendorTypeId);
+            if (primaryType && typeBreakdown[primaryType.name]) {
+              typeBreakdown[primaryType.name].revenue -= creditAmount;
             }
           }
         }
@@ -8165,7 +8224,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get all invoice items for quantity calculations
       const allItems = await db.select().from(invoiceItems).where(eq(invoiceItems.recordStatus, 1));
 
-      // Get all credit notes and debit notes for outstanding balance calculation
+      // Get all credit notes and debit notes for outstanding balance and net revenue calculation
       const allCreditNotes = await db.select().from(creditNotes).where(
         and(eq(creditNotes.recordStatus, 1), eq(creditNotes.status, 'issued'))
       );
@@ -8173,11 +8232,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         and(eq(debitNotes.recordStatus, 1), eq(debitNotes.status, 'issued'))
       );
 
-      // Group credit/debit notes by invoice ID
+      // Group credit notes by invoice ID (for credit notes linked to invoices)
       const creditNotesByInvoice = new Map<string, number>();
       allCreditNotes.forEach(cn => {
-        const current = creditNotesByInvoice.get(cn.invoiceId) || 0;
-        creditNotesByInvoice.set(cn.invoiceId, current + cn.grandTotal);
+        if (cn.invoiceId) {
+          const current = creditNotesByInvoice.get(cn.invoiceId) || 0;
+          creditNotesByInvoice.set(cn.invoiceId, current + cn.grandTotal);
+        }
+      });
+
+      // Group credit notes by vendor ID (for imported credit notes without invoice link)
+      const creditNotesByVendor = new Map<string, number>();
+      allCreditNotes.forEach(cn => {
+        if (cn.vendorId && !cn.invoiceId) {
+          const current = creditNotesByVendor.get(cn.vendorId) || 0;
+          creditNotesByVendor.set(cn.vendorId, current + cn.grandTotal);
+        }
       });
 
       const debitNotesByInvoice = new Map<string, number>();
@@ -8193,8 +8263,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           inv.buyerName === vendor.vendorName && inv.recordStatus === 1
         );
 
-        // Calculate total revenue, quantity, and orders
-        const totalRevenue = vendorInvoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
+        // Calculate gross revenue, quantity, and orders
+        const grossRevenue = vendorInvoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
         const totalOrders = vendorInvoices.length;
 
         // Calculate total quantity from invoice items
@@ -8202,12 +8272,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const vendorItems = allItems.filter(item => invoiceIds.has(item.invoiceId));
         const totalQuantity = vendorItems.reduce((sum, item) => sum + item.quantity, 0);
 
-        // Calculate outstanding balance including credit notes and debit notes
-        // Formula: outstanding = max(0, (totalAmount + debitNotes) - creditNotes - amountReceived)
+        // Calculate credit notes for this vendor (both invoice-linked and vendor-linked)
         const totalPaid = vendorInvoices.reduce((sum, inv) => sum + (inv.amountReceived || 0), 0);
-        const totalCredits = vendorInvoices.reduce((sum, inv) => sum + (creditNotesByInvoice.get(inv.id) || 0), 0);
+        const invoiceCreditNotes = vendorInvoices.reduce((sum, inv) => sum + (creditNotesByInvoice.get(inv.id) || 0), 0);
+        const vendorCreditNotes = creditNotesByVendor.get(vendor.id) || 0;
+        const totalCredits = invoiceCreditNotes + vendorCreditNotes;
         const totalDebits = vendorInvoices.reduce((sum, inv) => sum + (debitNotesByInvoice.get(inv.id) || 0), 0);
-        const outstandingBalance = Math.max(0, (totalRevenue + totalDebits) - totalCredits - totalPaid);
+        
+        // Net revenue = gross - credit notes (matching Sale Report calculation)
+        const totalRevenue = grossRevenue - totalCredits;
+        
+        // Outstanding balance = max(0, (grossAmount + debitNotes) - creditNotes - amountReceived)
+        const outstandingBalance = Math.max(0, (grossRevenue + totalDebits) - totalCredits - totalPaid);
 
         // Get vendor types for this vendor
         const vendorTypeIds = vendorTypeLinks
