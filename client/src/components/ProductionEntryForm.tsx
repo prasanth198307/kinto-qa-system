@@ -41,6 +41,11 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
     queryKey: ['/api/raw-material-issuances'],
   });
 
+  // Fetch UOMs for finished goods UOM selection
+  const { data: uomList = [] } = useQuery<{ id: string; name: string; abbreviation?: string }[]>({
+    queryKey: ['/api/uoms'],
+  });
+
   const { data: issuanceSummary, isLoading: isLoadingSummary } = useQuery<IssuanceSummary>({
     queryKey: ['/api/raw-material-issuances', selectedIssuanceId, 'summary'],
     enabled: !!selectedIssuanceId && selectedIssuanceId !== "",
@@ -58,6 +63,8 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
       issuanceId: "",
       productionDate: new Date(),
       shift: 'A',
+      uomId: "", // Default UOM for finished goods
+      batchNumber: "", // Will be auto-generated server-side if empty
       producedQuantity: 0,
       rejectedQuantity: 0,
       emptyBottlesOpening: 0,
@@ -472,6 +479,52 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
                       </SelectContent>
                     </Select>
                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="uomId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Finished Goods UOM</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || ""}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-uom">
+                          <SelectValue placeholder="Select UOM (default: Case)..." />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {uomList.map((uom) => (
+                          <SelectItem key={uom.id} value={uom.id}>
+                            {uom.name} {uom.abbreviation ? `(${uom.abbreviation})` : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                    <p className="text-xs text-muted-foreground">Leave empty to default to "Case"</p>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="batchNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Batch Number</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Auto-generated if empty (YYMMDD-PROD-SHIFT-SEQ)"
+                        {...field}
+                        value={field.value || ""}
+                        data-testid="input-batch-number"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                    <p className="text-xs text-muted-foreground">Leave empty for auto-generated batch number</p>
                   </FormItem>
                 )}
               />
