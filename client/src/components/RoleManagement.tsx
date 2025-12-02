@@ -53,7 +53,7 @@ const AVAILABLE_SCREENS: ScreenDefinition[] = [
   { key: 'pending_payments', label: 'Pending Payments', allowedActions: ['view'] },
   { key: 'payments', label: 'Payment Management', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'cancelled_invoices_report', label: 'Cancelled Invoices Report', allowedActions: ['view'] },
-  { key: 'write_off_report', label: 'Write-Off Report', allowedActions: ['view'] },
+  { key: 'cash_register_report', label: 'Cash Register Report', allowedActions: ['view'] },
   
   // Master Data - Products & Materials
   { key: 'products', label: 'Products', allowedActions: ['view', 'create', 'edit', 'delete'] },
@@ -66,6 +66,7 @@ const AVAILABLE_SCREENS: ScreenDefinition[] = [
   // Master Data - Supporting
   { key: 'uom', label: 'Units of Measure', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'vendors', label: 'Vendor Master', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'vendor_types', label: 'Vendor Types', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'inventory', label: 'Inventory Management', allowedActions: ['view', 'create', 'edit', 'delete'] },
   
   // Quality & Maintenance
@@ -73,6 +74,7 @@ const AVAILABLE_SCREENS: ScreenDefinition[] = [
   { key: 'machine_types', label: 'Machine Types', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'spare_parts', label: 'Spare Parts', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'checklist_templates', label: 'Checklist Templates', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'checklist_assignments', label: 'Checklist Assignments', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'checklists', label: 'Checklists', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'maintenance_plans', label: 'Maintenance Plans', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'pm_templates', label: 'PM Task Templates', allowedActions: ['view', 'create', 'edit', 'delete'] },
@@ -83,6 +85,7 @@ const AVAILABLE_SCREENS: ScreenDefinition[] = [
   { key: 'raw_material_issuance', label: 'Raw Material Issuance', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'production_entries', label: 'Production Entries', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'production_reconciliations', label: 'Production Reconciliation', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'production_management', label: 'Production Management', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'gatepasses', label: 'Gatepasses', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'invoices', label: 'Sales Invoices', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'credit_notes', label: 'Credit Notes', allowedActions: ['view', 'create', 'edit', 'delete'] },
@@ -104,6 +107,7 @@ const AVAILABLE_SCREENS: ScreenDefinition[] = [
   { key: 'notification_settings', label: 'Notification Settings', allowedActions: ['view', 'edit'] },
   { key: 'machine_startup_reminders', label: 'Machine Startup Reminders', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'vyapaar_import', label: 'Vyapaar Data Import', allowedActions: ['view', 'create'] },
+  { key: 'data_import', label: 'Data Import', allowedActions: ['view', 'create'] },
   { key: 'payment_writeoff', label: 'Payment Write-Off', allowedActions: ['view', 'create'] },
 ];
 
