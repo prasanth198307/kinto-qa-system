@@ -651,7 +651,12 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
                         <TableHeader>
                           <TableRow>
                             <TableHead>Material</TableHead>
-                            <TableHead className="text-right">Issued</TableHead>
+                            <TableHead className="text-right">
+                              <div className="flex flex-col items-end">
+                                <span>Issued</span>
+                                <span className="text-xs text-muted-foreground font-normal">(bags)</span>
+                              </div>
+                            </TableHead>
                             <TableHead className="text-right">
                               <div className="flex flex-col items-end">
                                 <span>Expected</span>
@@ -683,14 +688,18 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
                         </TableHeader>
                         <TableBody>
                           {items.map((item, index) => {
-                            const issued = item.quantityIssued || 0;
+                            const issuedBags = item.quantityIssued || 0;
+                            const piecesPerBag = getPiecesPerBag(item.rawMaterialId);
+                            // Convert issued bags to pieces for calculation
+                            const issuedPieces = piecesPerBag > 0 ? issuedBags * piecesPerBag : issuedBags;
                             const used = item.quantityUsed || 0;
                             const returned = item.quantityReturned || 0;
-                            const pending = item.quantityPending || 0; // Hopper
+                            const pending = item.quantityPending || 0; // Hopper (already in pieces)
                             const expectedFromIssuance = calculateExpectedFromIssuance(item.rawMaterialId);
                             const productionDemand = calculateProductionDemand(item.rawMaterialId);
-                            const variance = calculateVariance(issued, used, returned, pending);
-                            const variancePercent = issued > 0 ? Math.abs((variance / issued) * 100) : 0;
+                            // Use pieces for variance calculation
+                            const variance = calculateVariance(issuedPieces, used, returned, pending);
+                            const variancePercent = issuedPieces > 0 ? Math.abs((variance / issuedPieces) * 100) : 0;
                             const acceptableLoss = getAcceptableLossPercent(item.rawMaterialId);
                             const isWithinTolerance = variancePercent <= acceptableLoss;
 
@@ -700,7 +709,14 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
                                   {getMaterialName(item.rawMaterialId)}
                                 </TableCell>
                                 <TableCell className="text-right">
-                                  <Badge variant="outline">{issued}</Badge>
+                                  <div className="flex flex-col items-end">
+                                    <Badge variant="outline">{issuedBags} bags</Badge>
+                                    {piecesPerBag > 0 && (
+                                      <span className="text-xs text-muted-foreground">
+                                        = {issuedPieces.toFixed(0)} pcs
+                                      </span>
+                                    )}
+                                  </div>
                                 </TableCell>
                                 <TableCell className="text-right">
                                   <Badge variant="secondary" className="text-xs">
