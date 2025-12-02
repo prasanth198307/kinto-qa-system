@@ -30,6 +30,37 @@ const itemSchema = insertProductionReconciliationItemSchema.omit({
 type HeaderFormData = z.infer<typeof headerSchema>;
 type ItemFormData = z.infer<typeof itemSchema>;
 
+// Local form state uses numbers for easier calculation
+interface LocalItemFormData {
+  rawMaterialId: string;
+  issuanceItemId?: string;
+  quantityIssued: number;
+  quantityUsed: number;
+  quantityReturned: number;
+  quantityPending: number;
+  remarks?: string;
+  uomId?: string;
+  id?: string;
+}
+
+// Convert local number format to API string format
+const toApiFormat = (item: LocalItemFormData): ItemFormData & { id?: string } => ({
+  ...item,
+  quantityIssued: String(item.quantityIssued),
+  quantityUsed: String(item.quantityUsed),
+  quantityReturned: String(item.quantityReturned || 0),
+  quantityPending: String(item.quantityPending || 0),
+});
+
+// Convert API string format to local number format
+const fromApiFormat = (item: any): LocalItemFormData => ({
+  ...item,
+  quantityIssued: Number(item.quantityIssued) || 0,
+  quantityUsed: Number(item.quantityUsed) || 0,
+  quantityReturned: Number(item.quantityReturned) || 0,
+  quantityPending: Number(item.quantityPending) || 0,
+});
+
 interface IssuanceSummary {
   issuance: RawMaterialIssuance & { items: any[] };
   product: any;
@@ -45,7 +76,7 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
   const { toast } = useToast();
   const [selectedIssuanceId, setSelectedIssuanceId] = useState<string>("");
   const [selectedProductionId, setSelectedProductionId] = useState<string>("");
-  const [items, setItems] = useState<Array<ItemFormData & { id?: string }>>([]);
+  const [items, setItems] = useState<LocalItemFormData[]>([]);
 
   const { data: issuances = [] } = useQuery<RawMaterialIssuance[]>({
     queryKey: ['/api/raw-material-issuances'],
@@ -398,9 +429,10 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
       return;
     }
 
+    // Convert local number format to API string format
     const payload = {
       header: data,
-      items: items,
+      items: items.map(toApiFormat),
     };
 
     if (reconciliation) {
@@ -410,7 +442,7 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
     }
   };
 
-  const updateItem = (index: number, field: keyof ItemFormData, value: any) => {
+  const updateItem = (index: number, field: keyof LocalItemFormData, value: any) => {
     const updatedItems = [...items];
     const item = { ...updatedItems[index], [field]: value };
     

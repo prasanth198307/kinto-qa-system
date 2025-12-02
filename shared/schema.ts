@@ -2305,11 +2305,11 @@ export const productionReconciliationItems = pgTable("production_reconciliation_
   rawMaterialId: varchar("raw_material_id").references(() => rawMaterials.id).notNull(),
   issuanceItemId: varchar("issuance_item_id").references(() => rawMaterialIssuanceItems.id), // Link to original issuance item
   
-  // Quantities (in base unit from issuance)
-  quantityIssued: integer("quantity_issued").notNull(), // Auto from issuance
-  quantityUsed: integer("quantity_used").notNull(), // Manual entry
-  quantityReturned: integer("quantity_returned").default(0).notNull(), // Manual entry - goes back to inventory
-  quantityPending: integer("quantity_pending").default(0).notNull(), // Manual entry - in-process
+  // Quantities (in pieces - supports decimals for partial bags calculation)
+  quantityIssued: numeric("quantity_issued", { precision: 12, scale: 2 }).notNull(), // Auto from issuance
+  quantityUsed: numeric("quantity_used", { precision: 12, scale: 2 }).notNull(), // Manual entry
+  quantityReturned: numeric("quantity_returned", { precision: 12, scale: 2 }).default('0').notNull(), // Manual entry - goes back to inventory
+  quantityPending: numeric("quantity_pending", { precision: 12, scale: 2 }).default('0').notNull(), // Manual entry - in hopper (supports decimal bags)
   // Note: netConsumed = quantityUsed - quantityReturned - quantityPending (calculated dynamically, not stored)
   
   // Unit of measure
