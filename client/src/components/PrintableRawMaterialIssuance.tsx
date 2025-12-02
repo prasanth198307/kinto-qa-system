@@ -189,11 +189,8 @@ export default function PrintableRawMaterialIssuance({ issuance }: PrintableRawM
 
               .page {
                 margin: 0;
-                page-break-after: always;
-              }
-
-              .page:last-child {
-                page-break-after: auto;
+                page-break-after: avoid;
+                page-break-inside: avoid;
               }
             }
           </style>
