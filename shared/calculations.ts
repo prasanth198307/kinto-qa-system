@@ -271,6 +271,7 @@ export interface LotAllocation {
 export interface BOMCalculationResultExtended extends BOMCalculationResult {
   typeId: string | null;
   typeName: string | null;
+  baseUnitHint: string | null; // Base unit from material type (e.g., "Bag") for display
   availableRawMaterials: Array<{
     id: string;
     materialCode: string | null;
@@ -400,6 +401,7 @@ export function calculateBOMSuggestions(
     type: any;
     typeId?: string | null;
     effectiveUomId?: string | null;
+    baseUnitHint?: string | null;
     availableRawMaterials?: Array<{
       id: string;
       materialCode: string | null;
@@ -485,6 +487,7 @@ export function calculateBOMSuggestions(
       rawMaterialId: selectedRawMaterialId,
       typeId: item.typeId || item.bom.materialTypeId || null,
       typeName: item.type?.name || null,
+      baseUnitHint: item.baseUnitHint || item.type?.baseUnit || null,
       availableRawMaterials,
       selectionRequired,
       outOfStock,

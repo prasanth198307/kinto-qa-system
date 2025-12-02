@@ -52,6 +52,7 @@ interface ExtendedFormItem {
   remarks: string;
   _typeId?: string | null;
   _typeName?: string | null;
+  _baseUnitHint?: string | null;
   _allocations?: LotAllocation[];
   _allocationSummary?: string;
   _insufficientStock?: boolean;
@@ -328,6 +329,7 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
         remarks: suggestion.calculationDetails || "",
         _typeId: suggestion.typeId,
         _typeName: suggestion.typeName,
+        _baseUnitHint: suggestion.baseUnitHint,
         _allocations: suggestion.allocations,
         _allocationSummary: suggestion.allocationSummary,
         _insufficientStock: suggestion.insufficientStock,
@@ -876,7 +878,7 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
                       <div className="space-y-1">
                         <label className="text-sm font-medium">Unit of Measure</label>
                         <div className="flex items-center h-9 px-3 border rounded-md bg-muted text-sm" data-testid={`display-uom-${index}`}>
-                          {uoms.find(u => u.id === item.uomId)?.name || item.uomId || "—"}
+                          {item._baseUnitHint || uoms.find(u => u.id === item.uomId)?.name || "—"}
                         </div>
                       </div>
                     ) : (

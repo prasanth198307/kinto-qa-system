@@ -316,6 +316,7 @@ export interface IStorage {
       type: (typeof rawMaterialTypes.$inferSelect) | null;
       typeId: string | null;
       effectiveUomId: string | null;
+      baseUnitHint: string | null;
       availableRawMaterials: Array<{
         id: string;
         materialCode: string | null;
@@ -1613,12 +1614,18 @@ export class DatabaseStorage implements IStorage {
       // Get type details
       const typeData = resolvedTypeId ? typeMap.get(resolvedTypeId) || null : null;
       
-      // Get effective UOM ID from the first available raw material of this type
-      // Raw materials have uomId; types do not have uomId column
+      // Get effective UOM ID:
+      // 1. From raw material's uomId if set
+      // 2. Or from material type's baseUnit (look up UOM by name)
+      // 3. Or from first available raw material of this type
       const firstMaterialOfType = resolvedTypeId 
         ? relevantRawMaterials.find(rm => rm.typeId === resolvedTypeId && rm.uomId)
         : null;
+      
+      // If type has baseUnit, we'll pass it as a hint for UOM lookup
+      // The baseUnit is the issuance unit (e.g., "Bag" for preforms)
       const effectiveUomId = material?.uomId || firstMaterialOfType?.uomId || null;
+      const baseUnitHint = typeData?.baseUnit || null;
       
       // Find all available raw materials of this type with stock
       // Sort by receivedDate (oldest first) for FIFO policy
@@ -1647,6 +1654,7 @@ export class DatabaseStorage implements IStorage {
         type: typeData,
         typeId: resolvedTypeId,
         effectiveUomId,
+        baseUnitHint,
         availableRawMaterials,
       };
     });
