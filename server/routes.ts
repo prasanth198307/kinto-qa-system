@@ -3781,10 +3781,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const conditions = [eq(productionReconciliations.recordStatus, 1)];
       
       if (dateFrom) {
-        conditions.push(gte(productionReconciliations.reconciliationDate, new Date(dateFrom as string).toISOString()));
+        const fromDate = new Date(dateFrom as string);
+        fromDate.setHours(0, 0, 0, 0);
+        conditions.push(gte(productionReconciliations.reconciliationDate, fromDate.toISOString()));
       }
       if (dateTo) {
-        conditions.push(lte(productionReconciliations.reconciliationDate, new Date(dateTo as string).toISOString()));
+        const toDate = new Date(dateTo as string);
+        toDate.setHours(23, 59, 59, 999); // Include the entire day
+        conditions.push(lte(productionReconciliations.reconciliationDate, toDate.toISOString()));
       }
       if (shift && shift !== 'all') {
         conditions.push(eq(productionReconciliations.shift, shift as string));
