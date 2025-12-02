@@ -3296,6 +3296,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Fetch linked issuance to get product details for derivedUnits calculation
       const issuance = await storage.getRawMaterialIssuance(validatedEntry.issuanceId);
+      console.log("[PRODUCTION ENTRY] Fetched issuance:", issuance?.id, "productId:", issuance?.productId);
+      
       if (!issuance) {
         return res.status(404).json({ message: "Linked raw material issuance not found" });
       }
