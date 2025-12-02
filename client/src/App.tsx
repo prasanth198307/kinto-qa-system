@@ -9,6 +9,7 @@ import NotFound from "@/pages/not-found";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
 import AuthPage from "@/pages/auth-page";
+import ResetPasswordPage from "@/pages/reset-password";
 import Landing from "@/components/Landing";
 import RoleSelector from "@/components/RoleSelector";
 import { TopRightHeader } from "@/components/TopRightHeader";
@@ -1298,6 +1299,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/auth" component={AuthPage} />
+      <Route path="/reset-password" component={ResetPasswordPage} />
       <ProtectedRoute path="/checklists" component={ChecklistsPage} />
       <ProtectedRoute path="/reviewer-dashboard" component={ReviewerDashboardPage} />
       <ProtectedRoute path="/vendor-types" component={VendorTypes} />

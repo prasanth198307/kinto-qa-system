@@ -1,5 +1,6 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
+import crypto from "crypto";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
 import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, paymentEvidence, salesReturns, salesReturnItems, creditNotes, creditNoteItems, debitNotes, debitNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes, vendors, users, uom, insertDocumentCategorySchema, insertDocumentSchema, insertExpenseCategorySchema, insertExpenseVoucherSchema, insertExpenseItemSchema, insertExpenseAttachmentSchema } from "@shared/schema";
@@ -329,6 +330,154 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Auth routes are handled by setupAuth() in auth.ts
   // /api/register, /api/login, /api/logout, /api/user are automatically set up
+
+  // Forgot Password - sends reset link to email
+  app.post('/api/auth/forgot-password', async (req, res) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      // Find user by email
+      const user = await storage.getUserByEmail(email);
+      
+      // Always return success message to prevent email enumeration attacks
+      if (!user) {
+        console.log(`[AUTH] Forgot password attempt for non-existent email: ${email}`);
+        return res.json({ message: "If an account with that email exists, a password reset link has been sent." });
+      }
+
+      // Generate secure reset token
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      const tokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
+
+      // Store token in database
+      await storage.setPasswordResetToken(user.id, resetToken, tokenExpiry);
+
+      // Build reset URL
+      const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+        : 'http://localhost:5000';
+      const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
+
+      // Send email via SendGrid
+      const sendEmail = async () => {
+        const subject = 'Password Reset - KINTO Smart Ops';
+        const htmlBody = `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #1e40af; color: white; padding: 20px; text-align: center; }
+    .content { background: #f9fafb; padding: 20px; margin: 20px 0; border-radius: 8px; }
+    .button { display: inline-block; background: #1e40af; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 15px 0; }
+    .footer { text-align: center; color: #6b7280; font-size: 12px; margin-top: 20px; }
+    .warning { color: #dc2626; font-size: 12px; margin-top: 15px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Password Reset Request</h1>
+    </div>
+    <div class="content">
+      <p>Hello <strong>${user.firstName || user.username}</strong>,</p>
+      <p>We received a request to reset your password for KINTO Smart Ops.</p>
+      <p>Click the button below to reset your password:</p>
+      <p style="text-align: center;">
+        <a href="${resetUrl}" class="button" style="color: white;">Reset Password</a>
+      </p>
+      <p>Or copy and paste this link into your browser:</p>
+      <p style="word-break: break-all; font-size: 12px; color: #6b7280;">${resetUrl}</p>
+      <p class="warning">This link will expire in 1 hour. If you didn't request this, please ignore this email.</p>
+    </div>
+    <div class="footer">
+      <p>KINTO Smart Ops - Manufacturing Operations Platform</p>
+    </div>
+  </div>
+</body>
+</html>
+        `;
+
+        // Check if SendGrid is configured
+        if (!process.env.SENDGRID_API_KEY) {
+          console.log('\n' + '='.repeat(60));
+          console.log('[PASSWORD RESET - NO SENDGRID CONFIGURED]');
+          console.log('='.repeat(60));
+          console.log(`To: ${email}`);
+          console.log(`Subject: ${subject}`);
+          console.log(`Reset URL: ${resetUrl}`);
+          console.log('='.repeat(60) + '\n');
+          return;
+        }
+
+        // Send via SendGrid
+        const sgMail = await import('@sendgrid/mail');
+        sgMail.default.setApiKey(process.env.SENDGRID_API_KEY);
+
+        await sgMail.default.send({
+          to: email,
+          from: {
+            email: process.env.SENDGRID_FROM_EMAIL || 'noreply@kinto.com',
+            name: 'KINTO Smart Ops'
+          },
+          subject,
+          html: htmlBody
+        });
+
+        console.log(`[AUTH] Password reset email sent to: ${email}`);
+      };
+
+      await sendEmail();
+      
+      console.log(`[AUDIT] Password reset requested for user ${user.id} (${email})`);
+      res.json({ message: "If an account with that email exists, a password reset link has been sent." });
+    } catch (error) {
+      console.error('[AUTH] Forgot password error:', error);
+      res.status(500).json({ message: "Failed to process password reset request" });
+    }
+  });
+
+  // Reset Password - validates token and updates password
+  app.post('/api/auth/reset-password', async (req, res) => {
+    try {
+      const { token, password } = req.body;
+
+      if (!token || !password) {
+        return res.status(400).json({ message: "Token and password are required" });
+      }
+
+      if (password.length < 6) {
+        return res.status(400).json({ message: "Password must be at least 6 characters" });
+      }
+
+      // Find user by reset token
+      const user = await storage.getUserByResetToken(token);
+      
+      if (!user) {
+        return res.status(400).json({ message: "Invalid or expired reset token" });
+      }
+
+      // Check if token has expired
+      if (user.resetTokenExpiry && new Date(user.resetTokenExpiry) < new Date()) {
+        return res.status(400).json({ message: "Reset token has expired. Please request a new one." });
+      }
+
+      // Hash new password and update user
+      const hashedPassword = await hashPassword(password);
+      await storage.clearPasswordResetToken(user.id, hashedPassword);
+
+      console.log(`[AUDIT] Password reset completed for user ${user.id}`);
+      res.json({ message: "Password has been reset successfully. You can now log in with your new password." });
+    } catch (error) {
+      console.error('[AUTH] Reset password error:', error);
+      res.status(500).json({ message: "Failed to reset password" });
+    }
+  });
 
   app.post('/api/auth/set-role', isAuthenticated, async (req: any, res) => {
     try {
