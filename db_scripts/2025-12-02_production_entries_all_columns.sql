@@ -8,6 +8,9 @@ ALTER TABLE production_entries ADD COLUMN IF NOT EXISTS remarks TEXT;
 -- Add derived_units column (decimal type for calculated units)
 ALTER TABLE production_entries ADD COLUMN IF NOT EXISTS derived_units NUMERIC(12,2) DEFAULT 0;
 
+-- Add created_by column (references users)
+ALTER TABLE production_entries ADD COLUMN IF NOT EXISTS created_by VARCHAR(255);
+
 -- Add empty bottles tracking columns (decimal type)
 ALTER TABLE production_entries ADD COLUMN IF NOT EXISTS empty_bottles_opening NUMERIC(12,2) DEFAULT 0;
 ALTER TABLE production_entries ADD COLUMN IF NOT EXISTS empty_bottles_produced NUMERIC(12,2) DEFAULT 0;
