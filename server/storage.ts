@@ -384,6 +384,7 @@ export interface IStorage {
   updateFinishedGood(id: string, finishedGood: Partial<InsertFinishedGood>): Promise<FinishedGood | undefined>;
   deleteFinishedGood(id: string): Promise<void>;
   getFinishedGoodsByProduct(productId: string): Promise<FinishedGood[]>;
+  getFinishedGoodsByBatchNumber(batchNumber: string): Promise<FinishedGood[]>;
   
   // Raw Material Issuance
   createRawMaterialIssuance(issuance: InsertRawMaterialIssuance): Promise<RawMaterialIssuance>;
@@ -2074,6 +2075,10 @@ export class DatabaseStorage implements IStorage {
 
   async getFinishedGoodsByProduct(productId: string): Promise<FinishedGood[]> {
     return await db.select().from(finishedGoods).where(and(eq(finishedGoods.productId, productId), eq(finishedGoods.recordStatus, 1)));
+  }
+
+  async getFinishedGoodsByBatchNumber(batchNumber: string): Promise<FinishedGood[]> {
+    return await db.select().from(finishedGoods).where(and(eq(finishedGoods.batchNumber, batchNumber), eq(finishedGoods.recordStatus, 1)));
   }
 
   // Raw Material Issuance

@@ -3465,6 +3465,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Production entry not found" });
       }
       
+      // Check if finished goods from this production entry are approved
+      if (existingEntry.batchNumber) {
+        const finishedGoodsForBatch = await storage.getFinishedGoodsByBatchNumber(existingEntry.batchNumber);
+        const approvedGoods = finishedGoodsForBatch.filter(fg => fg.qualityStatus === 'approved');
+        
+        if (approvedGoods.length > 0) {
+          return res.status(403).json({ 
+            message: "Cannot edit - Finished goods from this production entry have already been approved. Please contact admin to make corrections.",
+            approvedCount: approvedGoods.length,
+            batchNumber: existingEntry.batchNumber
+          });
+        }
+      }
+      
       // Validate update data
       const updateSchema = insertProductionEntrySchema.partial();
       const validatedData = updateSchema.parse(req.body);
