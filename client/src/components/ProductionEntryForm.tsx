@@ -597,19 +597,22 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
                 </p>
               </div>
 
-              {/* Used - Auto-calculated from Cases */}
+              {/* Used - Show cases, derive bottles */}
               <div className="space-y-2">
                 <label className="text-sm font-medium">Used (for Filling)</label>
-                <Input 
-                  type="number" 
-                  value={usedFromCases.total}
-                  readOnly
-                  className="bg-muted"
-                  data-testid="input-empty-bottles-used-cases"
-                />
+                <div className="flex items-center gap-2">
+                  <Input 
+                    type="number" 
+                    value={usedFromCases.casesProduced}
+                    readOnly
+                    className="bg-muted w-24"
+                    data-testid="input-empty-bottles-used-cases"
+                  />
+                  <span className="text-sm text-muted-foreground">cases</span>
+                </div>
                 {usedFromCases.bottlesPerCase > 0 && (
                   <p className="text-xs text-green-600 dark:text-green-400">
-                    = {usedFromCases.casesProduced.toLocaleString()} cases × {usedFromCases.bottlesPerCase}
+                    = {usedFromCases.casesProduced.toLocaleString()} × {usedFromCases.bottlesPerCase} = <strong>{usedFromCases.total.toLocaleString()} bottles</strong>
                   </p>
                 )}
               </div>
