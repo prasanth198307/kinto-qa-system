@@ -2924,8 +2924,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create issuance header with auto-generated issuance number
       const issuanceNumber = `ISS-${Date.now()}`;
+      
+      // Explicitly handle productId and bomConfigurationId to ensure they're saved
+      const productId = validatedHeader.productId || null;
+      const bomConfigurationId = validatedHeader.bomConfigurationId || null;
+      
+      console.log("[ISSUANCE] Creating issuance with productId:", productId, "bomConfigurationId:", bomConfigurationId);
+      
       const issuanceData = {
         ...validatedHeader,
+        productId,
+        bomConfigurationId,
         issuanceDate: validatedHeader.issuanceDate ? new Date(validatedHeader.issuanceDate).toISOString() : new Date().toISOString(),
         issuanceNumber,
         issuedBy: req.user?.id,
