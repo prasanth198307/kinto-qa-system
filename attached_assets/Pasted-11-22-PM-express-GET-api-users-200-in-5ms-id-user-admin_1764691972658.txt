@@ -1,0 +1,30 @@
+11:22 PM [express] GET /api/users 200 in 5ms :: [{"id":"user-admin","username":"admin","email":"ad…
+Dec 02 16:12:08 iplvnic1 npm[896701]: 🔹 Request: POST /api/users
+Dec 02 16:12:08 iplvnic1 npm[896701]:    Cookie header: connect.sid=s%3AsmKEvIELwt1GlOCHejDP8yk43PushuSO.7M2%2ByYkNOvHtlLQNfzh4Z7Z2PwuZZi1JsZByNfIkC00
+Dec 02 16:12:08 iplvnic1 npm[896701]:    Session ID: smKEvIELwt1GlOCHejDP8yk43PushuSO
+Dec 02 16:12:08 iplvnic1 npm[896701]:    Authenticated: true
+Dec 02 16:12:08 iplvnic1 npm[896701]: Error creating user: error: duplicate key value violates unique constraint "users_email_key"
+Dec 02 16:12:08 iplvnic1 npm[896701]:     at /home/kinto/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+Dec 02 16:12:08 iplvnic1 npm[896701]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+Dec 02 16:12:08 iplvnic1 npm[896701]:     at async file:///home/kinto/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+Dec 02 16:12:08 iplvnic1 npm[896701]:     at async DatabaseStorage.createUser (file:///home/kinto/kinto-qa-system/dist/index.js:2627:24)
+Dec 02 16:12:08 iplvnic1 npm[896701]:     at async file:///home/kinto/kinto-qa-system/dist/index.js:9511:20 {
+Dec 02 16:12:08 iplvnic1 npm[896701]:   length: 215,
+Dec 02 16:12:08 iplvnic1 npm[896701]:   severity: 'ERROR',
+Dec 02 16:12:08 iplvnic1 npm[896701]:   code: '23505',
+Dec 02 16:12:08 iplvnic1 npm[896701]:   detail: 'Key (email)=(prasanth@inmoisture.com) already exists.',
+Dec 02 16:12:08 iplvnic1 npm[896701]:   hint: undefined,
+Dec 02 16:12:08 iplvnic1 npm[896701]:   position: undefined,
+Dec 02 16:12:08 iplvnic1 npm[896701]:   internalPosition: undefined,
+Dec 02 16:12:08 iplvnic1 npm[896701]:   internalQuery: undefined,
+Dec 02 16:12:08 iplvnic1 npm[896701]:   where: undefined,
+Dec 02 16:12:08 iplvnic1 npm[896701]:   schema: 'public',
+Dec 02 16:12:08 iplvnic1 npm[896701]:   table: 'users',
+Dec 02 16:12:08 iplvnic1 npm[896701]:   column: undefined,
+Dec 02 16:12:08 iplvnic1 npm[896701]:   dataType: undefined,
+Dec 02 16:12:08 iplvnic1 npm[896701]:   constraint: 'users_email_key',
+Dec 02 16:12:08 iplvnic1 npm[896701]:   file: 'nbtinsert.c',
+Dec 02 16:12:08 iplvnic1 npm[896701]:   line: '666',
+Dec 02 16:12:08 iplvnic1 npm[896701]:   routine: '_bt_check_unique'
+Dec 02 16:12:08 iplvnic1 npm[896701]: }
+Dec 02 16:12:08 iplvnic1 npm[896701]: 4:12:08 PM [express] POST /api/users 500 in 101ms :: {"message":"Failed to create user"}

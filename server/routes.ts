@@ -701,8 +701,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Return user without password
       const { password: _, ...userWithoutPassword } = user;
       res.status(201).json(userWithoutPassword);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating user:", error);
+      // Handle duplicate key constraint errors
+      if (error?.code === '23505') {
+        if (error?.constraint === 'users_email_key') {
+          return res.status(400).json({ message: "A user with this email already exists" });
+        }
+        if (error?.constraint === 'users_username_key') {
+          return res.status(400).json({ message: "This username is already taken" });
+        }
+        return res.status(400).json({ message: "A user with these details already exists" });
+      }
       res.status(500).json({ message: "Failed to create user" });
     }
   });
