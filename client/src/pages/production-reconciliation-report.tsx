@@ -24,6 +24,13 @@ interface MaterialDetail {
   variancePercent: number;
 }
 
+interface EmptyBottlesData {
+  opening: number;
+  produced: number;
+  used: number;
+  pending: number;
+}
+
 interface ReportData {
   reconciliationNumber: string;
   reconciliationDate: string;
@@ -37,6 +44,10 @@ interface ReportData {
   yieldPercent: number;
   efficiency: number;
   materials: MaterialDetail[];
+  // Empty bottles tracking
+  emptyBottles?: EmptyBottlesData;
+  emptyBottlesNetChange?: number;
+  emptyBottlesVariance?: number;
 }
 
 export default function ProductionReconciliationReport() {
@@ -85,7 +96,7 @@ export default function ProductionReconciliationReport() {
     // Prepare data for each reconciliation
     reportData.forEach((report, index) => {
       // Summary data
-      const summaryData = [
+      const summaryData: any[][] = [
         ['Production Reconciliation Report'],
         [''],
         ['Reconciliation Number:', report.reconciliationNumber],
@@ -99,9 +110,31 @@ export default function ProductionReconciliationReport() {
         ['Yield %:', report.yieldPercent.toFixed(2) + '%'],
         ['Efficiency %:', report.efficiency.toFixed(2) + '%'],
         [''],
+      ];
+
+      // Add Empty Bottles Tracking section if data exists
+      if (report.emptyBottles) {
+        summaryData.push(
+          ['Empty Bottles Tracking'],
+          ['Opening', 'Produced', 'Used', 'Pending (Closing)', 'Net Change', 'Variance %', 'Status'],
+          [
+            report.emptyBottles.opening,
+            report.emptyBottles.produced,
+            report.emptyBottles.used,
+            report.emptyBottles.pending,
+            report.emptyBottlesNetChange || 0,
+            (report.emptyBottlesVariance?.toFixed(1) || '0') + '%',
+            report.emptyBottles.pending >= report.emptyBottles.opening ? 'Stock Up' : 'Stock Down'
+          ],
+          ['']
+        );
+      }
+
+      // Add Material Breakdown header
+      summaryData.push(
         ['Material Breakdown'],
         ['Material Name', 'Type', 'Unit', 'Issued', 'Used', 'Returned', 'Pending', 'Net Consumed', 'Expected (BOM)', 'Variance', 'Var %', 'Status']
-      ];
+      );
 
       // Material data
       report.materials.forEach(material => {
@@ -248,6 +281,37 @@ export default function ProductionReconciliationReport() {
           <div class="summary-label">Efficiency %:</div>
           <div>${report.efficiency.toFixed(2)}%</div>
         </div>
+
+        ${report.emptyBottles ? `
+        <h2>Empty Bottles Tracking</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Opening</th>
+              <th>Produced</th>
+              <th>Used</th>
+              <th>Pending (Closing)</th>
+              <th>Net Change</th>
+              <th>Variance %</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="${report.emptyBottles.pending >= report.emptyBottles.opening ? 'good' : 'warning'}">
+              <td>${report.emptyBottles.opening.toLocaleString()}</td>
+              <td>+${report.emptyBottles.produced.toLocaleString()}</td>
+              <td>-${report.emptyBottles.used.toLocaleString()}</td>
+              <td><strong>${report.emptyBottles.pending.toLocaleString()}</strong></td>
+              <td>${(report.emptyBottlesNetChange || 0) > 0 ? '+' : ''}${(report.emptyBottlesNetChange || 0).toLocaleString()}</td>
+              <td>${(report.emptyBottlesVariance || 0) > 0 ? '+' : ''}${(report.emptyBottlesVariance || 0).toFixed(1)}%</td>
+              <td>${report.emptyBottles.pending >= report.emptyBottles.opening ? 'Stock Up' : 'Stock Down'}</td>
+            </tr>
+          </tbody>
+        </table>
+        <p style="font-size: 10px; color: #666; margin-top: 5px;">
+          Formula: Pending = Opening + Produced - Used | Net Change = Produced - Used
+        </p>
+        ` : ''}
 
         <h2>Material Breakdown</h2>
         <table>
@@ -497,6 +561,50 @@ export default function ProductionReconciliationReport() {
                       </TableBody>
                     </Table>
                   </div>
+
+                  {/* Empty Bottles Tracking */}
+                  {report.emptyBottles && (
+                    <div>
+                      <h3 className="text-lg font-semibold mb-4">Empty Bottles Tracking</h3>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Opening</TableHead>
+                            <TableHead>Produced</TableHead>
+                            <TableHead>Used</TableHead>
+                            <TableHead>Pending (Closing)</TableHead>
+                            <TableHead>Net Change</TableHead>
+                            <TableHead>Variance %</TableHead>
+                            <TableHead>Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          <TableRow>
+                            <TableCell>{report.emptyBottles.opening.toLocaleString()}</TableCell>
+                            <TableCell className="text-green-600">+{report.emptyBottles.produced.toLocaleString()}</TableCell>
+                            <TableCell className="text-red-600">-{report.emptyBottles.used.toLocaleString()}</TableCell>
+                            <TableCell className="font-medium">{report.emptyBottles.pending.toLocaleString()}</TableCell>
+                            <TableCell className={report.emptyBottlesNetChange && report.emptyBottlesNetChange >= 0 ? "text-green-600" : "text-red-600"}>
+                              {report.emptyBottlesNetChange && report.emptyBottlesNetChange > 0 ? '+' : ''}{report.emptyBottlesNetChange?.toLocaleString() || 0}
+                            </TableCell>
+                            <TableCell className={Math.abs(report.emptyBottlesVariance || 0) <= 10 ? "text-green-600" : "text-yellow-600"}>
+                              {report.emptyBottlesVariance && report.emptyBottlesVariance > 0 ? '+' : ''}{report.emptyBottlesVariance?.toFixed(1) || 0}%
+                            </TableCell>
+                            <TableCell>
+                              {report.emptyBottles.pending >= report.emptyBottles.opening ? (
+                                <span className="text-green-600">Stock Up</span>
+                              ) : (
+                                <span className="text-yellow-600">Stock Down</span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        </TableBody>
+                      </Table>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Formula: Pending = Opening + Produced - Used | Net Change = Produced - Used
+                      </p>
+                    </div>
+                  )}
 
                   {/* Material Details */}
                   <div>
