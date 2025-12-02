@@ -3376,7 +3376,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // IMPORTANT: productId comes from the linked issuance, not from the frontend
       const productionEntry = await storage.createProductionEntry({
         ...validatedEntry,
-        productId: issuance.productId, // Get productId from the linked issuance
+        productId: issuance.productId || undefined, // Get productId from the linked issuance (convert null to undefined)
         emptyBottlesPending: calculatedPending, // Use server-calculated pending
         derivedUnits: derivedUnits !== null ? derivedUnits : undefined,
         createdBy: req.user?.id,
