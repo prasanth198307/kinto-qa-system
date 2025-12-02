@@ -108,7 +108,7 @@ const AVAILABLE_SCREENS: ScreenDefinition[] = [
   { key: 'machine_startup_reminders', label: 'Machine Startup Reminders', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'vyapaar_import', label: 'Vyapaar Data Import', allowedActions: ['view', 'create'] },
   { key: 'data_import', label: 'Data Import', allowedActions: ['view', 'create'] },
-  { key: 'payment_writeoff', label: 'Payment Write-Off', allowedActions: ['view', 'create'] },
+  { key: 'payment_writeoff', label: 'Payment Write-Off', allowedActions: ['view', 'create', 'delete'] },
 ];
 
 export default function RoleManagement() {
