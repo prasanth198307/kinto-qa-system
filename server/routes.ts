@@ -3069,9 +3069,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/raw-material-issuances/:id', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
-      const { id} = req.params;
+      const { id } = req.params;
+      
+      // Get issuance items before deletion to return materials to inventory
+      const items = await storage.getIssuanceItems(id);
+      const issuance = await storage.getRawMaterialIssuance(id);
+      
+      if (!issuance) {
+        return res.status(404).json({ message: "Issuance not found" });
+      }
+      
+      // Return each item's quantity back to raw material inventory
+      for (const item of items) {
+        const rawMaterial = await storage.getRawMaterial(item.rawMaterialId);
+        if (rawMaterial) {
+          const currentQty = Number(rawMaterial.quantity) || 0;
+          const returnQty = Number(item.quantityIssued) || 0;
+          const newQty = currentQty + returnQty;
+          
+          // Update raw material quantity
+          await storage.updateRawMaterial(item.rawMaterialId, {
+            quantity: newQty,
+          });
+          
+          // Create transaction record for audit trail
+          await storage.createRawMaterialTransaction({
+            rawMaterialId: item.rawMaterialId,
+            transactionType: 'issuance_cancelled',
+            quantity: returnQty,
+            balanceAfter: newQty,
+            referenceType: 'issuance',
+            referenceId: id,
+            notes: `Returned from cancelled issuance ${issuance.issuanceNumber}`,
+            createdBy: req.user?.id,
+          });
+          
+          console.log(`[INVENTORY] Returned ${returnQty} bags of ${rawMaterial.name} from cancelled issuance ${issuance.issuanceNumber}`);
+        }
+      }
+      
+      // Soft delete the issuance (items are cascade soft-deleted or remain linked)
       await storage.deleteRawMaterialIssuance(id);
-      res.json({ message: "Raw material issuance deleted successfully" });
+      
+      res.json({ 
+        message: "Raw material issuance deleted successfully", 
+        itemsReturned: items.length,
+        note: "Materials have been returned to inventory"
+      });
     } catch (error) {
       console.error("Error deleting raw material issuance:", error);
       res.status(500).json({ message: "Failed to delete raw material issuance" });
