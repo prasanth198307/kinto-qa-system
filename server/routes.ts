@@ -3635,6 +3635,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const expectedCases = r.issuance?.plannedOutput ? parseFloat(r.issuance.plannedOutput) : 0;
           const yieldPercent = expectedCases > 0 ? (producedCases / expectedCases) * 100 : 0;
 
+          // Empty bottles tracking data from production entry
+          const emptyBottles = {
+            opening: Number(r.production?.emptyBottlesOpening) || 0,
+            produced: Number(r.production?.emptyBottlesProduced) || 0,
+            used: Number(r.production?.emptyBottlesUsed) || 0,
+            pending: Number(r.production?.emptyBottlesPending) || 0,
+          };
+          
+          // Calculate empty bottles variance (used vs produced)
+          // Positive = used more than produced (drawing from opening stock)
+          // Negative = produced more than used (building up stock)
+          const emptyBottlesNetChange = emptyBottles.produced - emptyBottles.used;
+          const emptyBottlesVariance = emptyBottles.opening > 0 
+            ? ((emptyBottles.pending - emptyBottles.opening) / emptyBottles.opening) * 100 
+            : 0;
+
           return {
             reconciliationNumber: r.reconciliation.reconciliationNumber,
             reconciliationDate: r.reconciliation.reconciliationDate,
@@ -3648,6 +3664,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             yieldPercent,
             efficiency,
             materials: materialDetails,
+            // Empty bottles tracking
+            emptyBottles,
+            emptyBottlesNetChange,
+            emptyBottlesVariance,
           };
         })
       );
