@@ -1270,6 +1270,7 @@ export type RawMaterialIssuanceItem = typeof rawMaterialIssuanceItems.$inferSele
 export const productionEntries = pgTable("production_entries", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   issuanceId: varchar("issuance_id").references(() => rawMaterialIssuance.id).notNull(), // Link to raw material issuance
+  productId: varchar("product_id").references(() => products.id), // Product being manufactured (from linked issuance)
   productionDate: timestamp("production_date", { mode: 'string' }).notNull(),
   shift: varchar("shift", { length: 20 }).notNull(), // A, B, or General
   producedQuantity: numeric("produced_quantity", { precision: 12, scale: 2 }).notNull(), // Actual output
@@ -1299,6 +1300,7 @@ export const insertProductionEntrySchema = createInsertSchema(productionEntries,
     }
     return val;
   }),
+  productId: z.string().optional().transform(val => !val || val.trim() === '' ? undefined : val),
   shift: z.enum(['A', 'B', 'General'], {
     errorMap: () => ({ message: "Shift must be one of: A, B, General" })
   }),
