@@ -1327,7 +1327,9 @@ export const insertProductionEntrySchema = createInsertSchema(productionEntries,
       return isNaN(num) ? 0 : num;
     }),
     z.number()
-  ]).optional(),
+  ]).refine(val => val === undefined || val >= 0, {
+    message: "Opening bottles must be non-negative"
+  }).optional(),
   emptyBottlesProduced: z.union([
     z.string().transform(val => {
       if (!val || val.trim() === '') return 0;
@@ -1335,7 +1337,9 @@ export const insertProductionEntrySchema = createInsertSchema(productionEntries,
       return isNaN(num) ? 0 : num;
     }),
     z.number()
-  ]).optional(),
+  ]).refine(val => val === undefined || val >= 0, {
+    message: "Bottles produced must be non-negative"
+  }).optional(),
   emptyBottlesUsed: z.union([
     z.string().transform(val => {
       if (!val || val.trim() === '') return 0;
@@ -1343,14 +1347,16 @@ export const insertProductionEntrySchema = createInsertSchema(productionEntries,
       return isNaN(num) ? 0 : num;
     }),
     z.number()
-  ]).optional(),
+  ]).refine(val => val === undefined || val >= 0, {
+    message: "Bottles used must be non-negative"
+  }).optional(),
   emptyBottlesPending: z.union([
     z.string().transform(val => {
       if (!val || val.trim() === '') return 0;
       const num = parseFloat(val);
-      return isNaN(num) ? 0 : num;
+      return isNaN(num) ? 0 : Math.max(0, num); // Ensure non-negative
     }),
-    z.number()
+    z.number().transform(val => Math.max(0, val)) // Ensure non-negative
   ]).optional(),
   derivedUnits: z.union([
     z.string().transform(val => {

@@ -46,6 +46,12 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
     enabled: !!selectedIssuanceId && selectedIssuanceId !== "",
   });
 
+  // Fetch opening bottles balance from last production entry (only for new entries)
+  const { data: openingBottlesData } = useQuery<{ openingBalance: number; fromEntry: any }>({
+    queryKey: ['/api/production-entries/opening-bottles'],
+    enabled: !entry, // Only fetch for new entries, not when editing
+  });
+
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -54,6 +60,7 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
       shift: 'A',
       producedQuantity: 0,
       rejectedQuantity: 0,
+      emptyBottlesOpening: 0,
       emptyBottlesProduced: 0,
       emptyBottlesUsed: 0,
       emptyBottlesPending: 0,
@@ -62,6 +69,25 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
   });
 
   const producedQuantity = form.watch('producedQuantity');
+  const emptyBottlesOpening = form.watch('emptyBottlesOpening');
+  const emptyBottlesProduced = form.watch('emptyBottlesProduced');
+  const emptyBottlesUsed = form.watch('emptyBottlesUsed');
+
+  // Auto-calculate pending when opening, produced, or used changes
+  useEffect(() => {
+    const opening = Number(emptyBottlesOpening) || 0;
+    const produced = Number(emptyBottlesProduced) || 0;
+    const used = Number(emptyBottlesUsed) || 0;
+    const pending = opening + produced - used;
+    form.setValue('emptyBottlesPending', Math.max(0, pending));
+  }, [emptyBottlesOpening, emptyBottlesProduced, emptyBottlesUsed, form]);
+
+  // Set opening balance from last production entry when data loads (for new entries)
+  useEffect(() => {
+    if (!entry && openingBottlesData?.openingBalance !== undefined) {
+      form.setValue('emptyBottlesOpening', openingBottlesData.openingBalance);
+    }
+  }, [entry, openingBottlesData, form]);
 
   useEffect(() => {
     if (entry) {
@@ -71,6 +97,7 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
         shift: entry.shift || 'A',
         producedQuantity: Number(entry.producedQuantity) || 0,
         rejectedQuantity: Number(entry.rejectedQuantity) || 0,
+        emptyBottlesOpening: Number(entry.emptyBottlesOpening) || 0,
         emptyBottlesProduced: Number(entry.emptyBottlesProduced) || 0,
         emptyBottlesUsed: Number(entry.emptyBottlesUsed) || 0,
         emptyBottlesPending: Number(entry.emptyBottlesPending) || 0,
@@ -86,6 +113,7 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/production-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/production-entries/opening-bottles'] });
       queryClient.invalidateQueries({ queryKey: ['/api/finished-goods'], exact: false });
       toast({
         title: "Success",
@@ -329,7 +357,38 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
           <Card className="p-6">
             <h3 className="text-lg font-semibold mb-4">Empty Bottles Tracking</h3>
             
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-4 gap-4">
+              <FormField
+                control={form.control}
+                name="emptyBottlesOpening"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Opening</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        step="0.01" 
+                        {...field}
+                        readOnly
+                        className="bg-muted"
+                        data-testid="input-empty-bottles-opening"
+                      />
+                    </FormControl>
+                    {!entry && openingBottlesData?.fromEntry && (
+                      <p className="text-xs text-muted-foreground">
+                        From {new Date(openingBottlesData.fromEntry.productionDate).toLocaleDateString()} (Shift {openingBottlesData.fromEntry.shift})
+                      </p>
+                    )}
+                    {entry && (
+                      <p className="text-xs text-muted-foreground">
+                        Carried from previous entry
+                      </p>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <FormField
                 control={form.control}
                 name="emptyBottlesProduced"
@@ -375,16 +434,20 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
                 name="emptyBottlesPending"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Pending</FormLabel>
+                    <FormLabel>Pending (Closing)</FormLabel>
                     <FormControl>
                       <Input 
                         type="number" 
                         step="0.01" 
                         {...field}
-                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                        readOnly
+                        className="bg-muted font-medium"
                         data-testid="input-empty-bottles-pending"
                       />
                     </FormControl>
+                    <p className="text-xs text-muted-foreground">
+                      = Opening + Produced - Used
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}

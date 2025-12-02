@@ -3203,9 +3203,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Create production entry with calculated derivedUnits
+      // Server-side calculation of pending bottles: opening + produced - used (min 0)
+      const opening = Number(validatedEntry.emptyBottlesOpening) || 0;
+      const produced = Number(validatedEntry.emptyBottlesProduced) || 0;
+      const used = Number(validatedEntry.emptyBottlesUsed) || 0;
+      const calculatedPending = Math.max(0, opening + produced - used);
+      
+      // Create production entry with calculated values
       const productionEntry = await storage.createProductionEntry({
         ...validatedEntry,
+        emptyBottlesPending: calculatedPending, // Use server-calculated pending
         derivedUnits: derivedUnits !== null ? derivedUnits : undefined,
         createdBy: req.user?.id,
       });

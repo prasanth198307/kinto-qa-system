@@ -3,7 +3,7 @@
 -- Purpose: Sync local database schema with Replit codebase
 
 -- =========================================
--- 1. Production Entries - empty_bottles_used
+-- 1. Production Entries - empty_bottles_used and empty_bottles_opening
 -- =========================================
 DO $$
 BEGIN
@@ -16,6 +16,17 @@ BEGIN
         RAISE NOTICE 'Added empty_bottles_used column to production_entries';
     ELSE
         RAISE NOTICE 'Column empty_bottles_used already exists in production_entries';
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'production_entries' 
+        AND column_name = 'empty_bottles_opening'
+    ) THEN
+        ALTER TABLE production_entries ADD COLUMN empty_bottles_opening NUMERIC(12, 2) DEFAULT '0';
+        RAISE NOTICE 'Added empty_bottles_opening column to production_entries';
+    ELSE
+        RAISE NOTICE 'Column empty_bottles_opening already exists in production_entries';
     END IF;
 END $$;
 
