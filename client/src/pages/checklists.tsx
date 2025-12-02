@@ -9,7 +9,11 @@ import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import type { ChecklistSubmission } from "@shared/schema";
 
-export default function ChecklistsPage() {
+interface ChecklistsPageProps {
+  showHeader?: boolean;
+}
+
+export default function ChecklistsPage({ showHeader = true }: ChecklistsPageProps = {}) {
   const { user, logoutMutation } = useAuth();
   const role = (user as any)?.role;
 
@@ -30,8 +34,8 @@ export default function ChecklistsPage() {
 
   return (
     <>
-      <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />
-      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 mt-16">
+      {showHeader && <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />}
+      <div className={showHeader ? "flex-1 space-y-4 p-4 md:p-8 pt-6 mt-16" : "flex-1 space-y-4 p-4 md:p-8 pt-6"}>
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">Checklists</h2>
       </div>

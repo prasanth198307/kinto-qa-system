@@ -1806,7 +1806,7 @@ function WriteOffReportPageWrapper() {
         setActiveView(viewId);
       }}
     >
-      <WriteOffReport />
+      <WriteOffReport showHeader={false} />
     </DashboardShell>
   );
 }
@@ -1893,7 +1893,7 @@ function ChecklistsPageWrapper() {
         setActiveView(viewId);
       }}
     >
-      <ChecklistsPage />
+      <ChecklistsPage showHeader={false} />
     </DashboardShell>
   );
 }
@@ -1980,7 +1980,7 @@ function InvoiceDetailPageWrapper() {
         setActiveView(viewId);
       }}
     >
-      <InvoiceDetail />
+      <InvoiceDetail showHeader={false} />
     </DashboardShell>
   );
 }

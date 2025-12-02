@@ -50,7 +50,11 @@ interface PaginatedResponse {
   };
 }
 
-export default function WriteOffReport() {
+interface WriteOffReportProps {
+  showHeader?: boolean;
+}
+
+export default function WriteOffReport({ showHeader = true }: WriteOffReportProps = {}) {
   const [page, setPage] = useState(1);
   const [pageSize] = useState(25);
   const [buyerNameFilter, setBuyerNameFilter] = useState("");
@@ -152,8 +156,8 @@ export default function WriteOffReport() {
 
   return (
     <>
-      <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />
-      <div className="p-6 mt-16">
+      {showHeader && <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />}
+      <div className={showHeader ? "p-6 mt-16" : "p-6"}>
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-2">
             <Link href="/" className="text-muted-foreground hover:text-foreground">
