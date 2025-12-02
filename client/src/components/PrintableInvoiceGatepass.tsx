@@ -374,8 +374,14 @@ export default function PrintableInvoiceGatepass({ invoice, gatepass }: Printabl
           
           <div class="signature-section">
             <div class="company-for-line">For <strong>${invoice.sellerName || 'Inmoisture Private Limited'}:</strong></div>
-            <div class="signature-space"></div>
-            <div class="signatory-label">Authorized Signatory</div>
+            ${(invoice.includeSignature === 1 || invoice.includeSignature === undefined) && template?.defaultSignatureImage ? `
+              <div class="signature-image">
+                <img src="${template.defaultSignatureImage}" alt="Authorized Signature" style="max-height: 50px; object-fit: contain;" />
+              </div>
+            ` : `
+              <div class="signature-space"></div>
+            `}
+            <div class="signatory-label">${template?.authorizedSignatoryName || 'Authorized Signatory'}</div>
           </div>
         </div>
 
@@ -554,7 +560,9 @@ export default function PrintableInvoiceGatepass({ invoice, gatepass }: Printabl
             .qr-code-section { flex-shrink: 0; }
             .qr-code { width: 100px; height: 100px; }
             .signature-section { text-align: right; }
-            .company-for-line { font-size: 10px; margin-bottom: 40px; }
+            .company-for-line { font-size: 10px; margin-bottom: 5px; }
+            .signature-image { margin: 10px 0; }
+            .signature-image img { max-height: 50px; object-fit: contain; }
             .signature-space { height: 40px; }
             .signatory-label { font-size: 9px; border-top: 1px solid #000; padding-top: 5px; display: inline-block; }
             .declaration { font-size: 8px; margin-top: 15px; padding: 5px; border: 1px solid #ddd; background: #f9f9f9; }
