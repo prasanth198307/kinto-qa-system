@@ -481,6 +481,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (process.env.OFFICE365_EMAIL && process.env.OFFICE365_PASSWORD) {
           const nodemailer = await import('nodemailer');
           
+          console.log(`[EMAIL] Attempting to send via Office 365 SMTP...`);
+          console.log(`[EMAIL] From: ${process.env.OFFICE365_EMAIL}`);
+          console.log(`[EMAIL] To: ${email}`);
+          
           const transporter = nodemailer.default.createTransport({
             host: 'smtp.office365.com',
             port: 587,
@@ -492,18 +496,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
             tls: {
               ciphers: 'SSLv3',
               rejectUnauthorized: false
+            },
+            debug: true, // Enable debug output
+            logger: true // Log to console
+          });
+
+          try {
+            // Verify connection first
+            await transporter.verify();
+            console.log(`[EMAIL] SMTP connection verified successfully`);
+            
+            const info = await transporter.sendMail({
+              from: `"KINTO Smart Ops" <${process.env.OFFICE365_EMAIL}>`,
+              to: email,
+              subject,
+              html: htmlBody
+            });
+
+            console.log(`[AUTH] Password reset email sent via Office 365 to: ${email}`);
+            console.log(`[EMAIL] Message ID: ${info.messageId}`);
+            return;
+          } catch (smtpError: any) {
+            console.error(`[EMAIL] Office 365 SMTP Error:`, smtpError.message);
+            console.error(`[EMAIL] Error code:`, smtpError.code);
+            console.error(`[EMAIL] Full error:`, smtpError);
+            
+            // Check for common Office 365 authentication issues
+            if (smtpError.code === 'EAUTH' || smtpError.message?.includes('535')) {
+              console.error(`[EMAIL] Authentication failed. This is usually because:`);
+              console.error(`[EMAIL] 1. Basic authentication is disabled in Office 365 (Microsoft is phasing this out)`);
+              console.error(`[EMAIL] 2. You need to use an App Password (if MFA is enabled)`);
+              console.error(`[EMAIL] 3. SMTP AUTH may need to be enabled for this mailbox in Exchange Admin Center`);
             }
-          });
-
-          await transporter.sendMail({
-            from: `"KINTO Smart Ops" <${process.env.OFFICE365_EMAIL}>`,
-            to: email,
-            subject,
-            html: htmlBody
-          });
-
-          console.log(`[AUTH] Password reset email sent via Office 365 to: ${email}`);
-          return;
+            throw smtpError;
+          }
         }
 
         // Fallback: Check if SendGrid is configured
