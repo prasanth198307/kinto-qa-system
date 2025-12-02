@@ -1040,7 +1040,9 @@ function canAccessNavItem(itemId: string, role: string): boolean {
   if (roleLower === 'operator') return permissions.operator;
   if (roleLower === 'reviewer') return permissions.reviewer;
   
-  return false; // Unknown role - hide by default
+  // Custom roles (like InventoryManager, Billing Manager) - show all sections
+  // Their specific permissions are managed through Role Permissions screen
+  return true;
 }
 
 // Filter nav sections based on user's role

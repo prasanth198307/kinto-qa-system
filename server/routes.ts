@@ -9029,6 +9029,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get current user's permissions (any authenticated user)
+  app.get('/api/my-permissions', async (req: any, res) => {
+    try {
+      if (!req.isAuthenticated() || !req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const user = await storage.getUser(req.user.id);
+      if (!user || !user.roleId) {
+        return res.status(404).json({ message: "User or role not found" });
+      }
+
+      // Get the role details
+      const role = await storage.getRole(user.roleId);
+      if (!role) {
+        return res.status(404).json({ message: "Role not found" });
+      }
+
+      // Get permissions for this role
+      const permissions = await storage.getRolePermissions(user.roleId);
+
+      // Return role name and permissions
+      res.json({
+        role: role.name,
+        roleId: user.roleId,
+        permissions: permissions.map(p => ({
+          screenKey: p.screenKey,
+          canView: p.canView === 1,
+          canCreate: p.canCreate === 1,
+          canEdit: p.canEdit === 1,
+          canDelete: p.canDelete === 1,
+        }))
+      });
+    } catch (error) {
+      console.error("Error fetching user permissions:", error);
+      res.status(500).json({ message: "Failed to fetch user permissions" });
+    }
+  });
+
   // Batch update role permissions (for easier bulk updates)
   app.put('/api/roles/:roleId/permissions', requireRole('admin'), async (req: any, res) => {
     try {

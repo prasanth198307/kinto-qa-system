@@ -23,6 +23,13 @@ interface UserWithRole {
   roleName: string;
 }
 
+interface Role {
+  id: string;
+  name: string;
+  description: string;
+  isDefault: boolean;
+}
+
 export default function AdminUserManagement() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -50,6 +57,11 @@ export default function AdminUserManagement() {
 
   const { data: users = [], isLoading } = useQuery<UserWithRole[]>({
     queryKey: ['/api/users'],
+  });
+
+  // Fetch all roles from database
+  const { data: roles = [] } = useQuery<Role[]>({
+    queryKey: ['/api/roles'],
   });
 
   const updateUserMutation = useMutation({
@@ -203,11 +215,19 @@ export default function AdminUserManagement() {
     }
   };
 
-  const roleColors = {
+  const roleColors: Record<string, string> = {
     admin: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100',
     operator: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100',
     reviewer: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100',
-    manager: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100'
+    manager: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100',
+    inventorymanager: 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-100',
+    'billing manager': 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-100',
+  };
+  
+  // Default color for any custom role not in the list
+  const getRoleColor = (role: string) => {
+    const normalizedRole = role.toLowerCase();
+    return roleColors[normalizedRole] || 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-100';
   };
 
   const filteredUsers = users.filter(user =>
@@ -270,7 +290,7 @@ export default function AdminUserManagement() {
                       <h3 className="font-medium text-sm" data-testid={`text-user-name-${index}`}>
                         {user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : 'No name'}
                       </h3>
-                      <Badge className={roleColors[user.role as keyof typeof roleColors] || roleColors.operator} data-testid={`badge-role-${index}`}>
+                      <Badge className={getRoleColor(user.role || 'operator')} data-testid={`badge-role-${index}`}>
                         {user.role || 'operator'}
                       </Badge>
                     </div>
@@ -388,10 +408,11 @@ export default function AdminUserManagement() {
                   <SelectValue placeholder="Select role" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="operator">Operator</SelectItem>
-                  <SelectItem value="reviewer">Reviewer</SelectItem>
-                  <SelectItem value="manager">Manager</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
+                  {roles.map((role) => (
+                    <SelectItem key={role.id} value={role.name}>
+                      {role.name.charAt(0).toUpperCase() + role.name.slice(1)}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -468,10 +489,11 @@ export default function AdminUserManagement() {
                   <SelectValue placeholder="Select role" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="operator">Operator</SelectItem>
-                  <SelectItem value="reviewer">Reviewer</SelectItem>
-                  <SelectItem value="manager">Manager</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
+                  {roles.map((role) => (
+                    <SelectItem key={role.id} value={role.name}>
+                      {role.name.charAt(0).toUpperCase() + role.name.slice(1)}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
