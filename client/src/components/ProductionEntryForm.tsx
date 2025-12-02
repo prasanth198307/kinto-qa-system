@@ -262,9 +262,21 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
       ? Number(data.producedQuantity) * unitsMultiplier
       : 0;
     
+    // Get productId from issuance OR from the product object in summary
+    const productId = issuanceSummary?.issuance?.productId || issuanceSummary?.product?.id || null;
+    
+    if (!productId) {
+      toast({
+        title: "Error",
+        description: "The selected issuance does not have a product linked. Please edit the issuance to add a product first.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     const submissionData = {
       ...data,
-      productId: issuanceSummary?.issuance?.productId || null,
+      productId,
       emptyBottlesProduced: totalProduced,
       derivedUnits: derivedUnits,
     };
