@@ -3110,8 +3110,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             bomConfiguration = await storage.getBomConfiguration(bomResult.metadata.configurationId);
           }
           
-          // Use the enriched BOM items from getProductBomWithTypes
-          bomItems = bomResult.items;
+          // Transform BOM items to match frontend expectations:
+          // - Use 'typeDetails' instead of 'type' for consistency with frontend
+          // - Include rawMaterialId from BOM item for variance analysis lookup
+          bomItems = bomResult.items.map(item => ({
+            ...item.bom,
+            material: item.material,
+            typeDetails: item.type,
+            typeId: item.typeId,
+            effectiveUomId: item.effectiveUomId,
+            availableRawMaterials: item.availableRawMaterials,
+          }));
         }
       }
       
