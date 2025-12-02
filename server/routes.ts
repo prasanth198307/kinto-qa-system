@@ -2628,9 +2628,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      // Auto-generate Batch Code based on receivedDate (LOT-YYYYMMDD format)
+      let batchCode = req.body.batchCode;
+      if (!batchCode && req.body.receivedDate) {
+        const receivedDate = new Date(req.body.receivedDate);
+        const dateStr = receivedDate.toISOString().slice(0, 10).replace(/-/g, '');
+        const baseBatchCode = `LOT-${dateStr}`;
+        
+        // Check for existing materials with same date to determine sequence
+        const allMaterials = await storage.getAllRawMaterials();
+        const sameDateBatches = allMaterials
+          .filter(m => m.batchCode && m.batchCode.startsWith(baseBatchCode))
+          .map(m => m.batchCode);
+        
+        if (sameDateBatches.length === 0) {
+          batchCode = baseBatchCode;
+        } else {
+          // Find highest sequence number
+          const sequences = sameDateBatches.map(code => {
+            const match = code.match(/-(\d{3})$/);
+            return match ? parseInt(match[1]) : 0;
+          });
+          const nextSeq = Math.max(0, ...sequences) + 1;
+          batchCode = `${baseBatchCode}-${String(nextSeq).padStart(3, '0')}`;
+        }
+        console.log(`[BATCH] Auto-generated batch code: ${batchCode} for received date: ${req.body.receivedDate}`);
+      }
+      
       const materialData = { 
         ...req.body, 
         materialCode,
+        batchCode,
         closingStock,
         closingStockUsable,
         currentStock,
@@ -2698,8 +2726,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Recalculate closing stock if type details exist and stock fields changed
+      // Auto-generate Batch Code if receivedDate changed and no batchCode provided
       let updates: any = { ...sanitized };
+      if (sanitized.receivedDate && !sanitized.batchCode && (!existing.batchCode || existing.receivedDate !== sanitized.receivedDate)) {
+        const receivedDate = new Date(sanitized.receivedDate);
+        const dateStr = receivedDate.toISOString().slice(0, 10).replace(/-/g, '');
+        const baseBatchCode = `LOT-${dateStr}`;
+        
+        // Check for existing materials with same date to determine sequence
+        const allMaterials = await storage.getAllRawMaterials();
+        const sameDateBatches = allMaterials
+          .filter(m => m.id !== id && m.batchCode && m.batchCode.startsWith(baseBatchCode))
+          .map(m => m.batchCode);
+        
+        if (sameDateBatches.length === 0) {
+          updates.batchCode = baseBatchCode;
+        } else {
+          const sequences = sameDateBatches.map(code => {
+            const match = code.match(/-(\d{3})$/);
+            return match ? parseInt(match[1]) : 0;
+          });
+          const nextSeq = Math.max(0, ...sequences) + 1;
+          updates.batchCode = `${baseBatchCode}-${String(nextSeq).padStart(3, '0')}`;
+        }
+        console.log(`[BATCH] Auto-generated batch code: ${updates.batchCode} for received date: ${sanitized.receivedDate}`);
+      }
+      
+      // Recalculate closing stock if type details exist and stock fields changed
       if (typeDetails && (sanitized.isOpeningStockOnly !== undefined || sanitized.openingStock !== undefined || sanitized.receivedQuantity !== undefined || sanitized.returnedQuantity !== undefined || sanitized.adjustments !== undefined)) {
         // Default isOpeningStockOnly to 1 if not provided, normalize to number for comparison
         const isOpeningMode = merged.isOpeningStockOnly === undefined ? 1 : Number(merged.isOpeningStockOnly);
