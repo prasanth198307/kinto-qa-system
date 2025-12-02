@@ -454,10 +454,21 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-sm text-muted-foreground">Calculated Derived Units:</span>
-                    <p className="text-2xl font-bold text-primary">{calculateDerivedUnits()}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      = {producedQuantity} × {issuanceSummary.product.usableDerivedUnits} (usable units)
-                    </p>
+                    {issuanceSummary.product.usableDerivedUnits ? (
+                      <>
+                        <p className="text-2xl font-bold text-primary">{calculateDerivedUnits()}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          = {producedQuantity} × {issuanceSummary.product.usableDerivedUnits} (usable units)
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-xl font-medium text-amber-600 dark:text-amber-400">Not Configured</p>
+                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                          Set up conversion method in Product Master to calculate derived units
+                        </p>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -568,32 +579,44 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
               <FormField
                 control={form.control}
                 name="emptyBottlesOpening"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Opening</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number" 
-                        step="0.01" 
-                        {...field}
-                        readOnly
-                        className="bg-muted"
-                        data-testid="input-empty-bottles-opening"
-                      />
-                    </FormControl>
-                    {!entry && openingBottlesData?.fromEntry && (
-                      <p className="text-xs text-muted-foreground">
-                        From {new Date(openingBottlesData.fromEntry.productionDate).toLocaleDateString()} (Shift {openingBottlesData.fromEntry.shift})
-                      </p>
-                    )}
-                    {entry && (
-                      <p className="text-xs text-muted-foreground">
-                        Carried from previous entry
-                      </p>
-                    )}
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  // Opening is read-only if we have previous entry data OR if editing an existing entry
+                  const hasPreviousEntry = openingBottlesData?.fromEntry || (openingBottlesData?.openingBalance ?? 0) > 0;
+                  const isReadOnly = entry || hasPreviousEntry;
+                  
+                  return (
+                    <FormItem>
+                      <FormLabel>Opening</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          step="1" 
+                          {...field}
+                          onChange={(e) => !isReadOnly && field.onChange(parseFloat(e.target.value) || 0)}
+                          readOnly={isReadOnly}
+                          className={isReadOnly ? "bg-muted" : ""}
+                          data-testid="input-empty-bottles-opening"
+                        />
+                      </FormControl>
+                      {!entry && openingBottlesData?.fromEntry && (
+                        <p className="text-xs text-muted-foreground">
+                          From {new Date(openingBottlesData.fromEntry.productionDate).toLocaleDateString()} (Shift {openingBottlesData.fromEntry.shift})
+                        </p>
+                      )}
+                      {entry && (
+                        <p className="text-xs text-muted-foreground">
+                          Carried from previous
+                        </p>
+                      )}
+                      {!entry && !openingBottlesData?.fromEntry && (
+                        <p className="text-xs text-blue-600 dark:text-blue-400">
+                          First entry - editable
+                        </p>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
 
               <FormField
