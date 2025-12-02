@@ -3817,18 +3817,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('[RECONCILIATION_REPORT] First reconciliation:', JSON.stringify(reconciliations[0].reconciliation, null, 2));
       }
 
-      // Apply product/batch filters
+      // Apply product/batch filters (skip if 'all' is selected)
       let filteredReconciliations = reconciliations;
-      if (productId) {
+      if (productId && productId !== 'all') {
         filteredReconciliations = filteredReconciliations.filter(r => 
           r.issuance?.productId === productId
         );
       }
-      if (batchId) {
+      if (batchId && batchId !== 'all') {
         filteredReconciliations = filteredReconciliations.filter(r => 
           r.production?.id === batchId
         );
       }
+      
+      console.log('[RECONCILIATION_REPORT] After filtering:', filteredReconciliations.length);
 
       // Fetch detailed data for each reconciliation
       const reportData = await Promise.all(
