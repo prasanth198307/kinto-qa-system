@@ -2196,10 +2196,23 @@ export class DatabaseStorage implements IStorage {
 
   // Production Entries
   async createProductionEntry(entry: InsertProductionEntry): Promise<ProductionEntry> {
+    // Explicitly handle all fields to ensure proper type conversion
     const entryData = {
-      ...entry,
-      productionDate: entry.productionDate ? new Date(entry.productionDate).toISOString() : entry.productionDate,
+      issuanceId: entry.issuanceId,
+      productId: entry.productId || null, // Explicitly handle productId
+      productionDate: entry.productionDate ? new Date(entry.productionDate).toISOString() : new Date().toISOString(),
+      shift: entry.shift,
+      producedQuantity: entry.producedQuantity?.toString(),
+      rejectedQuantity: entry.rejectedQuantity?.toString() || '0',
+      emptyBottlesOpening: entry.emptyBottlesOpening?.toString() || '0',
+      emptyBottlesProduced: entry.emptyBottlesProduced?.toString() || '0',
+      emptyBottlesUsed: entry.emptyBottlesUsed?.toString() || '0',
+      emptyBottlesPending: entry.emptyBottlesPending?.toString() || '0',
+      derivedUnits: entry.derivedUnits?.toString() || null,
+      remarks: entry.remarks || null,
+      createdBy: entry.createdBy || null,
     };
+    console.log("[STORAGE] Creating production entry with data:", JSON.stringify(entryData));
     const [created] = await db.insert(productionEntries).values([entryData]).returning();
     return created;
   }
