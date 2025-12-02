@@ -1,0 +1,41 @@
+10:30:55 AM [express] GET /api/uom 304 in 25ms :: [{"id":"57cdd356-f009-435a-b3ff-8f25a5cda30f","code…
+🔹 Request: GET /api/invoices
+   Cookie header: connect.sid=s%3AwPggIaACfKjRo36OwC0EaXc8RdznpfJB.f8cmc%2FxsN4drza123vnL2nXi%2BSUFPW4B7LACA4PVzko
+   Session ID: wPggIaACfKjRo36OwC0EaXc8RdznpfJB
+   Authenticated: true
+🔹 Request: GET /api/vendors
+   Cookie header: connect.sid=s%3AwPggIaACfKjRo36OwC0EaXc8RdznpfJB.f8cmc%2FxsN4drza123vnL2nXi%2BSUFPW4B7LACA4PVzko
+   Session ID: wPggIaACfKjRo36OwC0EaXc8RdznpfJB
+   Authenticated: true
+10:30:55 AM [express] GET /api/vendors 304 in 24ms :: [{"id":"50a2469b-f4c2-47f0-9284-d4cba2d29e20","…
+10:30:55 AM [express] GET /api/invoices 304 in 24ms :: [{"id":"e23a4329-011b-444c-8ea2-161ae360ad6b",…
+🔹 Request: DELETE /api/raw-material-issuances/5a421b65-f904-4b13-8ddb-72f014185778
+   Cookie header: connect.sid=s%3AwPggIaACfKjRo36OwC0EaXc8RdznpfJB.f8cmc%2FxsN4drza123vnL2nXi%2BSUFPW4B7LACA4PVzko
+   Session ID: wPggIaACfKjRo36OwC0EaXc8RdznpfJB
+   Authenticated: true
+Error deleting raw material issuance: error: null value in column "material_id" of relation "raw_material_transactions" violates not-null constraint
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.createRawMaterialTransaction (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:3376:27)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:11220:11 {
+  length: 352,
+  severity: 'ERROR',
+  code: '23502',
+  detail: 'Failing row contains (8e11393b-e5a5-4040-92bc-fb30d2ea7207, null, issuance_cancelled, 11, null, null, null, 2025-12-02 10:30:58.279028).',
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: 'public',
+  table: 'raw_material_transactions',
+  column: 'material_id',
+  dataType: undefined,
+  constraint: undefined,
+  file: 'execMain.c',
+  line: '2029',
+  routine: 'ExecConstraints'
+}
+10:30:58 AM [express] DELETE /api/raw-material-issuances/5a421b65-f904-4b13-8ddb-72f014185778 500 in …
+

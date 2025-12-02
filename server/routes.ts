@@ -3095,14 +3095,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Create transaction record for audit trail
           await storage.createRawMaterialTransaction({
-            rawMaterialId: item.rawMaterialId,
+            materialId: item.rawMaterialId,
             transactionType: 'issuance_cancelled',
             quantity: returnQty,
-            balanceAfter: newQty,
-            referenceType: 'issuance',
-            referenceId: id,
-            notes: `Returned from cancelled issuance ${issuance.issuanceNumber}`,
-            createdBy: req.user?.id,
+            reference: `Returned from cancelled issuance ${issuance.issuanceNumber}`,
+            performedBy: req.user?.id,
           });
           
           console.log(`[INVENTORY] Returned ${returnQty} bags of ${rawMaterial.name} from cancelled issuance ${issuance.issuanceNumber}`);
