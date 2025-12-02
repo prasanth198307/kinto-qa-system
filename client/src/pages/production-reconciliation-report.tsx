@@ -114,6 +114,8 @@ export default function ProductionReconciliationReport() {
 
       // Add Empty Bottles Tracking section if data exists
       if (report.emptyBottles) {
+        const netChange = report.emptyBottlesNetChange || 0;
+        const status = netChange > 0 ? 'Stock Up' : netChange < 0 ? 'Stock Down' : 'Balanced';
         summaryData.push(
           ['Empty Bottles Tracking'],
           ['Opening', 'Produced', 'Used', 'Pending (Closing)', 'Net Change', 'Variance %', 'Status'],
@@ -122,9 +124,9 @@ export default function ProductionReconciliationReport() {
             report.emptyBottles.produced,
             report.emptyBottles.used,
             report.emptyBottles.pending,
-            report.emptyBottlesNetChange || 0,
+            netChange,
             (report.emptyBottlesVariance?.toFixed(1) || '0') + '%',
-            report.emptyBottles.pending >= report.emptyBottles.opening ? 'Stock Up' : 'Stock Down'
+            status
           ],
           ['']
         );
@@ -282,7 +284,11 @@ export default function ProductionReconciliationReport() {
           <div>${report.efficiency.toFixed(2)}%</div>
         </div>
 
-        ${report.emptyBottles ? `
+        ${report.emptyBottles ? (() => {
+          const netChange = report.emptyBottlesNetChange || 0;
+          const statusClass = netChange > 0 ? 'good' : netChange < 0 ? 'warning' : '';
+          const statusText = netChange > 0 ? 'Stock Up' : netChange < 0 ? 'Stock Down' : 'Balanced';
+          return `
         <h2>Empty Bottles Tracking</h2>
         <table>
           <thead>
@@ -297,21 +303,22 @@ export default function ProductionReconciliationReport() {
             </tr>
           </thead>
           <tbody>
-            <tr class="${report.emptyBottles.pending >= report.emptyBottles.opening ? 'good' : 'warning'}">
+            <tr class="${statusClass}">
               <td>${report.emptyBottles.opening.toLocaleString()}</td>
               <td>+${report.emptyBottles.produced.toLocaleString()}</td>
               <td>-${report.emptyBottles.used.toLocaleString()}</td>
               <td><strong>${report.emptyBottles.pending.toLocaleString()}</strong></td>
-              <td>${(report.emptyBottlesNetChange || 0) > 0 ? '+' : ''}${(report.emptyBottlesNetChange || 0).toLocaleString()}</td>
+              <td>${netChange > 0 ? '+' : ''}${netChange.toLocaleString()}</td>
               <td>${(report.emptyBottlesVariance || 0) > 0 ? '+' : ''}${(report.emptyBottlesVariance || 0).toFixed(1)}%</td>
-              <td>${report.emptyBottles.pending >= report.emptyBottles.opening ? 'Stock Up' : 'Stock Down'}</td>
+              <td>${statusText}</td>
             </tr>
           </tbody>
         </table>
         <p style="font-size: 10px; color: #666; margin-top: 5px;">
           Formula: Pending = Opening + Produced - Used | Net Change = Produced - Used
         </p>
-        ` : ''}
+        `;
+        })() : ''}
 
         <h2>Material Breakdown</h2>
         <table>
@@ -591,10 +598,12 @@ export default function ProductionReconciliationReport() {
                               {report.emptyBottlesVariance && report.emptyBottlesVariance > 0 ? '+' : ''}{report.emptyBottlesVariance?.toFixed(1) || 0}%
                             </TableCell>
                             <TableCell>
-                              {report.emptyBottles.pending >= report.emptyBottles.opening ? (
+                              {(report.emptyBottlesNetChange || 0) > 0 ? (
                                 <span className="text-green-600">Stock Up</span>
-                              ) : (
+                              ) : (report.emptyBottlesNetChange || 0) < 0 ? (
                                 <span className="text-yellow-600">Stock Down</span>
+                              ) : (
+                                <span className="text-muted-foreground">Balanced</span>
                               )}
                             </TableCell>
                           </TableRow>

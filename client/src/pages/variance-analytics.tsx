@@ -4,7 +4,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import { TrendingUp, TrendingDown, Activity, CheckCircle, AlertTriangle, XCircle } from "lucide-react";
+import { TrendingUp, TrendingDown, Activity, CheckCircle, AlertTriangle, XCircle, Package, ArrowUpCircle, ArrowDownCircle } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
+interface EmptyBottlesPeriod {
+  totalOpening: number;
+  totalProduced: number;
+  totalUsed: number;
+  totalPending: number;
+  entriesWithData: number;
+}
+
+interface EmptyBottlesTotals extends EmptyBottlesPeriod {
+  utilizationRate: number;
+  netChange: number;
+}
 
 interface PeriodAnalytics {
   period: string;
@@ -16,6 +30,7 @@ interface PeriodAnalytics {
   warningCount: number;
   criticalCount: number;
   periodIndex: number;
+  emptyBottles?: EmptyBottlesPeriod;
 }
 
 interface TopMaterial {
@@ -36,6 +51,7 @@ interface AnalyticsResponse {
     totalGood: number;
     totalWarning: number;
     totalCritical: number;
+    emptyBottles?: EmptyBottlesTotals;
   };
   topMaterials: TopMaterial[];
   year: number;
@@ -245,6 +261,118 @@ export default function VarianceAnalytics() {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Empty Bottles Tracking Section */}
+            {totals?.emptyBottles && totals.emptyBottles.entriesWithData > 0 && (
+              <>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Package className="h-5 w-5" />
+                      Empty Bottles Tracking
+                    </CardTitle>
+                    <CardDescription>
+                      Overview of empty bottle production and utilization across {totals.emptyBottles.entriesWithData} production entries
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                      <div className="text-center p-4 bg-muted rounded-lg">
+                        <div className="text-2xl font-bold" data-testid="bottles-produced">
+                          {totals.emptyBottles.totalProduced.toLocaleString()}
+                        </div>
+                        <p className="text-xs text-muted-foreground">Total Produced</p>
+                      </div>
+                      <div className="text-center p-4 bg-muted rounded-lg">
+                        <div className="text-2xl font-bold" data-testid="bottles-used">
+                          {totals.emptyBottles.totalUsed.toLocaleString()}
+                        </div>
+                        <p className="text-xs text-muted-foreground">Total Used</p>
+                      </div>
+                      <div className="text-center p-4 bg-muted rounded-lg">
+                        <div className={`text-2xl font-bold ${totals.emptyBottles.netChange >= 0 ? 'text-green-600' : 'text-red-600'}`} data-testid="bottles-net-change">
+                          {totals.emptyBottles.netChange >= 0 ? '+' : ''}{totals.emptyBottles.netChange.toLocaleString()}
+                        </div>
+                        <p className="text-xs text-muted-foreground">Net Change</p>
+                      </div>
+                      <div className="text-center p-4 bg-muted rounded-lg">
+                        <div className="text-2xl font-bold" data-testid="bottles-utilization">
+                          {totals.emptyBottles.utilizationRate.toFixed(1)}%
+                        </div>
+                        <p className="text-xs text-muted-foreground">Utilization Rate</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Empty Bottles Trend by Period */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Empty Bottles Trend</CardTitle>
+                    <CardDescription>Produced vs Used bottles over time</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={analytics.filter(a => a.emptyBottles && a.emptyBottles.entriesWithData > 0)}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="period" />
+                        <YAxis />
+                        <Tooltip 
+                          formatter={(value: number) => value.toLocaleString()}
+                        />
+                        <Legend />
+                        <Bar dataKey="emptyBottles.totalProduced" fill="#10b981" name="Produced" />
+                        <Bar dataKey="emptyBottles.totalUsed" fill="#3b82f6" name="Used" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+
+                {/* Empty Bottles Period Details */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Empty Bottles by Period</CardTitle>
+                    <CardDescription>Detailed breakdown of empty bottle tracking</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Period</TableHead>
+                          <TableHead className="text-right">Opening</TableHead>
+                          <TableHead className="text-right">Produced</TableHead>
+                          <TableHead className="text-right">Used</TableHead>
+                          <TableHead className="text-right">Pending</TableHead>
+                          <TableHead className="text-right">Net Change</TableHead>
+                          <TableHead className="text-right">Entries</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {analytics
+                          .filter(a => a.emptyBottles && a.emptyBottles.entriesWithData > 0)
+                          .map(a => {
+                            const netChange = (a.emptyBottles?.totalProduced || 0) - (a.emptyBottles?.totalUsed || 0);
+                            return (
+                              <TableRow key={a.period}>
+                                <TableCell className="font-medium">{a.period}</TableCell>
+                                <TableCell className="text-right">{a.emptyBottles?.totalOpening.toLocaleString()}</TableCell>
+                                <TableCell className="text-right text-green-600">+{a.emptyBottles?.totalProduced.toLocaleString()}</TableCell>
+                                <TableCell className="text-right text-red-600">-{a.emptyBottles?.totalUsed.toLocaleString()}</TableCell>
+                                <TableCell className="text-right font-medium">{a.emptyBottles?.totalPending.toLocaleString()}</TableCell>
+                                <TableCell className={`text-right ${netChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  {netChange >= 0 ? <ArrowUpCircle className="inline h-4 w-4 mr-1" /> : <ArrowDownCircle className="inline h-4 w-4 mr-1" />}
+                                  {netChange >= 0 ? '+' : ''}{netChange.toLocaleString()}
+                                </TableCell>
+                                <TableCell className="text-right">{a.emptyBottles?.entriesWithData}</TableCell>
+                              </TableRow>
+                            );
+                          })}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              </>
+            )}
 
             {/* Variance Trend Chart */}
             <Card>

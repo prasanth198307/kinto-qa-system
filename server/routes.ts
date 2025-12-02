@@ -3759,6 +3759,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         criticalCount: number;
         index: number;
         materials: Record<string, { variance: number; count: number; name: string }>;
+        // Empty bottles tracking
+        emptyBottles: {
+          totalOpening: number;
+          totalProduced: number;
+          totalUsed: number;
+          totalPending: number;
+          entriesWithData: number;
+        };
       }> = {};
 
       yearReconciliations.forEach(r => {
@@ -3775,11 +3783,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
             criticalCount: 0,
             index: periodInfo.index,
             materials: {},
+            emptyBottles: {
+              totalOpening: 0,
+              totalProduced: 0,
+              totalUsed: 0,
+              totalPending: 0,
+              entriesWithData: 0,
+            },
           };
         }
 
         const data = periodData[periodInfo.key];
         data.reconciliationCount += 1;
+
+        // Aggregate empty bottles data from production entry
+        // Include any entry that has any empty bottle data (including carry-forward scenarios)
+        if (r.production) {
+          const opening = Number(r.production.emptyBottlesOpening) || 0;
+          const produced = Number(r.production.emptyBottlesProduced) || 0;
+          const used = Number(r.production.emptyBottlesUsed) || 0;
+          const pending = Number(r.production.emptyBottlesPending) || 0;
+          
+          // Include entry if it has ANY empty bottle data (opening, produced, used, or pending)
+          // This ensures carry-forward scenarios are not skipped
+          const hasEmptyBottleData = opening !== 0 || produced !== 0 || used !== 0 || pending !== 0;
+          if (hasEmptyBottleData) {
+            data.emptyBottles.totalOpening += opening;
+            data.emptyBottles.totalProduced += produced;
+            data.emptyBottles.totalUsed += used;
+            data.emptyBottles.totalPending += pending;
+            data.emptyBottles.entriesWithData += 1;
+          }
+        }
         // Note: efficiency and yieldPercent are calculated values, not stored in reconciliation table
         // These would need to be calculated from related production data if needed
 
@@ -3839,7 +3874,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         criticalCount: data.criticalCount,
         periodIndex: data.index,
         materials: data.materials,
+        // Include empty bottles data
+        emptyBottles: data.emptyBottles,
       })).sort((a, b) => a.periodIndex - b.periodIndex);
+
+      // Calculate empty bottles totals across all periods
+      const totalOpening = analytics.reduce((sum, p) => sum + p.emptyBottles.totalOpening, 0);
+      const totalProduced = analytics.reduce((sum, p) => sum + p.emptyBottles.totalProduced, 0);
+      const totalUsed = analytics.reduce((sum, p) => sum + p.emptyBottles.totalUsed, 0);
+      const totalPending = analytics.reduce((sum, p) => sum + p.emptyBottles.totalPending, 0);
+      const netChange = totalProduced - totalUsed;
+      
+      // Calculate utilization rate: used / (opening + produced) to account for stock draw-down scenarios
+      // When produced=0 but used>0, we're drawing from opening stock
+      const availableStock = totalOpening + totalProduced;
+      const utilizationRate = availableStock > 0 ? (totalUsed / availableStock) * 100 : 0;
+
+      const emptyBottlesTotals = {
+        totalOpening,
+        totalProduced,
+        totalUsed,
+        totalPending,
+        entriesWithData: analytics.reduce((sum, p) => sum + p.emptyBottles.entriesWithData, 0),
+        utilizationRate,
+        netChange,
+      };
 
       // Calculate totals and top materials
       const totals = {
@@ -3850,6 +3909,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalGood: analytics.reduce((sum, p) => sum + p.goodCount, 0),
         totalWarning: analytics.reduce((sum, p) => sum + p.warningCount, 0),
         totalCritical: analytics.reduce((sum, p) => sum + p.criticalCount, 0),
+        // Include empty bottles totals
+        emptyBottles: emptyBottlesTotals,
       };
 
       // Aggregate material variance across all periods
