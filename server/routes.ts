@@ -2628,10 +2628,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Auto-generate Batch Code based on receivedDate (LOT-YYYYMMDD format)
+      // Auto-generate Batch Code based on receivedDate or openingDate (LOT-YYYYMMDD format)
       let batchCode = req.body.batchCode;
-      if (!batchCode && req.body.receivedDate) {
-        const receivedDate = new Date(req.body.receivedDate);
+      const dateForBatch = req.body.receivedDate || req.body.openingDate;
+      if (!batchCode && dateForBatch) {
+        const receivedDate = new Date(dateForBatch);
         const dateStr = receivedDate.toISOString().slice(0, 10).replace(/-/g, '');
         const baseBatchCode = `LOT-${dateStr}`;
         
@@ -2726,10 +2727,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Auto-generate Batch Code if receivedDate changed and no batchCode provided
+      // Auto-generate Batch Code if receivedDate/openingDate changed and no batchCode provided
       let updates: any = { ...sanitized };
-      if (sanitized.receivedDate && !sanitized.batchCode && (!existing.batchCode || existing.receivedDate !== sanitized.receivedDate)) {
-        const receivedDate = new Date(sanitized.receivedDate);
+      const dateForBatch = sanitized.receivedDate || sanitized.openingDate;
+      const existingDateForBatch = existing.receivedDate || existing.openingDate;
+      if (dateForBatch && !sanitized.batchCode && (!existing.batchCode || existingDateForBatch !== dateForBatch)) {
+        const receivedDate = new Date(dateForBatch);
         const dateStr = receivedDate.toISOString().slice(0, 10).replace(/-/g, '');
         const baseBatchCode = `LOT-${dateStr}`;
         

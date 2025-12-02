@@ -3036,12 +3036,22 @@ function RawMaterialDialog({
                           />
                         </FormControl>
                         <FormDescription className="text-xs">
-                          Date of opening stock entry
+                          Date of opening stock entry (used for batch code)
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+                  {/* Show auto-generated batch code preview */}
+                  {form.watch('openingDate') && (
+                    <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg border">
+                      <span className="text-sm text-muted-foreground">Batch Code:</span>
+                      <Badge variant="outline" className="font-mono">
+                        LOT-{form.watch('openingDate')?.replace(/-/g, '') || 'YYYYMMDD'}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">(auto-generated on save)</span>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -3106,12 +3116,22 @@ function RawMaterialDialog({
                           />
                         </FormControl>
                         <FormDescription className="text-xs">
-                          Date material was received
+                          Date material was received (used for batch code & FIFO)
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+                  {/* Show auto-generated batch code preview */}
+                  {form.watch('receivedDate') && (
+                    <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg border col-span-2">
+                      <span className="text-sm text-muted-foreground">Batch Code:</span>
+                      <Badge variant="outline" className="font-mono">
+                        LOT-{form.watch('receivedDate')?.replace(/-/g, '') || 'YYYYMMDD'}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">(auto-generated on save, used for FIFO)</span>
+                    </div>
+                  )}
                   <FormField
                     control={form.control}
                     name="returnedQuantity"
