@@ -2970,6 +2970,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Fetch issuance items by issuance ID (for print preview and edit forms)
+  app.get('/api/raw-material-issuance-items/:issuanceId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { issuanceId } = req.params;
+      const items = await storage.getIssuanceItems(issuanceId);
+      res.json(items);
+    } catch (error) {
+      console.error("Error fetching issuance items:", error);
+      res.status(500).json({ message: "Failed to fetch issuance items" });
+    }
+  });
+
   app.patch('/api/raw-material-issuances/:id', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const { id } = req.params;
