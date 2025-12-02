@@ -643,9 +643,16 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
               {/* Items Section */}
               {selectedIssuanceId && (
                 <div className="space-y-4 mt-6">
-                  <div className="flex items-center gap-2">
-                    <Package className="h-5 w-5 text-primary" />
-                    <h3 className="text-lg font-semibold">Material Reconciliation</h3>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Package className="h-5 w-5 text-primary" />
+                      <h3 className="text-lg font-semibold">Material Reconciliation</h3>
+                    </div>
+                    {selectedProductionId && (
+                      <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+                        Values auto-filled from Production Entry - adjust if actual differs
+                      </span>
+                    )}
                   </div>
 
                   {isLoadingSummary ? (
