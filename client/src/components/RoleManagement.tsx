@@ -51,6 +51,7 @@ const AVAILABLE_SCREENS: ScreenDefinition[] = [
   { key: 'pm_history', label: 'PM History', allowedActions: ['view'] },
   { key: 'vendor_analytics', label: 'Vendor Analytics', allowedActions: ['view'] },
   { key: 'pending_payments', label: 'Pending Payments', allowedActions: ['view'] },
+  { key: 'payments', label: 'Payment Management', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'cancelled_invoices_report', label: 'Cancelled Invoices Report', allowedActions: ['view'] },
   { key: 'write_off_report', label: 'Write-Off Report', allowedActions: ['view'] },
   
