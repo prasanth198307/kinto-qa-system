@@ -72,6 +72,9 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
   const emptyBottlesOpening = form.watch('emptyBottlesOpening');
   const emptyBottlesProduced = form.watch('emptyBottlesProduced');
   const emptyBottlesUsed = form.watch('emptyBottlesUsed');
+  
+  // State for additional used bottles (beyond cases)
+  const [additionalUsed, setAdditionalUsed] = useState<number>(0);
 
   // Calculate bottles from issuance based on preform-type materials
   // Formula: Σ (quantityIssued × usableUnits) for preform materials
@@ -139,12 +142,11 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
   
   const usedFromCases = calculateUsedFromCases();
 
-  // Auto-set "Used" field when cases produced or product changes
+  // Auto-set "Used" field = Used from Cases + Additional Used
   useEffect(() => {
-    if (usedFromCases.bottlesPerCase > 0 && usedFromCases.casesProduced > 0) {
-      form.setValue('emptyBottlesUsed', usedFromCases.total);
-    }
-  }, [usedFromCases.total, usedFromCases.bottlesPerCase, form]);
+    const totalUsed = usedFromCases.total + additionalUsed;
+    form.setValue('emptyBottlesUsed', totalUsed);
+  }, [usedFromCases.total, additionalUsed, form]);
 
   // Auto-calculate pending when opening, from issuance, produced, or used changes
   // Formula: Pending = Opening + From Issuance + Produced - Used
@@ -463,7 +465,7 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
               </div>
             )}
             
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-5 gap-3">
               <FormField
                 control={form.control}
                 name="emptyBottlesOpening"
@@ -518,43 +520,37 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="emptyBottlesUsed"
-                render={({ field }) => {
-                  const opening = Number(emptyBottlesOpening) || 0;
-                  const fromIssuance = bottlesFromIssuance.total;
-                  const produced = Number(emptyBottlesProduced) || 0;
-                  const availableBottles = opening + fromIssuance + produced;
-                  const isAutoCalculated = usedFromCases.bottlesPerCase > 0;
-                  return (
-                    <FormItem>
-                      <FormLabel>Used (from Cases)</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="number" 
-                          step="0.01" 
-                          max={availableBottles}
-                          {...field}
-                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                          className={isAutoCalculated ? "bg-muted" : ""}
-                          data-testid="input-empty-bottles-used"
-                        />
-                      </FormControl>
-                      {isAutoCalculated ? (
-                        <p className="text-xs text-green-600 dark:text-green-400">
-                          = {usedFromCases.casesProduced.toLocaleString()} cases × {usedFromCases.bottlesPerCase} bottles/case
-                        </p>
-                      ) : (
-                        <p className="text-xs text-muted-foreground">
-                          Max: {availableBottles.toLocaleString()}
-                        </p>
-                      )}
-                      <FormMessage />
-                    </FormItem>
-                  );
-                }}
-              />
+              {/* Used from Cases - Auto-calculated */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Used (from Cases)</label>
+                <Input 
+                  type="number" 
+                  value={usedFromCases.total}
+                  readOnly
+                  className="bg-muted"
+                  data-testid="input-empty-bottles-used-cases"
+                />
+                {usedFromCases.bottlesPerCase > 0 && (
+                  <p className="text-xs text-green-600 dark:text-green-400">
+                    = {usedFromCases.casesProduced.toLocaleString()} × {usedFromCases.bottlesPerCase}
+                  </p>
+                )}
+              </div>
+
+              {/* Additional Used - Manual entry */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Additional Used</label>
+                <Input 
+                  type="number" 
+                  step="1"
+                  value={additionalUsed}
+                  onChange={(e) => setAdditionalUsed(parseFloat(e.target.value) || 0)}
+                  data-testid="input-empty-bottles-additional-used"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Extra bottles used
+                </p>
+              </div>
 
               <FormField
                 control={form.control}
@@ -573,7 +569,7 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
                       />
                     </FormControl>
                     <p className="text-xs text-muted-foreground">
-                      = Opening{bottlesFromIssuance.total > 0 ? ' + Issuance' : ''} + Produced - Used
+                      = Available - Total Used
                     </p>
                     <FormMessage />
                   </FormItem>
@@ -582,12 +578,32 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
             </div>
             
             {/* Summary calculation */}
-            {bottlesFromIssuance.total > 0 && (
-              <div className="mt-3 pt-3 border-t text-sm text-muted-foreground">
-                <strong>Total Available:</strong> {(Number(emptyBottlesOpening) + bottlesFromIssuance.total + Number(emptyBottlesProduced)).toLocaleString()} 
-                = Opening ({Number(emptyBottlesOpening).toLocaleString()}) + From Issuance ({bottlesFromIssuance.total.toLocaleString()}) + Produced ({Number(emptyBottlesProduced).toLocaleString()})
+            <div className="mt-3 pt-3 border-t text-sm space-y-1">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">
+                  <strong>Available:</strong> Opening ({Number(emptyBottlesOpening).toLocaleString()}) 
+                  {bottlesFromIssuance.total > 0 && <> + Issuance ({bottlesFromIssuance.total.toLocaleString()})</>} 
+                  + Produced ({Number(emptyBottlesProduced).toLocaleString()})
+                </span>
+                <span className="font-medium">
+                  = {(Number(emptyBottlesOpening) + bottlesFromIssuance.total + Number(emptyBottlesProduced)).toLocaleString()}
+                </span>
               </div>
-            )}
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">
+                  <strong>Total Used:</strong> Cases ({usedFromCases.total.toLocaleString()}) + Additional ({additionalUsed.toLocaleString()})
+                </span>
+                <span className="font-medium text-red-600 dark:text-red-400">
+                  = {(usedFromCases.total + additionalUsed).toLocaleString()}
+                </span>
+              </div>
+              <div className="flex justify-between border-t pt-1">
+                <span className="font-semibold">Pending (Closing):</span>
+                <span className="font-bold text-primary">
+                  {Number(form.watch('emptyBottlesPending')).toLocaleString()}
+                </span>
+              </div>
+            </div>
           </Card>
 
           {/* BOM Variance Analysis */}
