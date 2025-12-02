@@ -255,9 +255,11 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
     // Total Produced = Blow-molded + Additional Produced
     const totalProduced = (Number(data.emptyBottlesProduced) || 0) + additionalProduced;
     
-    // Calculate derived units: producedQuantity × usableDerivedUnits
-    const derivedUnits = issuanceSummary?.product?.usableDerivedUnits 
-      ? Number(data.producedQuantity) * Number(issuanceSummary.product.usableDerivedUnits)
+    // Calculate derived units: producedQuantity × (usableDerivedUnits or derivedValuePerBase)
+    const unitsMultiplier = Number(issuanceSummary?.product?.usableDerivedUnits) || 
+                            Number(issuanceSummary?.product?.derivedValuePerBase) || 0;
+    const derivedUnits = unitsMultiplier > 0 
+      ? Number(data.producedQuantity) * unitsMultiplier
       : 0;
     
     const submissionData = {
@@ -275,11 +277,20 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
   };
 
   const calculateDerivedUnits = (): string => {
-    if (!issuanceSummary?.product?.usableDerivedUnits || !producedQuantity) {
+    // Use usableDerivedUnits or fall back to derivedValuePerBase
+    const unitsMultiplier = Number(issuanceSummary?.product?.usableDerivedUnits) || 
+                            Number(issuanceSummary?.product?.derivedValuePerBase) || 0;
+    if (!unitsMultiplier || !producedQuantity) {
       return "0.00";
     }
-    const derived = Number(producedQuantity) * Number(issuanceSummary.product.usableDerivedUnits);
+    const derived = Number(producedQuantity) * unitsMultiplier;
     return derived.toFixed(2);
+  };
+  
+  // Get the effective derived units multiplier (for display)
+  const getEffectiveDerivedUnits = (): number => {
+    return Number(issuanceSummary?.product?.usableDerivedUnits) || 
+           Number(issuanceSummary?.product?.derivedValuePerBase) || 0;
   };
 
   const calculateExpectedQuantity = (bomItem: any): number => {
@@ -499,18 +510,18 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-sm text-muted-foreground">Calculated Derived Units:</span>
-                    {issuanceSummary.product.usableDerivedUnits ? (
+                    {getEffectiveDerivedUnits() > 0 ? (
                       <>
                         <p className="text-2xl font-bold text-primary">{calculateDerivedUnits()}</p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          = {producedQuantity} × {issuanceSummary.product.usableDerivedUnits} (usable units)
+                          = {producedQuantity} × {getEffectiveDerivedUnits()} (bottles per case)
                         </p>
                       </>
                     ) : (
                       <>
                         <p className="text-xl font-medium text-amber-600 dark:text-amber-400">Not Configured</p>
                         <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                          Set up conversion method in Product Master to calculate derived units
+                          Set up derivedValuePerBase in Product Master to calculate derived units
                         </p>
                       </>
                     )}
