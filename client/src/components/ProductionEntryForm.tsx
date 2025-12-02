@@ -254,11 +254,18 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
     // Include Additional Produced in the emptyBottlesProduced field
     // Total Produced = Blow-molded + Additional Produced
     const totalProduced = (Number(data.emptyBottlesProduced) || 0) + additionalProduced;
+    
+    // Calculate derived units: producedQuantity × usableDerivedUnits
+    const derivedUnits = issuanceSummary?.product?.usableDerivedUnits 
+      ? Number(data.producedQuantity) * Number(issuanceSummary.product.usableDerivedUnits)
+      : 0;
+    
     const submissionData = {
       ...data,
       emptyBottlesProduced: totalProduced,
+      derivedUnits: derivedUnits,
     };
-    createMutation.mutate(submissionData as FormData);
+    createMutation.mutate(submissionData as any);
   };
 
   const handleIssuanceChange = (issuanceId: string) => {
