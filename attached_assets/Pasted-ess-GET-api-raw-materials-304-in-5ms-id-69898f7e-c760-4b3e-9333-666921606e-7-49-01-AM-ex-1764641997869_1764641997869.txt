@@ -1,0 +1,44 @@
+ess] GET /api/raw-materials 304 in 5ms :: [{"id":"69898f7e-c760-4b3e-9333-666921606e…
+7:49:01 AM [express] GET /api/products 304 in 6ms :: [{"id":"e7ea51d0-8a2a-4685-abab-620cbae616ee","…
+7:49:01 AM [express] GET /api/uom 304 in 6ms :: [{"id":"57cdd356-f009-435a-b3ff-8f25a5cda30f","code"…
+7:49:01 AM [express] GET /api/raw-material-issuance-items/5a421b65-f904-4b13-8ddb-72f014185778 304 i…
+🔹 Request: GET /api/production-entries
+   Cookie header: connect.sid=s%3AnWo-54ZnbbeXw24LodhglFgHXRc7lcvC.1JFiqmmzDvrzs0ycJqgNUfAplEMvAQwpNBQOdRcqD0M
+   Session ID: nWo-54ZnbbeXw24LodhglFgHXRc7lcvC
+   Authenticated: true
+Error fetching production entries: error: column production_entries.empty_bottles_used does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getAllProductionEntries (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:3509:25)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:11234:23 {
+  length: 136,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '315',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+7:49:14 AM [express] GET /api/production-entries 500 in 45ms :: {"message":"Failed to fetch producti…
+🔹 Request: GET /api/raw-material-issuances
+   Cookie header: connect.sid=s%3AnWo-54ZnbbeXw24LodhglFgHXRc7lcvC.1JFiqmmzDvrzs0ycJqgNUfAplEMvAQwpNBQOdRcqD0M
+   Session ID: nWo-54ZnbbeXw24LodhglFgHXRc7lcvC
+   Authenticated: true
+7:49:15 AM [express] GET /api/raw-material-issuances 304 in 10ms :: [{"id":"5a421b65-f904-4b13-8ddb-…
+🔹 Request: GET /api/raw-material-issuances/5a421b65-f904-4b13-8ddb-72f014185778/summary
+   Cookie header: connect.sid=s%3AnWo-54ZnbbeXw24LodhglFgHXRc7lcvC.1JFiqmmzDvrzs0ycJqgNUfAplEMvAQwpNBQOdRcqD0M
+   Session ID: nWo-54ZnbbeXw24LodhglFgHXRc7lcvC
+   Authenticated: true
+7:49:18 AM [express] GET /api/raw-material-issuances/5a421b65-f904-4b13-8ddb-72f014185778/summary 20…
+
