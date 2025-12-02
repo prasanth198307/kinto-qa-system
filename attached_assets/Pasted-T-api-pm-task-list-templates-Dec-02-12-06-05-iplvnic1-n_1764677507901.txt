@@ -1,0 +1,49 @@
+T /api/pm-task-list-templates
+Dec 02 12:06:05 iplvnic1 npm[884670]:    Cookie header: connect.sid=s%3AlMDHVZggpmIPesakM9b_yazFHDI3eGUv.Fjcb27SykS21AippqsLq7dlGoBWxQeYUD8t88sCF0B4
+Dec 02 12:06:05 iplvnic1 npm[884670]:    Session ID: lMDHVZggpmIPesakM9b_yazFHDI3eGUv
+Dec 02 12:06:05 iplvnic1 npm[884670]:    Authenticated: true
+Dec 02 12:06:05 iplvnic1 npm[884670]: 🔹 Request: GET /api/products
+Dec 02 12:06:05 iplvnic1 npm[884670]:    Cookie header: connect.sid=s%3AlMDHVZggpmIPesakM9b_yazFHDI3eGUv.Fjcb27SykS21AippqsLq7dlGoBWxQeYUD8t88sCF0B4
+Dec 02 12:06:05 iplvnic1 npm[884670]:    Session ID: lMDHVZggpmIPesakM9b_yazFHDI3eGUv
+Dec 02 12:06:05 iplvnic1 npm[884670]:    Authenticated: true
+Dec 02 12:06:05 iplvnic1 npm[884670]: 12:06:05 PM [express] GET /api/raw-materials 304 in 31ms :: [{"id":"69898f7e-c760-4b3e-9333-666921606…
+Dec 02 12:06:05 iplvnic1 npm[884670]: 12:06:05 PM [express] GET /api/pm-task-list-templates 304 in 17ms :: []
+Dec 02 12:06:05 iplvnic1 npm[884670]: 12:06:05 PM [express] GET /api/products 304 in 19ms :: []
+Dec 02 12:06:05 iplvnic1 npm[884670]: 12:06:05 PM [express] GET /api/pending-payments 304 in 45ms :: {"data":[],"meta":{"page":1,"pageSize"…
+Dec 02 12:06:12 iplvnic1 npm[884670]: 🔹 Request: GET /api/checklist-templates
+Dec 02 12:06:12 iplvnic1 npm[884670]:    Cookie header: connect.sid=s%3AlMDHVZggpmIPesakM9b_yazFHDI3eGUv.Fjcb27SykS21AippqsLq7dlGoBWxQeYUD8t88sCF0B4
+Dec 02 12:06:12 iplvnic1 npm[884670]:    Session ID: lMDHVZggpmIPesakM9b_yazFHDI3eGUv
+Dec 02 12:06:12 iplvnic1 npm[884670]:    Authenticated: true
+Dec 02 12:06:12 iplvnic1 npm[884670]: 🔹 Request: GET /api/users
+Dec 02 12:06:12 iplvnic1 npm[884670]:    Cookie header: connect.sid=s%3AlMDHVZggpmIPesakM9b_yazFHDI3eGUv.Fjcb27SykS21AippqsLq7dlGoBWxQeYUD8t88sCF0B4
+Dec 02 12:06:12 iplvnic1 npm[884670]:    Session ID: lMDHVZggpmIPesakM9b_yazFHDI3eGUv
+Dec 02 12:06:12 iplvnic1 npm[884670]:    Authenticated: true
+Dec 02 12:06:12 iplvnic1 npm[884670]: 🔹 Request: GET /api/machines
+Dec 02 12:06:12 iplvnic1 npm[884670]:    Cookie header: connect.sid=s%3AlMDHVZggpmIPesakM9b_yazFHDI3eGUv.Fjcb27SykS21AippqsLq7dlGoBWxQeYUD8t88sCF0B4
+Dec 02 12:06:12 iplvnic1 npm[884670]:    Session ID: lMDHVZggpmIPesakM9b_yazFHDI3eGUv
+Dec 02 12:06:12 iplvnic1 npm[884670]:    Authenticated: true
+Dec 02 12:06:12 iplvnic1 npm[884670]: 12:06:12 PM [express] GET /api/users 304 in 12ms :: [{"id":"user-admin","username":"admin","email":"a…
+Dec 02 12:06:12 iplvnic1 npm[884670]: 🔹 Request: GET /api/auth/user
+Dec 02 12:06:12 iplvnic1 npm[884670]:    Cookie header: connect.sid=s%3AlMDHVZggpmIPesakM9b_yazFHDI3eGUv.Fjcb27SykS21AippqsLq7dlGoBWxQeYUD8t88sCF0B4
+Dec 02 12:06:12 iplvnic1 npm[884670]:    Session ID: lMDHVZggpmIPesakM9b_yazFHDI3eGUv
+Dec 02 12:06:12 iplvnic1 npm[884670]:    Authenticated: true
+Dec 02 12:06:12 iplvnic1 npm[884670]: 12:06:12 PM [express] GET /api/checklist-templates 304 in 18ms :: []
+Dec 02 12:06:12 iplvnic1 npm[884670]: 12:06:12 PM [express] GET /api/machines 304 in 17ms :: [{"id":"80649cc4-2677-493d-a712-63f0833ae39d",…
+Dec 02 12:06:12 iplvnic1 npm[884670]: 🔹 Request: GET /api/checklist-assignments
+Dec 02 12:06:12 iplvnic1 npm[884670]:    Cookie header: connect.sid=s%3AlMDHVZggpmIPesakM9b_yazFHDI3eGUv.Fjcb27SykS21AippqsLq7dlGoBWxQeYUD8t88sCF0B4
+Dec 02 12:06:12 iplvnic1 npm[884670]:    Session ID: lMDHVZggpmIPesakM9b_yazFHDI3eGUv
+Dec 02 12:06:12 iplvnic1 npm[884670]:    Authenticated: true
+Dec 02 12:06:12 iplvnic1 npm[884670]: 12:06:12 PM [express] GET /api/checklist-assignments 304 in 16ms :: []
+Dec 02 12:06:12 iplvnic1 npm[884670]: 12:06:12 PM [express] GET /api/auth/user 200 in 17ms
+Dec 02 12:08:40 iplvnic1 npm[884670]: 🔹 Request: POST /api/clear-imported-data
+Dec 02 12:08:40 iplvnic1 npm[884670]:    Cookie header: connect.sid=s%3AlMDHVZggpmIPesakM9b_yazFHDI3eGUv.Fjcb27SykS21AippqsLq7dlGoBWxQeYUD8t88sCF0B4
+Dec 02 12:08:40 iplvnic1 npm[884670]:    Session ID: lMDHVZggpmIPesakM9b_yazFHDI3eGUv
+Dec 02 12:08:40 iplvnic1 npm[884670]:    Authenticated: true
+Dec 02 12:08:40 iplvnic1 npm[884670]: [DATA CLEAR] Clearing all imported data...
+Dec 02 12:08:40 iplvnic1 npm[884670]: Clearing all imported data...
+Dec 02 12:08:40 iplvnic1 npm[884670]: All imported data cleared successfully
+Dec 02 12:08:40 iplvnic1 npm[884670]: [DATA CLEAR] Clear completed: {
+Dec 02 12:08:40 iplvnic1 npm[884670]:   success: true,
+Dec 02 12:08:40 iplvnic1 npm[884670]:   message: 'All transaction data cleared successfully. Master data (UOMs, roles, permissions, users, vendor types, product categories) preserved.'
+Dec 02 12:08:40 iplvnic1 npm[884670]: }
+Dec 02 12:08:40 iplvnic1 npm[884670]: 12:08:40 PM [express] POST /api/clear-imported-data 200 in 39ms :: {"success":true,"message":"All tra…
