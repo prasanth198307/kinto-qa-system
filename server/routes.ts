@@ -3147,6 +3147,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get opening bottles balance (from latest production entry's pending)
+  app.get('/api/production-entries/opening-bottles', isAuthenticated, async (req: any, res) => {
+    try {
+      const entries = await storage.getAllProductionEntries();
+      
+      // Sort by production date (desc) then by shift to get the latest
+      const sortedEntries = entries.sort((a, b) => {
+        const dateA = new Date(a.productionDate).getTime();
+        const dateB = new Date(b.productionDate).getTime();
+        if (dateB !== dateA) return dateB - dateA;
+        // If same date, sort by shift: General > B > A
+        const shiftOrder: Record<string, number> = { 'General': 3, 'B': 2, 'A': 1 };
+        return (shiftOrder[b.shift] || 0) - (shiftOrder[a.shift] || 0);
+      });
+      
+      const latestEntry = sortedEntries[0];
+      const openingBalance = latestEntry ? Number(latestEntry.emptyBottlesPending) || 0 : 0;
+      
+      res.json({
+        openingBalance,
+        fromEntry: latestEntry ? {
+          id: latestEntry.id,
+          productionDate: latestEntry.productionDate,
+          shift: latestEntry.shift,
+          pending: latestEntry.emptyBottlesPending,
+        } : null,
+      });
+    } catch (error) {
+      console.error("Error fetching opening bottles balance:", error);
+      res.status(500).json({ message: "Failed to fetch opening bottles balance" });
+    }
+  });
+
   app.post('/api/production-entries', requireRole('admin', 'manager', 'operator'), async (req: any, res) => {
     try {
       const entryData = req.body;
