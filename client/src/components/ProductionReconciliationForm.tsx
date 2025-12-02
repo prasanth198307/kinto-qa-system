@@ -143,12 +143,11 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
   const productionEmptyBottlesUsed = selectedProduction ? Number(selectedProduction.emptyBottlesUsed) || 0 : 0;
   const productionEmptyBottlesPending = selectedProduction ? Number(selectedProduction.emptyBottlesPending) || 0 : 0;
 
-  // Calculate expected usage from BOM for each material
-  const calculateExpectedUsage = (rawMaterialId: string): number => {
-    if (!issuanceSummary?.bomItems || !producedCases) return 0;
+  // Find BOM item for a raw material (shared helper)
+  const findBomItem = (rawMaterialId: string): any => {
+    if (!issuanceSummary?.bomItems) return null;
     
-    // Find BOM item for this raw material (check both direct and type-based match)
-    const bomItem = issuanceSummary.bomItems.find((b: any) => {
+    return issuanceSummary.bomItems.find((b: any) => {
       // Direct raw material match
       if (b.rawMaterialId === rawMaterialId) return true;
       // Check if raw material belongs to BOM's material type
@@ -157,12 +156,38 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
       }
       return false;
     });
+  };
+
+  // Calculate expected usage from BOM for each material
+  const calculateExpectedUsage = (rawMaterialId: string): number => {
+    if (!producedCases) return 0;
     
+    const bomItem = findBomItem(rawMaterialId);
     if (!bomItem) return 0;
     
     // Expected = Produced Cases × BOM quantity per case
     const quantityPerCase = Number(bomItem.quantityRequired || bomItem.bom?.quantityRequired) || 0;
     return Math.round(producedCases * quantityPerCase * 100) / 100;
+  };
+
+  // Get acceptable loss percent from raw material type (default 2%)
+  const getAcceptableLossPercent = (rawMaterialId: string): number => {
+    const bomItem = findBomItem(rawMaterialId);
+    if (!bomItem) return 2; // Default 2%
+    
+    // Get loss percent from type details
+    const typeDetails = bomItem.typeDetails || bomItem.type;
+    if (typeDetails?.lossPercent !== undefined) {
+      return Number(typeDetails.lossPercent) || 2;
+    }
+    
+    // Check if raw material has its own loss percent
+    const rawMaterial = bomItem.availableRawMaterials?.find((rm: any) => rm.id === rawMaterialId);
+    if (rawMaterial?.lossPercent !== undefined) {
+      return Number(rawMaterial.lossPercent) || 2;
+    }
+    
+    return 2; // Default 2%
   };
 
   // Auto-populate items when issuance is selected (create mode only)
@@ -564,7 +589,9 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
                             const expected = calculateExpectedUsage(item.rawMaterialId);
                             const variance = calculateVariance(issued, used, returned, pending);
                             const usageVariance = expected > 0 ? used - expected : 0;
-                            const variancePercent = issued > 0 ? ((variance / issued) * 100).toFixed(1) : '0';
+                            const variancePercent = issued > 0 ? Math.abs((variance / issued) * 100) : 0;
+                            const acceptableLoss = getAcceptableLossPercent(item.rawMaterialId);
+                            const isWithinTolerance = variancePercent <= acceptableLoss;
 
                             return (
                               <TableRow key={index}>
@@ -621,17 +648,24 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
                                   />
                                 </TableCell>
                                 <TableCell className="text-right">
-                                  <div className="flex items-center justify-end gap-1">
-                                    <Badge 
-                                      variant={variance === 0 ? "secondary" : variance > 0 ? "outline" : "destructive"}
-                                      className={variance === 0 ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300" : ""}
-                                      data-testid={`badge-variance-${index}`}
-                                    >
-                                      {variance === 0 ? '✓' : variance.toFixed(2)}
-                                    </Badge>
+                                  <div className="flex flex-col items-end gap-0.5">
+                                    <div className="flex items-center gap-1">
+                                      <Badge 
+                                        variant={variance === 0 ? "secondary" : isWithinTolerance ? "outline" : "destructive"}
+                                        className={variance === 0 || isWithinTolerance ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300" : ""}
+                                        data-testid={`badge-variance-${index}`}
+                                      >
+                                        {variance === 0 ? '✓' : variance.toFixed(2)}
+                                      </Badge>
+                                      {variance !== 0 && (
+                                        <span className={`text-xs ${isWithinTolerance ? 'text-green-600' : 'text-red-500'}`}>
+                                          ({variancePercent.toFixed(1)}%)
+                                        </span>
+                                      )}
+                                    </div>
                                     {variance !== 0 && (
                                       <span className="text-xs text-muted-foreground">
-                                        ({variancePercent}%)
+                                        {isWithinTolerance ? `≤${acceptableLoss}% OK` : `>${acceptableLoss}% loss`}
                                       </span>
                                     )}
                                   </div>
@@ -668,7 +702,10 @@ export default function ProductionReconciliationForm({ reconciliation, onClose }
                             • <strong>To Return:</strong> Auto-calculated: Issued - Used - Hopper
                           </p>
                           <p className="text-blue-700 dark:text-blue-300">
-                            • <strong>Variance:</strong> Should be 0 when fully balanced (2% acceptable threshold)
+                            • <strong>Variance:</strong> Checked against loss % from Raw Material Type (e.g., 2% for preforms)
+                          </p>
+                          <p className="text-blue-700 dark:text-blue-300">
+                            • <strong>Green ✓:</strong> Within tolerance | <strong className="text-red-600">Red:</strong> Exceeds acceptable loss
                           </p>
                           {reconciliation && (
                             <p className="text-blue-700 dark:text-blue-300 mt-2">
