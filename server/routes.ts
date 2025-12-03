@@ -5170,8 +5170,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get single terms & conditions
-  app.get('/api/terms-conditions/:id', requireRole('admin'), async (req: any, res) => {
+  // Get single terms & conditions (allow any authenticated user for invoice printing)
+  app.get('/api/terms-conditions/:id', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
       const tc = await storage.getTermsConditions(id);
