@@ -176,10 +176,10 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       invoiceTemplateId: invoice.templateId || "",
       termsConditionsId: invoice.termsConditionsId || "",
       sellerName: invoice.sellerName || "Inmoisture Private Limited",
-      sellerAddress: invoice.sellerAddress || "Industrial Area, Phase 1",
-      sellerState: invoice.sellerState || "Karnataka",
-      sellerStateCode: invoice.sellerStateCode || "29",
-      sellerGstin: invoice.sellerGstin || "29AAAAA0000A1Z5",
+      sellerAddress: invoice.sellerAddress || "356-2, Chintalapalem, Kothavalasa",
+      sellerState: invoice.sellerState || "Andhra Pradesh",
+      sellerStateCode: invoice.sellerStateCode || "37",
+      sellerGstin: invoice.sellerGstin || "37AAHCI4057B1ZR",
       sellerPhone: invoice.sellerPhone || "",
       sellerEmail: invoice.sellerEmail || "",
       shipToName: invoice.shipToName || "",
@@ -190,8 +190,8 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       buyerName: invoice.buyerName || "",
       buyerGstin: invoice.buyerGstin || "",
       buyerAddress: invoice.buyerAddress || "",
-      buyerState: invoice.buyerState || "Karnataka",
-      buyerStateCode: invoice.buyerStateCode || "29",
+      buyerState: invoice.buyerState || "Andhra Pradesh",
+      buyerStateCode: invoice.buyerStateCode || "37",
       isCluster: invoice.isCluster || 0,
       items: [{
         productId: "",
@@ -214,10 +214,10 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       invoiceTemplateId: "",
       termsConditionsId: "",
       sellerName: "Inmoisture Private Limited",
-      sellerAddress: "Industrial Area, Phase 1",
-      sellerState: "Karnataka",
-      sellerStateCode: "29",
-      sellerGstin: "29AAAAA0000A1Z5",
+      sellerAddress: "356-2, Chintalapalem, Kothavalasa",
+      sellerState: "Andhra Pradesh",
+      sellerStateCode: "37",
+      sellerGstin: "37AAHCI4057B1ZR",
       sellerPhone: "",
       sellerEmail: "",
       shipToName: "",
@@ -228,8 +228,8 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       buyerName: "",
       buyerGstin: "",
       buyerAddress: "",
-      buyerState: "Karnataka",
-      buyerStateCode: "29",
+      buyerState: "Andhra Pradesh",
+      buyerStateCode: "37",
       isCluster: 0,
       items: [{
         productId: "",
@@ -313,10 +313,10 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         invoiceTemplateId: invoice.templateId || "",
         termsConditionsId: invoice.termsConditionsId || "",
         sellerName: invoice.sellerName || "Inmoisture Private Limited",
-        sellerAddress: invoice.sellerAddress || "",
-        sellerState: invoice.sellerState || "Karnataka",
-        sellerStateCode: invoice.sellerStateCode || "29",
-        sellerGstin: invoice.sellerGstin || "",
+        sellerAddress: invoice.sellerAddress || "356-2, Chintalapalem, Kothavalasa",
+        sellerState: invoice.sellerState || "Andhra Pradesh",
+        sellerStateCode: invoice.sellerStateCode || "37",
+        sellerGstin: invoice.sellerGstin || "37AAHCI4057B1ZR",
         sellerPhone: invoice.sellerPhone || "",
         sellerEmail: invoice.sellerEmail || "",
         shipToName: invoice.shipToName || "",
@@ -327,8 +327,8 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         buyerName: invoice.buyerName || "",
         buyerGstin: invoice.buyerGstin || "",
         buyerAddress: invoice.buyerAddress || "",
-        buyerState: invoice.buyerState || "Karnataka",
-        buyerStateCode: invoice.buyerStateCode || "29",
+        buyerState: invoice.buyerState || "Andhra Pradesh",
+        buyerStateCode: invoice.buyerStateCode || "37",
         isCluster: invoice.isCluster || 0,
         items: normalizedItems,
         bankName: invoice.bankName || "",
@@ -467,8 +467,10 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
     form.setValue("buyerName", vendor.vendorName || "");
     form.setValue("buyerGstin", vendor.gstNumber || "");
     form.setValue("buyerAddress", vendor.address || "");
-    form.setValue("buyerState", vendor.state || "Karnataka");
-    form.setValue("buyerStateCode", "29"); // Default state code
+    form.setValue("buyerState", vendor.state || "Andhra Pradesh");
+    // Extract state code from GSTIN (first 2 digits) or use default
+    const stateCode = vendor.gstNumber?.substring(0, 2) || "37";
+    form.setValue("buyerStateCode", stateCode);
     form.setValue("isCluster", vendor.isCluster || 0);
   };
 
@@ -500,8 +502,8 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         form.setValue("buyerName", "");
         form.setValue("buyerGstin", "");
         form.setValue("buyerAddress", "");
-        form.setValue("buyerState", "Karnataka");
-        form.setValue("buyerStateCode", "29");
+        form.setValue("buyerState", "Andhra Pradesh");
+        form.setValue("buyerStateCode", "37");
         form.setValue("isCluster", 0);
       }
     }
@@ -1148,7 +1150,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
               <Input
                 id="buyerStateCode"
                 {...form.register("buyerStateCode")}
-                placeholder="29"
+                placeholder="37"
                 maxLength={2}
                 data-testid="input-buyer-state-code"
               />
@@ -1315,7 +1317,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
               <Input
                 id="sellerStateCode"
                 {...form.register("sellerStateCode")}
-                placeholder="29"
+                placeholder="37"
                 maxLength={2}
                 data-testid="input-seller-state-code"
               />
