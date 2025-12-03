@@ -350,6 +350,28 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
                   <td>Sub Total:</td>
                   <td style="text-align:right;">${formatCurrency(invoice.subtotal)}</td>
                 </tr>
+                ${invoice.cgstAmount > 0 || invoice.sgstAmount > 0 ? `
+                  <tr>
+                    <td>CGST:</td>
+                    <td style="text-align:right;">${formatCurrency(invoice.cgstAmount)}</td>
+                  </tr>
+                  <tr>
+                    <td>SGST:</td>
+                    <td style="text-align:right;">${formatCurrency(invoice.sgstAmount)}</td>
+                  </tr>
+                ` : ''}
+                ${invoice.igstAmount > 0 ? `
+                  <tr>
+                    <td>IGST:</td>
+                    <td style="text-align:right;">${formatCurrency(invoice.igstAmount)}</td>
+                  </tr>
+                ` : ''}
+                ${invoice.transportCharges && invoice.transportCharges > 0 ? `
+                  <tr>
+                    <td>Transport Charges:</td>
+                    <td style="text-align:right;">${formatCurrency(invoice.transportCharges)}</td>
+                  </tr>
+                ` : ''}
                 <tr>
                   <td><strong>Total:</strong></td>
                   <td style="text-align:right;"><strong>${formatCurrency(invoice.totalAmount)}</strong></td>
