@@ -91,6 +91,9 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
   const [selectedVendorId, setSelectedVendorId] = useState<string>("");
   const [shipToDifferentAddress, setShipToDifferentAddress] = useState(false);
   
+  // Transport charges (calculated after GST, not taxable)
+  const [transportRatePerCase, setTransportRatePerCase] = useState<number>(invoice?.transportRatePerCase ? invoice.transportRatePerCase / 100 : 0);
+  
   // Vendor filtering state
   const [vendorTypeFilter, setVendorTypeFilter] = useState<string>('all');
   const [vendorSearchOpen, setVendorSearchOpen] = useState(false);
@@ -562,10 +565,12 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
     let cgstAmount = 0;
     let sgstAmount = 0;
     let igstAmount = 0;
+    let totalQuantity = 0;
 
     watchItems.forEach((item) => {
       const itemTotal = item.quantity * item.unitPrice;
       subtotal += itemTotal;
+      totalQuantity += item.quantity;
 
       const taxAmount = (itemTotal * item.gstRate) / 100;
       
@@ -577,13 +582,18 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       }
     });
 
-    const totalAmount = subtotal + cgstAmount + sgstAmount + igstAmount;
+    // Transport charges are calculated AFTER GST (not taxable)
+    const transportCharges = transportRatePerCase * totalQuantity;
+    const totalAmount = subtotal + cgstAmount + sgstAmount + igstAmount + transportCharges;
 
     return {
       subtotal: Math.round(subtotal * 100), // Convert to paise
       cgstAmount: Math.round(cgstAmount * 100),
       sgstAmount: Math.round(sgstAmount * 100),
       igstAmount: Math.round(igstAmount * 100),
+      transportRatePerCase: Math.round(transportRatePerCase * 100), // In paise
+      transportCharges: Math.round(transportCharges * 100), // In paise
+      totalQuantity,
       totalAmount: Math.round(totalAmount * 100),
     };
   };
@@ -611,6 +621,8 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         sgstAmount: taxes.sgstAmount,
         igstAmount: taxes.igstAmount,
         cessAmount: 0,
+        transportRatePerCase: taxes.transportRatePerCase,
+        transportCharges: taxes.transportCharges,
         roundOff: 0,
         totalAmount: taxes.totalAmount,
         bankName: data.bankName || null,
@@ -1554,6 +1566,30 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                 <span>{formatCurrency(taxes.igstAmount)}</span>
               </div>
             )}
+            
+            {/* Transport Charges (After GST) */}
+            <div className="border-t pt-2 mt-2">
+              <div className="flex items-center gap-2 mb-1">
+                <Label className="text-sm whitespace-nowrap">Transport Rate/Case (₹):</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={transportRatePerCase || ''}
+                  onChange={(e) => setTransportRatePerCase(parseFloat(e.target.value) || 0)}
+                  placeholder="0.00"
+                  className="h-8 w-24 text-right"
+                  data-testid="input-transport-rate"
+                />
+              </div>
+              {transportRatePerCase > 0 && (
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>Transport ({taxes.totalQuantity} × ₹{transportRatePerCase.toFixed(2)}):</span>
+                  <span>{formatCurrency(taxes.transportCharges)}</span>
+                </div>
+              )}
+            </div>
+            
             <div className="flex justify-between text-base font-bold border-t pt-1.5">
               <span>Total Amount:</span>
               <span>{formatCurrency(taxes.totalAmount)}</span>

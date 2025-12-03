@@ -1585,8 +1585,13 @@ export const invoices = pgTable("invoices", {
   sgstAmount: integer("sgst_amount").default(0).notNull(), // State GST (in paise)
   igstAmount: integer("igst_amount").default(0).notNull(), // Integrated GST (in paise)
   cessAmount: integer("cess_amount").default(0).notNull(), // Cess if any (in paise)
+  
+  // Transport Charges (calculated AFTER GST, not taxable)
+  transportRatePerCase: integer("transport_rate_per_case").default(0).notNull(), // Rate per case in paise (e.g., 100 = Rs.1)
+  transportCharges: integer("transport_charges").default(0).notNull(), // Total transport = rate × quantity (in paise)
+  
   roundOff: integer("round_off").default(0).notNull(), // Round off adjustment (in paise)
-  totalAmount: integer("total_amount").notNull(), // Final total (in paise)
+  totalAmount: integer("total_amount").notNull(), // Final total including transport (in paise)
   amountReceived: integer("amount_received").default(0).notNull(), // Amount paid/received (in paise)
   
   // Payment Details
