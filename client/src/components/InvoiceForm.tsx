@@ -260,10 +260,10 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       // Compute the isIntrastate value for GST calculation
       const isIntrastate = invoice.buyerStateCode === invoice.sellerStateCode;
       
-      // Prepare items with proper conversion
-      const embeddedItems = (invoice as any)?.items || [];
-      const normalizedItems = embeddedItems.length > 0 
-        ? embeddedItems.map((item: any) => {
+      // Use fetched invoiceItems (from separate query) OR embedded items OR empty array
+      const itemsSource = invoiceItems.length > 0 ? invoiceItems : ((invoice as any)?.items || []);
+      const normalizedItems = itemsSource.length > 0 
+        ? itemsSource.map((item: any) => {
             // Calculate GST rate from basis points
             // cgstRate/sgstRate are each half of total rate (for intrastate)
             // igstRate is full rate (for interstate)
@@ -343,7 +343,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       // Schedule items sync for next render cycle to ensure useFieldArray picks it up
       setPendingItemsSync(normalizedItems);
     }
-  }, [invoice, gatepass, form]);
+  }, [invoice, gatepass, form, invoiceItems]);
 
   // Watch buyer name for adjustments lookup
   const watchedBuyerName = form.watch("buyerName");
