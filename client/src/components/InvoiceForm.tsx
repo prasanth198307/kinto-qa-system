@@ -67,6 +67,7 @@ const invoiceFormSchema = z.object({
     quantity: z.number().min(1, "Quantity must be at least 1"),
     unitPrice: z.number().min(0, "Price must be positive"),
     gstRate: z.number().min(0).max(100, "GST rate must be 0-100%"),
+    transportRatePerCase: z.number().min(0).optional(), // Transport rate per case (rupees)
   })).min(1, "At least one item is required"),
   
   remarks: z.string().optional(),
@@ -90,9 +91,6 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(invoice?.templateId || "");
   const [selectedVendorId, setSelectedVendorId] = useState<string>("");
   const [shipToDifferentAddress, setShipToDifferentAddress] = useState(false);
-  
-  // Transport charges (calculated after GST, not taxable)
-  const [transportRatePerCase, setTransportRatePerCase] = useState<number>(invoice?.transportRatePerCase ? invoice.transportRatePerCase / 100 : 0);
   
   // Vendor filtering state
   const [vendorTypeFilter, setVendorTypeFilter] = useState<string>('all');
@@ -566,6 +564,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
     let sgstAmount = 0;
     let igstAmount = 0;
     let totalQuantity = 0;
+    let totalTransportCharges = 0;
 
     watchItems.forEach((item) => {
       const itemTotal = item.quantity * item.unitPrice;
@@ -580,19 +579,20 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       } else {
         igstAmount += taxAmount;
       }
+      
+      // Transport charges per item (calculated AFTER GST, not taxable)
+      const itemTransport = (item.transportRatePerCase || 0) * item.quantity;
+      totalTransportCharges += itemTransport;
     });
 
-    // Transport charges are calculated AFTER GST (not taxable)
-    const transportCharges = transportRatePerCase * totalQuantity;
-    const totalAmount = subtotal + cgstAmount + sgstAmount + igstAmount + transportCharges;
+    const totalAmount = subtotal + cgstAmount + sgstAmount + igstAmount + totalTransportCharges;
 
     return {
       subtotal: Math.round(subtotal * 100), // Convert to paise
       cgstAmount: Math.round(cgstAmount * 100),
       sgstAmount: Math.round(sgstAmount * 100),
       igstAmount: Math.round(igstAmount * 100),
-      transportRatePerCase: Math.round(transportRatePerCase * 100), // In paise
-      transportCharges: Math.round(transportCharges * 100), // In paise
+      transportCharges: Math.round(totalTransportCharges * 100), // Total transport in paise
       totalQuantity,
       totalAmount: Math.round(totalAmount * 100),
     };
@@ -621,7 +621,6 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         sgstAmount: taxes.sgstAmount,
         igstAmount: taxes.igstAmount,
         cessAmount: 0,
-        transportRatePerCase: taxes.transportRatePerCase,
         transportCharges: taxes.transportCharges,
         roundOff: 0,
         totalAmount: taxes.totalAmount,
@@ -678,6 +677,10 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         
         console.log(`[InvoiceForm] Item ${item.description}: gstRate=${gstRate}, isIntrastate=${isIntrastateSupply}, cgst=${cgstRateValue}, igst=${igstRateValue}`);
 
+        // Transport charges for this item (calculated after GST)
+        const transportRate = item.transportRatePerCase || 0;
+        const itemTransportCharges = transportRate * item.quantity;
+        
         return {
           productId: item.productId,
           hsnCode: item.hsnCode || null,
@@ -696,7 +699,9 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
           igstAmount,
           cessRate: 0,
           cessAmount: 0,
-          totalAmount: Math.round((taxableAmount + taxAmount) * 100),
+          transportRatePerCase: Math.round(transportRate * 100), // Convert to paise
+          transportCharges: Math.round(itemTransportCharges * 100), // Convert to paise
+          totalAmount: Math.round((taxableAmount + taxAmount + itemTransportCharges) * 100),
         };
       });
 
