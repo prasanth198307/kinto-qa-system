@@ -200,6 +200,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         quantity: 1,
         unitPrice: 0,
         gstRate: 18,
+        transportRatePerCase: 0,
       }],
       bankName: invoice.bankName || "",
       bankAccountNumber: invoice.bankAccountNumber || "",
@@ -238,6 +239,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         quantity: 1,
         unitPrice: 0,
         gstRate: 18,
+        transportRatePerCase: 0,
       }],
       bankName: "",
       bankAccountNumber: "",
@@ -294,6 +296,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
               quantity: item.quantity || 1,
               unitPrice: (item.unitPrice || 0) / 100, // Convert from paise to rupees
               gstRate,
+              transportRatePerCase: (item.transportRatePerCase || 0) / 100, // Convert from paise to rupees
             };
           })
         : [{
@@ -303,6 +306,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
             quantity: 1,
             unitPrice: 0,
             gstRate: 18,
+            transportRatePerCase: 0,
           }];
       
       console.log('[InvoiceForm] Resetting form with invoice data, items:', normalizedItems);
