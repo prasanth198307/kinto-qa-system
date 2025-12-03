@@ -1349,7 +1349,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
             <Button
               type="button"
               size="sm"
-              onClick={() => append({ productId: "", description: "", hsnCode: "", quantity: 1, unitPrice: 0, gstRate: 18 })}
+              onClick={() => append({ productId: "", description: "", hsnCode: "", quantity: 1, unitPrice: 0, gstRate: 18, transportRatePerCase: 0 })}
               data-testid="button-add-item"
             >
               <Plus className="w-4 h-4 mr-1" />
@@ -1361,10 +1361,11 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
           <div className="grid grid-cols-12 gap-2 text-xs font-semibold text-muted-foreground px-2">
             <div className="col-span-3">Product *</div>
             <div className="col-span-1">HSN</div>
-            <div className="col-span-3">Description *</div>
+            <div className="col-span-2">Description *</div>
             <div className="col-span-1">Qty *</div>
             <div className="col-span-2">Price (₹) *</div>
-            <div className="col-span-1">GST % *</div>
+            <div className="col-span-1">GST %</div>
+            <div className="col-span-1">Transport</div>
             <div className="col-span-1"></div>
           </div>
 
@@ -1452,7 +1453,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
               </div>
 
               {/* Description */}
-              <div className="col-span-3">
+              <div className="col-span-2">
                 <Input
                   {...form.register(`items.${index}.description`)}
                   placeholder="Description"
@@ -1527,6 +1528,19 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                 </Select>
               </div>
 
+              {/* Transport Rate (per case) */}
+              <div className="col-span-1">
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  {...form.register(`items.${index}.transportRatePerCase`, { valueAsNumber: true })}
+                  placeholder="₹0"
+                  className="h-9 text-sm"
+                  data-testid={`input-transport-rate-${index}`}
+                />
+              </div>
+
               {/* Remove Button */}
               <div className="col-span-1 flex justify-center">
                 {fields.length > 1 && (
@@ -1572,28 +1586,13 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
               </div>
             )}
             
-            {/* Transport Charges (After GST) */}
-            <div className="border-t pt-2 mt-2">
-              <div className="flex items-center gap-2 mb-1">
-                <Label className="text-sm whitespace-nowrap">Transport Rate/Case (₹):</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={transportRatePerCase || ''}
-                  onChange={(e) => setTransportRatePerCase(parseFloat(e.target.value) || 0)}
-                  placeholder="0.00"
-                  className="h-8 w-24 text-right"
-                  data-testid="input-transport-rate"
-                />
+            {/* Transport Charges (After GST - summed from all line items) */}
+            {taxes.transportCharges > 0 && (
+              <div className="flex justify-between">
+                <span>Transport Charges:</span>
+                <span>{formatCurrency(taxes.transportCharges)}</span>
               </div>
-              {transportRatePerCase > 0 && (
-                <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>Transport ({taxes.totalQuantity} × ₹{transportRatePerCase.toFixed(2)}):</span>
-                  <span>{formatCurrency(taxes.transportCharges)}</span>
-                </div>
-              )}
-            </div>
+            )}
             
             <div className="flex justify-between text-base font-bold border-t pt-1.5">
               <span>Total Amount:</span>
