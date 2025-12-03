@@ -607,6 +607,8 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       const invoiceHeader = {
         gatepassId: data.gatepassId || null,
         invoiceDate: new Date(data.invoiceDate),
+        templateId: data.invoiceTemplateId || null,
+        termsConditionsId: data.termsConditionsId || null,
         sellerGstin: data.sellerGstin || null,
         sellerName: data.sellerName || null,
         sellerAddress: data.sellerAddress || null,
@@ -938,6 +940,15 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
             </div>
           ` : ''}
         </div>
+
+        ${defaultTermsConditions && defaultTermsConditions.terms && defaultTermsConditions.terms.length > 0 ? `
+          <div style="margin-top: 30px; border-top: 1px solid #ddd; padding-top: 15px;">
+            <h3 style="margin: 0 0 10px 0; font-size: 14px;">Terms & Conditions:</h3>
+            <ol style="margin: 0; padding-left: 20px; font-size: 11px;">
+              ${defaultTermsConditions.terms.map((term: string) => `<li style="margin-bottom: 5px;">${term}</li>`).join('')}
+            </ol>
+          </div>
+        ` : ''}
 
         <div style="margin-top: 60px; text-align: right;">
           <p>For ${data.sellerName || 'Inmoisture Private Limited'}</p>
