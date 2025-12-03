@@ -2,29 +2,31 @@
 -- Run this on PRODUCTION database
 -- Created: 2025-12-03
 
--- OPTION 1: Update invoices that don't have a templateId (Vyapaar imports)
--- This is the safest method as Vyapaar imports won't have template references
+-- OPTION 1: Update invoices that have Vyapaar-imported payments
+-- Vyapaar imports have payment remarks containing 'Vyapaar'
 UPDATE invoices 
 SET status = 'delivered' 
-WHERE template_id IS NULL 
-  AND status != 'delivered';
+WHERE id IN (
+    SELECT DISTINCT invoice_id 
+    FROM invoice_payments 
+    WHERE remarks LIKE '%Vyapaar%'
+)
+AND status != 'delivered';
 
--- Check how many were updated
--- SELECT COUNT(*) as updated_count FROM invoices WHERE template_id IS NULL AND status = 'delivered';
-
--- OPTION 2: If you know the cutoff date when you started using the system
--- Uncomment and set the date when you started creating invoices from the system
+-- OPTION 2: Update by invoice number pattern
+-- Vyapaar invoices are typically just numbers (1, 2, 3, 100, 200...)
+-- System invoices might have different patterns
+-- Uncomment if you want to use this approach instead
 -- UPDATE invoices 
 -- SET status = 'delivered' 
--- WHERE invoice_date < '2025-12-01'  -- Change this to your system start date
+-- WHERE invoice_number ~ '^[0-9]+(-DUP)?$'  -- Numeric with optional -DUP suffix
 --   AND status != 'delivered';
 
--- OPTION 3: Update by invoice number pattern (if Vyapaar uses numeric only)
--- Vyapaar invoices are typically just numbers (1, 2, 3...)
--- System invoices might have prefixes like INV-001
+-- OPTION 3: Update by date range (if you know when system invoices started)
+-- Change the date to when you started creating new invoices
 -- UPDATE invoices 
 -- SET status = 'delivered' 
--- WHERE invoice_number ~ '^[0-9]+$'  -- Only numeric invoice numbers
+-- WHERE invoice_date < '2025-12-01'
 --   AND status != 'delivered';
 
 -- Verify the update
@@ -32,3 +34,10 @@ SELECT status, COUNT(*) as count
 FROM invoices 
 GROUP BY status 
 ORDER BY count DESC;
+
+-- Optional: Check which invoices were updated
+-- SELECT invoice_number, status, invoice_date 
+-- FROM invoices 
+-- WHERE status = 'delivered'
+-- ORDER BY invoice_date DESC
+-- LIMIT 20;
