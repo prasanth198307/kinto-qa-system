@@ -1688,6 +1688,10 @@ export const invoiceItems = pgTable("invoice_items", {
   cessRate: integer("cess_rate").default(0).notNull(), // Cess rate in basis points
   cessAmount: integer("cess_amount").default(0).notNull(), // Cess amount (in paise)
   
+  // Transport charges (calculated after GST, not taxable)
+  transportRatePerCase: integer("transport_rate_per_case").default(0).notNull(), // Transport rate per case (in paise)
+  transportCharges: integer("transport_charges").default(0).notNull(), // Total transport for this item (in paise)
+  
   totalAmount: integer("total_amount").notNull(), // Total for this line item (in paise)
   remarks: text("remarks"),
   recordStatus: integer("record_status").default(1).notNull(),
