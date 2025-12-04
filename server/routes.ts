@@ -3317,9 +3317,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // FIFO Batch Allocation for Gatepass
   // Takes invoice items (product + quantity) and returns FIFO-allocated finished goods batches
+  // Now considers reserved quantities from pending invoices (draft/ready_for_gatepass)
   app.post('/api/finished-goods/fifo-allocation', isAuthenticated, async (req: any, res) => {
     try {
-      const { items } = req.body;
+      const { items, excludeInvoiceId } = req.body;
       
       if (!items || !Array.isArray(items) || items.length === 0) {
         return res.status(400).json({ message: "At least one item is required for FIFO allocation" });
@@ -3335,6 +3336,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return dateA.getTime() - dateB.getTime(); // Oldest first (FIFO)
         });
       
+      // Get reserved quantities from pending invoices (draft/ready_for_gatepass)
+      // This prevents double-allocation when multiple gatepasses are created before dispatch
+      const pendingInvoicesList = await db.select().from(invoices).where(
+        and(
+          sql`${invoices.status} IN ('draft', 'ready_for_gatepass')`,
+          eq(invoices.recordStatus, 1)
+        )
+      );
+      
+      // Filter out the invoice being edited (if provided)
+      const filteredInvoices = excludeInvoiceId 
+        ? pendingInvoicesList.filter(inv => inv.id !== excludeInvoiceId)
+        : pendingInvoicesList;
+      
+      // Get invoice items for pending invoices
+      let reservedByBatch = new Map<string, number>(); // finishedGoodId -> reserved qty
+      
+      if (filteredInvoices.length > 0) {
+        const invoiceIds = filteredInvoices.map(inv => inv.id);
+        const pendingItems = await db.select().from(invoiceItems).where(
+          sql`${invoiceItems.invoiceId} IN (${sql.join(invoiceIds.map(id => sql`${id}`), sql`, `)})`
+        );
+        
+        // For each pending invoice item, we need to figure out which batches would be used
+        // Since we use FIFO, simulate the allocation to know which batches are reserved
+        // Group by productId first
+        const pendingByProduct = new Map<string, number>();
+        for (const item of pendingItems) {
+          if (item.productId) {
+            const current = pendingByProduct.get(item.productId) || 0;
+            pendingByProduct.set(item.productId, current + item.quantity);
+          }
+        }
+        
+        // Simulate FIFO allocation for pending invoices to determine batch-level reservations
+        for (const [productId, totalReserved] of pendingByProduct) {
+          let remaining = totalReserved;
+          const productBatches = approvedGoods.filter(fg => fg.productId === productId);
+          
+          for (const batch of productBatches) {
+            if (remaining <= 0) break;
+            const batchQty = batch.quantity;
+            const allocate = Math.min(remaining, batchQty);
+            
+            const currentReserved = reservedByBatch.get(batch.id) || 0;
+            reservedByBatch.set(batch.id, currentReserved + allocate);
+            remaining -= allocate;
+          }
+        }
+      }
+      
+      console.log(`[FIFO] Reserved batches from ${filteredInvoices.length} pending invoices:`, 
+        Object.fromEntries(reservedByBatch));
+      
       const allocatedItems: Array<{
         productId: string;
         finishedGoodId: string;
@@ -3346,8 +3401,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }> = [];
       
       // Track remaining stock for each finished good during allocation
+      // Now uses AVAILABLE stock (physical - reserved) instead of just physical
       const stockTracker = new Map<string, number>();
-      approvedGoods.forEach(fg => stockTracker.set(fg.id, fg.quantity));
+      approvedGoods.forEach(fg => {
+        const reserved = reservedByBatch.get(fg.id) || 0;
+        const available = Math.max(0, fg.quantity - reserved);
+        stockTracker.set(fg.id, available);
+      });
       
       // For each invoice item, allocate from oldest batches first
       for (const item of items) {
