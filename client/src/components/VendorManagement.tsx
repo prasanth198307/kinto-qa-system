@@ -337,10 +337,12 @@ export default function VendorManagement() {
   }, [editingVendor, currentVendorTypes, isLoadingVendorTypes]);
 
   const syncVendorTypes = async (vendorId: string) => {
-    console.log('syncVendorTypes called with:', { vendorId, selectedVendorTypes, primaryVendorTypeId });
+    // Filter out null/undefined values before sending
+    const validTypeIds = selectedVendorTypes.filter(id => id != null && id !== '');
+    console.log('syncVendorTypes called with:', { vendorId, validTypeIds, primaryVendorTypeId });
     try {
       const response = await apiRequest('POST', `/api/vendors/${vendorId}/types/sync`, {
-        vendorTypeIds: selectedVendorTypes,
+        vendorTypeIds: validTypeIds,
         primaryVendorTypeId: primaryVendorTypeId,
       });
       console.log('syncVendorTypes response:', response);

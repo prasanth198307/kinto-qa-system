@@ -1,0 +1,37 @@
+Dec 04 10:04:22 iplvnic1 npm[1019090]:    Session ID: -rTzvgKCXk07yY3duOKd7qAXiXwY6K1b
+Dec 04 10:04:22 iplvnic1 npm[1019090]:    Authenticated: true
+Dec 04 10:04:22 iplvnic1 npm[1019090]: Error syncing vendor types: error: null value in column "vendor_type_id" of relation "vendor_vendor_types" violates not-null constraint
+Dec 04 10:04:22 iplvnic1 npm[1019090]:     at /home/kinto/kinto-qa-system/node_modules/pg/lib/client.js:545:17
+Dec 04 10:04:22 iplvnic1 npm[1019090]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+Dec 04 10:04:22 iplvnic1 npm[1019090]:     at async file:///home/kinto/kinto-qa-system/dist/index.js:10529:11
+Dec 04 10:04:22 iplvnic1 npm[1019090]:     at async NodePgSession.transaction (file:///home/kinto/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:142:22)
+Dec 04 10:04:22 iplvnic1 npm[1019090]:     at async file:///home/kinto/kinto-qa-system/dist/index.js:10521:7 {
+Dec 04 10:04:22 iplvnic1 npm[1019090]:   length: 348,
+Dec 04 10:04:22 iplvnic1 npm[1019090]:   severity: 'ERROR',
+Dec 04 10:04:22 iplvnic1 npm[1019090]:   code: '23502',
+Dec 04 10:04:22 iplvnic1 npm[1019090]:   detail: 'Failing row contains (7f2762cf-3978-4637-97dd-28183eda8b79, fa04b4ef-cedb-4973-87a0-041e8263db36, null, 1, 1, 2025-12-04 10:04:22.053276).',
+Dec 04 10:04:22 iplvnic1 npm[1019090]:   hint: undefined,
+Dec 04 10:04:22 iplvnic1 npm[1019090]:   position: undefined,
+Dec 04 10:04:22 iplvnic1 npm[1019090]:   internalPosition: undefined,
+Dec 04 10:04:22 iplvnic1 npm[1019090]:   internalQuery: undefined,
+Dec 04 10:04:22 iplvnic1 npm[1019090]:   where: undefined,
+Dec 04 10:04:22 iplvnic1 npm[1019090]:   schema: 'public',
+Dec 04 10:04:22 iplvnic1 npm[1019090]:   table: 'vendor_vendor_types',
+Dec 04 10:04:22 iplvnic1 npm[1019090]:   column: 'vendor_type_id',
+Dec 04 10:04:22 iplvnic1 npm[1019090]:   dataType: undefined,
+Dec 04 10:04:22 iplvnic1 npm[1019090]:   constraint: undefined,
+Dec 04 10:04:22 iplvnic1 npm[1019090]:   file: 'execMain.c',
+Dec 04 10:04:22 iplvnic1 npm[1019090]:   line: '2005',
+Dec 04 10:04:22 iplvnic1 npm[1019090]:   routine: 'ExecConstraints'
+Dec 04 10:04:22 iplvnic1 npm[1019090]: }
+Dec 04 10:04:22 iplvnic1 npm[1019090]: 10:04:22 AM [express] POST /api/vendors/fa04b4ef-cedb-4973-87a0-041e8263db36/types/sync 500 in 14ms :…
+Dec 04 10:04:22 iplvnic1 npm[1019090]: 🔹 Request: GET /api/vendors/fa04b4ef-cedb-4973-87a0-041e8263db36/types
+Dec 04 10:04:22 iplvnic1 npm[1019090]:    Cookie header: connect.sid=s%3A-rTzvgKCXk07yY3duOKd7qAXiXwY6K1b.mO%2FxktIXsf7qRX%2BRjCxkB6v58zGcudN4TAl32X69ERQ
+Dec 04 10:04:22 iplvnic1 npm[1019090]:    Session ID: -rTzvgKCXk07yY3duOKd7qAXiXwY6K1b
+Dec 04 10:04:22 iplvnic1 npm[1019090]:    Authenticated: true
+Dec 04 10:04:22 iplvnic1 npm[1019090]: 10:04:22 AM [express] GET /api/vendors/fa04b4ef-cedb-4973-87a0-041e8263db36/types 304 in 8ms :: [{"id…
+Dec 04 10:04:22 iplvnic1 npm[1019090]: 🔹 Request: GET /api/vendors
+Dec 04 10:04:22 iplvnic1 npm[1019090]:    Cookie header: connect.sid=s%3A-rTzvgKCXk07yY3duOKd7qAXiXwY6K1b.mO%2FxktIXsf7qRX%2BRjCxkB6v58zGcudN4TAl32X69ERQ
+Dec 04 10:04:22 iplvnic1 npm[1019090]:    Session ID: -rTzvgKCXk07yY3duOKd7qAXiXwY6K1b
+Dec 04 10:04:22 iplvnic1 npm[1019090]:    Authenticated: true
+Dec 04 10:04:22 iplvnic1 npm[1019090]: 10:04:22 AM [express] GET /api/vendors 200 in 30ms :: {"data":[{"id":"c38c75b9-ca9f-4ca3-8d6c-518899c…

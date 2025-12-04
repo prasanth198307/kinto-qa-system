@@ -1828,14 +1828,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "vendorTypeIds must be an array" });
       }
       
+      // Filter out null/undefined/empty values to prevent database constraint violations
+      const validTypeIds = vendorTypeIds.filter((id: any) => id != null && id !== '');
+      
       // Use transaction to ensure atomicity
       await db.transaction(async (tx) => {
         // 1. Delete all existing vendor type assignments
         await tx.delete(vendorVendorTypes).where(eq(vendorVendorTypes.vendorId, vendorId));
         
         // 2. Insert new assignments
-        if (vendorTypeIds.length > 0) {
-          const assignments = vendorTypeIds.map((typeId: string) => ({
+        if (validTypeIds.length > 0) {
+          const assignments = validTypeIds.map((typeId: string) => ({
             vendorId,
             vendorTypeId: typeId,
             isPrimary: typeId === primaryVendorTypeId ? 1 : 0,
