@@ -117,6 +117,19 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
     queryKey: ['/api/products'],
   });
 
+  const { data: uoms = [] } = useQuery<{ id: string; code: string; name: string }[]>({
+    queryKey: ['/api/uom'],
+  });
+
+  // Find the default UOM for invoices (Cases)
+  const defaultUomId = useMemo(() => {
+    // Look for "Cases" or "Case" UOM - prioritize "Cases"
+    const casesUom = uoms.find(u => u.code === 'CASES' || u.name === 'Cases');
+    if (casesUom) return casesUom.id;
+    const caseUom = uoms.find(u => u.code === 'Case' || u.name === 'Case');
+    return caseUom?.id || null;
+  }, [uoms]);
+
   const { data: vendors = [] } = useQuery<Vendor[]>({
     queryKey: ['/api/vendors'],
   });
@@ -718,7 +731,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
           sacCode: null,
           description: item.description,
           quantity: item.quantity,
-          uomId: null,
+          uomId: defaultUomId, // Use default UOM (Cases) for invoice items
           unitPrice: Math.round(item.unitPrice * 100), // Convert to paise
           discount: 0,
           taxableAmount: Math.round(taxableAmount * 100),

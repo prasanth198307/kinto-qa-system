@@ -257,8 +257,16 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
               const totalGst = item.cgstAmount + item.sgstAmount + item.igstAmount;
               const gstPercent = (item.cgstRate + item.sgstRate + item.igstRate) / 100;
               const productName = getProductName(item.productId);
-              const uom = uoms.find(u => u.id === item.uomId);
-              const unit = uom?.name || 'Nos';
+              // Find UOM by ID, fallback to "Cases" for invoice items (default for finished goods)
+              let unit = 'Cases';
+              if (item.uomId) {
+                const uom = uoms.find(u => u.id === item.uomId);
+                unit = uom?.name || 'Cases';
+              } else {
+                // For legacy items without uomId, use Cases as default
+                const casesUom = uoms.find(u => u.code === 'CASES' || u.name === 'Cases');
+                unit = casesUom?.name || 'Cases';
+              }
               return `
               <tr>
                 <td>${idx + 1}</td>
