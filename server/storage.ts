@@ -189,6 +189,9 @@ import {
   paymentEvidence,
   type PaymentEvidence,
   type InsertPaymentEvidence,
+  systemAlerts,
+  type SystemAlert,
+  type InsertSystemAlert,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, isNotNull, notInArray, inArray, gte, lte, sql, desc } from "drizzle-orm";
@@ -3997,6 +4000,143 @@ export class DatabaseStorage implements IStorage {
     await db.update(salespersonMappings)
       .set({ isActive: 0 })
       .where(eq(salespersonMappings.id, id));
+  }
+
+  // ==================== SYSTEM ALERTS ====================
+  
+  async createSystemAlert(alert: InsertSystemAlert): Promise<SystemAlert> {
+    const [created] = await db.insert(systemAlerts).values(alert).returning();
+    return created;
+  }
+
+  async getActiveSystemAlerts(): Promise<SystemAlert[]> {
+    return await db.select().from(systemAlerts)
+      .where(eq(systemAlerts.status, 'active'))
+      .orderBy(desc(systemAlerts.detectedAt));
+  }
+
+  async getSystemAlertsByEntity(entityType: string, entityId: string): Promise<SystemAlert[]> {
+    return await db.select().from(systemAlerts)
+      .where(and(
+        eq(systemAlerts.entityType, entityType),
+        eq(systemAlerts.entityId, entityId),
+        eq(systemAlerts.status, 'active')
+      ));
+  }
+
+  async resolveSystemAlert(entityType: string, entityId: string, resolvedBy?: string): Promise<void> {
+    await db.update(systemAlerts)
+      .set({ 
+        status: 'resolved', 
+        resolvedAt: new Date().toISOString(),
+        resolvedBy: resolvedBy 
+      })
+      .where(and(
+        eq(systemAlerts.entityType, entityType),
+        eq(systemAlerts.entityId, entityId),
+        eq(systemAlerts.status, 'active')
+      ));
+  }
+
+  async acknowledgeSystemAlert(id: string, acknowledgedBy: string): Promise<SystemAlert | undefined> {
+    const [updated] = await db.update(systemAlerts)
+      .set({ status: 'acknowledged', resolvedBy: acknowledgedBy })
+      .where(eq(systemAlerts.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getOversellAlertForProduct(productId: string): Promise<SystemAlert | undefined> {
+    const [alert] = await db.select().from(systemAlerts)
+      .where(and(
+        eq(systemAlerts.alertType, 'oversell'),
+        eq(systemAlerts.entityType, 'product'),
+        eq(systemAlerts.entityId, productId),
+        eq(systemAlerts.status, 'active')
+      ));
+    return alert;
+  }
+
+  async recordOrUpdateOversellAlert(
+    productId: string, 
+    productName: string, 
+    physicalStock: number, 
+    reservedStock: number,
+    invoiceId?: string
+  ): Promise<SystemAlert> {
+    const difference = reservedStock - physicalStock;
+    const existingAlert = await this.getOversellAlertForProduct(productId);
+    
+    if (existingAlert) {
+      // Update existing alert with new data
+      const [updated] = await db.update(systemAlerts)
+        .set({
+          message: `Reserved stock (${reservedStock}) exceeds physical stock (${physicalStock}) by ${difference} units`,
+          details: { physicalStock, reservedStock, difference, lastUpdated: new Date().toISOString() },
+          detectedAt: new Date().toISOString()
+        })
+        .where(eq(systemAlerts.id, existingAlert.id))
+        .returning();
+      return updated;
+    } else {
+      // Create new alert
+      return await this.createSystemAlert({
+        alertType: 'oversell',
+        entityType: 'product',
+        entityId: productId,
+        entityName: productName,
+        severity: 'warning',
+        message: `Reserved stock (${reservedStock}) exceeds physical stock (${physicalStock}) by ${difference} units`,
+        details: { physicalStock, reservedStock, difference },
+        status: 'active',
+        createdByInvoiceId: invoiceId
+      });
+    }
+  }
+
+  async auditProductOversell(productIds: string[], invoiceId?: string): Promise<{ oversellProducts: string[] }> {
+    const oversellProducts: string[] = [];
+    
+    for (const productId of productIds) {
+      // Get physical stock
+      const finishedGoodsList = await db.select()
+        .from(finishedGoods)
+        .where(and(
+          eq(finishedGoods.productId, productId),
+          eq(finishedGoods.recordStatus, 1)
+        ));
+      
+      const physicalStock = finishedGoodsList.reduce((sum, fg) => sum + (fg.currentStock || 0), 0);
+      
+      // Get reserved stock (sum of invoice items for pending invoices)
+      const reservedResult = await db.execute(sql`
+        SELECT COALESCE(SUM(ii.quantity), 0)::INTEGER as reserved_stock
+        FROM invoice_items ii
+        JOIN invoices i ON ii.invoice_id = i.id
+        WHERE ii.product_id = ${productId}
+          AND ii.record_status = 1
+          AND i.record_status = 1
+          AND i.status NOT IN ('dispatched', 'delivered', 'cancelled')
+      `);
+      
+      const reservedStock = Number(reservedResult.rows?.[0]?.reserved_stock || 0);
+      
+      // Get product name
+      const product = await this.getProduct(productId);
+      const productName = product?.name || 'Unknown Product';
+      
+      if (reservedStock > physicalStock) {
+        // Record or update oversell alert
+        await this.recordOrUpdateOversellAlert(productId, productName, physicalStock, reservedStock, invoiceId);
+        oversellProducts.push(productName);
+        console.log(`[OVERSELL ALERT] ${productName}: Reserved (${reservedStock}) > Physical (${physicalStock})`);
+      } else {
+        // Resolve any existing alert for this product
+        await this.resolveSystemAlert('product', productId);
+      }
+    }
+    
+    return { oversellProducts };
   }
 }
 
