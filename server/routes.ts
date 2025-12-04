@@ -8314,15 +8314,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
       
-      // Group credit notes by vendor ID (for imported credit notes without invoice link)
-      const creditNotesByVendor = new Map<string, number>();
-      allCreditNotes.forEach(cn => {
-        if (cn.vendorId && !cn.invoiceId) {
-          const current = creditNotesByVendor.get(cn.vendorId) || 0;
-          creditNotesByVendor.set(cn.vendorId, current + cn.grandTotal);
-        }
-      });
-      
       // Filter invoices based on period type
       let yearInvoices;
       let currentYear: number;
@@ -8422,15 +8413,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         periodIndex: data.index,
       })).sort((a, b) => a.periodIndex - b.periodIndex);
 
-      // Calculate total vendor-linked credit notes (for credit notes without invoice link)
-      let totalVendorCredits = 0;
-      creditNotesByVendor.forEach((creditAmount) => {
-        totalVendorCredits += creditAmount;
-      });
-      
-      // Calculate totals (subtracting vendor-linked credit notes)
+      // Calculate totals from analytics (invoice-linked credit notes already subtracted per invoice)
       const grossTotalRevenue = analytics.reduce((sum, p) => sum + p.revenue, 0);
-      const netTotalRevenue = Math.max(0, grossTotalRevenue - totalVendorCredits);
+      const netTotalRevenue = grossTotalRevenue;
       
       const totals = {
         totalRevenue: netTotalRevenue,
@@ -8472,22 +8457,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
       
-      // Subtract vendor-linked credit notes from type breakdown
-      creditNotesByVendor.forEach((creditAmount, vendorId) => {
-        const vendor = allVendors.find(v => v.id === vendorId);
-        if (vendor) {
-          const primaryTypeLink = vendorTypeLinks.find(link => 
-            link.vendorId === vendor.id && link.isPrimary === 1 && link.recordStatus === 1
-          );
-          if (primaryTypeLink) {
-            const primaryType = allVendorTypes.find(vt => vt.id === primaryTypeLink.vendorTypeId);
-            if (primaryType && typeBreakdown[primaryType.name]) {
-              typeBreakdown[primaryType.name].revenue -= creditAmount;
-            }
-          }
-        }
-      });
-
       res.json({ 
         analytics, 
         totals, 
