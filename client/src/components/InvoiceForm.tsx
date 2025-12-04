@@ -1435,11 +1435,23 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                     const skipStockCheck = isReissueMode || !!invoice || isExistingItem;
                     
                     if (!skipStockCheck && totalAvailable === 0) {
-                      toast({
-                        title: "No Stock Available",
-                        description: "This product has no available finished goods (may be reserved for other invoices).",
-                        variant: "destructive",
-                      });
+                      const reserved = productSummary?.reserved || 0;
+                      const physical = productSummary?.totalPhysical || 0;
+                      
+                      // Show specific message based on whether stock exists but is reserved
+                      if (reserved > 0 && physical > 0) {
+                        toast({
+                          title: "⚠️ All Stock Reserved",
+                          description: `This product has ${physical} units in stock, but all ${reserved} units are reserved for other pending invoices. Please dispatch those invoices first or choose a different product.`,
+                          variant: "destructive",
+                        });
+                      } else {
+                        toast({
+                          title: "No Stock Available",
+                          description: "This product has no available finished goods in inventory.",
+                          variant: "destructive",
+                        });
+                      }
                       return;
                     }
                     
