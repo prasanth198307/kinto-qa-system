@@ -2,23 +2,21 @@ import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { PurchaseOrder, SparePartCatalog } from "@shared/schema";
-import { Package, AlertTriangle, CheckCircle, Clock, Plus, Trash2 } from "lucide-react";
+import type { PurchaseOrder, SparePartCatalog, Vendor } from "@shared/schema";
+import { Package, AlertTriangle, CheckCircle, Clock, Plus, Trash2, Edit, ArrowLeft } from "lucide-react";
 import PrintablePurchaseOrder from "@/components/PrintablePurchaseOrder";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
+import PurchaseOrderForm from "@/components/PurchaseOrderForm";
+import { format } from "date-fns";
+
+type ViewMode = 'list' | 'create' | 'edit';
 
 export default function PurchaseOrderManagement() {
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [selectedSparePartId, setSelectedSparePartId] = useState('');
-  const [quantity, setQuantity] = useState('');
-  const [urgencyLevel, setUrgencyLevel] = useState<'low' | 'medium' | 'high' | 'critical'>('medium');
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [editingPO, setEditingPO] = useState<PurchaseOrder | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deletingPOId, setDeletingPOId] = useState<string | null>(null);
   const { toast } = useToast();
@@ -31,26 +29,8 @@ export default function PurchaseOrderManagement() {
     queryKey: ['/api/spare-parts'],
   });
 
-  const createPOMutation = useMutation({
-    mutationFn: async (data: any) => {
-      return await apiRequest('POST', '/api/purchase-orders', data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/purchase-orders'] });
-      resetForm();
-      setIsCreateDialogOpen(false);
-      toast({
-        title: "Purchase Order Created",
-        description: "Purchase order has been created successfully.",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to create purchase order. Please try again.",
-        variant: "destructive",
-      });
-    },
+  const { data: vendors = [] } = useQuery<Vendor[]>({
+    queryKey: ['/api/vendors'],
   });
 
   const deletePOMutation = useMutation({
@@ -75,44 +55,19 @@ export default function PurchaseOrderManagement() {
     },
   });
 
-  const resetForm = () => {
-    setSelectedSparePartId('');
-    setQuantity('');
-    setUrgencyLevel('medium');
+  const handleFormSuccess = () => {
+    setViewMode('list');
+    setEditingPO(null);
   };
 
-  const handleCreatePO = () => {
-    if (!selectedSparePartId || !quantity) {
-      toast({
-        title: "Validation Error",
-        description: "Please select a spare part and enter quantity.",
-        variant: "destructive",
-      });
-      return;
-    }
+  const handleFormCancel = () => {
+    setViewMode('list');
+    setEditingPO(null);
+  };
 
-    const quantityNum = Number(quantity);
-    if (!Number.isInteger(quantityNum) || quantityNum < 1) {
-      toast({
-        title: "Validation Error",
-        description: "Quantity must be a positive integer.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const sparePart = spareParts.find(sp => sp.id === selectedSparePartId);
-    if (!sparePart) return;
-
-    const data = {
-      sparePartId: selectedSparePartId,
-      quantity: quantityNum,
-      urgency: urgencyLevel,
-      status: 'pending',
-      estimatedCost: (sparePart.unitPrice || 0) * quantityNum
-    };
-
-    createPOMutation.mutate(data);
+  const handleEditPO = (po: PurchaseOrder) => {
+    setEditingPO(po);
+    setViewMode('edit');
   };
 
   const handleDeletePO = (id: string) => {
@@ -168,11 +123,46 @@ export default function PurchaseOrderManagement() {
     }
   };
 
+  const getVendorName = (vendorId: string | null | undefined) => {
+    if (!vendorId) return 'Not Assigned';
+    const vendor = vendors.find(v => v.id === vendorId);
+    return vendor?.vendorName || 'Unknown Vendor';
+  };
+
+  // Render create/edit form view
+  if (viewMode === 'create' || viewMode === 'edit') {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={handleFormCancel}
+            data-testid="button-back"
+          >
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            Back to List
+          </Button>
+          <h2 className="text-xl font-semibold">
+            {viewMode === 'create' ? 'Create Purchase Order' : 'Edit Purchase Order'}
+          </h2>
+        </div>
+
+        <PurchaseOrderForm
+          editingPO={editingPO}
+          onSuccess={handleFormSuccess}
+          onCancel={handleFormCancel}
+        />
+      </div>
+    );
+  }
+
+  // Render list view
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">Purchase Order Management</h2>
-        <Button onClick={() => setIsCreateDialogOpen(true)} data-testid="button-create-po">
+        <Button onClick={() => setViewMode('create')} data-testid="button-create-po">
           <Plus className="h-4 w-4 mr-1" />
           Create PO
         </Button>
@@ -189,28 +179,21 @@ export default function PurchaseOrderManagement() {
                 {lowStockItems.length} item{lowStockItems.length !== 1 ? 's' : ''} below reorder threshold
               </p>
               <div className="mt-3 space-y-2">
-                {lowStockItems.map((item) => (
+                {lowStockItems.slice(0, 5).map((item) => (
                   <div key={item.id} className="flex items-center justify-between text-sm" data-testid={`low-stock-item-${item.id}`}>
                     <span className="font-medium">{item.partName}</span>
                     <div className="flex items-center gap-3">
                       <span className="text-muted-foreground">
                         Stock: {item.currentStock} / Threshold: {item.reorderThreshold}
                       </span>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setSelectedSparePartId(item.id);
-                          setUrgencyLevel('high');
-                          setIsCreateDialogOpen(true);
-                        }}
-                        data-testid={`button-create-po-for-${item.id}`}
-                      >
-                        Create PO
-                      </Button>
                     </div>
                   </div>
                 ))}
+                {lowStockItems.length > 5 && (
+                  <p className="text-xs text-muted-foreground">
+                    ... and {lowStockItems.length - 5} more items
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -224,28 +207,53 @@ export default function PurchaseOrderManagement() {
           <Card className="p-8 text-center">
             <Package className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
             <p className="text-muted-foreground">No purchase orders yet</p>
+            <Button 
+              className="mt-4" 
+              onClick={() => setViewMode('create')}
+              data-testid="button-create-first-po"
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Create Your First PO
+            </Button>
           </Card>
         ) : (
           <div className="space-y-3">
             {purchaseOrders.map((po) => {
               const sparePart = spareParts.find(sp => sp.id === po.sparePartId);
+              const grandTotal = po.grandTotal ? (po.grandTotal / 100).toFixed(2) : 
+                (po.estimatedCost ? (po.estimatedCost / 100).toFixed(2) : '0.00');
+              
               return (
                 <Card key={po.id} className="p-4" data-testid={`card-po-${po.id}`}>
                   <div className="flex items-start justify-between">
                     <div className="flex-1 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-semibold">{sparePart?.partName || 'Unknown Part'}</h4>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="font-semibold">{po.poNumber}</h4>
                         {getStatusBadge(po.status || 'pending')}
                         {getUrgencyBadge(po.urgency || 'medium')}
                       </div>
-                      <div className="text-sm text-muted-foreground space-y-1">
-                        <p>Quantity: {po.quantity}</p>
-                        <p>Estimated Cost: ${po.estimatedCost?.toFixed(2) || '0.00'}</p>
-                        {po.createdAt && <p>Order Date: {new Date(po.createdAt).toLocaleDateString()}</p>}
-                        {po.expectedDeliveryDate && <p>Expected Delivery: {new Date(po.expectedDeliveryDate).toLocaleDateString()}</p>}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1 text-sm text-muted-foreground">
+                        <p><span className="font-medium">Vendor:</span> {getVendorName(po.vendorId)}</p>
+                        <p><span className="font-medium">Spare Part:</span> {sparePart?.partName || 'Unknown Part'}</p>
+                        <p><span className="font-medium">Quantity:</span> {po.quantity}</p>
+                        <p><span className="font-medium">Grand Total:</span> ₹{grandTotal}</p>
+                        {po.poDate && (
+                          <p><span className="font-medium">PO Date:</span> {format(new Date(po.poDate), 'dd/MM/yyyy')}</p>
+                        )}
+                        {po.expectedDeliveryDate && (
+                          <p><span className="font-medium">Expected Delivery:</span> {format(new Date(po.expectedDeliveryDate), 'dd/MM/yyyy')}</p>
+                        )}
                       </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-shrink-0">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEditPO(po)}
+                        data-testid={`button-edit-po-${po.id}`}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
                       <PrintablePurchaseOrder po={po} />
                       <Button
                         variant="destructive"
@@ -263,86 +271,6 @@ export default function PurchaseOrderManagement() {
           </div>
         )}
       </div>
-
-      {/* Create PO Dialog */}
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent data-testid="dialog-create-po">
-          <DialogHeader>
-            <DialogTitle>Create Purchase Order</DialogTitle>
-            <DialogDescription>
-              Create a new purchase order for spare parts that need to be reordered.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <Label htmlFor="spare-part">Spare Part *</Label>
-              <Select value={selectedSparePartId} onValueChange={setSelectedSparePartId}>
-                <SelectTrigger data-testid="select-spare-part">
-                  <SelectValue placeholder="Select a spare part" />
-                </SelectTrigger>
-                <SelectContent>
-                  {spareParts.map((part) => (
-                    <SelectItem key={part.id} value={part.id}>
-                      <div className="flex items-center gap-2">
-                        <span>{part.partName}
-                        {part.partNumber && ` (${part.partNumber})`}</span>
-                        {part.currentStock !== null && part.currentStock !== undefined && part.reorderThreshold && part.currentStock < part.reorderThreshold && 
-                          <AlertTriangle className="h-3 w-3 text-orange-600" data-testid="icon-low-stock-alert" />
-                        }
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="quantity">Quantity *</Label>
-              <Input
-                id="quantity"
-                type="number"
-                min="1"
-                placeholder="Enter quantity"
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                data-testid="input-quantity"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="urgency">Urgency Level</Label>
-              <Select value={urgencyLevel} onValueChange={(value: any) => setUrgencyLevel(value)}>
-                <SelectTrigger data-testid="select-urgency">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">Low</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
-                  <SelectItem value="critical">Critical</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {selectedSparePartId && (
-              <div className="p-3 bg-muted rounded-md">
-                <p className="text-sm font-medium">Estimated Cost</p>
-                <p className="text-2xl font-bold">
-                  ${((spareParts.find(sp => sp.id === selectedSparePartId)?.unitPrice || 0) * (Number(quantity) || 0)).toFixed(2)}
-                </p>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleCreatePO} disabled={createPOMutation.isPending} data-testid="button-submit-po">
-              {createPOMutation.isPending ? 'Creating...' : 'Create Purchase Order'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <ConfirmDeleteDialog
         open={isDeleteDialogOpen}
