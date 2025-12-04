@@ -337,12 +337,14 @@ export default function VendorManagement() {
   }, [editingVendor, currentVendorTypes, isLoadingVendorTypes]);
 
   const syncVendorTypes = async (vendorId: string) => {
+    console.log('syncVendorTypes called with:', { vendorId, selectedVendorTypes, primaryVendorTypeId });
     try {
-      // Use batch sync endpoint - single transaction, handles primary flag clearing
-      await apiRequest('POST', `/api/vendors/${vendorId}/types/sync`, {
+      const response = await apiRequest('POST', `/api/vendors/${vendorId}/types/sync`, {
         vendorTypeIds: selectedVendorTypes,
         primaryVendorTypeId: primaryVendorTypeId,
       });
+      console.log('syncVendorTypes response:', response);
+      return response;
     } catch (error: any) {
       console.error('Error syncing vendor types:', error);
       throw error;
