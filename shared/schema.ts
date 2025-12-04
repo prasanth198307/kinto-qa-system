@@ -537,17 +537,33 @@ export type MachineSpare = typeof machineSpares.$inferSelect;
 export const purchaseOrders = pgTable("purchase_orders", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   poNumber: varchar("po_number", { length: 100 }).notNull().unique(),
+  poDate: timestamp("po_date", { mode: 'string' }).defaultNow(),
   sparePartId: varchar("spare_part_id").references(() => sparePartsCatalog.id),
+  vendorId: varchar("vendor_id").references(() => vendors.id),
   quantity: integer("quantity").notNull(),
+  unitPrice: integer("unit_price"), // Price per unit in paise
+  totalAmount: integer("total_amount"), // Total amount in paise
   urgency: varchar("urgency", { length: 50 }).notNull(),
   status: varchar("status", { length: 50 }).default('pending'),
   requestedBy: varchar("requested_by").references(() => users.id),
   approvedBy: varchar("approved_by").references(() => users.id),
+  approvedDate: timestamp("approved_date", { mode: 'string' }),
   supplier: varchar("supplier", { length: 255 }),
   estimatedCost: integer("estimated_cost"),
   expectedDeliveryDate: timestamp("expected_delivery_date", { mode: 'string' }),
   actualDeliveryDate: timestamp("actual_delivery_date", { mode: 'string' }),
+  deliveryAddress: text("delivery_address"),
+  paymentTerms: text("payment_terms"),
+  gstApplicable: integer("gst_applicable").default(1), // 1 = GST applicable, 0 = not applicable
+  gstRate: integer("gst_rate").default(1800), // GST rate in basis points (1800 = 18%)
+  cgstAmount: integer("cgst_amount"), // CGST amount in paise
+  sgstAmount: integer("sgst_amount"), // SGST amount in paise
+  igstAmount: integer("igst_amount"), // IGST amount in paise
+  grandTotal: integer("grand_total"), // Grand total including GST in paise
+  signatureImage: text("signature_image"), // Base64 encoded signature image
+  includeSignature: integer("include_signature").default(1), // 1 = include, 0 = no signature
   remarks: text("remarks"),
+  termsAndConditions: text("terms_and_conditions"),
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
