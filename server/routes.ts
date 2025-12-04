@@ -1230,26 +1230,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.id;
       const { items, ...poData } = req.body;
       
+      console.log("[PO Create] Received items:", items?.length || 0, "items");
+      
       const validatedData = insertPurchaseOrderSchema.partial({ requestedBy: true, approvedBy: true }).parse({
         ...poData,
         requestedBy: userId
       });
       const purchaseOrder = await storage.createPurchaseOrder(validatedData);
       
+      console.log("[PO Create] Created PO:", purchaseOrder.id);
+      
       // Create purchase order items if provided
       if (items && Array.isArray(items) && items.length > 0) {
+        console.log("[PO Create] Inserting", items.length, "items for PO:", purchaseOrder.id);
         for (const item of items) {
-          const itemData = insertPurchaseOrderItemSchema.parse({
-            ...item,
-            purchaseOrderId: purchaseOrder.id
-          });
-          await db.insert(purchaseOrderItems).values(itemData);
+          try {
+            const itemData = insertPurchaseOrderItemSchema.parse({
+              ...item,
+              purchaseOrderId: purchaseOrder.id
+            });
+            console.log("[PO Create] Inserting item:", itemData.itemName);
+            await db.insert(purchaseOrderItems).values(itemData);
+          } catch (itemError) {
+            console.error("[PO Create] Error inserting item:", itemError);
+            throw itemError;
+          }
         }
+        console.log("[PO Create] Successfully inserted all items");
       }
       
       res.json(purchaseOrder);
     } catch (error) {
       if (error instanceof z.ZodError) {
+        console.error("[PO Create] Validation error:", JSON.stringify(error.errors, null, 2));
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
       }
       console.error("Error creating purchase order:", error);

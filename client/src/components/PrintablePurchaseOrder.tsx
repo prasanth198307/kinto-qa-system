@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { type PurchaseOrder, type SparePartCatalog, type User, type Vendor } from "@shared/schema";
+import { type PurchaseOrder, type RawMaterial, type User, type Vendor, type PurchaseOrderItem, type Uom } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Printer } from "lucide-react";
 import { format } from "date-fns";
@@ -23,8 +23,8 @@ const COMPANY_DETAILS = {
 export default function PrintablePurchaseOrder({ po }: PrintablePurchaseOrderProps) {
   const printRef = useRef<HTMLDivElement>(null);
 
-  const { data: spareParts = [] } = useQuery<SparePartCatalog[]>({
-    queryKey: ['/api/spare-parts'],
+  const { data: rawMaterials = [] } = useQuery<RawMaterial[]>({
+    queryKey: ['/api/raw-materials'],
   });
 
   const { data: users = [] } = useQuery<User[]>({
@@ -35,13 +35,33 @@ export default function PrintablePurchaseOrder({ po }: PrintablePurchaseOrderPro
     queryKey: ['/api/vendors'],
   });
 
-  const sparePart = spareParts.find(sp => sp.id === po.sparePartId);
+  const { data: uomList = [] } = useQuery<Uom[]>({
+    queryKey: ['/api/uom'],
+  });
+
+  const { data: poItems = [] } = useQuery<PurchaseOrderItem[]>({
+    queryKey: ['/api/purchase-order-items', po.id],
+    enabled: !!po.id,
+  });
+
   const vendor = vendors.find(v => v.id === po.vendorId);
 
   const getUsername = (userId: string | null | undefined): string => {
     if (!userId) return '-';
     const user = users.find(u => u.id === userId);
     return user?.username || '-';
+  };
+
+  const getRawMaterialName = (rawMaterialId: string | null | undefined): string => {
+    if (!rawMaterialId) return '-';
+    const rm = rawMaterials.find(r => r.id === rawMaterialId);
+    return rm?.materialName || '-';
+  };
+
+  const getUomName = (uomId: string | null | undefined): string => {
+    if (!uomId) return '-';
+    const u = uomList.find(x => x.id === uomId);
+    return u?.name || '-';
   };
 
   const handlePrint = () => {
@@ -373,15 +393,31 @@ export default function PrintablePurchaseOrder({ po }: PrintablePurchaseOrderPro
     ? format(new Date(po.expectedDeliveryDate), 'dd/MM/yyyy')
     : '-';
 
-  // Calculate amounts
-  const unitPrice = (po.unitPrice || po.estimatedCost || 0) / 100;
-  const quantity = po.quantity || 0;
-  const subtotal = po.totalAmount ? po.totalAmount / 100 : unitPrice * quantity;
-  const cgstAmount = (po.cgstAmount || 0) / 100;
-  const sgstAmount = (po.sgstAmount || 0) / 100;
-  const igstAmount = (po.igstAmount || 0) / 100;
-  const grandTotal = po.grandTotal ? po.grandTotal / 100 : subtotal + cgstAmount + sgstAmount + igstAmount;
-  const gstRate = po.gstRate || 1800;
+  // Calculate totals from line items
+  const hasLineItems = poItems.length > 0;
+  
+  // Calculate subtotal from all line items (amount = line item before GST)
+  const subtotal = hasLineItems 
+    ? poItems.reduce((sum, item) => sum + ((item.amount || 0) / 100), 0)
+    : (po.totalAmount ? po.totalAmount / 100 : 0);
+
+  // Calculate GST amounts from all line items
+  const totalCgst = hasLineItems
+    ? poItems.reduce((sum, item) => sum + ((item.cgstAmount || 0) / 100), 0)
+    : (po.cgstAmount || 0) / 100;
+
+  const totalSgst = hasLineItems
+    ? poItems.reduce((sum, item) => sum + ((item.sgstAmount || 0) / 100), 0)
+    : (po.sgstAmount || 0) / 100;
+
+  const totalIgst = hasLineItems
+    ? poItems.reduce((sum, item) => sum + ((item.igstAmount || 0) / 100), 0)
+    : (po.igstAmount || 0) / 100;
+
+  // Grand total (totalAmount = line item including GST)
+  const grandTotal = hasLineItems
+    ? poItems.reduce((sum, item) => sum + ((item.totalAmount || 0) / 100), 0)
+    : (po.grandTotal ? po.grandTotal / 100 : subtotal + totalCgst + totalSgst + totalIgst);
 
   return (
     <>
@@ -477,25 +513,52 @@ export default function PrintablePurchaseOrder({ po }: PrintablePurchaseOrderPro
             <thead>
               <tr>
                 <th style={{ width: '5%' }}>Sr.</th>
-                <th style={{ width: '35%' }}>Item Description</th>
-                <th style={{ width: '15%' }}>Part Number</th>
-                <th style={{ width: '10%' }} className="center">Qty</th>
-                <th style={{ width: '15%' }} className="number">Unit Price (₹)</th>
-                <th style={{ width: '20%' }} className="number">Amount (₹)</th>
+                <th style={{ width: '25%' }}>Item Description</th>
+                <th style={{ width: '12%' }}>HSN Code</th>
+                <th style={{ width: '8%' }} className="center">Qty</th>
+                <th style={{ width: '8%' }} className="center">Unit</th>
+                <th style={{ width: '12%' }} className="number">Rate (₹)</th>
+                <th style={{ width: '8%' }} className="center">GST%</th>
+                <th style={{ width: '12%' }} className="number">Tax (₹)</th>
+                <th style={{ width: '14%' }} className="number">Amount (₹)</th>
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td className="center">1</td>
-                <td>
-                  <strong>{sparePart?.partName || 'Unknown Part'}</strong>
-                  {sparePart?.category && <div style={{ fontSize: '10px', color: '#666' }}>Category: {sparePart.category}</div>}
-                </td>
-                <td>{sparePart?.partNumber || '-'}</td>
-                <td className="center">{quantity}</td>
-                <td className="number">{unitPrice.toFixed(2)}</td>
-                <td className="number"><strong>{subtotal.toFixed(2)}</strong></td>
-              </tr>
+              {hasLineItems ? (
+                poItems.map((item, index) => {
+                  const itemRate = (item.unitPrice || 0) / 100;
+                  const itemQty = parseFloat(String(item.quantity)) || 0;
+                  const itemCgst = (item.cgstAmount || 0) / 100;
+                  const itemSgst = (item.sgstAmount || 0) / 100;
+                  const itemGstTotal = itemCgst + itemSgst;
+                  const itemTotal = (item.totalAmount || 0) / 100;
+                  const gstPercent = (item.gstRate || 0) / 100;
+                  
+                  return (
+                    <tr key={item.id}>
+                      <td className="center">{index + 1}</td>
+                      <td>
+                        <strong>{item.itemName || getRawMaterialName(item.rawMaterialId)}</strong>
+                        {item.description && <div style={{ fontSize: '10px', color: '#666' }}>{item.description}</div>}
+                      </td>
+                      <td>{item.hsnCode || '-'}</td>
+                      <td className="center">{itemQty}</td>
+                      <td className="center">{item.unitName || getUomName(item.uomId)}</td>
+                      <td className="number">{itemRate.toFixed(2)}</td>
+                      <td className="center">{gstPercent.toFixed(0)}%</td>
+                      <td className="number">{itemGstTotal.toFixed(2)}</td>
+                      <td className="number"><strong>{itemTotal.toFixed(2)}</strong></td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td className="center">1</td>
+                  <td colSpan={8} className="center" style={{ color: '#666', fontStyle: 'italic' }}>
+                    No line items added to this purchase order
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
 
@@ -505,17 +568,23 @@ export default function PrintablePurchaseOrder({ po }: PrintablePurchaseOrderPro
                 <span>Subtotal</span>
                 <span>₹ {subtotal.toFixed(2)}</span>
               </div>
-              {po.gstApplicable === 1 && (
+              {(totalCgst > 0 || totalSgst > 0) && (
                 <>
                   <div className="total-row">
-                    <span>CGST ({(gstRate / 200).toFixed(1)}%)</span>
-                    <span>₹ {cgstAmount.toFixed(2)}</span>
+                    <span>CGST</span>
+                    <span>₹ {totalCgst.toFixed(2)}</span>
                   </div>
                   <div className="total-row">
-                    <span>SGST ({(gstRate / 200).toFixed(1)}%)</span>
-                    <span>₹ {sgstAmount.toFixed(2)}</span>
+                    <span>SGST</span>
+                    <span>₹ {totalSgst.toFixed(2)}</span>
                   </div>
                 </>
+              )}
+              {totalIgst > 0 && (
+                <div className="total-row">
+                  <span>IGST</span>
+                  <span>₹ {totalIgst.toFixed(2)}</span>
+                </div>
               )}
               <div className="total-row">
                 <span>Grand Total</span>
