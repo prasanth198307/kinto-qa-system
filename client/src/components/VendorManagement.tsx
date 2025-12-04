@@ -378,15 +378,27 @@ export default function VendorManagement() {
       return apiRequest("PATCH", `/api/vendors/${id}`, data);
     },
     onSuccess: async (_data: any, variables: any) => {
-      await syncVendorTypes(variables.id);
-      queryClient.invalidateQueries({ queryKey: ["/api/vendors"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/vendors", variables.id, "types"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/vendor-vendor-types/batch"] });
-      toast({ title: "Vendor updated successfully" });
-      setIsDialogOpen(false);
-      setEditingVendor(null);
-      setSelectedVendorTypes([]);
-      setPrimaryVendorTypeId(null);
+      try {
+        await syncVendorTypes(variables.id);
+        queryClient.invalidateQueries({ queryKey: ["/api/vendors"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/vendors", variables.id, "types"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/vendor-vendor-types/batch"] });
+        toast({ title: "Vendor updated successfully" });
+        setIsDialogOpen(false);
+        setEditingVendor(null);
+        setSelectedVendorTypes([]);
+        setPrimaryVendorTypeId(null);
+      } catch (syncError: any) {
+        console.error('Sync error:', syncError);
+        queryClient.invalidateQueries({ queryKey: ["/api/vendors"] });
+        toast({ 
+          title: "Vendor saved but classification sync failed",
+          description: "Please try editing the vendor again to update classifications.",
+          variant: "destructive" 
+        });
+        setIsDialogOpen(false);
+        setEditingVendor(null);
+      }
     },
     onError: (error: any) => {
       toast({
@@ -629,9 +641,23 @@ export default function VendorManagement() {
                 </>
               )}
             </Button>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <Dialog open={isDialogOpen} onOpenChange={(open) => {
+              if (!open) {
+                handleDialogClose();
+              }
+              setIsDialogOpen(open);
+            }}>
             <DialogTrigger asChild>
-              <Button size="sm" data-testid="button-add-vendor">
+              <Button 
+                size="sm" 
+                data-testid="button-add-vendor"
+                onClick={() => {
+                  setEditingVendor(null);
+                  setSelectedVendorTypes([]);
+                  setPrimaryVendorTypeId(null);
+                  setGstVerificationResult(null);
+                }}
+              >
                 <Plus className="w-4 h-4 mr-2" />
                 Add Vendor
               </Button>
