@@ -5894,6 +5894,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return invoice;
       });
       
+      // Audit for potential oversell conditions (non-blocking, for admin visibility)
+      try {
+        const productIds = items
+          .filter((item: any) => item.productId)
+          .map((item: any) => item.productId);
+        
+        if (productIds.length > 0) {
+          const auditResult = await storage.auditProductOversell(productIds, result.id);
+          if (auditResult.oversellProducts.length > 0) {
+            console.log(`[INVOICE ${result.invoiceNumber}] Oversell alert created for: ${auditResult.oversellProducts.join(', ')}`);
+          }
+        }
+      } catch (auditError) {
+        // Non-blocking - just log the error
+        console.error('[OVERSELL_AUDIT_ERROR]', auditError);
+      }
+      
       res.json({ invoice: result, message: "Invoice created successfully with items" });
     } catch (error) {
       if (error instanceof z.ZodError) {
