@@ -1489,9 +1489,14 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                       const totalAvailable = productSummary?.available || 0;
                       const reserved = productSummary?.reserved || 0;
                       
+                      // Format: "Product (50 / 20 rsv)" or "Product (0 / 70 rsv)" or "Product (50)" or "Product (0)"
+                      const stockDisplay = reserved > 0 
+                        ? `(${totalAvailable} / ${reserved} rsv)` 
+                        : `(${totalAvailable})`;
+                      
                       return (
                         <SelectItem key={product.id} value={product.id}>
-                          {product.productName} {totalAvailable > 0 ? `(${totalAvailable}${reserved > 0 ? ` / ${reserved} rsv` : ''})` : '(0)'}
+                          {product.productName} {stockDisplay}
                         </SelectItem>
                       );
                     })}
