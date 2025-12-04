@@ -8506,15 +8506,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
 
-      // Group credit notes by vendor ID (for imported credit notes without invoice link)
-      const creditNotesByVendor = new Map<string, number>();
-      allCreditNotes.forEach(cn => {
-        if (cn.vendorId && !cn.invoiceId) {
-          const current = creditNotesByVendor.get(cn.vendorId) || 0;
-          creditNotesByVendor.set(cn.vendorId, current + cn.grandTotal);
-        }
-      });
-
       const debitNotesByInvoice = new Map<string, number>();
       allDebitNotes.forEach(dn => {
         const current = debitNotesByInvoice.get(dn.invoiceId) || 0;
@@ -8537,18 +8528,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const vendorItems = allItems.filter(item => invoiceIds.has(item.invoiceId));
         const totalQuantity = vendorItems.reduce((sum, item) => sum + item.quantity, 0);
 
-        // Calculate credit notes for this vendor (both invoice-linked and vendor-linked)
+        // Calculate credit notes for this vendor (invoice-linked only)
         const totalPaid = vendorInvoices.reduce((sum, inv) => sum + (inv.amountReceived || 0), 0);
         const invoiceCreditNotes = vendorInvoices.reduce((sum, inv) => sum + (creditNotesByInvoice.get(inv.id) || 0), 0);
-        const vendorCreditNotes = creditNotesByVendor.get(vendor.id) || 0;
-        const totalCredits = invoiceCreditNotes + vendorCreditNotes;
         const totalDebits = vendorInvoices.reduce((sum, inv) => sum + (debitNotesByInvoice.get(inv.id) || 0), 0);
         
-        // Net revenue = gross - credit notes (matching Sale Report calculation)
-        const totalRevenue = grossRevenue - totalCredits;
+        // Net revenue = gross - invoice-linked credit notes
+        const totalRevenue = grossRevenue - invoiceCreditNotes;
         
         // Outstanding balance = max(0, (grossAmount + debitNotes) - creditNotes - amountReceived)
-        const outstandingBalance = Math.max(0, (grossRevenue + totalDebits) - totalCredits - totalPaid);
+        const outstandingBalance = Math.max(0, (grossRevenue + totalDebits) - invoiceCreditNotes - totalPaid);
 
         // Get vendor types for this vendor
         const vendorTypeIds = vendorTypeLinks
