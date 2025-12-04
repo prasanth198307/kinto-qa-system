@@ -2741,3 +2741,34 @@ export interface PaginatedResponse<T> {
   data: T[];
   meta: PaginationMeta;
 }
+
+// ==================== SYSTEM ALERTS ====================
+// Lightweight alerting system for oversell detection and other system warnings
+
+export const systemAlerts = pgTable("system_alerts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  alertType: varchar("alert_type", { length: 50 }).notNull(), // 'oversell', 'low_stock', etc.
+  entityType: varchar("entity_type", { length: 50 }).notNull(), // 'product', 'raw_material', etc.
+  entityId: varchar("entity_id").notNull(), // ID of the affected entity
+  entityName: varchar("entity_name", { length: 255 }), // Display name for quick reference
+  severity: varchar("severity", { length: 20 }).default('warning').notNull(), // 'info', 'warning', 'error', 'critical'
+  message: text("message").notNull(),
+  details: jsonb("details"), // Snapshot data: { physicalStock, reservedStock, difference }
+  status: varchar("status", { length: 20 }).default('active').notNull(), // 'active', 'resolved', 'acknowledged'
+  detectedAt: timestamp("detected_at", { mode: 'string' }).defaultNow(),
+  resolvedAt: timestamp("resolved_at", { mode: 'string' }),
+  resolvedBy: varchar("resolved_by").references(() => users.id),
+  createdByInvoiceId: varchar("created_by_invoice_id"), // Invoice that triggered the alert
+}, (table) => [
+  index("idx_system_alerts_type_status").on(table.alertType, table.status),
+  index("idx_system_alerts_entity").on(table.entityType, table.entityId, table.status),
+]);
+
+export const insertSystemAlertSchema = createInsertSchema(systemAlerts).omit({
+  id: true,
+  detectedAt: true,
+  resolvedAt: true,
+});
+
+export type InsertSystemAlert = z.infer<typeof insertSystemAlertSchema>;
+export type SystemAlert = typeof systemAlerts.$inferSelect;
