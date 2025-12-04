@@ -767,6 +767,16 @@ function AdminDashboard() {
       ],
     },
     {
+      id: "purchases-section",
+      label: "Purchases",
+      items: [
+        { id: "purchase-orders", label: "Purchase Orders", icon: ShoppingCart },
+      ],
+      quickActions: [
+        { id: "add-purchase-order", label: "Create PO", icon: ShoppingCart, onClick: () => setActiveView("purchase-orders") },
+      ],
+    },
+    {
       id: "cash-section",
       label: "Cash & Expenses",
       items: [
@@ -782,11 +792,9 @@ function AdminDashboard() {
       items: [
         { id: "maintenance", label: "PM Schedule", icon: Wrench },
         { id: "pm-history", label: "PM History", icon: History },
-        { id: "purchase-orders", label: "Purchase Orders", icon: ShoppingCart },
       ],
       quickActions: [
         { id: "schedule-maintenance", label: "Schedule PM", icon: Wrench, onClick: () => setActiveView("maintenance") },
-        { id: "add-purchase-order", label: "Add PO", icon: ShoppingCart, onClick: () => setActiveView("purchase-orders") },
       ],
     },
     {
@@ -1526,6 +1534,13 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       ],
     },
     {
+      id: "purchases-section",
+      label: "Purchases",
+      items: [
+        { id: "purchase-orders", label: "Purchase Orders", icon: ShoppingCart, onClick: () => setLocation('/') },
+      ],
+    },
+    {
       id: "cash-section",
       label: "Cash & Expenses",
       items: [
@@ -1541,7 +1556,6 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       items: [
         { id: "maintenance", label: "PM Schedule", icon: Wrench, onClick: () => setLocation('/') },
         { id: "pm-history", label: "PM History", icon: History, onClick: () => setLocation('/') },
-        { id: "purchase-orders", label: "Purchase Orders", icon: ShoppingCart, onClick: () => setLocation('/') },
       ],
     },
     {
