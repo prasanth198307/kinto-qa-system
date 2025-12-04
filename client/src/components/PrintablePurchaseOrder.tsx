@@ -4,7 +4,7 @@ import { type PurchaseOrder, type SparePartCatalog, type User, type Vendor } fro
 import { Button } from "@/components/ui/button";
 import { Printer } from "lucide-react";
 import { format } from "date-fns";
-import inmoistureLogo from "@assets/inmoisture-logo.png";
+import kintoLogo from "@assets/kinto-logo.png";
 
 interface PrintablePurchaseOrderProps {
   po: PurchaseOrder;
@@ -399,7 +399,7 @@ export default function PrintablePurchaseOrder({ po }: PrintablePurchaseOrderPro
         <div className="page">
           <div className="header">
             <div className="header-left">
-              <img src={inmoistureLogo} alt="Company Logo" className="logo" />
+              <img src={kintoLogo} alt="Company Logo" className="logo" />
               <div className="company-info">
                 <div className="company-name">{COMPANY_DETAILS.name}</div>
                 <div className="company-details">
