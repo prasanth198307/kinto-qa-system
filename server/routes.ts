@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import crypto from "crypto";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, paymentEvidence, salesReturns, salesReturnItems, creditNotes, creditNoteItems, debitNotes, debitNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes, vendors, users, uom, insertDocumentCategorySchema, insertDocumentSchema, insertExpenseCategorySchema, insertExpenseVoucherSchema, insertExpenseItemSchema, insertExpenseAttachmentSchema, rolePermissions } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertPurchaseOrderItemSchema, purchaseOrderItems, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, paymentEvidence, salesReturns, salesReturnItems, creditNotes, creditNoteItems, debitNotes, debitNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes, vendors, users, uom, insertDocumentCategorySchema, insertDocumentSchema, insertExpenseCategorySchema, insertExpenseVoucherSchema, insertExpenseItemSchema, insertExpenseAttachmentSchema, rolePermissions } from "@shared/schema";
 import { format } from "date-fns";
 import { z } from "zod";
 import path from "path";
@@ -1228,11 +1228,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/purchase-orders', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const { items, ...poData } = req.body;
+      
       const validatedData = insertPurchaseOrderSchema.partial({ requestedBy: true, approvedBy: true }).parse({
-        ...req.body,
+        ...poData,
         requestedBy: userId
       });
       const purchaseOrder = await storage.createPurchaseOrder(validatedData);
+      
+      // Create purchase order items if provided
+      if (items && Array.isArray(items) && items.length > 0) {
+        for (const item of items) {
+          const itemData = insertPurchaseOrderItemSchema.parse({
+            ...item,
+            purchaseOrderId: purchaseOrder.id
+          });
+          await db.insert(purchaseOrderItems).values(itemData);
+        }
+      }
+      
       res.json(purchaseOrder);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -1278,11 +1292,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/purchase-orders/:id', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const { id } = req.params;
-      const validatedData = insertPurchaseOrderSchema.partial().parse(req.body);
+      const { items, ...poData } = req.body;
+      
+      const validatedData = insertPurchaseOrderSchema.partial().parse(poData);
       const purchaseOrder = await storage.updatePurchaseOrder(id, validatedData);
       if (!purchaseOrder) {
         return res.status(404).json({ message: "Purchase order not found" });
       }
+      
+      // Replace purchase order items if provided
+      if (items && Array.isArray(items)) {
+        // Delete existing items
+        await db.delete(purchaseOrderItems).where(eq(purchaseOrderItems.purchaseOrderId, id));
+        
+        // Insert new items
+        for (const item of items) {
+          const itemData = insertPurchaseOrderItemSchema.parse({
+            ...item,
+            purchaseOrderId: id
+          });
+          await db.insert(purchaseOrderItems).values(itemData);
+        }
+      }
+      
       res.json(purchaseOrder);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -1296,11 +1328,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/purchase-orders/:id', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const { id } = req.params;
+      // Delete items first
+      await db.delete(purchaseOrderItems).where(eq(purchaseOrderItems.purchaseOrderId, id));
       await storage.deletePurchaseOrder(id);
       res.json({ message: "Purchase order deleted successfully" });
     } catch (error) {
       console.error("Error deleting purchase order:", error);
       res.status(500).json({ message: "Failed to delete purchase order" });
+    }
+  });
+
+  // Purchase Order Items API
+  app.get('/api/purchase-order-items/:purchaseOrderId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { purchaseOrderId } = req.params;
+      const items = await db.select().from(purchaseOrderItems)
+        .where(and(
+          eq(purchaseOrderItems.purchaseOrderId, purchaseOrderId),
+          eq(purchaseOrderItems.recordStatus, 1)
+        ))
+        .orderBy(purchaseOrderItems.serialNo);
+      res.json(items);
+    } catch (error) {
+      console.error("Error fetching purchase order items:", error);
+      res.status(500).json({ message: "Failed to fetch purchase order items" });
     }
   });
 
