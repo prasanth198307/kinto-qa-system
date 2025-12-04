@@ -15,9 +15,9 @@ CREATE TABLE IF NOT EXISTS system_alerts (
     status VARCHAR(20) NOT NULL DEFAULT 'active',
     detected_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     acknowledged_at TIMESTAMP WITH TIME ZONE,
-    acknowledged_by INTEGER REFERENCES users(id),
+    acknowledged_by VARCHAR(255) REFERENCES users(id),
     resolved_at TIMESTAMP WITH TIME ZONE,
-    resolved_by INTEGER REFERENCES users(id),
+    resolved_by VARCHAR(255) REFERENCES users(id),
     record_status INTEGER NOT NULL DEFAULT 1
 );
 
