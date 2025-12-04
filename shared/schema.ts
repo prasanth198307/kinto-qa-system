@@ -554,6 +554,7 @@ export const purchaseOrders = pgTable("purchase_orders", {
   actualDeliveryDate: timestamp("actual_delivery_date", { mode: 'string' }),
   deliveryAddress: text("delivery_address"),
   paymentTerms: text("payment_terms"),
+  transportMode: varchar("transport_mode", { length: 100 }), // Road, Rail, Air, Sea, Courier
   gstApplicable: integer("gst_applicable").default(1), // 1 = GST applicable, 0 = not applicable
   gstRate: integer("gst_rate").default(1800), // GST rate in basis points (1800 = 18%)
   cgstAmount: integer("cgst_amount"), // CGST amount in paise
@@ -579,6 +580,41 @@ export const insertPurchaseOrderSchema = createInsertSchema(purchaseOrders).omit
 
 export type InsertPurchaseOrder = z.infer<typeof insertPurchaseOrderSchema>;
 export type PurchaseOrder = typeof purchaseOrders.$inferSelect;
+
+// Purchase Order Items - for multi-item purchase orders (raw materials)
+export const purchaseOrderItems = pgTable("purchase_order_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  purchaseOrderId: varchar("purchase_order_id").references(() => purchaseOrders.id).notNull(),
+  serialNo: integer("serial_no").notNull(), // Line item number
+  rawMaterialId: varchar("raw_material_id").references(() => rawMaterials.id),
+  itemName: varchar("item_name", { length: 255 }).notNull(), // Can be manual entry or from raw material
+  description: text("description"),
+  hsnCode: varchar("hsn_code", { length: 50 }),
+  quantity: numeric("quantity", { precision: 12, scale: 2 }).notNull(),
+  uomId: varchar("uom_id").references(() => uom.id),
+  unitName: varchar("unit_name", { length: 50 }), // Fallback if UOM not selected
+  unitPrice: integer("unit_price").notNull(), // Price per unit in paise
+  gstRate: integer("gst_rate").default(1800), // GST rate in basis points (1800 = 18%)
+  amount: integer("amount").notNull(), // Line item amount before GST in paise
+  cgstAmount: integer("cgst_amount"), // CGST amount in paise
+  sgstAmount: integer("sgst_amount"), // SGST amount in paise
+  igstAmount: integer("igst_amount"), // IGST amount in paise
+  totalAmount: integer("total_amount"), // Line item total including GST in paise
+  remarks: text("remarks"),
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
+});
+
+export const insertPurchaseOrderItemSchema = createInsertSchema(purchaseOrderItems).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPurchaseOrderItem = z.infer<typeof insertPurchaseOrderItemSchema>;
+export type PurchaseOrderItem = typeof purchaseOrderItems.$inferSelect;
 
 // Unit of Measurement (UOM) Master
 export const uom = pgTable("uom", {
