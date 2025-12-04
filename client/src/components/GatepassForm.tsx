@@ -192,7 +192,12 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
         quantity: invItem.quantity,
       }));
       
-      const response = await apiRequest('POST', '/api/finished-goods/fifo-allocation', { items: allocationRequest });
+      // Pass excludeInvoiceId so this invoice's own reserved stock is available for allocation
+      // Without this, the gatepass would see its own invoice's items as "reserved by others"
+      const response = await apiRequest('POST', '/api/finished-goods/fifo-allocation', { 
+        items: allocationRequest,
+        excludeInvoiceId: selectedInvoiceId 
+      });
       const data = await response.json();
       
       if (data.allocatedItems && data.allocatedItems.length > 0) {
