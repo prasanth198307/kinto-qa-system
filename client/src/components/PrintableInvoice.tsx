@@ -22,7 +22,7 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
     queryKey: ['/api/products'],
   });
 
-  const { data: uoms = [] } = useQuery<any[]>({
+  const { data: uoms = [], isLoading: isLoadingUoms } = useQuery<any[]>({
     queryKey: ['/api/uom'],
   });
 
@@ -78,25 +78,30 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
       invoiceId: invoice.id, 
       hasTemplateId: !!invoice.templateId, 
       isLoadingTemplate,
+      isLoadingUoms,
+      uomsCount: uoms.length,
       hasTemplate: !!template,
       hasSignature: !!template?.defaultSignatureImage
     });
 
-    // Wait for template to load (either specific or default)
-    if (isLoadingTemplate) {
-      console.log('⏳ Template still loading...');
+    // Wait for template and UOMs to load
+    if (isLoadingTemplate || isLoadingUoms) {
+      console.log('⏳ Data still loading...', { isLoadingTemplate, isLoadingUoms });
       toast({
         title: "Please wait",
-        description: "Template is still loading...",
+        description: "Loading print data...",
         variant: "default",
       });
       return;
     }
     
-    console.log('✅ Template loaded, generating HTML...', { 
+    console.log('✅ Data loaded, generating HTML...', { 
       template,
       hasSignature: !!template?.defaultSignatureImage,
-      signatureLength: template?.defaultSignatureImage?.length 
+      signatureLength: template?.defaultSignatureImage?.length,
+      uomsLoaded: uoms.length,
+      uomsList: uoms.map(u => ({ id: u.id, name: u.name })),
+      itemUomIds: items.map(i => i.uomId)
     });
 
     // Calculate HSN-wise tax summary
