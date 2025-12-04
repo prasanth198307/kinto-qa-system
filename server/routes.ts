@@ -3137,6 +3137,125 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Available Stock API - Returns finished goods with reserved quantities deducted
+  // Reserved = quantities in invoices with status 'draft' or 'ready_for_gatepass'
+  // Optional: excludeInvoiceId - exclude a specific invoice's reservations (useful when editing)
+  app.get('/api/finished-goods/available-stock', isAuthenticated, async (req: any, res) => {
+    try {
+      const excludeInvoiceId = req.query.excludeInvoiceId as string | undefined;
+      
+      // Step 1: Get all approved finished goods with quantity > 0
+      const allGoods = await storage.getAllFinishedGoods();
+      const approvedGoods = allGoods.filter(
+        fg => fg.qualityStatus === 'approved' && fg.quantity > 0 && fg.recordStatus === 1
+      );
+
+      // Step 2: Get reserved quantities from pending invoices
+      // Pending = invoices that are draft or ready_for_gatepass (not yet dispatched)
+      const pendingInvoiceStatuses = ['draft', 'ready_for_gatepass'];
+      const allInvoices = await db.select().from(invoices).where(
+        and(
+          sql`${invoices.status} IN ('draft', 'ready_for_gatepass')`,
+          eq(invoices.recordStatus, 1)
+        )
+      );
+      
+      // Get invoice items for pending invoices, excluding the specified invoice if editing
+      let pendingInvoiceIds = allInvoices.map(inv => inv.id);
+      if (excludeInvoiceId) {
+        pendingInvoiceIds = pendingInvoiceIds.filter(id => id !== excludeInvoiceId);
+      }
+      let reservedByProduct: Record<string, number> = {};
+      
+      if (pendingInvoiceIds.length > 0) {
+        const reservedItems = await db.select({
+          productId: invoiceItems.productId,
+          quantity: invoiceItems.quantity
+        }).from(invoiceItems).where(
+          sql`${invoiceItems.invoiceId} IN (${sql.join(pendingInvoiceIds.map(id => sql`${id}`), sql`, `)})`
+        );
+        
+        // Aggregate reserved quantities by product
+        for (const item of reservedItems) {
+          reservedByProduct[item.productId] = (reservedByProduct[item.productId] || 0) + item.quantity;
+        }
+      }
+
+      // Step 3: Aggregate physical stock by product
+      const stockByProduct: Record<string, { totalPhysical: number; reserved: number; available: number; batches: any[] }> = {};
+      
+      for (const fg of approvedGoods) {
+        if (!stockByProduct[fg.productId]) {
+          stockByProduct[fg.productId] = {
+            totalPhysical: 0,
+            reserved: reservedByProduct[fg.productId] || 0,
+            available: 0,
+            batches: []
+          };
+        }
+        stockByProduct[fg.productId].totalPhysical += fg.quantity;
+        stockByProduct[fg.productId].batches.push({
+          id: fg.id,
+          batchNumber: fg.batchNumber,
+          productionDate: fg.productionDate,
+          quantity: fg.quantity
+        });
+      }
+
+      // Step 4: Calculate available stock (physical - reserved)
+      for (const productId in stockByProduct) {
+        const stock = stockByProduct[productId];
+        stock.available = Math.max(0, stock.totalPhysical - stock.reserved);
+      }
+
+      // Step 5: Return both summary and individual batches with adjusted quantities
+      // For individual batches, we apply FIFO deduction of reserved quantities
+      const result = approvedGoods.map(fg => {
+        const productStock = stockByProduct[fg.productId];
+        // Calculate this batch's effective available quantity using FIFO
+        // Sort batches by production date to apply FIFO
+        const sortedBatches = productStock.batches.sort((a: any, b: any) => 
+          new Date(a.productionDate).getTime() - new Date(b.productionDate).getTime()
+        );
+        
+        // Find this batch's position and calculate remaining reserved to apply
+        let remainingReserved = productStock.reserved;
+        let effectiveQuantity = fg.quantity;
+        
+        for (const batch of sortedBatches) {
+          if (batch.id === fg.id) {
+            // This is our batch - apply remaining reserved
+            effectiveQuantity = Math.max(0, fg.quantity - remainingReserved);
+            break;
+          } else {
+            // Older batch - deduct from reserved first
+            remainingReserved = Math.max(0, remainingReserved - batch.quantity);
+          }
+        }
+        
+        return {
+          ...fg,
+          physicalQuantity: fg.quantity,
+          reservedQuantity: fg.quantity - effectiveQuantity,
+          availableQuantity: effectiveQuantity
+        };
+      }).filter(fg => fg.availableQuantity > 0); // Only return batches with available stock
+
+      res.json({
+        items: result,
+        summary: Object.entries(stockByProduct).map(([productId, stock]) => ({
+          productId,
+          totalPhysical: stock.totalPhysical,
+          reserved: stock.reserved,
+          available: stock.available
+        }))
+      });
+    } catch (error) {
+      console.error("Error fetching available stock:", error);
+      res.status(500).json({ message: "Failed to fetch available stock" });
+    }
+  });
+
   app.post('/api/finished-goods', requireRole('admin', 'manager', 'operator'), async (req: any, res) => {
     try {
       const userId = req.user?.id;

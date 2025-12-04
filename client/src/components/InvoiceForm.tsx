@@ -19,6 +19,23 @@ import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Gatepass, Product, Vendor, GatepassItem, FinishedGood, Bank, Invoice, InvoiceTemplate, TermsConditions, VendorType, VendorVendorType } from "@shared/schema";
 
+// Type for available stock API response
+interface AvailableStockItem extends FinishedGood {
+  physicalQuantity: number;
+  reservedQuantity: number;
+  availableQuantity: number;
+}
+
+interface AvailableStockResponse {
+  items: AvailableStockItem[];
+  summary: {
+    productId: string;
+    totalPhysical: number;
+    reserved: number;
+    available: number;
+  }[];
+}
+
 const invoiceFormSchema = z.object({
   gatepassId: z.string().optional(),
   invoiceDate: z.string(),
@@ -130,9 +147,15 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
   const defaultTemplate = templates.find(t => t.isDefault === 1);
   const defaultTermsConditions = termsConditionsList.find(tc => tc.isDefault === 1);
 
-  const { data: finishedGoodsInventory = [] } = useQuery<FinishedGood[]>({
-    queryKey: ['/api/finished-goods'],
+  // Use available stock endpoint that deducts reserved quantities from pending invoices
+  // When editing an existing invoice, exclude its own reservations so we get accurate available stock
+  const { data: availableStockData } = useQuery<AvailableStockResponse>({
+    queryKey: ['/api/finished-goods/available-stock', { excludeInvoiceId: invoice?.id }],
   });
+  
+  // For compatibility with existing code, extract items as finishedGoodsInventory
+  const finishedGoodsInventory = availableStockData?.items || [];
+  const stockSummary = availableStockData?.summary || [];
 
   const { data: gatepassItems = [] } = useQuery<GatepassItem[]>({
     queryKey: gatepass ? [`/api/gatepass-items/${gatepass.id}`] : [],
@@ -1401,8 +1424,9 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                 <Select
                   value={form.watch(`items.${index}.productId`)}
                   onValueChange={(value) => {
-                    const availableFG = finishedGoodsInventory.filter(fg => fg.productId === value);
-                    const totalAvailable = availableFG.reduce((sum, fg) => sum + (fg.quantity || 0), 0);
+                    // Use stockSummary for accurate available counts (deducts reserved from pending invoices)
+                    const productSummary = stockSummary.find(s => s.productId === value);
+                    const totalAvailable = productSummary?.available || 0;
                     
                     // Skip stock check in reissue/edit mode - items already came from valid invoice
                     // Also skip if the current item already has this product selected (user is just viewing)
@@ -1410,10 +1434,10 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                     const isExistingItem = currentProductId === value;
                     const skipStockCheck = isReissueMode || !!invoice || isExistingItem;
                     
-                    if (!skipStockCheck && (availableFG.length === 0 || totalAvailable === 0)) {
+                    if (!skipStockCheck && totalAvailable === 0) {
                       toast({
                         title: "No Stock Available",
-                        description: "This product has no finished goods in inventory.",
+                        description: "This product has no available finished goods (may be reserved for other invoices).",
                         variant: "destructive",
                       });
                       return;
@@ -1431,11 +1455,13 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                       if (product.hsnCode && !isExistingItem) {
                         form.setValue(`items.${index}.hsnCode`, product.hsnCode);
                       }
-                      // Show stock info (but don't block)
-                      if (totalAvailable > 0) {
+                      // Show stock info including reserved quantities
+                      if (productSummary) {
+                        const reserved = productSummary.reserved || 0;
+                        const reservedInfo = reserved > 0 ? ` (${reserved} reserved)` : '';
                         toast({
                           title: "Stock Available",
-                          description: `Available: ${totalAvailable} units${product.basePrice ? ` | Price: ₹${(product.basePrice / 100).toFixed(2)}` : ''}`,
+                          description: `Available: ${totalAvailable} units${reservedInfo}${product.basePrice ? ` | Price: ₹${(product.basePrice / 100).toFixed(2)}` : ''}`,
                         });
                       }
                     }
@@ -1446,12 +1472,14 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                   </SelectTrigger>
                   <SelectContent>
                     {products.map((product) => {
-                      const availableFG = finishedGoodsInventory.filter(fg => fg.productId === product.id);
-                      const totalAvailable = availableFG.reduce((sum, fg) => sum + (fg.quantity || 0), 0);
+                      // Use stockSummary for accurate available counts
+                      const productSummary = stockSummary.find(s => s.productId === product.id);
+                      const totalAvailable = productSummary?.available || 0;
+                      const reserved = productSummary?.reserved || 0;
                       
                       return (
                         <SelectItem key={product.id} value={product.id}>
-                          {product.productName} {totalAvailable > 0 ? `(${totalAvailable})` : '(0)'}
+                          {product.productName} {totalAvailable > 0 ? `(${totalAvailable}${reserved > 0 ? ` / ${reserved} rsv` : ''})` : '(0)'}
                         </SelectItem>
                       );
                     })}
@@ -1489,17 +1517,26 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                       const enteredQty = parseInt(e.target.value) || 0;
                       const productId = form.watch(`items.${index}.productId`);
                       
+                      // Skip strict validation in edit/reissue mode - API already excludes current invoice
+                      // User can still see warnings but won't be blocked
+                      const isEditMode = !!invoice || isReissueMode;
+                      
                       if (productId && enteredQty > 0) {
-                        const availableFG = finishedGoodsInventory.filter(fg => fg.productId === productId);
-                        const totalAvailable = availableFG.reduce((sum, fg) => sum + (fg.quantity || 0), 0);
+                        // Use stockSummary for accurate available counts (deducts reserved)
+                        const productSummary = stockSummary.find(s => s.productId === productId);
+                        const totalAvailable = productSummary?.available || 0;
                         
                         if (enteredQty > totalAvailable) {
+                          const reserved = productSummary?.reserved || 0;
                           toast({
-                            title: "Insufficient Stock",
-                            description: `Only ${totalAvailable} units available`,
-                            variant: "destructive",
+                            title: isEditMode ? "Stock Warning" : "Insufficient Stock",
+                            description: `Only ${totalAvailable} units available${reserved > 0 ? ` (${reserved} reserved for other invoices)` : ''}`,
+                            variant: isEditMode ? "default" : "destructive",
                           });
-                          form.setValue(`items.${index}.quantity`, totalAvailable);
+                          // Only force-cap quantity for new invoices, not when editing
+                          if (!isEditMode) {
+                            form.setValue(`items.${index}.quantity`, totalAvailable);
+                          }
                         }
                       }
                     }
