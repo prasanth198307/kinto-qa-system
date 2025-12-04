@@ -12,7 +12,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Printer } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Trash2, Printer, Package, Calendar, RefreshCw } from "lucide-react";
+import { format } from "date-fns";
 
 const headerSchema = insertGatepassSchema.extend({
   vehicleNumber: z.string().min(1, "Vehicle number is required"),
@@ -46,15 +48,28 @@ interface GatepassFormProps {
   onClose: () => void;
 }
 
+// Extended item type to track FIFO allocation info for display
+interface GatepassItemWithBatchInfo {
+  finishedGoodId: string;
+  productId: string;
+  quantityDispatched: number;
+  uomId: string;
+  remarks: string;
+  batchNumber?: string;
+  productionDate?: string;
+  availableStock?: number;
+}
+
 export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
   const { toast } = useToast();
-  const [items, setItems] = useState([{ 
+  const [items, setItems] = useState<GatepassItemWithBatchInfo[]>([{ 
     finishedGoodId: "", 
     productId: "", 
     quantityDispatched: 0, 
     uomId: "", 
     remarks: "" 
   }]);
+  const [isLoadingFifo, setIsLoadingFifo] = useState(false);
 
   const { data: gatepassItems = [] } = useQuery<GatepassItem[]>({
     queryKey: ['/api/gatepass-items', gatepass?.id],
@@ -165,30 +180,87 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
     }
   }, [selectedInvoiceId, availableInvoices, vendors, form]);
 
-  // Auto-populate finished goods items from invoice items
-  useEffect(() => {
-    if (invoiceItems.length > 0 && selectedInvoiceId && uoms.length > 0) {
-      // Find default "Cases" UOM
-      const casesUom = uoms.find(u => u.name?.toLowerCase() === 'cases' || u.name?.toLowerCase() === 'case');
+  // FIFO allocation function - allocates batches from oldest production date first
+  const performFifoAllocation = async () => {
+    if (!invoiceItems.length || !selectedInvoiceId) return;
+    
+    setIsLoadingFifo(true);
+    try {
+      // Prepare items for FIFO allocation
+      const allocationRequest = invoiceItems.map(invItem => ({
+        productId: invItem.productId,
+        quantity: invItem.quantity,
+      }));
       
-      const mappedItems = invoiceItems.map(invItem => {
-        // Find matching finished good by product
-        const matchingFG = finishedGoods.find(fg => fg.productId === invItem.productId);
-        // Find matching product for UOM fallback
-        const matchingProduct = products.find(p => p.id === invItem.productId);
-        return {
-          finishedGoodId: matchingFG?.id || "",
+      const response = await apiRequest('POST', '/api/finished-goods/fifo-allocation', { items: allocationRequest });
+      const data = await response.json();
+      
+      if (data.allocatedItems && data.allocatedItems.length > 0) {
+        // Find default "Cases" UOM
+        const casesUom = uoms.find(u => u.name?.toLowerCase() === 'cases' || u.name?.toLowerCase() === 'case');
+        
+        // Map FIFO allocated items to form items
+        const fifoItems: GatepassItemWithBatchInfo[] = data.allocatedItems.map((alloc: any) => ({
+          finishedGoodId: alloc.finishedGoodId,
+          productId: alloc.productId,
+          quantityDispatched: alloc.quantityAllocated,
+          uomId: casesUom?.id || alloc.uomId || "",
+          remarks: "",
+          batchNumber: alloc.batchNumber,
+          productionDate: alloc.productionDate,
+          availableStock: alloc.availableStock,
+        }));
+        
+        setItems(fifoItems);
+        form.setValue("items", fifoItems);
+        
+        toast({
+          title: "FIFO Allocation Complete",
+          description: `${fifoItems.length} batch${fifoItems.length > 1 ? 'es' : ''} allocated based on oldest production date`,
+        });
+      } else {
+        // Fallback - no stock available, create empty items from invoice
+        const casesUom = uoms.find(u => u.name?.toLowerCase() === 'cases' || u.name?.toLowerCase() === 'case');
+        const fallbackItems = invoiceItems.map(invItem => ({
+          finishedGoodId: "",
           productId: invItem.productId,
           quantityDispatched: invItem.quantity,
-          uomId: casesUom?.id || invItem.uomId || matchingProduct?.uomId || "",
-          remarks: invItem.description || "",
-        };
-      });
-      
-      setItems(mappedItems);
-      form.setValue("items", mappedItems);
+          uomId: casesUom?.id || invItem.uomId || "",
+          remarks: "",
+        }));
+        setItems(fallbackItems);
+        form.setValue("items", fallbackItems);
+        
+        toast({
+          title: "No Stock Available",
+          description: "Please manually select batches or add inventory",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("FIFO allocation error:", error);
+      // Fallback to basic mapping
+      const casesUom = uoms.find(u => u.name?.toLowerCase() === 'cases' || u.name?.toLowerCase() === 'case');
+      const fallbackItems = invoiceItems.map(invItem => ({
+        finishedGoodId: "",
+        productId: invItem.productId,
+        quantityDispatched: invItem.quantity,
+        uomId: casesUom?.id || invItem.uomId || "",
+        remarks: "",
+      }));
+      setItems(fallbackItems);
+      form.setValue("items", fallbackItems);
+    } finally {
+      setIsLoadingFifo(false);
     }
-  }, [invoiceItems, selectedInvoiceId, finishedGoods, products, uoms, form]);
+  };
+
+  // Auto-populate finished goods items from invoice items using FIFO
+  useEffect(() => {
+    if (invoiceItems.length > 0 && selectedInvoiceId && uoms.length > 0 && !gatepass) {
+      performFifoAllocation();
+    }
+  }, [invoiceItems, selectedInvoiceId, uoms]);
 
   const saveMutation = useMutation({
     mutationFn: async (data: FormData) => {
@@ -240,14 +312,14 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
     form.setValue('items', newItems);
   };
 
-  // Handle finished good selection - auto-populate product and UOM
+  // Handle finished good selection - auto-populate product, UOM, and batch info
   const handleFinishedGoodChange = (index: number, finishedGoodId: string) => {
     const fg = finishedGoods.find(f => f.id === finishedGoodId);
     if (fg) {
       // Get current items from form to preserve other edits
       const currentItems = form.getValues('items') || [];
-      // Normalize to ensure remarks is always a string
-      const normalizedItems = currentItems.map(item => ({
+      // Normalize to ensure remarks is always a string and include batch info
+      const normalizedItems: GatepassItemWithBatchInfo[] = currentItems.map(item => ({
         ...item,
         remarks: item.remarks || ""
       }));
@@ -256,6 +328,9 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
         finishedGoodId: finishedGoodId,
         productId: fg.productId,
         uomId: defaultCasesUom?.id || normalizedItems[index].uomId || "",
+        batchNumber: fg.batchNumber,
+        productionDate: fg.productionDate,
+        availableStock: fg.quantity,
       };
       setItems(normalizedItems);
       form.setValue('items', normalizedItems);
@@ -817,21 +892,41 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                 </Card>
               )}
 
-              <div className="flex justify-between items-center">
-                <h4 className="font-semibold text-sm">
-                  Finished Goods Items
-                  <span className="ml-2 text-xs text-muted-foreground">(Select batches for dispatch - you can add multiple batches per product)</span>
-                </h4>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addItem}
-                  data-testid="button-add-batch"
-                >
-                  <Plus className="w-4 h-4 mr-1" />
-                  Add Batch
-                </Button>
+              <div className="flex flex-col gap-2">
+                <div className="flex justify-between items-center">
+                  <h4 className="font-semibold text-sm">
+                    Finished Goods Items
+                    <span className="ml-2 text-xs text-muted-foreground">(FIFO: oldest batches selected first)</span>
+                  </h4>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={performFifoAllocation}
+                      disabled={isLoadingFifo || !invoiceItems.length}
+                      data-testid="button-rerun-fifo"
+                    >
+                      <RefreshCw className={`w-4 h-4 mr-1 ${isLoadingFifo ? 'animate-spin' : ''}`} />
+                      {isLoadingFifo ? 'Allocating...' : 'Re-run FIFO'}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addItem}
+                      data-testid="button-add-batch"
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add Batch
+                    </Button>
+                  </div>
+                </div>
+                {items.some(item => item.batchNumber) && (
+                  <p className="text-xs text-muted-foreground">
+                    Batches auto-assigned using FIFO (oldest production date first). You can manually change selections below.
+                  </p>
+                )}
               </div>
 
               {items.map((item, index) => {
@@ -850,7 +945,21 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
               <Card key={index} className="p-4">
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
-                    <h5 className="text-sm font-medium">Item {index + 1}</h5>
+                    <div className="flex items-center gap-2">
+                      <h5 className="text-sm font-medium">Item {index + 1}</h5>
+                      {item.batchNumber && (
+                        <Badge variant="secondary" className="text-xs">
+                          <Package className="w-3 h-3 mr-1" />
+                          {item.batchNumber}
+                        </Badge>
+                      )}
+                      {item.productionDate && (
+                        <Badge variant="outline" className="text-xs">
+                          <Calendar className="w-3 h-3 mr-1" />
+                          {format(new Date(item.productionDate), 'dd/MM/yyyy')}
+                        </Badge>
+                      )}
+                    </div>
                     {items.length > 1 && (
                       <Button
                         type="button"

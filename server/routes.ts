@@ -3196,6 +3196,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // FIFO Batch Allocation for Gatepass
+  // Takes invoice items (product + quantity) and returns FIFO-allocated finished goods batches
+  app.post('/api/finished-goods/fifo-allocation', isAuthenticated, async (req: any, res) => {
+    try {
+      const { items } = req.body;
+      
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ message: "At least one item is required for FIFO allocation" });
+      }
+      
+      // Get all approved finished goods with stock > 0, ordered by production date (oldest first)
+      const allFinishedGoods = await storage.getAllFinishedGoods();
+      const approvedGoods = allFinishedGoods
+        .filter(fg => fg.qualityStatus === 'approved' && fg.quantity > 0 && fg.recordStatus === 1)
+        .sort((a, b) => {
+          const dateA = new Date(a.productionDate);
+          const dateB = new Date(b.productionDate);
+          return dateA.getTime() - dateB.getTime(); // Oldest first (FIFO)
+        });
+      
+      const allocatedItems: Array<{
+        productId: string;
+        finishedGoodId: string;
+        batchNumber: string;
+        productionDate: string;
+        quantityAllocated: number;
+        availableStock: number;
+        uomId: string | null;
+      }> = [];
+      
+      // Track remaining stock for each finished good during allocation
+      const stockTracker = new Map<string, number>();
+      approvedGoods.forEach(fg => stockTracker.set(fg.id, fg.quantity));
+      
+      // For each invoice item, allocate from oldest batches first
+      for (const item of items) {
+        const { productId, quantity } = item;
+        let remainingQty = quantity;
+        
+        // Find all batches for this product, sorted by production date (FIFO)
+        const productBatches = approvedGoods.filter(fg => fg.productId === productId);
+        
+        for (const batch of productBatches) {
+          if (remainingQty <= 0) break;
+          
+          const availableStock = stockTracker.get(batch.id) || 0;
+          if (availableStock <= 0) continue;
+          
+          const allocateQty = Math.min(remainingQty, availableStock);
+          
+          allocatedItems.push({
+            productId: batch.productId,
+            finishedGoodId: batch.id,
+            batchNumber: batch.batchNumber,
+            productionDate: batch.productionDate,
+            quantityAllocated: allocateQty,
+            availableStock: availableStock,
+            uomId: batch.uomId,
+          });
+          
+          // Reduce tracked stock
+          stockTracker.set(batch.id, availableStock - allocateQty);
+          remainingQty -= allocateQty;
+        }
+        
+        // If we still have remaining quantity, it means insufficient stock
+        if (remainingQty > 0) {
+          console.log(`[FIFO] Insufficient stock for product ${productId}. Short by ${remainingQty} units.`);
+        }
+      }
+      
+      res.json({
+        allocatedItems,
+        message: "FIFO allocation completed",
+      });
+    } catch (error) {
+      console.error("Error performing FIFO allocation:", error);
+      res.status(500).json({ message: "Failed to perform FIFO allocation" });
+    }
+  });
+
   // Raw Material Issuance Routes
   app.get('/api/raw-material-issuances', isAuthenticated, async (req: any, res) => {
     try {
