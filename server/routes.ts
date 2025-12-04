@@ -13191,6 +13191,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== SYSTEM ALERTS ====================
+  
+  // Get active system alerts (admin only)
+  app.get('/api/system-alerts', requireRole('admin'), async (req: any, res: Response) => {
+    try {
+      const alerts = await storage.getActiveSystemAlerts();
+      res.json({ alerts });
+    } catch (error: any) {
+      console.error('[SYSTEM_ALERTS] Error fetching alerts:', error);
+      res.status(500).json({ message: error.message || 'Failed to fetch system alerts' });
+    }
+  });
+
+  // Acknowledge a system alert (admin only)
+  app.post('/api/system-alerts/:id/acknowledge', requireRole('admin'), async (req: any, res: Response) => {
+    try {
+      const { id } = req.params;
+      const alert = await storage.acknowledgeSystemAlert(id, req.user?.id);
+      if (!alert) {
+        return res.status(404).json({ message: 'Alert not found' });
+      }
+      res.json({ alert, message: 'Alert acknowledged' });
+    } catch (error: any) {
+      console.error('[SYSTEM_ALERTS] Error acknowledging alert:', error);
+      res.status(500).json({ message: error.message || 'Failed to acknowledge alert' });
+    }
+  });
+
+  // Manually resolve a system alert (admin only)
+  app.post('/api/system-alerts/:entityType/:entityId/resolve', requireRole('admin'), async (req: any, res: Response) => {
+    try {
+      const { entityType, entityId } = req.params;
+      await storage.resolveSystemAlert(entityType, entityId, req.user?.id);
+      res.json({ message: 'Alert resolved successfully' });
+    } catch (error: any) {
+      console.error('[SYSTEM_ALERTS] Error resolving alert:', error);
+      res.status(500).json({ message: error.message || 'Failed to resolve alert' });
+    }
+  });
+
+  // Run oversell audit manually for all products (admin only)
+  app.post('/api/system-alerts/audit-oversell', requireRole('admin'), async (req: any, res: Response) => {
+    try {
+      // Get all products with pending invoices
+      const pendingProducts = await db.execute(sql`
+        SELECT DISTINCT ii.product_id
+        FROM invoice_items ii
+        JOIN invoices i ON ii.invoice_id = i.id
+        WHERE ii.product_id IS NOT NULL
+          AND ii.record_status = 1
+          AND i.record_status = 1
+          AND i.status NOT IN ('dispatched', 'delivered', 'cancelled')
+      `);
+      
+      const productIds = (pendingProducts.rows as any[]).map(r => r.product_id);
+      
+      if (productIds.length === 0) {
+        return res.json({ message: 'No pending invoices found', oversellProducts: [] });
+      }
+      
+      const result = await storage.auditProductOversell(productIds);
+      
+      res.json({ 
+        message: `Audit complete. ${result.oversellProducts.length} products have oversell conditions.`,
+        oversellProducts: result.oversellProducts,
+        totalProductsChecked: productIds.length
+      });
+    } catch (error: any) {
+      console.error('[SYSTEM_ALERTS] Error running oversell audit:', error);
+      res.status(500).json({ message: error.message || 'Failed to run oversell audit' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
