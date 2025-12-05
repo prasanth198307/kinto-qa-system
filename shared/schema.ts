@@ -576,7 +576,27 @@ export const purchaseOrders = pgTable("purchase_orders", {
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
-export const insertPurchaseOrderSchema = createInsertSchema(purchaseOrders).omit({
+export const insertPurchaseOrderSchema = createInsertSchema(purchaseOrders, {
+  // Make quantity optional for multi-item POs (quantities are in line items)
+  quantity: z.number().optional().default(0),
+  // Make other optional fields properly nullable
+  sparePartId: z.string().nullish(),
+  vendorId: z.string().nullish(),
+  vendorName: z.string().nullish(),
+  vendorAddress: z.string().nullish(),
+  vendorGst: z.string().nullish(),
+  vendorPhone: z.string().nullish(),
+  vendorEmail: z.string().nullish(),
+  unitPrice: z.number().nullish(),
+  totalAmount: z.number().nullish(),
+  supplier: z.string().nullish(),
+  remarks: z.string().nullish(),
+  termsAndConditions: z.string().nullish(),
+  deliveryAddress: z.string().nullish(),
+  paymentTerms: z.string().nullish(),
+  transportMode: z.string().nullish(),
+  signatureImage: z.string().nullish(),
+}).omit({
   id: true,
   poNumber: true,
   recordStatus: true,
