@@ -634,19 +634,7 @@ export default function PrintablePurchaseOrder({ po }: PrintablePurchaseOrderPro
             </div>
           </div>
 
-          <div className="signature-section">
-            <div className="signature-box">
-              <div className="signature-image-area"></div>
-              <div className="signature-line"></div>
-              <div className="signature-label">Prepared By</div>
-              <div style={{ fontSize: '10px', color: '#666' }}>{getUsername(po.requestedBy)}</div>
-            </div>
-            <div className="signature-box">
-              <div className="signature-image-area"></div>
-              <div className="signature-line"></div>
-              <div className="signature-label">Approved By</div>
-              <div style={{ fontSize: '10px', color: '#666' }}>{getUsername(po.approvedBy)}</div>
-            </div>
+          <div className="signature-section" style={{ justifyContent: 'flex-end' }}>
             <div className="signature-box">
               <div className="signature-image-area">
                 {po.includeSignature === 1 && po.signatureImage && (
