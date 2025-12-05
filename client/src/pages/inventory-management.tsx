@@ -2834,6 +2834,19 @@ function RawMaterialDialog({
   const { toast } = useToast();
   const [selectedTypeDetails, setSelectedTypeDetails] = useState<RawMaterialType | null>(null);
   const [existingTypeStock, setExistingTypeStock] = useState<number>(0);
+  const [selectedPOId, setSelectedPOId] = useState<string>('');
+  const [selectedPOItemId, setSelectedPOItemId] = useState<string>('');
+
+  // Fetch approved Purchase Orders
+  const { data: approvedPOs = [] } = useQuery<any[]>({
+    queryKey: ['/api/purchase-orders', { status: 'approved' }],
+  });
+
+  // Fetch PO items for selected PO
+  const { data: poItems = [] } = useQuery<any[]>({
+    queryKey: ['/api/purchase-order-items', selectedPOId],
+    enabled: !!selectedPOId,
+  });
   
   const form = useForm<z.infer<typeof insertRawMaterialSchema>>({
     resolver: zodResolver(insertRawMaterialSchema.extend({
@@ -2861,6 +2874,8 @@ function RawMaterialDialog({
       location: '',
       supplier: '',
       isActive: 'true',
+      purchaseOrderId: undefined,
+      purchaseOrderItemId: undefined,
     },
   });
 
@@ -2939,6 +2954,38 @@ function RawMaterialDialog({
     }
   }, [selectedTypeDetails, isOpeningStockOnly, openingStock, receivedQuantity, returnedQuantity, adjustments, form]);
 
+  // Auto-fill from PO item when selected
+  useEffect(() => {
+    if (selectedPOItemId && poItems.length > 0) {
+      const selectedItem = poItems.find((pi: any) => pi.id === selectedPOItemId);
+      if (selectedItem) {
+        // Auto-fill material name from PO item
+        form.setValue('materialName', selectedItem.itemName || '');
+        form.setValue('description', selectedItem.description || '');
+        
+        // Auto-fill unit cost from PO (convert from paise to rupees)
+        const unitPriceInRupees = (selectedItem.unitPrice || 0) / 100;
+        form.setValue('unitCost', unitPriceInRupees);
+        
+        // Auto-fill received quantity from PO quantity
+        const qty = parseFloat(selectedItem.quantity) || 0;
+        form.setValue('receivedQuantity', qty);
+        form.setValue('openingStock', qty);
+        
+        // Set PO references
+        form.setValue('purchaseOrderId', selectedPOId);
+        form.setValue('purchaseOrderItemId', selectedPOItemId);
+        
+        // Set today as received date
+        const today = new Date().toISOString().split('T')[0];
+        form.setValue('receivedDate', today);
+        
+        // Switch to ongoing inventory mode since we're receiving stock
+        form.setValue('isOpeningStockOnly', 0);
+      }
+    }
+  }, [selectedPOItemId, poItems, selectedPOId, form]);
+
   // Reset form when item changes or dialog opens
   useEffect(() => {
     if (open) {
@@ -2972,7 +3019,13 @@ function RawMaterialDialog({
           location: item.location || '',
           supplier: item.supplier || '',
           isActive: item.isActive || 'true',
+          purchaseOrderId: (item as any).purchaseOrderId || undefined,
+          purchaseOrderItemId: (item as any).purchaseOrderItemId || undefined,
         });
+        
+        // Set PO state for editing
+        setSelectedPOId((item as any).purchaseOrderId || '');
+        setSelectedPOItemId((item as any).purchaseOrderItemId || '');
         
         // Also set the type details for editing mode
         if (item.typeId) {
@@ -3005,10 +3058,14 @@ function RawMaterialDialog({
           location: '',
           supplier: '',
           isActive: 'true',
+          purchaseOrderId: undefined,
+          purchaseOrderItemId: undefined,
         });
         setSelectedTypeDetails(null);
         setExistingTypeStock(0);
         setUserChangedType(false);
+        setSelectedPOId('');
+        setSelectedPOItemId('');
       }
     }
   }, [item, open, form, materialTypes]);
@@ -3036,6 +3093,77 @@ function RawMaterialDialog({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+            {/* Link to Purchase Order (Optional) */}
+            {!item && approvedPOs.length > 0 && (
+              <div className="space-y-4 rounded-lg border bg-blue-50 dark:bg-blue-950/20 p-4">
+                <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
+                  <Package className="h-4 w-4" />
+                  Link to Purchase Order (Optional)
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormItem>
+                    <FormLabel>Purchase Order</FormLabel>
+                    <Select 
+                      onValueChange={(value) => {
+                        setSelectedPOId(value === 'none' ? '' : value);
+                        setSelectedPOItemId('');
+                      }} 
+                      value={selectedPOId || 'none'}
+                    >
+                      <FormControl>
+                        <SelectTrigger data-testid="select-purchase-order">
+                          <SelectValue placeholder="Select Approved PO" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">-- No PO Link --</SelectItem>
+                        {approvedPOs.map((po: any) => (
+                          <SelectItem key={po.id} value={po.id}>
+                            {po.poNumber} - {po.vendorName || 'Unknown Vendor'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormDescription className="text-xs">
+                      Select an approved PO to auto-fill details
+                    </FormDescription>
+                  </FormItem>
+                  
+                  {selectedPOId && (
+                    <FormItem>
+                      <FormLabel>PO Line Item</FormLabel>
+                      <Select 
+                        onValueChange={(value) => setSelectedPOItemId(value === 'none' ? '' : value)} 
+                        value={selectedPOItemId || 'none'}
+                      >
+                        <FormControl>
+                          <SelectTrigger data-testid="select-po-item">
+                            <SelectValue placeholder="Select Line Item" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">-- Select Item --</SelectItem>
+                          {poItems.map((item: any) => (
+                            <SelectItem key={item.id} value={item.id}>
+                              #{item.serialNo}: {item.itemName} - Qty: {item.quantity}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormDescription className="text-xs">
+                        Selecting an item will auto-fill material details
+                      </FormDescription>
+                    </FormItem>
+                  )}
+                </div>
+                {selectedPOItemId && (
+                  <p className="text-xs text-green-600 dark:text-green-400">
+                    ✓ Material will be linked to this PO for traceability
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Basic Information Section */}
             <div className="space-y-4">
               <h3 className="text-sm font-medium text-foreground">Basic Information</h3>
