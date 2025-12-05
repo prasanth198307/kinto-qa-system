@@ -2839,10 +2839,17 @@ function RawMaterialDialog({
   const [selectedPOId, setSelectedPOId] = useState<string>('');
   const [selectedPOItemId, setSelectedPOItemId] = useState<string>('');
 
-  // Fetch approved Purchase Orders
-  const { data: approvedPOs = [] } = useQuery<any[]>({
-    queryKey: ['/api/purchase-orders', { status: 'approved' }],
+  // Fetch all Purchase Orders (we'll filter client-side for approved/ordered/partially_received)
+  const { data: allPOs = [] } = useQuery<any[]>({
+    queryKey: ['/api/purchase-orders'],
   });
+  
+  // Filter to POs that can receive materials (approved, ordered, or partially_received)
+  const approvedPOs = useMemo(() => {
+    return allPOs.filter((po: any) => 
+      po.status === 'approved' || po.status === 'ordered' || po.status === 'partially_received'
+    );
+  }, [allPOs]);
 
   // Fetch PO items for selected PO
   const { data: poItems = [] } = useQuery<any[]>({
