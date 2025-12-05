@@ -1,0 +1,37 @@
+      column_name       |          data_type          | is_nullable |        column_default        
+------------------------+-----------------------------+-------------+------------------------------
+ id                     | character varying           | NO          | gen_random_uuid()
+ po_number              | character varying           | NO          | 
+ spare_part_id          | character varying           | YES         | 
+ quantity               | integer                     | NO          | 
+ urgency                | character varying           | NO          | 
+ status                 | character varying           | YES         | 'pending'::character varying
+ requested_by           | character varying           | YES         | 
+ approved_by            | character varying           | YES         | 
+ supplier               | character varying           | YES         | 
+ estimated_cost         | integer                     | YES         | 
+ expected_delivery_date | timestamp without time zone | YES         | 
+ actual_delivery_date   | timestamp without time zone | YES         | 
+ remarks                | text                        | YES         | 
+ record_status          | integer                     | NO          | 1
+ created_at             | timestamp without time zone | YES         | CURRENT_TIMESTAMP
+ updated_at             | timestamp without time zone | YES         | CURRENT_TIMESTAMP
+ po_date                | timestamp without time zone | YES         | now()
+ approved_date          | timestamp without time zone | YES         | 
+ delivery_address       | text                        | YES         | 
+ payment_terms          | text                        | YES         | 
+ transport_mode         | character varying           | YES         | 
+ gst_applicable         | integer                     | YES         | 1
+ gst_rate               | integer                     | YES         | 1800
+ cgst_amount            | integer                     | YES         | 
+ sgst_amount            | integer                     | YES         | 
+ igst_amount            | integer                     | YES         | 
+ grand_total            | integer                     | YES         | 
+ signature_image        | text                        | YES         | 
+ include_signature      | integer                     | YES         | 1
+ terms_and_conditions   | text                        | YES         | 
+ vendor_name            | character varying           | YES         | 
+ vendor_address         | text                        | YES         | 
+ vendor_gst             | character varying           | YES         | 
+ vendor_phone           | character varying           | YES         | 
+ vendor_email           | character varying           | YES         | 
