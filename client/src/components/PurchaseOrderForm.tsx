@@ -155,9 +155,34 @@ export default function PurchaseOrderForm({ onSuccess, onCancel, editingPO }: Pu
     name: "items",
   });
 
-  // Load existing PO data for editing
+  // Load existing PO data for editing - combined with items loading to avoid race condition
   useEffect(() => {
     if (editingPO) {
+      // Map existing items if they're loaded, otherwise use empty placeholder
+      const mappedItems = existingItems && existingItems.length > 0 
+        ? existingItems.map(item => ({
+            rawMaterialId: item.rawMaterialId || "",
+            itemName: item.itemName,
+            description: item.description || "",
+            hsnCode: item.hsnCode || "",
+            quantity: parseFloat(item.quantity) || 1,
+            uomId: item.uomId || "",
+            unitName: item.unitName || "",
+            unitPrice: (item.unitPrice || 0) / 100, // Convert paise to rupees
+            gstRate: item.gstRate || 1800,
+          }))
+        : [{
+            rawMaterialId: "",
+            itemName: "",
+            description: "",
+            hsnCode: "",
+            quantity: 1,
+            uomId: "",
+            unitName: "",
+            unitPrice: 0,
+            gstRate: 1800,
+          }];
+
       form.reset({
         poDate: editingPO.poDate ? format(new Date(editingPO.poDate), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
         vendorId: editingPO.vendorId || "",
@@ -175,41 +200,13 @@ export default function PurchaseOrderForm({ onSuccess, onCancel, editingPO }: Pu
         termsAndConditions: editingPO.termsAndConditions || "",
         includeSignature: editingPO.includeSignature ?? 1,
         signatureImage: editingPO.signatureImage || "",
-        items: [{
-          rawMaterialId: "",
-          itemName: "",
-          description: "",
-          hsnCode: "",
-          quantity: 1,
-          uomId: "",
-          unitName: "",
-          unitPrice: 0,
-          gstRate: 1800,
-        }],
+        items: mappedItems,
       });
       if (editingPO.signatureImage) {
         setSignaturePreview(editingPO.signatureImage);
       }
     }
-  }, [editingPO, form]);
-
-  // Load existing items when editing
-  useEffect(() => {
-    if (existingItems && existingItems.length > 0) {
-      const mappedItems = existingItems.map(item => ({
-        rawMaterialId: item.rawMaterialId || "",
-        itemName: item.itemName,
-        description: item.description || "",
-        hsnCode: item.hsnCode || "",
-        quantity: parseFloat(item.quantity) || 1,
-        uomId: item.uomId || "",
-        unitName: item.unitName || "",
-        unitPrice: (item.unitPrice || 0) / 100, // Convert paise to rupees
-        gstRate: item.gstRate || 1800,
-      }));
-      form.setValue("items", mappedItems);
-    }
-  }, [existingItems, form]);
+  }, [editingPO, existingItems]);
 
   // Set default signature from template
   useEffect(() => {
