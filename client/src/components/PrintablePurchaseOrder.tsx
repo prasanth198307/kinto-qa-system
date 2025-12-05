@@ -4,7 +4,7 @@ import { type PurchaseOrder, type RawMaterial, type User, type Vendor, type Purc
 import { Button } from "@/components/ui/button";
 import { Printer } from "lucide-react";
 import { format } from "date-fns";
-import kintoLogo from "@assets/kinto-logo.png";
+import companyLogo from "@assets/inmoisture-logo.png";
 
 interface PrintablePurchaseOrderProps {
   po: PurchaseOrder;
@@ -84,14 +84,13 @@ export default function PrintablePurchaseOrder({ po }: PrintablePurchaseOrderPro
             
             body {
               font-family: Arial, sans-serif;
-              font-size: 12px;
-              line-height: 1.4;
+              font-size: 11px;
+              line-height: 1.3;
             }
 
             .page {
               width: 210mm;
-              min-height: 297mm;
-              padding: 15mm;
+              padding: 10mm 12mm;
               margin: 0 auto;
               background: white;
             }
@@ -100,19 +99,19 @@ export default function PrintablePurchaseOrder({ po }: PrintablePurchaseOrderPro
               display: flex;
               justify-content: space-between;
               align-items: flex-start;
-              margin-bottom: 20px;
-              border-bottom: 2px solid #000;
-              padding-bottom: 15px;
+              margin-bottom: 12px;
+              border-bottom: 2px solid #1a365d;
+              padding-bottom: 10px;
             }
 
             .header-left {
               display: flex;
               align-items: center;
-              gap: 15px;
+              gap: 12px;
             }
 
             .logo {
-              width: 80px;
+              width: 60px;
               height: auto;
             }
 
@@ -121,18 +120,19 @@ export default function PrintablePurchaseOrder({ po }: PrintablePurchaseOrderPro
             }
 
             .company-name {
-              font-size: 20px;
+              font-size: 16px;
               font-weight: bold;
-              margin-bottom: 5px;
+              color: #1a365d;
+              margin-bottom: 3px;
             }
 
             .company-details {
-              font-size: 11px;
+              font-size: 10px;
               color: #333;
             }
 
             .company-details div {
-              margin: 2px 0;
+              margin: 1px 0;
             }
 
             .gstin {
@@ -144,108 +144,113 @@ export default function PrintablePurchaseOrder({ po }: PrintablePurchaseOrderPro
             }
 
             .document-title {
-              font-size: 18px;
+              font-size: 16px;
               font-weight: bold;
-              margin-bottom: 10px;
-              color: #333;
+              margin-bottom: 6px;
+              color: #1a365d;
             }
 
             .po-number {
-              font-size: 14px;
+              font-size: 12px;
               font-weight: bold;
-              margin: 5px 0;
+              margin: 3px 0;
             }
 
             .po-date {
-              font-size: 12px;
+              font-size: 11px;
               color: #555;
             }
 
             .vendor-section {
               display: grid;
               grid-template-columns: 1fr 1fr;
-              gap: 20px;
-              margin: 20px 0;
+              gap: 12px;
+              margin: 10px 0;
             }
 
             .vendor-box, .delivery-box {
-              border: 1px solid #ddd;
-              padding: 12px;
-              border-radius: 4px;
+              border: 1px solid #ccc;
+              padding: 8px;
+              border-radius: 3px;
+              background: #fafafa;
             }
 
             .section-label {
-              font-size: 10px;
+              font-size: 9px;
               font-weight: bold;
-              color: #666;
+              color: #1a365d;
               text-transform: uppercase;
-              margin-bottom: 8px;
-              border-bottom: 1px solid #eee;
-              padding-bottom: 4px;
+              margin-bottom: 5px;
+              border-bottom: 1px solid #ddd;
+              padding-bottom: 3px;
             }
 
             .vendor-name {
               font-weight: bold;
-              font-size: 14px;
-              margin-bottom: 5px;
+              font-size: 12px;
+              margin-bottom: 3px;
             }
 
             .vendor-details {
-              font-size: 11px;
-              line-height: 1.5;
+              font-size: 10px;
+              line-height: 1.4;
             }
 
             .section-title {
-              font-size: 13px;
+              font-size: 11px;
               font-weight: bold;
-              margin: 20px 0 10px 0;
-              padding: 6px 10px;
-              background: #f5f5f5;
-              border-left: 4px solid #333;
+              margin: 10px 0 6px 0;
+              padding: 4px 8px;
+              background: #1a365d;
+              color: white;
+              border-radius: 2px;
             }
 
             .order-info {
               display: grid;
               grid-template-columns: repeat(4, 1fr);
-              gap: 10px;
-              margin-bottom: 20px;
+              gap: 8px;
+              margin-bottom: 10px;
             }
 
             .info-item {
-              padding: 8px;
-              background: #fafafa;
-              border-radius: 4px;
+              padding: 5px 8px;
+              background: #f0f4f8;
+              border-radius: 3px;
+              border-left: 3px solid #1a365d;
             }
 
             .info-label {
-              font-size: 10px;
+              font-size: 9px;
               color: #666;
               text-transform: uppercase;
             }
 
             .info-value {
-              font-size: 12px;
+              font-size: 11px;
               font-weight: bold;
-              margin-top: 3px;
+              margin-top: 2px;
             }
 
             .items-table {
               width: 100%;
               border-collapse: collapse;
-              margin: 20px 0;
+              margin: 8px 0;
             }
 
             .items-table th,
             .items-table td {
-              border: 1px solid #000;
-              padding: 10px;
+              border: 1px solid #333;
+              padding: 5px 6px;
               text-align: left;
+              font-size: 10px;
             }
 
             .items-table th {
-              background: #f0f0f0;
+              background: #1a365d;
+              color: white;
               font-weight: bold;
-              font-size: 11px;
+              font-size: 9px;
               text-transform: uppercase;
             }
 
@@ -260,64 +265,70 @@ export default function PrintablePurchaseOrder({ po }: PrintablePurchaseOrderPro
             .totals-section {
               display: flex;
               justify-content: flex-end;
-              margin: 20px 0;
+              margin: 10px 0;
             }
 
             .totals-box {
-              width: 300px;
-              border: 2px solid #333;
+              width: 250px;
+              border: 1px solid #1a365d;
             }
 
             .total-row {
               display: flex;
               justify-content: space-between;
-              padding: 8px 12px;
+              padding: 4px 10px;
               border-bottom: 1px solid #ddd;
             }
 
             .total-row:last-child {
               border-bottom: none;
-              background: #f5f5f5;
+              background: #1a365d;
+              color: white;
               font-weight: bold;
-              font-size: 14px;
+              font-size: 12px;
             }
 
             .total-row.sub-total {
-              background: #fafafa;
+              background: #f0f4f8;
             }
 
             .terms-section {
-              margin: 25px 0;
-              padding: 15px;
-              background: #fafafa;
+              margin: 12px 0 8px 0;
+              padding: 8px 10px;
+              background: #f8f9fa;
               border: 1px solid #ddd;
-              border-radius: 4px;
+              border-radius: 3px;
             }
 
             .terms-title {
               font-weight: bold;
-              margin-bottom: 10px;
-              font-size: 12px;
+              margin-bottom: 5px;
+              font-size: 10px;
+              color: #1a365d;
             }
 
             .terms-content {
-              font-size: 11px;
+              font-size: 9px;
               white-space: pre-line;
-              line-height: 1.6;
+              line-height: 1.4;
+              color: #444;
             }
 
             .remarks-section {
-              margin: 15px 0;
-              padding: 10px;
-              background: #fff8dc;
+              margin: 8px 0;
+              padding: 6px 8px;
+              background: #fffde7;
               border: 1px solid #ddd;
-              border-radius: 4px;
+              border-radius: 3px;
+              font-size: 10px;
             }
 
             .signature-section {
-              margin-top: 50px;
+              margin-top: 20px;
               display: flex;
               justify-content: space-between;
+              padding-top: 10px;
+              border-top: 1px solid #ddd;
             }
 
             .signature-box {
@@ -326,34 +337,36 @@ export default function PrintablePurchaseOrder({ po }: PrintablePurchaseOrderPro
             }
 
             .signature-image-area {
-              height: 60px;
+              height: 40px;
               display: flex;
               align-items: flex-end;
               justify-content: center;
             }
 
             .signature-image {
-              max-height: 50px;
-              max-width: 150px;
+              max-height: 35px;
+              max-width: 120px;
             }
 
             .signature-line {
-              border-top: 1px solid #000;
-              margin-top: 10px;
-              padding-top: 5px;
+              border-top: 1px solid #333;
+              margin-top: 6px;
+              padding-top: 4px;
             }
 
             .signature-label {
               font-weight: bold;
-              font-size: 11px;
-              margin-top: 5px;
+              font-size: 9px;
+              margin-top: 3px;
+              color: #1a365d;
             }
 
             .footer-note {
-              margin-top: 30px;
-              font-size: 10px;
+              margin-top: 15px;
+              font-size: 9px;
               text-align: center;
               color: #888;
+              font-style: italic;
             }
 
             @media print {
@@ -435,7 +448,7 @@ export default function PrintablePurchaseOrder({ po }: PrintablePurchaseOrderPro
         <div className="page">
           <div className="header">
             <div className="header-left">
-              <img src={kintoLogo} alt="Company Logo" className="logo" />
+              <img src={companyLogo} alt="INMOISTURE Logo" className="logo" />
               <div className="company-info">
                 <div className="company-name">{COMPANY_DETAILS.name}</div>
                 <div className="company-details">
