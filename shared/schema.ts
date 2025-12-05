@@ -1097,6 +1097,8 @@ export const rawMaterials = pgTable("raw_materials", {
   adjustments: integer("adjustments"), // For ongoing mode: adjustments (+/-)
   receivedDate: date("received_date"), // Date when material was received (for FIFO tracking)
   batchCode: varchar("batch_code", { length: 50 }), // System-generated lot code (e.g., LOT-20241115)
+  purchaseOrderId: varchar("purchase_order_id").references(() => purchaseOrders.id), // Link to PO for traceability
+  purchaseOrderItemId: varchar("purchase_order_item_id").references(() => purchaseOrderItems.id), // Link to specific PO line item
   isActive: varchar("is_active").default('true'),
   recordStatus: integer("record_status").default(1).notNull(),
   createdBy: varchar("created_by").references(() => users.id),
@@ -1121,6 +1123,8 @@ export const insertRawMaterialSchema = createInsertSchema(rawMaterials, {
   adjustments: z.number().optional(),
   receivedDate: z.string().optional(), // Date when material was received
   batchCode: z.string().optional(), // Auto-generated lot code
+  purchaseOrderId: z.string().optional(), // Link to PO
+  purchaseOrderItemId: z.string().optional(), // Link to specific PO line item
 }).omit({
   id: true,
   recordStatus: true,
