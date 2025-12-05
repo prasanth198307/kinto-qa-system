@@ -2250,6 +2250,8 @@ function RawMaterialsTab({ searchTerm, onSearchChange }: { searchTerm: string; o
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/raw-materials'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/purchase-orders/receiving-progress'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/purchase-orders'] });
       toast({ title: "Success", description: "Raw material created successfully" });
       setIsDialogOpen(false);
     },

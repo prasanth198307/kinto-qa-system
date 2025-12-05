@@ -33,6 +33,11 @@ export default function PurchaseOrderManagement() {
     queryKey: ['/api/vendors'],
   });
 
+  // Fetch receiving progress for all POs
+  const { data: receivingProgress = {} } = useQuery<Record<string, { totalItems: number; receivedItems: number }>>({
+    queryKey: ['/api/purchase-orders/receiving-progress'],
+  });
+
   const deletePOMutation = useMutation({
     mutationFn: async (id: string) => {
       return await apiRequest('DELETE', `/api/purchase-orders/${id}`, {});
@@ -65,9 +70,11 @@ export default function PurchaseOrderManagement() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/purchase-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/purchase-orders/receiving-progress'] });
       const action = variables.status === 'approved' ? 'approved' : 
                      variables.status === 'rejected' ? 'rejected' :
-                     variables.status === 'ordered' ? 'marked as ordered' : 'marked as received';
+                     variables.status === 'ordered' ? 'marked as ordered' : 
+                     variables.status === 'partially_received' ? 'marked as partially received' : 'marked as received';
       toast({
         title: `PO ${action.charAt(0).toUpperCase() + action.slice(1)}`,
         description: `Purchase order has been ${action} successfully.`,
@@ -128,6 +135,8 @@ export default function PurchaseOrderManagement() {
         return <Badge className="bg-blue-500"><CheckCircle className="h-3 w-3 mr-1" />Approved</Badge>;
       case 'ordered':
         return <Badge className="bg-purple-500"><Package className="h-3 w-3 mr-1" />Ordered</Badge>;
+      case 'partially_received':
+        return <Badge className="bg-amber-500"><Package className="h-3 w-3 mr-1" />Partially Received</Badge>;
       case 'received':
         return <Badge className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" />Received</Badge>;
       default:
@@ -250,6 +259,11 @@ export default function PurchaseOrderManagement() {
               const grandTotal = po.grandTotal ? (po.grandTotal / 100).toFixed(2) : 
                 (po.estimatedCost ? (po.estimatedCost / 100).toFixed(2) : '0.00');
               
+              // Get receiving progress for this PO
+              const progress = receivingProgress[po.id] || { totalItems: 0, receivedItems: 0 };
+              const allItemsReceived = progress.totalItems > 0 && progress.receivedItems >= progress.totalItems;
+              const hasPartialReceiving = progress.receivedItems > 0 && progress.receivedItems < progress.totalItems;
+              
               return (
                 <Card key={po.id} className="p-4" data-testid={`card-po-${po.id}`}>
                   <div className="flex items-start justify-between">
@@ -258,10 +272,19 @@ export default function PurchaseOrderManagement() {
                         <h4 className="font-semibold">{po.poNumber}</h4>
                         {getStatusBadge(po.status || 'pending')}
                         {getUrgencyBadge(po.urgency || 'medium')}
+                        {/* Receiving Progress Badge */}
+                        {progress.totalItems > 0 && (po.status === 'ordered' || po.status === 'partially_received' || po.status === 'approved') && (
+                          <Badge 
+                            variant={allItemsReceived ? 'default' : hasPartialReceiving ? 'secondary' : 'outline'}
+                            className={allItemsReceived ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : ''}
+                          >
+                            {progress.receivedItems}/{progress.totalItems} Items Received
+                          </Badge>
+                        )}
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1 text-sm text-muted-foreground">
-                        <p><span className="font-medium">Vendor:</span> {getVendorName(po.vendorId)}</p>
-                        <p><span className="font-medium">Spare Part:</span> {sparePart?.partName || 'Unknown Part'}</p>
+                        <p><span className="font-medium">Vendor:</span> {po.vendorName || getVendorName(po.vendorId)}</p>
+                        <p><span className="font-medium">Spare Part:</span> {sparePart?.partName || 'Multi-Item PO'}</p>
                         <p><span className="font-medium">Quantity:</span> {po.quantity}</p>
                         <p><span className="font-medium">Grand Total:</span> ₹{grandTotal}</p>
                         {po.poDate && (
@@ -310,12 +333,13 @@ export default function PurchaseOrderManagement() {
                           Mark Ordered
                         </Button>
                       )}
-                      {po.status === 'ordered' && (
+                      {(po.status === 'ordered' || po.status === 'partially_received') && (
                         <Button
                           size="sm"
                           className="bg-green-600 hover:bg-green-700"
                           onClick={() => updateStatusMutation.mutate({ id: po.id, status: 'received' })}
-                          disabled={updateStatusMutation.isPending}
+                          disabled={updateStatusMutation.isPending || !allItemsReceived}
+                          title={!allItemsReceived ? `Receive all items first (${progress.receivedItems}/${progress.totalItems} received)` : 'Mark as fully received'}
                           data-testid={`button-receive-po-${po.id}`}
                         >
                           <CheckCircle className="h-4 w-4 mr-1" />

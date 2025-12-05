@@ -1373,6 +1373,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get receiving progress for all POs (items received vs total items)
+  app.get('/api/purchase-orders/receiving-progress', isAuthenticated, async (req: any, res) => {
+    try {
+      // Get all PO items count per PO
+      const poItemCounts = await db.select({
+        purchaseOrderId: purchaseOrderItems.purchaseOrderId,
+        totalItems: sql<number>`count(*)::int`,
+      })
+        .from(purchaseOrderItems)
+        .where(eq(purchaseOrderItems.recordStatus, 1))
+        .groupBy(purchaseOrderItems.purchaseOrderId);
+
+      // Get received items count per PO (raw materials linked to PO items)
+      const receivedCounts = await db.select({
+        purchaseOrderId: rawMaterials.purchaseOrderId,
+        receivedItems: sql<number>`count(distinct ${rawMaterials.purchaseOrderItemId})::int`,
+      })
+        .from(rawMaterials)
+        .where(and(
+          sql`${rawMaterials.purchaseOrderId} IS NOT NULL`,
+          eq(rawMaterials.recordStatus, 1)
+        ))
+        .groupBy(rawMaterials.purchaseOrderId);
+
+      // Combine the results
+      const progressMap: Record<string, { totalItems: number; receivedItems: number }> = {};
+      
+      for (const item of poItemCounts) {
+        if (item.purchaseOrderId) {
+          progressMap[item.purchaseOrderId] = {
+            totalItems: item.totalItems,
+            receivedItems: 0,
+          };
+        }
+      }
+      
+      for (const item of receivedCounts) {
+        if (item.purchaseOrderId && progressMap[item.purchaseOrderId]) {
+          progressMap[item.purchaseOrderId].receivedItems = item.receivedItems;
+        }
+      }
+
+      res.json(progressMap);
+    } catch (error) {
+      console.error("Error fetching receiving progress:", error);
+      res.status(500).json({ message: "Failed to fetch receiving progress" });
+    }
+  });
+
   // Maintenance Plans API
   app.get('/api/maintenance-plans', isAuthenticated, async (req: any, res) => {
     try {
