@@ -1239,10 +1239,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create purchase order items if provided
       if (items && Array.isArray(items) && items.length > 0) {
         for (const item of items) {
-          const itemData = insertPurchaseOrderItemSchema.parse({
+          // Preprocess item to ensure quantity is string (for numeric type)
+          const processedItem = {
             ...item,
-            purchaseOrderId: purchaseOrder.id
-          });
+            purchaseOrderId: purchaseOrder.id,
+            quantity: String(item.quantity || 0),
+            serialNo: parseInt(String(item.serialNo)) || 1,
+            unitPrice: parseInt(String(item.unitPrice)) || 0,
+            amount: parseInt(String(item.amount)) || 0,
+            gstRate: parseInt(String(item.gstRate)) || 1800,
+            cgstAmount: parseInt(String(item.cgstAmount)) || 0,
+            sgstAmount: parseInt(String(item.sgstAmount)) || 0,
+            igstAmount: parseInt(String(item.igstAmount)) || 0,
+            totalAmount: parseInt(String(item.totalAmount)) || 0,
+          };
+          const itemData = insertPurchaseOrderItemSchema.parse(processedItem);
           await db.insert(purchaseOrderItems).values(itemData);
         }
       }
