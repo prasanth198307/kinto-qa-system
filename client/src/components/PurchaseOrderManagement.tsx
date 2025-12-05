@@ -6,7 +6,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { PurchaseOrder, SparePartCatalog, Vendor } from "@shared/schema";
-import { Package, AlertTriangle, CheckCircle, Clock, Plus, Trash2, Edit, ArrowLeft } from "lucide-react";
+import { Package, AlertTriangle, CheckCircle, Clock, Plus, Trash2, Edit, ArrowLeft, ThumbsUp, X } from "lucide-react";
 import PrintablePurchaseOrder from "@/components/PrintablePurchaseOrder";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 import PurchaseOrderForm from "@/components/PurchaseOrderForm";
@@ -50,6 +50,33 @@ export default function PurchaseOrderManagement() {
       toast({
         title: "Error",
         description: "Failed to delete purchase order. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Approve/Reject PO mutation
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: 'approved' | 'rejected' | 'ordered' | 'received' }) => {
+      return await apiRequest('PATCH', `/api/purchase-orders/${id}`, { 
+        status,
+        ...(status === 'approved' ? { approvedDate: new Date().toISOString() } : {})
+      });
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/purchase-orders'] });
+      const action = variables.status === 'approved' ? 'approved' : 
+                     variables.status === 'rejected' ? 'rejected' :
+                     variables.status === 'ordered' ? 'marked as ordered' : 'marked as received';
+      toast({
+        title: `PO ${action.charAt(0).toUpperCase() + action.slice(1)}`,
+        description: `Purchase order has been ${action} successfully.`,
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update purchase order status. Please try again.",
         variant: "destructive",
       });
     },
@@ -245,7 +272,58 @@ export default function PurchaseOrderManagement() {
                         )}
                       </div>
                     </div>
-                    <div className="flex gap-2 flex-shrink-0">
+                    <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
+                      {/* Status Action Buttons */}
+                      {po.status === 'pending' && (
+                        <>
+                          <Button
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700"
+                            onClick={() => updateStatusMutation.mutate({ id: po.id, status: 'approved' })}
+                            disabled={updateStatusMutation.isPending}
+                            data-testid={`button-approve-po-${po.id}`}
+                          >
+                            <ThumbsUp className="h-4 w-4 mr-1" />
+                            Approve
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => updateStatusMutation.mutate({ id: po.id, status: 'rejected' })}
+                            disabled={updateStatusMutation.isPending}
+                            data-testid={`button-reject-po-${po.id}`}
+                          >
+                            <X className="h-4 w-4 mr-1" />
+                            Reject
+                          </Button>
+                        </>
+                      )}
+                      {po.status === 'approved' && (
+                        <Button
+                          size="sm"
+                          className="bg-purple-600 hover:bg-purple-700"
+                          onClick={() => updateStatusMutation.mutate({ id: po.id, status: 'ordered' })}
+                          disabled={updateStatusMutation.isPending}
+                          data-testid={`button-order-po-${po.id}`}
+                        >
+                          <Package className="h-4 w-4 mr-1" />
+                          Mark Ordered
+                        </Button>
+                      )}
+                      {po.status === 'ordered' && (
+                        <Button
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-700"
+                          onClick={() => updateStatusMutation.mutate({ id: po.id, status: 'received' })}
+                          disabled={updateStatusMutation.isPending}
+                          data-testid={`button-receive-po-${po.id}`}
+                        >
+                          <CheckCircle className="h-4 w-4 mr-1" />
+                          Mark Received
+                        </Button>
+                      )}
+                      
+                      {/* Edit/Print/Delete Buttons */}
                       <Button
                         variant="outline"
                         size="sm"
