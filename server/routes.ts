@@ -1230,39 +1230,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.id;
       const { items, ...poData } = req.body;
       
-      console.log("[PO Create] Received items:", items?.length || 0, "items");
-      
       const validatedData = insertPurchaseOrderSchema.partial({ requestedBy: true, approvedBy: true }).parse({
         ...poData,
         requestedBy: userId
       });
       const purchaseOrder = await storage.createPurchaseOrder(validatedData);
       
-      console.log("[PO Create] Created PO:", purchaseOrder.id);
-      
       // Create purchase order items if provided
       if (items && Array.isArray(items) && items.length > 0) {
-        console.log("[PO Create] Inserting", items.length, "items for PO:", purchaseOrder.id);
         for (const item of items) {
-          try {
-            const itemData = insertPurchaseOrderItemSchema.parse({
-              ...item,
-              purchaseOrderId: purchaseOrder.id
-            });
-            console.log("[PO Create] Inserting item:", itemData.itemName);
-            await db.insert(purchaseOrderItems).values(itemData);
-          } catch (itemError) {
-            console.error("[PO Create] Error inserting item:", itemError);
-            throw itemError;
-          }
+          const itemData = insertPurchaseOrderItemSchema.parse({
+            ...item,
+            purchaseOrderId: purchaseOrder.id
+          });
+          await db.insert(purchaseOrderItems).values(itemData);
         }
-        console.log("[PO Create] Successfully inserted all items");
       }
       
       res.json(purchaseOrder);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        console.error("[PO Create] Validation error:", JSON.stringify(error.errors, null, 2));
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
       }
       console.error("Error creating purchase order:", error);
@@ -3408,13 +3395,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "At least one item is required for FIFO allocation" });
       }
       
-      // Get all approved finished goods with stock > 0, ordered by production date (oldest first)
+      // Get all approved finished goods with stock > 0, ordered by production date (oldest first - FIFO)
       const allFinishedGoods = await storage.getAllFinishedGoods();
       const approvedGoods = allFinishedGoods
         .filter(fg => fg.qualityStatus === 'approved' && fg.quantity > 0 && fg.recordStatus === 1)
         .sort((a, b) => {
+          // Handle null/undefined production dates - put them at the end (oldest known dates first)
+          if (!a.productionDate && !b.productionDate) return 0;
+          if (!a.productionDate) return 1; // a goes after b (null dates at end)
+          if (!b.productionDate) return -1; // b goes after a
+          
           const dateA = new Date(a.productionDate);
           const dateB = new Date(b.productionDate);
+          
+          // If date parsing fails, maintain original order
+          if (isNaN(dateA.getTime()) && isNaN(dateB.getTime())) return 0;
+          if (isNaN(dateA.getTime())) return 1;
+          if (isNaN(dateB.getTime())) return -1;
+          
           return dateA.getTime() - dateB.getTime(); // Oldest first (FIFO)
         });
       
@@ -3469,9 +3467,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      console.log(`[FIFO] Reserved batches from ${filteredInvoices.length} pending invoices:`, 
-        Object.fromEntries(reservedByBatch));
-      
       const allocatedItems: Array<{
         productId: string;
         finishedGoodId: string;
@@ -3491,12 +3486,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         stockTracker.set(fg.id, available);
       });
       
-      // For each invoice item, allocate from oldest batches first
+      // For each invoice item, allocate from oldest batches first (FIFO)
       for (const item of items) {
         const { productId, quantity } = item;
         let remainingQty = quantity;
         
-        // Find all batches for this product, sorted by production date (FIFO)
+        // Find all batches for this product - they're already sorted by production date (oldest first)
         const productBatches = approvedGoods.filter(fg => fg.productId === productId);
         
         for (const batch of productBatches) {
@@ -3520,11 +3515,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Reduce tracked stock
           stockTracker.set(batch.id, availableStock - allocateQty);
           remainingQty -= allocateQty;
-        }
-        
-        // If we still have remaining quantity, it means insufficient stock
-        if (remainingQty > 0) {
-          console.log(`[FIFO] Insufficient stock for product ${productId}. Short by ${remainingQty} units.`);
         }
       }
       

@@ -71,7 +71,7 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
   }]);
   const [isLoadingFifo, setIsLoadingFifo] = useState(false);
 
-  const { data: gatepassItems = [] } = useQuery<GatepassItem[]>({
+  const { data: gatepassItems = [], isLoading: isLoadingGatepassItems } = useQuery<GatepassItem[]>({
     queryKey: ['/api/gatepass-items', gatepass?.id],
     enabled: !!gatepass?.id,
   });
@@ -127,40 +127,65 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
   });
 
   useEffect(() => {
-    if (gatepass && gatepassItems.length > 0) {
-      const mappedItems = gatepassItems.map(item => ({
-        finishedGoodId: item.finishedGoodId,
-        productId: item.productId,
-        quantityDispatched: item.quantityDispatched,
-        uomId: item.uomId || "",
-        remarks: item.remarks || "",
-      }));
-      
-      setItems(mappedItems);
-      
+    // Only populate form when we have both gatepass data AND items have finished loading
+    if (gatepass && !isLoadingGatepassItems) {
       // Initialize selectedInvoiceId if gatepass has an invoice
       if (gatepass.invoiceId) {
         setSelectedInvoiceId(gatepass.invoiceId);
       }
       
-      form.reset({
-        header: {
-          gatepassDate: gatepass.gatepassDate ? new Date(gatepass.gatepassDate) : new Date(),
-          vehicleNumber: gatepass.vehicleNumber,
-          driverName: gatepass.driverName,
-          driverContact: gatepass.driverContact || "",
-          transporterName: gatepass.transporterName || "",
-          destination: gatepass.destination || "",
-          vendorId: gatepass.vendorId || "",
-          customerName: gatepass.customerName || "",
-          isCluster: gatepass.isCluster || 0,
-          invoiceId: gatepass.invoiceId || "",
-          remarks: gatepass.remarks || "",
-        },
-        items: mappedItems,
-      });
+      if (gatepassItems.length > 0) {
+        // Map fetched items to form format
+        const mappedItems = gatepassItems.map(item => ({
+          finishedGoodId: item.finishedGoodId,
+          productId: item.productId,
+          quantityDispatched: item.quantityDispatched,
+          uomId: item.uomId || "",
+          remarks: item.remarks || "",
+        }));
+        
+        setItems(mappedItems);
+        
+        form.reset({
+          header: {
+            gatepassDate: gatepass.gatepassDate ? new Date(gatepass.gatepassDate) : new Date(),
+            vehicleNumber: gatepass.vehicleNumber,
+            driverName: gatepass.driverName,
+            driverContact: gatepass.driverContact || "",
+            transporterName: gatepass.transporterName || "",
+            destination: gatepass.destination || "",
+            vendorId: gatepass.vendorId || "",
+            customerName: gatepass.customerName || "",
+            isCluster: gatepass.isCluster || 0,
+            invoiceId: gatepass.invoiceId || "",
+            remarks: gatepass.remarks || "",
+          },
+          items: mappedItems,
+        });
+      } else {
+        // If no items returned (empty gatepass or data issue), only populate header
+        // Keep items as empty array - don't show placeholder
+        setItems([]);
+        
+        form.reset({
+          header: {
+            gatepassDate: gatepass.gatepassDate ? new Date(gatepass.gatepassDate) : new Date(),
+            vehicleNumber: gatepass.vehicleNumber,
+            driverName: gatepass.driverName,
+            driverContact: gatepass.driverContact || "",
+            transporterName: gatepass.transporterName || "",
+            destination: gatepass.destination || "",
+            vendorId: gatepass.vendorId || "",
+            customerName: gatepass.customerName || "",
+            isCluster: gatepass.isCluster || 0,
+            invoiceId: gatepass.invoiceId || "",
+            remarks: gatepass.remarks || "",
+          },
+          items: [],
+        });
+      }
     }
-  }, [gatepass, gatepassItems, form]);
+  }, [gatepass, gatepassItems, form, isLoadingGatepassItems]);
 
   // Auto-populate customer and items when invoice is selected
   useEffect(() => {
