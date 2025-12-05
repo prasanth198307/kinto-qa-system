@@ -612,7 +612,17 @@ export const purchaseOrderItems = pgTable("purchase_order_items", {
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
-export const insertPurchaseOrderItemSchema = createInsertSchema(purchaseOrderItems).omit({
+export const insertPurchaseOrderItemSchema = createInsertSchema(purchaseOrderItems, {
+  // Override quantity to accept both string and number, converting to string
+  quantity: z.union([z.string(), z.number()]).transform(val => String(val)),
+  // Make optional fields properly nullable
+  rawMaterialId: z.string().nullish(),
+  description: z.string().nullish(),
+  hsnCode: z.string().nullish(),
+  uomId: z.string().nullish(),
+  unitName: z.string().nullish(),
+  remarks: z.string().nullish(),
+}).omit({
   id: true,
   recordStatus: true,
   createdAt: true,
