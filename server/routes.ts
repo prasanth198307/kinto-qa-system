@@ -3397,6 +3397,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get all approved finished goods with stock > 0, ordered by production date (oldest first - FIFO)
       const allFinishedGoods = await storage.getAllFinishedGoods();
+      
+      // Debug: Log all finished goods with their production dates
+      console.log("[FIFO DEBUG] All approved finished goods before sort:");
+      allFinishedGoods
+        .filter(fg => fg.qualityStatus === 'approved' && fg.quantity > 0 && fg.recordStatus === 1)
+        .forEach(fg => {
+          console.log(`  Batch: ${fg.batchNumber}, ProductId: ${fg.productId}, Date: ${fg.productionDate}, Qty: ${fg.quantity}`);
+        });
+      
       const approvedGoods = allFinishedGoods
         .filter(fg => fg.qualityStatus === 'approved' && fg.quantity > 0 && fg.recordStatus === 1)
         .sort((a, b) => {
@@ -3415,6 +3424,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           return dateA.getTime() - dateB.getTime(); // Oldest first (FIFO)
         });
+      
+      // Debug: Log sorted order
+      console.log("[FIFO DEBUG] Sorted finished goods (should be oldest first):");
+      approvedGoods.forEach((fg, idx) => {
+        console.log(`  ${idx + 1}. Batch: ${fg.batchNumber}, Date: ${fg.productionDate}, Qty: ${fg.quantity}`);
+      });
       
       // Get reserved quantities from pending invoices (draft/ready_for_gatepass)
       // This prevents double-allocation when multiple gatepasses are created before dispatch
