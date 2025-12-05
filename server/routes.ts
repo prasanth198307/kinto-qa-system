@@ -1217,7 +1217,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Purchase Orders API
   app.get('/api/purchase-orders', isAuthenticated, async (req: any, res) => {
     try {
-      const purchaseOrders = await storage.getAllPurchaseOrders();
+      const { status } = req.query;
+      let purchaseOrders = await storage.getAllPurchaseOrders();
+      
+      // Filter by status if provided
+      if (status) {
+        purchaseOrders = purchaseOrders.filter((po: any) => po.status === status);
+      }
+      
       res.json(purchaseOrders);
     } catch (error) {
       console.error("Error fetching purchase orders:", error);
