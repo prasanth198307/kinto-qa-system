@@ -13,25 +13,23 @@ CREATE TABLE IF NOT EXISTS purchase_order_items (
     description TEXT,
     hsn_code VARCHAR(20),
     quantity NUMERIC(10,3) NOT NULL DEFAULT 0,
-    uom_id VARCHAR(255) REFERENCES units_of_measure(id),
+    uom_id VARCHAR(255) REFERENCES uom(id),
     unit_name VARCHAR(50),
-    unit_price INTEGER NOT NULL DEFAULT 0,  -- Stored in paise
-    gst_rate INTEGER NOT NULL DEFAULT 18,   -- GST percentage (e.g., 18 for 18%)
-    amount INTEGER NOT NULL DEFAULT 0,       -- Base amount in paise (qty × unit_price)
-    cgst_amount INTEGER DEFAULT 0,           -- CGST amount in paise
-    sgst_amount INTEGER DEFAULT 0,           -- SGST amount in paise
-    igst_amount INTEGER DEFAULT 0,           -- IGST amount in paise (for inter-state)
-    total_amount INTEGER NOT NULL DEFAULT 0, -- Total with GST in paise
+    unit_price INTEGER NOT NULL DEFAULT 0,
+    gst_rate INTEGER NOT NULL DEFAULT 18,
+    amount INTEGER NOT NULL DEFAULT 0,
+    cgst_amount INTEGER DEFAULT 0,
+    sgst_amount INTEGER DEFAULT 0,
+    igst_amount INTEGER DEFAULT 0,
+    total_amount INTEGER NOT NULL DEFAULT 0,
     remarks TEXT,
-    record_status INTEGER NOT NULL DEFAULT 1, -- 1=active, 0=deleted
+    record_status INTEGER NOT NULL DEFAULT 1,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- Create index for faster lookups by purchase order
+-- Create indexes for faster lookups
 CREATE INDEX IF NOT EXISTS idx_po_items_purchase_order_id ON purchase_order_items(purchase_order_id);
-
--- Create index for raw material reference lookups
 CREATE INDEX IF NOT EXISTS idx_po_items_raw_material_id ON purchase_order_items(raw_material_id);
 
 -- Add comments for documentation
