@@ -469,6 +469,16 @@ export default function PrintablePurchaseOrder({ po }: PrintablePurchaseOrderPro
                     {vendor.contactPerson && <div><strong>Contact:</strong> {vendor.contactPerson}</div>}
                   </div>
                 </>
+              ) : (po as any).vendorName ? (
+                <>
+                  <div className="vendor-name">{(po as any).vendorName}</div>
+                  <div className="vendor-details">
+                    {(po as any).vendorAddress && <div style={{ whiteSpace: 'pre-line' }}>{(po as any).vendorAddress}</div>}
+                    {(po as any).vendorGst && <div><strong>GSTIN:</strong> {(po as any).vendorGst}</div>}
+                    {(po as any).vendorPhone && <div><strong>Phone:</strong> {(po as any).vendorPhone}</div>}
+                    {(po as any).vendorEmail && <div><strong>Email:</strong> {(po as any).vendorEmail}</div>}
+                  </div>
+                </>
               ) : (
                 <div className="vendor-name">{po.supplier || 'To Be Determined'}</div>
               )}

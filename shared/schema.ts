@@ -540,6 +540,12 @@ export const purchaseOrders = pgTable("purchase_orders", {
   poDate: timestamp("po_date", { mode: 'string' }).defaultNow(),
   sparePartId: varchar("spare_part_id").references(() => sparePartsCatalog.id),
   vendorId: varchar("vendor_id").references(() => vendors.id),
+  // Manual vendor entry fields (used when vendorId is null)
+  vendorName: varchar("vendor_name", { length: 255 }),
+  vendorAddress: text("vendor_address"),
+  vendorGst: varchar("vendor_gst", { length: 20 }),
+  vendorPhone: varchar("vendor_phone", { length: 20 }),
+  vendorEmail: varchar("vendor_email", { length: 255 }),
   quantity: integer("quantity").notNull(),
   unitPrice: integer("unit_price"), // Price per unit in paise
   totalAmount: integer("total_amount"), // Total amount in paise

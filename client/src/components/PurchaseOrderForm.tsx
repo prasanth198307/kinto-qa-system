@@ -33,7 +33,13 @@ const lineItemSchema = z.object({
 
 const purchaseOrderFormSchema = z.object({
   poDate: z.string().optional(),
-  vendorId: z.string().min(1, "Please select a vendor"),
+  vendorId: z.string().optional(), // Optional - can use manual entry instead
+  // Manual vendor entry fields
+  vendorName: z.string().optional(),
+  vendorAddress: z.string().optional(),
+  vendorGst: z.string().optional(),
+  vendorPhone: z.string().optional(),
+  vendorEmail: z.string().optional(),
   expectedDeliveryDate: z.string().optional(),
   deliveryAddress: z.string().optional(),
   paymentTerms: z.string().optional(),
@@ -44,6 +50,12 @@ const purchaseOrderFormSchema = z.object({
   includeSignature: z.number().default(1),
   signatureImage: z.string().optional(),
   items: z.array(lineItemSchema).min(1, "At least one item is required"),
+}).refine((data) => {
+  // Either select a vendor OR enter vendor name manually
+  return data.vendorId || data.vendorName;
+}, {
+  message: "Please select a vendor or enter vendor name manually",
+  path: ["vendorName"],
 });
 
 type PurchaseOrderFormData = z.infer<typeof purchaseOrderFormSchema>;
@@ -106,6 +118,11 @@ export default function PurchaseOrderForm({ onSuccess, onCancel, editingPO }: Pu
     defaultValues: {
       poDate: format(new Date(), "yyyy-MM-dd"),
       vendorId: "",
+      vendorName: "",
+      vendorAddress: "",
+      vendorGst: "",
+      vendorPhone: "",
+      vendorEmail: "",
       expectedDeliveryDate: "",
       deliveryAddress: "356-2, Chintalapalem, Kothavalasa, Andhra Pradesh - 535183",
       paymentTerms: "Payment within 30 days of delivery",
@@ -144,6 +161,11 @@ export default function PurchaseOrderForm({ onSuccess, onCancel, editingPO }: Pu
       form.reset({
         poDate: editingPO.poDate ? format(new Date(editingPO.poDate), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
         vendorId: editingPO.vendorId || "",
+        vendorName: (editingPO as any).vendorName || "",
+        vendorAddress: (editingPO as any).vendorAddress || "",
+        vendorGst: (editingPO as any).vendorGst || "",
+        vendorPhone: (editingPO as any).vendorPhone || "",
+        vendorEmail: (editingPO as any).vendorEmail || "",
         expectedDeliveryDate: editingPO.expectedDeliveryDate ? format(new Date(editingPO.expectedDeliveryDate), "yyyy-MM-dd") : "",
         deliveryAddress: editingPO.deliveryAddress || "356-2, Chintalapalem, Kothavalasa, Andhra Pradesh - 535183",
         paymentTerms: editingPO.paymentTerms || "Payment within 30 days of delivery",
@@ -372,7 +394,13 @@ export default function PurchaseOrderForm({ onSuccess, onCancel, editingPO }: Pu
 
     const submitData = {
       poDate: data.poDate || new Date().toISOString(),
-      vendorId: data.vendorId,
+      vendorId: data.vendorId || null,
+      // Manual vendor entry fields
+      vendorName: data.vendorName || null,
+      vendorAddress: data.vendorAddress || null,
+      vendorGst: data.vendorGst || null,
+      vendorPhone: data.vendorPhone || null,
+      vendorEmail: data.vendorEmail || null,
       expectedDeliveryDate: data.expectedDeliveryDate || null,
       deliveryAddress: data.deliveryAddress || null,
       paymentTerms: data.paymentTerms || null,
@@ -483,91 +511,183 @@ export default function PurchaseOrderForm({ onSuccess, onCancel, editingPO }: Pu
           </div>
         </Card>
 
-        {/* Vendor Selection */}
+        {/* Vendor Details - Manual Entry */}
         <Card className="p-6">
           <h3 className="text-lg font-semibold mb-4">Vendor Details</h3>
           
-          <FormField
-            control={form.control}
-            name="vendorId"
-            render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel>Select Vendor *</FormLabel>
-                <Popover open={vendorSearchOpen} onOpenChange={setVendorSearchOpen}>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        className={cn(
-                          "w-full justify-between",
-                          !field.value && "text-muted-foreground"
-                        )}
-                        data-testid="button-select-vendor"
-                      >
-                        {field.value
-                          ? vendors.find(v => v.id === field.value)?.vendorName
-                          : "Search and select vendor..."}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[400px] p-0">
-                    <Command>
-                      <CommandInput placeholder="Search vendors..." />
-                      <CommandList>
-                        <CommandEmpty>No vendor found.</CommandEmpty>
-                        <CommandGroup>
-                          {vendors.map((vendor) => (
-                            <CommandItem
-                              key={vendor.id}
-                              value={vendor.vendorName}
-                              onSelect={() => {
-                                form.setValue("vendorId", vendor.id);
-                                setVendorSearchOpen(false);
-                              }}
-                              data-testid={`vendor-option-${vendor.id}`}
-                            >
-                              <Check
-                                className={cn(
-                                  "mr-2 h-4 w-4",
-                                  vendor.id === field.value ? "opacity-100" : "opacity-0"
-                                )}
-                              />
-                              <div className="flex flex-col">
-                                <span className="font-medium">{vendor.vendorName}</span>
-                                {vendor.gstNumber && (
-                                  <span className="text-xs text-muted-foreground">GSTIN: {vendor.gstNumber}</span>
-                                )}
-                              </div>
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          {/* Option to select existing vendor */}
+          <div className="mb-4">
+            <FormField
+              control={form.control}
+              name="vendorId"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Select Existing Vendor (Optional)</FormLabel>
+                  <Popover open={vendorSearchOpen} onOpenChange={setVendorSearchOpen}>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          className={cn(
+                            "w-full justify-between",
+                            !field.value && "text-muted-foreground"
+                          )}
+                          data-testid="button-select-vendor"
+                        >
+                          {field.value
+                            ? vendors.find(v => v.id === field.value)?.vendorName
+                            : "Search existing vendors..."}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[400px] p-0">
+                      <Command>
+                        <CommandInput placeholder="Search vendors..." />
+                        <CommandList>
+                          <CommandEmpty>No vendor found.</CommandEmpty>
+                          <CommandGroup>
+                            {vendors.map((vendor) => (
+                              <CommandItem
+                                key={vendor.id}
+                                value={vendor.vendorName}
+                                onSelect={() => {
+                                  form.setValue("vendorId", vendor.id);
+                                  // Auto-fill manual fields from selected vendor
+                                  form.setValue("vendorName", vendor.vendorName);
+                                  form.setValue("vendorAddress", vendor.address || "");
+                                  form.setValue("vendorGst", vendor.gstNumber || "");
+                                  form.setValue("vendorPhone", vendor.mobileNumber || "");
+                                  form.setValue("vendorEmail", vendor.email || "");
+                                  setVendorSearchOpen(false);
+                                }}
+                                data-testid={`vendor-option-${vendor.id}`}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    vendor.id === field.value ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                <div className="flex flex-col">
+                                  <span className="font-medium">{vendor.vendorName}</span>
+                                  {vendor.gstNumber && (
+                                    <span className="text-xs text-muted-foreground">GSTIN: {vendor.gstNumber}</span>
+                                  )}
+                                </div>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </FormItem>
+              )}
+            />
+          </div>
 
-          {selectedVendor && (
-            <div className="mt-4 p-4 bg-muted/50 rounded-lg">
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div><span className="text-muted-foreground">Address:</span> {selectedVendor.address || '-'}</div>
-                <div><span className="text-muted-foreground">Phone:</span> {selectedVendor.mobileNumber || '-'}</div>
-                <div><span className="text-muted-foreground">GSTIN:</span> {selectedVendor.gstNumber || '-'}</div>
-                <div><span className="text-muted-foreground">Email:</span> {selectedVendor.email || '-'}</div>
-              </div>
+          <div className="text-sm text-muted-foreground mb-4">Or enter vendor details manually:</div>
+
+          {/* Manual Vendor Entry Fields */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="vendorName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Vendor Name *</FormLabel>
+                  <FormControl>
+                    <Input 
+                      {...field} 
+                      placeholder="Enter vendor/supplier name"
+                      data-testid="input-vendor-name"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="vendorGst"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>GSTIN</FormLabel>
+                  <FormControl>
+                    <Input 
+                      {...field} 
+                      placeholder="Enter GSTIN"
+                      data-testid="input-vendor-gst"
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="vendorPhone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Phone Number</FormLabel>
+                  <FormControl>
+                    <Input 
+                      {...field} 
+                      placeholder="Enter phone number"
+                      data-testid="input-vendor-phone"
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="vendorEmail"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input 
+                      {...field} 
+                      type="email"
+                      placeholder="Enter email address"
+                      data-testid="input-vendor-email"
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <div className="md:col-span-2">
+              <FormField
+                control={form.control}
+                name="vendorAddress"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Vendor Address</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        {...field} 
+                        placeholder="Enter vendor address"
+                        rows={2}
+                        data-testid="input-vendor-address"
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
             </div>
-          )}
+          </div>
         </Card>
 
         {/* Line Items */}
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">Line Items (Raw Materials)</h3>
+            <h3 className="text-lg font-semibold">Line Items</h3>
             <Button 
               type="button" 
               variant="outline" 
@@ -607,38 +727,8 @@ export default function PurchaseOrderForm({ onSuccess, onCancel, editingPO }: Pu
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
-                    {/* Raw Material Selection */}
-                    <div className="md:col-span-2">
-                      <FormField
-                        control={form.control}
-                        name={`items.${index}.rawMaterialId`}
-                        render={({ field: rmField }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">Raw Material</FormLabel>
-                            <Select 
-                              value={rmField.value || ""} 
-                              onValueChange={(val) => handleRawMaterialSelect(index, val)}
-                            >
-                              <FormControl>
-                                <SelectTrigger data-testid={`select-raw-material-${index}`}>
-                                  <SelectValue placeholder="Select material" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {rawMaterials.map((rm) => (
-                                  <SelectItem key={rm.id} value={rm.id}>
-                                    {rm.materialName}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
                     {/* Item Name */}
-                    <div className="md:col-span-2">
+                    <div className="md:col-span-3">
                       <FormField
                         control={form.control}
                         name={`items.${index}.itemName`}
@@ -679,7 +769,7 @@ export default function PurchaseOrderForm({ onSuccess, onCancel, editingPO }: Pu
                     </div>
 
                     {/* Description */}
-                    <div>
+                    <div className="md:col-span-2">
                       <FormField
                         control={form.control}
                         name={`items.${index}.description`}
