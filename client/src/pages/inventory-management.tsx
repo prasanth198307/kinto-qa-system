@@ -2847,6 +2847,34 @@ function RawMaterialDialog({
     queryKey: ['/api/purchase-order-items', selectedPOId],
     enabled: !!selectedPOId,
   });
+
+  // Get already-received PO item IDs from materials
+  const receivedPOItemIds = useMemo(() => {
+    return new Set(
+      materials
+        .filter((m: any) => m.purchaseOrderItemId)
+        .map((m: any) => m.purchaseOrderItemId)
+    );
+  }, [materials]);
+
+  // Filter PO items to exclude already-received ones
+  const availablePOItems = useMemo(() => {
+    return poItems.filter((item: any) => !receivedPOItemIds.has(item.id));
+  }, [poItems, receivedPOItemIds]);
+
+  // Filter POs to show only those with unreceived items
+  const availablePOs = useMemo(() => {
+    // We need to check each PO to see if it has any unreceived items
+    // This requires knowing all PO items for each PO
+    return approvedPOs.filter((po: any) => {
+      // Check if any materials are linked to this PO
+      const materialsForPO = materials.filter((m: any) => m.purchaseOrderId === po.id);
+      // If no items count available, assume PO has items to receive
+      if (!po.itemCount && po.itemCount !== 0) return true;
+      // If received count < total item count, show the PO
+      return materialsForPO.length < (po.itemCount || 999);
+    });
+  }, [approvedPOs, materials]);
   
   const form = useForm<z.infer<typeof insertRawMaterialSchema>>({
     resolver: zodResolver(insertRawMaterialSchema.extend({
@@ -3094,7 +3122,7 @@ function RawMaterialDialog({
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
             {/* Link to Purchase Order (Optional) */}
-            {!item && approvedPOs.length > 0 && (
+            {!item && availablePOs.length > 0 && (
               <div className="space-y-4 rounded-lg border bg-blue-50 dark:bg-blue-950/20 p-4">
                 <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
                   <Package className="h-4 w-4" />
@@ -3117,7 +3145,7 @@ function RawMaterialDialog({
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="none">-- No PO Link --</SelectItem>
-                        {approvedPOs.map((po: any) => (
+                        {availablePOs.map((po: any) => (
                           <SelectItem key={po.id} value={po.id}>
                             {po.poNumber} - {po.vendorName || 'Unknown Vendor'}
                           </SelectItem>
@@ -3143,15 +3171,23 @@ function RawMaterialDialog({
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="none">-- Select Item --</SelectItem>
-                          {poItems.map((item: any) => (
-                            <SelectItem key={item.id} value={item.id}>
-                              #{item.serialNo}: {item.itemName} - Qty: {item.quantity}
+                          {availablePOItems.length > 0 ? (
+                            availablePOItems.map((item: any) => (
+                              <SelectItem key={item.id} value={item.id}>
+                                #{item.serialNo}: {item.itemName} - Qty: {item.quantity}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="none" disabled>
+                              All items already received
                             </SelectItem>
-                          ))}
+                          )}
                         </SelectContent>
                       </Select>
                       <FormDescription className="text-xs">
-                        Selecting an item will auto-fill material details
+                        {availablePOItems.length > 0 
+                          ? "Selecting an item will auto-fill material details"
+                          : "All items from this PO have been received"}
                       </FormDescription>
                     </FormItem>
                   )}
