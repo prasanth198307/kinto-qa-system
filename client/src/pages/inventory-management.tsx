@@ -3730,6 +3730,9 @@ function FinishedGoodsTab({ searchTerm, onSearchChange }: { searchTerm: string; 
   // Comprehensive filtering logic
   const filteredItems = useMemo(() => {
     return goods.filter(item => {
+      // Hide items with zero quantity
+      if (item.quantity === 0) return false;
+      
       // Search filter (batch number or product name)
       const productName = getProductNameById(item.productId);
       const matchesSearch = 
