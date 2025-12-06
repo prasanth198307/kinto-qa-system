@@ -70,14 +70,19 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
     remarks: "" 
   }]);
   const [isLoadingFifo, setIsLoadingFifo] = useState(false);
+  
+  // Move selectedInvoiceId state before queries that depend on it
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string>("");
 
   const { data: gatepassItems = [], isLoading: isLoadingGatepassItems } = useQuery<GatepassItem[]>({
     queryKey: ['/api/gatepass-items', gatepass?.id],
     enabled: !!gatepass?.id,
   });
 
-  const { data: finishedGoods = [] } = useQuery<FinishedGood[]>({
-    queryKey: ['/api/finished-goods'],
+  // Use available-stock endpoint which deducts reserved quantities from pending invoices
+  // Pass excludeInvoiceId so this invoice's own items aren't counted as reserved
+  const { data: finishedGoods = [] } = useQuery<(FinishedGood & { availableStock?: number })[]>({
+    queryKey: ['/api/finished-goods/available-stock', { excludeInvoiceId: selectedInvoiceId || '' }],
   });
 
   const { data: products = [] } = useQuery<Product[]>({
@@ -96,9 +101,6 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
   const { data: availableInvoices = [] } = useQuery<Invoice[]>({
     queryKey: ['/api/invoices/available'],
   });
-
-  // Fetch invoice items when an invoice is selected
-  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string>("");
   const { data: invoiceItems = [] } = useQuery<any[]>({
     queryKey: ['/api/invoice-items', selectedInvoiceId],
     enabled: !!selectedInvoiceId,
@@ -969,7 +971,7 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                 // Get available quantity for current batch
                 const currentBatchId = items[index]?.finishedGoodId;
                 const currentBatch = finishedGoods.find(fg => fg.id === currentBatchId);
-                const availableQty = currentBatch?.quantity || 0;
+                const availableQty = currentBatch?.availableStock ?? currentBatch?.quantity ?? 0;
                 
                 return (
               <Card key={index} className="p-4">
@@ -1027,7 +1029,7 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                                   const product = products.find(p => p.id === fg.productId);
                                   return (
                                     <SelectItem key={fg.id} value={fg.id}>
-                                      {product?.productName || 'Unknown'} - Batch: {fg.batchNumber} (Available: {fg.quantity})
+                                      {product?.productName || 'Unknown'} - Batch: {fg.batchNumber} (Available: {fg.availableStock ?? fg.quantity})
                                     </SelectItem>
                                   );
                                 })}
