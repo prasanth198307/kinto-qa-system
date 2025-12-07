@@ -573,28 +573,46 @@ export default function PrintableInvoiceGatepass({ invoice, gatepass }: Printabl
             .hsn-table th { background: #e8e8e8; font-weight: bold; }
             .hsn-table .total-row td { font-weight: bold; background: #f5f5f5; }
 
-            .terms-payment-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 10px; }
-            .terms-section { font-size: 8px; border: 1px solid #000; padding: 8px; }
-            .terms-section ol { margin-left: 15px; }
-            .terms-title { font-weight: bold; margin-bottom: 5px; }
-            .payment-summary { text-align: right; border: 1px solid #000; padding: 8px; }
-            .payment-grid { display: grid; grid-template-columns: auto auto; gap: 5px; justify-content: end; font-size: 10px; }
-            .amount-in-words { font-size: 9px; margin: 10px 0; padding: 5px; border: 1px solid #000; background: #f9f9f9; }
-            .remarks { font-size: 9px; margin: 5px 0; padding: 5px; background: #fff3cd; border: 1px solid #000; }
+            /* Terms & Payment Grid (Two Columns) */
+            .terms-payment-grid { display: grid; grid-template-columns: 1fr 200px; gap: 10px; margin-bottom: 10px; }
 
-            .bank-signature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
-            .bank-details-container { display: flex; gap: 20px; align-items: flex-start; border: 1px solid #000; padding: 8px; }
-            .bank-details { font-size: 9px; }
-            .bank-label { font-weight: bold; margin-bottom: 5px; }
-            .qr-code-section { flex-shrink: 0; }
-            .qr-code { width: 100px; height: 100px; border: 1px solid #000; }
-            .signature-section { text-align: right; border: 1px solid #000; padding: 8px; }
-            .company-for-line { font-size: 10px; margin-bottom: 5px; }
-            .signature-image { margin: 10px 0; }
-            .signature-image img { max-height: 50px; object-fit: contain; }
-            .signature-space { height: 40px; }
-            .signatory-label { font-size: 9px; border-top: 1px solid #000; padding-top: 5px; display: inline-block; }
-            .declaration { font-size: 8px; margin-top: 15px; padding: 5px; border: 1px solid #000; background: #f9f9f9; }
+            /* Payment Summary */
+            .payment-summary { border: 1px solid #000; padding: 8px; }
+            .payment-grid { display: grid; grid-template-columns: auto auto; gap: 5px; font-size: 10px; }
+
+            /* Amount in Words */
+            .amount-in-words { border: 1px solid #000; padding: 6px; margin-bottom: 10px; font-size: 9px; background: #fafafa; }
+
+            /* Bank and Signature Grid (Two Columns) */
+            .bank-signature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+
+            /* Bank Details Container */
+            .bank-details-container { display: flex; justify-content: space-between; align-items: flex-start; border: 1px solid #000; padding: 8px; gap: 10px; }
+            .bank-details { flex: 1; font-size: 9px; }
+            .bank-label { font-weight: bold; margin-bottom: 4px; }
+            .bank-details div { margin-bottom: 2px; }
+            .qr-code-section { text-align: center; flex-shrink: 0; }
+            .qr-code { width: 80px; height: 80px; border: 1px solid #000; }
+
+            /* Terms Section */
+            .terms-section { border: 1px solid #000; padding: 8px; }
+            .terms-title { font-weight: bold; font-size: 10px; margin-bottom: 4px; }
+            .terms-section ol { margin-left: 15px; font-size: 8px; }
+            .terms-section li { margin-bottom: 3px; }
+
+            /* Remarks */
+            .remarks { padding: 6px; margin-bottom: 10px; font-size: 9px; font-style: italic; border: 1px solid #000; }
+
+            /* Signature Section */
+            .signature-section { text-align: center; border: 1px solid #000; padding: 8px; font-size: 9px; }
+            .company-for-line { margin-bottom: 8px; text-align: left; }
+            .signature-image { margin: 10px auto; min-height: 40px; }
+            .signature-image img { max-height: 50px; object-fit: contain; background: transparent; }
+            .signature-space { height: 50px; margin: 5px 0; }
+            .signatory-label { text-align: center; }
+
+            /* Declaration */
+            .declaration { border-top: 1px solid #000; padding-top: 6px; font-size: 8px; text-align: center; }
 
             /* Gatepass Styles */
             .gp-header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 8px; margin-bottom: 10px; }
