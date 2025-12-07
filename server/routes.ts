@@ -6101,6 +6101,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/invoices/:id', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const { id } = req.params;
+      
+      // Check if invoice exists and is not delivered
+      const existingInvoice = await storage.getInvoice(id);
+      if (!existingInvoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      
+      // Block editing of delivered invoices (use Cancel & Reissue or Credit Notes instead)
+      if (existingInvoice.status === 'delivered') {
+        return res.status(400).json({ 
+          message: "Delivered invoices cannot be edited. Use 'Cancel & Reissue' for current month invoices or 'Credit Notes' for previous month invoices." 
+        });
+      }
+      
       const validatedData = insertInvoiceSchema.partial().parse(req.body);
       const invoice = await storage.updateInvoice(id, validatedData);
       if (!invoice) {

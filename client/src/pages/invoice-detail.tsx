@@ -15,7 +15,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Edit, Mail, FileText, Printer, Star, Receipt, RefreshCw, Calculator, CreditCard } from "lucide-react";
+import { ArrowLeft, Edit, Mail, FileText, Printer, Star, Receipt, RefreshCw, Calculator, CreditCard, Lock } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type { Invoice, InvoiceItem, Product, Gatepass, InvoicePayment, GatepassItem, FinishedGood } from "@shared/schema";
 import {
   Table,
@@ -350,15 +355,41 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
         </div>
 
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleEdit}
-            data-testid="button-edit-invoice"
-          >
-            <Edit className="w-4 h-4 mr-2" />
-            Edit
-          </Button>
+          {invoice.status === 'delivered' ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled
+                    data-testid="button-edit-invoice-disabled"
+                  >
+                    <Lock className="w-4 h-4 mr-2" />
+                    Edit
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Delivered invoices cannot be edited.</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {currentMonthCheck 
+                    ? "Use 'Cancel & Reissue' to make corrections." 
+                    : "Use 'Credit Note' or 'Correct & Credit' for adjustments."}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleEdit}
+              data-testid="button-edit-invoice"
+            >
+              <Edit className="w-4 h-4 mr-2" />
+              Edit
+            </Button>
+          )}
           <PrintableInvoice invoice={invoice} />
           <Button
             variant="outline"
