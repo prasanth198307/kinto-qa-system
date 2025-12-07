@@ -1,7 +1,8 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Edit, DollarSign, FileText, Package, Truck, CheckCircle, Eye, PackageCheck } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Trash2, Edit, DollarSign, FileText, Package, Truck, CheckCircle, Eye, PackageCheck, Lock } from "lucide-react";
 import type { Invoice } from "@shared/schema";
 import { format } from "date-fns";
 import { Link } from "wouter";
@@ -137,15 +138,39 @@ export default function InvoiceTable({ invoices, isLoading, onEdit, onDelete, on
                       </Button>
                     )}
                     {onEdit && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onEdit(invoice)}
-                        data-testid={`button-edit-${invoice.id}`}
-                        title="Edit Invoice"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
+                      invoice.status === 'delivered' ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                disabled
+                                data-testid={`button-edit-${invoice.id}-disabled`}
+                                title="Delivered invoices cannot be edited"
+                              >
+                                <Lock className="w-4 h-4 text-muted-foreground" />
+                              </Button>
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Delivered invoices cannot be edited.</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Use 'Cancel & Reissue' or 'Credit Notes' from the invoice detail page.
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onEdit(invoice)}
+                          data-testid={`button-edit-${invoice.id}`}
+                          title="Edit Invoice"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                      )
                     )}
                     <PrintableInvoice invoice={invoice} />
                     {onDelete && (
