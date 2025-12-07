@@ -4216,17 +4216,33 @@ function FinishedGoodDialog({
   useEffect(() => {
     if (open) {
       if (item) {
+        // Helper to safely extract date string without timezone issues
+        const getDateString = (dateValue: string | Date | null | undefined): string => {
+          if (!dateValue) return new Date().toISOString().split('T')[0];
+          // If it's already a YYYY-MM-DD string, use it directly
+          if (typeof dateValue === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+            return dateValue;
+          }
+          // If it has time component, extract just the date part
+          if (typeof dateValue === 'string' && dateValue.includes('T')) {
+            return dateValue.split('T')[0];
+          }
+          // For other formats, parse and format using local timezone
+          const date = new Date(dateValue);
+          return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        };
+        
         form.reset({
           productId: item.productId || '',
           batchNumber: item.batchNumber || '',
-          productionDate: item.productionDate ? new Date(item.productionDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          productionDate: getDateString(item.productionDate),
           quantity: item.quantity || 0,
           uomId: item.uomId || undefined,
           qualityStatus: item.qualityStatus || 'pending',
           machineId: item.machineId || undefined,
           operatorId: item.operatorId || undefined,
           inspectedBy: item.inspectedBy || undefined,
-          inspectionDate: item.inspectionDate ? new Date(item.inspectionDate).toISOString().split('T')[0] : undefined,
+          inspectionDate: item.inspectionDate ? getDateString(item.inspectionDate) : undefined,
           storageLocation: item.storageLocation || '',
           remarks: item.remarks || '',
         });
