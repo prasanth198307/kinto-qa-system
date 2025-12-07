@@ -574,21 +574,21 @@ export default function PrintableInvoiceGatepass({ invoice, gatepass }: Printabl
             .hsn-table .total-row td { font-weight: bold; background: #f5f5f5; }
 
             .terms-payment-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 10px; }
-            .terms-section { font-size: 8px; }
+            .terms-section { font-size: 8px; border: 1px solid #000; padding: 8px; }
             .terms-section ol { margin-left: 15px; }
             .terms-title { font-weight: bold; margin-bottom: 5px; }
-            .payment-summary { text-align: right; }
+            .payment-summary { text-align: right; border: 1px solid #000; padding: 8px; }
             .payment-grid { display: grid; grid-template-columns: auto auto; gap: 5px; justify-content: end; font-size: 10px; }
             .amount-in-words { font-size: 9px; margin: 10px 0; padding: 5px; border: 1px solid #000; background: #f9f9f9; }
             .remarks { font-size: 9px; margin: 5px 0; padding: 5px; background: #fff3cd; border: 1px solid #000; }
 
             .bank-signature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
-            .bank-details-container { display: flex; gap: 20px; align-items: flex-start; }
+            .bank-details-container { display: flex; gap: 20px; align-items: flex-start; border: 1px solid #000; padding: 8px; }
             .bank-details { font-size: 9px; }
             .bank-label { font-weight: bold; margin-bottom: 5px; }
             .qr-code-section { flex-shrink: 0; }
-            .qr-code { width: 100px; height: 100px; }
-            .signature-section { text-align: right; }
+            .qr-code { width: 100px; height: 100px; border: 1px solid #000; }
+            .signature-section { text-align: right; border: 1px solid #000; padding: 8px; }
             .company-for-line { font-size: 10px; margin-bottom: 5px; }
             .signature-image { margin: 10px 0; }
             .signature-image img { max-height: 50px; object-fit: contain; }
@@ -650,6 +650,11 @@ export default function PrintableInvoiceGatepass({ invoice, gatepass }: Printabl
               .amount-in-words { border: 1px solid #000 !important; }
               .declaration { border: 1px solid #000 !important; }
               .remarks { border: 1px solid #000 !important; }
+              .terms-section { border: 1px solid #000 !important; }
+              .payment-summary { border: 1px solid #000 !important; }
+              .bank-details-container { border: 1px solid #000 !important; }
+              .signature-section { border: 1px solid #000 !important; }
+              .qr-code { border: 1px solid #000 !important; }
 
               /* Gatepass section borders */
               .gp-header { border-bottom: 2px solid #000 !important; }
