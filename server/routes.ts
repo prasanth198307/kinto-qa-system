@@ -3275,6 +3275,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Available Stock API - Returns finished goods with reserved quantities deducted
   // Reserved = quantities in invoices with status 'draft' or 'ready_for_gatepass'
+  // IMPORTANT: Invoices that have an associated gatepass are NOT counted as reserved
+  //            because the physical inventory has already been deducted when gatepass was created
   // Optional: excludeInvoiceId - exclude a specific invoice's reservations (useful when editing)
   app.get('/api/finished-goods/available-stock', isAuthenticated, async (req: any, res) => {
     try {
@@ -3288,16 +3290,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Step 2: Get reserved quantities from pending invoices
       // Pending = invoices that are draft or ready_for_gatepass (not yet dispatched)
-      const pendingInvoiceStatuses = ['draft', 'ready_for_gatepass'];
-      const allInvoices = await db.select().from(invoices).where(
+      // EXCLUDE invoices that already have a gatepass (physical stock already deducted)
+      const allPendingInvoices = await db.select().from(invoices).where(
         and(
           sql`${invoices.status} IN ('draft', 'ready_for_gatepass')`,
           eq(invoices.recordStatus, 1)
         )
       );
       
-      // Get invoice items for pending invoices, excluding the specified invoice if editing
-      let pendingInvoiceIds = allInvoices.map(inv => inv.id);
+      // Get all active gatepasses to find which invoices already have gatepasses
+      const activeGatepasses = await db.select({
+        invoiceId: gatepasses.invoiceId
+      }).from(gatepasses).where(
+        and(
+          eq(gatepasses.recordStatus, 1),
+          sql`${gatepasses.invoiceId} IS NOT NULL`
+        )
+      );
+      const invoiceIdsWithGatepass = new Set(activeGatepasses.map(gp => gp.invoiceId));
+      
+      // Filter out invoices that already have gatepasses (their stock is already deducted)
+      // Also exclude the specified invoice if editing
+      let pendingInvoiceIds = allPendingInvoices
+        .filter(inv => !invoiceIdsWithGatepass.has(inv.id)) // Exclude invoices with gatepasses
+        .map(inv => inv.id);
+      
       if (excludeInvoiceId) {
         pendingInvoiceIds = pendingInvoiceIds.filter(id => id !== excludeInvoiceId);
       }
