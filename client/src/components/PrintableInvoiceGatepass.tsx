@@ -508,7 +508,17 @@ export default function PrintableInvoiceGatepass({ invoice, gatepass }: Printabl
           <title>Invoice & Gatepass - ${invoice.invoiceNumber} / ${gatepass.gatepassNumber}</title>
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { font-family: Arial, sans-serif; font-size: 10px; line-height: 1.3; color: #000; }
+            body { 
+              font-family: Arial, sans-serif; 
+              font-size: 10px; 
+              line-height: 1.3; 
+              color: #000;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            
+            /* Ensure all borders print properly */
+            table, th, td { border-collapse: collapse; }
             
             .page, .gp-page {
               position: relative;
@@ -617,9 +627,27 @@ export default function PrintableInvoiceGatepass({ invoice, gatepass }: Printabl
             .gp-footer { margin-top: 20px; text-align: center; font-size: 9px; color: #666; }
 
             @media print {
-              body { margin: 0; padding: 0; }
+              body { 
+                margin: 0; 
+                padding: 0;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
               .page, .gp-page { margin: 0; border: none; width: 100%; min-height: auto; padding: 10mm; }
               .no-print { display: none !important; }
+
+              /* Ensure all table borders print properly */
+              table, th, td { border-collapse: collapse !important; }
+
+              .items-table th, .items-table td { border: 1px solid #000 !important; }
+              .hsn-table th, .hsn-table td { border: 1px solid #000 !important; }
+              .totals-table td { border: 1px solid #000 !important; }
+              .details-grid { border: 1px solid #000 !important; }
+              .bill-to { border-right: 1px solid #000 !important; }
+              .company-header { border: 1px solid #000 !important; }
+              .gp-items-table th, .gp-items-table td { border: 1px solid #333 !important; }
+              .gp-info-table td { border: 1px solid #000 !important; }
+              .gp-customer-box { border: 1px solid #000 !important; }
             }
           </style>
         </head>

@@ -482,6 +482,13 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
               font-size: 10px;
               line-height: 1.3;
               color: #000;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+
+            /* Ensure all borders print properly */
+            table, th, td {
+              border-collapse: collapse;
             }
 
             .page {
@@ -852,6 +859,8 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
                 margin: 0;
                 padding: 0;
                 height: auto;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
               }
               
               .page {
@@ -863,6 +872,37 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
               
               .page + .page {
                 page-break-before: always;
+              }
+
+              /* Ensure all table borders print */
+              table, th, td {
+                border-collapse: collapse !important;
+              }
+
+              .items-table th,
+              .items-table td {
+                border: 1px solid #000 !important;
+              }
+
+              .hsn-table th,
+              .hsn-table td {
+                border: 1px solid #000 !important;
+              }
+
+              .totals-table td {
+                border: 1px solid #000 !important;
+              }
+
+              .details-grid {
+                border: 1px solid #000 !important;
+              }
+
+              .bill-to {
+                border-right: 1px solid #000 !important;
+              }
+
+              .company-header {
+                border: 1px solid #000 !important;
               }
             }
           </style>

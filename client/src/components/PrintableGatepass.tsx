@@ -150,7 +150,12 @@ export default function PrintableGatepass({ gatepass }: PrintableGatepassProps) 
               font-size: 11px;
               line-height: 1.3;
               color: #333;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
             }
+
+            /* Ensure all borders print properly */
+            table, th, td { border-collapse: collapse; }
 
             .gp-page {
               width: 210mm;
@@ -341,13 +346,24 @@ export default function PrintableGatepass({ gatepass }: PrintableGatepassProps) 
             }
 
             @media print {
-              body { margin: 0; padding: 0; }
+              body { 
+                margin: 0; 
+                padding: 0;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
               .gp-page { 
                 margin: 0; 
                 width: 100%; 
                 min-height: auto;
                 padding: 10mm;
               }
+
+              /* Ensure all table borders print properly */
+              table, th, td { border-collapse: collapse !important; }
+              .items-table th, .items-table td { border: 1px solid #333 !important; }
+              .info-table td { border: 1px solid #000 !important; }
+              .customer-box { border: 1px solid #000 !important; }
             }
           </style>
         </head>
