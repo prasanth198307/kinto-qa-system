@@ -615,7 +615,7 @@ export default function PrintableInvoiceGatepass({ invoice, gatepass }: Printabl
             .declaration { border-top: 1px solid #000; padding-top: 6px; font-size: 8px; text-align: center; }
 
             /* Gatepass Styles */
-            .gp-header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 8px; margin-bottom: 10px; }
+            .gp-header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 10px; }
             .gp-company-name { font-size: 20px; font-weight: bold; letter-spacing: 1px; }
             .gp-subtitle { font-size: 12px; color: #555; margin-top: 3px; }
             .gp-copy-label { text-align: center; font-size: 11px; font-weight: bold; background: #f5f5f5; border: 1px solid #000; padding: 4px 10px; display: block; width: fit-content; margin: 8px auto; }
@@ -633,14 +633,14 @@ export default function PrintableInvoiceGatepass({ invoice, gatepass }: Printabl
             .gp-customer-address { font-size: 10px; color: #555; margin-top: 4px; word-wrap: break-word; overflow-wrap: break-word; }
             .gp-invoice-ref { font-size: 11px; margin-bottom: 10px; padding: 4px 8px; background: #e8f4e8; border: 1px solid #c3e0c3; display: inline-block; }
             .gp-items-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-            .gp-items-table th, .gp-items-table td { border: 1px solid #333; padding: 6px 8px; }
+            .gp-items-table th, .gp-items-table td { border: 1px solid #000; padding: 6px 8px; }
             .gp-items-table th { background: #f0f0f0; font-weight: bold; font-size: 10px; }
             .gp-items-table td { font-size: 11px; }
             .gp-cases-info, .gp-seal-info { font-size: 11px; margin-bottom: 5px; }
             .gp-remarks-section { font-size: 10px; padding: 6px 8px; background: #f9f9f9; border: 1px solid #000; margin: 10px 0; }
             .gp-signature-section { display: flex; justify-content: space-between; margin-top: 30px; padding-top: 10px; }
             .gp-sig-box { text-align: center; width: 30%; }
-            .gp-sig-line { border-bottom: 1px solid #333; height: 40px; margin-bottom: 5px; }
+            .gp-sig-line { border-bottom: 1px solid #000; height: 40px; margin-bottom: 5px; }
             .gp-sig-label { font-size: 10px; font-weight: bold; }
             .gp-footer { margin-top: 20px; text-align: center; font-size: 9px; color: #666; }
 

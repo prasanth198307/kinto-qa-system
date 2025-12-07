@@ -171,7 +171,7 @@ export default function PrintableGatepass({ gatepass }: PrintableGatepassProps) 
 
             .header {
               text-align: center;
-              border-bottom: 2px solid #333;
+              border-bottom: 2px solid #000;
               padding-bottom: 8px;
               margin-bottom: 10px;
             }
@@ -193,7 +193,7 @@ export default function PrintableGatepass({ gatepass }: PrintableGatepassProps) 
               font-size: 11px;
               font-weight: bold;
               background: #f5f5f5;
-              border: 1px solid #ddd;
+              border: 1px solid #000;
               padding: 4px 10px;
               display: inline-block;
               margin: 8px auto;
@@ -228,7 +228,7 @@ export default function PrintableGatepass({ gatepass }: PrintableGatepassProps) 
 
             .info-table td {
               padding: 4px 6px;
-              border: 1px solid #ddd;
+              border: 1px solid #000;
             }
 
             .info-table .label {
@@ -238,7 +238,7 @@ export default function PrintableGatepass({ gatepass }: PrintableGatepassProps) 
             }
 
             .customer-box {
-              border: 1px solid #ddd;
+              border: 1px solid #000;
               padding: 8px;
               height: 100%;
               background: #fafafa;
@@ -288,7 +288,7 @@ export default function PrintableGatepass({ gatepass }: PrintableGatepassProps) 
 
             .items-table th,
             .items-table td {
-              border: 1px solid #333;
+              border: 1px solid #000;
               padding: 6px 8px;
             }
 
@@ -311,7 +311,7 @@ export default function PrintableGatepass({ gatepass }: PrintableGatepassProps) 
               font-size: 10px;
               padding: 6px 8px;
               background: #f9f9f9;
-              border: 1px solid #ddd;
+              border: 1px solid #000;
               margin: 10px 0;
             }
 
@@ -328,7 +328,7 @@ export default function PrintableGatepass({ gatepass }: PrintableGatepassProps) 
             }
 
             .sig-line {
-              border-bottom: 1px solid #333;
+              border-bottom: 1px solid #000;
               height: 40px;
               margin-bottom: 5px;
             }
@@ -361,9 +361,13 @@ export default function PrintableGatepass({ gatepass }: PrintableGatepassProps) 
 
               /* Ensure all table borders print properly */
               table, th, td { border-collapse: collapse !important; }
-              .items-table th, .items-table td { border: 1px solid #333 !important; }
+              .items-table th, .items-table td { border: 1px solid #000 !important; }
               .info-table td { border: 1px solid #000 !important; }
               .customer-box { border: 1px solid #000 !important; }
+              .copy-label { border: 1px solid #000 !important; }
+              .remarks-section { border: 1px solid #000 !important; }
+              .header { border-bottom: 2px solid #000 !important; }
+              .sig-line { border-bottom: 1px solid #000 !important; }
             }
           </style>
         </head>
