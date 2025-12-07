@@ -79,11 +79,32 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
     enabled: !!gatepass?.id,
   });
 
+  // Type for available stock response
+  interface AvailableStockItem extends FinishedGood {
+    physicalQuantity: number;
+    reservedQuantity: number;
+    availableQuantity: number;
+  }
+  
+  interface AvailableStockResponse {
+    items: AvailableStockItem[];
+    summary: {
+      productId: string;
+      totalPhysical: number;
+      reserved: number;
+      available: number;
+    }[];
+  }
+
   // Use available-stock endpoint which deducts reserved quantities from pending invoices
   // Pass excludeInvoiceId so this invoice's own items aren't counted as reserved
-  const { data: finishedGoods = [] } = useQuery<(FinishedGood & { availableStock?: number })[]>({
+  const { data: availableStockData } = useQuery<AvailableStockResponse>({
     queryKey: ['/api/finished-goods/available-stock', { excludeInvoiceId: selectedInvoiceId || '' }],
   });
+  
+  // Extract items from the response - these have availableQuantity for display
+  const finishedGoods = availableStockData?.items || [];
+  const stockSummary = availableStockData?.summary || [];
 
   const { data: products = [] } = useQuery<Product[]>({
     queryKey: ['/api/products'],
@@ -362,7 +383,7 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
         uomId: defaultCasesUom?.id || normalizedItems[index].uomId || "",
         batchNumber: fg.batchNumber,
         productionDate: fg.productionDate,
-        availableStock: fg.quantity,
+        availableStock: (fg as any).availableQuantity ?? fg.quantity,
       };
       setItems(normalizedItems);
       form.setValue('items', normalizedItems);
@@ -971,7 +992,7 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                 // Get available quantity for current batch
                 const currentBatchId = items[index]?.finishedGoodId;
                 const currentBatch = finishedGoods.find(fg => fg.id === currentBatchId);
-                const availableQty = currentBatch?.availableStock ?? currentBatch?.quantity ?? 0;
+                const availableQty = (currentBatch as any)?.availableQuantity ?? currentBatch?.quantity ?? 0;
                 
                 return (
               <Card key={index} className="p-4">
@@ -1023,13 +1044,14 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                             </FormControl>
                             <SelectContent>
                               {finishedGoods
-                                .filter(fg => fg.quantity > 0)
+                                .filter(fg => ((fg as any).availableQuantity ?? fg.quantity) > 0)
                                 .filter(fg => !selectedBatchIds.includes(fg.id) || fg.id === field.value)
                                 .map((fg) => {
                                   const product = products.find(p => p.id === fg.productId);
+                                  const available = (fg as any).availableQuantity ?? fg.quantity;
                                   return (
                                     <SelectItem key={fg.id} value={fg.id}>
-                                      {product?.productName || 'Unknown'} - Batch: {fg.batchNumber} (Available: {fg.availableStock ?? fg.quantity})
+                                      {product?.productName || 'Unknown'} - Batch: {fg.batchNumber} (Available: {available})
                                     </SelectItem>
                                   );
                                 })}
