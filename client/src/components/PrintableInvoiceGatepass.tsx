@@ -579,8 +579,8 @@ export default function PrintableInvoiceGatepass({ invoice, gatepass }: Printabl
             .terms-title { font-weight: bold; margin-bottom: 5px; }
             .payment-summary { text-align: right; }
             .payment-grid { display: grid; grid-template-columns: auto auto; gap: 5px; justify-content: end; font-size: 10px; }
-            .amount-in-words { font-size: 9px; margin: 10px 0; padding: 5px; border: 1px solid #ddd; background: #f9f9f9; }
-            .remarks { font-size: 9px; margin: 5px 0; padding: 5px; background: #fff3cd; border: 1px solid #ffc107; }
+            .amount-in-words { font-size: 9px; margin: 10px 0; padding: 5px; border: 1px solid #000; background: #f9f9f9; }
+            .remarks { font-size: 9px; margin: 5px 0; padding: 5px; background: #fff3cd; border: 1px solid #000; }
 
             .bank-signature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
             .bank-details-container { display: flex; gap: 20px; align-items: flex-start; }
@@ -594,21 +594,21 @@ export default function PrintableInvoiceGatepass({ invoice, gatepass }: Printabl
             .signature-image img { max-height: 50px; object-fit: contain; }
             .signature-space { height: 40px; }
             .signatory-label { font-size: 9px; border-top: 1px solid #000; padding-top: 5px; display: inline-block; }
-            .declaration { font-size: 8px; margin-top: 15px; padding: 5px; border: 1px solid #ddd; background: #f9f9f9; }
+            .declaration { font-size: 8px; margin-top: 15px; padding: 5px; border: 1px solid #000; background: #f9f9f9; }
 
             /* Gatepass Styles */
             .gp-header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 8px; margin-bottom: 10px; }
             .gp-company-name { font-size: 20px; font-weight: bold; letter-spacing: 1px; }
             .gp-subtitle { font-size: 12px; color: #555; margin-top: 3px; }
-            .gp-copy-label { text-align: center; font-size: 11px; font-weight: bold; background: #f5f5f5; border: 1px solid #ddd; padding: 4px 10px; display: block; width: fit-content; margin: 8px auto; }
+            .gp-copy-label { text-align: center; font-size: 11px; font-weight: bold; background: #f5f5f5; border: 1px solid #000; padding: 4px 10px; display: block; width: fit-content; margin: 8px auto; }
             .gp-number { text-align: center; font-size: 13px; margin-bottom: 12px; }
             .gp-details-flex { display: flex; gap: 15px; margin-bottom: 12px; }
             .gp-left-col { flex: 1; }
             .gp-right-col { flex: 1; }
             .gp-info-table { width: 100%; border-collapse: collapse; }
-            .gp-info-table td { padding: 4px 6px; border: 1px solid #ddd; }
+            .gp-info-table td { padding: 4px 6px; border: 1px solid #000; }
             .gp-info-table .gp-label { font-weight: bold; width: 90px; background: #f9f9f9; }
-            .gp-customer-box { border: 1px solid #ddd; padding: 8px; height: 100%; background: #fafafa; }
+            .gp-customer-box { border: 1px solid #000; padding: 8px; height: 100%; background: #fafafa; }
             .gp-box-title { font-weight: bold; font-size: 10px; color: #666; margin-bottom: 5px; text-transform: uppercase; }
             .gp-customer-name { font-weight: bold; font-size: 12px; margin-bottom: 4px; }
             .gp-customer-detail { font-size: 10px; margin-bottom: 2px; }
@@ -619,7 +619,7 @@ export default function PrintableInvoiceGatepass({ invoice, gatepass }: Printabl
             .gp-items-table th { background: #f0f0f0; font-weight: bold; font-size: 10px; }
             .gp-items-table td { font-size: 11px; }
             .gp-cases-info, .gp-seal-info { font-size: 11px; margin-bottom: 5px; }
-            .gp-remarks-section { font-size: 10px; padding: 6px 8px; background: #f9f9f9; border: 1px solid #ddd; margin: 10px 0; }
+            .gp-remarks-section { font-size: 10px; padding: 6px 8px; background: #f9f9f9; border: 1px solid #000; margin: 10px 0; }
             .gp-signature-section { display: flex; justify-content: space-between; margin-top: 30px; padding-top: 10px; }
             .gp-sig-box { text-align: center; width: 30%; }
             .gp-sig-line { border-bottom: 1px solid #333; height: 40px; margin-bottom: 5px; }
@@ -639,15 +639,26 @@ export default function PrintableInvoiceGatepass({ invoice, gatepass }: Printabl
               /* Ensure all table borders print properly */
               table, th, td { border-collapse: collapse !important; }
 
+              /* Invoice section borders */
               .items-table th, .items-table td { border: 1px solid #000 !important; }
               .hsn-table th, .hsn-table td { border: 1px solid #000 !important; }
               .totals-table td { border: 1px solid #000 !important; }
               .details-grid { border: 1px solid #000 !important; }
               .bill-to { border-right: 1px solid #000 !important; }
               .company-header { border: 1px solid #000 !important; }
-              .gp-items-table th, .gp-items-table td { border: 1px solid #333 !important; }
+              .ship-to { border: 1px solid #000 !important; }
+              .amount-in-words { border: 1px solid #000 !important; }
+              .declaration { border: 1px solid #000 !important; }
+              .remarks { border: 1px solid #000 !important; }
+
+              /* Gatepass section borders */
+              .gp-header { border-bottom: 2px solid #000 !important; }
+              .gp-copy-label { border: 1px solid #000 !important; }
+              .gp-items-table th, .gp-items-table td { border: 1px solid #000 !important; }
               .gp-info-table td { border: 1px solid #000 !important; }
               .gp-customer-box { border: 1px solid #000 !important; }
+              .gp-remarks-section { border: 1px solid #000 !important; }
+              .gp-sig-line { border-bottom: 1px solid #000 !important; }
             }
           </style>
         </head>
