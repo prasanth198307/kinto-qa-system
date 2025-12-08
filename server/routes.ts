@@ -3524,10 +3524,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         )
       );
       
-      // Filter out the invoice being edited (if provided)
-      const filteredInvoices = excludeInvoiceId 
-        ? pendingInvoicesList.filter(inv => inv.id !== excludeInvoiceId)
-        : pendingInvoicesList;
+      // Get all active gatepasses to find which invoices already have gatepasses
+      // Invoices with gatepasses should NOT be counted as reserved (physical stock already deducted)
+      const activeGatepasses = await db.select({
+        invoiceId: gatepasses.invoiceId
+      }).from(gatepasses).where(
+        and(
+          eq(gatepasses.recordStatus, 1),
+          sql`${gatepasses.invoiceId} IS NOT NULL`
+        )
+      );
+      const invoiceIdsWithGatepass = new Set(activeGatepasses.map(gp => gp.invoiceId));
+      
+      // Filter out:
+      // 1. Invoices that already have gatepasses (their stock is already deducted from physical)
+      // 2. The invoice being allocated for (excludeInvoiceId) - we're allocating FOR this invoice
+      let filteredInvoices = pendingInvoicesList
+        .filter(inv => !invoiceIdsWithGatepass.has(inv.id));
+      
+      if (excludeInvoiceId) {
+        filteredInvoices = filteredInvoices.filter(inv => inv.id !== excludeInvoiceId);
+      }
+      
+      console.log(`[FIFO DEBUG] Pending invoices: ${pendingInvoicesList.length}, With gatepasses: ${invoiceIdsWithGatepass.size}, After filter: ${filteredInvoices.length}, ExcludeId: ${excludeInvoiceId || 'none'}`);
       
       // Get invoice items for pending invoices
       let reservedByBatch = new Map<string, number>(); // finishedGoodId -> reserved qty
