@@ -10294,6 +10294,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Sync WhatsApp secrets from environment to database
+  app.post('/api/notification-config/sync-whatsapp-secrets', requireRole('admin'), async (req: any, res) => {
+    try {
+      const config = await storage.getNotificationConfig();
+      if (!config) {
+        return res.status(404).json({ message: "Notification config not found" });
+      }
+
+      const updates: any = {};
+      let synced = [];
+
+      // Sync WhatsApp Phone Number ID
+      if (process.env.WHATSAPP_PHONE_NUMBER_ID) {
+        updates.metaPhoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+        synced.push('Meta Phone Number ID');
+      }
+
+      // Sync WhatsApp Access Token
+      if (process.env.WHATSAPP_ACCESS_TOKEN) {
+        updates.metaAccessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+        synced.push('Meta Access Token');
+      }
+
+      // Sync WhatsApp Verify Token
+      if (process.env.WHATSAPP_VERIFY_TOKEN) {
+        updates.metaVerifyToken = process.env.WHATSAPP_VERIFY_TOKEN;
+        synced.push('Meta Verify Token');
+      }
+
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ message: "No WhatsApp secrets found in environment variables" });
+      }
+
+      const updated = await storage.updateNotificationConfig(config.id, updates);
+      console.log(`[AUDIT] ${req.user.username} synced WhatsApp secrets to database: ${synced.join(', ')}`);
+      
+      res.json({ 
+        success: true, 
+        message: `Synced ${synced.length} WhatsApp settings to database`,
+        synced 
+      });
+    } catch (error) {
+      console.error("Error syncing WhatsApp secrets:", error);
+      res.status(500).json({ message: "Failed to sync WhatsApp secrets" });
+    }
+  });
+
   // Test endpoint to manually trigger missed checklist notifications (for testing purposes)
   app.post('/api/cron/missed-checklists', async (req: any, res) => {
     try {
