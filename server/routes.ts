@@ -3602,7 +3602,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const reserved = reservedByBatch.get(fg.id) || 0;
         const available = Math.max(0, fg.quantity - reserved);
         stockTracker.set(fg.id, available);
+        console.log(`[FIFO DEBUG] Batch ${fg.batchNumber}: Physical=${fg.quantity}, Reserved=${reserved}, Available=${available}`);
       });
+      
+      console.log(`[FIFO DEBUG] Request items:`, JSON.stringify(items));
       
       // For each invoice item, allocate from oldest batches first (FIFO)
       for (const item of items) {
@@ -3635,6 +3638,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           remainingQty -= allocateQty;
         }
       }
+      
+      console.log(`[FIFO DEBUG] Allocated items:`, JSON.stringify(allocatedItems));
+      console.log(`[FIFO DEBUG] Total allocated: ${allocatedItems.length} items`);
       
       res.json({
         allocatedItems,
