@@ -16,7 +16,47 @@ const expressModule = await import("express");
 const { registerRoutes } = await import("./routes");
 const { setupVite, serveStatic, log } = await import("./vite");
 const { notificationService } = await import("./notificationService");
+const { storage } = await import("./storage");
 const corsModule = await import("cors");
+
+// Function to sync WhatsApp secrets from environment to database (one-time)
+async function syncWhatsAppSecretsToDatabase() {
+  try {
+    const config = await storage.getNotificationConfig();
+    if (!config) {
+      console.log('[SYNC] No notification config found, skipping sync');
+      return;
+    }
+
+    const updates: any = {};
+    let synced: string[] = [];
+
+    // Only sync if database fields are empty and env vars exist
+    if (!config.metaPhoneNumberId && process.env.WHATSAPP_PHONE_NUMBER_ID) {
+      updates.metaPhoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+      synced.push('Meta Phone Number ID');
+    }
+
+    if (!config.metaAccessToken && process.env.WHATSAPP_ACCESS_TOKEN) {
+      updates.metaAccessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+      synced.push('Meta Access Token');
+    }
+
+    if (!config.metaVerifyToken && process.env.WHATSAPP_VERIFY_TOKEN) {
+      updates.metaVerifyToken = process.env.WHATSAPP_VERIFY_TOKEN;
+      synced.push('Meta Verify Token');
+    }
+
+    if (Object.keys(updates).length > 0) {
+      await storage.updateNotificationConfig(config.id, updates);
+      console.log(`[SYNC] ✅ Synced WhatsApp secrets to database: ${synced.join(', ')}`);
+    } else {
+      console.log('[SYNC] WhatsApp secrets already in database or no env vars to sync');
+    }
+  } catch (error) {
+    console.error('[SYNC] Error syncing WhatsApp secrets:', error);
+  }
+}
 
 const express = expressModule.default;
 const cors = corsModule.default;
@@ -130,8 +170,14 @@ app.use((req, res, next) => {
       console.error('[DOCUMENT EXPIRY ALERT STARTUP ERROR]', error);
     });
     
+    // Sync WhatsApp secrets from environment to database (one-time on startup)
+    syncWhatsAppSecretsToDatabase().catch(error => {
+      console.error('[WHATSAPP SECRETS SYNC ERROR]', error);
+    });
+    
     log('✅ Machine startup reminder system initialized');
     log('✅ Missed checklist notification system initialized');
     log('✅ Document expiry alert system initialized');
+    log('✅ WhatsApp secrets sync checked');
   });
 })();
