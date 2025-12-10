@@ -74,7 +74,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
   const [periodType, setPeriodType] = useState<PeriodType>("monthly");
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const companyGSTIN = "29AABCU9603R1ZV"; // Default KINTO GSTIN
+  const companyGSTIN = "37AAHCI5047B1ZR"; // Inmoisture Pvt Ltd GSTIN
   
   // Expense Report States
   const [expenseReportData, setExpenseReportData] = useState<ExpenseReportData | null>(null);
