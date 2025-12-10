@@ -8,7 +8,7 @@
 
 # ========== Configuration ==========
 DB_NAME="${PGDATABASE:-kinto_qa_db}"
-DB_USER="${PGUSER:-kinto_admin}"
+DB_USER="${PGUSER:-kinto_user}"
 DB_HOST="${PGHOST:-localhost}"
 DB_PORT="${PGPORT:-5432}"
 BACKUP_DIR="/var/backup/postgres"
