@@ -9,20 +9,28 @@ SET seller_gstin = '37AAHCI5047B1ZR',
     updated_at = NOW()
 WHERE seller_gstin = '37AAHCI4057B1ZR';
 
--- Step 2: Fix GST in invoice templates
+-- Step 2: Fix GST in invoice templates (IPL Template in production)
 UPDATE invoice_templates 
 SET default_seller_gstin = '37AAHCI5047B1ZR',
     updated_at = NOW()
 WHERE default_seller_gstin = '37AAHCI4057B1ZR';
 
--- Step 3: Verify the fix
+-- Step 3: Fix GST in terms and conditions if stored there (IPL Terms in production)
+-- Note: Terms table uses tc_name column, not title
+
+-- Step 4: Verify the fix
 SELECT 'Invoices with correct GST:' as check_type, COUNT(*) as count 
 FROM invoices WHERE seller_gstin = '37AAHCI5047B1ZR'
 UNION ALL
 SELECT 'Invoices with wrong GST:', COUNT(*) 
 FROM invoices WHERE seller_gstin = '37AAHCI4057B1ZR';
 
--- Step 4: Show updated templates
+-- Step 5: Show updated templates
 SELECT id, template_name, default_seller_gstin 
 FROM invoice_templates 
+WHERE record_status = 1;
+
+-- Step 6: Show terms and conditions
+SELECT id, tc_name, is_default 
+FROM terms_conditions 
 WHERE record_status = 1;
