@@ -88,9 +88,11 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
   const [cashRegisterSalespersonFilter, setCashRegisterSalespersonFilter] = useState("all");
   const [cashRegisterStatusFilter, setCashRegisterStatusFilter] = useState("all");
 
-  const { data: gatepasses = [], isLoading: gatepassesLoading } = useQuery<Gatepass[]>({
+  // Gatepass API returns paginated response {data: [...], meta: {...}}
+  const { data: gatepassResponse, isLoading: gatepassesLoading } = useQuery<{data: Gatepass[], meta: any}>({
     queryKey: ['/api/gatepasses'],
   });
+  const gatepasses = gatepassResponse?.data ?? [];
 
   const { data: invoices = [], isLoading: invoicesLoading } = useQuery<Invoice[]>({
     queryKey: ['/api/invoices'],
