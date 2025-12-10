@@ -3,7 +3,8 @@
 # Backs up to OCI Object Storage
 # 
 # Cron setup: crontab -e
-# 0 2 * * * /home/opc/kinto/db_scripts/backup-database-oci.sh >> /var/log/kinto-backup.log 2>&1
+# Every 6 hours (at 00:00, 06:00, 12:00, 18:00):
+# 0 */6 * * * /path/to/db_scripts/backup-database-oci.sh >> /var/log/kinto-backup.log 2>&1
 
 # ========== Configuration ==========
 DB_NAME="${PGDATABASE:-kinto_qa_db}"
