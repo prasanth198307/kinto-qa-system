@@ -1,0 +1,1790 @@
+{
+  "gstin": "29AABCU9603R1ZV",
+  "fp": "112025",
+  "b2b": [
+    {
+      "ctin": "37ADAFS5407J1ZZ",
+      "inv": [
+        {
+          "inum": "321",
+          "idt": "2025-11-07",
+          "val": 2668,
+          "pos": "37",
+          "rchrg": "N",
+          "inv_typ": "R",
+          "txval": 2540.95,
+          "rt": 5,
+          "csamt": 0,
+          "camt": 63.53,
+          "samt": 63.53,
+          "iamt": 0
+        }
+      ]
+    },
+    {
+      "ctin": "37ACOPL2432P1Z2",
+      "inv": [
+        {
+          "inum": "322",
+          "idt": "2025-11-09",
+          "val": 27500,
+          "pos": "37",
+          "rchrg": "N",
+          "inv_typ": "R",
+          "txval": 26190.48,
+          "rt": 5,
+          "csamt": 0,
+          "camt": 654.76,
+          "samt": 654.76,
+          "iamt": 0
+        }
+      ]
+    },
+    {
+      "ctin": "37AGOPB5414B1ZT",
+      "inv": [
+        {
+          "inum": "323",
+          "idt": "2025-11-10",
+          "val": 33000,
+          "pos": "37",
+          "rchrg": "N",
+          "inv_typ": "R",
+          "txval": 31428.57,
+          "rt": 5,
+          "csamt": 0,
+          "camt": 785.72,
+          "samt": 785.72,
+          "iamt": 0
+        }
+      ]
+    },
+    {
+      "ctin": "37ACOPL2432P1Z2",
+      "inv": [
+        {
+          "inum": "324",
+          "idt": "2025-11-14",
+          "val": 57500,
+          "pos": "37",
+          "rchrg": "N",
+          "inv_typ": "R",
+          "txval": 54761.91,
+          "rt": 5,
+          "csamt": 0,
+          "camt": 1369.05,
+          "samt": 1369.05,
+          "iamt": 0
+        }
+      ]
+    },
+    {
+      "ctin": "37AGOPB5414B1ZT",
+      "inv": [
+        {
+          "inum": "325",
+          "idt": "2025-11-16",
+          "val": 64000,
+          "pos": "37",
+          "rchrg": "N",
+          "inv_typ": "R",
+          "txval": 60952.38,
+          "rt": 5,
+          "csamt": 0,
+          "camt": 1523.81,
+          "samt": 1523.81,
+          "iamt": 0
+        }
+      ]
+    },
+    {
+      "ctin": "37BZDPB5483R1ZQ",
+      "inv": [
+        {
+          "inum": "326",
+          "idt": "2025-11-16",
+          "val": 57500,
+          "pos": "37",
+          "rchrg": "N",
+          "inv_typ": "R",
+          "txval": 54761.9,
+          "rt": 5,
+          "csamt": 0,
+          "camt": 1369.05,
+          "samt": 1369.05,
+          "iamt": 0
+        }
+      ]
+    },
+    {
+      "ctin": "37AQKPD7486P1ZX",
+      "inv": [
+        {
+          "inum": "327",
+          "idt": "2025-11-17",
+          "val": 32500,
+          "pos": "37",
+          "rchrg": "N",
+          "inv_typ": "R",
+          "txval": 30952.38,
+          "rt": 5,
+          "csamt": 0,
+          "camt": 773.81,
+          "samt": 773.81,
+          "iamt": 0
+        }
+      ]
+    },
+    {
+      "ctin": "37AGOPB5414B1ZT",
+      "inv": [
+        {
+          "inum": "333",
+          "idt": "2025-11-19",
+          "val": 54000,
+          "pos": "37",
+          "rchrg": "N",
+          "inv_typ": "R",
+          "txval": 51428.57,
+          "rt": 5,
+          "csamt": 0,
+          "camt": 1285.71,
+          "samt": 1285.71,
+          "iamt": 0
+        }
+      ]
+    },
+    {
+      "ctin": "37CURPG7750E1Z9",
+      "inv": [
+        {
+          "inum": "336",
+          "idt": "2025-11-20",
+          "val": 5651,
+          "pos": "37",
+          "rchrg": "N",
+          "inv_typ": "R",
+          "txval": 5381.9,
+          "rt": 5,
+          "csamt": 0,
+          "camt": 134.55,
+          "samt": 134.55,
+          "iamt": 0
+        }
+      ]
+    },
+    {
+      "ctin": "37AAACH1118B1ZB",
+      "inv": [
+        {
+          "inum": "338",
+          "idt": "2025-11-21",
+          "val": 3064,
+          "pos": "37",
+          "rchrg": "N",
+          "inv_typ": "R",
+          "txval": 2918.29,
+          "rt": 5,
+          "csamt": 0,
+          "camt": 72.96,
+          "samt": 72.96,
+          "iamt": 0
+        }
+      ]
+    },
+    {
+      "ctin": "37AAACH1118B1ZB",
+      "inv": [
+        {
+          "inum": "339",
+          "idt": "2025-11-21",
+          "val": 3064,
+          "pos": "37",
+          "rchrg": "N",
+          "inv_typ": "R",
+          "txval": 2918.29,
+          "rt": 5,
+          "csamt": 0,
+          "camt": 72.96,
+          "samt": 72.96,
+          "iamt": 0
+        }
+      ]
+    },
+    {
+      "ctin": "37ACOPL2432P1Z2",
+      "inv": [
+        {
+          "inum": "340",
+          "idt": "2025-11-21",
+          "val": 78720,
+          "pos": "37",
+          "rchrg": "N",
+          "inv_typ": "R",
+          "txval": 74971.43,
+          "rt": 5,
+          "csamt": 0,
+          "camt": 1874.29,
+          "samt": 1874.29,
+          "iamt": 0
+        }
+      ]
+    },
+    {
+      "ctin": "37CURPG7750E1Z9",
+      "inv": [
+        {
+          "inum": "344",
+          "idt": "2025-11-24",
+          "val": 5651,
+          "pos": "37",
+          "rchrg": "N",
+          "inv_typ": "R",
+          "txval": 5381.9,
+          "rt": 5,
+          "csamt": 0,
+          "camt": 134.55,
+          "samt": 134.55,
+          "iamt": 0
+        }
+      ]
+    },
+    {
+      "ctin": "37ADGPU2013G1ZP",
+      "inv": [
+        {
+          "inum": "345",
+          "idt": "2025-11-24",
+          "val": 55000,
+          "pos": "37",
+          "rchrg": "N",
+          "inv_typ": "R",
+          "txval": 52380.95,
+          "rt": 5,
+          "csamt": 0,
+          "camt": 1309.53,
+          "samt": 1309.53,
+          "iamt": 0
+        }
+      ]
+    },
+    {
+      "ctin": "37AQKPD7486P1ZX",
+      "inv": [
+        {
+          "inum": "346",
+          "idt": "2025-11-24",
+          "val": 62500,
+          "pos": "37",
+          "rchrg": "N",
+          "inv_typ": "R",
+          "txval": 59523.81,
+          "rt": 5,
+          "csamt": 0,
+          "camt": 1488.1,
+          "samt": 1488.1,
+          "iamt": 0
+        }
+      ]
+    },
+    {
+      "ctin": "37ACOPL2432P1Z2",
+      "inv": [
+        {
+          "inum": "350",
+          "idt": "2025-11-26",
+          "val": 66500,
+          "pos": "37",
+          "rchrg": "N",
+          "inv_typ": "R",
+          "txval": 63333.33,
+          "rt": 5,
+          "csamt": 0,
+          "camt": 1583.33,
+          "samt": 1583.33,
+          "iamt": 0
+        }
+      ]
+    },
+    {
+      "ctin": "37AGOPB5414B1ZT",
+      "inv": [
+        {
+          "inum": "467",
+          "idt": "2025-11-28",
+          "val": 33000,
+          "pos": "37",
+          "rchrg": "N",
+          "inv_typ": "R",
+          "txval": 31428.57,
+          "rt": 5,
+          "csamt": 0,
+          "camt": 785.72,
+          "samt": 785.72,
+          "iamt": 0
+        }
+      ]
+    }
+  ],
+  "b2cl": [],
+  "b2cs": [
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 30761.91,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 769.05,
+      "samt": 769.05,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 25714.28,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 642.86,
+      "samt": 642.86,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 100952.38,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 2523.81,
+      "samt": 2523.81,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 30952.38,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 773.81,
+      "samt": 773.81,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 31428.57,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 785.72,
+      "samt": 785.72,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 58095.24,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 1452.38,
+      "samt": 1452.38,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 4571.43,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 114.29,
+      "samt": 114.29,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 15017.14,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 375.43,
+      "samt": 375.43,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 34285.72,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 857.14,
+      "samt": 857.14,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 33714.29,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 842.86,
+      "samt": 842.86,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 31428.57,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 785.71,
+      "samt": 785.71,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 30476.19,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 761.91,
+      "samt": 761.91,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 31428.57,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 785.72,
+      "samt": 785.72,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 33333.33,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 833.33,
+      "samt": 833.33,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 60952.38,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 1523.81,
+      "samt": 1523.81,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 30476.19,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 761.91,
+      "samt": 761.91,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 31428.57,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 785.72,
+      "samt": 785.72,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 27966.1,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 2516.95,
+      "samt": 2516.95,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 27119.07,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 2440.72,
+      "samt": 2440.72,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 27966.1,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 2516.95,
+      "samt": 2516.95,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 101696.27,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 9152.66,
+      "samt": 9152.66,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 27966.1,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 2516.95,
+      "samt": 2516.95,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 27966.1,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 2516.95,
+      "samt": 2516.95,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 28814.07,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 2593.27,
+      "samt": 2593.27,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 27966.1,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 2516.95,
+      "samt": 2516.95,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 26186.86,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 2356.82,
+      "samt": 2356.82,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 30510,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 2745.9,
+      "samt": 2745.9,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 21186.44,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 1906.78,
+      "samt": 1906.78,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 26271.18,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 2364.41,
+      "samt": 2364.41,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 26271.18,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 2364.41,
+      "samt": 2364.41,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 13136,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 1182.24,
+      "samt": 1182.24,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 27966,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 2516.94,
+      "samt": 2516.94,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 27119.49,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 2440.76,
+      "samt": 2440.76,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 27543.47,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 2478.92,
+      "samt": 2478.92,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 27966.1,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 2516.95,
+      "samt": 2516.95,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 27966.1,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 2516.95,
+      "samt": 2516.95,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 27119.49,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 2440.76,
+      "samt": 2440.76,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 90679.24,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 8161.13,
+      "samt": 8161.13,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 93220.34,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 8389.83,
+      "samt": 8389.83,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 27542.79,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 2478.86,
+      "samt": 2478.86,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 27119.07,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 2440.72,
+      "samt": 2440.72,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 27119.07,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 2440.72,
+      "samt": 2440.72,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 28389.83,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 2555.09,
+      "samt": 2555.09,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 27119.07,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 2440.72,
+      "samt": 2440.72,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 27966.1,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 2516.95,
+      "samt": 2516.95,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 91527.2,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 8237.45,
+      "samt": 8237.45,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 28814.07,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 2593.27,
+      "samt": 2593.27,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 27966.1,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 2516.95,
+      "samt": 2516.95,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 93221.27,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 8389.91,
+      "samt": 8389.91,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 27967.5,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 2517.07,
+      "samt": 2517.07,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 94072.29,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 8466.5,
+      "samt": 8466.5,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 27966.11,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 2516.94,
+      "samt": 2516.94,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 27796.61,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 2501.7,
+      "samt": 2501.7,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 27966.1,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 2516.95,
+      "samt": 2516.95,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 27542.38,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 2478.81,
+      "samt": 2478.81,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 89830.51,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 8084.74,
+      "samt": 8084.74,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 27966.1,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 2516.95,
+      "samt": 2516.95,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 22882.03,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 2059.39,
+      "samt": 2059.39,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 27966.1,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 2516.95,
+      "samt": 2516.95,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 93220.34,
+      "rt": 18,
+      "csamt": 0,
+      "camt": 8389.83,
+      "samt": 8389.83,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 40000,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 1000,
+      "samt": 1000,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 30476.19,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 761.91,
+      "samt": 761.91,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 31904.77,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 797.62,
+      "samt": 797.62,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 31428.57,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 785.72,
+      "samt": 785.72,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 30476.19,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 761.91,
+      "samt": 761.91,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 15714.29,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 392.86,
+      "samt": 392.86,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 107619.04,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 2690.48,
+      "samt": 2690.48,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 27857.14,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 696.43,
+      "samt": 696.43,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 31428.57,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 785.71,
+      "samt": 785.71,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 31428.57,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 785.71,
+      "samt": 785.71,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 30476.19,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 761.91,
+      "samt": 761.91,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 31904.77,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 797.62,
+      "samt": 797.62,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 32380.95,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 809.53,
+      "samt": 809.53,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 31809.52,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 795.24,
+      "samt": 795.24,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 28333.33,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 708.34,
+      "samt": 708.34,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 31428.57,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 785.72,
+      "samt": 785.72,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 30476.19,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 761.91,
+      "samt": 761.91,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 32666.66,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 816.67,
+      "samt": 816.67,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 29809.52,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 745.24,
+      "samt": 745.24,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 31428.57,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 785.71,
+      "samt": 785.71,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 30476.19,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 761.91,
+      "samt": 761.91,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 31666.66,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 791.67,
+      "samt": 791.67,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 110476.19,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 2761.91,
+      "samt": 2761.91,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 28095.23,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 702.39,
+      "samt": 702.39,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 29523.81,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 738.1,
+      "samt": 738.1,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 31047.62,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 776.19,
+      "samt": 776.19,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 31428.57,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 785.71,
+      "samt": 785.71,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 20952.38,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 523.81,
+      "samt": 523.81,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 17142.86,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 428.57,
+      "samt": 428.57,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 30952.38,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 773.81,
+      "samt": 773.81,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 107142.86,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 2678.57,
+      "samt": 2678.57,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 30952.39,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 773.81,
+      "samt": 773.81,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 104000,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 2600,
+      "samt": 2600,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 26190.48,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 654.76,
+      "samt": 654.76,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 31428.57,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 785.71,
+      "samt": 785.71,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 30476.19,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 761.91,
+      "samt": 761.91,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 31428.57,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 785.72,
+      "samt": 785.72,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 31428.57,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 785.72,
+      "samt": 785.72,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 31428.57,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 785.72,
+      "samt": 785.72,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 31428.57,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 785.72,
+      "samt": 785.72,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 65809.53,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 1645.24,
+      "samt": 1645.24,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 30476.19,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 761.91,
+      "samt": 761.91,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 25238.1,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 630.95,
+      "samt": 630.95,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 26190.48,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 654.76,
+      "samt": 654.76,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 26190.48,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 654.76,
+      "samt": 654.76,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 32285.71,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 807.15,
+      "samt": 807.15,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 20000,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 500,
+      "samt": 500,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 10476.19,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 261.9,
+      "samt": 261.9,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 25238.09,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 630.95,
+      "samt": 630.95,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 25523.81,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 638.09,
+      "samt": 638.09,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 15714.29,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 392.86,
+      "samt": 392.86,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 15714.29,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 392.86,
+      "samt": 392.86,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 10476.19,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 261.9,
+      "samt": 261.9,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 10476.19,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 261.9,
+      "samt": 261.9,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 26190.48,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 654.76,
+      "samt": 654.76,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 26190.48,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 654.76,
+      "samt": 654.76,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 17142.86,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 428.57,
+      "samt": 428.57,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 31428.57,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 785.72,
+      "samt": 785.72,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 31428.57,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 785.72,
+      "samt": 785.72,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 24076.19,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 601.91,
+      "samt": 601.91,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 29523.81,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 738.1,
+      "samt": 738.1,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 29523.81,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 738.1,
+      "samt": 738.1,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 30476.19,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 761.91,
+      "samt": 761.91,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 24761.91,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 619.05,
+      "samt": 619.05,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 28000,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 700,
+      "samt": 700,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 31428.57,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 785.72,
+      "samt": 785.72,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 56190.47,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 1404.77,
+      "samt": 1404.77,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 24000,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 600,
+      "samt": 600,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 51904.76,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 1297.62,
+      "samt": 1297.62,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "00",
+      "typ": "E",
+      "txval": 32380.95,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 809.52,
+      "samt": 809.52,
+      "iamt": 0
+    },
+    {
+      "sply_ty": "INTRA",
+      "pos": "37",
+      "typ": "OE",
+      "txval": 31904.5,
+      "rt": 5,
+      "csamt": 0,
+      "camt": 797.61,
+      "samt": 797.61,
+      "iamt": 0
+    }
+  ],
+  "exp": [],
+  "cdnr": [],
+  "cdnur": [],
+  "hsn": [
+    {
+      "hsn_sc": "22011010",
+      "desc": "HP Pani 1L",
+      "uqc": "NOS",
+      "qty": 52633,
+      "txval": 5291911.3800000055,
+      "rt": 9.16,
+      "csamt": 0,
+      "camt": 242314.7499999999,
+      "samt": 242314.7499999999,
+      "iamt": 0
+    }
+  ]
+}
