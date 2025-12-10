@@ -192,17 +192,17 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
             </div>
           ` : ''}
           <div class="company-info">
-            <div class="company-name">${invoice.sellerName || 'Inmoisture Private Limited'}</div>
-            <div>${invoice.sellerAddress || ''}</div>
+            <div class="company-name">${invoice.sellerName || template?.defaultSellerName || 'Company Name'}</div>
+            <div>${invoice.sellerAddress || template?.defaultSellerAddress || ''}</div>
             <div class="company-contact">
-              ${invoice.sellerPhone ? `Phone: ${invoice.sellerPhone}` : ''}
-              ${invoice.sellerPhone && invoice.sellerEmail ? ' | ' : ''}
-              ${invoice.sellerEmail ? `Email: ${invoice.sellerEmail}` : ''}
+              ${(invoice.sellerPhone || template?.defaultSellerPhone) ? `Phone: ${invoice.sellerPhone || template?.defaultSellerPhone}` : ''}
+              ${(invoice.sellerPhone || template?.defaultSellerPhone) && (invoice.sellerEmail || template?.defaultSellerEmail) ? ' | ' : ''}
+              ${(invoice.sellerEmail || template?.defaultSellerEmail) ? `Email: ${invoice.sellerEmail || template?.defaultSellerEmail}` : ''}
             </div>
             <div class="company-gst">
-              ${invoice.sellerGstin ? `GSTIN: ${invoice.sellerGstin}` : ''}
-              ${invoice.sellerGstin && invoice.sellerState ? ' | ' : ''}
-              ${invoice.sellerState ? `State: ${invoice.sellerStateCode}-${invoice.sellerState}` : ''}
+              ${(invoice.sellerGstin || template?.defaultSellerGstin) ? `GSTIN: ${invoice.sellerGstin || template?.defaultSellerGstin}` : ''}
+              ${(invoice.sellerGstin || template?.defaultSellerGstin) && (invoice.sellerState || template?.defaultSellerState) ? ' | ' : ''}
+              ${(invoice.sellerState || template?.defaultSellerState) ? `State: ${invoice.sellerStateCode || template?.defaultSellerStateCode}-${invoice.sellerState || template?.defaultSellerState}` : ''}
             </div>
           </div>
         </div>
