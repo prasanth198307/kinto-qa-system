@@ -6401,7 +6401,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // GST Reports - Get invoices with items and HSN summary for a period
   // Allow admin, manager, billing manager, and accounts manager roles
-  app.post('/api/gst-reports', requireRole('admin', 'manager', 'billing manager', 'accounts manager'), async (req: any, res) => {
+  app.post('/api/gst-reports', requireRole('admin', 'manager', 'billing manager', 'accounts manager', 'AccountsManager'), async (req: any, res) => {
     try {
       const { periodType, month, year } = req.body;
       
