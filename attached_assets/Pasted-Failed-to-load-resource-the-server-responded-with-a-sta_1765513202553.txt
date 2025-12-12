@@ -1,0 +1,150 @@
+Failed to load resource: the server responded with a status of 401 ()Understand this error
+index-Bd_Njw9Q.js:8  GET https://ops.kintowater.com/api/mis/alerts 500 (Internal Server Error)
+(anonymous) @ index-Bd_Njw9Q.js:8
+a @ index-Bd_Njw9Q.js:8
+b @ index-Bd_Njw9Q.js:8
+start @ index-Bd_Njw9Q.js:8
+fetch @ index-Bd_Njw9Q.js:8
+#u @ index-Bd_Njw9Q.js:8
+onSubscribe @ index-Bd_Njw9Q.js:8
+subscribe @ index-Bd_Njw9Q.js:8
+(anonymous) @ index-Bd_Njw9Q.js:8
+aI @ index-Bd_Njw9Q.js:6
+_x @ index-Bd_Njw9Q.js:8
+qd @ index-Bd_Njw9Q.js:8
+a7 @ index-Bd_Njw9Q.js:8
+Sc @ index-Bd_Njw9Q.js:8
+nD @ index-Bd_Njw9Q.js:8
+vl @ index-Bd_Njw9Q.js:6
+(anonymous) @ index-Bd_Njw9Q.js:8
+setTimeout
+J7 @ index-Bd_Njw9Q.js:8
+o @ index-Bd_Njw9Q.js:8
+batch @ index-Bd_Njw9Q.js:8
+#a @ index-Bd_Njw9Q.js:8
+setData @ index-Bd_Njw9Q.js:8
+fetch @ index-Bd_Njw9Q.js:8
+await in fetch
+#u @ index-Bd_Njw9Q.js:8
+onSubscribe @ index-Bd_Njw9Q.js:8
+subscribe @ index-Bd_Njw9Q.js:8
+(anonymous) @ index-Bd_Njw9Q.js:8
+aI @ index-Bd_Njw9Q.js:6
+_x @ index-Bd_Njw9Q.js:8
+qd @ index-Bd_Njw9Q.js:8
+a7 @ index-Bd_Njw9Q.js:8
+Sc @ index-Bd_Njw9Q.js:8
+nD @ index-Bd_Njw9Q.js:8
+vl @ index-Bd_Njw9Q.js:6
+(anonymous) @ index-Bd_Njw9Q.js:8Understand this error
+index-Bd_Njw9Q.js:8  GET https://ops.kintowater.com/api/mis/kpi-dashboard?period=30 500 (Internal Server Error)
+(anonymous) @ index-Bd_Njw9Q.js:8
+a @ index-Bd_Njw9Q.js:8
+b @ index-Bd_Njw9Q.js:8
+start @ index-Bd_Njw9Q.js:8
+fetch @ index-Bd_Njw9Q.js:8
+#u @ index-Bd_Njw9Q.js:8
+onSubscribe @ index-Bd_Njw9Q.js:8
+subscribe @ index-Bd_Njw9Q.js:8
+(anonymous) @ index-Bd_Njw9Q.js:8
+aI @ index-Bd_Njw9Q.js:6
+_x @ index-Bd_Njw9Q.js:8
+qd @ index-Bd_Njw9Q.js:8
+a7 @ index-Bd_Njw9Q.js:8
+Sc @ index-Bd_Njw9Q.js:8
+nD @ index-Bd_Njw9Q.js:8
+vl @ index-Bd_Njw9Q.js:6
+(anonymous) @ index-Bd_Njw9Q.js:8
+setTimeout
+J7 @ index-Bd_Njw9Q.js:8
+o @ index-Bd_Njw9Q.js:8
+batch @ index-Bd_Njw9Q.js:8
+#a @ index-Bd_Njw9Q.js:8
+setData @ index-Bd_Njw9Q.js:8
+fetch @ index-Bd_Njw9Q.js:8
+await in fetch
+#u @ index-Bd_Njw9Q.js:8
+onSubscribe @ index-Bd_Njw9Q.js:8
+subscribe @ index-Bd_Njw9Q.js:8
+(anonymous) @ index-Bd_Njw9Q.js:8
+aI @ index-Bd_Njw9Q.js:6
+_x @ index-Bd_Njw9Q.js:8
+qd @ index-Bd_Njw9Q.js:8
+a7 @ index-Bd_Njw9Q.js:8
+Sc @ index-Bd_Njw9Q.js:8
+nD @ index-Bd_Njw9Q.js:8
+vl @ index-Bd_Njw9Q.js:6
+(anonymous) @ index-Bd_Njw9Q.js:8Understand this error
+index-Bd_Njw9Q.js:8  GET https://ops.kintowater.com/api/mis/production-analytics?period=30 500 (Internal Server Error)
+(anonymous) @ index-Bd_Njw9Q.js:8
+a @ index-Bd_Njw9Q.js:8
+b @ index-Bd_Njw9Q.js:8
+start @ index-Bd_Njw9Q.js:8
+fetch @ index-Bd_Njw9Q.js:8
+#u @ index-Bd_Njw9Q.js:8
+onSubscribe @ index-Bd_Njw9Q.js:8
+subscribe @ index-Bd_Njw9Q.js:8
+(anonymous) @ index-Bd_Njw9Q.js:8
+aI @ index-Bd_Njw9Q.js:6
+_x @ index-Bd_Njw9Q.js:8
+qd @ index-Bd_Njw9Q.js:8
+a7 @ index-Bd_Njw9Q.js:8
+Sc @ index-Bd_Njw9Q.js:8
+nD @ index-Bd_Njw9Q.js:8
+vl @ index-Bd_Njw9Q.js:6
+(anonymous) @ index-Bd_Njw9Q.js:8Understand this error
+index-Bd_Njw9Q.js:8  GET https://ops.kintowater.com/api/mis/sales-analytics?period=30 500 (Internal Server Error)
+(anonymous) @ index-Bd_Njw9Q.js:8
+a @ index-Bd_Njw9Q.js:8
+b @ index-Bd_Njw9Q.js:8
+start @ index-Bd_Njw9Q.js:8
+fetch @ index-Bd_Njw9Q.js:8
+#u @ index-Bd_Njw9Q.js:8
+onSubscribe @ index-Bd_Njw9Q.js:8
+subscribe @ index-Bd_Njw9Q.js:8
+(anonymous) @ index-Bd_Njw9Q.js:8
+aI @ index-Bd_Njw9Q.js:6
+_x @ index-Bd_Njw9Q.js:8
+qd @ index-Bd_Njw9Q.js:8
+a7 @ index-Bd_Njw9Q.js:8
+Sc @ index-Bd_Njw9Q.js:8
+nD @ index-Bd_Njw9Q.js:8
+vl @ index-Bd_Njw9Q.js:6
+(anonymous) @ index-Bd_Njw9Q.js:8Understand this error
+index-Bd_Njw9Q.js:8  GET https://ops.kintowater.com/api/mis/alerts 500 (Internal Server Error)
+(anonymous) @ index-Bd_Njw9Q.js:8
+a @ index-Bd_Njw9Q.js:8
+b @ index-Bd_Njw9Q.js:8
+start @ index-Bd_Njw9Q.js:8
+fetch @ index-Bd_Njw9Q.js:8
+#u @ index-Bd_Njw9Q.js:8
+onSubscribe @ index-Bd_Njw9Q.js:8
+subscribe @ index-Bd_Njw9Q.js:8
+(anonymous) @ index-Bd_Njw9Q.js:8
+aI @ index-Bd_Njw9Q.js:6
+_x @ index-Bd_Njw9Q.js:8
+qd @ index-Bd_Njw9Q.js:8
+a7 @ index-Bd_Njw9Q.js:8
+Sc @ index-Bd_Njw9Q.js:8
+nD @ index-Bd_Njw9Q.js:8
+vl @ index-Bd_Njw9Q.js:6
+(anonymous) @ index-Bd_Njw9Q.js:8Understand this error
+index-Bd_Njw9Q.js:8  GET https://ops.kintowater.com/api/mis/kpi-dashboard?period=30 500 (Internal Server Error)
+(anonymous) @ index-Bd_Njw9Q.js:8
+a @ index-Bd_Njw9Q.js:8
+b @ index-Bd_Njw9Q.js:8
+start @ index-Bd_Njw9Q.js:8
+fetch @ index-Bd_Njw9Q.js:8
+#u @ index-Bd_Njw9Q.js:8
+onSubscribe @ index-Bd_Njw9Q.js:8
+subscribe @ index-Bd_Njw9Q.js:8
+(anonymous) @ index-Bd_Njw9Q.js:8
+aI @ index-Bd_Njw9Q.js:6
+_x @ index-Bd_Njw9Q.js:8
+qd @ index-Bd_Njw9Q.js:8
+a7 @ index-Bd_Njw9Q.js:8
+Sc @ index-Bd_Njw9Q.js:8
+nD @ index-Bd_Njw9Q.js:8
+vl @ index-Bd_Njw9Q.js:6
+(anonymous) @ index-Bd_Njw9Q.js:8Understand this error
+index-Bd_Njw9Q.js:8  GET https://ops.kintowater.com/api/mis/inventory-analytics 500 (Internal Server Error)

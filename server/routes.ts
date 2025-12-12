@@ -14483,68 +14483,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
       startDate.setDate(startDate.getDate() - daysBack);
       const startDateStr = startDate.toISOString().split('T')[0];
       
+      let dailyProductionRows: any[] = [];
+      let byProductRows: any[] = [];
+      let varianceRows: any[] = [];
+      let byShiftRows: any[] = [];
+      
       // Daily production trend
-      const dailyProduction = await db.execute(sql`
-        SELECT 
-          DATE(production_date) as date,
-          COUNT(*) as entries,
-          COALESCE(SUM(CAST(produced_quantity AS numeric)), 0) as produced,
-          COALESCE(SUM(CAST(rejected_quantity AS numeric)), 0) as rejected,
-          COALESCE(SUM(CAST(derived_units AS numeric)), 0) as derived_units
-        FROM production_entries
-        WHERE record_status = 1 AND production_date >= ${startDateStr}
-        GROUP BY DATE(production_date)
-        ORDER BY date DESC
-      `);
+      try {
+        const dailyProduction = await db.execute(sql`
+          SELECT 
+            DATE(production_date) as date,
+            COUNT(*) as entries,
+            COALESCE(SUM(CAST(produced_quantity AS numeric)), 0) as produced,
+            COALESCE(SUM(CAST(rejected_quantity AS numeric)), 0) as rejected,
+            COALESCE(SUM(CAST(derived_units AS numeric)), 0) as derived_units
+          FROM production_entries
+          WHERE record_status = 1 AND production_date >= ${startDateStr}
+          GROUP BY DATE(production_date)
+          ORDER BY date DESC
+        `);
+        dailyProductionRows = dailyProduction.rows as any[];
+      } catch (e) { console.log('[MIS] production daily query skipped:', (e as Error).message); }
       
       // Production by product
-      const byProduct = await db.execute(sql`
-        SELECT 
-          p.name as product_name,
-          COUNT(*) as entries,
-          COALESCE(SUM(CAST(pe.produced_quantity AS numeric)), 0) as total_produced,
-          COALESCE(SUM(CAST(pe.rejected_quantity AS numeric)), 0) as total_rejected
-        FROM production_entries pe
-        LEFT JOIN products p ON pe.product_id = p.id
-        WHERE pe.record_status = 1 AND pe.production_date >= ${startDateStr}
-        GROUP BY p.id, p.name
-        ORDER BY total_produced DESC
-        LIMIT 10
-      `);
+      try {
+        const byProduct = await db.execute(sql`
+          SELECT 
+            p.name as product_name,
+            COUNT(*) as entries,
+            COALESCE(SUM(CAST(pe.produced_quantity AS numeric)), 0) as total_produced,
+            COALESCE(SUM(CAST(pe.rejected_quantity AS numeric)), 0) as total_rejected
+          FROM production_entries pe
+          LEFT JOIN products p ON pe.product_id = p.id
+          WHERE pe.record_status = 1 AND pe.production_date >= ${startDateStr}
+          GROUP BY p.id, p.name
+          ORDER BY total_produced DESC
+          LIMIT 10
+        `);
+        byProductRows = byProduct.rows as any[];
+      } catch (e) { console.log('[MIS] production by product query skipped:', (e as Error).message); }
       
       // BOM Variance analysis (from reconciliations)
-      const varianceData = await db.execute(sql`
-        SELECT 
-          p.name as product_name,
-          COUNT(*) as reconciliation_count,
-          COALESCE(AVG(CAST(pr.variance_percent AS numeric)), 0) as avg_variance,
-          COALESCE(MIN(CAST(pr.variance_percent AS numeric)), 0) as min_variance,
-          COALESCE(MAX(CAST(pr.variance_percent AS numeric)), 0) as max_variance
-        FROM production_reconciliations pr
-        JOIN raw_material_issuance rmi ON pr.issuance_id = rmi.id
-        LEFT JOIN products p ON rmi.product_id = p.id
-        WHERE pr.record_status = 1 AND pr.reconciliation_date >= ${startDateStr}
-        GROUP BY p.id, p.name
-        ORDER BY avg_variance DESC
-        LIMIT 10
-      `);
+      try {
+        const varianceData = await db.execute(sql`
+          SELECT 
+            p.name as product_name,
+            COUNT(*) as reconciliation_count,
+            COALESCE(AVG(CAST(pr.variance_percent AS numeric)), 0) as avg_variance,
+            COALESCE(MIN(CAST(pr.variance_percent AS numeric)), 0) as min_variance,
+            COALESCE(MAX(CAST(pr.variance_percent AS numeric)), 0) as max_variance
+          FROM production_reconciliations pr
+          JOIN raw_material_issuance rmi ON pr.issuance_id = rmi.id
+          LEFT JOIN products p ON rmi.product_id = p.id
+          WHERE pr.record_status = 1 AND pr.reconciliation_date >= ${startDateStr}
+          GROUP BY p.id, p.name
+          ORDER BY avg_variance DESC
+          LIMIT 10
+        `);
+        varianceRows = varianceData.rows as any[];
+      } catch (e) { console.log('[MIS] production variance query skipped:', (e as Error).message); }
       
       // Shift-wise production
-      const byShift = await db.execute(sql`
-        SELECT 
-          shift,
-          COUNT(*) as entries,
-          COALESCE(SUM(CAST(produced_quantity AS numeric)), 0) as total_produced,
-          COALESCE(SUM(CAST(rejected_quantity AS numeric)), 0) as total_rejected
-        FROM production_entries
-        WHERE record_status = 1 AND production_date >= ${startDateStr}
-        GROUP BY shift
-        ORDER BY shift
-      `);
+      try {
+        const byShift = await db.execute(sql`
+          SELECT 
+            shift,
+            COUNT(*) as entries,
+            COALESCE(SUM(CAST(produced_quantity AS numeric)), 0) as total_produced,
+            COALESCE(SUM(CAST(rejected_quantity AS numeric)), 0) as total_rejected
+          FROM production_entries
+          WHERE record_status = 1 AND production_date >= ${startDateStr}
+          GROUP BY shift
+          ORDER BY shift
+        `);
+        byShiftRows = byShift.rows as any[];
+      } catch (e) { console.log('[MIS] production by shift query skipped:', (e as Error).message); }
       
       res.json({
         period: daysBack,
-        dailyTrend: (dailyProduction.rows as any[]).map(d => ({
+        dailyTrend: dailyProductionRows.map(d => ({
           date: d.date,
           entries: parseInt(d.entries),
           produced: parseFloat(d.produced),
@@ -14552,21 +14569,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           derivedUnits: parseFloat(d.derived_units),
           yield: d.produced > 0 ? ((d.produced - d.rejected) / d.produced * 100).toFixed(1) : 100
         })),
-        byProduct: (byProduct.rows as any[]).map(p => ({
+        byProduct: byProductRows.map(p => ({
           productName: p.product_name || 'Unknown',
           entries: parseInt(p.entries),
           totalProduced: parseFloat(p.total_produced),
           totalRejected: parseFloat(p.total_rejected),
           yield: p.total_produced > 0 ? ((p.total_produced - p.total_rejected) / p.total_produced * 100).toFixed(1) : 100
         })),
-        bomVariance: (varianceData.rows as any[]).map(v => ({
+        bomVariance: varianceRows.map(v => ({
           productName: v.product_name || 'Unknown',
           reconciliationCount: parseInt(v.reconciliation_count),
           avgVariance: parseFloat(v.avg_variance).toFixed(2),
           minVariance: parseFloat(v.min_variance).toFixed(2),
           maxVariance: parseFloat(v.max_variance).toFixed(2)
         })),
-        byShift: (byShift.rows as any[]).map(s => ({
+        byShift: byShiftRows.map(s => ({
           shift: s.shift,
           entries: parseInt(s.entries),
           totalProduced: parseFloat(s.total_produced),
@@ -14582,65 +14599,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // MIS Inventory Intelligence
   app.get('/api/mis/inventory-analytics', requireRole('admin', 'manager'), async (req: any, res: Response) => {
     try {
+      let rawMaterialRows: any[] = [];
+      let finishedGoodsRows: any[] = [];
+      let slowMoversRows: any[] = [];
+      let summary: any = {};
+      
       // Raw material inventory with aging
-      const rawMaterialInventory = await db.execute(sql`
-        SELECT 
-          rm.id, rm.material_code, rm.material_name, rm.current_stock,
-          rm.unit_cost, rm.reorder_level, rm.received_date,
-          COALESCE((rm.current_stock * rm.unit_cost), 0) as stock_value,
-          CASE 
-            WHEN rm.received_date IS NULL THEN 'unknown'
-            WHEN rm.received_date < NOW() - INTERVAL '90 days' THEN 'aged_90+'
-            WHEN rm.received_date < NOW() - INTERVAL '60 days' THEN 'aged_60_90'
-            WHEN rm.received_date < NOW() - INTERVAL '30 days' THEN 'aged_30_60'
-            ELSE 'fresh'
-          END as aging_bucket
-        FROM raw_materials rm
-        WHERE rm.record_status = 1 AND rm.is_active = 'true'
-        ORDER BY rm.current_stock DESC
-      `);
+      try {
+        const rawMaterialInventory = await db.execute(sql`
+          SELECT 
+            rm.id, rm.material_code, rm.material_name, rm.current_stock,
+            rm.unit_cost, rm.reorder_level, rm.received_date,
+            COALESCE((rm.current_stock * rm.unit_cost), 0) as stock_value,
+            CASE 
+              WHEN rm.received_date IS NULL THEN 'unknown'
+              WHEN rm.received_date < NOW() - INTERVAL '90 days' THEN 'aged_90+'
+              WHEN rm.received_date < NOW() - INTERVAL '60 days' THEN 'aged_60_90'
+              WHEN rm.received_date < NOW() - INTERVAL '30 days' THEN 'aged_30_60'
+              ELSE 'fresh'
+            END as aging_bucket
+          FROM raw_materials rm
+          WHERE rm.record_status = 1 AND rm.is_active = 'true'
+          ORDER BY rm.current_stock DESC
+        `);
+        rawMaterialRows = rawMaterialInventory.rows as any[];
+      } catch (e) { console.log('[MIS] inventory raw materials query skipped:', (e as Error).message); }
       
       // Finished goods inventory
-      const finishedGoodsInventory = await db.execute(sql`
-        SELECT 
-          p.name as product_name,
-          COUNT(*) as batch_count,
-          COALESCE(SUM(fg.quantity), 0) as total_quantity,
-          MIN(fg.production_date) as oldest_batch,
-          MAX(fg.production_date) as newest_batch
-        FROM finished_goods fg
-        JOIN products p ON fg.product_id = p.id
-        WHERE fg.record_status = 1 AND fg.quality_status = 'approved'
-        GROUP BY p.id, p.name
-        ORDER BY total_quantity DESC
-      `);
+      try {
+        const finishedGoodsInventory = await db.execute(sql`
+          SELECT 
+            p.name as product_name,
+            COUNT(*) as batch_count,
+            COALESCE(SUM(fg.quantity), 0) as total_quantity,
+            MIN(fg.production_date) as oldest_batch,
+            MAX(fg.production_date) as newest_batch
+          FROM finished_goods fg
+          JOIN products p ON fg.product_id = p.id
+          WHERE fg.record_status = 1 AND fg.quality_status = 'approved'
+          GROUP BY p.id, p.name
+          ORDER BY total_quantity DESC
+        `);
+        finishedGoodsRows = finishedGoodsInventory.rows as any[];
+      } catch (e) { console.log('[MIS] inventory finished goods query skipped:', (e as Error).message); }
       
       // Slow moving items (no issuance in 30 days)
-      const slowMovers = await db.execute(sql`
-        SELECT 
-          rm.id, rm.material_code, rm.material_name, rm.current_stock,
-          MAX(rmi.issuance_date) as last_issued
-        FROM raw_materials rm
-        LEFT JOIN raw_material_issuance_items rmii ON rmii.raw_material_id = rm.id
-        LEFT JOIN raw_material_issuance rmi ON rmii.issuance_id = rmi.id AND rmi.record_status = 1
-        WHERE rm.record_status = 1 AND rm.is_active = 'true' AND rm.current_stock > 0
-        GROUP BY rm.id, rm.material_code, rm.material_name, rm.current_stock
-        HAVING MAX(rmi.issuance_date) IS NULL OR MAX(rmi.issuance_date) < NOW() - INTERVAL '30 days'
-        ORDER BY rm.current_stock DESC
-        LIMIT 20
-      `);
+      try {
+        const slowMovers = await db.execute(sql`
+          SELECT 
+            rm.id, rm.material_code, rm.material_name, rm.current_stock,
+            MAX(rmi.issuance_date) as last_issued
+          FROM raw_materials rm
+          LEFT JOIN raw_material_issuance_items rmii ON rmii.raw_material_id = rm.id
+          LEFT JOIN raw_material_issuance rmi ON rmii.issuance_id = rmi.id AND rmi.record_status = 1
+          WHERE rm.record_status = 1 AND rm.is_active = 'true' AND rm.current_stock > 0
+          GROUP BY rm.id, rm.material_code, rm.material_name, rm.current_stock
+          HAVING MAX(rmi.issuance_date) IS NULL OR MAX(rmi.issuance_date) < NOW() - INTERVAL '30 days'
+          ORDER BY rm.current_stock DESC
+          LIMIT 20
+        `);
+        slowMoversRows = slowMovers.rows as any[];
+      } catch (e) { console.log('[MIS] inventory slow movers query skipped:', (e as Error).message); }
       
       // Inventory value summary
-      const inventorySummary = await db.execute(sql`
-        SELECT 
-          COALESCE(SUM(current_stock * unit_cost), 0) as total_raw_material_value,
-          COUNT(*) as total_raw_materials,
-          COALESCE(SUM(CASE WHEN current_stock <= COALESCE(reorder_level, 0) THEN 1 ELSE 0 END), 0) as below_reorder
-        FROM raw_materials
-        WHERE record_status = 1 AND is_active = 'true'
-      `);
-      
-      const summary = (inventorySummary.rows[0] as any) || {};
+      try {
+        const inventorySummary = await db.execute(sql`
+          SELECT 
+            COALESCE(SUM(current_stock * unit_cost), 0) as total_raw_material_value,
+            COUNT(*) as total_raw_materials,
+            COALESCE(SUM(CASE WHEN current_stock <= COALESCE(reorder_level, 0) THEN 1 ELSE 0 END), 0) as below_reorder
+          FROM raw_materials
+          WHERE record_status = 1 AND is_active = 'true'
+        `);
+        summary = (inventorySummary.rows[0] as any) || {};
+      } catch (e) { console.log('[MIS] inventory summary query skipped:', (e as Error).message); }
       
       // Aging buckets summary
       const agingBuckets = {
@@ -14651,7 +14683,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         unknown: 0
       };
       
-      (rawMaterialInventory.rows as any[]).forEach(rm => {
+      rawMaterialRows.forEach(rm => {
         const bucket = rm.aging_bucket as keyof typeof agingBuckets;
         agingBuckets[bucket] = (agingBuckets[bucket] || 0) + parseInt(rm.stock_value || 0);
       });
@@ -14663,7 +14695,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           belowReorder: parseInt(summary.below_reorder) || 0
         },
         agingBuckets,
-        rawMaterials: (rawMaterialInventory.rows as any[]).slice(0, 20).map(rm => ({
+        rawMaterials: rawMaterialRows.slice(0, 20).map(rm => ({
           id: rm.id,
           materialCode: rm.material_code,
           materialName: rm.material_name,
@@ -14673,14 +14705,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           reorderLevel: rm.reorder_level,
           agingBucket: rm.aging_bucket
         })),
-        finishedGoods: (finishedGoodsInventory.rows as any[]).map(fg => ({
+        finishedGoods: finishedGoodsRows.map(fg => ({
           productName: fg.product_name,
           batchCount: parseInt(fg.batch_count),
           totalQuantity: parseInt(fg.total_quantity),
           oldestBatch: fg.oldest_batch,
           newestBatch: fg.newest_batch
         })),
-        slowMovers: (slowMovers.rows as any[]).map(sm => ({
+        slowMovers: slowMoversRows.map(sm => ({
           id: sm.id,
           materialCode: sm.material_code,
           materialName: sm.material_name,
@@ -14703,113 +14735,134 @@ export async function registerRoutes(app: Express): Promise<Server> {
       startDate.setDate(startDate.getDate() - daysBack);
       const startDateStr = startDate.toISOString().split('T')[0];
       
+      let dailySalesRows: any[] = [];
+      let topCustomersRows: any[] = [];
+      let topProductsRows: any[] = [];
+      let paymentMethodsRows: any[] = [];
+      let receivablesAgingRows: any[] = [];
+      
       // Daily sales trend
-      const dailySales = await db.execute(sql`
-        SELECT 
-          DATE(invoice_date) as date,
-          COUNT(*) as invoice_count,
-          COALESCE(SUM(subtotal), 0) as revenue,
-          COALESCE(SUM(total_amount), 0) as total_with_tax,
-          COALESCE(SUM(amount_received), 0) as collected
-        FROM invoices
-        WHERE record_status = 1 AND status != 'cancelled' AND invoice_date >= ${startDateStr}
-        GROUP BY DATE(invoice_date)
-        ORDER BY date DESC
-      `);
+      try {
+        const dailySales = await db.execute(sql`
+          SELECT 
+            DATE(invoice_date) as date,
+            COUNT(*) as invoice_count,
+            COALESCE(SUM(subtotal), 0) as revenue,
+            COALESCE(SUM(total_amount), 0) as total_with_tax,
+            COALESCE(SUM(amount_received), 0) as collected
+          FROM invoices
+          WHERE record_status = 1 AND status != 'cancelled' AND invoice_date >= ${startDateStr}
+          GROUP BY DATE(invoice_date)
+          ORDER BY date DESC
+        `);
+        dailySalesRows = dailySales.rows as any[];
+      } catch (e) { console.log('[MIS] sales daily query skipped:', (e as Error).message); }
       
       // Top customers by revenue
-      const topCustomers = await db.execute(sql`
-        SELECT 
-          buyer_name,
-          COUNT(*) as invoice_count,
-          COALESCE(SUM(subtotal), 0) as total_revenue,
-          COALESCE(SUM(amount_received), 0) as total_collected,
-          COALESCE(SUM(total_amount - amount_received), 0) as pending
-        FROM invoices
-        WHERE record_status = 1 AND status != 'cancelled' AND invoice_date >= ${startDateStr}
-        GROUP BY buyer_name
-        ORDER BY total_revenue DESC
-        LIMIT 10
-      `);
+      try {
+        const topCustomers = await db.execute(sql`
+          SELECT 
+            buyer_name,
+            COUNT(*) as invoice_count,
+            COALESCE(SUM(subtotal), 0) as total_revenue,
+            COALESCE(SUM(amount_received), 0) as total_collected,
+            COALESCE(SUM(total_amount - amount_received), 0) as pending
+          FROM invoices
+          WHERE record_status = 1 AND status != 'cancelled' AND invoice_date >= ${startDateStr}
+          GROUP BY buyer_name
+          ORDER BY total_revenue DESC
+          LIMIT 10
+        `);
+        topCustomersRows = topCustomers.rows as any[];
+      } catch (e) { console.log('[MIS] sales top customers query skipped:', (e as Error).message); }
       
       // Top products by revenue
-      const topProducts = await db.execute(sql`
-        SELECT 
-          p.name as product_name,
-          COALESCE(SUM(ii.quantity), 0) as total_quantity,
-          COALESCE(SUM(ii.taxable_amount), 0) as total_revenue
-        FROM invoice_items ii
-        JOIN invoices i ON ii.invoice_id = i.id
-        LEFT JOIN products p ON ii.product_id = p.id
-        WHERE i.record_status = 1 AND i.status != 'cancelled' AND i.invoice_date >= ${startDateStr}
-        GROUP BY p.id, p.name
-        ORDER BY total_revenue DESC
-        LIMIT 10
-      `);
+      try {
+        const topProducts = await db.execute(sql`
+          SELECT 
+            p.name as product_name,
+            COALESCE(SUM(ii.quantity), 0) as total_quantity,
+            COALESCE(SUM(ii.taxable_amount), 0) as total_revenue
+          FROM invoice_items ii
+          JOIN invoices i ON ii.invoice_id = i.id
+          LEFT JOIN products p ON ii.product_id = p.id
+          WHERE i.record_status = 1 AND i.status != 'cancelled' AND i.invoice_date >= ${startDateStr}
+          GROUP BY p.id, p.name
+          ORDER BY total_revenue DESC
+          LIMIT 10
+        `);
+        topProductsRows = topProducts.rows as any[];
+      } catch (e) { console.log('[MIS] sales top products query skipped:', (e as Error).message); }
       
       // Payment collection by method
-      const paymentMethods = await db.execute(sql`
-        SELECT 
-          payment_method,
-          COUNT(*) as payment_count,
-          COALESCE(SUM(amount), 0) as total_amount
-        FROM invoice_payments
-        WHERE record_status = 1 AND payment_date >= ${startDateStr}
-        GROUP BY payment_method
-        ORDER BY total_amount DESC
-      `);
+      try {
+        const paymentMethods = await db.execute(sql`
+          SELECT 
+            payment_method,
+            COUNT(*) as payment_count,
+            COALESCE(SUM(amount), 0) as total_amount
+          FROM invoice_payments
+          WHERE record_status = 1 AND payment_date >= ${startDateStr}
+          GROUP BY payment_method
+          ORDER BY total_amount DESC
+        `);
+        paymentMethodsRows = paymentMethods.rows as any[];
+      } catch (e) { console.log('[MIS] sales payment methods query skipped:', (e as Error).message); }
       
       // Receivables aging
-      const receivablesAging = await db.execute(sql`
-        SELECT 
-          CASE 
-            WHEN invoice_date >= NOW() - INTERVAL '30 days' THEN '0-30 days'
-            WHEN invoice_date >= NOW() - INTERVAL '60 days' THEN '31-60 days'
-            WHEN invoice_date >= NOW() - INTERVAL '90 days' THEN '61-90 days'
-            ELSE '90+ days'
-          END as aging_bucket,
-          COUNT(*) as invoice_count,
-          COALESCE(SUM(total_amount - amount_received), 0) as pending_amount
-        FROM invoices
-        WHERE record_status = 1 AND status != 'cancelled' 
-          AND (total_amount - amount_received) > 0
-        GROUP BY 
-          CASE 
-            WHEN invoice_date >= NOW() - INTERVAL '30 days' THEN '0-30 days'
-            WHEN invoice_date >= NOW() - INTERVAL '60 days' THEN '31-60 days'
-            WHEN invoice_date >= NOW() - INTERVAL '90 days' THEN '61-90 days'
-            ELSE '90+ days'
-          END
-        ORDER BY aging_bucket
-      `);
+      try {
+        const receivablesAging = await db.execute(sql`
+          SELECT 
+            CASE 
+              WHEN invoice_date >= NOW() - INTERVAL '30 days' THEN '0-30 days'
+              WHEN invoice_date >= NOW() - INTERVAL '60 days' THEN '31-60 days'
+              WHEN invoice_date >= NOW() - INTERVAL '90 days' THEN '61-90 days'
+              ELSE '90+ days'
+            END as aging_bucket,
+            COUNT(*) as invoice_count,
+            COALESCE(SUM(total_amount - amount_received), 0) as pending_amount
+          FROM invoices
+          WHERE record_status = 1 AND status != 'cancelled' 
+            AND (total_amount - amount_received) > 0
+          GROUP BY 
+            CASE 
+              WHEN invoice_date >= NOW() - INTERVAL '30 days' THEN '0-30 days'
+              WHEN invoice_date >= NOW() - INTERVAL '60 days' THEN '31-60 days'
+              WHEN invoice_date >= NOW() - INTERVAL '90 days' THEN '61-90 days'
+              ELSE '90+ days'
+            END
+          ORDER BY aging_bucket
+        `);
+        receivablesAgingRows = receivablesAging.rows as any[];
+      } catch (e) { console.log('[MIS] sales receivables aging query skipped:', (e as Error).message); }
       
       res.json({
         period: daysBack,
-        dailyTrend: (dailySales.rows as any[]).map(d => ({
+        dailyTrend: dailySalesRows.map(d => ({
           date: d.date,
           invoiceCount: parseInt(d.invoice_count),
           revenue: parseInt(d.revenue),
           totalWithTax: parseInt(d.total_with_tax),
           collected: parseInt(d.collected)
         })),
-        topCustomers: (topCustomers.rows as any[]).map(c => ({
+        topCustomers: topCustomersRows.map(c => ({
           buyerName: c.buyer_name,
           invoiceCount: parseInt(c.invoice_count),
           totalRevenue: parseInt(c.total_revenue),
           totalCollected: parseInt(c.total_collected),
           pending: parseInt(c.pending)
         })),
-        topProducts: (topProducts.rows as any[]).map(p => ({
+        topProducts: topProductsRows.map(p => ({
           productName: p.product_name || 'Unknown',
           totalQuantity: parseInt(p.total_quantity),
           totalRevenue: parseInt(p.total_revenue)
         })),
-        paymentMethods: (paymentMethods.rows as any[]).map(pm => ({
+        paymentMethods: paymentMethodsRows.map(pm => ({
           method: pm.payment_method,
           count: parseInt(pm.payment_count),
           amount: parseInt(pm.total_amount)
         })),
-        receivablesAging: (receivablesAging.rows as any[]).map(ra => ({
+        receivablesAging: receivablesAgingRows.map(ra => ({
           bucket: ra.aging_bucket,
           invoiceCount: parseInt(ra.invoice_count),
           pendingAmount: parseInt(ra.pending_amount)
@@ -14830,66 +14883,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
       startDate.setDate(startDate.getDate() - daysBack);
       const startDateStr = startDate.toISOString().split('T')[0];
       
+      let statusRows: any[] = [];
+      let deliveryTimesRows: any[] = [];
+      let dailyDispatchRows: any[] = [];
+      let transporterRows: any[] = [];
+      
       // Gatepass status summary
-      const statusSummary = await db.execute(sql`
-        SELECT 
-          status,
-          COUNT(*) as count
-        FROM gatepasses
-        WHERE record_status = 1 AND gatepass_date >= ${startDateStr}
-        GROUP BY status
-      `);
+      try {
+        const statusSummary = await db.execute(sql`
+          SELECT 
+            status,
+            COUNT(*) as count
+          FROM gatepasses
+          WHERE record_status = 1 AND gatepass_date >= ${startDateStr}
+          GROUP BY status
+        `);
+        statusRows = statusSummary.rows as any[];
+      } catch (e) { console.log('[MIS] delivery status query skipped:', (e as Error).message); }
       
       // Delivery time analysis (generated to completed)
-      const deliveryTimes = await db.execute(sql`
-        SELECT 
-          id, gatepass_number, gatepass_date, out_time, pod_date, status,
-          CASE 
-            WHEN pod_date IS NOT NULL AND gatepass_date IS NOT NULL 
-            THEN EXTRACT(EPOCH FROM (pod_date - gatepass_date)) / 3600
-            ELSE NULL
-          END as delivery_hours
-        FROM gatepasses
-        WHERE record_status = 1 AND gatepass_date >= ${startDateStr}
-          AND status = 'completed'
-        ORDER BY gatepass_date DESC
-        LIMIT 50
-      `);
+      try {
+        const deliveryTimes = await db.execute(sql`
+          SELECT 
+            id, gatepass_number, gatepass_date, out_time, pod_date, status,
+            CASE 
+              WHEN pod_date IS NOT NULL AND gatepass_date IS NOT NULL 
+              THEN EXTRACT(EPOCH FROM (pod_date - gatepass_date)) / 3600
+              ELSE NULL
+            END as delivery_hours
+          FROM gatepasses
+          WHERE record_status = 1 AND gatepass_date >= ${startDateStr}
+            AND status = 'completed'
+          ORDER BY gatepass_date DESC
+          LIMIT 50
+        `);
+        deliveryTimesRows = deliveryTimes.rows as any[];
+      } catch (e) { console.log('[MIS] delivery times query skipped:', (e as Error).message); }
       
       // Calculate average delivery time
-      const completedDeliveries = (deliveryTimes.rows as any[]).filter(d => d.delivery_hours !== null);
+      const completedDeliveries = deliveryTimesRows.filter(d => d.delivery_hours !== null);
       const avgDeliveryHours = completedDeliveries.length > 0
         ? completedDeliveries.reduce((sum, d) => sum + parseFloat(d.delivery_hours), 0) / completedDeliveries.length
         : 0;
       
       // Daily dispatch volume
-      const dailyDispatch = await db.execute(sql`
-        SELECT 
-          DATE(gatepass_date) as date,
-          COUNT(*) as total_dispatched,
-          COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed
-        FROM gatepasses
-        WHERE record_status = 1 AND gatepass_date >= ${startDateStr}
-        GROUP BY DATE(gatepass_date)
-        ORDER BY date DESC
-      `);
+      try {
+        const dailyDispatch = await db.execute(sql`
+          SELECT 
+            DATE(gatepass_date) as date,
+            COUNT(*) as total_dispatched,
+            COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed
+          FROM gatepasses
+          WHERE record_status = 1 AND gatepass_date >= ${startDateStr}
+          GROUP BY DATE(gatepass_date)
+          ORDER BY date DESC
+        `);
+        dailyDispatchRows = dailyDispatch.rows as any[];
+      } catch (e) { console.log('[MIS] delivery daily dispatch query skipped:', (e as Error).message); }
       
       // Transporters performance
-      const transporterPerformance = await db.execute(sql`
-        SELECT 
-          COALESCE(transporter_name, 'Direct') as transporter,
-          COUNT(*) as total_dispatches,
-          COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed,
-          COUNT(CASE WHEN status = 'generated' THEN 1 END) as pending
-        FROM gatepasses
-        WHERE record_status = 1 AND gatepass_date >= ${startDateStr}
-        GROUP BY transporter_name
-        ORDER BY total_dispatches DESC
-        LIMIT 10
-      `);
+      try {
+        const transporterPerformance = await db.execute(sql`
+          SELECT 
+            COALESCE(transporter_name, 'Direct') as transporter,
+            COUNT(*) as total_dispatches,
+            COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed,
+            COUNT(CASE WHEN status = 'generated' THEN 1 END) as pending
+          FROM gatepasses
+          WHERE record_status = 1 AND gatepass_date >= ${startDateStr}
+          GROUP BY transporter_name
+          ORDER BY total_dispatches DESC
+          LIMIT 10
+        `);
+        transporterRows = transporterPerformance.rows as any[];
+      } catch (e) { console.log('[MIS] delivery transporter query skipped:', (e as Error).message); }
       
       // Summary calculations
-      const statusMap = Object.fromEntries((statusSummary.rows as any[]).map(s => [s.status, parseInt(s.count)]));
+      const statusMap = Object.fromEntries(statusRows.map(s => [s.status, parseInt(s.count)]));
       const totalDispatches = Object.values(statusMap).reduce((sum: number, count) => sum + (count as number), 0);
       const completedCount = statusMap['completed'] || 0;
       const otifRate = totalDispatches > 0 ? ((completedCount / totalDispatches) * 100).toFixed(1) : 0;
@@ -14904,17 +14974,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           otifRate,
           avgDeliveryHours: avgDeliveryHours.toFixed(1)
         },
-        statusBreakdown: (statusSummary.rows as any[]).map(s => ({
+        statusBreakdown: statusRows.map(s => ({
           status: s.status,
           count: parseInt(s.count)
         })),
-        dailyTrend: (dailyDispatch.rows as any[]).map(d => ({
+        dailyTrend: dailyDispatchRows.map(d => ({
           date: d.date,
           totalDispatched: parseInt(d.total_dispatched),
           completed: parseInt(d.completed),
           completionRate: d.total_dispatched > 0 ? ((d.completed / d.total_dispatched) * 100).toFixed(1) : 0
         })),
-        transporterPerformance: (transporterPerformance.rows as any[]).map(t => ({
+        transporterPerformance: transporterRows.map(t => ({
           transporter: t.transporter,
           totalDispatches: parseInt(t.total_dispatches),
           completed: parseInt(t.completed),
