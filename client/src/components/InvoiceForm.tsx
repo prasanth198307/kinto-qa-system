@@ -107,7 +107,9 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
   const [showPrintPreview, setShowPrintPreview] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(invoice?.templateId || "");
   const [selectedVendorId, setSelectedVendorId] = useState<string>("");
-  const [shipToDifferentAddress, setShipToDifferentAddress] = useState(false);
+  const [shipToDifferentAddress, setShipToDifferentAddress] = useState(
+    !!(invoice?.shipToName || invoice?.shipToAddress || invoice?.shipToCity || invoice?.shipToState || invoice?.shipToPincode)
+  );
   
   // Vendor filtering state
   const [vendorTypeFilter, setVendorTypeFilter] = useState<string>('all');
