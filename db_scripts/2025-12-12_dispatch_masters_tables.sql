@@ -1,0 +1,77 @@
+-- Dispatch Masters: Transporters, Vehicles, and Drivers
+-- Created: 2025-12-12
+-- Purpose: Master data for dispatch management with referential links to gatepasses
+
+-- Transporters table
+CREATE TABLE IF NOT EXISTS transporters (
+    id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+    transporter_code VARCHAR(50) NOT NULL UNIQUE,
+    transporter_name VARCHAR(255) NOT NULL,
+    phone VARCHAR(20),
+    email VARCHAR(255),
+    address TEXT,
+    gst_number VARCHAR(20),
+    pan_number VARCHAR(20),
+    is_active INTEGER DEFAULT 1 NOT NULL,
+    record_status INTEGER DEFAULT 1 NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Vehicles table
+CREATE TABLE IF NOT EXISTS vehicles (
+    id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+    vehicle_number VARCHAR(20) NOT NULL UNIQUE,
+    vehicle_type VARCHAR(50),
+    capacity VARCHAR(50),
+    transporter_id VARCHAR REFERENCES transporters(id),
+    owner_name VARCHAR(255),
+    owner_phone VARCHAR(20),
+    rc_expiry DATE,
+    insurance_expiry DATE,
+    fitness_expiry DATE,
+    is_active INTEGER DEFAULT 1 NOT NULL,
+    record_status INTEGER DEFAULT 1 NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Drivers table
+CREATE TABLE IF NOT EXISTS drivers (
+    id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+    driver_code VARCHAR(50) NOT NULL UNIQUE,
+    driver_name VARCHAR(255) NOT NULL,
+    phone VARCHAR(20) NOT NULL,
+    alternate_phone VARCHAR(20),
+    license_number VARCHAR(50),
+    license_expiry DATE,
+    address TEXT,
+    transporter_id VARCHAR REFERENCES transporters(id),
+    is_active INTEGER DEFAULT 1 NOT NULL,
+    record_status INTEGER DEFAULT 1 NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Add foreign key references to gatepasses table (if columns don't exist)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'gatepasses' AND column_name = 'transporter_id') THEN
+        ALTER TABLE gatepasses ADD COLUMN transporter_id VARCHAR REFERENCES transporters(id);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'gatepasses' AND column_name = 'vehicle_id') THEN
+        ALTER TABLE gatepasses ADD COLUMN vehicle_id VARCHAR REFERENCES vehicles(id);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'gatepasses' AND column_name = 'driver_id') THEN
+        ALTER TABLE gatepasses ADD COLUMN driver_id VARCHAR REFERENCES drivers(id);
+    END IF;
+END $$;
+
+-- Create indexes for better query performance
+CREATE INDEX IF NOT EXISTS idx_vehicles_transporter ON vehicles(transporter_id);
+CREATE INDEX IF NOT EXISTS idx_drivers_transporter ON drivers(transporter_id);
+CREATE INDEX IF NOT EXISTS idx_gatepasses_vehicle ON gatepasses(vehicle_id);
+CREATE INDEX IF NOT EXISTS idx_gatepasses_driver ON gatepasses(driver_id);
+CREATE INDEX IF NOT EXISTS idx_gatepasses_transporter ON gatepasses(transporter_id);
