@@ -40,6 +40,14 @@ The backend is an Express.js application built with TypeScript and Node.js, usin
 - **Document Expiry Alert System:** Automated notifications for documents nearing expiry (default 30 days). Sends WhatsApp and Email alerts to admin users via the existing notification infrastructure. Hourly scheduled checks with startup scan. Alert status resets when expiry date is updated, enabling re-notification for extended documents.
 - **Expense Tracking System:** Record daily expenses with voucher issuance, multiple line items, expense categorization, payment mode tracking (cash/bank/UPI/cheque), GST handling, and approval workflow (draft → submitted → approved/rejected → paid).
 - **Daily Cash Register:** Daily business cash flow tracking with Excel import capability. Features include daily balance tracking (opening, received cash, expenses, transfers, closing), automatic opening balance carry-forward from previous day's closing, source type tracking for cash received (sale_cash, secondary_sale, upi, bank_transfer, other), document upload for all transaction types, mandatory reconciliation before close day (enter actual cash on hand, variance detection with required explanation), variance tracking (actual vs expected balance), instant expense voucher auto-generation, and comprehensive reporting with pagination and filters.
+- **MIS (Management Information System) Module:** Comprehensive executive dashboard with 5 analytics screens:
+  - **Executive KPI Dashboard:** High-level metrics including revenue, production efficiency, pending payments, and inventory value with trend indicators
+  - **Production Analytics:** Production volume analysis, efficiency rates, raw material consumption, and variance tracking
+  - **Inventory Intelligence:** Stock levels, aging analysis, slow-moving items, and reorder alerts
+  - **Sales Analysis:** Revenue breakdown, customer trends, product performance, and margin analysis
+  - **Delivery Performance:** On-Time In-Full (OTIF) tracking, dispatch metrics, and delivery exceptions
+  - Backend aggregates data from production, inventory, sales, and finance tables via dedicated API endpoints
+  - Role-based access via 5 dedicated screen keys (mis_dashboard, mis_production, mis_inventory, mis_sales, mis_delivery)
 
 ### System Design Choices
 - **Authentication:** Users can log in with username or email.

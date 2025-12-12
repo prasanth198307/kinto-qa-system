@@ -42,7 +42,7 @@ export default function MISDelivery() {
   const [period, setPeriod] = useState('30');
 
   const { data, isLoading } = useQuery<DeliveryData>({
-    queryKey: ['/api/mis/delivery-performance', period],
+    queryKey: ['/api/mis/delivery-performance', { period }],
   });
 
   const statusLabels: Record<string, string> = {

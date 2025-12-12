@@ -50,7 +50,7 @@ export default function MISSales() {
   const [period, setPeriod] = useState('30');
 
   const { data, isLoading } = useQuery<SalesData>({
-    queryKey: ['/api/mis/sales-analytics', period],
+    queryKey: ['/api/mis/sales-analytics', { period }],
   });
 
   const totalRevenue = data?.dailyTrend.reduce((sum, d) => sum + d.revenue, 0) || 0;

@@ -45,7 +45,7 @@ export default function MISProduction() {
   const [period, setPeriod] = useState('30');
 
   const { data, isLoading } = useQuery<ProductionData>({
-    queryKey: ['/api/mis/production-analytics', period],
+    queryKey: ['/api/mis/production-analytics', { period }],
   });
 
   const formatNumber = (n: number) => n.toLocaleString('en-IN');

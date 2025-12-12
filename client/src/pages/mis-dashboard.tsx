@@ -188,7 +188,7 @@ export default function MISDashboard() {
   const [period, setPeriod] = useState('30');
 
   const { data: kpiData, isLoading: kpiLoading } = useQuery<KPIData>({
-    queryKey: ['/api/mis/kpi-dashboard', period],
+    queryKey: ['/api/mis/kpi-dashboard', { period }],
   });
 
   const { data: alertsData, isLoading: alertsLoading } = useQuery<AlertsData>({
