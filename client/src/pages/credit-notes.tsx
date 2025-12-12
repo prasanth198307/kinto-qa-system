@@ -13,7 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
-import { FileText, Eye, IndianRupee } from "lucide-react";
+import { FileText, Eye, IndianRupee, Download } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -22,6 +22,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import PrintableCreditNote from "@/components/PrintableCreditNote";
+import { exportToExcel, formatCurrencyForExcel, formatDateForExcel } from "@/lib/excel-export";
 
 interface CreditNote {
   id: string;
@@ -58,10 +59,44 @@ interface CreditNoteItem {
 export default function CreditNotes() {
   const [selectedCreditNote, setSelectedCreditNote] = useState<CreditNote | null>(null);
   const [isViewOpen, setIsViewOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   const { data: creditNotes = [], isLoading } = useQuery<CreditNote[]>({
     queryKey: ['/api/credit-notes'],
   });
+
+  const handleExportExcel = async () => {
+    if (creditNotes.length === 0) return;
+    setIsExporting(true);
+    try {
+      const dataSheet = [
+        ['Credit Notes Report'],
+        ['Generated', format(new Date(), 'yyyy-MM-dd HH:mm')],
+        [''],
+        ['Credit Note #', 'Invoice #', 'Date', 'Buyer Name', 'Buyer GSTIN', 'Subtotal', 'CGST', 'SGST', 'IGST', 'Total', 'Reason'],
+        ...creditNotes.map(cn => [
+          cn.noteNumber,
+          cn.invoiceNumber,
+          formatDateForExcel(cn.creditDate),
+          cn.buyerName,
+          cn.buyerGstin || '',
+          formatCurrencyForExcel(cn.subtotal),
+          formatCurrencyForExcel(cn.cgstAmount),
+          formatCurrencyForExcel(cn.sgstAmount),
+          formatCurrencyForExcel(cn.igstAmount),
+          formatCurrencyForExcel(cn.grandTotal),
+          cn.reason
+        ])
+      ];
+
+      await exportToExcel({
+        filename: `credit-notes-${format(new Date(), 'yyyy-MM-dd')}.xlsx`,
+        sheets: [{ name: 'Credit Notes', data: dataSheet }],
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const { data: creditNoteItems = [] } = useQuery<CreditNoteItem[]>({
     queryKey: ['/api/credit-note-items', selectedCreditNote?.id],
@@ -97,13 +132,27 @@ export default function CreditNotes() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            All Credit Notes
-          </CardTitle>
-          <CardDescription>
-            GST-compliant credit notes for returned goods and adjustments
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                All Credit Notes
+              </CardTitle>
+              <CardDescription>
+                GST-compliant credit notes for returned goods and adjustments
+              </CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportExcel}
+              disabled={isExporting || isLoading || creditNotes.length === 0}
+              data-testid="button-export-excel"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              {isExporting ? 'Exporting...' : 'Export Excel'}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (

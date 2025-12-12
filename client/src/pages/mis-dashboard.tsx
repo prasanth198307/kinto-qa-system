@@ -21,10 +21,13 @@ import {
   Clock,
   FileWarning,
   ChevronRight,
-  Activity
+  Activity,
+  Download
 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
+import { exportToExcel, formatCurrencyForExcel } from "@/lib/excel-export";
+import { format } from "date-fns";
 
 interface KPIData {
   period: number;
@@ -186,6 +189,7 @@ function AlertItem({ alert }: { alert: Alert }) {
 
 export default function MISDashboard() {
   const [period, setPeriod] = useState('30');
+  const [isExporting, setIsExporting] = useState(false);
 
   const { data: kpiData, isLoading: kpiLoading } = useQuery<KPIData>({
     queryKey: ['/api/mis/kpi-dashboard', { period }],
@@ -197,6 +201,73 @@ export default function MISDashboard() {
 
   const kpis = kpiData?.kpis;
 
+  const handleExportExcel = async () => {
+    if (!kpis) return;
+    setIsExporting(true);
+    try {
+      const kpiSheet = [
+        ['Executive Dashboard KPIs'],
+        ['Period', `Last ${period} days`],
+        ['Generated', format(new Date(), 'yyyy-MM-dd HH:mm')],
+        [''],
+        ['Sales Metrics'],
+        ['Total Revenue', formatCurrencyForExcel(kpis.sales.totalRevenue)],
+        ['Total with Tax', formatCurrencyForExcel(kpis.sales.totalWithTax)],
+        ['Total Received', formatCurrencyForExcel(kpis.sales.totalReceived)],
+        ['Total Pending', formatCurrencyForExcel(kpis.sales.totalPending)],
+        ['Total Invoices', kpis.sales.totalInvoices],
+        ['Collection Rate', kpis.sales.collectionRate],
+        [''],
+        ['Production Metrics'],
+        ['Total Entries', kpis.production.totalEntries],
+        ['Total Produced', kpis.production.totalProduced],
+        ['Total Rejected', kpis.production.totalRejected],
+        ['Yield Percent', kpis.production.yieldPercent],
+        [''],
+        ['Dispatch Metrics'],
+        ['Total Gatepasses', kpis.dispatch.totalGatepasses],
+        ['Delivered', kpis.dispatch.delivered],
+        ['Pending', kpis.dispatch.pending],
+        ['In Transit', kpis.dispatch.inTransit],
+        ['Fulfillment Rate', kpis.dispatch.fulfillmentRate],
+        [''],
+        ['Quality Metrics'],
+        ['Total Submissions', kpis.quality.totalSubmissions],
+        ['OK Count', kpis.quality.okCount],
+        ['NOK Count', kpis.quality.nokCount],
+        ['Compliance Rate', kpis.quality.complianceRate],
+        [''],
+        ['Cash Metrics'],
+        ['Total Closing', formatCurrencyForExcel(kpis.cash.totalClosing)],
+        ['Total Received', formatCurrencyForExcel(kpis.cash.totalReceived)],
+        ['Total Expenses', formatCurrencyForExcel(kpis.cash.totalExpenses)],
+      ];
+
+      const paymentSheet = [
+        ['Payment Methods'],
+        ['Method', 'Count', 'Amount'],
+        ...kpis.payments.map(p => [p.method, p.count, formatCurrencyForExcel(p.amount)])
+      ];
+
+      const alertSheet = alertsData ? [
+        ['Active Alerts'],
+        ['Severity', 'Type', 'Title', 'Description'],
+        ...alertsData.alerts.map(a => [a.severity, a.type, a.title, a.description])
+      ] : [['No alerts']];
+
+      await exportToExcel({
+        filename: `mis-dashboard-${format(new Date(), 'yyyy-MM-dd')}.xlsx`,
+        sheets: [
+          { name: 'KPIs', data: kpiSheet },
+          { name: 'Payment Methods', data: paymentSheet },
+          { name: 'Alerts', data: alertSheet },
+        ],
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="p-4 md:p-6 space-y-6" data-testid="mis-dashboard-page">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -204,17 +275,29 @@ export default function MISDashboard() {
           <h1 className="text-2xl font-bold" data-testid="text-page-title">Executive Dashboard</h1>
           <p className="text-muted-foreground">Key performance indicators and business health overview</p>
         </div>
-        <Select value={period} onValueChange={setPeriod}>
-          <SelectTrigger className="w-[180px]" data-testid="select-period">
-            <SelectValue placeholder="Select period" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="7">Last 7 days</SelectItem>
-            <SelectItem value="30">Last 30 days</SelectItem>
-            <SelectItem value="60">Last 60 days</SelectItem>
-            <SelectItem value="90">Last 90 days</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportExcel}
+            disabled={isExporting || kpiLoading}
+            data-testid="button-export-excel"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            {isExporting ? 'Exporting...' : 'Export Excel'}
+          </Button>
+          <Select value={period} onValueChange={setPeriod}>
+            <SelectTrigger className="w-[180px]" data-testid="select-period">
+              <SelectValue placeholder="Select period" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7">Last 7 days</SelectItem>
+              <SelectItem value="30">Last 30 days</SelectItem>
+              <SelectItem value="60">Last 60 days</SelectItem>
+              <SelectItem value="90">Last 90 days</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <Tabs defaultValue="overview" className="space-y-6">

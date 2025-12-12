@@ -4,8 +4,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Package, AlertTriangle, Clock, TrendingDown } from "lucide-react";
+import { ArrowLeft, Package, AlertTriangle, Clock, TrendingDown, Download } from "lucide-react";
 import { Link } from "wouter";
+import { useState } from "react";
+import { exportToExcel, formatCurrencyForExcel, formatDateForExcel } from "@/lib/excel-export";
+import { format } from "date-fns";
 
 interface InventoryData {
   summary: {
@@ -51,6 +54,7 @@ function formatCurrency(paise: number): string {
 }
 
 export default function MISInventory() {
+  const [isExporting, setIsExporting] = useState(false);
   const { data, isLoading } = useQuery<InventoryData>({
     queryKey: ['/api/mis/inventory-analytics'],
   });
@@ -71,18 +75,102 @@ export default function MISInventory() {
     unknown: 'bg-muted'
   };
 
+  const handleExportExcel = async () => {
+    if (!data) return;
+    setIsExporting(true);
+    try {
+      const summarySheet = [
+        ['Inventory Intelligence Report'],
+        ['Generated', format(new Date(), 'yyyy-MM-dd HH:mm')],
+        [''],
+        ['Summary'],
+        ['Total Inventory Value', formatCurrencyForExcel(data.summary.totalRawMaterialValue)],
+        ['Active Materials', data.summary.totalRawMaterials],
+        ['Below Reorder Level', data.summary.belowReorder],
+        [''],
+        ['Aging Buckets'],
+        ['Bucket', 'Value'],
+        ...Object.entries(data.agingBuckets).map(([bucket, value]) => [
+          agingLabels[bucket] || bucket,
+          formatCurrencyForExcel(value)
+        ])
+      ];
+
+      const materialsSheet = [
+        ['Raw Materials'],
+        ['Material Code', 'Material Name', 'Current Stock', 'Unit Cost', 'Stock Value', 'Reorder Level', 'Aging Bucket'],
+        ...data.rawMaterials.map(m => [
+          m.materialCode,
+          m.materialName,
+          m.currentStock,
+          formatCurrencyForExcel(m.unitCost),
+          formatCurrencyForExcel(m.stockValue),
+          m.reorderLevel || 'N/A',
+          m.agingBucket
+        ])
+      ];
+
+      const finishedGoodsSheet = [
+        ['Finished Goods'],
+        ['Product Name', 'Batch Count', 'Total Quantity', 'Oldest Batch', 'Newest Batch'],
+        ...data.finishedGoods.map(f => [
+          f.productName,
+          f.batchCount,
+          f.totalQuantity,
+          formatDateForExcel(f.oldestBatch),
+          formatDateForExcel(f.newestBatch)
+        ])
+      ];
+
+      const slowMoversSheet = [
+        ['Slow Moving Items'],
+        ['Material Code', 'Material Name', 'Current Stock', 'Last Issued'],
+        ...data.slowMovers.map(s => [
+          s.materialCode,
+          s.materialName,
+          s.currentStock,
+          s.lastIssued ? formatDateForExcel(s.lastIssued) : 'Never'
+        ])
+      ];
+
+      await exportToExcel({
+        filename: `mis-inventory-${format(new Date(), 'yyyy-MM-dd')}.xlsx`,
+        sheets: [
+          { name: 'Summary', data: summarySheet },
+          { name: 'Raw Materials', data: materialsSheet },
+          { name: 'Finished Goods', data: finishedGoodsSheet },
+          { name: 'Slow Movers', data: slowMoversSheet },
+        ],
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="p-4 md:p-6 space-y-6" data-testid="mis-inventory-page">
-      <div className="flex items-center gap-4">
-        <Link href="/mis">
-          <Button variant="ghost" size="icon" data-testid="button-back">
-            <ArrowLeft className="w-4 h-4" />
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold" data-testid="text-page-title">Inventory Intelligence</h1>
-          <p className="text-muted-foreground">Stock aging, slow movers, and value analysis</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Link href="/mis">
+            <Button variant="ghost" size="icon" data-testid="button-back">
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold" data-testid="text-page-title">Inventory Intelligence</h1>
+            <p className="text-muted-foreground">Stock aging, slow movers, and value analysis</p>
+          </div>
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleExportExcel}
+          disabled={isExporting || isLoading}
+          data-testid="button-export-excel"
+        >
+          <Download className="w-4 h-4 mr-2" />
+          {isExporting ? 'Exporting...' : 'Export Excel'}
+        </Button>
       </div>
 
       {isLoading ? (

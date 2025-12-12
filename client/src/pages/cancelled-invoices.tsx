@@ -15,11 +15,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
-import { FileX, Search, ChevronLeft, ChevronRight, ExternalLink, Filter, X, IndianRupee, ArrowLeft } from "lucide-react";
+import { FileX, Search, ChevronLeft, ChevronRight, ExternalLink, Filter, X, IndianRupee, ArrowLeft, Download } from "lucide-react";
 import { Link } from "wouter";
 import { GlobalHeader } from "@/components/GlobalHeader";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { exportToExcel, formatCurrencyForExcel, formatDateForExcel } from "@/lib/excel-export";
 
 interface CancelledInvoicesProps {
   showHeader?: boolean;
@@ -116,6 +117,7 @@ export default function CancelledInvoices({ showHeader = true }: CancelledInvoic
   };
 
   const hasActiveFilters = appliedFilters.buyerName || appliedFilters.dateFrom || appliedFilters.dateTo;
+  const [isExporting, setIsExporting] = useState(false);
 
   const formatCurrency = (paise: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -123,6 +125,35 @@ export default function CancelledInvoices({ showHeader = true }: CancelledInvoic
       currency: 'INR',
       minimumFractionDigits: 2,
     }).format(paise / 100);
+  };
+
+  const handleExportExcel = async () => {
+    if (cancelledInvoices.length === 0) return;
+    setIsExporting(true);
+    try {
+      const dataSheet = [
+        ['Cancelled Invoices Report'],
+        ['Generated', format(new Date(), 'yyyy-MM-dd HH:mm')],
+        [''],
+        ['Invoice #', 'Invoice Date', 'Buyer Name', 'Buyer GSTIN', 'Amount', 'Cancellation Date', 'Replacement Invoice #'],
+        ...cancelledInvoices.map(inv => [
+          inv.invoiceNumber,
+          formatDateForExcel(inv.invoiceDate),
+          inv.buyerName,
+          inv.buyerGstin || '',
+          formatCurrencyForExcel(inv.totalAmount),
+          formatDateForExcel(inv.cancellationDate),
+          inv.replacementInvoiceNumber || ''
+        ])
+      ];
+
+      await exportToExcel({
+        filename: `cancelled-invoices-${format(new Date(), 'yyyy-MM-dd')}.xlsx`,
+        sheets: [{ name: 'Cancelled Invoices', data: dataSheet }],
+      });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -213,6 +244,15 @@ export default function CancelledInvoices({ showHeader = true }: CancelledInvoic
                     Clear
                   </Button>
                 )}
+                <Button
+                  variant="outline"
+                  onClick={handleExportExcel}
+                  disabled={isExporting || isLoading || cancelledInvoices.length === 0}
+                  data-testid="button-export-excel"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  {isExporting ? 'Exporting...' : 'Export Excel'}
+                </Button>
               </div>
             </div>
           </CardContent>

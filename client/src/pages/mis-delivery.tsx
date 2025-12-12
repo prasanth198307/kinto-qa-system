@@ -5,9 +5,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Truck, CheckCircle2, Clock, TrendingUp, Timer } from "lucide-react";
+import { ArrowLeft, Truck, CheckCircle2, Clock, TrendingUp, Timer, Download } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
+import { exportToExcel, formatDateForExcel } from "@/lib/excel-export";
+import { format } from "date-fns";
 
 interface DeliveryData {
   period: number;
@@ -40,6 +42,7 @@ interface DeliveryData {
 
 export default function MISDelivery() {
   const [period, setPeriod] = useState('30');
+  const [isExporting, setIsExporting] = useState(false);
 
   const { data, isLoading } = useQuery<DeliveryData>({
     queryKey: ['/api/mis/delivery-performance', { period }],
@@ -59,6 +62,70 @@ export default function MISDelivery() {
     completed: 'bg-green-600'
   };
 
+  const handleExportExcel = async () => {
+    if (!data) return;
+    setIsExporting(true);
+    try {
+      const summarySheet = [
+        ['Delivery Performance Report'],
+        ['Period', `Last ${period} days`],
+        ['Generated', format(new Date(), 'yyyy-MM-dd HH:mm')],
+        [''],
+        ['Summary'],
+        ['Total Dispatches', data.summary.totalDispatches],
+        ['Completed', data.summary.completed],
+        ['In Transit', data.summary.inTransit],
+        ['Pending', data.summary.pending],
+        ['OTIF Rate', data.summary.otifRate],
+        ['Avg Delivery Hours', data.summary.avgDeliveryHours],
+      ];
+
+      const statusSheet = [
+        ['Status Breakdown'],
+        ['Status', 'Count'],
+        ...data.statusBreakdown.map(s => [
+          statusLabels[s.status] || s.status,
+          s.count
+        ])
+      ];
+
+      const dailySheet = [
+        ['Daily Trend'],
+        ['Date', 'Total Dispatched', 'Completed', 'Completion Rate'],
+        ...data.dailyTrend.map(d => [
+          formatDateForExcel(d.date),
+          d.totalDispatched,
+          d.completed,
+          d.completionRate
+        ])
+      ];
+
+      const transporterSheet = [
+        ['Transporter Performance'],
+        ['Transporter', 'Total Dispatches', 'Completed', 'Pending', 'Completion Rate'],
+        ...data.transporterPerformance.map(t => [
+          t.transporter,
+          t.totalDispatches,
+          t.completed,
+          t.pending,
+          t.completionRate
+        ])
+      ];
+
+      await exportToExcel({
+        filename: `mis-delivery-${format(new Date(), 'yyyy-MM-dd')}.xlsx`,
+        sheets: [
+          { name: 'Summary', data: summarySheet },
+          { name: 'Status Breakdown', data: statusSheet },
+          { name: 'Daily Trend', data: dailySheet },
+          { name: 'Transporter Performance', data: transporterSheet },
+        ],
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="p-4 md:p-6 space-y-6" data-testid="mis-delivery-page">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -73,17 +140,29 @@ export default function MISDelivery() {
             <p className="text-muted-foreground">OTIF tracking and dispatch analytics</p>
           </div>
         </div>
-        <Select value={period} onValueChange={setPeriod}>
-          <SelectTrigger className="w-[180px]" data-testid="select-period">
-            <SelectValue placeholder="Select period" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="7">Last 7 days</SelectItem>
-            <SelectItem value="30">Last 30 days</SelectItem>
-            <SelectItem value="60">Last 60 days</SelectItem>
-            <SelectItem value="90">Last 90 days</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportExcel}
+            disabled={isExporting || isLoading}
+            data-testid="button-export-excel"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            {isExporting ? 'Exporting...' : 'Export Excel'}
+          </Button>
+          <Select value={period} onValueChange={setPeriod}>
+            <SelectTrigger className="w-[180px]" data-testid="select-period">
+              <SelectValue placeholder="Select period" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7">Last 7 days</SelectItem>
+              <SelectItem value="30">Last 30 days</SelectItem>
+              <SelectItem value="60">Last 60 days</SelectItem>
+              <SelectItem value="90">Last 90 days</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {isLoading ? (

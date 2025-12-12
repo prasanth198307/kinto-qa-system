@@ -5,9 +5,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Factory, TrendingUp, TrendingDown, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Factory, TrendingUp, TrendingDown, AlertTriangle, Download } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
+import { exportToExcel, formatDateForExcel } from "@/lib/excel-export";
+import { format } from "date-fns";
 
 interface ProductionData {
   period: number;
@@ -43,12 +45,79 @@ interface ProductionData {
 
 export default function MISProduction() {
   const [period, setPeriod] = useState('30');
+  const [isExporting, setIsExporting] = useState(false);
 
   const { data, isLoading } = useQuery<ProductionData>({
     queryKey: ['/api/mis/production-analytics', { period }],
   });
 
   const formatNumber = (n: number) => n.toLocaleString('en-IN');
+
+  const handleExportExcel = async () => {
+    if (!data) return;
+    setIsExporting(true);
+    try {
+      const dailySheet = [
+        ['Daily Production Trend'],
+        ['Date', 'Entries', 'Produced', 'Rejected', 'Derived Units', 'Yield %'],
+        ...data.dailyTrend.map(d => [
+          formatDateForExcel(d.date),
+          d.entries,
+          d.produced,
+          d.rejected,
+          d.derivedUnits,
+          d.yield
+        ])
+      ];
+
+      const productSheet = [
+        ['Production by Product'],
+        ['Product Name', 'Entries', 'Total Produced', 'Total Rejected', 'Yield %'],
+        ...data.byProduct.map(p => [
+          p.productName,
+          p.entries,
+          p.totalProduced,
+          p.totalRejected,
+          p.yield
+        ])
+      ];
+
+      const shiftSheet = [
+        ['Production by Shift'],
+        ['Shift', 'Entries', 'Total Produced', 'Total Rejected'],
+        ...data.byShift.map(s => [
+          `Shift ${s.shift}`,
+          s.entries,
+          s.totalProduced,
+          s.totalRejected
+        ])
+      ];
+
+      const varianceSheet = [
+        ['BOM Variance Analysis'],
+        ['Product Name', 'Reconciliation Count', 'Avg Variance', 'Min Variance', 'Max Variance'],
+        ...data.bomVariance.map(v => [
+          v.productName,
+          v.reconciliationCount,
+          v.avgVariance,
+          v.minVariance,
+          v.maxVariance
+        ])
+      ];
+
+      await exportToExcel({
+        filename: `mis-production-${format(new Date(), 'yyyy-MM-dd')}.xlsx`,
+        sheets: [
+          { name: 'Daily Trend', data: dailySheet },
+          { name: 'By Product', data: productSheet },
+          { name: 'By Shift', data: shiftSheet },
+          { name: 'BOM Variance', data: varianceSheet },
+        ],
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   return (
     <div className="p-4 md:p-6 space-y-6" data-testid="mis-production-page">
@@ -64,17 +133,29 @@ export default function MISProduction() {
             <p className="text-muted-foreground">Efficiency, yield, and variance analysis</p>
           </div>
         </div>
-        <Select value={period} onValueChange={setPeriod}>
-          <SelectTrigger className="w-[180px]" data-testid="select-period">
-            <SelectValue placeholder="Select period" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="7">Last 7 days</SelectItem>
-            <SelectItem value="30">Last 30 days</SelectItem>
-            <SelectItem value="60">Last 60 days</SelectItem>
-            <SelectItem value="90">Last 90 days</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportExcel}
+            disabled={isExporting || isLoading}
+            data-testid="button-export-excel"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            {isExporting ? 'Exporting...' : 'Export Excel'}
+          </Button>
+          <Select value={period} onValueChange={setPeriod}>
+            <SelectTrigger className="w-[180px]" data-testid="select-period">
+              <SelectValue placeholder="Select period" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7">Last 7 days</SelectItem>
+              <SelectItem value="30">Last 30 days</SelectItem>
+              <SelectItem value="60">Last 60 days</SelectItem>
+              <SelectItem value="90">Last 90 days</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {isLoading ? (

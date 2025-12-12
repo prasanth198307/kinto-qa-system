@@ -5,9 +5,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, DollarSign, TrendingUp, Users, Package, Clock } from "lucide-react";
+import { ArrowLeft, DollarSign, TrendingUp, Users, Package, Clock, Download } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
+import { exportToExcel, formatCurrencyForExcel, formatDateForExcel } from "@/lib/excel-export";
+import { format } from "date-fns";
 
 interface SalesData {
   period: number;
@@ -48,6 +50,7 @@ function formatCurrency(paise: number): string {
 
 export default function MISSales() {
   const [period, setPeriod] = useState('30');
+  const [isExporting, setIsExporting] = useState(false);
 
   const { data, isLoading } = useQuery<SalesData>({
     queryKey: ['/api/mis/sales-analytics', { period }],
@@ -56,6 +59,79 @@ export default function MISSales() {
   const totalRevenue = data?.dailyTrend.reduce((sum, d) => sum + d.revenue, 0) || 0;
   const totalCollected = data?.dailyTrend.reduce((sum, d) => sum + d.collected, 0) || 0;
   const totalInvoices = data?.dailyTrend.reduce((sum, d) => sum + d.invoiceCount, 0) || 0;
+
+  const handleExportExcel = async () => {
+    if (!data) return;
+    setIsExporting(true);
+    try {
+      const dailySheet = [
+        ['Daily Sales Trend'],
+        ['Date', 'Invoice Count', 'Revenue', 'Total with Tax', 'Collected'],
+        ...data.dailyTrend.map(d => [
+          formatDateForExcel(d.date),
+          d.invoiceCount,
+          formatCurrencyForExcel(d.revenue),
+          formatCurrencyForExcel(d.totalWithTax),
+          formatCurrencyForExcel(d.collected)
+        ])
+      ];
+
+      const customersSheet = [
+        ['Top Customers'],
+        ['Buyer Name', 'Invoice Count', 'Total Revenue', 'Total Collected', 'Pending'],
+        ...data.topCustomers.map(c => [
+          c.buyerName,
+          c.invoiceCount,
+          formatCurrencyForExcel(c.totalRevenue),
+          formatCurrencyForExcel(c.totalCollected),
+          formatCurrencyForExcel(c.pending)
+        ])
+      ];
+
+      const productsSheet = [
+        ['Top Products'],
+        ['Product Name', 'Total Quantity', 'Total Revenue'],
+        ...data.topProducts.map(p => [
+          p.productName,
+          p.totalQuantity,
+          formatCurrencyForExcel(p.totalRevenue)
+        ])
+      ];
+
+      const paymentsSheet = [
+        ['Payment Methods'],
+        ['Method', 'Count', 'Amount'],
+        ...data.paymentMethods.map(p => [
+          p.method,
+          p.count,
+          formatCurrencyForExcel(p.amount)
+        ])
+      ];
+
+      const agingSheet = [
+        ['Receivables Aging'],
+        ['Bucket', 'Invoice Count', 'Pending Amount'],
+        ...data.receivablesAging.map(r => [
+          r.bucket,
+          r.invoiceCount,
+          formatCurrencyForExcel(r.pendingAmount)
+        ])
+      ];
+
+      await exportToExcel({
+        filename: `mis-sales-${format(new Date(), 'yyyy-MM-dd')}.xlsx`,
+        sheets: [
+          { name: 'Daily Trend', data: dailySheet },
+          { name: 'Top Customers', data: customersSheet },
+          { name: 'Top Products', data: productsSheet },
+          { name: 'Payment Methods', data: paymentsSheet },
+          { name: 'Receivables Aging', data: agingSheet },
+        ],
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   return (
     <div className="p-4 md:p-6 space-y-6" data-testid="mis-sales-page">
@@ -71,17 +147,29 @@ export default function MISSales() {
             <p className="text-muted-foreground">Revenue, customers, and receivables</p>
           </div>
         </div>
-        <Select value={period} onValueChange={setPeriod}>
-          <SelectTrigger className="w-[180px]" data-testid="select-period">
-            <SelectValue placeholder="Select period" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="7">Last 7 days</SelectItem>
-            <SelectItem value="30">Last 30 days</SelectItem>
-            <SelectItem value="60">Last 60 days</SelectItem>
-            <SelectItem value="90">Last 90 days</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportExcel}
+            disabled={isExporting || isLoading}
+            data-testid="button-export-excel"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            {isExporting ? 'Exporting...' : 'Export Excel'}
+          </Button>
+          <Select value={period} onValueChange={setPeriod}>
+            <SelectTrigger className="w-[180px]" data-testid="select-period">
+              <SelectValue placeholder="Select period" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7">Last 7 days</SelectItem>
+              <SelectItem value="30">Last 30 days</SelectItem>
+              <SelectItem value="60">Last 60 days</SelectItem>
+              <SelectItem value="90">Last 90 days</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {isLoading ? (

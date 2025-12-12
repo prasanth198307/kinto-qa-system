@@ -3,9 +3,12 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import { TrendingUp, TrendingDown, Activity, CheckCircle, AlertTriangle, XCircle, Package, ArrowUpCircle, ArrowDownCircle } from "lucide-react";
+import { TrendingUp, TrendingDown, Activity, CheckCircle, AlertTriangle, XCircle, Package, ArrowUpCircle, ArrowDownCircle, Download } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { exportToExcel } from "@/lib/excel-export";
+import { format } from "date-fns";
 
 interface EmptyBottlesPeriod {
   totalOpening: number;
@@ -61,6 +64,7 @@ interface AnalyticsResponse {
 export default function VarianceAnalytics() {
   const [selectedPeriod, setSelectedPeriod] = useState("monthly");
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
+  const [isExporting, setIsExporting] = useState(false);
 
   // Fetch analytics data
   const { data: analyticsData, isLoading } = useQuery<AnalyticsResponse>({
@@ -82,15 +86,85 @@ export default function VarianceAnalytics() {
   const currentYear = new Date().getFullYear();
   const yearOptions = [currentYear, currentYear - 1, currentYear - 2];
 
+  const handleExportExcel = async () => {
+    if (!analyticsData) return;
+    setIsExporting(true);
+    try {
+      const summarySheet = [
+        ['Variance Analytics Report'],
+        ['Period', selectedPeriod],
+        ['Year', selectedYear],
+        ['Generated', format(new Date(), 'yyyy-MM-dd HH:mm')],
+        [''],
+        ['Summary'],
+        ['Total Reconciliations', totals?.totalReconciliations || 0],
+        ['Average Variance (%)', totals?.avgVariance?.toFixed(2) || 0],
+        ['Average Efficiency (%)', totals?.avgEfficiency?.toFixed(2) || 0],
+        ['Average Yield (%)', totals?.avgYield?.toFixed(2) || 0],
+        ['Good Status', totals?.totalGood || 0],
+        ['Warning Status', totals?.totalWarning || 0],
+        ['Critical Status', totals?.totalCritical || 0],
+      ];
+
+      const periodSheet = [
+        ['Period Analysis'],
+        ['Period', 'Avg Variance (%)', 'Avg Efficiency (%)', 'Avg Yield (%)', 'Reconciliations', 'Good', 'Warning', 'Critical'],
+        ...analytics.map(a => [
+          a.period,
+          a.avgVariance?.toFixed(2) || 0,
+          a.avgEfficiency?.toFixed(2) || 0,
+          a.avgYield?.toFixed(2) || 0,
+          a.reconciliationCount,
+          a.goodCount,
+          a.warningCount,
+          a.criticalCount
+        ])
+      ];
+
+      const materialsSheet = [
+        ['Top Materials by Variance'],
+        ['Material Name', 'Avg Variance (%)', 'Total Variance', 'Occurrences'],
+        ...topMaterials.map(m => [
+          m.materialName,
+          m.avgVariance?.toFixed(2) || 0,
+          m.totalVariance?.toFixed(2) || 0,
+          m.occurrences
+        ])
+      ];
+
+      await exportToExcel({
+        filename: `variance-analytics-${selectedYear}-${format(new Date(), 'yyyy-MM-dd')}.xlsx`,
+        sheets: [
+          { name: 'Summary', data: summarySheet },
+          { name: 'Period Analysis', data: periodSheet },
+          { name: 'Top Materials', data: materialsSheet },
+        ],
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="p-6 space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold">Variance Analytics</h1>
-          <p className="text-muted-foreground mt-1">
-            Analyze production variance trends and efficiency metrics over time
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">Variance Analytics</h1>
+            <p className="text-muted-foreground mt-1">
+              Analyze production variance trends and efficiency metrics over time
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={handleExportExcel}
+            disabled={isExporting || isLoading}
+            data-testid="button-export-excel"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            {isExporting ? 'Exporting...' : 'Export Excel'}
+          </Button>
         </div>
 
         {/* Filters */}

@@ -20,6 +20,7 @@ import { Link } from "wouter";
 import { GlobalHeader } from "@/components/GlobalHeader";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { exportToExcel, formatCurrencyForExcel, formatDateForExcel } from "@/lib/excel-export";
 
 interface WriteOff {
   id: string;
@@ -129,29 +130,46 @@ export default function WriteOffReport({ showHeader = true }: WriteOffReportProp
     }).format(paise / 100);
   };
 
-  const handleExportCSV = () => {
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportExcel = async () => {
     if (!writeOffs.length) return;
-    
-    const headers = ['Invoice Number', 'Invoice Date', 'Buyer Name', 'Invoice Amount', 'Write-Off Amount', 'Write-Off Date', 'Recorded By', 'Remarks'];
-    const rows = writeOffs.map(wo => [
-      wo.invoiceNumber,
-      format(new Date(wo.invoiceDate), 'dd/MM/yyyy'),
-      wo.buyerName,
-      (wo.totalAmount / 100).toFixed(2),
-      (wo.amount / 100).toFixed(2),
-      format(new Date(wo.paymentDate), 'dd/MM/yyyy'),
-      wo.recordedByName,
-      wo.remarks || '',
-    ]);
-    
-    const csvContent = [headers.join(','), ...rows.map(row => row.map(cell => `"${cell}"`).join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `write-off-report-${format(new Date(), 'yyyy-MM-dd')}.csv`);
-    link.click();
-    URL.revokeObjectURL(url);
+    setIsExporting(true);
+    try {
+      const summarySheet = [
+        ['Write-Off Report'],
+        ['Generated', format(new Date(), 'yyyy-MM-dd HH:mm')],
+        [''],
+        ['Summary'],
+        ['Total Write-Offs', aggregateStats?.totalCount || 0],
+        ['Total Amount', formatCurrencyForExcel(aggregateStats?.totalWriteOffAmount || 0)],
+      ];
+
+      const dataSheet = [
+        ['Write-Off Details'],
+        ['Invoice #', 'Invoice Date', 'Buyer Name', 'Invoice Amount', 'Write-Off Amount', 'Write-Off Date', 'Recorded By', 'Remarks'],
+        ...writeOffs.map(wo => [
+          wo.invoiceNumber,
+          formatDateForExcel(wo.invoiceDate),
+          wo.buyerName,
+          formatCurrencyForExcel(wo.totalAmount),
+          formatCurrencyForExcel(wo.amount),
+          formatDateForExcel(wo.paymentDate),
+          wo.recordedByName,
+          wo.remarks || ''
+        ])
+      ];
+
+      await exportToExcel({
+        filename: `write-off-report-${format(new Date(), 'yyyy-MM-dd')}.xlsx`,
+        sheets: [
+          { name: 'Summary', data: summarySheet },
+          { name: 'Write-Offs', data: dataSheet },
+        ],
+      });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -179,11 +197,12 @@ export default function WriteOffReport({ showHeader = true }: WriteOffReportProp
             {writeOffs.length > 0 && (
               <Button 
                 variant="outline" 
-                onClick={handleExportCSV}
-                data-testid="button-export-csv"
+                onClick={handleExportExcel}
+                disabled={isExporting}
+                data-testid="button-export-excel"
               >
                 <Download className="h-4 w-4 mr-2" />
-                Export CSV
+                {isExporting ? 'Exporting...' : 'Export Excel'}
               </Button>
             )}
           </div>

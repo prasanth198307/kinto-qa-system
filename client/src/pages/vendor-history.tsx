@@ -30,9 +30,12 @@ import {
   ChevronRight,
   ArrowUpDown,
   Eye,
-  Printer
+  Printer,
+  Download
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { exportToExcel, formatCurrencyForExcel, formatDateForExcel } from "@/lib/excel-export";
+import { format } from "date-fns";
 
 interface VendorSummary {
   id: string;
@@ -77,6 +80,7 @@ export default function VendorHistoryPage() {
   const [pageSize, setPageSize] = useState(20);
   const [sortBy, setSortBy] = useState("outstanding");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [isExporting, setIsExporting] = useState(false);
 
   const { data, isLoading } = useQuery<VendorHistoryResponse>({
     queryKey: ['/api/vendor-history', { search, page, pageSize, sortBy, sortOrder }],
@@ -100,6 +104,53 @@ export default function VendorHistoryPage() {
       currency: 'INR',
       minimumFractionDigits: 2,
     });
+  };
+
+  const handleExportExcel = async () => {
+    if (!data?.vendors.length) return;
+    setIsExporting(true);
+    try {
+      const summarySheet = [
+        ['Vendor History Report'],
+        ['Generated', format(new Date(), 'yyyy-MM-dd HH:mm')],
+        [''],
+        ['Summary'],
+        ['Total Vendors', data.totals.totalVendors],
+        ['Total Invoiced', formatCurrencyForExcel(data.totals.totalInvoiced)],
+        ['Total Received', formatCurrencyForExcel(data.totals.totalReceived)],
+        ['Total Outstanding', formatCurrencyForExcel(data.totals.totalOutstanding)],
+        ['Vendors with Balance', data.totals.vendorsWithBalance],
+      ];
+
+      const vendorsSheet = [
+        ['Vendors'],
+        ['Vendor Code', 'Vendor Name', 'GST Number', 'City', 'State', 'Invoices', 'Credit Notes', 'Debit Notes', 'Total Invoiced', 'Total Received', 'Outstanding', 'Last Transaction'],
+        ...data.vendors.map(v => [
+          v.vendorCode,
+          v.vendorName,
+          v.gstNumber || '',
+          v.city || '',
+          v.state || '',
+          v.invoiceCount,
+          v.creditNoteCount,
+          v.debitNoteCount,
+          formatCurrencyForExcel(v.totalInvoiced),
+          formatCurrencyForExcel(v.totalReceived),
+          formatCurrencyForExcel(v.outstanding),
+          v.lastTransactionDate ? formatDateForExcel(v.lastTransactionDate) : ''
+        ])
+      ];
+
+      await exportToExcel({
+        filename: `vendor-history-${format(new Date(), 'yyyy-MM-dd')}.xlsx`,
+        sheets: [
+          { name: 'Summary', data: summarySheet },
+          { name: 'Vendors', data: vendorsSheet },
+        ],
+      });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const formatDate = (dateStr: string | null) => {
@@ -131,15 +182,27 @@ export default function VendorHistoryPage() {
           <h1 className="text-2xl font-bold print:text-xl" data-testid="text-page-title">Vendor History</h1>
           <p className="text-muted-foreground print:text-sm">View complete transaction history and balances for all vendors</p>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => window.print()}
-          className="print:hidden"
-          data-testid="button-print-vendor-history"
-        >
-          <Printer className="h-4 w-4 mr-2" />
-          Print Report
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={handleExportExcel}
+            disabled={isExporting || isLoading}
+            className="print:hidden"
+            data-testid="button-export-excel"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            {isExporting ? 'Exporting...' : 'Export Excel'}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => window.print()}
+            className="print:hidden"
+            data-testid="button-print-vendor-history"
+          >
+            <Printer className="h-4 w-4 mr-2" />
+            Print Report
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}
