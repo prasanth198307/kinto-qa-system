@@ -19,10 +19,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Search, FileText, CheckCircle, Clock, XCircle, DollarSign, ArrowRightLeft } from "lucide-react";
+import { Plus, Search, FileText, CheckCircle, Clock, XCircle, DollarSign, ArrowRightLeft, Printer } from "lucide-react";
 import { format } from "date-fns";
 import { VendorDebitNoteDialog } from "@/components/VendorDebitNoteDialog";
 import { DebitNoteAdjustmentDialog } from "@/components/DebitNoteAdjustmentDialog";
+import PrintableDebitNote from "@/components/PrintableDebitNote";
 
 interface VendorDebitNote {
   id: string;
@@ -238,17 +239,20 @@ export default function VendorDebitNotesPage() {
                         )}
                       </TableCell>
                       <TableCell className="text-center">
-                        {note.status !== 'cancelled' && note.status !== 'settled' && note.settledAmount < note.grandTotal && (
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => setAdjustmentNote(note)}
-                            data-testid={`button-adjust-${note.id}`}
-                          >
-                            <ArrowRightLeft className="h-4 w-4 mr-1" />
-                            Adjust
-                          </Button>
-                        )}
+                        <div className="flex items-center justify-center gap-1">
+                          <PrintableDebitNote debitNote={note} />
+                          {note.status !== 'cancelled' && note.status !== 'settled' && note.settledAmount < note.grandTotal && (
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => setAdjustmentNote(note)}
+                              data-testid={`button-adjust-${note.id}`}
+                            >
+                              <ArrowRightLeft className="h-4 w-4 mr-1" />
+                              Adjust
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
