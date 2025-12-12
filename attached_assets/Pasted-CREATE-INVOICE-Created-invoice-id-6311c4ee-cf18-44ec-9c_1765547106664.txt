@@ -1,0 +1,43 @@
+CREATE_INVOICE] Created invoice: {"id":"6311c4ee-cf18-44ec-9cbc-7c43a8b0b2d8","invoiceNumber":"INV-1765546950059","recordStatus":1,"originalInvoiceId":null}
+[OVERSELL_AUDIT_ERROR] error: column "entity_name" does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getOversellAlertForProduct (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:5152:25)
+    at async DatabaseStorage.recordOrUpdateOversellAlert (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:5162:31)
+    at async DatabaseStorage.auditProductOversell (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:5205:13)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:14283:31 {
+  length: 183,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: 'Perhaps you meant to reference the column "system_alerts.entity_type".',
+  position: '56',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+7:12:30 PM [express] POST /api/invoices 200 in 56ms :: {"invoice":{"id":"6311c4ee-cf18-44ec-9cbc-7c4…
+🔹 Request: GET /api/invoices
+   Cookie header: connect.sid=s%3A8XS-8Y2xCsoSBqQw2xFrNCfavNgNgjoO.ZRbksXXjqxbKgSNvZkZp96CFDapk%2BWU3DoyoDaiIJUo
+   Session ID: 8XS-8Y2xCsoSBqQw2xFrNCfavNgNgjoO
+   Authenticated: true
+7:12:30 PM [express] GET /api/invoices 200 in 27ms :: [{"id":"f7658dd4-1dd1-4e49-8d38-20f97eb9fe05",…
+🔹 Request: GET /api/invoices
+   Cookie header: connect.sid=s%3A8XS-8Y2xCsoSBqQw2xFrNCfavNgNgjoO.ZRbksXXjqxbKgSNvZkZp96CFDapk%2BWU3DoyoDaiIJUo
+   Session ID: 8XS-8Y2xCsoSBqQw2xFrNCfavNgNgjoO
+   Authenticated: true
+7:12:30 PM [express] GET /api/invoices 304 in 18ms :: [{"id":"f7658dd4-1dd1-4e49-8d38-20f97eb9fe05",…
+🔹 Request: GET /api/products
+   Cookie header: connect.sid=s%3A8XS-8Y2xCsoSBqQw2xFrNCfavNgNgjoO.ZRbksXXjqxbKgSNvZkZp96CFDapk%2BWU3DoyoDaiIJUo
+   Session ID: 8XS-8Y2xCsoSBqQw2xFrNCfavNgNgjoO
+   Authenticated: true
+7:12:30 PM [express] 
