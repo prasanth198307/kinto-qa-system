@@ -1282,6 +1282,12 @@ const navItemToScreenKey: Record<string, string> = {
   'sales-dashboard': 'sales_dashboard',
   'vendor-analytics': 'vendor_analytics',
   'reports': 'reports',
+  // MIS Reports
+  'mis-dashboard': 'mis_dashboard',
+  'mis-production': 'mis_production',
+  'mis-inventory': 'mis_inventory',
+  'mis-sales': 'mis_sales',
+  'mis-delivery': 'mis_delivery',
   // Quality & Checklists
   'checklists': 'checklist_templates',
   'checklist-assignments': 'checklist_assignments',
@@ -1343,6 +1349,12 @@ const navItemToScreen: Record<string, string> = {
   'sales-dashboard': 'Overview',
   'vendor-analytics': 'Overview',
   'reports': 'Overview',
+  // MIS Reports (admin/manager only)
+  'mis-dashboard': 'MIS Reports',
+  'mis-production': 'MIS Reports',
+  'mis-inventory': 'MIS Reports',
+  'mis-sales': 'MIS Reports',
+  'mis-delivery': 'MIS Reports',
   // Quality & Checklists
   'checklists': 'Checklist Templates',
   'checklist-assignments': 'Checklist Templates',
@@ -1400,6 +1412,7 @@ const navItemToScreen: Record<string, string> = {
 // Permission matrix: which roles can access which screens
 const screenPermissions: Record<string, { admin: boolean; manager: boolean; operator: boolean; reviewer: boolean }> = {
   'Overview': { admin: true, manager: true, operator: true, reviewer: true },
+  'MIS Reports': { admin: true, manager: true, operator: false, reviewer: false },
   'User Management': { admin: true, manager: false, operator: false, reviewer: false },
   'Machines': { admin: true, manager: true, operator: false, reviewer: false },
   'Checklist Templates': { admin: true, manager: true, operator: false, reviewer: false },
