@@ -23,9 +23,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Package, Receipt, ShoppingCart, Wrench, Filter, FileCheck2, Download, Wallet, Banknote } from "lucide-react";
+import { FileText, Package, Receipt, ShoppingCart, Wrench, Filter, FileCheck2, Download, Wallet, Banknote, CreditCard } from "lucide-react";
 import { format } from "date-fns";
-import type { Gatepass, Invoice, RawMaterialIssuance, PurchaseOrder, PMExecution } from "@shared/schema";
+import type { Gatepass, Invoice, RawMaterialIssuance, PurchaseOrder, PMExecution, InvoicePayment } from "@shared/schema";
 import { DataTablePagination } from "@/components/DataTablePagination";
 import PrintableGatepass from "@/components/PrintableGatepass";
 import PrintableInvoice from "@/components/PrintableInvoice";
@@ -95,6 +95,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
   const [isExportingIssuances, setIsExportingIssuances] = useState(false);
   const [isExportingPOs, setIsExportingPOs] = useState(false);
   const [isExportingMaintenance, setIsExportingMaintenance] = useState(false);
+  const [isExportingPayments, setIsExportingPayments] = useState(false);
 
   // Quick period selection for sales report
   const [salesPeriodType, setSalesPeriodType] = useState<string>("custom");
@@ -166,7 +167,29 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
     queryKey: ['/api/pm-executions'],
   });
 
-  const isLoading = gatepassesLoading || invoicesLoading || issuancesLoading || purchaseOrdersLoading || pmExecutionsLoading;
+  // Payments query - includes invoice info via history endpoint
+  interface PaymentWithInvoice {
+    id: string;
+    invoiceId: string | null;
+    paymentDate: string;
+    amount: number;
+    paymentMethod: string;
+    referenceNumber: string | null;
+    paymentType: string;
+    bankName: string | null;
+    remarks: string | null;
+    cancelledAt: string | null;
+    cancellationRemarks: string | null;
+    invoiceNumber: string | null;
+    invoiceDate: string | null;
+    vendorId: string | null;
+    vendorName: string | null;
+  }
+  const { data: paymentsData = [], isLoading: paymentsLoading } = useQuery<PaymentWithInvoice[]>({
+    queryKey: ['/api/invoice-payments/history'],
+  });
+
+  const isLoading = gatepassesLoading || invoicesLoading || issuancesLoading || purchaseOrdersLoading || pmExecutionsLoading || paymentsLoading;
 
   // Extract unique customers from gatepasses and invoices - use Array.isArray for safety
   const uniqueCustomers = Array.from(new Set([
@@ -228,6 +251,19 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
     // Date filter
     if (dateFrom || dateTo) {
       const date = new Date(item.completedAt);
+      if (dateFrom && new Date(dateFrom) > date) return false;
+      if (dateTo && new Date(dateTo) < date) return false;
+    }
+    return true;
+  }) : [];
+
+  // Filter payments by date and exclude cancelled
+  const filteredPayments = Array.isArray(paymentsData) ? paymentsData.filter(item => {
+    // Exclude cancelled payments
+    if (item.cancelledAt) return false;
+    // Date filter
+    if (dateFrom || dateTo) {
+      const date = new Date(item.paymentDate);
       if (dateFrom && new Date(dateFrom) > date) return false;
       if (dateTo && new Date(dateTo) < date) return false;
     }
@@ -520,6 +556,45 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
     }
   };
 
+  // Export payments to Excel
+  const handleExportPayments = async () => {
+    if (filteredPayments.length === 0) return;
+    setIsExportingPayments(true);
+    try {
+      // Calculate totals
+      const totalAmount = filteredPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+      
+      const sheet = [
+        ['Payments Report'],
+        ['Generated', format(new Date(), 'yyyy-MM-dd HH:mm')],
+        dateFrom || dateTo ? ['Period', `${dateFrom || 'Start'} to ${dateTo || 'End'}`] : [],
+        ['Total Payments', filteredPayments.length],
+        ['Total Amount', formatCurrencyForExcel(totalAmount)],
+        [''],
+        ['Payment Date', 'Invoice No', 'Buyer', 'Amount (₹)', 'Payment Method', 'Payment Type', 'Reference No', 'Bank', 'Remarks'],
+        ...filteredPayments.map(p => [
+          formatDateForExcel(p.paymentDate),
+          p.invoiceNumber || '-',
+          p.vendorName || '-',
+          formatCurrencyForExcel(p.amount),
+          p.paymentMethod || '-',
+          p.paymentType || '-',
+          p.referenceNumber || '-',
+          p.bankName || '-',
+          p.remarks || '-'
+        ])
+      ].filter(row => row.length > 0);
+      
+      await exportToExcel({
+        filename: `payments-report-${format(new Date(), 'yyyy-MM-dd')}.xlsx`,
+        sheets: [{ name: 'Payments', data: sheet }],
+      });
+      toast({ title: 'Export Complete', description: 'Payments exported to Excel' });
+    } finally {
+      setIsExportingPayments(false);
+    }
+  };
+
   return (
     <>
       {showHeader && <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />}
@@ -628,6 +703,10 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
           <TabsTrigger value="gst-reports" data-testid="tab-gst-reports">
             <FileCheck2 className="w-4 h-4 mr-2" />
             GST Reports
+          </TabsTrigger>
+          <TabsTrigger value="payments" data-testid="tab-payments">
+            <CreditCard className="w-4 h-4 mr-2" />
+            Payments
           </TabsTrigger>
         </TabsList>
 
@@ -1694,6 +1773,99 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                   </ul>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Payments Tab */}
+        <TabsContent value="payments">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-2">
+              <div>
+                <CardTitle>Payments Received</CardTitle>
+                <CardDescription>
+                  {filteredPayments.length} payment{filteredPayments.length !== 1 ? 's' : ''} found
+                  {filteredPayments.length > 0 && (
+                    <span className="ml-2">
+                      | Total: ₹{(filteredPayments.reduce((sum, p) => sum + (p.amount || 0), 0) / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </span>
+                  )}
+                </CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportPayments}
+                disabled={isExportingPayments || filteredPayments.length === 0}
+                data-testid="button-export-payments"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                {isExportingPayments ? 'Exporting...' : 'Export Excel'}
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {filteredPayments.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No payments found. Try adjusting your filters.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Payment Date</TableHead>
+                        <TableHead>Invoice No</TableHead>
+                        <TableHead>Buyer</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead>Method</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Reference</TableHead>
+                        <TableHead>Bank</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredPayments.map((payment) => (
+                        <TableRow key={payment.id} data-testid={`row-payment-${payment.id}`}>
+                          <TableCell>
+                            {format(new Date(payment.paymentDate), 'MMM dd, yyyy')}
+                          </TableCell>
+                          <TableCell>
+                            {payment.invoiceNumber || '-'}
+                          </TableCell>
+                          <TableCell>
+                            {payment.vendorName || '-'}
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            ₹{((payment.amount || 0) / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 px-2 py-1 rounded">
+                              {payment.paymentMethod || '-'}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <span className={`text-xs px-2 py-1 rounded ${
+                              payment.paymentType === 'Full' 
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+                                : payment.paymentType === 'Advance'
+                                ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+                                : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                            }`}>
+                              {payment.paymentType || '-'}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-sm">
+                            {payment.referenceNumber || '-'}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-sm">
+                            {payment.bankName || '-'}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
