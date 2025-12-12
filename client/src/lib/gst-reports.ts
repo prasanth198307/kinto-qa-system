@@ -1,4 +1,4 @@
-import type { Invoice, InvoiceWithItems, CreditNote, DebitNote } from '@shared/schema';
+import type { Invoice, InvoiceWithItems, CreditNote, DebitNote, VendorDebitNote } from '@shared/schema';
 
 // GST Report Types
 export type GSTReportType = 'GSTR1' | 'GSTR3B';
@@ -18,6 +18,18 @@ export interface DebitNoteWithInvoice {
   items: any[];
 }
 
+// Vendor Debit Note with vendor details for GST reporting (ITC adjustments)
+export interface VendorDebitNoteWithDetails {
+  vendorDebitNote: VendorDebitNote;
+  vendor: {
+    id: string;
+    vendorName: string;
+    gstNumber?: string | null;
+    vendorStateCode?: string | null;
+  };
+  items: any[];
+}
+
 // API Response Type
 export interface GSTReportAPIResponse {
   invoices: Array<{
@@ -26,6 +38,7 @@ export interface GSTReportAPIResponse {
   }>;
   creditNotes: CreditNoteWithInvoice[];
   debitNotes: DebitNoteWithInvoice[];
+  vendorDebitNotes?: VendorDebitNoteWithDetails[];
   hsnSummary: Array<{
     hsnCode: string;
     description: string;
@@ -46,8 +59,11 @@ export interface GSTReportAPIResponse {
     totalInvoices: number;
     totalCreditNotes: number;
     totalDebitNotes: number;
+    totalVendorDebitNotes?: number;
     totalTaxableValue: number;
     totalTax: number;
+    vendorDebitNoteTaxableTotal?: number;
+    vendorDebitNoteTaxTotal?: number;
   };
 }
 
@@ -180,6 +196,21 @@ export interface GSTR3BReport {
       camt: number;
       samt: number;
       csamt: number;
+    };
+  };
+  // Table 4: ITC details (from vendor debit notes and purchase data)
+  itc_elg?: {
+    itc_avl: {
+      // ITC available from vendor payments (processing, job work, freight, etc.)
+      iamt: number;
+      camt: number;
+      samt: number;
+    };
+    itc_rev: {
+      // ITC reversal from vendor claims (defective goods, quality issues, etc.)
+      iamt: number;
+      camt: number;
+      samt: number;
     };
   };
 }
@@ -515,12 +546,16 @@ export function generateGSTR1(
 
 /**
  * Generate GSTR-3B Report from invoices
+ * Now includes vendor debit notes for ITC adjustments per GST accounting rules:
+ * - Vendor payments (processing, job work) = ITC eligible (Table 4A)
+ * - Vendor claims (defective goods, quality issues) = ITC reversal (Table 4B)
  */
 export function generateGSTR3B(
   outwardInvoices: Invoice[],
   inwardPurchases: any[],
   period: string,
-  companyGSTIN: string
+  companyGSTIN: string,
+  vendorDebitNotes?: VendorDebitNoteWithDetails[]
 ): GSTR3BReport {
   let totalTaxableValue = 0;
   let totalIGST = 0;
@@ -536,6 +571,40 @@ export function generateGSTR3B(
     totalCess += paiseToRupees(invoice.cessAmount);
   });
 
+  // Process vendor debit notes for ITC adjustments
+  // Payment types (processing_charges, job_work_charges, freight_charges, quality_premium, material_conversion) = ITC eligible
+  // Claim types (defective_goods, short_receipt, quality_rejection, price_dispute) = ITC reversal
+  const itcPaymentReasons = ['processing_charges', 'job_work_charges', 'freight_charges', 'quality_premium', 'material_conversion'];
+  const itcReversalReasons = ['defective_goods', 'short_receipt', 'quality_rejection', 'price_dispute'];
+
+  let itcIGST = 0;
+  let itcCGST = 0;
+  let itcSGST = 0;
+  let itcReversalIGST = 0;
+  let itcReversalCGST = 0;
+  let itcReversalSGST = 0;
+
+  if (vendorDebitNotes) {
+    vendorDebitNotes.forEach(({ vendorDebitNote }) => {
+      const reason = vendorDebitNote.reason;
+      const igst = paiseToRupees(vendorDebitNote.igstAmount);
+      const cgst = paiseToRupees(vendorDebitNote.cgstAmount);
+      const sgst = paiseToRupees(vendorDebitNote.sgstAmount);
+
+      if (itcPaymentReasons.includes(reason)) {
+        // ITC eligible - payments to vendors for services
+        itcIGST += igst;
+        itcCGST += cgst;
+        itcSGST += sgst;
+      } else if (itcReversalReasons.includes(reason)) {
+        // ITC reversal - claims against vendors
+        itcReversalIGST += igst;
+        itcReversalCGST += cgst;
+        itcReversalSGST += sgst;
+      }
+    });
+  }
+
   return {
     gstin: companyGSTIN,
     ret_period: period,
@@ -546,6 +615,21 @@ export function generateGSTR3B(
         camt: Number(totalCGST.toFixed(2)),
         samt: Number(totalSGST.toFixed(2)),
         csamt: Number(totalCess.toFixed(2)),
+      },
+    },
+    // Table 4: ITC details from vendor debit notes
+    itc_elg: {
+      itc_avl: {
+        // ITC eligible from vendor payments (processing, job work, etc.)
+        iamt: Number(itcIGST.toFixed(2)),
+        camt: Number(itcCGST.toFixed(2)),
+        samt: Number(itcSGST.toFixed(2)),
+      },
+      itc_rev: {
+        // ITC reversal from vendor claims (defective goods, quality issues, etc.)
+        iamt: Number(itcReversalIGST.toFixed(2)),
+        camt: Number(itcReversalCGST.toFixed(2)),
+        samt: Number(itcReversalSGST.toFixed(2)),
       },
     },
   };
@@ -763,9 +847,10 @@ export async function exportGSTR3BAsExcel(report: GSTR3BReport, period: string):
   const XLSX = await import('xlsx');
   const workbook = XLSX.utils.book_new();
 
+  // Table 3.1 - Outward Supplies Summary
   const summaryData = [
     {
-      'Description': 'Outward Taxable Supplies',
+      'Description': 'Table 3.1 - Outward Taxable Supplies',
       'Taxable Value': report.sup_details.osup_det.txval,
       'IGST': report.sup_details.osup_det.iamt,
       'CGST': report.sup_details.osup_det.camt,
@@ -775,7 +860,37 @@ export async function exportGSTR3BAsExcel(report: GSTR3BReport, period: string):
   ];
 
   const summarySheet = XLSX.utils.json_to_sheet(summaryData);
-  XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
+  XLSX.utils.book_append_sheet(workbook, summarySheet, 'Table 3.1 - Outward');
+
+  // Table 4 - ITC Details (if present from vendor debit notes)
+  if (report.itc_elg) {
+    const itcData = [
+      {
+        'Description': 'Table 4A - ITC Available (Vendor Payments)',
+        'Type': 'Processing, Job Work, Freight, etc.',
+        'IGST': report.itc_elg.itc_avl.iamt,
+        'CGST': report.itc_elg.itc_avl.camt,
+        'SGST': report.itc_elg.itc_avl.samt,
+      },
+      {
+        'Description': 'Table 4B - ITC Reversal (Vendor Claims)',
+        'Type': 'Defective Goods, Quality Rejections, etc.',
+        'IGST': report.itc_elg.itc_rev.iamt,
+        'CGST': report.itc_elg.itc_rev.camt,
+        'SGST': report.itc_elg.itc_rev.samt,
+      },
+      {
+        'Description': 'Net ITC',
+        'Type': 'Available - Reversal',
+        'IGST': report.itc_elg.itc_avl.iamt - report.itc_elg.itc_rev.iamt,
+        'CGST': report.itc_elg.itc_avl.camt - report.itc_elg.itc_rev.camt,
+        'SGST': report.itc_elg.itc_avl.samt - report.itc_elg.itc_rev.samt,
+      },
+    ];
+
+    const itcSheet = XLSX.utils.json_to_sheet(itcData);
+    XLSX.utils.book_append_sheet(workbook, itcSheet, 'Table 4 - ITC');
+  }
 
   XLSX.writeFile(workbook, `GSTR3B_${period}.xlsx`);
 }

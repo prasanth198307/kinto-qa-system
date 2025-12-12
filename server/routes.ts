@@ -6483,6 +6483,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
       );
       
+      // Fetch VENDOR debit notes for the period (purchase-side for ITC adjustments)
+      const allVendorDebitNotes = await db.select().from(vendorDebitNotes)
+        .where(
+          and(
+            eq(vendorDebitNotes.recordStatus, 1),
+            gte(vendorDebitNotes.debitDate, startDate.toISOString().split('T')[0]),
+            lte(vendorDebitNotes.debitDate, endDate.toISOString().split('T')[0])
+          )
+        );
+      
+      // Get vendor details and items for each vendor debit note
+      const vendorDebitNotesWithDetails = await Promise.all(
+        allVendorDebitNotes.map(async (vdn) => {
+          const vendor = await storage.getVendor(vdn.vendorId);
+          const vdnItems = await db.select().from(vendorDebitNoteItems)
+            .where(eq(vendorDebitNoteItems.vendorDebitNoteId, vdn.id));
+          return {
+            vendorDebitNote: vdn,
+            vendor: vendor!,
+            items: vdnItems
+          };
+        })
+      );
+      
       // Aggregate HSN summary
       const hsnMap = new Map<string, any>();
       let totalTaxableValue = 0;
@@ -6538,11 +6562,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return hsn;
       });
       
+      // Calculate vendor debit note totals for ITC adjustments
+      let vendorDebitNoteTaxableTotal = 0;
+      let vendorDebitNoteTaxTotal = 0;
+      vendorDebitNotesWithDetails.forEach(({ vendorDebitNote }) => {
+        vendorDebitNoteTaxableTotal += vendorDebitNote.subtotal / 100;
+        vendorDebitNoteTaxTotal += (vendorDebitNote.cgstAmount + vendorDebitNote.sgstAmount + vendorDebitNote.igstAmount) / 100;
+      });
+      
       // Build response
       const response = {
         invoices: invoicesWithItems,
         creditNotes: creditNotesWithInvoice,
         debitNotes: debitNotesWithInvoice,
+        vendorDebitNotes: vendorDebitNotesWithDetails,
         hsnSummary,
         metadata: {
           period: `${month.toString().padStart(2, '0')}${year}`,
@@ -6552,8 +6585,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totalInvoices: invoicesWithItems.length,
           totalCreditNotes: creditNotesWithInvoice.length,
           totalDebitNotes: debitNotesWithInvoice.length,
+          totalVendorDebitNotes: vendorDebitNotesWithDetails.length,
           totalTaxableValue: Number(totalTaxableValue.toFixed(2)),
           totalTax: Number(totalTax.toFixed(2)),
+          vendorDebitNoteTaxableTotal: Number(vendorDebitNoteTaxableTotal.toFixed(2)),
+          vendorDebitNoteTaxTotal: Number(vendorDebitNoteTaxTotal.toFixed(2)),
         },
       };
       
