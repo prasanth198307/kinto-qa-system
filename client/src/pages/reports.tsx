@@ -52,6 +52,7 @@ import {
   type ExpenseReportData,
   type CashRegisterReportData,
 } from "@/lib/expense-cash-reports";
+import { exportToExcel, formatCurrencyForExcel, formatDateForExcel } from "@/lib/excel-export";
 
 interface ReportsProps {
   showHeader?: boolean;
@@ -87,6 +88,13 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
   const [cashRegisterReportLoading, setCashRegisterReportLoading] = useState(false);
   const [cashRegisterSalespersonFilter, setCashRegisterSalespersonFilter] = useState("all");
   const [cashRegisterStatusFilter, setCashRegisterStatusFilter] = useState("all");
+
+  // Excel export states
+  const [isExportingGatepasses, setIsExportingGatepasses] = useState(false);
+  const [isExportingInvoices, setIsExportingInvoices] = useState(false);
+  const [isExportingIssuances, setIsExportingIssuances] = useState(false);
+  const [isExportingPOs, setIsExportingPOs] = useState(false);
+  const [isExportingMaintenance, setIsExportingMaintenance] = useState(false);
 
   // Gatepass API returns paginated response {data: [...], meta: {...}}
   const { data: gatepassResponse, isLoading: gatepassesLoading } = useQuery<{data: Gatepass[], meta: any}>({
@@ -238,6 +246,142 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
     }
   }, [paginatedInvoicesData.currentPage, invoicePage]);
 
+  // Excel export handlers
+  const handleExportGatepasses = async () => {
+    if (filteredGatepasses.length === 0) return;
+    setIsExportingGatepasses(true);
+    try {
+      const sheet = [
+        ['Gatepass Report'],
+        ['Generated', format(new Date(), 'yyyy-MM-dd HH:mm')],
+        [''],
+        ['GP Number', 'Date', 'Customer/Vendor', 'Vehicle Number', 'Status'],
+        ...filteredGatepasses.map(g => [
+          g.gatepassNumber,
+          formatDateForExcel(g.gatepassDate),
+          g.customerName || '-',
+          g.vehicleNumber || '-',
+          g.status || 'Generated'
+        ])
+      ];
+      await exportToExcel({
+        filename: `gatepasses-report-${format(new Date(), 'yyyy-MM-dd')}.xlsx`,
+        sheets: [{ name: 'Gatepasses', data: sheet }],
+      });
+      toast({ title: 'Export Complete', description: 'Gatepasses exported to Excel' });
+    } finally {
+      setIsExportingGatepasses(false);
+    }
+  };
+
+  const handleExportInvoices = async () => {
+    if (filteredInvoices.length === 0) return;
+    setIsExportingInvoices(true);
+    try {
+      const sheet = [
+        ['Invoice Report'],
+        ['Generated', format(new Date(), 'yyyy-MM-dd HH:mm')],
+        [''],
+        ['Invoice #', 'Date', 'Buyer Name', 'Total Amount', 'Amount Received', 'Status'],
+        ...filteredInvoices.map(inv => [
+          inv.invoiceNumber,
+          formatDateForExcel(inv.invoiceDate),
+          inv.buyerName || '-',
+          formatCurrencyForExcel(inv.totalAmount),
+          formatCurrencyForExcel(inv.amountReceived || 0),
+          inv.status || 'draft'
+        ])
+      ];
+      await exportToExcel({
+        filename: `invoices-report-${format(new Date(), 'yyyy-MM-dd')}.xlsx`,
+        sheets: [{ name: 'Invoices', data: sheet }],
+      });
+      toast({ title: 'Export Complete', description: 'Invoices exported to Excel' });
+    } finally {
+      setIsExportingInvoices(false);
+    }
+  };
+
+  const handleExportIssuances = async () => {
+    if (filteredIssuances.length === 0) return;
+    setIsExportingIssuances(true);
+    try {
+      const sheet = [
+        ['Raw Material Issuance Report'],
+        ['Generated', format(new Date(), 'yyyy-MM-dd HH:mm')],
+        [''],
+        ['Issuance #', 'Date', 'Issued To', 'Status'],
+        ...filteredIssuances.map(iss => [
+          iss.issuanceNumber,
+          formatDateForExcel(iss.issuanceDate),
+          iss.issuedTo || '-',
+          'Issued'
+        ])
+      ];
+      await exportToExcel({
+        filename: `issuances-report-${format(new Date(), 'yyyy-MM-dd')}.xlsx`,
+        sheets: [{ name: 'Issuances', data: sheet }],
+      });
+      toast({ title: 'Export Complete', description: 'Issuances exported to Excel' });
+    } finally {
+      setIsExportingIssuances(false);
+    }
+  };
+
+  const handleExportPurchaseOrders = async () => {
+    if (filteredPurchaseOrders.length === 0) return;
+    setIsExportingPOs(true);
+    try {
+      const sheet = [
+        ['Purchase Order Report'],
+        ['Generated', format(new Date(), 'yyyy-MM-dd HH:mm')],
+        [''],
+        ['PO Number', 'Date', 'Vendor', 'Estimated Cost', 'Status'],
+        ...filteredPurchaseOrders.map(po => [
+          po.poNumber,
+          po.createdAt ? formatDateForExcel(po.createdAt) : '-',
+          po.supplier || '-',
+          po.estimatedCost ? formatCurrencyForExcel(po.estimatedCost) : 0,
+          po.status || 'draft'
+        ])
+      ];
+      await exportToExcel({
+        filename: `purchase-orders-report-${format(new Date(), 'yyyy-MM-dd')}.xlsx`,
+        sheets: [{ name: 'Purchase Orders', data: sheet }],
+      });
+      toast({ title: 'Export Complete', description: 'Purchase orders exported to Excel' });
+    } finally {
+      setIsExportingPOs(false);
+    }
+  };
+
+  const handleExportMaintenance = async () => {
+    if (filteredPMExecutions.length === 0) return;
+    setIsExportingMaintenance(true);
+    try {
+      const sheet = [
+        ['Maintenance Execution Report'],
+        ['Generated', format(new Date(), 'yyyy-MM-dd HH:mm')],
+        [''],
+        ['Execution Date', 'Machine ID', 'Plan ID', 'Status', 'Notes'],
+        ...filteredPMExecutions.map(log => [
+          format(new Date(log.completedAt), 'yyyy-MM-dd HH:mm'),
+          log.machineId || '-',
+          log.maintenancePlanId || '-',
+          'Completed',
+          log.remarks || '-'
+        ])
+      ];
+      await exportToExcel({
+        filename: `maintenance-report-${format(new Date(), 'yyyy-MM-dd')}.xlsx`,
+        sheets: [{ name: 'Maintenance', data: sheet }],
+      });
+      toast({ title: 'Export Complete', description: 'Maintenance logs exported to Excel' });
+    } finally {
+      setIsExportingMaintenance(false);
+    }
+  };
+
   return (
     <>
       {showHeader && <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />}
@@ -352,11 +496,23 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
         {/* Gatepasses Tab */}
         <TabsContent value="gatepasses">
           <Card>
-            <CardHeader>
-              <CardTitle>Gatepass Reports</CardTitle>
-              <CardDescription>
-                {filteredGatepasses.length} gatepass{filteredGatepasses.length !== 1 ? 'es' : ''} found
-              </CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between gap-2">
+              <div>
+                <CardTitle>Gatepass Reports</CardTitle>
+                <CardDescription>
+                  {filteredGatepasses.length} gatepass{filteredGatepasses.length !== 1 ? 'es' : ''} found
+                </CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportGatepasses}
+                disabled={isExportingGatepasses || filteredGatepasses.length === 0}
+                data-testid="button-export-gatepasses"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                {isExportingGatepasses ? 'Exporting...' : 'Export Excel'}
+              </Button>
             </CardHeader>
             <CardContent>
               {filteredGatepasses.length === 0 ? (
@@ -398,11 +554,23 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
         {/* Invoices Tab */}
         <TabsContent value="invoices">
           <Card>
-            <CardHeader>
-              <CardTitle>Invoice Reports</CardTitle>
-              <CardDescription>
-                {filteredInvoices.length} invoice{filteredInvoices.length !== 1 ? 's' : ''} found
-              </CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between gap-2">
+              <div>
+                <CardTitle>Invoice Reports</CardTitle>
+                <CardDescription>
+                  {filteredInvoices.length} invoice{filteredInvoices.length !== 1 ? 's' : ''} found
+                </CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportInvoices}
+                disabled={isExportingInvoices || filteredInvoices.length === 0}
+                data-testid="button-export-invoices"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                {isExportingInvoices ? 'Exporting...' : 'Export Excel'}
+              </Button>
             </CardHeader>
             <CardContent>
               {filteredInvoices.length === 0 ? (
@@ -462,11 +630,23 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
         {/* Raw Material Issuances Tab */}
         <TabsContent value="issuances">
           <Card>
-            <CardHeader>
-              <CardTitle>Raw Material Issuance Reports</CardTitle>
-              <CardDescription>
-                {filteredIssuances.length} issuance{filteredIssuances.length !== 1 ? 's' : ''} found
-              </CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between gap-2">
+              <div>
+                <CardTitle>Raw Material Issuance Reports</CardTitle>
+                <CardDescription>
+                  {filteredIssuances.length} issuance{filteredIssuances.length !== 1 ? 's' : ''} found
+                </CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportIssuances}
+                disabled={isExportingIssuances || filteredIssuances.length === 0}
+                data-testid="button-export-issuances"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                {isExportingIssuances ? 'Exporting...' : 'Export Excel'}
+              </Button>
             </CardHeader>
             <CardContent>
               {filteredIssuances.length === 0 ? (
@@ -512,11 +692,23 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
         {/* Purchase Orders Tab */}
         <TabsContent value="purchase-orders">
           <Card>
-            <CardHeader>
-              <CardTitle>Purchase Order Reports</CardTitle>
-              <CardDescription>
-                {filteredPurchaseOrders.length} purchase order{filteredPurchaseOrders.length !== 1 ? 's' : ''} found
-              </CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between gap-2">
+              <div>
+                <CardTitle>Purchase Order Reports</CardTitle>
+                <CardDescription>
+                  {filteredPurchaseOrders.length} purchase order{filteredPurchaseOrders.length !== 1 ? 's' : ''} found
+                </CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportPurchaseOrders}
+                disabled={isExportingPOs || filteredPurchaseOrders.length === 0}
+                data-testid="button-export-purchase-orders"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                {isExportingPOs ? 'Exporting...' : 'Export Excel'}
+              </Button>
             </CardHeader>
             <CardContent>
               {filteredPurchaseOrders.length === 0 ? (
@@ -562,11 +754,23 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
         {/* Maintenance Tab */}
         <TabsContent value="maintenance">
           <Card>
-            <CardHeader>
-              <CardTitle>Maintenance Execution Reports</CardTitle>
-              <CardDescription>
-                {filteredPMExecutions.length} execution log{filteredPMExecutions.length !== 1 ? 's' : ''} found
-              </CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between gap-2">
+              <div>
+                <CardTitle>Maintenance Execution Reports</CardTitle>
+                <CardDescription>
+                  {filteredPMExecutions.length} execution log{filteredPMExecutions.length !== 1 ? 's' : ''} found
+                </CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportMaintenance}
+                disabled={isExportingMaintenance || filteredPMExecutions.length === 0}
+                data-testid="button-export-maintenance"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                {isExportingMaintenance ? 'Exporting...' : 'Export Excel'}
+              </Button>
             </CardHeader>
             <CardContent>
               {filteredPMExecutions.length === 0 ? (
