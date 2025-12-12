@@ -96,6 +96,54 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
   const [isExportingPOs, setIsExportingPOs] = useState(false);
   const [isExportingMaintenance, setIsExportingMaintenance] = useState(false);
 
+  // Quick period selection for sales report
+  const [salesPeriodType, setSalesPeriodType] = useState<string>("custom");
+  const [salesMonth, setSalesMonth] = useState(new Date().getMonth() + 1);
+  const [salesQuarter, setSalesQuarter] = useState(Math.ceil((new Date().getMonth() + 1) / 3));
+  const [salesFY, setSalesFY] = useState(() => {
+    const now = new Date();
+    return now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  });
+
+  // Helper to set date range based on period selection
+  const applyPeriodDates = (type: string) => {
+    setSalesPeriodType(type);
+    const now = new Date();
+    const year = now.getFullYear();
+    
+    if (type === "custom") {
+      // Keep existing dates
+      return;
+    } else if (type === "monthly") {
+      const month = salesMonth;
+      const monthYear = month > now.getMonth() + 1 ? year - 1 : year;
+      const startDate = new Date(monthYear, month - 1, 1);
+      const endDate = new Date(monthYear, month, 0);
+      setDateFrom(format(startDate, 'yyyy-MM-dd'));
+      setDateTo(format(endDate, 'yyyy-MM-dd'));
+    } else if (type === "quarterly") {
+      const quarter = salesQuarter;
+      const qYear = salesFY;
+      // Q1: Apr-Jun, Q2: Jul-Sep, Q3: Oct-Dec, Q4: Jan-Mar
+      const quarterStartMonth = quarter === 1 ? 3 : quarter === 2 ? 6 : quarter === 3 ? 9 : 0;
+      const quarterYear = quarter === 4 ? qYear + 1 : qYear;
+      const startDate = new Date(quarterYear, quarterStartMonth, 1);
+      const endDate = new Date(quarterYear, quarterStartMonth + 3, 0);
+      setDateFrom(format(startDate, 'yyyy-MM-dd'));
+      setDateTo(format(endDate, 'yyyy-MM-dd'));
+    } else if (type === "financial_year") {
+      const fy = salesFY;
+      const startDate = new Date(fy, 3, 1); // April 1
+      const endDate = new Date(fy + 1, 2, 31); // March 31
+      setDateFrom(format(startDate, 'yyyy-MM-dd'));
+      setDateTo(format(endDate, 'yyyy-MM-dd'));
+    }
+  };
+
+  // Generate financial year options (current + 2 previous)
+  const currentFY = new Date().getMonth() >= 3 ? new Date().getFullYear() : new Date().getFullYear() - 1;
+  const fyOptions = [currentFY, currentFY - 1, currentFY - 2];
+
   // Gatepass API returns paginated response {data: [...], meta: {...}}
   const { data: gatepassResponse, isLoading: gatepassesLoading } = useQuery<{data: Gatepass[], meta: any}>({
     queryKey: ['/api/gatepasses'],
@@ -644,23 +692,116 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
         {/* Invoices Tab */}
         <TabsContent value="invoices">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2">
-              <div>
-                <CardTitle>Invoice Reports</CardTitle>
-                <CardDescription>
-                  {filteredInvoices.length} invoice{filteredInvoices.length !== 1 ? 's' : ''} found
-                </CardDescription>
+            <CardHeader>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <CardTitle>Sales Report</CardTitle>
+                  <CardDescription>
+                    {filteredInvoices.length} invoice{filteredInvoices.length !== 1 ? 's' : ''} found
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportInvoices}
+                  disabled={isExportingInvoices || filteredInvoices.length === 0}
+                  data-testid="button-export-invoices"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  {isExportingInvoices ? 'Exporting...' : 'Export Excel'}
+                </Button>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleExportInvoices}
-                disabled={isExportingInvoices || filteredInvoices.length === 0}
-                data-testid="button-export-invoices"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                {isExportingInvoices ? 'Exporting...' : 'Export Excel'}
-              </Button>
+              
+              {/* Quick Period Selection */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4 p-4 bg-muted/50 rounded-lg">
+                <div>
+                  <Label>Period Type</Label>
+                  <Select value={salesPeriodType} onValueChange={(v) => applyPeriodDates(v)}>
+                    <SelectTrigger data-testid="select-period-type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="custom">Custom Date Range</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="quarterly">Quarterly</SelectItem>
+                      <SelectItem value="financial_year">Financial Year</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {salesPeriodType === "monthly" && (
+                  <div>
+                    <Label>Month</Label>
+                    <Select value={String(salesMonth)} onValueChange={(v) => { setSalesMonth(Number(v)); setTimeout(() => applyPeriodDates("monthly"), 0); }}>
+                      <SelectTrigger data-testid="select-month">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((m, i) => (
+                          <SelectItem key={i + 1} value={String(i + 1)}>{m}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {salesPeriodType === "quarterly" && (
+                  <>
+                    <div>
+                      <Label>Quarter</Label>
+                      <Select value={String(salesQuarter)} onValueChange={(v) => { setSalesQuarter(Number(v)); setTimeout(() => applyPeriodDates("quarterly"), 0); }}>
+                        <SelectTrigger data-testid="select-quarter">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">Q1 (Apr-Jun)</SelectItem>
+                          <SelectItem value="2">Q2 (Jul-Sep)</SelectItem>
+                          <SelectItem value="3">Q3 (Oct-Dec)</SelectItem>
+                          <SelectItem value="4">Q4 (Jan-Mar)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Financial Year</Label>
+                      <Select value={String(salesFY)} onValueChange={(v) => { setSalesFY(Number(v)); setTimeout(() => applyPeriodDates("quarterly"), 0); }}>
+                        <SelectTrigger data-testid="select-fy-quarter">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {fyOptions.map(fy => (
+                            <SelectItem key={fy} value={String(fy)}>FY {fy}-{(fy + 1).toString().slice(-2)}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
+                )}
+
+                {salesPeriodType === "financial_year" && (
+                  <div>
+                    <Label>Financial Year</Label>
+                    <Select value={String(salesFY)} onValueChange={(v) => { setSalesFY(Number(v)); setTimeout(() => applyPeriodDates("financial_year"), 0); }}>
+                      <SelectTrigger data-testid="select-fy">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {fyOptions.map(fy => (
+                          <SelectItem key={fy} value={String(fy)}>FY {fy}-{(fy + 1).toString().slice(-2)}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {(dateFrom || dateTo) && (
+                  <div className="flex items-end">
+                    <div className="text-sm text-muted-foreground">
+                      <span className="font-medium">Selected: </span>
+                      {dateFrom || 'Start'} to {dateTo || 'End'}
+                    </div>
+                  </div>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               {filteredInvoices.length === 0 ? (
