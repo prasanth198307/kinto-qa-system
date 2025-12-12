@@ -278,8 +278,24 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
     if (filteredInvoices.length === 0) return;
     setIsExportingInvoices(true);
     try {
-      const sheet = [
-        ['Detailed Sales Report'],
+      // Fetch invoice items for all filtered invoices
+      const invoiceItemsMap: Record<string, any[]> = {};
+      await Promise.all(
+        filteredInvoices.map(async (inv) => {
+          try {
+            const res = await fetch(`/api/invoice-items/${inv.id}`, { credentials: 'include' });
+            if (res.ok) {
+              invoiceItemsMap[inv.id] = await res.json();
+            }
+          } catch (e) {
+            console.error(`Failed to fetch items for invoice ${inv.id}`);
+          }
+        })
+      );
+
+      // Summary sheet with invoice-level data
+      const summarySheet = [
+        ['Detailed Sales Report - Summary'],
         ['Generated', format(new Date(), 'yyyy-MM-dd HH:mm')],
         dateFrom || dateTo ? ['Date Range', `${dateFrom || 'Start'} to ${dateTo || 'End'}`] : [''],
         [''],
@@ -304,17 +320,73 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
         ])
       ];
 
-      // Add summary row
+      // Add summary totals
       const totalAmount = filteredInvoices.reduce((sum, inv) => sum + (inv.totalAmount || 0), 0);
       const totalReceived = filteredInvoices.reduce((sum, inv) => sum + (inv.amountReceived || 0), 0);
-      sheet.push(['']);
-      sheet.push(['', '', '', '', '', '', '', 'TOTAL:', formatCurrencyForExcel(totalAmount), formatCurrencyForExcel(totalReceived), formatCurrencyForExcel(totalAmount - totalReceived), '']);
+      summarySheet.push(['']);
+      summarySheet.push(['', '', '', '', '', '', '', 'TOTAL:', formatCurrencyForExcel(totalAmount), formatCurrencyForExcel(totalReceived), formatCurrencyForExcel(totalAmount - totalReceived), '']);
+
+      // Items sheet with line-item details
+      const itemsSheet: (string | number)[][] = [
+        ['Detailed Sales Report - Items Sold'],
+        ['Generated', format(new Date(), 'yyyy-MM-dd HH:mm')],
+        [''],
+        [
+          'Invoice #', 'Date', 'Buyer Name', 'Buyer GSTIN/Aadhaar', 'Buyer Address',
+          'Product/Description', 'HSN Code', 'Quantity', 'Unit Price', 'Discount',
+          'Taxable Value', 'CGST Rate', 'CGST Amt', 'SGST Rate', 'SGST Amt', 
+          'IGST Rate', 'IGST Amt', 'Line Total'
+        ]
+      ];
+
+      for (const inv of filteredInvoices) {
+        const items = invoiceItemsMap[inv.id] || [];
+        if (items.length === 0) {
+          // Invoice with no items - just show invoice line
+          itemsSheet.push([
+            inv.invoiceNumber,
+            formatDateForExcel(inv.invoiceDate),
+            inv.buyerName || '-',
+            inv.buyerGstin || '-',
+            inv.buyerAddress || '-',
+            '(No items)',
+            '-', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+            formatCurrencyForExcel(inv.totalAmount)
+          ]);
+        } else {
+          for (const item of items) {
+            itemsSheet.push([
+              inv.invoiceNumber,
+              formatDateForExcel(inv.invoiceDate),
+              inv.buyerName || '-',
+              inv.buyerGstin || '-',
+              inv.buyerAddress || '-',
+              item.description || '-',
+              item.hsnCode || item.sacCode || '-',
+              item.quantity || 0,
+              formatCurrencyForExcel(item.unitPrice || 0),
+              formatCurrencyForExcel(item.discount || 0),
+              formatCurrencyForExcel(item.taxableValue || 0),
+              item.cgstRate ? `${item.cgstRate}%` : '0%',
+              formatCurrencyForExcel(item.cgstAmount || 0),
+              item.sgstRate ? `${item.sgstRate}%` : '0%',
+              formatCurrencyForExcel(item.sgstAmount || 0),
+              item.igstRate ? `${item.igstRate}%` : '0%',
+              formatCurrencyForExcel(item.igstAmount || 0),
+              formatCurrencyForExcel(item.totalAmount || 0)
+            ]);
+          }
+        }
+      }
 
       await exportToExcel({
         filename: `sales-report-${format(new Date(), 'yyyy-MM-dd')}.xlsx`,
-        sheets: [{ name: 'Sales Report', data: sheet }],
+        sheets: [
+          { name: 'Summary', data: summarySheet },
+          { name: 'Items Sold', data: itemsSheet }
+        ],
       });
-      toast({ title: 'Export Complete', description: 'Detailed sales report exported to Excel' });
+      toast({ title: 'Export Complete', description: 'Detailed sales report with items exported to Excel' });
     } finally {
       setIsExportingInvoices(false);
     }
