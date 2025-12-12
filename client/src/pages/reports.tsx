@@ -1153,7 +1153,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                         );
                         exportGSTReportAsJSON(report, 'GSTR1', period);
                       } else if (gstReportType === 'GSTR3B') {
-                        const report = generateGSTR3B(invoicesFromReport, [], period, companyGSTIN);
+                        const report = generateGSTR3B(invoicesFromReport, [], period, companyGSTIN, reportData.vendorDebitNotes);
                         exportGSTReportAsJSON(report, 'GSTR3B', period);
                       }
                     } catch (error) {
@@ -1190,7 +1190,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                         );
                         await exportGSTR1AsExcel(report, period);
                       } else if (gstReportType === 'GSTR3B') {
-                        const report = generateGSTR3B(invoicesFromReport, [], period, companyGSTIN);
+                        const report = generateGSTR3B(invoicesFromReport, [], period, companyGSTIN, reportData.vendorDebitNotes);
                         await exportGSTR3BAsExcel(report, period);
                       }
                     } catch (error) {
