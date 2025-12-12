@@ -31,6 +31,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 import { Plus, Trash2, FileText, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -67,7 +69,12 @@ const vendorDebitNoteSchema = z.object({
   }),
   customReason: z.string().optional(),
   notes: z.string().optional(),
-  items: z.array(vendorDebitNoteItemSchema).min(1, "At least one item is required"),
+  entryMode: z.enum(["itemized", "lumpsum"]).default("lumpsum"),
+  lumpSumAmount: z.coerce.number().min(0).optional(),
+  lumpSumDescription: z.string().optional(),
+  lumpSumCgstRate: z.coerce.number().min(0).max(2800).default(0),
+  lumpSumSgstRate: z.coerce.number().min(0).max(2800).default(0),
+  items: z.array(vendorDebitNoteItemSchema).default([]),
 });
 
 type VendorDebitNoteForm = z.infer<typeof vendorDebitNoteSchema>;
@@ -110,18 +117,12 @@ export function VendorDebitNoteDialog({
       debitDate: new Date().toISOString().split("T")[0],
       reason: "processing_charges",
       notes: "",
-      items: [
-        {
-          description: "",
-          hsnCode: "",
-          quantity: 1,
-          unit: "units",
-          unitPrice: 0,
-          cgstRate: 900,
-          sgstRate: 900,
-          igstRate: 0,
-        },
-      ],
+      entryMode: "lumpsum",
+      lumpSumAmount: 0,
+      lumpSumDescription: "",
+      lumpSumCgstRate: 900,
+      lumpSumSgstRate: 900,
+      items: [],
     },
   });
 
@@ -137,26 +138,37 @@ export function VendorDebitNoteDialog({
         debitDate: new Date().toISOString().split("T")[0],
         reason: "processing_charges",
         notes: "",
-        items: [
-          {
-            description: "",
-            hsnCode: "",
-            quantity: 1,
-            unit: "units",
-            unitPrice: 0,
-            cgstRate: 900,
-            sgstRate: 900,
-            igstRate: 0,
-          },
-        ],
+        entryMode: "lumpsum",
+        lumpSumAmount: 0,
+        lumpSumDescription: "",
+        lumpSumCgstRate: 900,
+        lumpSumSgstRate: 900,
+        items: [],
       });
     }
   }, [open, form]);
 
   const reason = form.watch("reason");
+  const entryMode = form.watch("entryMode");
   const watchedItems = form.watch("items");
+  const lumpSumAmount = form.watch("lumpSumAmount") || 0;
+  const lumpSumCgstRate = form.watch("lumpSumCgstRate") || 0;
+  const lumpSumSgstRate = form.watch("lumpSumSgstRate") || 0;
 
   const calculateTotals = () => {
+    if (entryMode === "lumpsum") {
+      const subtotal = Math.round(lumpSumAmount);
+      const cgstAmount = Math.round(subtotal * lumpSumCgstRate / 10000);
+      const sgstAmount = Math.round(subtotal * lumpSumSgstRate / 10000);
+      return {
+        subtotal,
+        cgstAmount,
+        sgstAmount,
+        igstAmount: 0,
+        grandTotal: subtotal + cgstAmount + sgstAmount,
+      };
+    }
+
     let subtotal = 0;
     let totalCgst = 0;
     let totalSgst = 0;
@@ -195,13 +207,46 @@ export function VendorDebitNoteDialog({
       return;
     }
 
+    let submitData: any = {
+      vendorId: data.vendorId,
+      debitDate: data.debitDate,
+      reason: data.reason,
+      customReason: data.customReason,
+      notes: data.notes,
+      items: [],
+    };
+
+    if (data.entryMode === "lumpsum") {
+      const reasonLabel = REASON_LABELS[data.reason] || data.reason;
+      const description = data.lumpSumDescription?.trim() || reasonLabel;
+      submitData.items = [{
+        description: description,
+        hsnCode: "",
+        quantity: 1,
+        unit: "units",
+        unitPrice: data.lumpSumAmount || 0,
+        cgstRate: data.lumpSumCgstRate || 0,
+        sgstRate: data.lumpSumSgstRate || 0,
+        igstRate: 0,
+      }];
+    } else {
+      if (data.items.length === 0) {
+        form.setError("root", {
+          type: "manual",
+          message: "At least one line item is required in itemized mode",
+        });
+        return;
+      }
+      submitData.items = data.items;
+    }
+
     setIsSubmitting(true);
     try {
       const response = await fetch("/api/vendor-debit-notes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(data),
+        body: JSON.stringify(submitData),
       });
 
       if (!response.ok) {
@@ -345,125 +390,250 @@ export function VendorDebitNoteDialog({
 
             <Separator />
 
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Line Items</span>
-                <Button type="button" variant="outline" size="sm" onClick={addItem} data-testid="button-add-item">
-                  <Plus className="h-4 w-4 mr-1" /> Add Item
-                </Button>
-              </div>
+            <FormField
+              control={form.control}
+              name="entryMode"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Entry Mode</FormLabel>
+                  <FormControl>
+                    <RadioGroup
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      className="flex gap-6"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="lumpsum" id="lumpsum" data-testid="radio-lumpsum" />
+                        <Label htmlFor="lumpsum" className="cursor-pointer">Lump Sum Amount</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="itemized" id="itemized" data-testid="radio-itemized" />
+                        <Label htmlFor="itemized" className="cursor-pointer">Itemized (Line Items)</Label>
+                      </div>
+                    </RadioGroup>
+                  </FormControl>
+                </FormItem>
+              )}
+            />
 
-              {fields.map((field, index) => (
-                <Card key={field.id} className="p-3">
-                  <div className="grid grid-cols-12 gap-2 items-end">
-                    <div className="col-span-4">
-                      <FormField
-                        control={form.control}
-                        name={`items.${index}.description`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">Description *</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Item description" {...field} data-testid={`input-item-desc-${index}`} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
+            {entryMode === "lumpsum" ? (
+              <Card className="p-4 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="lumpSumAmount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Amount (paise) *</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            min="0" 
+                            placeholder="e.g., 100000 = ₹1000" 
+                            {...field} 
+                            data-testid="input-lumpsum-amount" 
+                          />
+                        </FormControl>
+                        <p className="text-xs text-muted-foreground">
+                          {field.value ? formatCurrency(Number(field.value)) : "₹0.00"}
+                        </p>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                    <div className="col-span-1">
-                      <FormField
-                        control={form.control}
-                        name={`items.${index}.hsnCode`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">HSN</FormLabel>
-                            <FormControl>
-                              <Input placeholder="HSN" {...field} data-testid={`input-item-hsn-${index}`} />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
+                  <FormField
+                    control={form.control}
+                    name="lumpSumDescription"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description (optional)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Leave blank to use reason as description" 
+                            {...field} 
+                            data-testid="input-lumpsum-description" 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
-                    <div className="col-span-1">
-                      <FormField
-                        control={form.control}
-                        name={`items.${index}.quantity`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">Qty *</FormLabel>
-                            <FormControl>
-                              <Input type="number" min="1" {...field} data-testid={`input-item-qty-${index}`} />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="lumpSumCgstRate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>CGST Rate (basis points)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            min="0" 
+                            placeholder="900 = 9%" 
+                            {...field} 
+                            data-testid="input-lumpsum-cgst" 
+                          />
+                        </FormControl>
+                        <p className="text-xs text-muted-foreground">
+                          {field.value ? `${(Number(field.value) / 100).toFixed(2)}%` : "0%"}
+                        </p>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                    <div className="col-span-1">
-                      <FormField
-                        control={form.control}
-                        name={`items.${index}.unit`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">Unit</FormLabel>
-                            <FormControl>
-                              <Input {...field} data-testid={`input-item-unit-${index}`} />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
+                  <FormField
+                    control={form.control}
+                    name="lumpSumSgstRate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>SGST Rate (basis points)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            min="0" 
+                            placeholder="900 = 9%" 
+                            {...field} 
+                            data-testid="input-lumpsum-sgst" 
+                          />
+                        </FormControl>
+                        <p className="text-xs text-muted-foreground">
+                          {field.value ? `${(Number(field.value) / 100).toFixed(2)}%` : "0%"}
+                        </p>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </Card>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Line Items</span>
+                  <Button type="button" variant="outline" size="sm" onClick={addItem} data-testid="button-add-item">
+                    <Plus className="h-4 w-4 mr-1" /> Add Item
+                  </Button>
+                </div>
 
-                    <div className="col-span-2">
-                      <FormField
-                        control={form.control}
-                        name={`items.${index}.unitPrice`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">Unit Price (paise) *</FormLabel>
-                            <FormControl>
-                              <Input type="number" min="0" {...field} data-testid={`input-item-price-${index}`} />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
+                {fields.length === 0 && (
+                  <Card className="p-4 text-center text-muted-foreground">
+                    No line items yet. Click "Add Item" to add one.
+                  </Card>
+                )}
 
-                    <div className="col-span-1">
-                      <FormField
-                        control={form.control}
-                        name={`items.${index}.cgstRate`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">CGST %</FormLabel>
-                            <FormControl>
-                              <Input type="number" min="0" {...field} placeholder="900=9%" data-testid={`input-item-cgst-${index}`} />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
+                {fields.map((field, index) => (
+                  <Card key={field.id} className="p-3">
+                    <div className="grid grid-cols-12 gap-2 items-end">
+                      <div className="col-span-4">
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.description`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">Description *</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Item description" {...field} data-testid={`input-item-desc-${index}`} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
 
-                    <div className="col-span-1">
-                      <FormField
-                        control={form.control}
-                        name={`items.${index}.sgstRate`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">SGST %</FormLabel>
-                            <FormControl>
-                              <Input type="number" min="0" {...field} placeholder="900=9%" data-testid={`input-item-sgst-${index}`} />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
+                      <div className="col-span-1">
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.hsnCode`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">HSN</FormLabel>
+                              <FormControl>
+                                <Input placeholder="HSN" {...field} data-testid={`input-item-hsn-${index}`} />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
 
-                    <div className="col-span-1 flex justify-end">
-                      {fields.length > 1 && (
+                      <div className="col-span-1">
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.quantity`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">Qty *</FormLabel>
+                              <FormControl>
+                                <Input type="number" min="1" {...field} data-testid={`input-item-qty-${index}`} />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <div className="col-span-1">
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.unit`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">Unit</FormLabel>
+                              <FormControl>
+                                <Input {...field} data-testid={`input-item-unit-${index}`} />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <div className="col-span-2">
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.unitPrice`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">Unit Price (paise) *</FormLabel>
+                              <FormControl>
+                                <Input type="number" min="0" {...field} data-testid={`input-item-price-${index}`} />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <div className="col-span-1">
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.cgstRate`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">CGST %</FormLabel>
+                              <FormControl>
+                                <Input type="number" min="0" {...field} placeholder="900=9%" data-testid={`input-item-cgst-${index}`} />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <div className="col-span-1">
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.sgstRate`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">SGST %</FormLabel>
+                              <FormControl>
+                                <Input type="number" min="0" {...field} placeholder="900=9%" data-testid={`input-item-sgst-${index}`} />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <div className="col-span-1 flex justify-end">
                         <Button
                           type="button"
                           variant="ghost"
@@ -474,12 +644,12 @@ export function VendorDebitNoteDialog({
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
-                      )}
+                      </div>
                     </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
+                  </Card>
+                ))}
+              </div>
+            )}
 
             <Separator />
 
