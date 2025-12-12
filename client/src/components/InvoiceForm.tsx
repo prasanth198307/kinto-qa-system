@@ -696,6 +696,12 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         status: invoiceHeader.status,
         isReissueMode,
         invoiceId: invoice?.id,
+        // Ship-to debugging
+        shipToName: invoiceHeader.shipToName,
+        shipToAddress: invoiceHeader.shipToAddress,
+        shipToCity: invoiceHeader.shipToCity,
+        shipToState: invoiceHeader.shipToState,
+        shipToPincode: invoiceHeader.shipToPincode,
       });
 
       console.log('[InvoiceForm] Form data.items gstRates:', data.items.map(item => ({

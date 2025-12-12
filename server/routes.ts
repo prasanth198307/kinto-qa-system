@@ -6233,8 +6233,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { header, items } = req.body;
       
+      // Debug: Log incoming ship-to fields
+      console.log('[CREATE_INVOICE] Incoming ship-to fields:', JSON.stringify({
+        shipToName: header?.shipToName,
+        shipToAddress: header?.shipToAddress,
+        shipToCity: header?.shipToCity,
+        shipToState: header?.shipToState,
+        shipToPincode: header?.shipToPincode,
+      }));
+      
       // Validate header
       const validatedHeader = insertInvoiceSchema.parse(header);
+      
+      // Debug: Log validated ship-to fields
+      console.log('[CREATE_INVOICE] Validated ship-to fields:', JSON.stringify({
+        shipToName: (validatedHeader as any)?.shipToName,
+        shipToAddress: (validatedHeader as any)?.shipToAddress,
+        shipToCity: (validatedHeader as any)?.shipToCity,
+        shipToState: (validatedHeader as any)?.shipToState,
+        shipToPincode: (validatedHeader as any)?.shipToPincode,
+      }));
       
       // Validate items array
       if (!items || !Array.isArray(items) || items.length === 0) {
