@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import crypto from "crypto";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertPurchaseOrderItemSchema, purchaseOrderItems, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, paymentEvidence, salesReturns, salesReturnItems, creditNotes, creditNoteItems, debitNotes, debitNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes, vendors, users, uom, insertDocumentCategorySchema, insertDocumentSchema, insertExpenseCategorySchema, insertExpenseVoucherSchema, insertExpenseItemSchema, insertExpenseAttachmentSchema, rolePermissions, vendorDebitNotes, vendorDebitNoteItems, vendorDebitNoteAdjustments } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertPurchaseOrderItemSchema, purchaseOrderItems, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, paymentEvidence, salesReturns, salesReturnItems, creditNotes, creditNoteItems, debitNotes, debitNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes, vendors, users, uom, insertDocumentCategorySchema, insertDocumentSchema, insertExpenseCategorySchema, insertExpenseVoucherSchema, insertExpenseItemSchema, insertExpenseAttachmentSchema, rolePermissions, vendorDebitNotes, vendorDebitNoteItems, vendorDebitNoteAdjustments, transporters, vehicles, drivers, insertTransporterSchema, insertVehicleSchema, insertDriverSchema } from "@shared/schema";
 import { format } from "date-fns";
 import { z } from "zod";
 import path from "path";
@@ -1982,6 +1982,246 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting vendor type:", error);
       res.status(500).json({ message: "Failed to delete vendor type" });
+    }
+  });
+
+  // ==================== DISPATCH MASTER DATA APIs ====================
+
+  // Transporters API
+  app.get('/api/transporters', isAuthenticated, async (req: any, res) => {
+    try {
+      const allTransporters = await db
+        .select()
+        .from(transporters)
+        .where(eq(transporters.recordStatus, 1))
+        .orderBy(transporters.transporterName);
+      res.json(allTransporters);
+    } catch (error) {
+      console.error("Error fetching transporters:", error);
+      res.status(500).json({ message: "Failed to fetch transporters" });
+    }
+  });
+
+  app.post('/api/transporters', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const validatedData = insertTransporterSchema.parse(req.body);
+      const [created] = await db.insert(transporters).values(validatedData).returning();
+      res.status(201).json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error creating transporter:", error);
+      res.status(500).json({ message: "Failed to create transporter" });
+    }
+  });
+
+  app.get('/api/transporters/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const [transporter] = await db.select().from(transporters).where(eq(transporters.id, id));
+      if (!transporter) {
+        return res.status(404).json({ message: "Transporter not found" });
+      }
+      res.json(transporter);
+    } catch (error) {
+      console.error("Error fetching transporter:", error);
+      res.status(500).json({ message: "Failed to fetch transporter" });
+    }
+  });
+
+  app.patch('/api/transporters/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertTransporterSchema.partial().parse(req.body);
+      const [updated] = await db.update(transporters).set({ ...validatedData, updatedAt: new Date().toISOString() }).where(eq(transporters.id, id)).returning();
+      if (!updated) {
+        return res.status(404).json({ message: "Transporter not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error updating transporter:", error);
+      res.status(500).json({ message: "Failed to update transporter" });
+    }
+  });
+
+  app.delete('/api/transporters/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await db.update(transporters).set({ recordStatus: 0, updatedAt: new Date().toISOString() }).where(eq(transporters.id, id));
+      res.json({ message: "Transporter deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting transporter:", error);
+      res.status(500).json({ message: "Failed to delete transporter" });
+    }
+  });
+
+  // Vehicles API
+  app.get('/api/vehicles', isAuthenticated, async (req: any, res) => {
+    try {
+      const { transporterId } = req.query;
+      let query = db
+        .select({
+          vehicle: vehicles,
+          transporterName: transporters.transporterName,
+        })
+        .from(vehicles)
+        .leftJoin(transporters, eq(vehicles.transporterId, transporters.id))
+        .where(eq(vehicles.recordStatus, 1))
+        .orderBy(vehicles.vehicleNumber);
+      
+      if (transporterId) {
+        query = query.where(and(eq(vehicles.recordStatus, 1), eq(vehicles.transporterId, transporterId as string)));
+      }
+      
+      const allVehicles = await query;
+      res.json(allVehicles.map(v => ({ ...v.vehicle, transporterName: v.transporterName })));
+    } catch (error) {
+      console.error("Error fetching vehicles:", error);
+      res.status(500).json({ message: "Failed to fetch vehicles" });
+    }
+  });
+
+  app.post('/api/vehicles', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const validatedData = insertVehicleSchema.parse(req.body);
+      const [created] = await db.insert(vehicles).values(validatedData).returning();
+      res.status(201).json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error creating vehicle:", error);
+      res.status(500).json({ message: "Failed to create vehicle" });
+    }
+  });
+
+  app.get('/api/vehicles/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const [vehicle] = await db.select().from(vehicles).where(eq(vehicles.id, id));
+      if (!vehicle) {
+        return res.status(404).json({ message: "Vehicle not found" });
+      }
+      res.json(vehicle);
+    } catch (error) {
+      console.error("Error fetching vehicle:", error);
+      res.status(500).json({ message: "Failed to fetch vehicle" });
+    }
+  });
+
+  app.patch('/api/vehicles/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertVehicleSchema.partial().parse(req.body);
+      const [updated] = await db.update(vehicles).set({ ...validatedData, updatedAt: new Date().toISOString() }).where(eq(vehicles.id, id)).returning();
+      if (!updated) {
+        return res.status(404).json({ message: "Vehicle not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error updating vehicle:", error);
+      res.status(500).json({ message: "Failed to update vehicle" });
+    }
+  });
+
+  app.delete('/api/vehicles/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await db.update(vehicles).set({ recordStatus: 0, updatedAt: new Date().toISOString() }).where(eq(vehicles.id, id));
+      res.json({ message: "Vehicle deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting vehicle:", error);
+      res.status(500).json({ message: "Failed to delete vehicle" });
+    }
+  });
+
+  // Drivers API
+  app.get('/api/drivers', isAuthenticated, async (req: any, res) => {
+    try {
+      const { transporterId } = req.query;
+      let query = db
+        .select({
+          driver: drivers,
+          transporterName: transporters.transporterName,
+        })
+        .from(drivers)
+        .leftJoin(transporters, eq(drivers.transporterId, transporters.id))
+        .where(eq(drivers.recordStatus, 1))
+        .orderBy(drivers.driverName);
+      
+      if (transporterId) {
+        query = query.where(and(eq(drivers.recordStatus, 1), eq(drivers.transporterId, transporterId as string)));
+      }
+      
+      const allDrivers = await query;
+      res.json(allDrivers.map(d => ({ ...d.driver, transporterName: d.transporterName })));
+    } catch (error) {
+      console.error("Error fetching drivers:", error);
+      res.status(500).json({ message: "Failed to fetch drivers" });
+    }
+  });
+
+  app.post('/api/drivers', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const validatedData = insertDriverSchema.parse(req.body);
+      const [created] = await db.insert(drivers).values(validatedData).returning();
+      res.status(201).json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error creating driver:", error);
+      res.status(500).json({ message: "Failed to create driver" });
+    }
+  });
+
+  app.get('/api/drivers/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const [driver] = await db.select().from(drivers).where(eq(drivers.id, id));
+      if (!driver) {
+        return res.status(404).json({ message: "Driver not found" });
+      }
+      res.json(driver);
+    } catch (error) {
+      console.error("Error fetching driver:", error);
+      res.status(500).json({ message: "Failed to fetch driver" });
+    }
+  });
+
+  app.patch('/api/drivers/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertDriverSchema.partial().parse(req.body);
+      const [updated] = await db.update(drivers).set({ ...validatedData, updatedAt: new Date().toISOString() }).where(eq(drivers.id, id)).returning();
+      if (!updated) {
+        return res.status(404).json({ message: "Driver not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error updating driver:", error);
+      res.status(500).json({ message: "Failed to update driver" });
+    }
+  });
+
+  app.delete('/api/drivers/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await db.update(drivers).set({ recordStatus: 0, updatedAt: new Date().toISOString() }).where(eq(drivers.id, id));
+      res.json({ message: "Driver deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting driver:", error);
+      res.status(500).json({ message: "Failed to delete driver" });
     }
   });
 

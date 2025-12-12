@@ -63,7 +63,7 @@ import { ManagerChecklistAssignment } from "@/components/ManagerChecklistAssignm
 import PendingPaymentsDashboard from "@/components/PendingPaymentsDashboard";
 import { OperatorAssignedChecklists } from "@/components/OperatorAssignedChecklists";
 import { VerticalNavSidebar, type NavSection } from "@/components/VerticalNavSidebar";
-import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, ClipboardList, Settings, Calendar, Users, FileText, FileX, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload, FolderOpen, Wallet } from "lucide-react";
+import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, ClipboardList, Settings, Calendar, Users, FileText, FileX, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload, FolderOpen, Wallet, Car } from "lucide-react";
 import SalesDashboard from "@/components/SalesDashboard";
 import VendorAnalytics from "@/pages/vendor-analytics";
 import ReviewerDashboardPage from "@/pages/ReviewerDashboard";
@@ -89,6 +89,7 @@ import MISProduction from "@/pages/mis-production";
 import MISInventory from "@/pages/mis-inventory";
 import MISSales from "@/pages/mis-sales";
 import MISDelivery from "@/pages/mis-delivery";
+import DispatchMasters from "@/pages/dispatch-masters";
 
 type Role = 'admin' | 'operator' | 'reviewer' | 'manager';
 
@@ -1574,6 +1575,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       items: [
         { id: "gatepasses", label: "Gatepasses", icon: FileText, onClick: () => setLocation('/') },
         { id: "dispatch-tracking", label: "Dispatch Tracking", icon: Truck, onClick: () => setLocation('/dispatch-tracking') },
+        { id: "dispatch-masters", label: "Dispatch Masters", icon: Car, onClick: () => setLocation('/dispatch-masters') },
       ],
     },
     {
@@ -2042,6 +2044,35 @@ function VendorTypesPageWrapper() {
   );
 }
 
+// Wrapper component for Dispatch Masters page with filtered navigation
+function DispatchMastersPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('dispatch-masters');
+  
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
+  
+  return (
+    <DashboardShell
+      title="Dispatch Master Data"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={(viewId) => {
+        setActiveView(viewId);
+      }}
+    >
+      <DispatchMasters />
+    </DashboardShell>
+  );
+}
+
 // Wrapper component for Invoice Detail page with filtered navigation
 function InvoiceDetailPageWrapper() {
   const { logoutMutation } = useAuth();
@@ -2277,6 +2308,7 @@ function Router() {
       <ProtectedRoute path="/vendor-history/:vendorId" component={VendorHistoryDetailPage} />
       <ProtectedRoute path="/invoice/:id" component={InvoiceDetailPageWrapper} />
       <ProtectedRoute path="/dispatch-tracking" component={DispatchTrackingPageWrapper} />
+      <ProtectedRoute path="/dispatch-masters" component={DispatchMastersPageWrapper} />
       <ProtectedRoute path="/sales-returns" component={SalesReturnsPageWrapper} />
       <ProtectedRoute path="/credit-notes" component={CreditNotesPageWrapper} />
       <ProtectedRoute path="/cancelled-invoices" component={CancelledInvoicesPageWrapper} />

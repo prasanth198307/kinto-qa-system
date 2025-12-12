@@ -118,6 +118,97 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
     queryKey: ['/api/vendors'],
   });
 
+  // Dispatch masters for quick selection
+  interface Transporter {
+    id: string;
+    transporterCode: string;
+    transporterName: string;
+    phone: string | null;
+    isActive: number;
+  }
+  
+  interface Vehicle {
+    id: string;
+    vehicleNumber: string;
+    vehicleType: string | null;
+    transporterId: string | null;
+    transporterName: string | null;
+    isActive: number;
+  }
+  
+  interface Driver {
+    id: string;
+    driverCode: string;
+    driverName: string;
+    phone: string;
+    transporterId: string | null;
+    transporterName: string | null;
+    isActive: number;
+  }
+
+  const { data: transportersList = [] } = useQuery<Transporter[]>({
+    queryKey: ['/api/transporters'],
+  });
+
+  const { data: vehiclesList = [] } = useQuery<Vehicle[]>({
+    queryKey: ['/api/vehicles'],
+  });
+
+  const { data: driversList = [] } = useQuery<Driver[]>({
+    queryKey: ['/api/drivers'],
+  });
+
+  // Handle master data selection - sets both the ID (for DB reference) and the text (for display/manual override)
+  const handleVehicleSelect = (vehicleId: string) => {
+    if (vehicleId === '__manual__') {
+      // Clear the ID when switching to manual entry
+      form.setValue('header.vehicleId', null);
+      return;
+    }
+    const vehicle = vehiclesList.find(v => v.id === vehicleId);
+    if (vehicle) {
+      form.setValue('header.vehicleId', vehicle.id);
+      form.setValue('header.vehicleNumber', vehicle.vehicleNumber);
+      // If vehicle has transporter, auto-select it
+      if (vehicle.transporterId && vehicle.transporterName) {
+        form.setValue('header.transporterId', vehicle.transporterId);
+        form.setValue('header.transporterName', vehicle.transporterName);
+      }
+    }
+  };
+
+  const handleDriverSelect = (driverId: string) => {
+    if (driverId === '__manual__') {
+      // Clear the ID when switching to manual entry
+      form.setValue('header.driverId', null);
+      return;
+    }
+    const driver = driversList.find(d => d.id === driverId);
+    if (driver) {
+      form.setValue('header.driverId', driver.id);
+      form.setValue('header.driverName', driver.driverName);
+      form.setValue('header.driverContact', driver.phone);
+      // If driver has transporter, auto-select it
+      if (driver.transporterId && driver.transporterName) {
+        form.setValue('header.transporterId', driver.transporterId);
+        form.setValue('header.transporterName', driver.transporterName);
+      }
+    }
+  };
+
+  const handleTransporterSelect = (transporterId: string) => {
+    if (transporterId === '__manual__') {
+      // Clear the ID when switching to manual entry
+      form.setValue('header.transporterId', null);
+      return;
+    }
+    const transporter = transportersList.find(t => t.id === transporterId);
+    if (transporter) {
+      form.setValue('header.transporterId', transporter.id);
+      form.setValue('header.transporterName', transporter.transporterName);
+    }
+  };
+
   // Fetch available invoices (not yet linked to any gatepass)
   const { data: availableInvoices = [] } = useQuery<Invoice[]>({
     queryKey: ['/api/invoices/available'],
@@ -144,6 +235,10 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
         casesCount: undefined,
         securitySealNo: "",
         remarks: "",
+        // Master data IDs (optional - allows manual entry when not set)
+        vehicleId: null,
+        driverId: null,
+        transporterId: null,
       },
       items: items,
     },
@@ -182,6 +277,10 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
             isCluster: gatepass.isCluster || 0,
             invoiceId: gatepass.invoiceId || "",
             remarks: gatepass.remarks || "",
+            // Master data IDs from existing gatepass
+            vehicleId: (gatepass as any).vehicleId || null,
+            driverId: (gatepass as any).driverId || null,
+            transporterId: (gatepass as any).transporterId || null,
           },
           items: mappedItems,
         });
@@ -203,6 +302,10 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
             isCluster: gatepass.isCluster || 0,
             invoiceId: gatepass.invoiceId || "",
             remarks: gatepass.remarks || "",
+            // Master data IDs from existing gatepass
+            vehicleId: (gatepass as any).vehicleId || null,
+            driverId: (gatepass as any).driverId || null,
+            transporterId: (gatepass as any).transporterId || null,
           },
           items: [],
         });
@@ -687,6 +790,21 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                 )}
               />
 
+              <div className="space-y-2">
+                <FormLabel>Vehicle (Quick Select)</FormLabel>
+                <Select onValueChange={handleVehicleSelect}>
+                  <SelectTrigger data-testid="select-vehicle-master">
+                    <SelectValue placeholder="Select from master or enter below" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__manual__">-- Enter Manually --</SelectItem>
+                    {vehiclesList.filter(v => v.isActive === 1).map((v) => (
+                      <SelectItem key={v.id} value={v.id}>{v.vehicleNumber} {v.vehicleType ? `(${v.vehicleType})` : ''}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <FormField
                 control={form.control}
                 name="header.vehicleNumber"
@@ -694,12 +812,27 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                   <FormItem>
                     <FormLabel>Vehicle Number</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="MH-12-AB-1234" data-testid="input-vehicle-number" />
+                      <Input {...field} placeholder="AP-09-AB-1234" data-testid="input-vehicle-number" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
+              <div className="space-y-2">
+                <FormLabel>Driver (Quick Select)</FormLabel>
+                <Select onValueChange={handleDriverSelect}>
+                  <SelectTrigger data-testid="select-driver-master">
+                    <SelectValue placeholder="Select from master or enter below" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__manual__">-- Enter Manually --</SelectItem>
+                    {driversList.filter(d => d.isActive === 1).map((d) => (
+                      <SelectItem key={d.id} value={d.id}>{d.driverName} ({d.phone})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
               <FormField
                 control={form.control}
@@ -728,6 +861,21 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                   </FormItem>
                 )}
               />
+
+              <div className="space-y-2">
+                <FormLabel>Transporter (Quick Select)</FormLabel>
+                <Select onValueChange={handleTransporterSelect}>
+                  <SelectTrigger data-testid="select-transporter-master">
+                    <SelectValue placeholder="Select from master or enter below" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__manual__">-- Enter Manually --</SelectItem>
+                    {transportersList.filter(t => t.isActive === 1).map((t) => (
+                      <SelectItem key={t.id} value={t.id}>{t.transporterName}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
               <FormField
                 control={form.control}

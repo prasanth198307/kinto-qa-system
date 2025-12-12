@@ -1476,6 +1476,90 @@ export const insertProductionEntrySchema = createInsertSchema(productionEntries,
 export type InsertProductionEntry = z.infer<typeof insertProductionEntrySchema>;
 export type ProductionEntry = typeof productionEntries.$inferSelect;
 
+// ============== DISPATCH MASTER DATA ==============
+
+// Transporters Master
+export const transporters = pgTable("transporters", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  transporterCode: varchar("transporter_code", { length: 50 }).notNull().unique(),
+  transporterName: varchar("transporter_name", { length: 255 }).notNull(),
+  contactPerson: varchar("contact_person", { length: 255 }),
+  phone: varchar("phone", { length: 20 }),
+  email: varchar("email", { length: 255 }),
+  address: text("address"),
+  gstNumber: varchar("gst_number", { length: 20 }),
+  panNumber: varchar("pan_number", { length: 20 }),
+  isActive: integer("is_active").default(1).notNull(),
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
+});
+
+export const insertTransporterSchema = createInsertSchema(transporters).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertTransporter = z.infer<typeof insertTransporterSchema>;
+export type Transporter = typeof transporters.$inferSelect;
+
+// Vehicles Master
+export const vehicles = pgTable("vehicles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  vehicleNumber: varchar("vehicle_number", { length: 20 }).notNull().unique(),
+  vehicleType: varchar("vehicle_type", { length: 50 }), // Truck, Tempo, Mini-truck, etc.
+  capacity: varchar("capacity", { length: 50 }), // e.g., "10 Ton", "500 cases"
+  transporterId: varchar("transporter_id").references(() => transporters.id),
+  ownerName: varchar("owner_name", { length: 255 }),
+  ownerPhone: varchar("owner_phone", { length: 20 }),
+  insuranceExpiry: date("insurance_expiry", { mode: 'string' }),
+  fitnessExpiry: date("fitness_expiry", { mode: 'string' }),
+  permitExpiry: date("permit_expiry", { mode: 'string' }),
+  isActive: integer("is_active").default(1).notNull(),
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
+});
+
+export const insertVehicleSchema = createInsertSchema(vehicles).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertVehicle = z.infer<typeof insertVehicleSchema>;
+export type Vehicle = typeof vehicles.$inferSelect;
+
+// Drivers Master
+export const drivers = pgTable("drivers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  driverCode: varchar("driver_code", { length: 50 }).notNull().unique(),
+  driverName: varchar("driver_name", { length: 255 }).notNull(),
+  phone: varchar("phone", { length: 20 }).notNull(),
+  alternatePhone: varchar("alternate_phone", { length: 20 }),
+  licenseNumber: varchar("license_number", { length: 50 }),
+  licenseExpiry: date("license_expiry", { mode: 'string' }),
+  address: text("address"),
+  transporterId: varchar("transporter_id").references(() => transporters.id),
+  isActive: integer("is_active").default(1).notNull(),
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
+});
+
+export const insertDriverSchema = createInsertSchema(drivers).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertDriver = z.infer<typeof insertDriverSchema>;
+export type Driver = typeof drivers.$inferSelect;
+
 // Gatepasses for Finished Goods Dispatch (Header)
 export const gatepasses = pgTable("gatepasses", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -1491,6 +1575,11 @@ export const gatepasses = pgTable("gatepasses", {
   isCluster: integer("is_cluster").default(0).notNull(), // 0 = No, 1 = Yes (copied from vendor)
   invoiceId: varchar("invoice_id").references(() => invoices.id).unique(), // One-to-one: one gatepass per invoice
   remarks: text("remarks"),
+  
+  // Master Data References (optional - allows manual entry if not in master)
+  transporterId: varchar("transporter_id").references(() => transporters.id),
+  vehicleId: varchar("vehicle_id").references(() => vehicles.id),
+  driverId: varchar("driver_id").references(() => drivers.id),
   
   // Additional Dispatch Fields
   casesCount: integer("cases_count"), // Number of cases/boxes
