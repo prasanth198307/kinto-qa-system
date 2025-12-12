@@ -1,5 +1,6 @@
 -- Dispatch Masters: Transporters, Vehicles, and Drivers
 -- Created: 2025-12-12
+-- Updated: 2025-12-12 - Fixed column mismatches with Drizzle schema
 -- Purpose: Master data for dispatch management with referential links to gatepasses
 
 -- Transporters table
@@ -19,15 +20,7 @@ CREATE TABLE IF NOT EXISTS transporters (
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- Add contact_person column if table already exists but column is missing
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'transporters' AND column_name = 'contact_person') THEN
-        ALTER TABLE transporters ADD COLUMN contact_person VARCHAR(255);
-    END IF;
-END $$;
-
--- Vehicles table
+-- Vehicles table (matches Drizzle schema)
 CREATE TABLE IF NOT EXISTS vehicles (
     id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
     vehicle_number VARCHAR(20) NOT NULL UNIQUE,
@@ -36,9 +29,9 @@ CREATE TABLE IF NOT EXISTS vehicles (
     transporter_id VARCHAR REFERENCES transporters(id),
     owner_name VARCHAR(255),
     owner_phone VARCHAR(20),
-    rc_expiry DATE,
     insurance_expiry DATE,
     fitness_expiry DATE,
+    permit_expiry DATE,
     is_active INTEGER DEFAULT 1 NOT NULL,
     record_status INTEGER DEFAULT 1 NOT NULL,
     created_at TIMESTAMP DEFAULT NOW(),
@@ -61,6 +54,25 @@ CREATE TABLE IF NOT EXISTS drivers (
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
+
+-- Add missing columns to existing tables (for migrations)
+DO $$
+BEGIN
+    -- Transporters: add contact_person if missing
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'transporters' AND column_name = 'contact_person') THEN
+        ALTER TABLE transporters ADD COLUMN contact_person VARCHAR(255);
+    END IF;
+    
+    -- Vehicles: add permit_expiry if missing (was rc_expiry in old schema)
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'vehicles' AND column_name = 'permit_expiry') THEN
+        ALTER TABLE vehicles ADD COLUMN permit_expiry DATE;
+    END IF;
+    
+    -- Vehicles: drop rc_expiry if it exists (not in Drizzle schema)
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'vehicles' AND column_name = 'rc_expiry') THEN
+        ALTER TABLE vehicles DROP COLUMN rc_expiry;
+    END IF;
+END $$;
 
 -- Add foreign key references to gatepasses table (if columns don't exist)
 DO $$
