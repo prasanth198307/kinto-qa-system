@@ -51,7 +51,18 @@ const vendorDebitNoteItemSchema = z.object({
 const vendorDebitNoteSchema = z.object({
   vendorId: z.string().min(1, "Vendor is required"),
   debitDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format"),
-  reason: z.enum(["defective_goods", "short_receipt", "quality_rejection", "price_dispute", "other"], {
+  reason: z.enum([
+    "processing_charges", 
+    "job_work_charges", 
+    "freight_charges", 
+    "quality_premium", 
+    "material_conversion", 
+    "defective_goods", 
+    "short_receipt", 
+    "quality_rejection", 
+    "price_dispute", 
+    "other"
+  ], {
     required_error: "Please select a reason",
   }),
   customReason: z.string().optional(),
@@ -68,6 +79,11 @@ interface VendorDebitNoteDialogProps {
 }
 
 const REASON_LABELS: Record<string, string> = {
+  processing_charges: "Processing Charges",
+  job_work_charges: "Job Work Charges",
+  freight_charges: "Freight/Transport Charges",
+  quality_premium: "Quality Premium/Bonus",
+  material_conversion: "Material Conversion Charges",
   defective_goods: "Defective Goods",
   short_receipt: "Short Receipt",
   quality_rejection: "Quality Rejection",
@@ -92,7 +108,7 @@ export function VendorDebitNoteDialog({
     defaultValues: {
       vendorId: "",
       debitDate: new Date().toISOString().split("T")[0],
-      reason: "defective_goods",
+      reason: "processing_charges",
       notes: "",
       items: [
         {
@@ -119,7 +135,7 @@ export function VendorDebitNoteDialog({
       form.reset({
         vendorId: "",
         debitDate: new Date().toISOString().split("T")[0],
-        reason: "defective_goods",
+        reason: "processing_charges",
         notes: "",
         items: [
           {

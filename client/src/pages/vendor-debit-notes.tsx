@@ -45,6 +45,11 @@ interface VendorDebitNote {
 }
 
 const REASON_LABELS: Record<string, string> = {
+  processing_charges: "Processing Charges",
+  job_work_charges: "Job Work Charges",
+  freight_charges: "Freight/Transport Charges",
+  quality_premium: "Quality Premium/Bonus",
+  material_conversion: "Material Conversion Charges",
   defective_goods: "Defective Goods",
   short_receipt: "Short Receipt",
   quality_rejection: "Quality Rejection",
