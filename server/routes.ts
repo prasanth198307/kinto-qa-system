@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import crypto from "crypto";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertPurchaseOrderItemSchema, purchaseOrderItems, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, paymentEvidence, salesReturns, salesReturnItems, creditNotes, creditNoteItems, debitNotes, debitNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes, vendors, users, uom, insertDocumentCategorySchema, insertDocumentSchema, insertExpenseCategorySchema, insertExpenseVoucherSchema, insertExpenseItemSchema, insertExpenseAttachmentSchema, rolePermissions, vendorDebitNotes, vendorDebitNoteItems } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertPurchaseOrderItemSchema, purchaseOrderItems, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, paymentEvidence, salesReturns, salesReturnItems, creditNotes, creditNoteItems, debitNotes, debitNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes, vendors, users, uom, insertDocumentCategorySchema, insertDocumentSchema, insertExpenseCategorySchema, insertExpenseVoucherSchema, insertExpenseItemSchema, insertExpenseAttachmentSchema, rolePermissions, vendorDebitNotes, vendorDebitNoteItems, vendorDebitNoteAdjustments } from "@shared/schema";
 import { format } from "date-fns";
 import { z } from "zod";
 import path from "path";
@@ -9040,6 +9040,263 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching vendor debit notes:", error);
       res.status(500).json({ message: "Failed to fetch vendor debit notes" });
+    }
+  });
+
+  // Get pending invoices for a vendor (where vendor is buyer) for adjustment
+  app.get('/api/vendor-debit-notes/pending-invoices/:vendorId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { vendorId } = req.params;
+      
+      // Get all invoices for this vendor that have pending balance
+      const vendorInvoices = await db.select({
+        id: invoices.id,
+        invoiceNumber: invoices.invoiceNumber,
+        invoiceDate: invoices.invoiceDate,
+        grandTotal: invoices.grandTotal,
+        vendorId: invoices.vendorId,
+        vendorName: vendors.vendorName,
+      })
+        .from(invoices)
+        .leftJoin(vendors, eq(invoices.vendorId, vendors.id))
+        .where(and(
+          eq(invoices.vendorId, vendorId),
+          eq(invoices.recordStatus, 1),
+          ne(invoices.dispatchStatus, 'cancelled')
+        ))
+        .orderBy(desc(invoices.invoiceDate));
+
+      // Get payments for each invoice to calculate pending balance
+      const invoiceIds = vendorInvoices.map(inv => inv.id);
+      
+      const payments = invoiceIds.length > 0 
+        ? await db.select({
+            invoiceId: invoicePayments.invoiceId,
+            amount: invoicePayments.amount,
+          })
+          .from(invoicePayments)
+          .where(and(
+            inArray(invoicePayments.invoiceId, invoiceIds),
+            eq(invoicePayments.recordStatus, 1)
+          ))
+        : [];
+
+      // Get existing adjustments for these invoices
+      const existingAdjustments = invoiceIds.length > 0
+        ? await db.select({
+            invoiceId: vendorDebitNoteAdjustments.invoiceId,
+            adjustmentAmount: vendorDebitNoteAdjustments.adjustmentAmount,
+          })
+          .from(vendorDebitNoteAdjustments)
+          .where(and(
+            inArray(vendorDebitNoteAdjustments.invoiceId, invoiceIds),
+            eq(vendorDebitNoteAdjustments.recordStatus, 1)
+          ))
+        : [];
+
+      // Calculate pending amounts
+      const paymentsByInvoice = payments.reduce((acc, p) => {
+        acc[p.invoiceId] = (acc[p.invoiceId] || 0) + p.amount;
+        return acc;
+      }, {} as Record<string, number>);
+
+      const adjustmentsByInvoice = existingAdjustments.reduce((acc, a) => {
+        if (a.invoiceId) {
+          acc[a.invoiceId] = (acc[a.invoiceId] || 0) + a.adjustmentAmount;
+        }
+        return acc;
+      }, {} as Record<string, number>);
+
+      const pendingInvoices = vendorInvoices.map(inv => ({
+        ...inv,
+        paidAmount: paymentsByInvoice[inv.id] || 0,
+        adjustedAmount: adjustmentsByInvoice[inv.id] || 0,
+        pendingAmount: inv.grandTotal - (paymentsByInvoice[inv.id] || 0) - (adjustmentsByInvoice[inv.id] || 0),
+      })).filter(inv => inv.pendingAmount > 0);
+
+      res.json(pendingInvoices);
+    } catch (error) {
+      console.error("Error fetching pending invoices:", error);
+      res.status(500).json({ message: "Failed to fetch pending invoices" });
+    }
+  });
+
+  // Get pending purchase orders for a vendor for adjustment
+  app.get('/api/vendor-debit-notes/pending-purchase-orders/:vendorId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { vendorId } = req.params;
+      
+      // Get POs with pending amounts (delivered but not fully settled)
+      const vendorPOs = await db.select({
+        id: purchaseOrders.id,
+        poNumber: purchaseOrders.poNumber,
+        poDate: purchaseOrders.poDate,
+        grandTotal: purchaseOrders.grandTotal,
+        status: purchaseOrders.status,
+        vendorId: purchaseOrders.vendorId,
+      })
+        .from(purchaseOrders)
+        .where(and(
+          eq(purchaseOrders.vendorId, vendorId),
+          eq(purchaseOrders.recordStatus, 1),
+          inArray(purchaseOrders.status, ['delivered', 'partially_delivered', 'approved'])
+        ))
+        .orderBy(desc(purchaseOrders.poDate));
+
+      // Get existing adjustments for these POs
+      const poIds = vendorPOs.map(po => po.id);
+      
+      const existingAdjustments = poIds.length > 0
+        ? await db.select({
+            purchaseOrderId: vendorDebitNoteAdjustments.purchaseOrderId,
+            adjustmentAmount: vendorDebitNoteAdjustments.adjustmentAmount,
+          })
+          .from(vendorDebitNoteAdjustments)
+          .where(and(
+            inArray(vendorDebitNoteAdjustments.purchaseOrderId, poIds),
+            eq(vendorDebitNoteAdjustments.recordStatus, 1)
+          ))
+        : [];
+
+      const adjustmentsByPO = existingAdjustments.reduce((acc, a) => {
+        if (a.purchaseOrderId) {
+          acc[a.purchaseOrderId] = (acc[a.purchaseOrderId] || 0) + a.adjustmentAmount;
+        }
+        return acc;
+      }, {} as Record<string, number>);
+
+      const pendingPOs = vendorPOs.map(po => ({
+        ...po,
+        adjustedAmount: adjustmentsByPO[po.id] || 0,
+        pendingAmount: (po.grandTotal || 0) - (adjustmentsByPO[po.id] || 0),
+      })).filter(po => po.pendingAmount > 0);
+
+      res.json(pendingPOs);
+    } catch (error) {
+      console.error("Error fetching pending purchase orders:", error);
+      res.status(500).json({ message: "Failed to fetch pending purchase orders" });
+    }
+  });
+
+  // Create debit note adjustment (link to invoice or PO)
+  app.post('/api/vendor-debit-notes/:id/adjustments', requireRole('admin', 'manager', 'AccountsManager'), async (req: any, res) => {
+    try {
+      const { id: debitNoteId } = req.params;
+      const { referenceType, invoiceId, purchaseOrderId, adjustmentAmount, remarks } = req.body;
+
+      // Validate debit note exists and has unsettled balance
+      const [debitNote] = await db.select()
+        .from(vendorDebitNotes)
+        .where(and(eq(vendorDebitNotes.id, debitNoteId), eq(vendorDebitNotes.recordStatus, 1)));
+
+      if (!debitNote) {
+        return res.status(404).json({ message: "Vendor debit note not found" });
+      }
+
+      const unsettledAmount = debitNote.grandTotal - debitNote.settledAmount;
+      if (adjustmentAmount > unsettledAmount) {
+        return res.status(400).json({ 
+          message: `Adjustment amount (₹${(adjustmentAmount / 100).toFixed(2)}) exceeds unsettled balance (₹${(unsettledAmount / 100).toFixed(2)})` 
+        });
+      }
+
+      // Validate reference exists
+      if (referenceType === 'invoice' && invoiceId) {
+        const [invoice] = await db.select().from(invoices).where(eq(invoices.id, invoiceId));
+        if (!invoice) {
+          return res.status(404).json({ message: "Invoice not found" });
+        }
+      } else if (referenceType === 'purchase_order' && purchaseOrderId) {
+        const [po] = await db.select().from(purchaseOrders).where(eq(purchaseOrders.id, purchaseOrderId));
+        if (!po) {
+          return res.status(404).json({ message: "Purchase order not found" });
+        }
+      } else {
+        return res.status(400).json({ message: "Invalid reference type or missing reference ID" });
+      }
+
+      // Create adjustment in transaction
+      await db.transaction(async (tx) => {
+        // Insert adjustment record
+        await tx.insert(vendorDebitNoteAdjustments).values({
+          vendorDebitNoteId: debitNoteId,
+          referenceType,
+          invoiceId: referenceType === 'invoice' ? invoiceId : null,
+          purchaseOrderId: referenceType === 'purchase_order' ? purchaseOrderId : null,
+          adjustmentAmount,
+          adjustmentDate: new Date().toISOString().split('T')[0],
+          remarks,
+          adjustedBy: req.user?.id,
+        });
+
+        // Update settled amount on debit note
+        await tx.update(vendorDebitNotes)
+          .set({ 
+            settledAmount: debitNote.settledAmount + adjustmentAmount,
+            status: (debitNote.settledAmount + adjustmentAmount) >= debitNote.grandTotal ? 'settled' : 'issued',
+          })
+          .where(eq(vendorDebitNotes.id, debitNoteId));
+
+        // If adjusting against an invoice, record it as a payment (debit note adjustment type)
+        if (referenceType === 'invoice' && invoiceId) {
+          await tx.insert(invoicePayments).values({
+            invoiceId,
+            paymentDate: new Date().toISOString(),
+            amount: adjustmentAmount,
+            paymentMethod: 'Debit Note Adjustment',
+            referenceNumber: debitNote.noteNumber,
+            paymentType: 'Adjustment',
+            remarks: `Adjusted against Vendor Debit Note ${debitNote.noteNumber}`,
+            recordedBy: req.user?.id,
+          });
+        }
+      });
+
+      await logAudit(
+        req.user?.id,
+        'CREATE',
+        'vendor_debit_note_adjustments',
+        debitNoteId,
+        `Adjustment of ₹${(adjustmentAmount / 100).toFixed(2)} created for ${referenceType} ${invoiceId || purchaseOrderId}`
+      );
+
+      res.json({ message: "Adjustment created successfully" });
+    } catch (error) {
+      console.error("Error creating adjustment:", error);
+      res.status(500).json({ message: "Failed to create adjustment" });
+    }
+  });
+
+  // Get adjustments for a debit note
+  app.get('/api/vendor-debit-notes/:id/adjustments', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id: debitNoteId } = req.params;
+
+      const adjustments = await db.select({
+        id: vendorDebitNoteAdjustments.id,
+        referenceType: vendorDebitNoteAdjustments.referenceType,
+        invoiceId: vendorDebitNoteAdjustments.invoiceId,
+        purchaseOrderId: vendorDebitNoteAdjustments.purchaseOrderId,
+        adjustmentAmount: vendorDebitNoteAdjustments.adjustmentAmount,
+        adjustmentDate: vendorDebitNoteAdjustments.adjustmentDate,
+        remarks: vendorDebitNoteAdjustments.remarks,
+        createdAt: vendorDebitNoteAdjustments.createdAt,
+        invoiceNumber: invoices.invoiceNumber,
+        poNumber: purchaseOrders.poNumber,
+      })
+        .from(vendorDebitNoteAdjustments)
+        .leftJoin(invoices, eq(vendorDebitNoteAdjustments.invoiceId, invoices.id))
+        .leftJoin(purchaseOrders, eq(vendorDebitNoteAdjustments.purchaseOrderId, purchaseOrders.id))
+        .where(and(
+          eq(vendorDebitNoteAdjustments.vendorDebitNoteId, debitNoteId),
+          eq(vendorDebitNoteAdjustments.recordStatus, 1)
+        ))
+        .orderBy(desc(vendorDebitNoteAdjustments.createdAt));
+
+      res.json(adjustments);
+    } catch (error) {
+      console.error("Error fetching adjustments:", error);
+      res.status(500).json({ message: "Failed to fetch adjustments" });
     }
   });
 

@@ -2955,3 +2955,34 @@ export const insertVendorDebitNoteItemSchema = createInsertSchema(vendorDebitNot
 
 export type InsertVendorDebitNoteItem = z.infer<typeof insertVendorDebitNoteItemSchema>;
 export type VendorDebitNoteItem = typeof vendorDebitNoteItems.$inferSelect;
+
+// Vendor Debit Note Adjustments - links debit notes to invoices/POs for settlement
+export const vendorDebitNoteAdjustments = pgTable("vendor_debit_note_adjustments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  vendorDebitNoteId: varchar("vendor_debit_note_id").references(() => vendorDebitNotes.id).notNull(),
+  
+  // Reference type and ID (invoice or purchase_order)
+  referenceType: varchar("reference_type", { length: 20 }).notNull(), // 'invoice' or 'purchase_order'
+  invoiceId: varchar("invoice_id").references(() => invoices.id), // For sales invoice adjustments
+  purchaseOrderId: varchar("purchase_order_id").references(() => purchaseOrders.id), // For PO adjustments
+  
+  // Adjustment amount (in paise)
+  adjustmentAmount: integer("adjustment_amount").notNull(),
+  adjustmentDate: date("adjustment_date").notNull(),
+  
+  // Metadata
+  remarks: text("remarks"),
+  adjustedBy: varchar("adjusted_by").references(() => users.id),
+  
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+});
+
+export const insertVendorDebitNoteAdjustmentSchema = createInsertSchema(vendorDebitNoteAdjustments).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+});
+
+export type InsertVendorDebitNoteAdjustment = z.infer<typeof insertVendorDebitNoteAdjustmentSchema>;
+export type VendorDebitNoteAdjustment = typeof vendorDebitNoteAdjustments.$inferSelect;
