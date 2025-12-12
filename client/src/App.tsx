@@ -1517,6 +1517,17 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       ],
     },
     {
+      id: "mis-section",
+      label: "MIS Reports",
+      items: [
+        { id: "mis-dashboard", label: "Executive Dashboard", icon: TrendingUp, onClick: () => setLocation('/mis') },
+        { id: "mis-production", label: "Production Analytics", icon: Factory, onClick: () => setLocation('/mis/production') },
+        { id: "mis-inventory", label: "Inventory Intelligence", icon: Box, onClick: () => setLocation('/mis/inventory') },
+        { id: "mis-sales", label: "Sales Analysis", icon: IndianRupee, onClick: () => setLocation('/mis/sales') },
+        { id: "mis-delivery", label: "Delivery Performance", icon: Truck, onClick: () => setLocation('/mis/delivery') },
+      ],
+    },
+    {
       id: "quality-section",
       label: "Quality & Checklists",
       items: [
