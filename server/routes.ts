@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import crypto from "crypto";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertPurchaseOrderItemSchema, purchaseOrderItems, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, paymentEvidence, salesReturns, salesReturnItems, creditNotes, creditNoteItems, debitNotes, debitNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes, vendors, users, uom, insertDocumentCategorySchema, insertDocumentSchema, insertExpenseCategorySchema, insertExpenseVoucherSchema, insertExpenseItemSchema, insertExpenseAttachmentSchema, rolePermissions } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertPurchaseOrderItemSchema, purchaseOrderItems, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, paymentEvidence, salesReturns, salesReturnItems, creditNotes, creditNoteItems, debitNotes, debitNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes, vendors, users, uom, insertDocumentCategorySchema, insertDocumentSchema, insertExpenseCategorySchema, insertExpenseVoucherSchema, insertExpenseItemSchema, insertExpenseAttachmentSchema, rolePermissions, vendorDebitNotes, vendorDebitNoteItems } from "@shared/schema";
 import { format } from "date-fns";
 import { z } from "zod";
 import path from "path";
@@ -8777,6 +8777,269 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating correct & debit note:", error);
       res.status(500).json({ message: "Failed to create debit note" });
+    }
+  });
+
+  // ==================== VENDOR DEBIT NOTES ====================
+  // Manual debit notes against vendors for claims (defective goods, short receipts, quality issues)
+
+  // Get all vendor debit notes
+  app.get('/api/vendor-debit-notes', isAuthenticated, async (req: any, res) => {
+    try {
+      const notes = await db.select({
+        id: vendorDebitNotes.id,
+        noteNumber: vendorDebitNotes.noteNumber,
+        vendorId: vendorDebitNotes.vendorId,
+        purchaseOrderId: vendorDebitNotes.purchaseOrderId,
+        debitDate: vendorDebitNotes.debitDate,
+        reason: vendorDebitNotes.reason,
+        status: vendorDebitNotes.status,
+        subtotal: vendorDebitNotes.subtotal,
+        cgstAmount: vendorDebitNotes.cgstAmount,
+        sgstAmount: vendorDebitNotes.sgstAmount,
+        igstAmount: vendorDebitNotes.igstAmount,
+        grandTotal: vendorDebitNotes.grandTotal,
+        settledAmount: vendorDebitNotes.settledAmount,
+        settlementDate: vendorDebitNotes.settlementDate,
+        settlementReference: vendorDebitNotes.settlementReference,
+        notes: vendorDebitNotes.notes,
+        issuedBy: vendorDebitNotes.issuedBy,
+        createdAt: vendorDebitNotes.createdAt,
+        vendorName: vendors.vendorName,
+        vendorGst: vendors.gstNumber,
+      })
+      .from(vendorDebitNotes)
+      .leftJoin(vendors, eq(vendorDebitNotes.vendorId, vendors.id))
+      .where(eq(vendorDebitNotes.recordStatus, 1))
+      .orderBy(desc(vendorDebitNotes.createdAt));
+      
+      res.json(notes);
+    } catch (error) {
+      console.error("Error fetching vendor debit notes:", error);
+      res.status(500).json({ message: "Failed to fetch vendor debit notes" });
+    }
+  });
+
+  // Get vendor debit note by ID with items
+  app.get('/api/vendor-debit-notes/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      const [note] = await db.select({
+        id: vendorDebitNotes.id,
+        noteNumber: vendorDebitNotes.noteNumber,
+        vendorId: vendorDebitNotes.vendorId,
+        purchaseOrderId: vendorDebitNotes.purchaseOrderId,
+        debitDate: vendorDebitNotes.debitDate,
+        reason: vendorDebitNotes.reason,
+        status: vendorDebitNotes.status,
+        subtotal: vendorDebitNotes.subtotal,
+        cgstAmount: vendorDebitNotes.cgstAmount,
+        sgstAmount: vendorDebitNotes.sgstAmount,
+        igstAmount: vendorDebitNotes.igstAmount,
+        grandTotal: vendorDebitNotes.grandTotal,
+        settledAmount: vendorDebitNotes.settledAmount,
+        settlementDate: vendorDebitNotes.settlementDate,
+        settlementReference: vendorDebitNotes.settlementReference,
+        notes: vendorDebitNotes.notes,
+        issuedBy: vendorDebitNotes.issuedBy,
+        createdAt: vendorDebitNotes.createdAt,
+        vendorName: vendors.vendorName,
+        vendorGst: vendors.gstNumber,
+      })
+      .from(vendorDebitNotes)
+      .leftJoin(vendors, eq(vendorDebitNotes.vendorId, vendors.id))
+      .where(and(eq(vendorDebitNotes.id, id), eq(vendorDebitNotes.recordStatus, 1)));
+
+      if (!note) {
+        return res.status(404).json({ message: "Vendor debit note not found" });
+      }
+
+      const items = await db.select()
+        .from(vendorDebitNoteItems)
+        .where(and(eq(vendorDebitNoteItems.vendorDebitNoteId, id), eq(vendorDebitNoteItems.recordStatus, 1)));
+
+      res.json({ ...note, items });
+    } catch (error) {
+      console.error("Error fetching vendor debit note:", error);
+      res.status(500).json({ message: "Failed to fetch vendor debit note" });
+    }
+  });
+
+  // Create vendor debit note
+  app.post('/api/vendor-debit-notes', requireRole('admin', 'manager', 'AccountsManager'), async (req: any, res) => {
+    try {
+      const { vendorId, purchaseOrderId, debitDate, reason, notes, items } = req.body;
+
+      // Validate required fields
+      if (!vendorId || !debitDate || !reason || !items || items.length === 0) {
+        return res.status(400).json({ message: "Vendor, date, reason, and at least one item are required" });
+      }
+
+      // Generate note number: VDN-YYYYMMDD-{seq}
+      const today = new Date();
+      const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
+      
+      // Get count of today's vendor debit notes for sequence
+      const todayStart = new Date(today);
+      todayStart.setHours(0, 0, 0, 0);
+      const existingToday = await db.select({ count: sql<number>`count(*)` })
+        .from(vendorDebitNotes)
+        .where(gte(vendorDebitNotes.createdAt, todayStart.toISOString()));
+      
+      const sequence = (Number(existingToday[0]?.count) || 0) + 1;
+      const noteNumber = `VDN-${dateStr}-${sequence.toString().padStart(3, '0')}`;
+
+      // Calculate totals
+      let subtotal = 0;
+      let totalCgst = 0;
+      let totalSgst = 0;
+      let totalIgst = 0;
+
+      for (const item of items) {
+        const taxableValue = Math.round(item.quantity * item.unitPrice);
+        subtotal += taxableValue;
+        
+        const cgstAmount = Math.round(taxableValue * (item.cgstRate || 0) / 10000);
+        const sgstAmount = Math.round(taxableValue * (item.sgstRate || 0) / 10000);
+        const igstAmount = Math.round(taxableValue * (item.igstRate || 0) / 10000);
+        
+        totalCgst += cgstAmount;
+        totalSgst += sgstAmount;
+        totalIgst += igstAmount;
+      }
+
+      const grandTotal = subtotal + totalCgst + totalSgst + totalIgst;
+
+      // Create debit note and items in transaction
+      let createdNote: any;
+      
+      await db.transaction(async (tx) => {
+        const [note] = await tx.insert(vendorDebitNotes).values({
+          noteNumber,
+          vendorId,
+          purchaseOrderId: purchaseOrderId || null,
+          debitDate,
+          reason,
+          status: 'issued',
+          subtotal,
+          cgstAmount: totalCgst,
+          sgstAmount: totalSgst,
+          igstAmount: totalIgst,
+          grandTotal,
+          issuedBy: req.user?.id,
+          notes: notes || null,
+        }).returning();
+
+        createdNote = note;
+
+        // Insert items
+        for (const item of items) {
+          const taxableValue = Math.round(item.quantity * item.unitPrice);
+          const cgstAmount = Math.round(taxableValue * (item.cgstRate || 0) / 10000);
+          const sgstAmount = Math.round(taxableValue * (item.sgstRate || 0) / 10000);
+          const igstAmount = Math.round(taxableValue * (item.igstRate || 0) / 10000);
+          const totalAmount = taxableValue + cgstAmount + sgstAmount + igstAmount;
+
+          await tx.insert(vendorDebitNoteItems).values({
+            vendorDebitNoteId: note.id,
+            rawMaterialId: item.rawMaterialId || null,
+            description: item.description,
+            hsnCode: item.hsnCode || null,
+            quantity: item.quantity,
+            unit: item.unit || 'units',
+            unitPrice: item.unitPrice,
+            taxableValue,
+            cgstRate: item.cgstRate || 0,
+            cgstAmount,
+            sgstRate: item.sgstRate || 0,
+            sgstAmount,
+            igstRate: item.igstRate || 0,
+            igstAmount,
+            totalAmount,
+          });
+        }
+
+        await logAudit(
+          req.user?.id,
+          'CREATE',
+          'vendor_debit_notes',
+          note.id,
+          `Vendor Debit Note ${noteNumber} created. Reason: ${reason}. Amount: ₹${(grandTotal / 100).toFixed(2)}`
+        );
+      });
+
+      res.json({
+        message: `Vendor Debit Note ${noteNumber} created successfully`,
+        noteNumber,
+        id: createdNote.id,
+        grandTotal,
+      });
+    } catch (error) {
+      console.error("Error creating vendor debit note:", error);
+      res.status(500).json({ message: "Failed to create vendor debit note" });
+    }
+  });
+
+  // Update vendor debit note status
+  app.patch('/api/vendor-debit-notes/:id/status', requireRole('admin', 'manager', 'AccountsManager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { status, settlementDate, settlementReference, settledAmount } = req.body;
+
+      const validStatuses = ['draft', 'issued', 'acknowledged', 'settled', 'cancelled'];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({ message: "Invalid status" });
+      }
+
+      const updateData: any = { status, updatedAt: new Date().toISOString() };
+      
+      if (status === 'settled') {
+        updateData.settlementDate = settlementDate || new Date().toISOString().split('T')[0];
+        updateData.settlementReference = settlementReference || null;
+        if (settledAmount !== undefined) {
+          updateData.settledAmount = settledAmount;
+        }
+      }
+
+      const [updated] = await db.update(vendorDebitNotes)
+        .set(updateData)
+        .where(eq(vendorDebitNotes.id, id))
+        .returning();
+
+      if (!updated) {
+        return res.status(404).json({ message: "Vendor debit note not found" });
+      }
+
+      await logAudit(
+        req.user?.id,
+        'UPDATE',
+        'vendor_debit_notes',
+        id,
+        `Vendor Debit Note ${updated.noteNumber} status updated to ${status}`
+      );
+
+      res.json({ message: "Status updated successfully", note: updated });
+    } catch (error) {
+      console.error("Error updating vendor debit note status:", error);
+      res.status(500).json({ message: "Failed to update status" });
+    }
+  });
+
+  // Get vendor debit notes by vendor ID
+  app.get('/api/vendor-debit-notes/vendor/:vendorId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { vendorId } = req.params;
+      
+      const notes = await db.select()
+        .from(vendorDebitNotes)
+        .where(and(eq(vendorDebitNotes.vendorId, vendorId), eq(vendorDebitNotes.recordStatus, 1)))
+        .orderBy(desc(vendorDebitNotes.createdAt));
+
+      res.json(notes);
+    } catch (error) {
+      console.error("Error fetching vendor debit notes:", error);
+      res.status(500).json({ message: "Failed to fetch vendor debit notes" });
     }
   });
 

@@ -2864,3 +2864,94 @@ export const insertSystemAlertSchema = createInsertSchema(systemAlerts).omit({
 
 export type InsertSystemAlert = z.infer<typeof insertSystemAlertSchema>;
 export type SystemAlert = typeof systemAlerts.$inferSelect;
+
+// ==================== VENDOR DEBIT NOTES ====================
+// Manual debit notes against vendors for claims (defective goods, short receipts, quality issues, etc.)
+
+export const vendorDebitNotes = pgTable("vendor_debit_notes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  noteNumber: varchar("note_number", { length: 100 }).unique().notNull(), // VDN-YYYYMMDD-{seq}
+  
+  // Vendor reference
+  vendorId: varchar("vendor_id").references(() => vendors.id).notNull(),
+  purchaseOrderId: varchar("purchase_order_id").references(() => purchaseOrders.id), // Optional PO reference
+  
+  // Debit details
+  debitDate: date("debit_date").notNull(),
+  reason: varchar("reason", { length: 255 }).notNull(), // defective_goods, short_receipt, quality_rejection, price_dispute, other
+  status: varchar("status", { length: 50 }).default('draft').notNull(), // draft, issued, acknowledged, settled, cancelled
+  
+  // Financial totals (in paise)
+  subtotal: integer("subtotal").notNull(),
+  cgstAmount: integer("cgst_amount").default(0).notNull(),
+  sgstAmount: integer("sgst_amount").default(0).notNull(),
+  igstAmount: integer("igst_amount").default(0).notNull(),
+  grandTotal: integer("grand_total").notNull(),
+  
+  // Settlement tracking
+  settledAmount: integer("settled_amount").default(0).notNull(), // Amount recovered from vendor
+  settlementDate: date("settlement_date"),
+  settlementReference: varchar("settlement_reference", { length: 255 }), // Bank reference/cheque no
+  
+  // Metadata
+  issuedBy: varchar("issued_by").references(() => users.id),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  notes: text("notes"),
+  
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
+});
+
+export const insertVendorDebitNoteSchema = createInsertSchema(vendorDebitNotes, {
+  debitDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format"),
+}).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertVendorDebitNote = z.infer<typeof insertVendorDebitNoteSchema>;
+export type VendorDebitNote = typeof vendorDebitNotes.$inferSelect;
+
+// Vendor Debit Note Items (Detail/Line Items)
+export const vendorDebitNoteItems = pgTable("vendor_debit_note_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  vendorDebitNoteId: varchar("vendor_debit_note_id").references(() => vendorDebitNotes.id).notNull(),
+  
+  // Material reference (optional - can be for raw materials or services)
+  rawMaterialId: varchar("raw_material_id").references(() => rawMaterials.id),
+  description: text("description").notNull(),
+  hsnCode: varchar("hsn_code", { length: 20 }),
+  
+  // Quantities and pricing (in paise)
+  quantity: integer("quantity").notNull(),
+  unit: varchar("unit", { length: 20 }).default('units').notNull(),
+  unitPrice: integer("unit_price").notNull(),
+  taxableValue: integer("taxable_value").notNull(),
+  
+  // GST breakdown
+  cgstRate: integer("cgst_rate").default(0).notNull(), // Percentage (e.g., 900 = 9%)
+  cgstAmount: integer("cgst_amount").default(0).notNull(),
+  sgstRate: integer("sgst_rate").default(0).notNull(),
+  sgstAmount: integer("sgst_amount").default(0).notNull(),
+  igstRate: integer("igst_rate").default(0).notNull(),
+  igstAmount: integer("igst_amount").default(0).notNull(),
+  
+  totalAmount: integer("total_amount").notNull(), // taxableValue + GST amounts
+  
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
+});
+
+export const insertVendorDebitNoteItemSchema = createInsertSchema(vendorDebitNoteItems).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertVendorDebitNoteItem = z.infer<typeof insertVendorDebitNoteItemSchema>;
+export type VendorDebitNoteItem = typeof vendorDebitNoteItems.$inferSelect;

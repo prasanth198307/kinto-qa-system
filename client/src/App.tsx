@@ -83,6 +83,7 @@ import CashRegisterReport from "@/pages/cash-register-report";
 import CashRegisterVoucherPrint from "@/pages/cash-register-voucher-print";
 import VendorHistory from "@/pages/vendor-history";
 import VendorHistoryDetail from "@/pages/vendor-history-detail";
+import VendorDebitNotes from "@/pages/vendor-debit-notes";
 
 type Role = 'admin' | 'operator' | 'reviewer' | 'manager';
 
@@ -743,6 +744,7 @@ function AdminDashboard() {
       items: [
         { id: "invoices", label: "Sales Invoices", icon: Receipt },
         { id: "vendor-history", label: "Vendor History", icon: History, onClick: () => setLocation('/vendor-history') },
+        { id: "vendor-debit-notes", label: "Vendor Debit Notes", icon: FileX, onClick: () => setLocation('/vendor-debit-notes') },
         { id: "pending-payments", label: "Pending Payments", icon: IndianRupee, onClick: () => setLocation('/pending-payments') },
         { id: "payment-management", label: "Payment Management", icon: CreditCard, onClick: () => setLocation('/payment-management') },
         { id: "credit-notes", label: "Credit Notes", icon: FileText, onClick: () => setLocation('/credit-notes') },
@@ -1517,6 +1519,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       items: [
         { id: "invoices", label: "Sales Invoices", icon: Receipt, onClick: () => setLocation('/') },
         { id: "vendor-history", label: "Vendor History", icon: History, onClick: () => setLocation('/vendor-history') },
+        { id: "vendor-debit-notes", label: "Vendor Debit Notes", icon: FileX, onClick: () => setLocation('/vendor-debit-notes') },
         { id: "pending-payments", label: "Pending Payments", icon: IndianRupee, onClick: () => setLocation('/pending-payments') },
         { id: "payment-management", label: "Payment Management", icon: CreditCard, onClick: () => setLocation('/payment-management') },
         { id: "credit-notes", label: "Credit Notes", icon: FileText, onClick: () => setLocation('/credit-notes') },
@@ -1617,6 +1620,35 @@ function VendorAnalyticsPage() {
       }}
     >
       <VendorAnalytics />
+    </DashboardShell>
+  );
+}
+
+// Wrapper component for Vendor Debit Notes page with filtered navigation
+function VendorDebitNotesPage() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('vendor-debit-notes');
+  
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
+  
+  return (
+    <DashboardShell
+      title="Vendor Debit Notes"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={(viewId) => {
+        setActiveView(viewId);
+      }}
+    >
+      <VendorDebitNotes />
     </DashboardShell>
   );
 }
@@ -2077,6 +2109,7 @@ function Router() {
       <ProtectedRoute path="/pending-payments" component={PendingPaymentsPage} />
       <ProtectedRoute path="/payment-management" component={PaymentManagementPage} />
       <ProtectedRoute path="/vendor-analytics" component={VendorAnalyticsPage} />
+      <ProtectedRoute path="/vendor-debit-notes" component={VendorDebitNotesPage} />
       <ProtectedRoute path="/reports" component={ReportsPage} />
       <ProtectedRoute path="/production-management" component={ProductionManagementPageWrapper} />
       <ProtectedRoute path="/reports/production-reconciliation" component={ProductionReconciliationReportWrapper} />
