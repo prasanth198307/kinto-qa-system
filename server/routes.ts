@@ -14901,7 +14901,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         statusRows = statusSummary.rows as any[];
       } catch (e) { console.log('[MIS] delivery status query skipped:', (e as Error).message); }
       
-      // Delivery time analysis (generated to completed)
+      // Delivery time analysis (generated to delivered)
       try {
         const deliveryTimes = await db.execute(sql`
           SELECT 
@@ -14913,7 +14913,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             END as delivery_hours
           FROM gatepasses
           WHERE record_status = 1 AND gatepass_date >= ${startDateStr}
-            AND status = 'completed'
+            AND status = 'delivered'
           ORDER BY gatepass_date DESC
           LIMIT 50
         `);
@@ -14932,7 +14932,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           SELECT 
             DATE(gatepass_date) as date,
             COUNT(*) as total_dispatched,
-            COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed
+            COUNT(CASE WHEN status = 'delivered' THEN 1 END) as completed
           FROM gatepasses
           WHERE record_status = 1 AND gatepass_date >= ${startDateStr}
           GROUP BY DATE(gatepass_date)
@@ -14947,7 +14947,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           SELECT 
             COALESCE(transporter_name, 'Direct') as transporter,
             COUNT(*) as total_dispatches,
-            COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed,
+            COUNT(CASE WHEN status = 'delivered' THEN 1 END) as completed,
             COUNT(CASE WHEN status = 'generated' THEN 1 END) as pending
           FROM gatepasses
           WHERE record_status = 1 AND gatepass_date >= ${startDateStr}
@@ -14961,7 +14961,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Summary calculations
       const statusMap = Object.fromEntries(statusRows.map(s => [s.status, parseInt(s.count)]));
       const totalDispatches = Object.values(statusMap).reduce((sum: number, count) => sum + (count as number), 0);
-      const completedCount = statusMap['completed'] || 0;
+      const completedCount = statusMap['delivered'] || 0;
       const otifRate = totalDispatches > 0 ? ((completedCount / totalDispatches) * 100).toFixed(1) : 0;
       
       res.json({
