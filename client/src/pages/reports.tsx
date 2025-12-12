@@ -451,11 +451,11 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
               formatCurrencyForExcel(item.unitPrice || 0),
               formatCurrencyForExcel(item.discount || 0),
               formatCurrencyForExcel(item.taxableValue || 0),
-              item.cgstRate ? `${item.cgstRate}%` : '0%',
+              item.cgstRate ? `${(item.cgstRate / 100).toFixed(2)}%` : '0%',
               formatCurrencyForExcel(item.cgstAmount || 0),
-              item.sgstRate ? `${item.sgstRate}%` : '0%',
+              item.sgstRate ? `${(item.sgstRate / 100).toFixed(2)}%` : '0%',
               formatCurrencyForExcel(item.sgstAmount || 0),
-              item.igstRate ? `${item.igstRate}%` : '0%',
+              item.igstRate ? `${(item.igstRate / 100).toFixed(2)}%` : '0%',
               formatCurrencyForExcel(item.igstAmount || 0),
               formatCurrencyForExcel(item.totalAmount || 0)
             ]);
