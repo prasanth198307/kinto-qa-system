@@ -19,9 +19,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Search, FileText, CheckCircle, Clock, XCircle, DollarSign } from "lucide-react";
+import { Plus, Search, FileText, CheckCircle, Clock, XCircle, DollarSign, ArrowRightLeft } from "lucide-react";
 import { format } from "date-fns";
 import { VendorDebitNoteDialog } from "@/components/VendorDebitNoteDialog";
+import { DebitNoteAdjustmentDialog } from "@/components/DebitNoteAdjustmentDialog";
 
 interface VendorDebitNote {
   id: string;
@@ -69,6 +70,7 @@ export default function VendorDebitNotesPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [adjustmentNote, setAdjustmentNote] = useState<VendorDebitNote | null>(null);
 
   const { data: debitNotes = [], isLoading } = useQuery<VendorDebitNote[]>({
     queryKey: ["/api/vendor-debit-notes"],
@@ -196,6 +198,7 @@ export default function VendorDebitNotesPage() {
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
                   <TableHead className="text-right">Settled</TableHead>
+                  <TableHead className="text-center">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -234,6 +237,19 @@ export default function VendorDebitNotesPage() {
                           <span className="text-muted-foreground">-</span>
                         )}
                       </TableCell>
+                      <TableCell className="text-center">
+                        {note.status !== 'cancelled' && note.status !== 'settled' && note.settledAmount < note.grandTotal && (
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => setAdjustmentNote(note)}
+                            data-testid={`button-adjust-${note.id}`}
+                          >
+                            <ArrowRightLeft className="h-4 w-4 mr-1" />
+                            Adjust
+                          </Button>
+                        )}
+                      </TableCell>
                     </TableRow>
                   );
                 })}
@@ -248,6 +264,22 @@ export default function VendorDebitNotesPage() {
         onOpenChange={setIsCreateDialogOpen}
         onSuccess={() => {}}
       />
+
+      {adjustmentNote && (
+        <DebitNoteAdjustmentDialog
+          open={!!adjustmentNote}
+          onOpenChange={(open) => !open && setAdjustmentNote(null)}
+          debitNote={{
+            id: adjustmentNote.id,
+            noteNumber: adjustmentNote.noteNumber,
+            vendorId: adjustmentNote.vendorId,
+            vendorName: adjustmentNote.vendorName,
+            grandTotal: adjustmentNote.grandTotal,
+            settledAmount: adjustmentNote.settledAmount,
+          }}
+          onSuccess={() => setAdjustmentNote(null)}
+        />
+      )}
     </div>
   );
 }
