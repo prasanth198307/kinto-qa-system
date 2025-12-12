@@ -6224,7 +6224,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Block editing of delivered invoices (use Cancel & Reissue or Credit Notes instead)
-      if (existingInvoice.status === 'delivered') {
+      // Exception: Allow marking as delivered when current status is dispatched
+      const isMarkingAsDelivered = req.body.status === 'delivered' && existingInvoice.status === 'dispatched';
+      if (existingInvoice.status === 'delivered' && !isMarkingAsDelivered) {
         return res.status(400).json({ 
           message: "Delivered invoices cannot be edited. Use 'Cancel & Reissue' for current month invoices or 'Credit Notes' for previous month invoices." 
         });
@@ -6235,6 +6237,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!invoice) {
         return res.status(404).json({ message: "Invoice not found" });
       }
+      
+      // If marking invoice as delivered, also update linked gatepass status
+      if (isMarkingAsDelivered) {
+        const linkedGatepass = await db
+          .select()
+          .from(gatepasses)
+          .where(
+            and(
+              eq(gatepasses.invoiceId, id),
+              eq(gatepasses.recordStatus, 1)
+            )
+          )
+          .limit(1);
+        
+        if (linkedGatepass.length > 0 && linkedGatepass[0].status === 'vehicle_out') {
+          await db.update(gatepasses)
+            .set({ status: 'delivered' })
+            .where(eq(gatepasses.id, linkedGatepass[0].id));
+          console.log(`[AUDIT] Gatepass ${linkedGatepass[0].gatepassNumber} marked as delivered along with invoice ${id}`);
+        }
+      }
+      
       res.json(invoice);
     } catch (error) {
       if (error instanceof z.ZodError) {
