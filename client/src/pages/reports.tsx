@@ -279,24 +279,42 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
     setIsExportingInvoices(true);
     try {
       const sheet = [
-        ['Invoice Report'],
+        ['Detailed Sales Report'],
         ['Generated', format(new Date(), 'yyyy-MM-dd HH:mm')],
+        dateFrom || dateTo ? ['Date Range', `${dateFrom || 'Start'} to ${dateTo || 'End'}`] : [''],
         [''],
-        ['Invoice #', 'Date', 'Buyer Name', 'Total Amount', 'Amount Received', 'Status'],
+        [
+          'Invoice #', 'Date', 'Buyer Name', 'Buyer GSTIN/Aadhaar', 'Buyer Address', 
+          'Buyer State', 'State Code', 'Contact', 'Total Amount', 'Amount Received', 
+          'Balance Due', 'Status'
+        ],
         ...filteredInvoices.map(inv => [
           inv.invoiceNumber,
           formatDateForExcel(inv.invoiceDate),
           inv.buyerName || '-',
+          inv.buyerGstin || '-',
+          inv.buyerAddress || '-',
+          inv.buyerState || '-',
+          inv.buyerStateCode || '-',
+          inv.buyerContact || '-',
           formatCurrencyForExcel(inv.totalAmount),
           formatCurrencyForExcel(inv.amountReceived || 0),
+          formatCurrencyForExcel((inv.totalAmount || 0) - (inv.amountReceived || 0)),
           inv.status || 'draft'
         ])
       ];
+
+      // Add summary row
+      const totalAmount = filteredInvoices.reduce((sum, inv) => sum + (inv.totalAmount || 0), 0);
+      const totalReceived = filteredInvoices.reduce((sum, inv) => sum + (inv.amountReceived || 0), 0);
+      sheet.push(['']);
+      sheet.push(['', '', '', '', '', '', '', 'TOTAL:', formatCurrencyForExcel(totalAmount), formatCurrencyForExcel(totalReceived), formatCurrencyForExcel(totalAmount - totalReceived), '']);
+
       await exportToExcel({
-        filename: `invoices-report-${format(new Date(), 'yyyy-MM-dd')}.xlsx`,
-        sheets: [{ name: 'Invoices', data: sheet }],
+        filename: `sales-report-${format(new Date(), 'yyyy-MM-dd')}.xlsx`,
+        sheets: [{ name: 'Sales Report', data: sheet }],
       });
-      toast({ title: 'Export Complete', description: 'Invoices exported to Excel' });
+      toast({ title: 'Export Complete', description: 'Detailed sales report exported to Excel' });
     } finally {
       setIsExportingInvoices(false);
     }
