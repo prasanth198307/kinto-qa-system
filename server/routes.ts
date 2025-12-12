@@ -14162,78 +14162,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
       startDate.setDate(startDate.getDate() - daysBack);
       const startDateStr = startDate.toISOString().split('T')[0];
       
-      // Production KPIs
-      const productionStats = await db.execute(sql`
-        SELECT 
-          COUNT(*) as total_entries,
-          COALESCE(SUM(CAST(produced_quantity AS numeric)), 0) as total_produced,
-          COALESCE(SUM(CAST(rejected_quantity AS numeric)), 0) as total_rejected,
-          COALESCE(SUM(CAST(derived_units AS numeric)), 0) as total_derived_units
-        FROM production_entries
-        WHERE record_status = 1 AND production_date >= ${startDateStr}
-      `);
+      // Initialize default values
+      let production: any = {};
+      let sales: any = {};
+      let paymentRows: any[] = [];
+      let dispatch: any = {};
+      let quality: any = {};
+      let cash: any = {};
+      
+      // Production KPIs (graceful handling if table doesn't exist)
+      try {
+        const productionStats = await db.execute(sql`
+          SELECT 
+            COUNT(*) as total_entries,
+            COALESCE(SUM(CAST(produced_quantity AS numeric)), 0) as total_produced,
+            COALESCE(SUM(CAST(rejected_quantity AS numeric)), 0) as total_rejected,
+            COALESCE(SUM(CAST(derived_units AS numeric)), 0) as total_derived_units
+          FROM production_entries
+          WHERE record_status = 1 AND production_date >= ${startDateStr}
+        `);
+        production = (productionStats.rows[0] as any) || {};
+      } catch (e) { console.log('[MIS] production_entries query skipped:', (e as Error).message); }
       
       // Sales KPIs (invoices)
-      const salesStats = await db.execute(sql`
-        SELECT 
-          COUNT(*) as total_invoices,
-          COALESCE(SUM(subtotal), 0) as total_revenue,
-          COALESCE(SUM(total_amount), 0) as total_with_tax,
-          COALESCE(SUM(amount_received), 0) as total_received,
-          COALESCE(SUM(total_amount - amount_received), 0) as total_pending
-        FROM invoices
-        WHERE record_status = 1 AND status != 'cancelled' AND invoice_date >= ${startDateStr}
-      `);
+      try {
+        const salesStats = await db.execute(sql`
+          SELECT 
+            COUNT(*) as total_invoices,
+            COALESCE(SUM(subtotal), 0) as total_revenue,
+            COALESCE(SUM(total_amount), 0) as total_with_tax,
+            COALESCE(SUM(amount_received), 0) as total_received,
+            COALESCE(SUM(total_amount - amount_received), 0) as total_pending
+          FROM invoices
+          WHERE record_status = 1 AND status != 'cancelled' AND invoice_date >= ${startDateStr}
+        `);
+        sales = (salesStats.rows[0] as any) || {};
+      } catch (e) { console.log('[MIS] invoices query skipped:', (e as Error).message); }
       
       // Payments received
-      const paymentStats = await db.execute(sql`
-        SELECT 
-          COUNT(*) as total_payments,
-          COALESCE(SUM(amount), 0) as total_amount,
-          payment_method,
-          COUNT(*) as count
-        FROM invoice_payments
-        WHERE record_status = 1 AND payment_date >= ${startDateStr}
-        GROUP BY payment_method
-      `);
+      try {
+        const paymentStats = await db.execute(sql`
+          SELECT 
+            COUNT(*) as total_payments,
+            COALESCE(SUM(amount), 0) as total_amount,
+            payment_method,
+            COUNT(*) as count
+          FROM invoice_payments
+          WHERE record_status = 1 AND payment_date >= ${startDateStr}
+          GROUP BY payment_method
+        `);
+        paymentRows = paymentStats.rows as any[];
+      } catch (e) { console.log('[MIS] invoice_payments query skipped:', (e as Error).message); }
       
       // Gatepass/Dispatch stats
-      const dispatchStats = await db.execute(sql`
-        SELECT 
-          COUNT(*) as total_gatepasses,
-          COUNT(CASE WHEN status = 'completed' THEN 1 END) as delivered,
-          COUNT(CASE WHEN status = 'generated' THEN 1 END) as pending,
-          COUNT(CASE WHEN status = 'vehicle_out' THEN 1 END) as in_transit
-        FROM gatepasses
-        WHERE record_status = 1 AND gatepass_date >= ${startDateStr}
-      `);
+      try {
+        const dispatchStats = await db.execute(sql`
+          SELECT 
+            COUNT(*) as total_gatepasses,
+            COUNT(CASE WHEN status = 'completed' THEN 1 END) as delivered,
+            COUNT(CASE WHEN status = 'generated' THEN 1 END) as pending,
+            COUNT(CASE WHEN status = 'vehicle_out' THEN 1 END) as in_transit
+          FROM gatepasses
+          WHERE record_status = 1 AND gatepass_date >= ${startDateStr}
+        `);
+        dispatch = (dispatchStats.rows[0] as any) || {};
+      } catch (e) { console.log('[MIS] gatepasses query skipped:', (e as Error).message); }
       
       // Quality metrics (checklists)
-      const qualityStats = await db.execute(sql`
-        SELECT 
-          COUNT(*) as total_submissions,
-          COUNT(CASE WHEN overall_status = 'NOK' THEN 1 END) as nok_count,
-          COUNT(CASE WHEN overall_status = 'OK' THEN 1 END) as ok_count
-        FROM checklist_submissions
-        WHERE record_status = 1 AND submission_date >= ${startDateStr}
-      `);
+      try {
+        const qualityStats = await db.execute(sql`
+          SELECT 
+            COUNT(*) as total_submissions,
+            COUNT(CASE WHEN overall_status = 'NOK' THEN 1 END) as nok_count,
+            COUNT(CASE WHEN overall_status = 'OK' THEN 1 END) as ok_count
+          FROM checklist_submissions
+          WHERE record_status = 1 AND submission_date >= ${startDateStr}
+        `);
+        quality = (qualityStats.rows[0] as any) || {};
+      } catch (e) { console.log('[MIS] checklist_submissions query skipped:', (e as Error).message); }
       
       // Cash position
-      const cashStats = await db.execute(sql`
-        SELECT 
-          COALESCE(SUM(closing_balance), 0) as total_closing,
-          COALESCE(SUM(total_received), 0) as total_received,
-          COALESCE(SUM(total_expenses), 0) as total_expenses
-        FROM cash_register_days
-        WHERE record_status = 1 AND register_date >= ${startDateStr}
-      `);
-      
-      // Format results
-      const production = (productionStats.rows[0] as any) || {};
-      const sales = (salesStats.rows[0] as any) || {};
-      const dispatch = (dispatchStats.rows[0] as any) || {};
-      const quality = (qualityStats.rows[0] as any) || {};
-      const cash = (cashStats.rows[0] as any) || {};
+      try {
+        const cashStats = await db.execute(sql`
+          SELECT 
+            COALESCE(SUM(closing_balance), 0) as total_closing,
+            COALESCE(SUM(total_received), 0) as total_received,
+            COALESCE(SUM(total_expenses), 0) as total_expenses
+          FROM cash_register_days
+          WHERE record_status = 1 AND register_date >= ${startDateStr}
+        `);
+        cash = (cashStats.rows[0] as any) || {};
+      } catch (e) { console.log('[MIS] cash_register_days query skipped:', (e as Error).message); }
       
       res.json({
         period: daysBack,
@@ -14280,7 +14299,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             totalReceived: parseInt(cash.total_received) || 0,
             totalExpenses: parseInt(cash.total_expenses) || 0
           },
-          payments: (paymentStats.rows as any[]).map(p => ({
+          payments: paymentRows.map(p => ({
             method: p.payment_method,
             count: parseInt(p.count),
             amount: parseInt(p.total_amount) || 0
@@ -14299,125 +14318,135 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const alerts: any[] = [];
       
       // Overdue payments (invoices with pending amount > 30 days old)
-      const overduePayments = await db.execute(sql`
-        SELECT id, invoice_number, buyer_name, invoice_date, total_amount, amount_received,
-               (total_amount - amount_received) as pending_amount,
-               EXTRACT(DAY FROM (NOW() - invoice_date)) as days_overdue
-        FROM invoices
-        WHERE record_status = 1 AND status != 'cancelled'
-          AND (total_amount - amount_received) > 0
-          AND invoice_date < NOW() - INTERVAL '30 days'
-        ORDER BY invoice_date ASC
-        LIMIT 20
-      `);
-      
-      (overduePayments.rows as any[]).forEach(inv => {
-        alerts.push({
-          type: 'overdue_payment',
-          severity: parseInt(inv.days_overdue) > 60 ? 'high' : 'medium',
-          title: `Overdue Payment: ${inv.invoice_number}`,
-          description: `${inv.buyer_name} - ₹${(inv.pending_amount / 100).toFixed(2)} pending for ${Math.floor(inv.days_overdue)} days`,
-          entityType: 'invoice',
-          entityId: inv.id,
-          amount: parseInt(inv.pending_amount),
-          daysOverdue: Math.floor(parseInt(inv.days_overdue))
+      try {
+        const overduePayments = await db.execute(sql`
+          SELECT id, invoice_number, buyer_name, invoice_date, total_amount, amount_received,
+                 (total_amount - amount_received) as pending_amount,
+                 EXTRACT(DAY FROM (NOW() - invoice_date)) as days_overdue
+          FROM invoices
+          WHERE record_status = 1 AND status != 'cancelled'
+            AND (total_amount - amount_received) > 0
+            AND invoice_date < NOW() - INTERVAL '30 days'
+          ORDER BY invoice_date ASC
+          LIMIT 20
+        `);
+        
+        (overduePayments.rows as any[]).forEach(inv => {
+          alerts.push({
+            type: 'overdue_payment',
+            severity: parseInt(inv.days_overdue) > 60 ? 'high' : 'medium',
+            title: `Overdue Payment: ${inv.invoice_number}`,
+            description: `${inv.buyer_name} - ₹${(inv.pending_amount / 100).toFixed(2)} pending for ${Math.floor(inv.days_overdue)} days`,
+            entityType: 'invoice',
+            entityId: inv.id,
+            amount: parseInt(inv.pending_amount),
+            daysOverdue: Math.floor(parseInt(inv.days_overdue))
+          });
         });
-      });
+      } catch (e) { console.log('[MIS] alerts invoices query skipped:', (e as Error).message); }
       
       // Low stock raw materials (below reorder level)
-      const lowStock = await db.execute(sql`
-        SELECT id, material_code, material_name, current_stock, reorder_level
-        FROM raw_materials
-        WHERE record_status = 1 AND is_active = 'true'
-          AND reorder_level IS NOT NULL
-          AND current_stock <= reorder_level
-        ORDER BY (reorder_level - current_stock) DESC
-        LIMIT 10
-      `);
-      
-      (lowStock.rows as any[]).forEach(mat => {
-        alerts.push({
-          type: 'low_stock',
-          severity: mat.current_stock <= 0 ? 'high' : 'medium',
-          title: `Low Stock: ${mat.material_name}`,
-          description: `Current: ${mat.current_stock || 0}, Reorder Level: ${mat.reorder_level}`,
-          entityType: 'raw_material',
-          entityId: mat.id,
-          currentStock: mat.current_stock,
-          reorderLevel: mat.reorder_level
+      try {
+        const lowStock = await db.execute(sql`
+          SELECT id, material_code, material_name, current_stock, reorder_level
+          FROM raw_materials
+          WHERE record_status = 1 AND is_active = 'true'
+            AND reorder_level IS NOT NULL
+            AND current_stock <= reorder_level
+          ORDER BY (reorder_level - current_stock) DESC
+          LIMIT 10
+        `);
+        
+        (lowStock.rows as any[]).forEach(mat => {
+          alerts.push({
+            type: 'low_stock',
+            severity: mat.current_stock <= 0 ? 'high' : 'medium',
+            title: `Low Stock: ${mat.material_name}`,
+            description: `Current: ${mat.current_stock || 0}, Reorder Level: ${mat.reorder_level}`,
+            entityType: 'raw_material',
+            entityId: mat.id,
+            currentStock: mat.current_stock,
+            reorderLevel: mat.reorder_level
+          });
         });
-      });
+      } catch (e) { console.log('[MIS] alerts raw_materials query skipped:', (e as Error).message); }
       
       // Pending gatepasses (not yet dispatched)
-      const pendingGatepasses = await db.execute(sql`
-        SELECT g.id, g.gatepass_number, g.gatepass_date, g.customer_name, g.destination,
-               EXTRACT(DAY FROM (NOW() - g.gatepass_date)) as days_pending
-        FROM gatepasses g
-        WHERE g.record_status = 1 AND g.status = 'generated'
-          AND g.gatepass_date < NOW() - INTERVAL '2 days'
-        ORDER BY g.gatepass_date ASC
-        LIMIT 10
-      `);
-      
-      (pendingGatepasses.rows as any[]).forEach(gp => {
-        alerts.push({
-          type: 'pending_dispatch',
-          severity: parseInt(gp.days_pending) > 5 ? 'high' : 'low',
-          title: `Pending Dispatch: ${gp.gatepass_number}`,
-          description: `To ${gp.customer_name || gp.destination} - pending for ${Math.floor(gp.days_pending)} days`,
-          entityType: 'gatepass',
-          entityId: gp.id,
-          daysPending: Math.floor(parseInt(gp.days_pending))
+      try {
+        const pendingGatepasses = await db.execute(sql`
+          SELECT g.id, g.gatepass_number, g.gatepass_date, g.customer_name, g.destination,
+                 EXTRACT(DAY FROM (NOW() - g.gatepass_date)) as days_pending
+          FROM gatepasses g
+          WHERE g.record_status = 1 AND g.status = 'generated'
+            AND g.gatepass_date < NOW() - INTERVAL '2 days'
+          ORDER BY g.gatepass_date ASC
+          LIMIT 10
+        `);
+        
+        (pendingGatepasses.rows as any[]).forEach(gp => {
+          alerts.push({
+            type: 'pending_dispatch',
+            severity: parseInt(gp.days_pending) > 5 ? 'high' : 'low',
+            title: `Pending Dispatch: ${gp.gatepass_number}`,
+            description: `To ${gp.customer_name || gp.destination} - pending for ${Math.floor(gp.days_pending)} days`,
+            entityType: 'gatepass',
+            entityId: gp.id,
+            daysPending: Math.floor(parseInt(gp.days_pending))
+          });
         });
-      });
+      } catch (e) { console.log('[MIS] alerts gatepasses query skipped:', (e as Error).message); }
       
       // Expiring documents (within 30 days)
-      const expiringDocs = await db.execute(sql`
-        SELECT id, filename, category, expiry_date,
-               EXTRACT(DAY FROM (expiry_date - NOW())) as days_to_expiry
-        FROM documents
-        WHERE record_status = 1 AND expiry_date IS NOT NULL
-          AND expiry_date <= NOW() + INTERVAL '30 days'
-          AND expiry_date >= NOW()
-        ORDER BY expiry_date ASC
-        LIMIT 10
-      `);
-      
-      (expiringDocs.rows as any[]).forEach(doc => {
-        const daysLeft = Math.floor(parseInt(doc.days_to_expiry));
-        alerts.push({
-          type: 'expiring_document',
-          severity: daysLeft <= 7 ? 'high' : daysLeft <= 14 ? 'medium' : 'low',
-          title: `Expiring: ${doc.filename}`,
-          description: `${doc.category} expires in ${daysLeft} days`,
-          entityType: 'document',
-          entityId: doc.id,
-          daysToExpiry: daysLeft
+      try {
+        const expiringDocs = await db.execute(sql`
+          SELECT id, filename, category, expiry_date,
+                 EXTRACT(DAY FROM (expiry_date - NOW())) as days_to_expiry
+          FROM documents
+          WHERE record_status = 1 AND expiry_date IS NOT NULL
+            AND expiry_date <= NOW() + INTERVAL '30 days'
+            AND expiry_date >= NOW()
+          ORDER BY expiry_date ASC
+          LIMIT 10
+        `);
+        
+        (expiringDocs.rows as any[]).forEach(doc => {
+          const daysLeft = Math.floor(parseInt(doc.days_to_expiry));
+          alerts.push({
+            type: 'expiring_document',
+            severity: daysLeft <= 7 ? 'high' : daysLeft <= 14 ? 'medium' : 'low',
+            title: `Expiring: ${doc.filename}`,
+            description: `${doc.category} expires in ${daysLeft} days`,
+            entityType: 'document',
+            entityId: doc.id,
+            daysToExpiry: daysLeft
+          });
         });
-      });
+      } catch (e) { console.log('[MIS] alerts documents query skipped:', (e as Error).message); }
       
       // Quality issues (NOK checklists in last 7 days)
-      const qualityIssues = await db.execute(sql`
-        SELECT cs.id, ct.name as checklist_name, cs.submission_date, m.name as machine_name
-        FROM checklist_submissions cs
-        JOIN checklist_templates ct ON cs.template_id = ct.id
-        LEFT JOIN machines m ON cs.machine_id = m.id
-        WHERE cs.record_status = 1 AND cs.overall_status = 'NOK'
-          AND cs.submission_date >= NOW() - INTERVAL '7 days'
-        ORDER BY cs.submission_date DESC
-        LIMIT 10
-      `);
-      
-      (qualityIssues.rows as any[]).forEach(issue => {
-        alerts.push({
-          type: 'quality_issue',
-          severity: 'medium',
-          title: `Quality Issue: ${issue.checklist_name}`,
-          description: `Machine: ${issue.machine_name || 'N/A'}`,
-          entityType: 'checklist_submission',
-          entityId: issue.id
+      try {
+        const qualityIssues = await db.execute(sql`
+          SELECT cs.id, ct.name as checklist_name, cs.submission_date, m.name as machine_name
+          FROM checklist_submissions cs
+          JOIN checklist_templates ct ON cs.template_id = ct.id
+          LEFT JOIN machines m ON cs.machine_id = m.id
+          WHERE cs.record_status = 1 AND cs.overall_status = 'NOK'
+            AND cs.submission_date >= NOW() - INTERVAL '7 days'
+          ORDER BY cs.submission_date DESC
+          LIMIT 10
+        `);
+        
+        (qualityIssues.rows as any[]).forEach(issue => {
+          alerts.push({
+            type: 'quality_issue',
+            severity: 'medium',
+            title: `Quality Issue: ${issue.checklist_name}`,
+            description: `Machine: ${issue.machine_name || 'N/A'}`,
+            entityType: 'checklist_submission',
+            entityId: issue.id
+          });
         });
-      });
+      } catch (e) { console.log('[MIS] alerts checklist_submissions query skipped:', (e as Error).message); }
       
       // Sort by severity
       const severityOrder = { high: 0, medium: 1, low: 2 };
