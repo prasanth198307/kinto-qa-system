@@ -3729,7 +3729,7 @@ function FinishedGoodsTab({ searchTerm, onSearchChange }: { searchTerm: string; 
 
   // Comprehensive filtering logic
   const filteredItems = useMemo(() => {
-    return goods.filter(item => {
+    const filtered = goods.filter(item => {
       // Hide items with zero quantity
       if (item.quantity === 0) return false;
       
@@ -3751,7 +3751,10 @@ function FinishedGoodsTab({ searchTerm, onSearchChange }: { searchTerm: string; 
         const itemDate = parseISO(item.productionDate);
         
         if (dateFilterType === 'range' && dateFrom && dateTo) {
-          matchesDate = isWithinInterval(itemDate, { start: dateFrom, end: dateTo });
+          // Adjust dateTo to include the entire end day (23:59:59)
+          const adjustedDateTo = new Date(dateTo);
+          adjustedDateTo.setHours(23, 59, 59, 999);
+          matchesDate = isWithinInterval(itemDate, { start: dateFrom, end: adjustedDateTo });
         } else if (dateFilterType === 'month' && selectedMonth) {
           const [year, month] = selectedMonth.split('-');
           matchesDate = format(itemDate, 'yyyy-MM') === `${year}-${month}`;
@@ -3761,6 +3764,13 @@ function FinishedGoodsTab({ searchTerm, onSearchChange }: { searchTerm: string; 
       }
       
       return matchesSearch && matchesQualityStatus && matchesDate;
+    });
+    
+    // Sort by production date (newest first)
+    return filtered.sort((a, b) => {
+      const dateA = new Date(a.productionDate).getTime();
+      const dateB = new Date(b.productionDate).getTime();
+      return dateB - dateA; // Descending order (newest first)
     });
   }, [goods, products, searchTerm, qualityStatusFilter, dateFilterType, dateFrom, dateTo, selectedMonth, selectedYear]);
 
