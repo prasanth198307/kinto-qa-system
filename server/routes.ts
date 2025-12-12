@@ -14812,14 +14812,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const topProducts = await db.execute(sql`
           SELECT 
-            p.name as product_name,
+            COALESCE(p.product_name, ii.description) as product_name,
             COALESCE(SUM(ii.quantity), 0) as total_quantity,
             COALESCE(SUM(ii.taxable_amount), 0) as total_revenue
           FROM invoice_items ii
           JOIN invoices i ON ii.invoice_id = i.id
           LEFT JOIN products p ON ii.product_id = p.id
           WHERE i.record_status = 1 AND i.status != 'cancelled' AND i.invoice_date >= ${startDateStr}
-          GROUP BY p.id, p.name
+          GROUP BY COALESCE(p.product_name, ii.description)
           ORDER BY total_revenue DESC
           LIMIT 10
         `);
