@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS transporters (
     id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
     transporter_code VARCHAR(50) NOT NULL UNIQUE,
     transporter_name VARCHAR(255) NOT NULL,
+    contact_person VARCHAR(255),
     phone VARCHAR(20),
     email VARCHAR(255),
     address TEXT,
@@ -17,6 +18,14 @@ CREATE TABLE IF NOT EXISTS transporters (
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
+
+-- Add contact_person column if table already exists but column is missing
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'transporters' AND column_name = 'contact_person') THEN
+        ALTER TABLE transporters ADD COLUMN contact_person VARCHAR(255);
+    END IF;
+END $$;
 
 -- Vehicles table
 CREATE TABLE IF NOT EXISTS vehicles (

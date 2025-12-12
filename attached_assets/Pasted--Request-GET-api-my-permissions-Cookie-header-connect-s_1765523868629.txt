@@ -1,0 +1,62 @@
+🔹 Request: GET /api/my-permissions
+   Cookie header: connect.sid=s%3A6i5lR2Tjf-SMVmhmab0QQ1qugWV3sfeZ.5C63qt7EJG%2BKmtresIrhQdxP2zqOot68OybrUyKZC5c
+   Session ID: 6i5lR2Tjf-SMVmhmab0QQ1qugWV3sfeZ
+   Authenticated: true
+12:45:50 PM [express] GET /api/my-permissions 200 in 34ms :: {"role":"admin","roleId":"role-admin","p…
+🔹 Request: GET /api/transporters
+   Cookie header: connect.sid=s%3A6i5lR2Tjf-SMVmhmab0QQ1qugWV3sfeZ.5C63qt7EJG%2BKmtresIrhQdxP2zqOot68OybrUyKZC5c
+   Session ID: 6i5lR2Tjf-SMVmhmab0QQ1qugWV3sfeZ
+   Authenticated: true
+Error fetching transporters: error: column "contact_person" does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:11008:31 {
+  length: 114,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '54',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+12:45:50 PM [express] GET /api/transporters 500 in 14ms :: {"message":"Failed to fetch transporters"}
+🔹 Request: POST /api/transporters
+   Cookie header: connect.sid=s%3A6i5lR2Tjf-SMVmhmab0QQ1qugWV3sfeZ.5C63qt7EJG%2BKmtresIrhQdxP2zqOot68OybrUyKZC5c
+   Session ID: 6i5lR2Tjf-SMVmhmab0QQ1qugWV3sfeZ
+   Authenticated: true
+Error creating transporter: error: column "contact_person" of relation "transporters" does not exist
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:11018:25 {
+  length: 139,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '75',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_target.c',
+  line: '1080',
+  routine: 'checkInsertTargets'
+}
+12:47:24 PM [express] POST /api/transporters 500 in 45ms :: {"message":"Failed to create transporter"}
+
