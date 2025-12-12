@@ -780,6 +780,7 @@ function AdminDashboard() {
       items: [
         { id: "gatepasses", label: "Gatepasses", icon: FileText },
         { id: "dispatch-tracking", label: "Dispatch Tracking", icon: Truck },
+        { id: "dispatch-masters", label: "Dispatch Masters", icon: Car, onClick: () => setLocation('/dispatch-masters') },
       ],
       quickActions: [
         { id: "create-gatepass", label: "Create Gatepass", icon: FileText, onClick: () => setActiveView("gatepasses") },
