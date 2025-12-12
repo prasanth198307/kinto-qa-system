@@ -15,6 +15,11 @@ const navItemToScreenKey: Record<string, string> = {
   'sales-dashboard': 'sales_dashboard',
   'vendor-analytics': 'vendor_analytics',
   'reports': 'reports',
+  'mis-dashboard': 'mis_dashboard',
+  'mis-production': 'mis_production',
+  'mis-inventory': 'mis_inventory',
+  'mis-sales': 'mis_sales',
+  'mis-delivery': 'mis_delivery',
   'checklists': 'checklist_templates',
   'checklist-assignments': 'checklist_assignments',
   'machine-startup-reminders': 'machine_startup_reminders',
@@ -79,6 +84,7 @@ const screenPermissions: Record<string, { admin: boolean; manager: boolean; oper
   'Execute Checklists': { admin: true, manager: false, operator: true, reviewer: false },
   'Review Checklists': { admin: true, manager: false, operator: false, reviewer: true },
   'Final Approval': { admin: true, manager: true, operator: false, reviewer: false },
+  'MIS Reports': { admin: true, manager: true, operator: false, reviewer: false },
 };
 
 const navItemToScreen: Record<string, string> = {
@@ -86,6 +92,11 @@ const navItemToScreen: Record<string, string> = {
   'sales-dashboard': 'Overview',
   'vendor-analytics': 'Overview',
   'reports': 'Overview',
+  'mis-dashboard': 'MIS Reports',
+  'mis-production': 'MIS Reports',
+  'mis-inventory': 'MIS Reports',
+  'mis-sales': 'MIS Reports',
+  'mis-delivery': 'MIS Reports',
   'checklists': 'Checklist Templates',
   'checklist-assignments': 'Checklist Templates',
   'machine-startup-reminders': 'Checklist Templates',

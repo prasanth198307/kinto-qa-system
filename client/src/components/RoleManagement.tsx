@@ -55,6 +55,13 @@ const AVAILABLE_SCREENS: ScreenDefinition[] = [
   { key: 'cancelled_invoices_report', label: 'Cancelled Invoices Report', allowedActions: ['view'] },
   { key: 'cash_register_report', label: 'Cash Register Report', allowedActions: ['view'] },
   
+  // MIS (Management Information System)
+  { key: 'mis_dashboard', label: 'MIS Executive Dashboard', allowedActions: ['view'] },
+  { key: 'mis_production', label: 'MIS Production Analytics', allowedActions: ['view'] },
+  { key: 'mis_inventory', label: 'MIS Inventory Intelligence', allowedActions: ['view'] },
+  { key: 'mis_sales', label: 'MIS Sales Analysis', allowedActions: ['view'] },
+  { key: 'mis_delivery', label: 'MIS Delivery Performance', allowedActions: ['view'] },
+  
   // Master Data - Products & Materials
   { key: 'products', label: 'Products', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'raw_materials', label: 'Raw Materials', allowedActions: ['view', 'create', 'edit', 'delete'] },

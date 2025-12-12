@@ -183,6 +183,14 @@ const endpointToScreenKey: Record<string, string> = {
   '/api/notification-settings': 'notification_settings',
   '/api/data-import': 'data_import',
   '/api/vyapaar': 'data_import',
+  
+  // MIS (Management Information System)
+  '/api/mis/kpi-dashboard': 'mis_dashboard',
+  '/api/mis/alerts': 'mis_dashboard',
+  '/api/mis/production-analytics': 'mis_production',
+  '/api/mis/inventory-analytics': 'mis_inventory',
+  '/api/mis/sales-analytics': 'mis_sales',
+  '/api/mis/delivery-performance': 'mis_delivery',
 };
 
 // Standard roles that are handled by name matching (case-insensitive)
@@ -14140,6 +14148,754 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('[SYSTEM_ALERTS] Error running oversell audit:', error);
       res.status(500).json({ message: error.message || 'Failed to run oversell audit' });
+    }
+  });
+
+  // ==================== MIS (Management Information System) API ENDPOINTS ====================
+  
+  // MIS Executive KPI Dashboard - Get key performance indicators
+  app.get('/api/mis/kpi-dashboard', requireRole('admin', 'manager', 'AccountsManager'), async (req: any, res: Response) => {
+    try {
+      const { period = '30' } = req.query; // days
+      const daysBack = parseInt(period as string) || 30;
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - daysBack);
+      const startDateStr = startDate.toISOString().split('T')[0];
+      
+      // Production KPIs
+      const productionStats = await db.execute(sql`
+        SELECT 
+          COUNT(*) as total_entries,
+          COALESCE(SUM(CAST(produced_quantity AS numeric)), 0) as total_produced,
+          COALESCE(SUM(CAST(rejected_quantity AS numeric)), 0) as total_rejected,
+          COALESCE(SUM(CAST(derived_units AS numeric)), 0) as total_derived_units
+        FROM production_entries
+        WHERE record_status = 1 AND production_date >= ${startDateStr}
+      `);
+      
+      // Sales KPIs (invoices)
+      const salesStats = await db.execute(sql`
+        SELECT 
+          COUNT(*) as total_invoices,
+          COALESCE(SUM(subtotal), 0) as total_revenue,
+          COALESCE(SUM(total_amount), 0) as total_with_tax,
+          COALESCE(SUM(amount_received), 0) as total_received,
+          COALESCE(SUM(total_amount - amount_received), 0) as total_pending
+        FROM invoices
+        WHERE record_status = 1 AND status != 'cancelled' AND invoice_date >= ${startDateStr}
+      `);
+      
+      // Payments received
+      const paymentStats = await db.execute(sql`
+        SELECT 
+          COUNT(*) as total_payments,
+          COALESCE(SUM(amount), 0) as total_amount,
+          payment_method,
+          COUNT(*) as count
+        FROM invoice_payments
+        WHERE record_status = 1 AND payment_date >= ${startDateStr}
+        GROUP BY payment_method
+      `);
+      
+      // Gatepass/Dispatch stats
+      const dispatchStats = await db.execute(sql`
+        SELECT 
+          COUNT(*) as total_gatepasses,
+          COUNT(CASE WHEN status = 'completed' THEN 1 END) as delivered,
+          COUNT(CASE WHEN status = 'generated' THEN 1 END) as pending,
+          COUNT(CASE WHEN status = 'vehicle_out' THEN 1 END) as in_transit
+        FROM gatepasses
+        WHERE record_status = 1 AND gatepass_date >= ${startDateStr}
+      `);
+      
+      // Quality metrics (checklists)
+      const qualityStats = await db.execute(sql`
+        SELECT 
+          COUNT(*) as total_submissions,
+          COUNT(CASE WHEN overall_status = 'NOK' THEN 1 END) as nok_count,
+          COUNT(CASE WHEN overall_status = 'OK' THEN 1 END) as ok_count
+        FROM checklist_submissions
+        WHERE record_status = 1 AND submission_date >= ${startDateStr}
+      `);
+      
+      // Cash position
+      const cashStats = await db.execute(sql`
+        SELECT 
+          COALESCE(SUM(closing_balance), 0) as total_closing,
+          COALESCE(SUM(total_received), 0) as total_received,
+          COALESCE(SUM(total_expenses), 0) as total_expenses
+        FROM cash_register_days
+        WHERE record_status = 1 AND register_date >= ${startDateStr}
+      `);
+      
+      // Format results
+      const production = (productionStats.rows[0] as any) || {};
+      const sales = (salesStats.rows[0] as any) || {};
+      const dispatch = (dispatchStats.rows[0] as any) || {};
+      const quality = (qualityStats.rows[0] as any) || {};
+      const cash = (cashStats.rows[0] as any) || {};
+      
+      res.json({
+        period: daysBack,
+        startDate: startDateStr,
+        kpis: {
+          production: {
+            totalEntries: parseInt(production.total_entries) || 0,
+            totalProduced: parseFloat(production.total_produced) || 0,
+            totalRejected: parseFloat(production.total_rejected) || 0,
+            totalDerivedUnits: parseFloat(production.total_derived_units) || 0,
+            yieldPercent: production.total_produced > 0 
+              ? ((production.total_produced - production.total_rejected) / production.total_produced * 100).toFixed(1)
+              : 100
+          },
+          sales: {
+            totalInvoices: parseInt(sales.total_invoices) || 0,
+            totalRevenue: parseInt(sales.total_revenue) || 0,
+            totalWithTax: parseInt(sales.total_with_tax) || 0,
+            totalReceived: parseInt(sales.total_received) || 0,
+            totalPending: parseInt(sales.total_pending) || 0,
+            collectionRate: sales.total_with_tax > 0
+              ? ((sales.total_received / sales.total_with_tax) * 100).toFixed(1)
+              : 0
+          },
+          dispatch: {
+            totalGatepasses: parseInt(dispatch.total_gatepasses) || 0,
+            delivered: parseInt(dispatch.delivered) || 0,
+            pending: parseInt(dispatch.pending) || 0,
+            inTransit: parseInt(dispatch.in_transit) || 0,
+            fulfillmentRate: dispatch.total_gatepasses > 0
+              ? ((dispatch.delivered / dispatch.total_gatepasses) * 100).toFixed(1)
+              : 0
+          },
+          quality: {
+            totalSubmissions: parseInt(quality.total_submissions) || 0,
+            okCount: parseInt(quality.ok_count) || 0,
+            nokCount: parseInt(quality.nok_count) || 0,
+            complianceRate: quality.total_submissions > 0
+              ? ((quality.ok_count / quality.total_submissions) * 100).toFixed(1)
+              : 100
+          },
+          cash: {
+            totalClosing: parseInt(cash.total_closing) || 0,
+            totalReceived: parseInt(cash.total_received) || 0,
+            totalExpenses: parseInt(cash.total_expenses) || 0
+          },
+          payments: (paymentStats.rows as any[]).map(p => ({
+            method: p.payment_method,
+            count: parseInt(p.count),
+            amount: parseInt(p.total_amount) || 0
+          }))
+        }
+      });
+    } catch (error: any) {
+      console.error('[MIS] Error fetching KPI dashboard:', error);
+      res.status(500).json({ message: error.message || 'Failed to fetch KPI dashboard' });
+    }
+  });
+  
+  // MIS Exception Alerts - Get items needing attention
+  app.get('/api/mis/alerts', requireRole('admin', 'manager', 'AccountsManager'), async (req: any, res: Response) => {
+    try {
+      const alerts: any[] = [];
+      
+      // Overdue payments (invoices with pending amount > 30 days old)
+      const overduePayments = await db.execute(sql`
+        SELECT id, invoice_number, buyer_name, invoice_date, total_amount, amount_received,
+               (total_amount - amount_received) as pending_amount,
+               EXTRACT(DAY FROM (NOW() - invoice_date)) as days_overdue
+        FROM invoices
+        WHERE record_status = 1 AND status != 'cancelled'
+          AND (total_amount - amount_received) > 0
+          AND invoice_date < NOW() - INTERVAL '30 days'
+        ORDER BY invoice_date ASC
+        LIMIT 20
+      `);
+      
+      (overduePayments.rows as any[]).forEach(inv => {
+        alerts.push({
+          type: 'overdue_payment',
+          severity: parseInt(inv.days_overdue) > 60 ? 'high' : 'medium',
+          title: `Overdue Payment: ${inv.invoice_number}`,
+          description: `${inv.buyer_name} - ₹${(inv.pending_amount / 100).toFixed(2)} pending for ${Math.floor(inv.days_overdue)} days`,
+          entityType: 'invoice',
+          entityId: inv.id,
+          amount: parseInt(inv.pending_amount),
+          daysOverdue: Math.floor(parseInt(inv.days_overdue))
+        });
+      });
+      
+      // Low stock raw materials (below reorder level)
+      const lowStock = await db.execute(sql`
+        SELECT id, material_code, material_name, current_stock, reorder_level
+        FROM raw_materials
+        WHERE record_status = 1 AND is_active = 'true'
+          AND reorder_level IS NOT NULL
+          AND current_stock <= reorder_level
+        ORDER BY (reorder_level - current_stock) DESC
+        LIMIT 10
+      `);
+      
+      (lowStock.rows as any[]).forEach(mat => {
+        alerts.push({
+          type: 'low_stock',
+          severity: mat.current_stock <= 0 ? 'high' : 'medium',
+          title: `Low Stock: ${mat.material_name}`,
+          description: `Current: ${mat.current_stock || 0}, Reorder Level: ${mat.reorder_level}`,
+          entityType: 'raw_material',
+          entityId: mat.id,
+          currentStock: mat.current_stock,
+          reorderLevel: mat.reorder_level
+        });
+      });
+      
+      // Pending gatepasses (not yet dispatched)
+      const pendingGatepasses = await db.execute(sql`
+        SELECT g.id, g.gatepass_number, g.gatepass_date, g.customer_name, g.destination,
+               EXTRACT(DAY FROM (NOW() - g.gatepass_date)) as days_pending
+        FROM gatepasses g
+        WHERE g.record_status = 1 AND g.status = 'generated'
+          AND g.gatepass_date < NOW() - INTERVAL '2 days'
+        ORDER BY g.gatepass_date ASC
+        LIMIT 10
+      `);
+      
+      (pendingGatepasses.rows as any[]).forEach(gp => {
+        alerts.push({
+          type: 'pending_dispatch',
+          severity: parseInt(gp.days_pending) > 5 ? 'high' : 'low',
+          title: `Pending Dispatch: ${gp.gatepass_number}`,
+          description: `To ${gp.customer_name || gp.destination} - pending for ${Math.floor(gp.days_pending)} days`,
+          entityType: 'gatepass',
+          entityId: gp.id,
+          daysPending: Math.floor(parseInt(gp.days_pending))
+        });
+      });
+      
+      // Expiring documents (within 30 days)
+      const expiringDocs = await db.execute(sql`
+        SELECT id, filename, category, expiry_date,
+               EXTRACT(DAY FROM (expiry_date - NOW())) as days_to_expiry
+        FROM documents
+        WHERE record_status = 1 AND expiry_date IS NOT NULL
+          AND expiry_date <= NOW() + INTERVAL '30 days'
+          AND expiry_date >= NOW()
+        ORDER BY expiry_date ASC
+        LIMIT 10
+      `);
+      
+      (expiringDocs.rows as any[]).forEach(doc => {
+        const daysLeft = Math.floor(parseInt(doc.days_to_expiry));
+        alerts.push({
+          type: 'expiring_document',
+          severity: daysLeft <= 7 ? 'high' : daysLeft <= 14 ? 'medium' : 'low',
+          title: `Expiring: ${doc.filename}`,
+          description: `${doc.category} expires in ${daysLeft} days`,
+          entityType: 'document',
+          entityId: doc.id,
+          daysToExpiry: daysLeft
+        });
+      });
+      
+      // Quality issues (NOK checklists in last 7 days)
+      const qualityIssues = await db.execute(sql`
+        SELECT cs.id, ct.name as checklist_name, cs.submission_date, m.name as machine_name
+        FROM checklist_submissions cs
+        JOIN checklist_templates ct ON cs.template_id = ct.id
+        LEFT JOIN machines m ON cs.machine_id = m.id
+        WHERE cs.record_status = 1 AND cs.overall_status = 'NOK'
+          AND cs.submission_date >= NOW() - INTERVAL '7 days'
+        ORDER BY cs.submission_date DESC
+        LIMIT 10
+      `);
+      
+      (qualityIssues.rows as any[]).forEach(issue => {
+        alerts.push({
+          type: 'quality_issue',
+          severity: 'medium',
+          title: `Quality Issue: ${issue.checklist_name}`,
+          description: `Machine: ${issue.machine_name || 'N/A'}`,
+          entityType: 'checklist_submission',
+          entityId: issue.id
+        });
+      });
+      
+      // Sort by severity
+      const severityOrder = { high: 0, medium: 1, low: 2 };
+      alerts.sort((a, b) => severityOrder[a.severity as keyof typeof severityOrder] - severityOrder[b.severity as keyof typeof severityOrder]);
+      
+      res.json({
+        totalAlerts: alerts.length,
+        bySeverity: {
+          high: alerts.filter(a => a.severity === 'high').length,
+          medium: alerts.filter(a => a.severity === 'medium').length,
+          low: alerts.filter(a => a.severity === 'low').length
+        },
+        byType: {
+          overdue_payment: alerts.filter(a => a.type === 'overdue_payment').length,
+          low_stock: alerts.filter(a => a.type === 'low_stock').length,
+          pending_dispatch: alerts.filter(a => a.type === 'pending_dispatch').length,
+          expiring_document: alerts.filter(a => a.type === 'expiring_document').length,
+          quality_issue: alerts.filter(a => a.type === 'quality_issue').length
+        },
+        alerts
+      });
+    } catch (error: any) {
+      console.error('[MIS] Error fetching alerts:', error);
+      res.status(500).json({ message: error.message || 'Failed to fetch alerts' });
+    }
+  });
+  
+  // MIS Production Analytics
+  app.get('/api/mis/production-analytics', requireRole('admin', 'manager'), async (req: any, res: Response) => {
+    try {
+      const { period = '30' } = req.query;
+      const daysBack = parseInt(period as string) || 30;
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - daysBack);
+      const startDateStr = startDate.toISOString().split('T')[0];
+      
+      // Daily production trend
+      const dailyProduction = await db.execute(sql`
+        SELECT 
+          DATE(production_date) as date,
+          COUNT(*) as entries,
+          COALESCE(SUM(CAST(produced_quantity AS numeric)), 0) as produced,
+          COALESCE(SUM(CAST(rejected_quantity AS numeric)), 0) as rejected,
+          COALESCE(SUM(CAST(derived_units AS numeric)), 0) as derived_units
+        FROM production_entries
+        WHERE record_status = 1 AND production_date >= ${startDateStr}
+        GROUP BY DATE(production_date)
+        ORDER BY date DESC
+      `);
+      
+      // Production by product
+      const byProduct = await db.execute(sql`
+        SELECT 
+          p.name as product_name,
+          COUNT(*) as entries,
+          COALESCE(SUM(CAST(pe.produced_quantity AS numeric)), 0) as total_produced,
+          COALESCE(SUM(CAST(pe.rejected_quantity AS numeric)), 0) as total_rejected
+        FROM production_entries pe
+        LEFT JOIN products p ON pe.product_id = p.id
+        WHERE pe.record_status = 1 AND pe.production_date >= ${startDateStr}
+        GROUP BY p.id, p.name
+        ORDER BY total_produced DESC
+        LIMIT 10
+      `);
+      
+      // BOM Variance analysis (from reconciliations)
+      const varianceData = await db.execute(sql`
+        SELECT 
+          p.name as product_name,
+          COUNT(*) as reconciliation_count,
+          COALESCE(AVG(CAST(pr.variance_percent AS numeric)), 0) as avg_variance,
+          COALESCE(MIN(CAST(pr.variance_percent AS numeric)), 0) as min_variance,
+          COALESCE(MAX(CAST(pr.variance_percent AS numeric)), 0) as max_variance
+        FROM production_reconciliations pr
+        JOIN raw_material_issuance rmi ON pr.issuance_id = rmi.id
+        LEFT JOIN products p ON rmi.product_id = p.id
+        WHERE pr.record_status = 1 AND pr.reconciliation_date >= ${startDateStr}
+        GROUP BY p.id, p.name
+        ORDER BY avg_variance DESC
+        LIMIT 10
+      `);
+      
+      // Shift-wise production
+      const byShift = await db.execute(sql`
+        SELECT 
+          shift,
+          COUNT(*) as entries,
+          COALESCE(SUM(CAST(produced_quantity AS numeric)), 0) as total_produced,
+          COALESCE(SUM(CAST(rejected_quantity AS numeric)), 0) as total_rejected
+        FROM production_entries
+        WHERE record_status = 1 AND production_date >= ${startDateStr}
+        GROUP BY shift
+        ORDER BY shift
+      `);
+      
+      res.json({
+        period: daysBack,
+        dailyTrend: (dailyProduction.rows as any[]).map(d => ({
+          date: d.date,
+          entries: parseInt(d.entries),
+          produced: parseFloat(d.produced),
+          rejected: parseFloat(d.rejected),
+          derivedUnits: parseFloat(d.derived_units),
+          yield: d.produced > 0 ? ((d.produced - d.rejected) / d.produced * 100).toFixed(1) : 100
+        })),
+        byProduct: (byProduct.rows as any[]).map(p => ({
+          productName: p.product_name || 'Unknown',
+          entries: parseInt(p.entries),
+          totalProduced: parseFloat(p.total_produced),
+          totalRejected: parseFloat(p.total_rejected),
+          yield: p.total_produced > 0 ? ((p.total_produced - p.total_rejected) / p.total_produced * 100).toFixed(1) : 100
+        })),
+        bomVariance: (varianceData.rows as any[]).map(v => ({
+          productName: v.product_name || 'Unknown',
+          reconciliationCount: parseInt(v.reconciliation_count),
+          avgVariance: parseFloat(v.avg_variance).toFixed(2),
+          minVariance: parseFloat(v.min_variance).toFixed(2),
+          maxVariance: parseFloat(v.max_variance).toFixed(2)
+        })),
+        byShift: (byShift.rows as any[]).map(s => ({
+          shift: s.shift,
+          entries: parseInt(s.entries),
+          totalProduced: parseFloat(s.total_produced),
+          totalRejected: parseFloat(s.total_rejected)
+        }))
+      });
+    } catch (error: any) {
+      console.error('[MIS] Error fetching production analytics:', error);
+      res.status(500).json({ message: error.message || 'Failed to fetch production analytics' });
+    }
+  });
+  
+  // MIS Inventory Intelligence
+  app.get('/api/mis/inventory-analytics', requireRole('admin', 'manager'), async (req: any, res: Response) => {
+    try {
+      // Raw material inventory with aging
+      const rawMaterialInventory = await db.execute(sql`
+        SELECT 
+          rm.id, rm.material_code, rm.material_name, rm.current_stock,
+          rm.unit_cost, rm.reorder_level, rm.received_date,
+          COALESCE((rm.current_stock * rm.unit_cost), 0) as stock_value,
+          CASE 
+            WHEN rm.received_date IS NULL THEN 'unknown'
+            WHEN rm.received_date < NOW() - INTERVAL '90 days' THEN 'aged_90+'
+            WHEN rm.received_date < NOW() - INTERVAL '60 days' THEN 'aged_60_90'
+            WHEN rm.received_date < NOW() - INTERVAL '30 days' THEN 'aged_30_60'
+            ELSE 'fresh'
+          END as aging_bucket
+        FROM raw_materials rm
+        WHERE rm.record_status = 1 AND rm.is_active = 'true'
+        ORDER BY rm.current_stock DESC
+      `);
+      
+      // Finished goods inventory
+      const finishedGoodsInventory = await db.execute(sql`
+        SELECT 
+          p.name as product_name,
+          COUNT(*) as batch_count,
+          COALESCE(SUM(fg.quantity), 0) as total_quantity,
+          MIN(fg.production_date) as oldest_batch,
+          MAX(fg.production_date) as newest_batch
+        FROM finished_goods fg
+        JOIN products p ON fg.product_id = p.id
+        WHERE fg.record_status = 1 AND fg.quality_status = 'approved'
+        GROUP BY p.id, p.name
+        ORDER BY total_quantity DESC
+      `);
+      
+      // Slow moving items (no issuance in 30 days)
+      const slowMovers = await db.execute(sql`
+        SELECT 
+          rm.id, rm.material_code, rm.material_name, rm.current_stock,
+          MAX(rmi.issuance_date) as last_issued
+        FROM raw_materials rm
+        LEFT JOIN raw_material_issuance_items rmii ON rmii.raw_material_id = rm.id
+        LEFT JOIN raw_material_issuance rmi ON rmii.issuance_id = rmi.id AND rmi.record_status = 1
+        WHERE rm.record_status = 1 AND rm.is_active = 'true' AND rm.current_stock > 0
+        GROUP BY rm.id, rm.material_code, rm.material_name, rm.current_stock
+        HAVING MAX(rmi.issuance_date) IS NULL OR MAX(rmi.issuance_date) < NOW() - INTERVAL '30 days'
+        ORDER BY rm.current_stock DESC
+        LIMIT 20
+      `);
+      
+      // Inventory value summary
+      const inventorySummary = await db.execute(sql`
+        SELECT 
+          COALESCE(SUM(current_stock * unit_cost), 0) as total_raw_material_value,
+          COUNT(*) as total_raw_materials,
+          COALESCE(SUM(CASE WHEN current_stock <= COALESCE(reorder_level, 0) THEN 1 ELSE 0 END), 0) as below_reorder
+        FROM raw_materials
+        WHERE record_status = 1 AND is_active = 'true'
+      `);
+      
+      const summary = (inventorySummary.rows[0] as any) || {};
+      
+      // Aging buckets summary
+      const agingBuckets = {
+        fresh: 0,
+        aged_30_60: 0,
+        aged_60_90: 0,
+        'aged_90+': 0,
+        unknown: 0
+      };
+      
+      (rawMaterialInventory.rows as any[]).forEach(rm => {
+        const bucket = rm.aging_bucket as keyof typeof agingBuckets;
+        agingBuckets[bucket] = (agingBuckets[bucket] || 0) + parseInt(rm.stock_value || 0);
+      });
+      
+      res.json({
+        summary: {
+          totalRawMaterialValue: parseInt(summary.total_raw_material_value) || 0,
+          totalRawMaterials: parseInt(summary.total_raw_materials) || 0,
+          belowReorder: parseInt(summary.below_reorder) || 0
+        },
+        agingBuckets,
+        rawMaterials: (rawMaterialInventory.rows as any[]).slice(0, 20).map(rm => ({
+          id: rm.id,
+          materialCode: rm.material_code,
+          materialName: rm.material_name,
+          currentStock: rm.current_stock,
+          unitCost: rm.unit_cost,
+          stockValue: parseInt(rm.stock_value) || 0,
+          reorderLevel: rm.reorder_level,
+          agingBucket: rm.aging_bucket
+        })),
+        finishedGoods: (finishedGoodsInventory.rows as any[]).map(fg => ({
+          productName: fg.product_name,
+          batchCount: parseInt(fg.batch_count),
+          totalQuantity: parseInt(fg.total_quantity),
+          oldestBatch: fg.oldest_batch,
+          newestBatch: fg.newest_batch
+        })),
+        slowMovers: (slowMovers.rows as any[]).map(sm => ({
+          id: sm.id,
+          materialCode: sm.material_code,
+          materialName: sm.material_name,
+          currentStock: sm.current_stock,
+          lastIssued: sm.last_issued
+        }))
+      });
+    } catch (error: any) {
+      console.error('[MIS] Error fetching inventory analytics:', error);
+      res.status(500).json({ message: error.message || 'Failed to fetch inventory analytics' });
+    }
+  });
+  
+  // MIS Sales & Margin Analysis
+  app.get('/api/mis/sales-analytics', requireRole('admin', 'manager', 'AccountsManager'), async (req: any, res: Response) => {
+    try {
+      const { period = '30' } = req.query;
+      const daysBack = parseInt(period as string) || 30;
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - daysBack);
+      const startDateStr = startDate.toISOString().split('T')[0];
+      
+      // Daily sales trend
+      const dailySales = await db.execute(sql`
+        SELECT 
+          DATE(invoice_date) as date,
+          COUNT(*) as invoice_count,
+          COALESCE(SUM(subtotal), 0) as revenue,
+          COALESCE(SUM(total_amount), 0) as total_with_tax,
+          COALESCE(SUM(amount_received), 0) as collected
+        FROM invoices
+        WHERE record_status = 1 AND status != 'cancelled' AND invoice_date >= ${startDateStr}
+        GROUP BY DATE(invoice_date)
+        ORDER BY date DESC
+      `);
+      
+      // Top customers by revenue
+      const topCustomers = await db.execute(sql`
+        SELECT 
+          buyer_name,
+          COUNT(*) as invoice_count,
+          COALESCE(SUM(subtotal), 0) as total_revenue,
+          COALESCE(SUM(amount_received), 0) as total_collected,
+          COALESCE(SUM(total_amount - amount_received), 0) as pending
+        FROM invoices
+        WHERE record_status = 1 AND status != 'cancelled' AND invoice_date >= ${startDateStr}
+        GROUP BY buyer_name
+        ORDER BY total_revenue DESC
+        LIMIT 10
+      `);
+      
+      // Top products by revenue
+      const topProducts = await db.execute(sql`
+        SELECT 
+          p.name as product_name,
+          COALESCE(SUM(ii.quantity), 0) as total_quantity,
+          COALESCE(SUM(ii.taxable_amount), 0) as total_revenue
+        FROM invoice_items ii
+        JOIN invoices i ON ii.invoice_id = i.id
+        LEFT JOIN products p ON ii.product_id = p.id
+        WHERE i.record_status = 1 AND i.status != 'cancelled' AND i.invoice_date >= ${startDateStr}
+        GROUP BY p.id, p.name
+        ORDER BY total_revenue DESC
+        LIMIT 10
+      `);
+      
+      // Payment collection by method
+      const paymentMethods = await db.execute(sql`
+        SELECT 
+          payment_method,
+          COUNT(*) as payment_count,
+          COALESCE(SUM(amount), 0) as total_amount
+        FROM invoice_payments
+        WHERE record_status = 1 AND payment_date >= ${startDateStr}
+        GROUP BY payment_method
+        ORDER BY total_amount DESC
+      `);
+      
+      // Receivables aging
+      const receivablesAging = await db.execute(sql`
+        SELECT 
+          CASE 
+            WHEN invoice_date >= NOW() - INTERVAL '30 days' THEN '0-30 days'
+            WHEN invoice_date >= NOW() - INTERVAL '60 days' THEN '31-60 days'
+            WHEN invoice_date >= NOW() - INTERVAL '90 days' THEN '61-90 days'
+            ELSE '90+ days'
+          END as aging_bucket,
+          COUNT(*) as invoice_count,
+          COALESCE(SUM(total_amount - amount_received), 0) as pending_amount
+        FROM invoices
+        WHERE record_status = 1 AND status != 'cancelled' 
+          AND (total_amount - amount_received) > 0
+        GROUP BY 
+          CASE 
+            WHEN invoice_date >= NOW() - INTERVAL '30 days' THEN '0-30 days'
+            WHEN invoice_date >= NOW() - INTERVAL '60 days' THEN '31-60 days'
+            WHEN invoice_date >= NOW() - INTERVAL '90 days' THEN '61-90 days'
+            ELSE '90+ days'
+          END
+        ORDER BY aging_bucket
+      `);
+      
+      res.json({
+        period: daysBack,
+        dailyTrend: (dailySales.rows as any[]).map(d => ({
+          date: d.date,
+          invoiceCount: parseInt(d.invoice_count),
+          revenue: parseInt(d.revenue),
+          totalWithTax: parseInt(d.total_with_tax),
+          collected: parseInt(d.collected)
+        })),
+        topCustomers: (topCustomers.rows as any[]).map(c => ({
+          buyerName: c.buyer_name,
+          invoiceCount: parseInt(c.invoice_count),
+          totalRevenue: parseInt(c.total_revenue),
+          totalCollected: parseInt(c.total_collected),
+          pending: parseInt(c.pending)
+        })),
+        topProducts: (topProducts.rows as any[]).map(p => ({
+          productName: p.product_name || 'Unknown',
+          totalQuantity: parseInt(p.total_quantity),
+          totalRevenue: parseInt(p.total_revenue)
+        })),
+        paymentMethods: (paymentMethods.rows as any[]).map(pm => ({
+          method: pm.payment_method,
+          count: parseInt(pm.payment_count),
+          amount: parseInt(pm.total_amount)
+        })),
+        receivablesAging: (receivablesAging.rows as any[]).map(ra => ({
+          bucket: ra.aging_bucket,
+          invoiceCount: parseInt(ra.invoice_count),
+          pendingAmount: parseInt(ra.pending_amount)
+        }))
+      });
+    } catch (error: any) {
+      console.error('[MIS] Error fetching sales analytics:', error);
+      res.status(500).json({ message: error.message || 'Failed to fetch sales analytics' });
+    }
+  });
+  
+  // MIS Delivery Performance (OTIF - On Time In Full)
+  app.get('/api/mis/delivery-performance', requireRole('admin', 'manager'), async (req: any, res: Response) => {
+    try {
+      const { period = '30' } = req.query;
+      const daysBack = parseInt(period as string) || 30;
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - daysBack);
+      const startDateStr = startDate.toISOString().split('T')[0];
+      
+      // Gatepass status summary
+      const statusSummary = await db.execute(sql`
+        SELECT 
+          status,
+          COUNT(*) as count
+        FROM gatepasses
+        WHERE record_status = 1 AND gatepass_date >= ${startDateStr}
+        GROUP BY status
+      `);
+      
+      // Delivery time analysis (generated to completed)
+      const deliveryTimes = await db.execute(sql`
+        SELECT 
+          id, gatepass_number, gatepass_date, out_time, pod_date, status,
+          CASE 
+            WHEN pod_date IS NOT NULL AND gatepass_date IS NOT NULL 
+            THEN EXTRACT(EPOCH FROM (pod_date - gatepass_date)) / 3600
+            ELSE NULL
+          END as delivery_hours
+        FROM gatepasses
+        WHERE record_status = 1 AND gatepass_date >= ${startDateStr}
+          AND status = 'completed'
+        ORDER BY gatepass_date DESC
+        LIMIT 50
+      `);
+      
+      // Calculate average delivery time
+      const completedDeliveries = (deliveryTimes.rows as any[]).filter(d => d.delivery_hours !== null);
+      const avgDeliveryHours = completedDeliveries.length > 0
+        ? completedDeliveries.reduce((sum, d) => sum + parseFloat(d.delivery_hours), 0) / completedDeliveries.length
+        : 0;
+      
+      // Daily dispatch volume
+      const dailyDispatch = await db.execute(sql`
+        SELECT 
+          DATE(gatepass_date) as date,
+          COUNT(*) as total_dispatched,
+          COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed
+        FROM gatepasses
+        WHERE record_status = 1 AND gatepass_date >= ${startDateStr}
+        GROUP BY DATE(gatepass_date)
+        ORDER BY date DESC
+      `);
+      
+      // Transporters performance
+      const transporterPerformance = await db.execute(sql`
+        SELECT 
+          COALESCE(transporter_name, 'Direct') as transporter,
+          COUNT(*) as total_dispatches,
+          COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed,
+          COUNT(CASE WHEN status = 'generated' THEN 1 END) as pending
+        FROM gatepasses
+        WHERE record_status = 1 AND gatepass_date >= ${startDateStr}
+        GROUP BY transporter_name
+        ORDER BY total_dispatches DESC
+        LIMIT 10
+      `);
+      
+      // Summary calculations
+      const statusMap = Object.fromEntries((statusSummary.rows as any[]).map(s => [s.status, parseInt(s.count)]));
+      const totalDispatches = Object.values(statusMap).reduce((sum: number, count) => sum + (count as number), 0);
+      const completedCount = statusMap['completed'] || 0;
+      const otifRate = totalDispatches > 0 ? ((completedCount / totalDispatches) * 100).toFixed(1) : 0;
+      
+      res.json({
+        period: daysBack,
+        summary: {
+          totalDispatches,
+          completed: completedCount,
+          inTransit: statusMap['vehicle_out'] || 0,
+          pending: statusMap['generated'] || 0,
+          otifRate,
+          avgDeliveryHours: avgDeliveryHours.toFixed(1)
+        },
+        statusBreakdown: (statusSummary.rows as any[]).map(s => ({
+          status: s.status,
+          count: parseInt(s.count)
+        })),
+        dailyTrend: (dailyDispatch.rows as any[]).map(d => ({
+          date: d.date,
+          totalDispatched: parseInt(d.total_dispatched),
+          completed: parseInt(d.completed),
+          completionRate: d.total_dispatched > 0 ? ((d.completed / d.total_dispatched) * 100).toFixed(1) : 0
+        })),
+        transporterPerformance: (transporterPerformance.rows as any[]).map(t => ({
+          transporter: t.transporter,
+          totalDispatches: parseInt(t.total_dispatches),
+          completed: parseInt(t.completed),
+          pending: parseInt(t.pending),
+          completionRate: t.total_dispatches > 0 ? ((t.completed / t.total_dispatches) * 100).toFixed(1) : 0
+        }))
+      });
+    } catch (error: any) {
+      console.error('[MIS] Error fetching delivery performance:', error);
+      res.status(500).json({ message: error.message || 'Failed to fetch delivery performance' });
     }
   });
 

@@ -84,6 +84,11 @@ import CashRegisterVoucherPrint from "@/pages/cash-register-voucher-print";
 import VendorHistory from "@/pages/vendor-history";
 import VendorHistoryDetail from "@/pages/vendor-history-detail";
 import VendorDebitNotes from "@/pages/vendor-debit-notes";
+import MISDashboard from "@/pages/mis-dashboard";
+import MISProduction from "@/pages/mis-production";
+import MISInventory from "@/pages/mis-inventory";
+import MISSales from "@/pages/mis-sales";
+import MISDelivery from "@/pages/mis-delivery";
 
 type Role = 'admin' | 'operator' | 'reviewer' | 'manager';
 
@@ -705,6 +710,17 @@ function AdminDashboard() {
         { id: "sales-dashboard", label: "Sales Dashboard", icon: TrendingUp },
         { id: "vendor-analytics", label: "Vendor Analytics", icon: Building2, onClick: () => setLocation('/vendor-analytics') },
         { id: "reports", label: "Reports", icon: FileText },
+      ],
+    },
+    {
+      id: "mis-section",
+      label: "MIS Reports",
+      items: [
+        { id: "mis-dashboard", label: "Executive Dashboard", icon: TrendingUp, onClick: () => setLocation('/mis') },
+        { id: "mis-production", label: "Production Analytics", icon: Factory, onClick: () => setLocation('/mis/production') },
+        { id: "mis-inventory", label: "Inventory Intelligence", icon: Box, onClick: () => setLocation('/mis/inventory') },
+        { id: "mis-sales", label: "Sales Analysis", icon: IndianRupee, onClick: () => setLocation('/mis/sales') },
+        { id: "mis-delivery", label: "Delivery Performance", icon: Truck, onClick: () => setLocation('/mis/delivery') },
       ],
     },
     {
@@ -2089,6 +2105,141 @@ function ProductionReconciliationReportWrapper() {
   );
 }
 
+// MIS Dashboard wrapper
+function MISDashboardPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('mis-dashboard');
+  
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
+  
+  return (
+    <DashboardShell
+      title="MIS Executive Dashboard"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={(viewId) => setActiveView(viewId)}
+    >
+      <MISDashboard />
+    </DashboardShell>
+  );
+}
+
+// MIS Production Analytics wrapper
+function MISProductionPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('mis-production');
+  
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
+  
+  return (
+    <DashboardShell
+      title="Production Analytics"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={(viewId) => setActiveView(viewId)}
+    >
+      <MISProduction />
+    </DashboardShell>
+  );
+}
+
+// MIS Inventory Intelligence wrapper
+function MISInventoryPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('mis-inventory');
+  
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
+  
+  return (
+    <DashboardShell
+      title="Inventory Intelligence"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={(viewId) => setActiveView(viewId)}
+    >
+      <MISInventory />
+    </DashboardShell>
+  );
+}
+
+// MIS Sales Analysis wrapper
+function MISSalesPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('mis-sales');
+  
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
+  
+  return (
+    <DashboardShell
+      title="Sales Analysis"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={(viewId) => setActiveView(viewId)}
+    >
+      <MISSales />
+    </DashboardShell>
+  );
+}
+
+// MIS Delivery Performance wrapper
+function MISDeliveryPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('mis-delivery');
+  
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
+  
+  return (
+    <DashboardShell
+      title="Delivery Performance"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={(viewId) => setActiveView(viewId)}
+    >
+      <MISDelivery />
+    </DashboardShell>
+  );
+}
+
 function Router() {
   return (
     <Switch>
@@ -2110,6 +2261,11 @@ function Router() {
       <ProtectedRoute path="/payment-management" component={PaymentManagementPage} />
       <ProtectedRoute path="/vendor-analytics" component={VendorAnalyticsPage} />
       <ProtectedRoute path="/vendor-debit-notes" component={VendorDebitNotesPage} />
+      <ProtectedRoute path="/mis" component={MISDashboardPageWrapper} />
+      <ProtectedRoute path="/mis/production" component={MISProductionPageWrapper} />
+      <ProtectedRoute path="/mis/inventory" component={MISInventoryPageWrapper} />
+      <ProtectedRoute path="/mis/sales" component={MISSalesPageWrapper} />
+      <ProtectedRoute path="/mis/delivery" component={MISDeliveryPageWrapper} />
       <ProtectedRoute path="/reports" component={ReportsPage} />
       <ProtectedRoute path="/production-management" component={ProductionManagementPageWrapper} />
       <ProtectedRoute path="/reports/production-reconciliation" component={ProductionReconciliationReportWrapper} />
