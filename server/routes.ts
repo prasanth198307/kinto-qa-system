@@ -144,6 +144,9 @@ const endpointToScreenKey: Record<string, string> = {
   '/api/gatepass': 'gatepasses',
   '/api/dispatch': 'dispatch_tracking',
   '/api/dispatch-tracking': 'dispatch_tracking',
+  '/api/transporters': 'dispatch_masters',
+  '/api/vehicles': 'dispatch_masters',
+  '/api/drivers': 'dispatch_masters',
   
   // Finance & Expenses
   '/api/cash-register': 'cash_register',

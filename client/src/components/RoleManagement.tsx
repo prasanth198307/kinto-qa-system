@@ -98,6 +98,7 @@ const AVAILABLE_SCREENS: ScreenDefinition[] = [
   { key: 'credit_notes', label: 'Credit Notes', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'vendor_debit_notes', label: 'Vendor Debit Notes', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'dispatch_tracking', label: 'Dispatch Tracking', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'dispatch_masters', label: 'Dispatch Masters (Vehicles/Drivers/Transporters)', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'sales_returns', label: 'Sales Returns', allowedActions: ['view', 'create', 'edit', 'delete'] },
   
   // Document & Expense Management
