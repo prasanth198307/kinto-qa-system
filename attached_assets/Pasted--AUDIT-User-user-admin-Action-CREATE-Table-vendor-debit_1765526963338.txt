@@ -1,0 +1,40 @@
+[AUDIT] User: user-admin, Action: CREATE, Table: vendor_debit_notes, Record: a5795c4c-543c-4996-8d22-3ce925e45f3a, Description: Vendor Debit Note VDN-20251212-001 created. Reason: processing_charges. Amount: ₹400.00
+1:32:31 PM [express] POST /api/vendor-debit-notes 200 in 37ms :: {"message":"Vendor Debit Note VDN-2…
+🔹 Request: GET /api/vendor-debit-notes
+   Cookie header: connect.sid=s%3A6i5lR2Tjf-SMVmhmab0QQ1qugWV3sfeZ.5C63qt7EJG%2BKmtresIrhQdxP2zqOot68OybrUyKZC5c
+   Session ID: 6i5lR2Tjf-SMVmhmab0QQ1qugWV3sfeZ
+   Authenticated: true
+1:32:31 PM [express] GET /api/vendor-debit-notes 200 in 7ms :: [{"id":"a5795c4c-543c-4996-8d22-3ce92…
+🔹 Request: GET /api/vendor-debit-notes/pending-invoices/54f83907-466b-40e6-90ed-8522b874dd1f
+   Cookie header: connect.sid=s%3A6i5lR2Tjf-SMVmhmab0QQ1qugWV3sfeZ.5C63qt7EJG%2BKmtresIrhQdxP2zqOot68OybrUyKZC5c
+   Session ID: 6i5lR2Tjf-SMVmhmab0QQ1qugWV3sfeZ
+   Authenticated: true
+Error fetching pending invoices: TypeError: Cannot convert undefined or null to object
+    at Function.entries (<anonymous>)
+    at orderSelectedFields (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/utils.js:53:17)
+    at file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/utils.js:63:22
+    at Array.reduce (<anonymous>)
+    at orderSelectedFields (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/utils.js:53:33)
+    at file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/pg-core/query-builders/select.js:684:26
+    at Object.startActiveSpan (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/tracing.js:8:14)
+    at PgSelectBase._prepare (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/pg-core/query-builders/select.js:683:19)
+    at file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/pg-core/query-builders/select.js:708:19
+    at Object.startActiveSpan (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/tracing.js:8:14)
+1:32:35 PM [express] GET /api/vendor-debit-notes/pending-invoices/54f83907-466b-40e6-90ed-8522b874dd…
+🔹 Request: GET /api/vendor-debit-notes/pending-purchase-orders/54f83907-466b-40e6-90ed-8522b874dd1f
+   Cookie header: connect.sid=s%3A6i5lR2Tjf-SMVmhmab0QQ1qugWV3sfeZ.5C63qt7EJG%2BKmtresIrhQdxP2zqOot68OybrUyKZC5c
+   Session ID: 6i5lR2Tjf-SMVmhmab0QQ1qugWV3sfeZ
+   Authenticated: true
+Error fetching pending purchase orders: ReferenceError: purchaseOrders is not defined
+    at file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:16556:13
+    at Layer.handle [as handle_request] (/Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/express/lib/router/layer.js:95:5)
+    at next (/Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/express/lib/router/route.js:149:13)
+    at isAuthenticated (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:9521:12)
+    at Layer.handle [as handle_request] (/Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/express/lib/router/layer.js:95:5)
+    at next (/Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/express/lib/router/route.js:149:13)
+    at Route.dispatch (/Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/express/lib/router/route.js:119:3)
+    at Layer.handle [as handle_request] (/Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/express/lib/router/layer.js:95:5)
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/express/lib/router/index.js:284:15
+    at param (/Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/express/lib/router/index.js:365:14)
+1:32:35 PM [express] GET /api/vendor-debit-notes/pending-purchase-orders/54f83907-466b-40e6-90ed-852…
+

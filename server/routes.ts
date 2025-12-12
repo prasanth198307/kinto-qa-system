@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import crypto from "crypto";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertPurchaseOrderItemSchema, purchaseOrderItems, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, paymentEvidence, salesReturns, salesReturnItems, creditNotes, creditNoteItems, debitNotes, debitNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes, vendors, users, uom, insertDocumentCategorySchema, insertDocumentSchema, insertExpenseCategorySchema, insertExpenseVoucherSchema, insertExpenseItemSchema, insertExpenseAttachmentSchema, rolePermissions, vendorDebitNotes, vendorDebitNoteItems, vendorDebitNoteAdjustments, transporters, vehicles, drivers, insertTransporterSchema, insertVehicleSchema, insertDriverSchema } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertPurchaseOrderItemSchema, purchaseOrders, purchaseOrderItems, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, paymentEvidence, salesReturns, salesReturnItems, creditNotes, creditNoteItems, debitNotes, debitNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes, vendors, users, uom, insertDocumentCategorySchema, insertDocumentSchema, insertExpenseCategorySchema, insertExpenseVoucherSchema, insertExpenseItemSchema, insertExpenseAttachmentSchema, rolePermissions, vendorDebitNotes, vendorDebitNoteItems, vendorDebitNoteAdjustments, transporters, vehicles, drivers, insertTransporterSchema, insertVehicleSchema, insertDriverSchema } from "@shared/schema";
 import { format } from "date-fns";
 import { z } from "zod";
 import path from "path";
@@ -9427,78 +9427,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get pending invoices for a vendor (where vendor is buyer) for adjustment
+  // Get pending invoices for a vendor - Note: Invoices don't have vendorId, 
+  // they have buyerName. This endpoint returns empty as vendor debit notes 
+  // should be adjusted against purchase orders, not sales invoices.
   app.get('/api/vendor-debit-notes/pending-invoices/:vendorId', isAuthenticated, async (req: any, res) => {
     try {
-      const { vendorId } = req.params;
-      
-      // Get all invoices for this vendor that have pending balance
-      const vendorInvoices = await db.select({
-        id: invoices.id,
-        invoiceNumber: invoices.invoiceNumber,
-        invoiceDate: invoices.invoiceDate,
-        grandTotal: invoices.grandTotal,
-        vendorId: invoices.vendorId,
-        vendorName: vendors.vendorName,
-      })
-        .from(invoices)
-        .leftJoin(vendors, eq(invoices.vendorId, vendors.id))
-        .where(and(
-          eq(invoices.vendorId, vendorId),
-          eq(invoices.recordStatus, 1),
-          ne(invoices.dispatchStatus, 'cancelled')
-        ))
-        .orderBy(desc(invoices.invoiceDate));
-
-      // Get payments for each invoice to calculate pending balance
-      const invoiceIds = vendorInvoices.map(inv => inv.id);
-      
-      const payments = invoiceIds.length > 0 
-        ? await db.select({
-            invoiceId: invoicePayments.invoiceId,
-            amount: invoicePayments.amount,
-          })
-          .from(invoicePayments)
-          .where(and(
-            inArray(invoicePayments.invoiceId, invoiceIds),
-            eq(invoicePayments.recordStatus, 1)
-          ))
-        : [];
-
-      // Get existing adjustments for these invoices
-      const existingAdjustments = invoiceIds.length > 0
-        ? await db.select({
-            invoiceId: vendorDebitNoteAdjustments.invoiceId,
-            adjustmentAmount: vendorDebitNoteAdjustments.adjustmentAmount,
-          })
-          .from(vendorDebitNoteAdjustments)
-          .where(and(
-            inArray(vendorDebitNoteAdjustments.invoiceId, invoiceIds),
-            eq(vendorDebitNoteAdjustments.recordStatus, 1)
-          ))
-        : [];
-
-      // Calculate pending amounts
-      const paymentsByInvoice = payments.reduce((acc, p) => {
-        acc[p.invoiceId] = (acc[p.invoiceId] || 0) + p.amount;
-        return acc;
-      }, {} as Record<string, number>);
-
-      const adjustmentsByInvoice = existingAdjustments.reduce((acc, a) => {
-        if (a.invoiceId) {
-          acc[a.invoiceId] = (acc[a.invoiceId] || 0) + a.adjustmentAmount;
-        }
-        return acc;
-      }, {} as Record<string, number>);
-
-      const pendingInvoices = vendorInvoices.map(inv => ({
-        ...inv,
-        paidAmount: paymentsByInvoice[inv.id] || 0,
-        adjustedAmount: adjustmentsByInvoice[inv.id] || 0,
-        pendingAmount: inv.grandTotal - (paymentsByInvoice[inv.id] || 0) - (adjustmentsByInvoice[inv.id] || 0),
-      })).filter(inv => inv.pendingAmount > 0);
-
-      res.json(pendingInvoices);
+      // Invoices are issued TO buyers (customers), not FROM vendors (suppliers).
+      // Vendor debit notes should be adjusted against purchase orders instead.
+      // Return empty array as this adjustment type doesn't apply to vendor context.
+      res.json([]);
     } catch (error) {
       console.error("Error fetching pending invoices:", error);
       res.status(500).json({ message: "Failed to fetch pending invoices" });
