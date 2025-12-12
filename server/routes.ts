@@ -14219,7 +14219,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const dispatchStats = await db.execute(sql`
           SELECT 
             COUNT(*) as total_gatepasses,
-            COUNT(CASE WHEN status = 'completed' THEN 1 END) as delivered,
+            COUNT(CASE WHEN status = 'delivered' THEN 1 END) as delivered,
             COUNT(CASE WHEN status = 'generated' THEN 1 END) as pending,
             COUNT(CASE WHEN status = 'vehicle_out' THEN 1 END) as in_transit
           FROM gatepasses
