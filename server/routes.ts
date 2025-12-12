@@ -93,31 +93,96 @@ function isAuthenticated(req: Request, res: Response, next: NextFunction) {
 
 // Mapping of API endpoints to screen keys for permission checking
 // This allows custom roles with database permissions to access these endpoints
+// COMPREHENSIVE: Maps all API endpoints to their corresponding screen permissions
 const endpointToScreenKey: Record<string, string> = {
+  // Dashboard & Analytics
+  '/api/dashboard': 'dashboard',
   '/api/sales-analytics': 'sales_dashboard',
-  '/api/invoices': 'invoices',
-  '/api/vendors': 'vendors',
-  '/api/credit-notes': 'credit_notes',
-  '/api/gatepasses': 'gatepasses',
-  '/api/dispatch': 'dispatch_tracking',
-  '/api/sales-returns': 'sales_returns',
+  '/api/vendor-analytics': 'vendor_analytics',
   '/api/reports': 'reports',
+  '/api/gst-reports': 'reports',
+  
+  // Quality & Checklists
+  '/api/checklist-templates': 'checklist_templates',
+  '/api/checklist-assignments': 'checklist_assignments',
+  '/api/checklists': 'checklists',
+  '/api/machine-startup-reminders': 'machine_startup_reminders',
+  '/api/whatsapp': 'whatsapp_analytics',
+  
+  // Inventory Management
   '/api/products': 'products',
+  '/api/product-categories': 'product_categories',
+  '/api/product-types': 'product_types',
   '/api/raw-materials': 'raw_materials',
-  '/api/production': 'production',
+  '/api/raw-material-types': 'raw_material_types',
+  '/api/finished-goods': 'finished_goods',
   '/api/inventory': 'inventory',
-  '/api/machines': 'machines',
-  '/api/users': 'users',
-  '/api/roles': 'roles',
-  '/api/checklist': 'checklists',
-  '/api/documents': 'documents',
-  '/api/expenses': 'expenses',
-  '/api/cash-register': 'cash_register',
+  '/api/uom': 'uom',
+  
+  // Production
+  '/api/raw-material-issuance': 'raw_material_issuance',
+  '/api/production-entries': 'production_entries',
+  '/api/production-reconciliations': 'production_reconciliations',
+  '/api/production': 'production_entries',
+  '/api/variance': 'variance_analytics',
+  
+  // Sales & Invoicing
+  '/api/invoices': 'invoices',
+  '/api/invoice-items': 'invoices',
+  '/api/invoice-payments': 'payments',
   '/api/pending-payments': 'pending_payments',
   '/api/payment-management': 'payments',
-  '/api/invoice-payments': 'payments',
-  '/api/vendor-analytics': 'vendor_analytics',
+  '/api/credit-notes': 'credit_notes',
+  '/api/debit-notes': 'credit_notes',
+  '/api/cancelled-invoices': 'cancelled_invoices_report',
+  '/api/sales-returns': 'sales_returns',
+  '/api/payment-writeoff': 'payment_writeoff',
+  '/api/write-off': 'payment_writeoff',
+  
+  // Dispatch & Logistics
+  '/api/gatepasses': 'gatepasses',
+  '/api/gatepass': 'gatepasses',
+  '/api/dispatch': 'dispatch_tracking',
+  '/api/dispatch-tracking': 'dispatch_tracking',
+  
+  // Finance & Expenses
+  '/api/cash-register': 'cash_register',
+  '/api/expenses': 'expenses',
+  '/api/expense-vouchers': 'expenses',
+  '/api/expense-categories': 'expenses',
+  
+  // Documents
+  '/api/documents': 'documents',
+  '/api/document-categories': 'documents',
+  
+  // Maintenance
+  '/api/maintenance-plans': 'maintenance_plans',
+  '/api/pm-executions': 'pm_execution',
+  '/api/pm-templates': 'pm_templates',
+  
+  // Purchasing
+  '/api/purchase-orders': 'purchase_orders',
+  '/api/vendor-debit-notes': 'vendor_debit_notes',
+  '/api/vendor-debit-note-adjustments': 'vendor_debit_notes',
+  
+  // Master Data
+  '/api/vendors': 'vendors',
   '/api/vendor-types': 'vendor_types',
+  '/api/machines': 'machines',
+  '/api/machine-types': 'machine_types',
+  '/api/spare-parts': 'spare_parts',
+  
+  // Administration
+  '/api/users': 'users',
+  '/api/roles': 'roles',
+  '/api/role-permissions': 'roles',
+  '/api/my-permissions': 'roles',
+  '/api/templates': 'template_management',
+  '/api/invoice-templates': 'template_management',
+  '/api/notification-config': 'notification_settings',
+  '/api/notification-settings': 'notification_settings',
+  '/api/data-import': 'data_import',
+  '/api/vyapaar': 'data_import',
 };
 
 // Standard roles that are handled by name matching (case-insensitive)
