@@ -5492,9 +5492,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Gatepass not found" });
       }
       
-      if (existing.status !== 'vehicle_out') {
+      // Allow POD capture if gatepass is 'vehicle_out' or 'delivered' (to add POD details later)
+      if (existing.status !== 'vehicle_out' && existing.status !== 'delivered') {
         return res.status(400).json({ 
-          message: `Cannot capture POD. Gatepass status must be 'vehicle_out' but is '${existing.status}'` 
+          message: `Cannot capture POD. Gatepass status must be 'vehicle_out' or 'delivered' but is '${existing.status}'` 
         });
       }
       
@@ -5515,27 +5516,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // If gatepass has a linked invoice, update invoice status to "delivered"
-      // Guard: Only update if invoice is currently in "dispatched" status (prevent out-of-order transitions)
+      // Only update if invoice is currently in "dispatched" status; skip if already delivered
       if (updated.invoiceId) {
         const [linkedInvoice] = await db.select().from(invoices).where(eq(invoices.id, updated.invoiceId));
         if (!linkedInvoice) {
           return res.status(404).json({ message: "Linked invoice not found" });
         }
         
-        if (linkedInvoice.status !== 'dispatched') {
-          return res.status(400).json({ 
-            message: `Cannot capture POD. Invoice status must be 'dispatched' but is '${linkedInvoice.status}'. Please ensure vehicle exit was recorded first.` 
-          });
+        // Only update invoice if it's still in dispatched status
+        if (linkedInvoice.status === 'dispatched') {
+          await db.update(invoices)
+            .set({
+              status: 'delivered',
+              deliveryDate: new Date(podDate).toISOString(),
+              receivedBy: podReceivedBy,
+              podRemarks: podRemarks || null
+            })
+            .where(eq(invoices.id, updated.invoiceId));
+        } else if (linkedInvoice.status === 'delivered') {
+          // Invoice already delivered, just update POD details
+          await db.update(invoices)
+            .set({
+              deliveryDate: new Date(podDate).toISOString(),
+              receivedBy: podReceivedBy,
+              podRemarks: podRemarks || null
+            })
+            .where(eq(invoices.id, updated.invoiceId));
         }
-        
-        await db.update(invoices)
-          .set({
-            status: 'delivered',
-            deliveryDate: new Date(podDate).toISOString(),
-            receivedBy: podReceivedBy,
-            podRemarks: podRemarks || null
-          })
-          .where(eq(invoices.id, updated.invoiceId));
+        // If invoice is in any other status, skip the update (shouldn't happen in normal flow)
       }
       
       res.json({ gatepass: updated, message: "Proof of delivery captured successfully" });
