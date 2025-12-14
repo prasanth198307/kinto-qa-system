@@ -1,583 +1,601 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>KINTO Operations - Multi-Tenant Architecture Implementation Plan</title>
-  <style>
-    * { box-sizing: border-box; }
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      line-height: 1.6;
-      color: #333;
-      max-width: 1000px;
-      margin: 0 auto;
-      padding: 40px 20px;
-      background: #fff;
-    }
-    h1 { color: #1a365d; border-bottom: 3px solid #3182ce; padding-bottom: 10px; margin-top: 0; }
-    h2 { color: #2c5282; border-bottom: 2px solid #90cdf4; padding-bottom: 8px; margin-top: 40px; page-break-after: avoid; }
-    h3 { color: #2b6cb0; margin-top: 25px; page-break-after: avoid; }
-    h4 { color: #3182ce; margin-top: 20px; }
-    
-    .header-meta { color: #666; font-size: 14px; margin-bottom: 30px; }
-    .header-meta strong { color: #333; }
-    
-    table { 
-      border-collapse: collapse; 
-      width: 100%; 
-      margin: 15px 0; 
-      font-size: 14px;
-      page-break-inside: avoid;
-    }
-    th, td { 
-      border: 1px solid #cbd5e0; 
-      padding: 10px 12px; 
-      text-align: left; 
-    }
-    th { 
-      background: #edf2f7; 
-      font-weight: 600; 
-      color: #2d3748;
-    }
-    tr:nth-child(even) { background: #f7fafc; }
-    
-    code {
-      background: #edf2f7;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-family: 'Consolas', 'Monaco', monospace;
-      font-size: 13px;
-    }
-    pre {
-      background: #1a202c;
-      color: #e2e8f0;
-      padding: 20px;
-      border-radius: 8px;
-      overflow-x: auto;
-      font-size: 13px;
-      line-height: 1.5;
-      page-break-inside: avoid;
-    }
-    pre code { background: none; padding: 0; color: inherit; }
-    
-    .diagram {
-      background: #f7fafc;
-      border: 1px solid #e2e8f0;
-      padding: 20px;
-      border-radius: 8px;
-      font-family: 'Consolas', monospace;
-      white-space: pre;
-      overflow-x: auto;
-      font-size: 12px;
-      line-height: 1.4;
-    }
-    
-    .phase-box {
-      background: linear-gradient(135deg, #ebf8ff 0%, #e6fffa 100%);
-      border-left: 4px solid #3182ce;
-      padding: 20px;
-      margin: 20px 0;
-      border-radius: 0 8px 8px 0;
-    }
-    .phase-box.new {
-      background: linear-gradient(135deg, #f0fff4 0%, #c6f6d5 100%);
-      border-left-color: #38a169;
-    }
-    .phase-box h3 { margin-top: 0; color: #2c5282; }
-    .phase-box.new h3 { color: #276749; }
-    .phase-meta { display: flex; gap: 30px; margin-bottom: 15px; flex-wrap: wrap; }
-    .phase-meta span { font-size: 14px; color: #4a5568; }
-    .phase-meta strong { color: #2d3748; }
-    
-    ul, ol { padding-left: 25px; }
-    li { margin: 8px 0; }
-    
-    .checklist { list-style: none; padding-left: 0; }
-    .checklist li { padding-left: 28px; position: relative; }
-    .checklist li::before {
-      content: "☐";
-      position: absolute;
-      left: 0;
-      color: #718096;
-    }
-    
-    .toc { background: #f7fafc; padding: 25px 35px; border-radius: 8px; margin: 30px 0; }
-    .toc h2 { margin-top: 0; border: none; }
-    .toc ol { margin: 0; }
-    .toc li { margin: 5px 0; }
-    .toc .new { color: #38a169; font-weight: 600; }
-    
-    .summary-box {
-      background: #fffbeb;
-      border: 1px solid #f6e05e;
-      padding: 20px;
-      border-radius: 8px;
-      margin: 20px 0;
-    }
-    .summary-box h4 { margin-top: 0; color: #744210; }
-    
-    .timeline-table th { background: #2c5282; color: white; }
-    .timeline-table tr:hover { background: #ebf8ff; }
-    
-    .highlight { background: #c6f6d5; padding: 2px 6px; border-radius: 4px; }
-    .warning { background: #fed7d7; padding: 2px 6px; border-radius: 4px; }
-    
-    blockquote {
-      border-left: 4px solid #38a169;
-      margin: 20px 0;
-      padding: 15px 20px;
-      background: #f0fff4;
-      font-style: italic;
-      color: #276749;
-    }
-    
-    hr { border: none; border-top: 1px solid #e2e8f0; margin: 40px 0; }
-    
-    @media print {
-      body { padding: 20px; font-size: 11pt; }
-      h1 { font-size: 20pt; }
-      h2 { font-size: 16pt; margin-top: 25px; }
-      h3 { font-size: 13pt; }
-      pre { font-size: 9pt; padding: 12px; }
-      table { font-size: 10pt; }
-      .phase-box { padding: 15px; }
-      .no-print { display: none; }
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KINTO Operations - Multi-Tenant Architecture Implementation Plan v2.0</title>
+    <style>
+        @media print {
+            body { font-size: 11pt; }
+            h1 { page-break-before: avoid; }
+            h2 { page-break-before: always; }
+            h2:first-of-type { page-break-before: avoid; }
+            pre { page-break-inside: avoid; }
+            table { page-break-inside: avoid; }
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            max-width: 210mm;
+            margin: 0 auto;
+            padding: 20mm;
+            color: #333;
+            background: #fff;
+        }
+        
+        h1 {
+            color: #1a365d;
+            border-bottom: 3px solid #2563eb;
+            padding-bottom: 10px;
+            font-size: 28pt;
+        }
+        
+        h2 {
+            color: #1e40af;
+            border-bottom: 2px solid #93c5fd;
+            padding-bottom: 8px;
+            margin-top: 30px;
+            font-size: 18pt;
+        }
+        
+        h3 {
+            color: #1e3a5f;
+            margin-top: 20px;
+            font-size: 14pt;
+        }
+        
+        h4 {
+            color: #374151;
+            font-size: 12pt;
+        }
+        
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 15px 0;
+            font-size: 10pt;
+        }
+        
+        th, td {
+            border: 1px solid #d1d5db;
+            padding: 8px 12px;
+            text-align: left;
+        }
+        
+        th {
+            background: #1e40af;
+            color: white;
+            font-weight: 600;
+        }
+        
+        tr:nth-child(even) {
+            background: #f3f4f6;
+        }
+        
+        pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 9pt;
+            line-height: 1.4;
+        }
+        
+        code {
+            background: #e5e7eb;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 9pt;
+        }
+        
+        pre code {
+            background: none;
+            padding: 0;
+        }
+        
+        .header-info {
+            background: #f0f9ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #2563eb;
+        }
+        
+        .vision-box {
+            background: #ecfdf5;
+            padding: 20px;
+            border-radius: 8px;
+            border: 2px solid #10b981;
+            margin: 20px 0;
+        }
+        
+        .phase-header {
+            background: linear-gradient(135deg, #1e40af, #3b82f6);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+        }
+        
+        .deliverable-list {
+            background: #fefce8;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #eab308;
+        }
+        
+        .timeline-box {
+            background: #f0fdf4;
+            padding: 20px;
+            border-radius: 8px;
+            border: 2px solid #22c55e;
+        }
+        
+        ul {
+            padding-left: 25px;
+        }
+        
+        li {
+            margin: 5px 0;
+        }
+        
+        strong {
+            color: #1e40af;
+        }
+        
+        .page-break {
+            page-break-before: always;
+        }
+        
+        .toc {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .toc ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .toc li {
+            padding: 5px 0;
+            border-bottom: 1px dotted #cbd5e1;
+        }
+        
+        .toc li:last-child {
+            border-bottom: none;
+        }
+        
+        .highlight {
+            background: #fef3c7;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+    </style>
 </head>
 <body>
-
-<h1>KINTO Operations - Multi-Tenant Architecture</h1>
-<h2 style="border:none; margin-top:0; color:#4a5568;">Detailed Implementation Plan</h2>
-
-<div class="header-meta">
-  <strong>Document Version:</strong> 2.0 (Updated with Low-Code Platform)<br>
-  <strong>Date:</strong> December 14, 2025<br>
-  <strong>Prepared For:</strong> KINTO Operations Team
-</div>
-
-<hr>
-
-<h2>Executive Summary</h2>
-<p>This document outlines the complete implementation plan for transforming the KINTO Operations & QA Management System from a single-tenant application to a full-featured multi-tenant SaaS platform with low-code capabilities. The architecture uses PostgreSQL's schema-per-tenant approach, ensuring complete data isolation while maintaining a unified codebase.</p>
-
-<div class="summary-box">
-  <h4>Key Benefits</h4>
-  <ul>
-    <li>Complete data isolation between tenants</li>
-    <li>Per-tenant backup and restore capabilities</li>
-    <li>Configurable features and modules per organization</li>
-    <li>Customizable screen layouts and fields</li>
-    <li>Flexible licensing and user management</li>
-    <li>Scalable architecture for growth</li>
-    <li><strong class="highlight">Low-Code Platform:</strong> Customers can create their own screens and business logic without developer involvement (Phase 5)</li>
-  </ul>
-</div>
-
-<hr>
-
-<div class="toc">
-  <h2>Table of Contents</h2>
-  <ol>
-    <li>Architecture Overview</li>
-    <li>Database Design</li>
-    <li>Phase 1: Core Multi-Tenancy Foundation (2 weeks)</li>
-    <li>Phase 2: Licensing & Quotas (1 week)</li>
-    <li>Phase 3: Feature/Module Configuration (1 week)</li>
-    <li>Phase 4: Screen Templating System (2 weeks)</li>
-    <li class="new">Phase 5: Low-Code Platform Engine (12 weeks) - NEW!</li>
-    <li>WhatsApp Integration for Multi-Tenant</li>
-    <li>Migration Strategy</li>
-    <li>Timeline & Milestones</li>
-    <li>Technical Specifications</li>
-  </ol>
-</div>
-
-<hr>
-
-<h2>1. Architecture Overview</h2>
-
-<h3>Current State (Single-Tenant)</h3>
-<div class="diagram">┌─────────────────────────────────────────┐
-│           KINTO Application             │
-├─────────────────────────────────────────┤
-│         PostgreSQL Database             │
-│  ┌───────────────────────────────────┐  │
-│  │         public schema             │  │
-│  │  • users                          │  │
-│  │  • machines                       │  │
-│  │  • invoices                       │  │
-│  │  • inventory                      │  │
-│  │  • checklists                     │  │
-│  │  • ... (all 50+ tables)          │  │
-│  └───────────────────────────────────┘  │
-└─────────────────────────────────────────┘</div>
-
-<h3>Target State (Multi-Tenant with Low-Code)</h3>
-<div class="diagram">┌─────────────────────────────────────────────────────────────────────────┐
-│                      KINTO SaaS Platform                                │
-├─────────────────────────────────────────────────────────────────────────┤
-│                       PostgreSQL Database                               │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────────────┐  │
-│  │  public schema  │  │    org_kinto    │  │      org_acme           │  │
-│  │                 │  │                 │  │                         │  │
-│  │ • organizations │  │ • machines      │  │ • machines              │  │
-│  │ • users         │  │ • invoices      │  │ • invoices              │  │
-│  │ • plans         │  │ • inventory     │  │ • inventory             │  │
-│  │ • templates     │  │ • checklists    │  │ • checklists            │  │
-│  │                 │  │                 │  │                         │  │
-│  │ LOW-CODE:       │  │ CUSTOM DATA:    │  │ CUSTOM DATA:            │  │
-│  │ • custom_entities│ │ • entity_records│  │ • entity_records        │  │
-│  │ • custom_screens│  │                 │  │                         │  │
-│  │ • business_rules│  │                 │  │                         │  │
-│  │ • workflows     │  │                 │  │                         │  │
-│  └─────────────────┘  └─────────────────┘  └─────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────────────┘</div>
-
-<hr>
-
-<h2>2. Database Design</h2>
-
-<h3>2.1 Public Schema Tables (Shared)</h3>
-
-<h4>organizations</h4>
-<table>
-  <tr><th>Column</th><th>Type</th><th>Description</th></tr>
-  <tr><td>id</td><td>VARCHAR (UUID)</td><td>Primary key</td></tr>
-  <tr><td>name</td><td>VARCHAR(255)</td><td>Organization display name</td></tr>
-  <tr><td>slug</td><td>VARCHAR(50)</td><td>URL-safe identifier (unique)</td></tr>
-  <tr><td>logo_url</td><td>VARCHAR(500)</td><td>Organization logo</td></tr>
-  <tr><td>status</td><td>VARCHAR(20)</td><td>active, trial, suspended, expired</td></tr>
-  <tr><td>plan_id</td><td>VARCHAR</td><td>Reference to plans table</td></tr>
-  <tr><td>max_users</td><td>INTEGER</td><td>Maximum allowed users</td></tr>
-  <tr><td>valid_until</td><td>TIMESTAMP</td><td>License expiry date</td></tr>
-  <tr><td>settings</td><td>JSONB</td><td>Organization-specific settings</td></tr>
-</table>
-
-<h4>plans</h4>
-<table>
-  <tr><th>Column</th><th>Type</th><th>Description</th></tr>
-  <tr><td>id</td><td>VARCHAR (UUID)</td><td>Primary key</td></tr>
-  <tr><td>name</td><td>VARCHAR(50)</td><td>Plan name (Starter, Professional, Enterprise)</td></tr>
-  <tr><td>max_users</td><td>INTEGER</td><td>Default user limit</td></tr>
-  <tr><td>enabled_modules</td><td>TEXT[]</td><td>Array of module keys</td></tr>
-  <tr><td>price_monthly</td><td>INTEGER</td><td>Monthly price in paise</td></tr>
-  <tr><td>features</td><td>JSONB</td><td>Feature flags</td></tr>
-</table>
-
-<h3>2.2 Tenant Schema Tables</h3>
-<p>Each tenant schema (e.g., <code>org_kinto</code>, <code>org_acme</code>) contains:</p>
-
-<table>
-  <tr><th>Category</th><th>Tables</th></tr>
-  <tr><td>Core Operations</td><td>machines, machine_types, products, product_categories, raw_materials, inventory</td></tr>
-  <tr><td>Checklist & Quality</td><td>checklist_templates, template_tasks, checklist_assignments, checklist_submissions</td></tr>
-  <tr><td>Sales & Finance</td><td>vendors, invoices, invoice_items, invoice_payments, credit_notes, gatepasses</td></tr>
-  <tr><td>Production</td><td>production_entries, raw_material_issuances, bom_configurations, bom_items</td></tr>
-  <tr><td>Documents & Expenses</td><td>documents, expenses, expense_items, daily_cash_register</td></tr>
-</table>
-
-<hr>
-
-<div class="phase-box">
-  <h3>Phase 1: Core Multi-Tenancy Foundation</h3>
-  <div class="phase-meta">
-    <span><strong>Duration:</strong> 1-2 Weeks</span>
-    <span><strong>Complexity:</strong> High</span>
-    <span><strong>Production Impact:</strong> Zero (behind feature flag)</span>
-  </div>
-  
-  <h4>Objectives</h4>
-  <ul>
-    <li>Create foundational tables for tenant management</li>
-    <li>Build schema creation and management utilities</li>
-    <li>Implement tenant-aware database connections</li>
-    <li>Add middleware for automatic schema switching</li>
-    <li>Prepare migration scripts for existing data</li>
-  </ul>
-  
-  <h4>Deliverables</h4>
-  <ul class="checklist">
-    <li>Organizations table created</li>
-    <li>Plans table created</li>
-    <li>Users table modified with organizationId</li>
-    <li>Schema manager utility complete</li>
-    <li>Tenant middleware implemented</li>
-    <li>Feature flag system in place</li>
-    <li>Onboarding workflow functional</li>
-  </ul>
-</div>
-
-<div class="phase-box">
-  <h3>Phase 2: Licensing & Quotas</h3>
-  <div class="phase-meta">
-    <span><strong>Duration:</strong> 1 Week</span>
-    <span><strong>Complexity:</strong> Medium</span>
-  </div>
-  
-  <h4>Plan Tiers</h4>
-  <table>
-    <tr><th>Feature</th><th>Starter</th><th>Professional</th><th>Enterprise</th></tr>
-    <tr><td><strong>Price</strong></td><td>₹2,999/mo</td><td>₹7,999/mo</td><td>₹19,999/mo</td></tr>
-    <tr><td><strong>Users</strong></td><td>5</td><td>15</td><td>Unlimited</td></tr>
-    <tr><td><strong>Modules</strong></td><td>Basic</td><td>Most</td><td>All</td></tr>
-    <tr><td><strong>Low-Code</strong></td><td>-</td><td>Limited</td><td>Full</td></tr>
-    <tr><td><strong>Support</strong></td><td>Email</td><td>Priority</td><td>Dedicated</td></tr>
-  </table>
-</div>
-
-<div class="phase-box">
-  <h3>Phase 3: Feature/Module Configuration</h3>
-  <div class="phase-meta">
-    <span><strong>Duration:</strong> 1 Week</span>
-    <span><strong>Complexity:</strong> Medium</span>
-  </div>
-  
-  <h4>Available Modules</h4>
-  <table>
-    <tr><th>Module</th><th>Screens</th><th>Default</th></tr>
-    <tr><td>Dashboard</td><td>Main Dashboard</td><td>Yes</td></tr>
-    <tr><td>Invoicing</td><td>Invoices, Create Invoice, Invoice Detail</td><td>Yes</td></tr>
-    <tr><td>Inventory</td><td>Inventory, Raw Materials, Products</td><td>No</td></tr>
-    <tr><td>Production</td><td>Production Entries, BOM, Issuance</td><td>No</td></tr>
-    <tr><td>Quality</td><td>Checklists, Assignments, Submissions</td><td>No</td></tr>
-    <tr><td>Gatepasses</td><td>Gatepasses, Dispatch Tracking</td><td>Yes</td></tr>
-    <tr><td>Reports</td><td>All Reports, GST Reports</td><td>Yes</td></tr>
-    <tr><td>MIS</td><td>Executive Dashboard, Analytics</td><td>No</td></tr>
-  </table>
-</div>
-
-<div class="phase-box">
-  <h3>Phase 4: Screen Templating System</h3>
-  <div class="phase-meta">
-    <span><strong>Duration:</strong> 2 Weeks</span>
-    <span><strong>Complexity:</strong> High</span>
-  </div>
-  
-  <h4>Objectives</h4>
-  <ul>
-    <li>Allow per-tenant field customization</li>
-    <li>Build visual template editor</li>
-    <li>Implement template-aware form rendering</li>
-    <li>Add table column configuration</li>
-  </ul>
-</div>
-
-<hr>
-
-<div class="phase-box new">
-  <h3>Phase 5: Low-Code Platform Engine (NEW)</h3>
-  <div class="phase-meta">
-    <span><strong>Duration:</strong> 8-12 Weeks</span>
-    <span><strong>Complexity:</strong> Very High</span>
-    <span><strong>Production Impact:</strong> Zero (behind feature flag)</span>
-  </div>
-  
-  <blockquote>
-    <strong>This is the key differentiator:</strong> Customers can create their own screens and business logic without developer involvement.
-  </blockquote>
-  
-  <h4>Core Components</h4>
-  <table>
-    <tr><th>Component</th><th>Description</th><th>Capability</th></tr>
-    <tr>
-      <td><strong>Custom Data Entities</strong></td>
-      <td>Customers create their own data structures</td>
-      <td>Define fields, types, validations, relationships</td>
-    </tr>
-    <tr>
-      <td><strong>Custom Screen Builder</strong></td>
-      <td>Visual drag-and-drop screen designer</td>
-      <td>List views, Forms, Dashboards, Reports</td>
-    </tr>
-    <tr>
-      <td><strong>Business Rules Engine</strong></td>
-      <td>If-then logic without coding</td>
-      <td>Triggers, conditions, actions (notifications, updates)</td>
-    </tr>
-    <tr>
-      <td><strong>Workflow Automation</strong></td>
-      <td>Multi-step automated processes</td>
-      <td>Approvals, delays, branching, webhooks</td>
-    </tr>
-  </table>
-</div>
-
-<h3>Custom Data Entities</h3>
-<p>Customers can create their own data tables from the UI:</p>
-
-<div class="summary-box">
-  <h4>Example: "Equipment Maintenance Log"</h4>
-  <table>
-    <tr><th>Field</th><th>Type</th><th>Settings</th></tr>
-    <tr><td>Equipment</td><td>Reference -> Machines</td><td>Required</td></tr>
-    <tr><td>Type</td><td>Select (Preventive/Breakdown/Inspection)</td><td>Required</td></tr>
-    <tr><td>Date</td><td>Date</td><td>Required</td></tr>
-    <tr><td>Technician</td><td>Reference -> Users</td><td>Optional</td></tr>
-    <tr><td>Cost</td><td>Number</td><td>Min: 0</td></tr>
-    <tr><td>Notes</td><td>Text</td><td>Optional</td></tr>
-    <tr><td>Next Due Date</td><td>Date</td><td>Optional</td></tr>
-  </table>
-</div>
-
-<h3>Business Rules Engine</h3>
-<p>Visual rule builder for custom logic:</p>
-
-<table>
-  <tr><th>Rule Name</th><th>Trigger</th><th>Condition</th><th>Action</th></tr>
-  <tr><td>High Cost Alert</td><td>On maintenance create</td><td>cost > 10,000</td><td>Send WhatsApp to Manager</td></tr>
-  <tr><td>Overdue Reminder</td><td>Daily at 8 AM</td><td>next_due_date = today</td><td>Notify Technician</td></tr>
-  <tr><td>Auto-Status Update</td><td>On invoice payment</td><td>paid = total</td><td>Set status to "Paid"</td></tr>
-  <tr><td>Low Stock Alert</td><td>On inventory update</td><td>qty < reorder_level</td><td>Create purchase request</td></tr>
-  <tr><td>Quality Fail Action</td><td>On checklist submit</td><td>any_task_failed</td><td>Block machine startup</td></tr>
-</table>
-
-<h3>Visual Rule Builder UI</h3>
-<div class="diagram">+--------------------------------------------------------------------------+
-|  Business Rule: High Cost Maintenance Alert                      [Save] |
-+--------------------------------------------------------------------------+
-|                                                                          |
-|  WHEN this happens:                                                      |
-|  +----------------------------------------------------------------------+|
-|  |  [On Record Create]  in  [Equipment Maintenance Log]                ||
-|  +----------------------------------------------------------------------+|
-|                                                                          |
-|  IF these conditions are met:                                            |
-|  +----------------------------------------------------------------------+|
-|  |  [Cost]  [is greater than]  [10000]                         [+ Add] ||
-|  |    AND                                                               ||
-|  |  [Type]  [equals]  [Breakdown]                              [x Del] ||
-|  +----------------------------------------------------------------------+|
-|                                                                          |
-|  THEN do this:                                                           |
-|  +----------------------------------------------------------------------+|
-|  |  Action: [Send WhatsApp Message]                                    ||
-|  |  To:     [All users with role: Manager]                             ||
-|  |  Message: High cost maintenance logged!                             ||
-|  |           Equipment: {{equipment_name}}                              ||
-|  |           Cost: Rs {{cost}}                                          ||
-|  +----------------------------------------------------------------------+|
-|                                                                          |
-|  [ Test Rule ]                                             [ Save Rule ] |
-+--------------------------------------------------------------------------+</div>
-
-<h3>Low-Code Database Tables</h3>
-<table>
-  <tr><th>Table</th><th>Purpose</th></tr>
-  <tr><td>custom_entities</td><td>Stores entity definitions (fields, types, validations)</td></tr>
-  <tr><td>custom_entity_records</td><td>Stores actual data for custom entities (JSONB)</td></tr>
-  <tr><td>custom_screens</td><td>Screen configurations (list, form, dashboard)</td></tr>
-  <tr><td>business_rules</td><td>If-then rule definitions</td></tr>
-  <tr><td>workflows</td><td>Multi-step automation definitions</td></tr>
-  <tr><td>workflow_executions</td><td>Workflow run logs and status</td></tr>
-</table>
-
-<h3>Phase 5 Timeline</h3>
-<table class="timeline-table">
-  <tr><th>Week</th><th>Focus Area</th><th>Key Deliverables</th></tr>
-  <tr><td>8-9</td><td>Custom Data Entities</td><td>Entity definition system, dynamic field types, CRUD API</td></tr>
-  <tr><td>10-11</td><td>Custom Screen Builder</td><td>List/Form screen types, visual builder UI, live preview</td></tr>
-  <tr><td>12-13</td><td>Business Rules Engine</td><td>Condition evaluator, action executor, rule builder UI</td></tr>
-  <tr><td>14-15</td><td>Workflow Automation</td><td>Multi-step workflows, approvals, delays</td></tr>
-  <tr><td>16-17</td><td>Integration & Actions</td><td>WhatsApp/Email actions, webhooks</td></tr>
-  <tr><td>18-19</td><td>Polish & Testing</td><td>Navigation integration, role-based access, documentation</td></tr>
-</table>
-
-<h3>Low-Code vs Full Development</h3>
-<table>
-  <tr><th>Capability</th><th>Low-Code (Phase 5)</th><th>Full Development</th></tr>
-  <tr><td>Create new screens</td><td>Yes</td><td>Yes</td></tr>
-  <tr><td>Create new data entities</td><td>Yes</td><td>Yes</td></tr>
-  <tr><td>Simple if-then logic</td><td>Yes</td><td>Yes</td></tr>
-  <tr><td>Complex calculations</td><td>Limited</td><td>Full</td></tr>
-  <tr><td>Custom API integrations</td><td>Webhooks only</td><td>Full</td></tr>
-  <tr><td>Custom UI components</td><td>No</td><td>Yes</td></tr>
-  <tr><td>Time to create</td><td><strong>Minutes</strong></td><td>Hours/Days</td></tr>
-  <tr><td>Technical skill needed</td><td><strong>None</strong></td><td>Developer</td></tr>
-</table>
-
-<hr>
-
-<h2>9. Timeline & Milestones</h2>
-
-<h3>Complete Implementation Timeline</h3>
-<table class="timeline-table">
-  <tr><th>Phase</th><th>Duration</th><th>Effort Level</th></tr>
-  <tr><td>Phase 1: Core Multi-Tenancy</td><td>2 weeks</td><td>High (Foundation)</td></tr>
-  <tr><td>Phase 2: Licensing & Quotas</td><td>1 week</td><td>Medium</td></tr>
-  <tr><td>Phase 3: Module Configuration</td><td>1 week</td><td>Medium</td></tr>
-  <tr><td>Phase 4: Screen Templating</td><td>2 weeks</td><td>High</td></tr>
-  <tr style="background:#c6f6d5;"><td><strong>Phase 5: Low-Code Platform</strong></td><td><strong>12 weeks</strong></td><td><strong>Very High</strong></td></tr>
-  <tr style="background:#ebf8ff;"><td><strong>TOTAL</strong></td><td><strong>18-19 weeks</strong></td><td>-</td></tr>
-</table>
-
-<h3>Phased Rollout Strategy</h3>
-<table>
-  <tr><th>Option</th><th>Approach</th><th>Best For</th></tr>
-  <tr>
-    <td><strong>Option A: Full Build</strong></td>
-    <td>Complete all 5 phases before go-live (18-19 weeks)</td>
-    <td>New product launch with full feature set</td>
-  </tr>
-  <tr>
-    <td><strong>Option B: Incremental</strong></td>
-    <td>Go live after Phase 4 (Week 7), add Low-Code as premium feature later</td>
-    <td>Faster time-to-market, lower risk</td>
-  </tr>
-</table>
-
-<hr>
-
-<h2>10. API Endpoints</h2>
-
-<h3>Multi-Tenant Core APIs</h3>
-<table>
-  <tr><th>Endpoint</th><th>Method</th><th>Description</th></tr>
-  <tr><td>/api/organizations</td><td>GET/POST</td><td>List/Create organizations</td></tr>
-  <tr><td>/api/organizations/:id</td><td>GET/PATCH</td><td>Get/Update organization</td></tr>
-  <tr><td>/api/organizations/:id/modules</td><td>GET/PATCH</td><td>Manage enabled modules</td></tr>
-  <tr><td>/api/plans</td><td>GET</td><td>List available plans</td></tr>
-  <tr><td>/api/screen-templates</td><td>GET</td><td>Get templates for current org</td></tr>
-</table>
-
-<h3>Low-Code Platform APIs (Phase 5)</h3>
-<table>
-  <tr><th>Endpoint</th><th>Method</th><th>Description</th></tr>
-  <tr><td>/api/custom-entities</td><td>GET/POST</td><td>List/Create custom entities</td></tr>
-  <tr><td>/api/custom-entities/:slug</td><td>GET/PATCH</td><td>Get/Update entity definition</td></tr>
-  <tr><td>/api/custom-entities/:slug/records</td><td>GET/POST</td><td>List/Create records</td></tr>
-  <tr><td>/api/custom-screens</td><td>GET/POST</td><td>List/Create custom screens</td></tr>
-  <tr><td>/api/business-rules</td><td>GET/POST</td><td>List/Create business rules</td></tr>
-  <tr><td>/api/business-rules/:id/test</td><td>POST</td><td>Test rule execution</td></tr>
-  <tr><td>/api/workflows</td><td>GET/POST</td><td>List/Create workflows</td></tr>
-  <tr><td>/api/workflows/:id/execute</td><td>POST</td><td>Manually trigger workflow</td></tr>
-</table>
-
-<hr>
-
-<h2>Summary</h2>
-
-<div class="summary-box">
-  <h4>What This Plan Delivers</h4>
-  <table>
-    <tr><th>Capability</th><th>Phase</th><th>Customer Benefit</th></tr>
-    <tr><td>Multiple Organizations</td><td>1</td><td>Serve different companies from one platform</td></tr>
-    <tr><td>User Licensing</td><td>2</td><td>Control costs per organization</td></tr>
-    <tr><td>Module Control</td><td>3</td><td>Pay only for what you use</td></tr>
-    <tr><td>Screen Customization</td><td>4</td><td>Hide/show fields per organization</td></tr>
-    <tr><td><strong>Create New Screens</strong></td><td><strong>5</strong></td><td><strong>Build custom screens without developers</strong></td></tr>
-    <tr><td><strong>Custom Business Logic</strong></td><td><strong>5</strong></td><td><strong>Create if-then rules and automations</strong></td></tr>
-  </table>
-</div>
-
-<hr>
-
-<p style="text-align:center; color:#718096; font-size:12px; margin-top:50px;">
-  <strong>KINTO Operations - Multi-Tenant Architecture Implementation Plan</strong><br>
-  Document Version 2.0 | December 14, 2025<br>
-  <em>This document outlines the complete implementation plan including Low-Code Platform capabilities.</em>
-</p>
-
+    <h1>KINTO Operations - Multi-Tenant Architecture</h1>
+    <h2 style="border: none; margin-top: 0; page-break-before: avoid;">Detailed Implementation Plan</h2>
+    
+    <div class="header-info">
+        <strong>Document Version:</strong> 2.0<br>
+        <strong>Date:</strong> December 14, 2025<br>
+        <strong>Prepared For:</strong> KINTO Operations Team
+    </div>
+    
+    <h2 style="page-break-before: avoid;">Executive Summary</h2>
+    
+    <p>This document outlines the complete implementation plan for transforming the KINTO Operations & QA Management System into a full-featured <strong>Enterprise Application Platform</strong> - a revolutionary system where customers describe their requirements in plain language and get fully functional, deployed applications.</p>
+    
+    <div class="vision-box">
+        <strong>Platform Vision:</strong><br>
+        <code>Customer describes requirements → AI generates application → Auto-deploy to Cloud or On-Prem</code>
+    </div>
+    
+    <h3>Key Capabilities</h3>
+    <ul>
+        <li><strong>Multi-Tenant SaaS:</strong> Complete data isolation with schema-per-tenant approach</li>
+        <li><strong>Low-Code Platform:</strong> Customers create their own screens and business logic (Phase 5)</li>
+        <li><strong>AI Application Generator:</strong> Natural language to working application (Phase 6)</li>
+        <li><strong>Infrastructure Auto-Selector:</strong> Automatic architecture based on scale requirements (Phase 7)</li>
+        <li><strong>Cloud Auto-Deployment:</strong> One-click deployment to AWS/Azure/GCP (Phase 8)</li>
+        <li><strong>On-Prem Packaging:</strong> Docker/Kubernetes/VM images for enterprise customers (Phase 9)</li>
+        <li><strong>Hybrid Deployment:</strong> Mix of cloud management with on-prem data (Phase 10)</li>
+    </ul>
+    
+    <h3>Target Industries</h3>
+    <ul>
+        <li>Power & Utilities (AMI, Billing, Customer Portal)</li>
+        <li>Banking & Finance (Loan Management, Collections)</li>
+        <li>Insurance (Policy Management, Claims)</li>
+        <li>Manufacturing (Current KINTO domain)</li>
+        <li>Any industry with custom requirements</li>
+    </ul>
+    
+    <h2>Table of Contents</h2>
+    <div class="toc">
+        <ul>
+            <li>1. Architecture Overview</li>
+            <li>2. Database Design</li>
+            <li>3. Phase 1: Core Multi-Tenancy Foundation</li>
+            <li>4. Phase 2: Licensing & Quotas</li>
+            <li>5. Phase 3: Feature/Module Configuration</li>
+            <li>6. Phase 4: Screen Templating System</li>
+            <li>7. <strong>Phase 5: Low-Code Platform Engine</strong> (Customer Self-Service)</li>
+            <li>8. <strong>Phase 6: AI Application Generator</strong> (Natural Language to App)</li>
+            <li>9. <strong>Phase 7: Infrastructure Auto-Selector</strong> (Scale-Based Architecture)</li>
+            <li>10. <strong>Phase 8: Cloud Auto-Deployment</strong> (One-Click Deploy)</li>
+            <li>11. <strong>Phase 9: On-Prem Packaging System</strong> (Enterprise Deployment)</li>
+            <li>12. <strong>Phase 10: Hybrid Deployment Support</strong> (Cloud + On-Prem)</li>
+            <li>13. WhatsApp Integration for Multi-Tenant</li>
+            <li>14. Migration Strategy</li>
+            <li>15. Timeline & Milestones</li>
+            <li>16. Technical Specifications</li>
+        </ul>
+    </div>
+    
+    <h2>Complete Timeline Summary</h2>
+    
+    <div class="timeline-box">
+        <table>
+            <tr>
+                <th>Phase</th>
+                <th>Duration</th>
+                <th>Weeks</th>
+                <th>Effort</th>
+            </tr>
+            <tr>
+                <td>Phase 1: Core Multi-Tenancy</td>
+                <td>2 weeks</td>
+                <td>1-2</td>
+                <td>Foundation</td>
+            </tr>
+            <tr>
+                <td>Phase 2: Licensing & Quotas</td>
+                <td>1 week</td>
+                <td>3</td>
+                <td>Medium</td>
+            </tr>
+            <tr>
+                <td>Phase 3: Module Configuration</td>
+                <td>1 week</td>
+                <td>4</td>
+                <td>Medium</td>
+            </tr>
+            <tr>
+                <td>Phase 4: Screen Templating</td>
+                <td>2 weeks</td>
+                <td>5-6</td>
+                <td>High</td>
+            </tr>
+            <tr>
+                <td>Phase 5: Low-Code Platform</td>
+                <td>12 weeks</td>
+                <td>8-19</td>
+                <td>Very High</td>
+            </tr>
+            <tr style="background: #dbeafe;">
+                <td><strong>Phase 6: AI Application Generator</strong></td>
+                <td><strong>10 weeks</strong></td>
+                <td><strong>21-30</strong></td>
+                <td><strong>Very High</strong></td>
+            </tr>
+            <tr style="background: #dbeafe;">
+                <td><strong>Phase 7: Infrastructure Auto-Selector</strong></td>
+                <td><strong>8 weeks</strong></td>
+                <td><strong>31-38</strong></td>
+                <td><strong>High</strong></td>
+            </tr>
+            <tr style="background: #dbeafe;">
+                <td><strong>Phase 8: Cloud Auto-Deployment</strong></td>
+                <td><strong>6 weeks</strong></td>
+                <td><strong>39-44</strong></td>
+                <td><strong>High</strong></td>
+            </tr>
+            <tr style="background: #dbeafe;">
+                <td><strong>Phase 9: On-Prem Packaging</strong></td>
+                <td><strong>6 weeks</strong></td>
+                <td><strong>45-50</strong></td>
+                <td><strong>Medium-High</strong></td>
+            </tr>
+            <tr style="background: #dbeafe;">
+                <td><strong>Phase 10: Hybrid Deployment</strong></td>
+                <td><strong>4 weeks</strong></td>
+                <td><strong>51-54</strong></td>
+                <td><strong>Medium</strong></td>
+            </tr>
+            <tr style="background: #1e40af; color: white;">
+                <td><strong>TOTAL</strong></td>
+                <td><strong>~53 weeks</strong></td>
+                <td><strong>~1 year</strong></td>
+                <td><strong>-</strong></td>
+            </tr>
+        </table>
+    </div>
+    
+    <h2>Revenue Model by Deployment Type</h2>
+    <table>
+        <tr>
+            <th>Deployment</th>
+            <th>Revenue Model</th>
+            <th>Typical Pricing</th>
+        </tr>
+        <tr>
+            <td><strong>Cloud SaaS</strong></td>
+            <td>Monthly subscription</td>
+            <td>₹2,999 - ₹19,999/mo</td>
+        </tr>
+        <tr>
+            <td><strong>On-Prem License</strong></td>
+            <td>One-time + AMC</td>
+            <td>₹10-50 Lakhs + 18% AMC</td>
+        </tr>
+        <tr>
+            <td><strong>Per-Device</strong></td>
+            <td>Monthly per meter/device</td>
+            <td>₹5-10/device/month</td>
+        </tr>
+        <tr>
+            <td><strong>Hybrid</strong></td>
+            <td>License + Cloud fee</td>
+            <td>Custom pricing</td>
+        </tr>
+    </table>
+    
+    <h2>Phased Rollout Strategy</h2>
+    
+    <h3>Option A: MVP Launch (Week 7)</h3>
+    <ul>
+        <li>Phases 1-4 only (Multi-tenant core)</li>
+        <li>Get customers on platform quickly</li>
+        <li>Revenue starts early</li>
+    </ul>
+    
+    <h3>Option B: Low-Code Launch (Week 19)</h3>
+    <ul>
+        <li>Phases 1-5 (Include Low-Code)</li>
+        <li>Customers can self-serve</li>
+        <li>Premium pricing possible</li>
+    </ul>
+    
+    <h3>Option C: AI Platform Launch (Week 30)</h3>
+    <ul>
+        <li>Phases 1-6 (Include AI Generator)</li>
+        <li>Revolutionary "describe and build" feature</li>
+        <li>Market differentiator</li>
+    </ul>
+    
+    <h3>Option D: Complete Platform (Week 54)</h3>
+    <ul>
+        <li>All 10 phases</li>
+        <li>Full cloud + on-prem capability</li>
+        <li>Enterprise-ready platform</li>
+    </ul>
+    
+    <div class="page-break"></div>
+    
+    <h2>Phase 6: AI Application Generator</h2>
+    <div class="phase-header">
+        <strong>Duration:</strong> 10 Weeks | <strong>Complexity:</strong> Very High
+    </div>
+    
+    <p><strong>This is Revolutionary:</strong> Customers describe requirements in natural language, AI generates complete applications.</p>
+    
+    <h3>How It Works</h3>
+    <pre>
+Customer types:
+"I need a billing system for 5 million electricity meters
+ with slab-based tariffs, late fees, and WhatsApp reminders"
+                              ↓
+                     🤖 AI Processes
+                              ↓
+GENERATES AUTOMATICALLY:
+• Database: customers, meters, readings, bills, payments
+• Logic: slab calculations, late fee rules, due dates
+• Screens: Customer portal, Admin dashboard, Bill details
+• Workflows: Bill generation → Notification → Reminder
+• Reports: Collection summary, Outstanding, Revenue analytics
+    </pre>
+    
+    <h3>Phase 6 Timeline</h3>
+    <table>
+        <tr><th>Week</th><th>Focus</th><th>Deliverables</th></tr>
+        <tr><td>21-22</td><td>Requirement Parser</td><td>NLP extraction, entity recognition, AI prompts</td></tr>
+        <tr><td>23-24</td><td>Schema Generator</td><td>Database schema from entities, relationship handling</td></tr>
+        <tr><td>25-26</td><td>Logic Generator</td><td>Business rules, calculations, validation code</td></tr>
+        <tr><td>27-28</td><td>UI Generator</td><td>Screen configs, form layouts, dashboard components</td></tr>
+        <tr><td>29-30</td><td>Integration & Testing</td><td>End-to-end flow, refinement, documentation</td></tr>
+    </table>
+    
+    <div class="page-break"></div>
+    
+    <h2>Phase 7: Infrastructure Auto-Selector</h2>
+    <div class="phase-header">
+        <strong>Duration:</strong> 8 Weeks | <strong>Complexity:</strong> High
+    </div>
+    
+    <p><strong>Purpose:</strong> Automatically select optimal infrastructure based on scale requirements.</p>
+    
+    <h3>Example Calculation</h3>
+    <pre>
+Customer requirement:
+"5 million AMI meters, readings every 15 minutes,
+ analytics at 1-hour and 6-hour intervals"
+                              ↓
+CALCULATED REQUIREMENTS:
+• 480 million writes/day
+• 5,500 writes/second peak
+• 50 GB storage/day
+• Heavy analytics load
+                              ↓
+SELECTED STACK:
+• TimescaleDB (time-series optimized)
+• Kafka (message buffering)
+• ClickHouse (analytics)
+• Redis Cluster (caching)
+    </pre>
+    
+    <h3>Architecture Selection Matrix</h3>
+    <table>
+        <tr><th>Load Profile</th><th>Database</th><th>Queue</th><th>Analytics</th><th>Cache</th></tr>
+        <tr><td>Small (&lt;1M/day)</td><td>PostgreSQL</td><td>Redis Queue</td><td>Same DB</td><td>Redis</td></tr>
+        <tr><td>Medium (1M-100M/day)</td><td>TimescaleDB</td><td>Redis Streams</td><td>PostgreSQL views</td><td>Redis</td></tr>
+        <tr><td>Large (100M-1B/day)</td><td>TimescaleDB cluster</td><td>Kafka</td><td>ClickHouse</td><td>Redis Cluster</td></tr>
+        <tr><td>Massive (&gt;1B/day)</td><td>Cassandra</td><td>Kafka Cluster</td><td>ClickHouse Cluster</td><td>Redis Cluster</td></tr>
+    </table>
+    
+    <div class="page-break"></div>
+    
+    <h2>Phase 8: Cloud Auto-Deployment</h2>
+    <div class="phase-header">
+        <strong>Duration:</strong> 6 Weeks | <strong>Complexity:</strong> High
+    </div>
+    
+    <p><strong>Purpose:</strong> One-click deployment to any major cloud provider.</p>
+    
+    <h3>Supported Clouds</h3>
+    <table>
+        <tr><th>Cloud</th><th>Services Used</th></tr>
+        <tr><td>AWS</td><td>EKS, RDS, ElastiCache, MSK</td></tr>
+        <tr><td>Azure</td><td>AKS, Azure Database, Redis, Event Hubs</td></tr>
+        <tr><td>GCP</td><td>GKE, Cloud SQL, Memorystore, Pub/Sub</td></tr>
+    </table>
+    
+    <h3>Deployment Pipeline</h3>
+    <pre>
+Customer clicks "Deploy"
+        ↓
+1. VALIDATION (~30 sec)
+   • Check cloud credentials
+   • Verify quotas
+        ↓
+2. INFRASTRUCTURE PROVISIONING (~5-10 min)
+   • Generate Terraform
+   • Apply infrastructure
+        ↓
+3. APPLICATION DEPLOYMENT (~3-5 min)
+   • Build Docker images
+   • Deploy to Kubernetes
+   • Run migrations
+        ↓
+4. POST-DEPLOYMENT (~2 min)
+   • Configure DNS
+   • Issue SSL certificate
+   • Health checks
+        ↓
+Application LIVE! 🎉
+    </pre>
+    
+    <div class="page-break"></div>
+    
+    <h2>Phase 9: On-Prem Packaging System</h2>
+    <div class="phase-header">
+        <strong>Duration:</strong> 6 Weeks | <strong>Complexity:</strong> Medium-High
+    </div>
+    
+    <p><strong>Purpose:</strong> Generate deployment packages for customer data centers.</p>
+    
+    <h3>Why On-Prem?</h3>
+    <ul>
+        <li><strong>Data Sovereignty:</strong> Government mandates data stays in-country</li>
+        <li><strong>Security Policies:</strong> No data in public cloud</li>
+        <li><strong>Compliance:</strong> Banking/Finance regulations</li>
+        <li><strong>Latency:</strong> Real-time systems need local processing</li>
+    </ul>
+    
+    <h3>Deployment Formats</h3>
+    <table>
+        <tr><th>Format</th><th>Best For</th><th>Complexity</th></tr>
+        <tr><td>Docker Compose</td><td>Small/Medium deployments</td><td>Low</td></tr>
+        <tr><td>Kubernetes Helm</td><td>Large scale, enterprise</td><td>Medium</td></tr>
+        <tr><td>VM Images (OVA)</td><td>No container experience</td><td>Lowest</td></tr>
+        <tr><td>Ansible Playbooks</td><td>Bare metal servers</td><td>Medium</td></tr>
+        <tr><td>Air-Gapped Bundle</td><td>No internet environments</td><td>High</td></tr>
+    </table>
+    
+    <div class="page-break"></div>
+    
+    <h2>Phase 10: Hybrid Deployment Support</h2>
+    <div class="phase-header">
+        <strong>Duration:</strong> 4 Weeks | <strong>Complexity:</strong> Medium
+    </div>
+    
+    <p><strong>Purpose:</strong> Combine on-prem data storage with cloud management.</p>
+    
+    <h3>Hybrid Architecture</h3>
+    <pre>
+┌─────────────────────────────────────────────────────┐
+│  CUSTOMER'S DATA CENTER (On-Prem)                   │
+│  🔒 ALL DATA STAYS HERE                             │
+│  • TimescaleDB (All data)                           │
+│  • Kafka (Streams)                                  │
+│  • API Servers (Local)                              │
+│                    ↑ Secure VPN ↓                   │
+└─────────────────────────────────────────────────────┘
+                         ↕
+                  Encrypted Tunnel
+                         ↕
+┌─────────────────────────────────────────────────────┐
+│  YOUR CLOUD (Management Only)                       │
+│  📊 NO RAW DATA - Only metadata & metrics           │
+│  • License management                               │
+│  • Software updates                                 │
+│  • Monitoring dashboards                            │
+│  • Remote support access                            │
+└─────────────────────────────────────────────────────┘
+    </pre>
+    
+    <h3>What Stays Where</h3>
+    <table>
+        <tr><th>Component</th><th>On-Prem</th><th>Cloud</th><th>Why</th></tr>
+        <tr><td>Customer Data</td><td>✅</td><td>❌</td><td>Data sovereignty</td></tr>
+        <tr><td>Meter Readings</td><td>✅</td><td>❌</td><td>Sensitive data</td></tr>
+        <tr><td>Application Code</td><td>✅</td><td>❌</td><td>Runs locally</td></tr>
+        <tr><td>License Keys</td><td>❌</td><td>✅</td><td>Validation</td></tr>
+        <tr><td>Monitoring Metrics</td><td>❌</td><td>✅</td><td>Centralized view</td></tr>
+        <tr><td>Software Updates</td><td>❌</td><td>✅</td><td>Easy rollout</td></tr>
+    </table>
+    
+    <div class="page-break"></div>
+    
+    <h2>Summary: The Complete Platform</h2>
+    
+    <div class="vision-box">
+        <h3>End-to-End Flow</h3>
+        <pre>
+Customer says: "5 million AMI meters, 15-min readings, on-prem deployment"
+                              ↓
+Platform automatically:
+1. Understands requirements (AI - Phase 6)
+2. Generates database, logic, screens (Low-Code - Phase 5)
+3. Calculates load (480M writes/day) (Phase 7)
+4. Selects architecture (TimescaleDB + Kafka + ClickHouse)
+5. Generates Docker/Kubernetes package (Phase 9)
+6. Customer deploys in their data center
+7. Cloud dashboard for monitoring/updates (Phase 10)
+        </pre>
+    </div>
+    
+    <h3>Competitive Advantage</h3>
+    <table>
+        <tr><th>Feature</th><th>Traditional Dev</th><th>Our Platform</th></tr>
+        <tr><td>Time to build app</td><td>6-12 months</td><td>1 day</td></tr>
+        <tr><td>Technical skill needed</td><td>Senior developers</td><td>None</td></tr>
+        <tr><td>Infrastructure setup</td><td>Weeks</td><td>Minutes</td></tr>
+        <tr><td>On-prem support</td><td>Custom work</td><td>Built-in</td></tr>
+        <tr><td>Scaling</td><td>Manual</td><td>Automatic</td></tr>
+    </table>
+    
+    <hr style="margin-top: 40px;">
+    <p style="text-align: center; color: #6b7280; font-size: 10pt;">
+        <strong>Document End</strong><br>
+        KINTO Operations - Multi-Tenant Architecture Implementation Plan v2.0<br>
+        December 14, 2025
+    </p>
+    
 </body>
 </html>
