@@ -2042,6 +2042,150 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                 {isExportingPayments ? 'Exporting...' : 'Export Excel'}
               </Button>
             </CardHeader>
+            
+            {/* Quick Period Selection for Payments */}
+            <div className="px-6 pb-4">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4 p-4 bg-muted/50 rounded-lg">
+                <div>
+                  <Label>Period Type</Label>
+                  <Select value={pmtPeriodType} onValueChange={setPmtPeriodType}>
+                    <SelectTrigger data-testid="select-pmt-period-type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="custom">Custom Date Range</SelectItem>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="financial_year">Financial Year</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {pmtPeriodType === "weekly" && (
+                  <div>
+                    <Label>Weeks Ago</Label>
+                    <Select value={String(pmtWeek)} onValueChange={(v) => setPmtWeek(Number(v))}>
+                      <SelectTrigger data-testid="select-pmt-week">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">Current Week</SelectItem>
+                        <SelectItem value="2">Last Week</SelectItem>
+                        <SelectItem value="3">2 Weeks Ago</SelectItem>
+                        <SelectItem value="4">3 Weeks Ago</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {pmtPeriodType === "monthly" && (
+                  <div>
+                    <Label>Month</Label>
+                    <Select value={String(pmtMonth)} onValueChange={(v) => setPmtMonth(Number(v))}>
+                      <SelectTrigger data-testid="select-pmt-month">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((m, i) => (
+                          <SelectItem key={i + 1} value={String(i + 1)}>{m}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {pmtPeriodType === "financial_year" && (
+                  <div>
+                    <Label>Financial Year</Label>
+                    <Select value={String(pmtFY)} onValueChange={(v) => setPmtFY(Number(v))}>
+                      <SelectTrigger data-testid="select-pmt-fy">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {fyOptions.map(fy => (
+                          <SelectItem key={fy} value={String(fy)}>FY {fy}-{(fy + 1).toString().slice(-2)}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {pmtPeriodType === "custom" && (
+                  <>
+                    <div>
+                      <Label>From Date</Label>
+                      <Input 
+                        type="date" 
+                        value={pmtDateFrom} 
+                        onChange={(e) => setPmtDateFrom(e.target.value)}
+                        data-testid="input-pmt-date-from"
+                      />
+                    </div>
+                    <div>
+                      <Label>To Date</Label>
+                      <Input 
+                        type="date" 
+                        value={pmtDateTo} 
+                        onChange={(e) => setPmtDateTo(e.target.value)}
+                        data-testid="input-pmt-date-to"
+                      />
+                    </div>
+                  </>
+                )}
+
+                <div>
+                  <Label>Customer</Label>
+                  <Popover open={pmtCustomerPopoverOpen} onOpenChange={setPmtCustomerPopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={pmtCustomerPopoverOpen}
+                        className="w-full justify-between"
+                        data-testid="select-pmt-customer"
+                      >
+                        {pmtCustomer === "all" ? "All Customers" : pmtCustomer}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[300px] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Search customers..." data-testid="input-search-pmt-customer" />
+                        <CommandEmpty>No customer found.</CommandEmpty>
+                        <CommandList className="max-h-64 overflow-auto">
+                          <CommandGroup>
+                            <CommandItem
+                              value="all"
+                              onSelect={() => {
+                                setPmtCustomer("all");
+                                setPmtCustomerPopoverOpen(false);
+                              }}
+                            >
+                              <Check className={cn("mr-2 h-4 w-4", pmtCustomer === "all" ? "opacity-100" : "opacity-0")} />
+                              All Customers
+                            </CommandItem>
+                            {uniquePaymentBuyers.map((buyer) => (
+                              <CommandItem
+                                key={buyer}
+                                value={buyer}
+                                onSelect={() => {
+                                  setPmtCustomer(buyer);
+                                  setPmtCustomerPopoverOpen(false);
+                                }}
+                              >
+                                <Check className={cn("mr-2 h-4 w-4", pmtCustomer === buyer ? "opacity-100" : "opacity-0")} />
+                                {buyer}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+            </div>
+            
             <CardContent>
               {filteredPayments.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
