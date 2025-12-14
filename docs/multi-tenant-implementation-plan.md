@@ -52,6 +52,7 @@ Customer describes requirements → AI generates application → Auto-deploy to 
 14. Migration Strategy
 15. Timeline & Milestones
 16. Technical Specifications
+17. **Infrastructure Specifications** *(Compute, Storage, Network, Security)*
 
 ---
 
@@ -2722,6 +2723,371 @@ LICENSE_WARNING_DAYS=14              # Days before expiry to warn
 | checklist_form | Checklist template form |
 | production_form | Production entry form |
 | raw_material_form | Raw material master form |
+
+---
+
+## 11. Infrastructure Specifications
+
+This section provides detailed infrastructure requirements for deploying the KINTO platform at different scales. These specifications are critical for cloud auto-deployment (Phase 8) and on-prem packaging (Phase 9).
+
+### 11.1 Scale Tier Definitions
+
+| Tier | Records/Day | Devices/Meters | Typical Use Case |
+|------|-------------|----------------|------------------|
+| **Small** | < 1 Million | Up to 50,000 | Small utilities, SMB manufacturing |
+| **Medium** | 1M - 100M | 50K - 1M | Regional utilities, mid-size enterprises |
+| **Large** | 100M - 1B | 1M - 5M | State-level utilities, large enterprises |
+| **Massive** | > 1 Billion | 5M - 50M+ | National utilities, multi-state operations |
+
+**Example Calculation (5M AMI Meters):**
+- 5,000,000 meters × 96 readings/day (15-min interval) = **480 Million records/day**
+- Peak load: ~5,500 writes/second
+- Storage growth: ~50 GB/day raw data
+
+---
+
+### 11.2 Compute Requirements
+
+#### Small Tier (< 1M records/day)
+
+| Component | Instance Type | CPU | RAM | Quantity | Purpose |
+|-----------|---------------|-----|-----|----------|---------|
+| **Application Server** | t3.large / D2s_v3 | 2 vCPU | 8 GB | 2 | API + Web servers |
+| **Database Server** | r5.large / E4s_v3 | 2 vCPU | 16 GB | 1 | PostgreSQL primary |
+| **Cache Server** | t3.medium | 2 vCPU | 4 GB | 1 | Redis cache |
+| **Load Balancer** | ALB / App Gateway | - | - | 1 | Traffic distribution |
+| **Total** | - | **8 vCPU** | **36 GB** | 5 | - |
+
+**Monthly Estimate:** $400-600 (AWS/Azure)
+
+#### Medium Tier (1M - 100M records/day)
+
+| Component | Instance Type | CPU | RAM | Quantity | Purpose |
+|-----------|---------------|-----|-----|----------|---------|
+| **Application Server** | c5.xlarge / F4s_v2 | 4 vCPU | 8 GB | 3-4 | API + Web servers |
+| **Database Primary** | r5.2xlarge / E8s_v3 | 8 vCPU | 64 GB | 1 | TimescaleDB primary |
+| **Database Replica** | r5.xlarge / E4s_v3 | 4 vCPU | 32 GB | 2 | Read replicas |
+| **Cache Cluster** | r5.large | 2 vCPU | 16 GB | 2 | Redis Sentinel |
+| **Queue Server** | t3.xlarge | 4 vCPU | 16 GB | 1 | Redis Streams |
+| **Load Balancer** | ALB / App Gateway | - | - | 1 | Traffic distribution |
+| **Total** | - | **38 vCPU** | **200 GB** | 10-11 | - |
+
+**Monthly Estimate:** $2,500-4,000 (AWS/Azure)
+
+#### Large Tier (100M - 1B records/day)
+
+| Component | Instance Type | CPU | RAM | Quantity | Purpose |
+|-----------|---------------|-----|-----|----------|---------|
+| **Application Server** | c5.2xlarge / F8s_v2 | 8 vCPU | 16 GB | 6-8 | API servers (auto-scaled) |
+| **Web Server** | c5.xlarge | 4 vCPU | 8 GB | 4 | Frontend + static assets |
+| **TimescaleDB Primary** | r5.4xlarge / E16s_v3 | 16 vCPU | 128 GB | 1 | Time-series data |
+| **TimescaleDB Replicas** | r5.2xlarge | 8 vCPU | 64 GB | 3 | Read scaling |
+| **ClickHouse Analytics** | r5.2xlarge | 8 vCPU | 64 GB | 3 | Analytics queries |
+| **Kafka Brokers** | m5.2xlarge | 8 vCPU | 32 GB | 3 | Message streaming |
+| **Redis Cluster** | r5.xlarge | 4 vCPU | 32 GB | 6 | Caching + sessions |
+| **Zookeeper** | t3.large | 2 vCPU | 8 GB | 3 | Kafka coordination |
+| **Load Balancer** | NLB + ALB | - | - | 2 | L4 + L7 load balancing |
+| **Total** | - | **170 vCPU** | **832 GB** | 32-36 | - |
+
+**Monthly Estimate:** $15,000-25,000 (AWS/Azure)
+
+#### Massive Tier (> 1B records/day)
+
+| Component | Instance Type | CPU | RAM | Quantity | Purpose |
+|-----------|---------------|-----|-----|----------|---------|
+| **Application Server** | c5.4xlarge | 16 vCPU | 32 GB | 12-20 | API servers (auto-scaled) |
+| **Web Server** | c5.2xlarge | 8 vCPU | 16 GB | 8 | Frontend cluster |
+| **Cassandra Cluster** | i3.2xlarge | 8 vCPU | 61 GB | 9-12 | Primary data store |
+| **ClickHouse Cluster** | r5.4xlarge | 16 vCPU | 128 GB | 6-9 | Analytics engine |
+| **Kafka Cluster** | m5.4xlarge | 16 vCPU | 64 GB | 6-9 | High-throughput streaming |
+| **Redis Cluster** | r5.2xlarge | 8 vCPU | 64 GB | 9 | Distributed cache |
+| **Zookeeper** | m5.large | 2 vCPU | 8 GB | 5 | Coordination |
+| **Load Balancer** | NLB + ALB | - | - | 4 | Multi-AZ distribution |
+| **Kubernetes Control** | m5.xlarge | 4 vCPU | 16 GB | 3 | K8s management |
+| **Total** | - | **500+ vCPU** | **2+ TB** | 60-80+ | - |
+
+**Monthly Estimate:** $60,000-120,000 (AWS/Azure)
+
+---
+
+### 11.3 Storage Requirements
+
+#### Storage by Tier
+
+| Tier | Database Storage | Backup Storage | Log Storage | Total (Year 1) |
+|------|-----------------|----------------|-------------|----------------|
+| **Small** | 500 GB SSD | 1 TB Standard | 100 GB | ~2 TB |
+| **Medium** | 5 TB NVMe | 15 TB Standard | 500 GB | ~25 TB |
+| **Large** | 50 TB NVMe | 150 TB Cold | 2 TB | ~250 TB |
+| **Massive** | 500 TB NVMe | 1.5 PB Cold | 10 TB | ~2.5 PB |
+
+#### Storage Specifications
+
+| Requirement | Small | Medium | Large | Massive |
+|-------------|-------|--------|-------|---------|
+| **IOPS** | 3,000 | 16,000 | 64,000 | 256,000+ |
+| **Throughput** | 125 MB/s | 500 MB/s | 2 GB/s | 10+ GB/s |
+| **Disk Type** | gp3/Premium SSD | io2/Ultra SSD | io2/NVMe | NVMe local + distributed |
+| **Replication** | Async | Sync (regional) | Sync + Cross-region | Multi-region active-active |
+| **Backup Frequency** | Daily | Every 6 hours | Every hour | Continuous |
+| **Retention** | 30 days | 90 days | 1 year | 3+ years |
+| **Encryption** | AES-256 at rest | AES-256 at rest | AES-256 + in-transit | AES-256 + HSM key management |
+
+#### Data Retention Tiers
+
+```
+Hot Data (0-30 days):     NVMe SSD - Fast queries
+Warm Data (31-180 days):  Standard SSD - Occasional access
+Cold Data (181+ days):    Object Storage (S3/Blob) - Archival
+```
+
+---
+
+### 11.4 Network Requirements
+
+#### Bandwidth by Tier
+
+| Tier | Ingress | Egress | Internal | VPN/Direct Connect |
+|------|---------|--------|----------|-------------------|
+| **Small** | 100 Mbps | 100 Mbps | 1 Gbps | Optional |
+| **Medium** | 500 Mbps | 500 Mbps | 10 Gbps | Recommended |
+| **Large** | 2 Gbps | 2 Gbps | 25 Gbps | Required |
+| **Massive** | 10+ Gbps | 10+ Gbps | 100 Gbps | Required (redundant) |
+
+#### Load Balancer Configuration
+
+| Tier | Load Balancer Type | SSL Termination | Health Checks | Session Persistence |
+|------|-------------------|-----------------|---------------|---------------------|
+| **Small** | Application LB | At LB | HTTP /health | Cookie-based |
+| **Medium** | Application LB | At LB | HTTP + TCP | Sticky sessions |
+| **Large** | Network + App LB | At App LB | HTTP + gRPC | Source IP hash |
+| **Massive** | Global + Regional LB | Edge + App | Multi-layer | Distributed session store |
+
+#### CDN Requirements
+
+| Tier | CDN | Edge Locations | Cache TTL | Features |
+|------|-----|----------------|-----------|----------|
+| **Small** | Optional | 5-10 | 1 hour | Static assets only |
+| **Medium** | CloudFront/Akamai | 20-50 | 15 min | Static + API cache |
+| **Large** | Enterprise CDN | 100+ | 5 min | Full edge computing |
+| **Massive** | Multi-CDN | Global | 1 min | Edge compute + WAF |
+
+---
+
+### 11.5 Security Specifications
+
+#### Firewall Rules (Ingress)
+
+| Source | Destination | Port | Protocol | Purpose |
+|--------|-------------|------|----------|---------|
+| 0.0.0.0/0 | Load Balancer | 443 | HTTPS | Web traffic |
+| 0.0.0.0/0 | Load Balancer | 80 | HTTP | Redirect to HTTPS |
+| WhatsApp IPs | API Gateway | 443 | HTTPS | Webhook callbacks |
+| Office IPs | Bastion | 22 | SSH | Admin access |
+| Monitoring | All instances | Various | HTTPS | Metrics collection |
+
+#### Firewall Rules (Egress)
+
+| Source | Destination | Port | Protocol | Purpose |
+|--------|-------------|------|----------|---------|
+| App Servers | 0.0.0.0/0 | 443 | HTTPS | External API calls |
+| App Servers | 0.0.0.0/0 | 587/465 | SMTP/SMTPS | Email delivery |
+| App Servers | WhatsApp API | 443 | HTTPS | WhatsApp messages |
+| DB Servers | Backup storage | 443 | HTTPS | Backup uploads |
+| All | NTP servers | 123 | UDP | Time sync |
+
+#### Internal Network Rules
+
+| Source | Destination | Port | Protocol | Purpose |
+|--------|-------------|------|----------|---------|
+| App Servers | DB Primary | 5432 | TCP | PostgreSQL |
+| App Servers | DB Replicas | 5432 | TCP | Read queries |
+| App Servers | Redis | 6379 | TCP | Cache/Sessions |
+| App Servers | Kafka | 9092 | TCP | Message streaming |
+| Kafka | Zookeeper | 2181 | TCP | Coordination |
+| DB Primary | DB Replicas | 5432 | TCP | Replication |
+
+#### SSL/TLS Specifications
+
+| Requirement | Specification |
+|-------------|---------------|
+| **Minimum TLS Version** | TLS 1.2 (TLS 1.3 preferred) |
+| **Certificate Type** | EV SSL for production, Wildcard for subdomains |
+| **Certificate Authority** | DigiCert, GlobalSign, or Let's Encrypt |
+| **Key Size** | RSA 2048+ or ECDSA P-256+ |
+| **Cipher Suites** | ECDHE-RSA-AES256-GCM-SHA384, ECDHE-ECDSA-AES256-GCM-SHA384 |
+| **HSTS** | Enabled, max-age=31536000, includeSubDomains |
+| **Certificate Rotation** | 90 days (automated with ACME) |
+| **mTLS** | Required for service-to-service communication (Large/Massive) |
+
+#### Web Application Firewall (WAF)
+
+| Rule Category | Action | Description |
+|---------------|--------|-------------|
+| **SQL Injection** | Block | Detect SQLi patterns in parameters |
+| **XSS** | Block | Cross-site scripting prevention |
+| **CSRF** | Block | Token validation failure |
+| **Rate Limiting** | Throttle | 1000 req/min per IP (configurable) |
+| **Bot Detection** | Challenge | CAPTCHA for suspicious patterns |
+| **Geo-blocking** | Allow/Block | Country-based access control |
+| **IP Reputation** | Block | Known malicious IPs |
+| **Request Size** | Block | > 10 MB payload |
+
+#### DDoS Protection
+
+| Tier | Protection Level | Features |
+|------|-----------------|----------|
+| **Small** | Basic (Cloud default) | Volumetric protection |
+| **Medium** | Standard DDoS Shield | L3/L4 + L7 mitigation |
+| **Large** | Advanced DDoS Shield | 24/7 SOC, SLA guarantee |
+| **Massive** | Enterprise DDoS | Multi-layer, instant mitigation, dedicated support |
+
+#### IAM/RBAC Configuration
+
+**Service Accounts Required:**
+
+| Account | Permissions | Purpose |
+|---------|-------------|---------|
+| `app-service` | Read DB, Write Cache, Publish Queue | Application runtime |
+| `backup-service` | Read DB, Write Backup Storage | Automated backups |
+| `deploy-service` | Read/Write ECR, Read Secrets | CI/CD deployments |
+| `monitoring-service` | Read Metrics, Write Logs | Observability |
+| `admin-service` | Full access (emergency) | Break-glass procedures |
+
+**Role Hierarchy:**
+
+```
+Super Admin
+    ├── Platform Admin
+    │       ├── Organization Admin
+    │       │       ├── Module Admin
+    │       │       └── User Admin
+    │       └── Billing Admin
+    └── Support Engineer (read-only)
+```
+
+---
+
+### 11.6 Monitoring & Observability
+
+#### Metrics Collection
+
+| Category | Metrics | Collection Interval | Retention |
+|----------|---------|---------------------|-----------|
+| **Infrastructure** | CPU, Memory, Disk, Network | 10 seconds | 15 days high-res, 1 year aggregated |
+| **Application** | Request latency, Error rate, Throughput | 1 second | 30 days |
+| **Database** | Query time, Connections, Replication lag | 10 seconds | 15 days |
+| **Business** | Records processed, Active users, API usage | 1 minute | 2 years |
+
+#### Log Aggregation
+
+| Log Type | Source | Format | Retention |
+|----------|--------|--------|-----------|
+| **Application Logs** | All app servers | JSON structured | 30 days hot, 1 year archive |
+| **Access Logs** | Load balancers | CLF/JSON | 90 days |
+| **Audit Logs** | All services | JSON + signature | 7 years (compliance) |
+| **Security Logs** | WAF, Firewall | CEF | 1 year |
+| **Database Logs** | PostgreSQL | Native | 14 days |
+
+#### Alerting Thresholds
+
+| Metric | Warning | Critical | Action |
+|--------|---------|----------|--------|
+| **CPU Usage** | > 70% (5 min) | > 90% (2 min) | Scale out |
+| **Memory Usage** | > 80% | > 95% | Investigate + scale |
+| **Disk Usage** | > 70% | > 85% | Expand storage |
+| **Error Rate** | > 1% | > 5% | Page on-call |
+| **Response Time (P99)** | > 500ms | > 2s | Investigate |
+| **DB Replication Lag** | > 5s | > 30s | Failover check |
+| **Queue Depth** | > 10,000 | > 100,000 | Scale consumers |
+| **Certificate Expiry** | < 30 days | < 7 days | Renew immediately |
+
+#### Observability Stack by Tier
+
+| Component | Small | Medium | Large | Massive |
+|-----------|-------|--------|-------|---------|
+| **Metrics** | CloudWatch/Azure Monitor | Prometheus + Grafana | Victoria Metrics | Thanos/Cortex |
+| **Logs** | CloudWatch Logs | ELK Stack | Loki + Grafana | Splunk Enterprise |
+| **Traces** | X-Ray/App Insights | Jaeger | Jaeger + Tempo | Datadog/New Relic |
+| **APM** | Basic cloud APM | Elastic APM | Datadog | Custom + multiple |
+| **Uptime** | Basic ping | Synthetic tests | Global synthetic | Multi-region probes |
+
+---
+
+### 11.7 High Availability & Disaster Recovery
+
+#### Availability Targets
+
+| Tier | Target SLA | Max Downtime/Year | RTO | RPO |
+|------|------------|-------------------|-----|-----|
+| **Small** | 99.5% | 43.8 hours | 4 hours | 24 hours |
+| **Medium** | 99.9% | 8.76 hours | 1 hour | 1 hour |
+| **Large** | 99.95% | 4.38 hours | 15 minutes | 15 minutes |
+| **Massive** | 99.99% | 52.6 minutes | 5 minutes | Near-zero |
+
+#### DR Configuration
+
+| Component | Small | Medium | Large | Massive |
+|-----------|-------|--------|-------|---------|
+| **Regions** | Single AZ | Multi-AZ | Multi-AZ + DR region | Active-Active Multi-Region |
+| **DB Failover** | Manual | Automatic (< 60s) | Automatic (< 30s) | Instant (read replicas) |
+| **Backup Location** | Same region | Cross-region | Multi-region | Global distribution |
+| **DR Testing** | Quarterly | Monthly | Weekly | Continuous chaos engineering |
+
+---
+
+### 11.8 On-Premises Hardware Specifications
+
+For customers deploying on their own infrastructure:
+
+#### Minimum Hardware Requirements
+
+| Tier | Servers | CPU per Server | RAM per Server | Storage per Server |
+|------|---------|----------------|----------------|-------------------|
+| **Small** | 3 | 4 cores | 16 GB | 500 GB SSD |
+| **Medium** | 6 | 8 cores | 64 GB | 2 TB NVMe |
+| **Large** | 12 | 16 cores | 128 GB | 4 TB NVMe |
+| **Massive** | 24+ | 32 cores | 256 GB | 8 TB NVMe |
+
+#### Network Hardware
+
+| Tier | Switch | Bandwidth | Redundancy |
+|------|--------|-----------|------------|
+| **Small** | 1 Gbps managed | 1 Gbps per server | Single |
+| **Medium** | 10 Gbps managed | 10 Gbps per server | Dual |
+| **Large** | 25 Gbps spine-leaf | 25 Gbps per server | Redundant fabric |
+| **Massive** | 100 Gbps fabric | 100 Gbps aggregated | Full mesh |
+
+#### Power & Cooling
+
+| Tier | Power (kW) | UPS Backup | Cooling (BTU/hr) |
+|------|------------|------------|------------------|
+| **Small** | 3-5 kW | 30 min | 15,000 |
+| **Medium** | 15-25 kW | 30 min | 75,000 |
+| **Large** | 50-80 kW | 30 min | 250,000 |
+| **Massive** | 200+ kW | 60 min | 750,000+ |
+
+---
+
+### 11.9 Cost Estimation Summary
+
+#### Monthly Infrastructure Costs (Cloud)
+
+| Tier | Compute | Storage | Network | Total/Month |
+|------|---------|---------|---------|-------------|
+| **Small** | $300 | $100 | $50 | **$450-600** |
+| **Medium** | $2,000 | $500 | $300 | **$2,800-4,000** |
+| **Large** | $12,000 | $3,000 | $2,000 | **$17,000-25,000** |
+| **Massive** | $60,000 | $15,000 | $10,000 | **$85,000-120,000** |
+
+#### One-Time On-Prem Costs
+
+| Tier | Hardware | Setup | Total |
+|------|----------|-------|-------|
+| **Small** | ₹5-8 Lakhs | ₹1-2 Lakhs | **₹6-10 Lakhs** |
+| **Medium** | ₹25-40 Lakhs | ₹5-8 Lakhs | **₹30-48 Lakhs** |
+| **Large** | ₹1-2 Crores | ₹20-30 Lakhs | **₹1.2-2.3 Crores** |
+| **Massive** | ₹5-10 Crores | ₹1-2 Crores | **₹6-12 Crores** |
 
 ---
 
