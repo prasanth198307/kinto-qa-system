@@ -5369,17 +5369,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { dateFrom, dateTo, customer } = req.query;
       
       // Build dynamic where conditions
-      const conditions = [
+      const conditions: any[] = [
         eq(gatepasses.recordStatus, 1),
         ne(gatepasses.status, 'cancelled')
       ];
       
-      // Add date filters if provided
+      // Add date filters if provided - use SQL for date comparison since gatepassDate is stored as string
       if (dateFrom) {
-        conditions.push(gte(gatepasses.gatepassDate, new Date(dateFrom as string)));
+        conditions.push(sql`DATE(${gatepasses.gatepassDate}) >= ${dateFrom}`);
       }
       if (dateTo) {
-        conditions.push(lte(gatepasses.gatepassDate, new Date(dateTo as string)));
+        conditions.push(sql`DATE(${gatepasses.gatepassDate}) <= ${dateTo}`);
       }
       // Add customer filter if provided and not 'all'
       if (customer && customer !== 'all') {
