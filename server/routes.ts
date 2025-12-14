@@ -5362,6 +5362,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Enhanced gatepass report with items (batch codes, quantities) for reports page
+  // Supports query params: dateFrom, dateTo, customer for server-side filtering
+  app.get('/api/gatepasses/report/enhanced', isAuthenticated, async (req: any, res) => {
+    try {
+      const { dateFrom, dateTo, customer } = req.query;
+      
+      // Build dynamic where conditions
+      const conditions = [
+        eq(gatepasses.recordStatus, 1),
+        ne(gatepasses.status, 'cancelled')
+      ];
+      
+      // Add date filters if provided
+      if (dateFrom) {
+        conditions.push(gte(gatepasses.gatepassDate, new Date(dateFrom as string)));
+      }
+      if (dateTo) {
+        conditions.push(lte(gatepasses.gatepassDate, new Date(dateTo as string)));
+      }
+      // Add customer filter if provided and not 'all'
+      if (customer && customer !== 'all') {
+        conditions.push(eq(gatepasses.customerName, customer as string));
+      }
+      
+      // Get filtered gatepasses with driver contact
+      const allGatepasses = await db.select()
+        .from(gatepasses)
+        .where(and(...conditions))
+        .orderBy(desc(gatepasses.gatepassDate));
+      
+      // If no gatepasses match, return empty array early
+      if (allGatepasses.length === 0) {
+        return res.json([]);
+      }
+      
+      // Get gatepass IDs for filtering items query
+      const gatepassIds = allGatepasses.map(g => g.id);
+
+      // Get gatepass items only for the filtered gatepasses
+      const allItems = await db.select({
+        gatepassId: gatepassItems.gatepassId,
+        productId: gatepassItems.productId,
+        quantityDispatched: gatepassItems.quantityDispatched,
+        batchNumber: finishedGoods.batchNumber,
+        productName: products.name,
+      })
+        .from(gatepassItems)
+        .leftJoin(finishedGoods, eq(gatepassItems.finishedGoodId, finishedGoods.id))
+        .leftJoin(products, eq(gatepassItems.productId, products.id))
+        .where(and(
+          eq(gatepassItems.recordStatus, 1),
+          inArray(gatepassItems.gatepassId, gatepassIds)
+        ));
+
+      // Group items by gatepassId
+      const itemsByGatepass: Record<string, Array<{productName: string | null, batchNumber: string | null, quantity: number}>> = {};
+      for (const item of allItems) {
+        if (!itemsByGatepass[item.gatepassId]) {
+          itemsByGatepass[item.gatepassId] = [];
+        }
+        itemsByGatepass[item.gatepassId].push({
+          productName: item.productName,
+          batchNumber: item.batchNumber,
+          quantity: item.quantityDispatched,
+        });
+      }
+
+      // Combine gatepasses with their items
+      const enhancedGatepasses = allGatepasses.map(gp => ({
+        ...gp,
+        items: itemsByGatepass[gp.id] || [],
+        batchSummary: (itemsByGatepass[gp.id] || [])
+          .map(i => `${i.batchNumber || 'N/A'}: ${i.quantity}`)
+          .join(', '),
+        totalQuantity: (itemsByGatepass[gp.id] || []).reduce((sum, i) => sum + i.quantity, 0),
+      }));
+
+      res.json(enhancedGatepasses);
+    } catch (error) {
+      console.error("Error fetching enhanced gatepasses:", error);
+      res.status(500).json({ message: "Failed to fetch enhanced gatepass data" });
+    }
+  });
+
   app.post('/api/gatepasses', requireRole('admin', 'manager', 'operator'), async (req: any, res) => {
     try {
       const { header, items } = req.body;

@@ -106,6 +106,55 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
     return now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
   });
 
+  // Gatepass-specific date filters (decoupled from global filters)
+  const [gpDateFrom, setGpDateFrom] = useState("");
+  const [gpDateTo, setGpDateTo] = useState("");
+  const [gpPeriodType, setGpPeriodType] = useState<string>("custom");
+  const [gpMonth, setGpMonth] = useState(new Date().getMonth() + 1);
+  const [gpWeek, setGpWeek] = useState(1);
+  const [gpFY, setGpFY] = useState(() => {
+    const now = new Date();
+    return now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  });
+
+  // Helper function to calculate gatepass date range based on period values
+  const calculateGpPeriodDates = (type: string, week: number, month: number, fy: number) => {
+    const now = new Date();
+    const year = now.getFullYear();
+    
+    if (type === "custom") {
+      return null; // Keep existing dates for custom
+    } else if (type === "weekly") {
+      // Week selection: 1 = current week, 2 = last week, etc.
+      const dayOfWeek = now.getDay();
+      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      const monday = new Date(now);
+      monday.setDate(now.getDate() + mondayOffset - ((week - 1) * 7));
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      return { from: format(monday, 'yyyy-MM-dd'), to: format(sunday, 'yyyy-MM-dd') };
+    } else if (type === "monthly") {
+      const monthYear = month > now.getMonth() + 1 ? year - 1 : year;
+      const startDate = new Date(monthYear, month - 1, 1);
+      const endDate = new Date(monthYear, month, 0);
+      return { from: format(startDate, 'yyyy-MM-dd'), to: format(endDate, 'yyyy-MM-dd') };
+    } else if (type === "financial_year") {
+      const startDate = new Date(fy, 3, 1); // April 1
+      const endDate = new Date(fy + 1, 2, 31); // March 31
+      return { from: format(startDate, 'yyyy-MM-dd'), to: format(endDate, 'yyyy-MM-dd') };
+    }
+    return null;
+  };
+
+  // Effect to recalculate gatepass dates when period type or values change
+  useEffect(() => {
+    const dates = calculateGpPeriodDates(gpPeriodType, gpWeek, gpMonth, gpFY);
+    if (dates) {
+      setGpDateFrom(dates.from);
+      setGpDateTo(dates.to);
+    }
+  }, [gpPeriodType, gpWeek, gpMonth, gpFY]);
+
   // Helper to set date range based on period selection
   const applyPeriodDates = (type: string) => {
     setSalesPeriodType(type);
@@ -145,11 +194,32 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
   const currentFY = new Date().getMonth() >= 3 ? new Date().getFullYear() : new Date().getFullYear() - 1;
   const fyOptions = [currentFY, currentFY - 1, currentFY - 2];
 
-  // Gatepass API returns paginated response {data: [...], meta: {...}}
-  const { data: gatepassResponse, isLoading: gatepassesLoading } = useQuery<{data: Gatepass[], meta: any}>({
-    queryKey: ['/api/gatepasses'],
+  // Enhanced gatepass API for reports - includes batch codes and quantities
+  // Uses server-side filtering for better performance
+  interface EnhancedGatepass extends Gatepass {
+    items: Array<{productName: string | null, batchNumber: string | null, quantity: number}>;
+    batchSummary: string;
+    totalQuantity: number;
+  }
+  
+  // Build query URL with filter parameters for server-side filtering
+  const gatepassQueryUrl = useMemo(() => {
+    const params = new URLSearchParams();
+    if (gpDateFrom) params.append('dateFrom', gpDateFrom);
+    if (gpDateTo) params.append('dateTo', gpDateTo);
+    if (selectedCustomer && selectedCustomer !== 'all') params.append('customer', selectedCustomer);
+    const queryString = params.toString();
+    return queryString ? `/api/gatepasses/report/enhanced?${queryString}` : '/api/gatepasses/report/enhanced';
+  }, [gpDateFrom, gpDateTo, selectedCustomer]);
+  
+  const { data: gatepasses = [], isLoading: gatepassesLoading } = useQuery<EnhancedGatepass[]>({
+    queryKey: ['/api/gatepasses/report/enhanced', gpDateFrom, gpDateTo, selectedCustomer],
+    queryFn: async () => {
+      const response = await fetch(gatepassQueryUrl, { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch gatepasses');
+      return response.json();
+    },
   });
-  const gatepasses = gatepassResponse?.data ?? [];
 
   const { data: invoices = [], isLoading: invoicesLoading } = useQuery<Invoice[]>({
     queryKey: ['/api/invoices'],
@@ -197,20 +267,8 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
     ...(Array.isArray(invoices) ? invoices.map(i => i.buyerName).filter(Boolean) : [])
   ])).sort();
 
-  // Filter logic with Array.isArray safety guards
-  const filteredGatepasses = Array.isArray(gatepasses) ? gatepasses.filter(item => {
-    // Date filter
-    if (dateFrom || dateTo) {
-      const date = new Date(item.gatepassDate);
-      if (dateFrom && new Date(dateFrom) > date) return false;
-      if (dateTo && new Date(dateTo) < date) return false;
-    }
-    // Customer filter
-    if (selectedCustomer && selectedCustomer !== 'all') {
-      if (item.customerName !== selectedCustomer) return false;
-    }
-    return true;
-  }) : [];
+  // Gatepasses are filtered server-side via API query params
+  const filteredGatepasses = Array.isArray(gatepasses) ? gatepasses : [];
 
   const filteredInvoices = Array.isArray(invoices) ? invoices.filter(item => {
     // Date filter
@@ -338,13 +396,18 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
       const sheet = [
         ['Gatepass Report'],
         ['Generated', format(new Date(), 'yyyy-MM-dd HH:mm')],
+        gpDateFrom || gpDateTo ? ['Date Range', `${gpDateFrom || 'Start'} to ${gpDateTo || 'End'}`] : [''],
         [''],
-        ['GP Number', 'Date', 'Customer/Vendor', 'Vehicle Number', 'Status'],
+        ['GP Number', 'Date', 'Customer', 'Driver Name', 'Driver Contact', 'Vehicle Number', 'Batch Codes & Qty', 'Total Qty', 'Status'],
         ...filteredGatepasses.map(g => [
           g.gatepassNumber,
           formatDateForExcel(g.gatepassDate),
           g.customerName || '-',
+          g.driverName || '-',
+          g.driverContact || '-',
           g.vehicleNumber || '-',
+          g.batchSummary || '-',
+          g.totalQuantity || 0,
           g.status || 'Generated'
         ])
       ];
@@ -731,6 +794,99 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                 {isExportingGatepasses ? 'Exporting...' : 'Export Excel'}
               </Button>
             </CardHeader>
+            
+            {/* Quick Period Selection for Gatepasses */}
+            <div className="px-6 pb-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
+                <div>
+                  <Label>Period Type</Label>
+                  <Select value={gpPeriodType} onValueChange={setGpPeriodType}>
+                    <SelectTrigger data-testid="select-gp-period-type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="custom">Custom Date Range</SelectItem>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="financial_year">Financial Year</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {gpPeriodType === "weekly" && (
+                  <div>
+                    <Label>Weeks Ago</Label>
+                    <Select value={String(gpWeek)} onValueChange={(v) => setGpWeek(Number(v))}>
+                      <SelectTrigger data-testid="select-gp-week">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">Current Week</SelectItem>
+                        <SelectItem value="2">Last Week</SelectItem>
+                        <SelectItem value="3">2 Weeks Ago</SelectItem>
+                        <SelectItem value="4">3 Weeks Ago</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {gpPeriodType === "monthly" && (
+                  <div>
+                    <Label>Month</Label>
+                    <Select value={String(gpMonth)} onValueChange={(v) => setGpMonth(Number(v))}>
+                      <SelectTrigger data-testid="select-gp-month">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((m, i) => (
+                          <SelectItem key={i + 1} value={String(i + 1)}>{m}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {gpPeriodType === "financial_year" && (
+                  <div>
+                    <Label>Financial Year</Label>
+                    <Select value={String(gpFY)} onValueChange={(v) => setGpFY(Number(v))}>
+                      <SelectTrigger data-testid="select-gp-fy">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {fyOptions.map(fy => (
+                          <SelectItem key={fy} value={String(fy)}>FY {fy}-{(fy + 1).toString().slice(-2)}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {gpPeriodType === "custom" && (
+                  <>
+                    <div>
+                      <Label>From Date</Label>
+                      <Input 
+                        type="date" 
+                        value={gpDateFrom} 
+                        onChange={(e) => setGpDateFrom(e.target.value)}
+                        data-testid="input-gp-date-from"
+                      />
+                    </div>
+                    <div>
+                      <Label>To Date</Label>
+                      <Input 
+                        type="date" 
+                        value={gpDateTo} 
+                        onChange={(e) => setGpDateTo(e.target.value)}
+                        data-testid="input-gp-date-to"
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+            
             <CardContent>
               {filteredGatepasses.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
@@ -743,8 +899,12 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                       <TableRow>
                         <TableHead>GP Number</TableHead>
                         <TableHead>Date</TableHead>
-                        <TableHead>Customer/Vendor</TableHead>
+                        <TableHead>Customer</TableHead>
+                        <TableHead>Driver</TableHead>
+                        <TableHead>Contact</TableHead>
                         <TableHead>Vehicle</TableHead>
+                        <TableHead>Batch Codes & Qty</TableHead>
+                        <TableHead>Total Qty</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -754,7 +914,13 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                           <TableCell className="font-medium">{gatepass.gatepassNumber}</TableCell>
                           <TableCell>{format(new Date(gatepass.gatepassDate), 'MMM dd, yyyy')}</TableCell>
                           <TableCell>{gatepass.customerName || '-'}</TableCell>
+                          <TableCell>{gatepass.driverName || '-'}</TableCell>
+                          <TableCell>{gatepass.driverContact || '-'}</TableCell>
                           <TableCell>{gatepass.vehicleNumber}</TableCell>
+                          <TableCell className="max-w-[200px] truncate" title={gatepass.batchSummary}>
+                            {gatepass.batchSummary || '-'}
+                          </TableCell>
+                          <TableCell>{gatepass.totalQuantity || 0}</TableCell>
                           <TableCell>
                             <PrintableGatepass gatepass={gatepass} />
                           </TableCell>
