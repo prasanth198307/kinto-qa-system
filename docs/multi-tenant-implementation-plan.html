@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KINTO Multi-Tenant Implementation Plan</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; max-width: 900px; margin: 0 auto; padding: 40px; line-height: 1.6; color: #333; }
+        h1 { color: #1a365d; border-bottom: 3px solid #2563eb; padding-bottom: 10px; }
+        h2 { color: #1e40af; margin-top: 40px; border-bottom: 1px solid #ddd; padding-bottom: 8px; }
+        h3 { color: #3b82f6; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background: #1e40af; color: white; }
+        tr:nth-child(even) { background: #f8fafc; }
+        code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-family: 'Courier New', monospace; }
+        pre { background: #1e293b; color: #e2e8f0; padding: 20px; border-radius: 8px; overflow-x: auto; }
+        pre code { background: none; color: inherit; }
+        .header { text-align: center; margin-bottom: 40px; }
+        .phase-box { background: #eff6ff; border-left: 4px solid #2563eb; padding: 15px; margin: 20px 0; }
+        .warning { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; }
+        .timeline { background: #f0fdf4; border-left: 4px solid #22c55e; padding: 15px; margin: 20px 0; }
+        .flow-diagram { background: #f8fafc; padding: 20px; border-radius: 8px; font-family: monospace; white-space: pre; }
+        @media print { body { padding: 20px; } h1, h2 { page-break-after: avoid; } table { page-break-inside: avoid; } }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>KINTO Operations<br>Multi-Tenant Architecture</h1>
+        <h2 style="border:none; color:#666;">Detailed Implementation Plan</h2>
+        <p><strong>Version:</strong> 1.0 | <strong>Date:</strong> December 14, 2025</p>
+    </div>
+
+    <h2>Executive Summary</h2>
+    <p>This document outlines the complete implementation plan for transforming KINTO Operations from a single-tenant application to a full-featured multi-tenant SaaS platform using PostgreSQL's schema-per-tenant approach.</p>
+    
+    <h3>Key Benefits</h3>
+    <ul>
+        <li>Complete data isolation between tenants</li>
+        <li>Per-tenant backup and restore capabilities</li>
+        <li>Configurable features and modules per organization</li>
+        <li>Customizable screen layouts and fields</li>
+        <li>Flexible licensing and user management</li>
+        <li>Scalable architecture for growth</li>
+    </ul>
+
+    <h2>1. Architecture Overview</h2>
+    
+    <h3>Current State (Single-Tenant)</h3>
+    <div class="flow-diagram">
+┌─────────────────────────────────────────┐
+│           KINTO Application             │
+├─────────────────────────────────────────┤
+│         PostgreSQL Database             │
+│  ┌───────────────────────────────────┐  │
+│  │         public schema             │  │
+│  │  • users, machines, invoices      │  │
+│  │  • inventory, checklists          │  │
+│  │  • ... (all 50+ tables)           │  │
+│  └───────────────────────────────────┘  │
+└─────────────────────────────────────────┘
+    </div>
+
+    <h3>Target State (Multi-Tenant)</h3>
+    <div class="flow-diagram">
+┌────────────────────────────────────────────────────────┐
+│                 KINTO SaaS Platform                    │
+├────────────────────────────────────────────────────────┤
+│                 PostgreSQL Database                    │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │
+│  │public schema │  │  org_kinto   │  │  org_acme    │  │
+│  │              │  │              │  │              │  │
+│  │• organizations│  │• machines    │  │• machines    │  │
+│  │• users       │  │• invoices    │  │• invoices    │  │
+│  │• plans       │  │• inventory   │  │• inventory   │  │
+│  │• sessions    │  │• checklists  │  │• checklists  │  │
+│  └──────────────┘  └──────────────┘  └──────────────┘  │
+└────────────────────────────────────────────────────────┘
+    </div>
+
+    <h2>2. Database Design</h2>
+    
+    <h3>2.1 Public Schema Tables (Shared)</h3>
+    
+    <h4>organizations</h4>
+    <table>
+        <tr><th>Column</th><th>Type</th><th>Description</th></tr>
+        <tr><td>id</td><td>VARCHAR (UUID)</td><td>Primary key</td></tr>
+        <tr><td>name</td><td>VARCHAR(255)</td><td>Organization display name</td></tr>
+        <tr><td>slug</td><td>VARCHAR(50)</td><td>URL-safe identifier (unique)</td></tr>
+        <tr><td>status</td><td>VARCHAR(20)</td><td>active, trial, suspended, expired</td></tr>
+        <tr><td>plan_id</td><td>VARCHAR</td><td>Reference to plans table</td></tr>
+        <tr><td>max_users</td><td>INTEGER</td><td>Maximum allowed users</td></tr>
+        <tr><td>valid_until</td><td>TIMESTAMP</td><td>License expiry date</td></tr>
+    </table>
+
+    <h4>plans</h4>
+    <table>
+        <tr><th>Column</th><th>Type</th><th>Description</th></tr>
+        <tr><td>id</td><td>VARCHAR (UUID)</td><td>Primary key</td></tr>
+        <tr><td>name</td><td>VARCHAR(50)</td><td>Plan name (Starter, Professional, Enterprise)</td></tr>
+        <tr><td>max_users</td><td>INTEGER</td><td>Default user limit</td></tr>
+        <tr><td>enabled_modules</td><td>TEXT[]</td><td>Array of module keys</td></tr>
+        <tr><td>price_monthly</td><td>INTEGER</td><td>Monthly price</td></tr>
+    </table>
+
+    <h3>2.2 Tenant Schema Tables</h3>
+    <p>Each tenant schema (org_kinto, org_acme) contains identical copies of all operational tables:</p>
+    <ul>
+        <li><strong>Core:</strong> machines, products, raw_materials, inventory</li>
+        <li><strong>Checklist:</strong> checklist_templates, assignments, submissions</li>
+        <li><strong>Sales:</strong> vendors, invoices, gatepasses, credit_notes</li>
+        <li><strong>Production:</strong> production_entries, bom_configurations</li>
+        <li><strong>Maintenance:</strong> maintenance_plans, pm_executions</li>
+    </ul>
+
+    <h2>3. Phase 1: Core Multi-Tenancy Foundation</h2>
+    <div class="phase-box">
+        <strong>Duration:</strong> 1-2 Weeks | <strong>Complexity:</strong> High | <strong>Production Impact:</strong> Zero (behind feature flag)
+    </div>
+
+    <h3>Objectives</h3>
+    <ul>
+        <li>Create foundational tables for tenant management</li>
+        <li>Build schema creation and management utilities</li>
+        <li>Implement tenant-aware database connections</li>
+        <li>Add middleware for automatic schema switching</li>
+        <li>Prepare migration scripts for existing data</li>
+    </ul>
+
+    <h3>Key Components</h3>
+    <table>
+        <tr><th>Component</th><th>Purpose</th></tr>
+        <tr><td>tenant-db.ts</td><td>Tenant-aware DB connection</td></tr>
+        <tr><td>tenant-middleware.ts</td><td>Request context middleware</td></tr>
+        <tr><td>schema-manager.ts</td><td>Create/manage tenant schemas</td></tr>
+        <tr><td>onboarding.ts</td><td>New tenant setup workflow</td></tr>
+    </table>
+
+    <h3>Deliverables</h3>
+    <ul>
+        <li>Organizations table created</li>
+        <li>Plans table created</li>
+        <li>Users table modified with organizationId</li>
+        <li>Schema manager utility complete</li>
+        <li>Feature flag system in place</li>
+    </ul>
+
+    <h2>4. Phase 2: Licensing & Quotas</h2>
+    <div class="phase-box">
+        <strong>Duration:</strong> 1 Week | <strong>Complexity:</strong> Medium | <strong>Production Impact:</strong> Zero
+    </div>
+
+    <h3>Plan Tiers</h3>
+    <table>
+        <tr><th>Feature</th><th>Starter</th><th>Professional</th><th>Enterprise</th></tr>
+        <tr><td><strong>Price</strong></td><td>₹2,999/mo</td><td>₹7,999/mo</td><td>₹19,999/mo</td></tr>
+        <tr><td><strong>Users</strong></td><td>5</td><td>15</td><td>Unlimited</td></tr>
+        <tr><td><strong>Modules</strong></td><td>Basic</td><td>Most</td><td>All</td></tr>
+        <tr><td><strong>Support</strong></td><td>Email</td><td>Priority</td><td>Dedicated</td></tr>
+    </table>
+
+    <h3>Enforcement Points</h3>
+    <ul>
+        <li>User creation - Block if limit reached</li>
+        <li>Module access - Block if not licensed</li>
+        <li>License expiry - Grace period + suspension</li>
+    </ul>
+
+    <h2>5. Phase 3: Feature/Module Configuration</h2>
+    <div class="phase-box">
+        <strong>Duration:</strong> 1 Week | <strong>Complexity:</strong> Medium | <strong>Production Impact:</strong> Zero
+    </div>
+
+    <h3>Available Modules</h3>
+    <table>
+        <tr><th>Module</th><th>Screens</th><th>Default</th></tr>
+        <tr><td>Dashboard</td><td>Main Dashboard</td><td>Yes</td></tr>
+        <tr><td>Invoicing</td><td>Invoices, Create, Detail</td><td>Yes</td></tr>
+        <tr><td>Inventory</td><td>Inventory, Raw Materials, Products</td><td>No</td></tr>
+        <tr><td>Production</td><td>Production, BOM, Issuance</td><td>No</td></tr>
+        <tr><td>Quality</td><td>Checklists, Assignments</td><td>No</td></tr>
+        <tr><td>Maintenance</td><td>PM Plans, Executions</td><td>No</td></tr>
+        <tr><td>Gatepasses</td><td>Gatepasses, Dispatch</td><td>Yes</td></tr>
+        <tr><td>Reports</td><td>All Reports</td><td>Yes</td></tr>
+        <tr><td>Documents</td><td>Document Management</td><td>No</td></tr>
+        <tr><td>MIS</td><td>Analytics Dashboards</td><td>No</td></tr>
+    </table>
+
+    <h2>6. Phase 4: Screen Templating System</h2>
+    <div class="phase-box">
+        <strong>Duration:</strong> 2 Weeks | <strong>Complexity:</strong> High | <strong>Production Impact:</strong> Zero
+    </div>
+
+    <h3>What Can Be Configured</h3>
+    <ul>
+        <li><strong>Form Fields:</strong> Show/hide, required/optional, custom labels</li>
+        <li><strong>Table Columns:</strong> Visibility, width, sort order</li>
+        <li><strong>Layout:</strong> Section grouping, column count</li>
+    </ul>
+
+    <h3>Template Builder Features</h3>
+    <ul>
+        <li>Visual drag-and-drop interface</li>
+        <li>Live preview of changes</li>
+        <li>Reset to default option</li>
+        <li>Version history and rollback</li>
+    </ul>
+
+    <h2>7. WhatsApp Integration for Multi-Tenant</h2>
+    
+    <h3>Routing Flow</h3>
+    <div class="flow-diagram">
+WhatsApp Message Received
+        ↓
+Webhook: /api/whatsapp/webhook (single endpoint)
+        ↓
+Look up user by phone number (public.users)
+        ↓
+Get user's organizationId
+        ↓
+SET search_path TO org_{slug}
+        ↓
+Process in tenant context
+    </div>
+
+    <div class="warning">
+        <strong>Important:</strong> Phone numbers must be unique across the entire platform. One phone = One user = One organization. This ensures clean routing without ambiguity.
+    </div>
+
+    <h2>8. Migration Strategy</h2>
+
+    <h3>Migration Steps</h3>
+    <ol>
+        <li><strong>Add New Tables</strong> (No Downtime) - Create organizations, plans tables</li>
+        <li><strong>Create First Tenant</strong> (5 min downtime) - Move existing tables to org_kinto schema</li>
+        <li><strong>Enable Multi-Tenant Mode</strong> - Flip feature flag to true</li>
+    </ol>
+
+    <h3>Rollback Plan</h3>
+    <p>If issues occur, tables can be moved back to public schema and feature flag disabled.</p>
+
+    <h2>9. Timeline & Milestones</h2>
+    <div class="timeline">
+        <table>
+            <tr><th>Week</th><th>Phase</th><th>Deliverables</th></tr>
+            <tr><td>1-2</td><td>Phase 1</td><td>Core multi-tenancy foundation</td></tr>
+            <tr><td>3</td><td>Phase 2</td><td>Licensing & quotas</td></tr>
+            <tr><td>4</td><td>Phase 3</td><td>Module configuration</td></tr>
+            <tr><td>5-6</td><td>Phase 4</td><td>Screen templating</td></tr>
+            <tr><td>7</td><td>Go Live</td><td>Migration & launch</td></tr>
+        </table>
+    </div>
+
+    <h2>10. Login Flow (No Dropdown)</h2>
+    
+    <h3>User Experience</h3>
+    <div class="flow-diagram">
+┌────────────────────────────────────┐
+│        Welcome to KINTO Ops        │
+│                                    │
+│  Username:  [________________]     │
+│                                    │
+│  Password:  [________________]     │
+│                                    │
+│           [ Login ]                │
+└────────────────────────────────────┘
+    </div>
+
+    <p><strong>Behind the scenes:</strong></p>
+    <ol>
+        <li>User enters credentials</li>
+        <li>System looks up user → finds organizationId</li>
+        <li>Session stores organization context</li>
+        <li>All queries use correct tenant schema</li>
+    </ol>
+
+    <h2>11. Parallel Development Strategy</h2>
+    
+    <div class="warning">
+        <strong>Key Principle:</strong> All multi-tenant code is built behind a feature flag. Production continues to work normally until we're ready to switch.
+    </div>
+
+    <table>
+        <tr><th>Week</th><th>What Happens</th><th>Production Impact</th></tr>
+        <tr><td>1-6</td><td>Build all features behind flag</td><td><strong>Zero</strong></td></tr>
+        <tr><td>7</td><td>Migrate existing data</td><td>30 min downtime</td></tr>
+        <tr><td>7+</td><td>Go live with multi-tenant</td><td>Fully operational</td></tr>
+    </table>
+
+    <hr style="margin-top: 50px;">
+    <p style="text-align: center; color: #666; font-size: 14px;">
+        <strong>KINTO Operations - Multi-Tenant Architecture Plan</strong><br>
+        Document Version 1.0 | December 2025
+    </p>
+</body>
+</html>
