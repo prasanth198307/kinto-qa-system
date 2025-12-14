@@ -407,10 +407,54 @@ GENERATES AUTOMATICALLY:
     <table>
         <tr><th>Week</th><th>Focus</th><th>Deliverables</th></tr>
         <tr><td>21-22</td><td>Requirement Parser</td><td>NLP extraction, entity recognition, AI prompts</td></tr>
-        <tr><td>23-24</td><td>Schema Generator</td><td>Database schema from entities, relationship handling</td></tr>
-        <tr><td>25-26</td><td>Logic Generator</td><td>Business rules, calculations, validation code</td></tr>
-        <tr><td>27-28</td><td>UI Generator</td><td>Screen configs, form layouts, dashboard components</td></tr>
-        <tr><td>29-30</td><td>Integration & Testing</td><td>End-to-end flow, refinement, documentation</td></tr>
+        <tr><td>23-25</td><td>Schema Generator + Multi-RDBMS</td><td>Database schema from entities, dialect generators for 7 databases</td></tr>
+        <tr><td>26-27</td><td>Logic Generator</td><td>Business rules, calculations, validation code</td></tr>
+        <tr><td>28-29</td><td>UI Generator</td><td>Screen configs, form layouts, dashboard components</td></tr>
+        <tr><td>30-32</td><td>Integration & Testing</td><td>End-to-end flow, cross-database testing, documentation</td></tr>
+    </table>
+    
+    <h3>Phase 6 Cost Summary</h3>
+    <table>
+        <tr><th>Component</th><th>Duration</th><th>Cost</th></tr>
+        <tr><td>Requirement Parser (AI-powered)</td><td>4-5 weeks</td><td>₹3-4L</td></tr>
+        <tr><td>Schema Generator + Multi-RDBMS</td><td>4-5 weeks</td><td>₹3-3.5L</td></tr>
+        <tr><td>Logic Generator</td><td>2 weeks</td><td>₹2L</td></tr>
+        <tr><td>UI Generator</td><td>2 weeks</td><td>₹2L</td></tr>
+        <tr><td><strong>Total Phase 6</strong></td><td><strong>12-14 weeks</strong></td><td><strong>₹10-11.5L</strong></td></tr>
+    </table>
+    
+    <h3>Database Abstraction Layer (Multi-RDBMS Support)</h3>
+    <p><strong>Purpose:</strong> Generate database-agnostic schemas that work across all major enterprise databases.</p>
+    
+    <h4>Supported Databases</h4>
+    <table>
+        <tr><th>Database</th><th>Version</th><th>Use Case</th><th>License</th></tr>
+        <tr><td><strong>PostgreSQL</strong></td><td>14+</td><td>Cloud SaaS, startups</td><td>Open Source</td></tr>
+        <tr><td><strong>MySQL/MariaDB</strong></td><td>8.0+</td><td>Web applications</td><td>Open Source/GPL</td></tr>
+        <tr><td><strong>SQLite</strong></td><td>3.35+</td><td>Edge/embedded, small scale</td><td>Public Domain</td></tr>
+        <tr><td><strong>SQL Server</strong></td><td>2019+</td><td>Enterprise Windows shops</td><td>Commercial</td></tr>
+        <tr><td><strong>Oracle Database</strong></td><td>19c+</td><td>Banking, large enterprise</td><td>Commercial</td></tr>
+        <tr><td><strong>IBM DB2</strong></td><td>11.5+</td><td>Mainframe, legacy systems</td><td>Commercial</td></tr>
+        <tr><td><strong>SAP HANA</strong></td><td>2.0+</td><td>SAP ecosystems</td><td>Commercial</td></tr>
+    </table>
+    
+    <h4>Database Compatibility Matrix</h4>
+    <table>
+        <tr><th>Feature</th><th>PostgreSQL</th><th>SQL Server</th><th>Oracle</th><th>DB2</th><th>MySQL</th></tr>
+        <tr><td>Multi-tenant schemas</td><td>Native</td><td>Native</td><td>User-based</td><td>Native</td><td>Database-per-tenant</td></tr>
+        <tr><td>JSON support</td><td>Native JSONB</td><td>JSON functions</td><td>IS JSON</td><td>JSON functions</td><td>Native JSON</td></tr>
+        <tr><td>Full-text search</td><td>tsvector</td><td>CONTAINS</td><td>Oracle Text</td><td>Text Extender</td><td>FULLTEXT</td></tr>
+        <tr><td>Partitioning</td><td>Native</td><td>Native</td><td>Native</td><td>Native</td><td>Native</td></tr>
+        <tr><td>Row-level security</td><td>Native policies</td><td>Always Encrypted</td><td>VPD</td><td>RCAC</td><td>Limited</td></tr>
+    </table>
+    
+    <h4>Enterprise Database Considerations</h4>
+    <table>
+        <tr><th>Database</th><th>Key Considerations</th><th>Typical Customers</th></tr>
+        <tr><td><strong>SQL Server</strong></td><td>Windows integration, Active Directory auth, SSRS reporting</td><td>Government, Microsoft shops</td></tr>
+        <tr><td><strong>Oracle</strong></td><td>PL/SQL procedures, RAC clustering, Data Guard</td><td>Banks, telecom, utilities</td></tr>
+        <tr><td><strong>IBM DB2</strong></td><td>Mainframe integration, COBOL compatibility</td><td>Insurance, legacy systems</td></tr>
+        <tr><td><strong>SAP HANA</strong></td><td>In-memory processing, S/4HANA integration</td><td>SAP customers</td></tr>
     </table>
     
     <div class="page-break"></div>
