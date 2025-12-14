@@ -121,6 +121,19 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
     return now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
   });
 
+  // Payment-specific filters (decoupled from global filters)
+  const [pmtDateFrom, setPmtDateFrom] = useState("");
+  const [pmtDateTo, setPmtDateTo] = useState("");
+  const [pmtPeriodType, setPmtPeriodType] = useState<string>("custom");
+  const [pmtMonth, setPmtMonth] = useState(new Date().getMonth() + 1);
+  const [pmtWeek, setPmtWeek] = useState(1);
+  const [pmtFY, setPmtFY] = useState(() => {
+    const now = new Date();
+    return now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  });
+  const [pmtCustomer, setPmtCustomer] = useState<string>("all");
+  const [pmtCustomerPopoverOpen, setPmtCustomerPopoverOpen] = useState(false);
+
   // Helper function to calculate gatepass date range based on period values
   const calculateGpPeriodDates = (type: string, week: number, month: number, fy: number) => {
     const now = new Date();
@@ -158,6 +171,15 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
       setGpDateTo(dates.to);
     }
   }, [gpPeriodType, gpWeek, gpMonth, gpFY]);
+
+  // Effect to recalculate payment dates when period type or values change
+  useEffect(() => {
+    const dates = calculateGpPeriodDates(pmtPeriodType, pmtWeek, pmtMonth, pmtFY);
+    if (dates) {
+      setPmtDateFrom(dates.from);
+      setPmtDateTo(dates.to);
+    }
+  }, [pmtPeriodType, pmtWeek, pmtMonth, pmtFY]);
 
   // Helper to set date range based on period selection
   const applyPeriodDates = (type: string) => {
@@ -320,14 +342,25 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
   }) : [];
 
   // Filter payments by date and exclude cancelled
+  // Extract unique buyers/vendors from payments for filter dropdown
+  const uniquePaymentBuyers = Array.from(new Set(
+    (Array.isArray(paymentsData) ? paymentsData : [])
+      .map(p => p.vendorName)
+      .filter(Boolean)
+  )).sort() as string[];
+
   const filteredPayments = Array.isArray(paymentsData) ? paymentsData.filter(item => {
     // Exclude cancelled payments
     if (item.cancelledAt) return false;
-    // Date filter
-    if (dateFrom || dateTo) {
+    // Date filter using payment-specific filters
+    if (pmtDateFrom || pmtDateTo) {
       const date = new Date(item.paymentDate);
-      if (dateFrom && new Date(dateFrom) > date) return false;
-      if (dateTo && new Date(dateTo) < date) return false;
+      if (pmtDateFrom && new Date(pmtDateFrom) > date) return false;
+      if (pmtDateTo && new Date(pmtDateTo) < date) return false;
+    }
+    // Customer/buyer filter
+    if (pmtCustomer && pmtCustomer !== 'all') {
+      if (item.vendorName !== pmtCustomer) return false;
     }
     return true;
   }) : [];
