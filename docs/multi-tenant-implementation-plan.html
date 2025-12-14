@@ -235,6 +235,8 @@
             <li>14. Migration Strategy</li>
             <li>15. Timeline & Milestones</li>
             <li>16. Technical Specifications</li>
+            <li>17. <strong>Infrastructure Specifications</strong> (Compute, Storage, Network, Security)</li>
+            <li>18. <strong>Industry Compliance Profiles</strong> (Healthcare, Banking, Government)</li>
         </ul>
     </div>
     
@@ -770,6 +772,202 @@ Platform automatically:
         <tr><td>Massive</td><td>Rs.5-10 Crores</td><td>Rs.1-2 Crores</td><td><strong>Rs.6-12 Crores</strong></td></tr>
     </table>
     
+    <div class="page-break"></div>
+    
+    <h2>Industry Compliance Profiles</h2>
+    <p>Pre-configured compliance profiles for regulated industries. Each profile automatically applies specific security, data handling, and integration requirements.</p>
+    
+    <h3>Profile Overview</h3>
+    <table>
+        <tr><th>Profile</th><th>Target Industries</th><th>Key Regulations</th><th>Default Security Tier</th></tr>
+        <tr><td><strong>Healthcare</strong></td><td>Hospitals, Diagnostics, Pharma</td><td>HIPAA, ABDM, DISHA</td><td>Large</td></tr>
+        <tr><td><strong>Banking</strong></td><td>Banks, NBFCs, Payment Processors</td><td>PCI-DSS, RBI IT Guidelines</td><td>Massive</td></tr>
+        <tr><td><strong>Government</strong></td><td>PSUs, Ministries, Local Bodies</td><td>STQC, MeitY, GIGW</td><td>Large</td></tr>
+        <tr><td><strong>Manufacturing</strong></td><td>Factories, Industrial (Default)</td><td>ISO 9001, Factory Act</td><td>Medium</td></tr>
+    </table>
+    
+    <div class="page-break"></div>
+    
+    <h3>Healthcare Compliance Profile (HIPAA/ABDM)</h3>
+    <div class="phase-header">
+        <strong>Target:</strong> Hospitals, Diagnostics, Pharma | <strong>Regulations:</strong> HIPAA, ABDM, DISHA, NABH
+    </div>
+    
+    <h4>Data Protection Requirements</h4>
+    <table>
+        <tr><th>Requirement</th><th>Implementation</th></tr>
+        <tr><td>Field-Level Encryption</td><td>Patient ID, Diagnosis codes, Treatment notes encrypted at column level</td></tr>
+        <tr><td>At-Rest Encryption</td><td>AES-256 with customer-managed keys (CMK) for all PHI</td></tr>
+        <tr><td>In-Transit Encryption</td><td>TLS 1.3 mandatory, mTLS for inter-service communication</td></tr>
+        <tr><td>Data Masking</td><td>Automatic masking of patient identifiers in logs and reports</td></tr>
+        <tr><td>Data Residency</td><td>India-only storage zones (for ABDM compliance)</td></tr>
+    </table>
+    
+    <h4>Access Control Requirements</h4>
+    <table>
+        <tr><th>Control</th><th>Specification</th></tr>
+        <tr><td>Authentication</td><td>MFA mandatory, session timeout 15 minutes inactive</td></tr>
+        <tr><td>Biometric Option</td><td>Aadhaar-based authentication for clinical staff</td></tr>
+        <tr><td>Role Segregation</td><td>Clinical vs Administrative vs Billing roles strictly separated</td></tr>
+        <tr><td>Break-Glass Access</td><td>Emergency PHI access with immediate notification and audit</td></tr>
+        <tr><td>Consent Management</td><td>Patient consent tracking for every data access</td></tr>
+    </table>
+    
+    <h4>Audit & Retention</h4>
+    <table>
+        <tr><th>Requirement</th><th>Duration</th><th>Notes</th></tr>
+        <tr><td>Access Logs</td><td>7 years</td><td>Every PHI view/modify logged</td></tr>
+        <tr><td>Consent Records</td><td>10 years</td><td>Digital consent with timestamp</td></tr>
+        <tr><td>Medical Records</td><td>30 years</td><td>Minimum per clinical guidelines</td></tr>
+        <tr><td>Audit Trail</td><td>7 years</td><td>Immutable, digitally signed</td></tr>
+    </table>
+    
+    <h4>Integration Stack</h4>
+    <pre>
+Healthcare Integration Stack:
+├── ABDM Gateway (Health ID, Consent Manager, HIE)
+├── HL7 FHIR R4 (Patient, Observation, MedicationRequest)
+├── DICOM Integration (PACS connectivity)
+└── Lab Information Systems (HL7 v2.x ADT/ORU)
+    </pre>
+    
+    <div class="page-break"></div>
+    
+    <h3>Banking Compliance Profile (PCI-DSS/RBI)</h3>
+    <div class="phase-header">
+        <strong>Target:</strong> Banks, NBFCs, Payment Processors | <strong>Regulations:</strong> PCI-DSS v4.0, RBI IT Guidelines
+    </div>
+    
+    <h4>Data Protection Requirements</h4>
+    <table>
+        <tr><th>Requirement</th><th>Implementation</th></tr>
+        <tr><td>PAN Encryption</td><td>Card numbers encrypted immediately, never logged</td></tr>
+        <tr><td>PAN Masking</td><td>Display only last 4 digits (****1234)</td></tr>
+        <tr><td>CVV Prohibition</td><td>CVV never stored under any circumstances</td></tr>
+        <tr><td>PIN Block Security</td><td>Hardware Security Module (HSM) for PIN operations</td></tr>
+        <tr><td>Tokenization</td><td>Card data replaced with tokens for processing</td></tr>
+    </table>
+    
+    <h4>Access Control Requirements</h4>
+    <table>
+        <tr><th>Control</th><th>Specification</th></tr>
+        <tr><td>Authentication</td><td>MFA with hardware token for privileged access</td></tr>
+        <tr><td>Unique IDs</td><td>No shared accounts, individual accountability</td></tr>
+        <tr><td>Privilege Escalation</td><td>Maker-Checker for all sensitive operations</td></tr>
+        <tr><td>Access Reviews</td><td>Quarterly recertification of all access rights</td></tr>
+        <tr><td>Admin Access</td><td>Just-in-time provisioning, 4-hour maximum</td></tr>
+    </table>
+    
+    <h4>Network Segmentation</h4>
+    <pre>
+┌─────────────────────────────────────────────────────────────┐
+│                    PCI Cardholder Data Environment          │
+│  ┌────────────────┐  ┌────────────────┐  ┌───────────────┐  │
+│  │ Payment Gateway│  │ Token Vault    │  │ HSM Cluster   │  │
+│  └────────────────┘  └────────────────┘  └───────────────┘  │
+│                              ↑ Firewall ↑                   │
+├─────────────────────────────────────────────────────────────┤
+│                    Non-CDE Application Zone                 │
+│  ┌────────────────┐  ┌────────────────┐  ┌───────────────┐  │
+│  │ App Servers    │  │ Report Servers │  │ Admin Portal  │  │
+│  └────────────────┘  └────────────────┘  └───────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+    </pre>
+    
+    <h4>Integration Stack</h4>
+    <pre>
+Banking Integration Stack:
+├── NPCI (UPI, IMPS, NACH, AePS)
+├── Core Banking (Finacle, Flexcube, TCS BaNCS)
+├── RBI Reporting (Regulatory returns, XBRL)
+├── CIBIL/Credit Bureau (Credit score, Inquiry logging)
+└── KYC/AML (Video KYC, CKYC Registry, Sanctions screening)
+    </pre>
+    
+    <div class="page-break"></div>
+    
+    <h3>Government Compliance Profile (STQC/MeitY)</h3>
+    <div class="phase-header">
+        <strong>Target:</strong> PSUs, Ministries, Local Bodies | <strong>Regulations:</strong> STQC, GIGW 3.0, IT Act 2000
+    </div>
+    
+    <h4>Data Protection Requirements</h4>
+    <table>
+        <tr><th>Requirement</th><th>Implementation</th></tr>
+        <tr><td>Data Classification</td><td>Public / Restricted / Confidential / Secret</td></tr>
+        <tr><td>Data Localization</td><td>All data on Indian soil, no cross-border transfer</td></tr>
+        <tr><td>Encryption Standards</td><td>AES-256 minimum, SHA-256 for hashing</td></tr>
+        <tr><td>Key Escrow</td><td>Government key escrow for certain classifications</td></tr>
+        <tr><td>RTI Compliance</td><td>Automated RTI response tracking</td></tr>
+    </table>
+    
+    <h4>Accessibility & Language</h4>
+    <table>
+        <tr><th>Requirement</th><th>Specification</th></tr>
+        <tr><td>WCAG Compliance</td><td>WCAG 2.1 Level AA mandatory</td></tr>
+        <tr><td>Language Support</td><td>Hindi + English mandatory, regional languages</td></tr>
+        <tr><td>Screen Reader</td><td>Full NVDA/JAWS compatibility</td></tr>
+        <tr><td>Keyboard Navigation</td><td>Complete keyboard accessibility</td></tr>
+        <tr><td>Low Bandwidth</td><td>Functional on 2G connections</td></tr>
+    </table>
+    
+    <h4>Access Control Requirements</h4>
+    <table>
+        <tr><th>Control</th><th>Specification</th></tr>
+        <tr><td>Authentication</td><td>Aadhaar eKYC or eSign mandatory for citizens</td></tr>
+        <tr><td>SSO Integration</td><td>Parichay (Government SSO) integration</td></tr>
+        <tr><td>Role Hierarchy</td><td>Strict government role hierarchy (Gazetted/Non-Gazetted)</td></tr>
+        <tr><td>Maker-Checker</td><td>Dual approval for all citizen-facing actions</td></tr>
+        <tr><td>Audit Trail</td><td>Immutable audit for all government actions</td></tr>
+    </table>
+    
+    <h4>Integration Stack</h4>
+    <pre>
+Government Integration Stack:
+├── DigiLocker (Document fetch/issue, URI-based access)
+├── Aadhaar (Demographic verification, eKYC, Face auth)
+├── eSign (Aadhaar eSign, DSC-based, eStamping)
+├── UMANG (Service listing, Payment gateway)
+├── PayGov (GRAS integration, Challan generation)
+└── GSTN (GST verification, e-Invoice generation)
+    </pre>
+    
+    <div class="page-break"></div>
+    
+    <h3>Compliance Profile Selection Flow</h3>
+    <div class="vision-box">
+        <pre>
+Tenant Onboarding → Select Industry Profile
+                            ↓
+┌────────────┐  ┌────────────┐  ┌────────────┐  ┌─────────┐
+│ Healthcare │  │  Banking   │  │ Government │  │ Default │
+│   HIPAA    │  │  PCI-DSS   │  │   STQC     │  │  (Mfg)  │
+└────────────┘  └────────────┘  └────────────┘  └─────────┘
+                            ↓
+Profile Auto-Applied:
+• Security tier set           • Encryption enabled
+• Data residency configured   • Audit logging enabled
+• Retention policies set      • Integration endpoints configured
+                            ↓
+Optional Overrides:
+• Custom field encryption     • Extended retention
+• Additional integrations     • Region preferences
+                            ↓
+        Tenant Schema Created with Compliance Settings
+        </pre>
+    </div>
+    
+    <h3>Compliance Audit Dashboard</h3>
+    <p>Each tenant with a compliance profile gets an audit dashboard:</p>
+    <table>
+        <tr><th>Metric</th><th>Healthcare</th><th>Banking</th><th>Government</th></tr>
+        <tr><td>Encryption Status</td><td>PHI fields encrypted</td><td>PAN/CVV protected</td><td>Classified data secured</td></tr>
+        <tr><td>Access Reviews</td><td>Patient consent valid</td><td>Quarterly review due</td><td>Gazetted approval status</td></tr>
+        <tr><td>Audit Log Health</td><td>7-year retention OK</td><td>10-year retention OK</td><td>10-year retention OK</td></tr>
+        <tr><td>Integration Status</td><td>ABDM connected</td><td>NPCI active</td><td>DigiLocker linked</td></tr>
+        <tr><td>Compliance Score</td><td>94%</td><td>98%</td><td>91%</td></tr>
+    </table>
+
     <hr style="margin-top: 40px;">
     <p style="text-align: center; color: #6b7280; font-size: 10pt;">
         <strong>Document End</strong><br>

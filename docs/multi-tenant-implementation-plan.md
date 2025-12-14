@@ -53,6 +53,7 @@ Customer describes requirements → AI generates application → Auto-deploy to 
 15. Timeline & Milestones
 16. Technical Specifications
 17. **Infrastructure Specifications** *(Compute, Storage, Network, Security)*
+18. **Industry Compliance Profiles** *(Healthcare, Banking, Government)*
 
 ---
 
@@ -3088,6 +3089,469 @@ For customers deploying on their own infrastructure:
 | **Medium** | ₹25-40 Lakhs | ₹5-8 Lakhs | **₹30-48 Lakhs** |
 | **Large** | ₹1-2 Crores | ₹20-30 Lakhs | **₹1.2-2.3 Crores** |
 | **Massive** | ₹5-10 Crores | ₹1-2 Crores | **₹6-12 Crores** |
+
+---
+
+## 12. Industry Compliance Profiles
+
+This section defines pre-configured compliance profiles for regulated industries. Each profile automatically applies specific security, data handling, and integration requirements when a tenant is created with that profile selected.
+
+### 12.1 Profile Overview
+
+| Profile | Target Industries | Key Regulations | Default Security Tier |
+|---------|------------------|-----------------|----------------------|
+| **Healthcare** | Hospitals, Diagnostics, Pharma | HIPAA, ABDM, DISHA | Large |
+| **Banking** | Banks, NBFCs, Payment Processors | PCI-DSS, RBI IT Guidelines | Massive |
+| **Government** | PSUs, Ministries, Local Bodies | STQC, MeitY, GIGW | Large |
+| **Manufacturing** | Factories, Industrial (Default) | ISO 9001, Factory Act | Medium |
+
+### 12.2 Healthcare Compliance Profile (HIPAA/ABDM)
+
+#### Regulatory Framework
+
+| Regulation | Jurisdiction | Key Requirements |
+|------------|-------------|------------------|
+| **HIPAA** | USA | Protected Health Information (PHI) safeguards, breach notification |
+| **ABDM** | India | Ayushman Bharat Digital Mission - Health ID, consent framework |
+| **DISHA** | India | Digital Information Security in Healthcare Act (proposed) |
+| **NABH** | India | National Accreditation Board for Hospitals - quality standards |
+| **GDPR Art. 9** | EU | Special category data processing for health data |
+
+#### Data Protection Requirements
+
+| Requirement | Implementation |
+|-------------|----------------|
+| **Field-Level Encryption** | Patient ID, Diagnosis codes, Treatment notes encrypted at column level |
+| **At-Rest Encryption** | AES-256 with customer-managed keys (CMK) for all PHI |
+| **In-Transit Encryption** | TLS 1.3 mandatory, mTLS for inter-service communication |
+| **Data Masking** | Automatic masking of patient identifiers in logs and reports |
+| **Pseudonymization** | Reversible patient ID mapping for research/analytics |
+| **Data Residency** | India-only storage zones (for ABDM compliance) |
+
+#### Access Control Requirements
+
+| Control | Specification |
+|---------|---------------|
+| **Authentication** | MFA mandatory, session timeout 15 minutes inactive |
+| **Biometric Option** | Aadhaar-based authentication for clinical staff |
+| **Role Segregation** | Clinical vs Administrative vs Billing roles strictly separated |
+| **Break-Glass Access** | Emergency PHI access with immediate notification and audit |
+| **Consent Management** | Patient consent tracking for every data access |
+| **Minimum Necessary** | Role-based views showing only required PHI elements |
+
+#### Audit & Retention
+
+| Requirement | Duration | Notes |
+|-------------|----------|-------|
+| **Access Logs** | 7 years | Every PHI view/modify logged with user, timestamp, patient ID |
+| **Consent Records** | 10 years | Digital consent with timestamp and scope |
+| **Medical Records** | 30 years | Minimum retention as per clinical guidelines |
+| **Audit Trail** | 7 years | Immutable, digitally signed audit entries |
+| **Breach Logs** | Indefinite | All security incidents permanently archived |
+
+#### Integration Requirements
+
+```
+Healthcare Integration Stack:
+├── ABDM Gateway
+│   ├── Health ID (ABHA) verification
+│   ├── Consent Manager integration
+│   ├── Health Information Exchange (HIE)
+│   └── Health Facility Registry (HFR)
+├── HL7 FHIR R4
+│   ├── Patient resource
+│   ├── Observation (vitals, lab results)
+│   ├── MedicationRequest
+│   └── DiagnosticReport
+├── DICOM Integration
+│   ├── PACS connectivity
+│   └── Imaging study references
+└── Lab Information Systems
+    └── HL7 v2.x ADT/ORU messages
+```
+
+#### Default Infrastructure Overrides
+
+```typescript
+const healthcareProfile = {
+  securityTier: "large",
+  encryption: {
+    atRest: "AES-256-GCM",
+    inTransit: "TLS-1.3",
+    fieldLevel: ["patientId", "diagnosis", "treatment", "dob", "aadhaar"],
+    keyManagement: "customer-managed-hsm"
+  },
+  dataResidency: {
+    primaryRegion: "ap-south-1",  // Mumbai
+    backupRegion: "ap-south-2",   // Hyderabad
+    noInternationalTransfer: true
+  },
+  accessControl: {
+    mfaRequired: true,
+    sessionTimeoutMinutes: 15,
+    passwordRotationDays: 90,
+    loginAttemptsBeforeLock: 3
+  },
+  audit: {
+    logRetentionYears: 7,
+    realTimeAlerts: true,
+    immutableLogs: true
+  }
+};
+```
+
+---
+
+### 12.3 Banking Compliance Profile (PCI-DSS/RBI)
+
+#### Regulatory Framework
+
+| Regulation | Jurisdiction | Key Requirements |
+|------------|-------------|------------------|
+| **PCI-DSS v4.0** | Global | Cardholder data protection, 12 requirements |
+| **RBI IT Guidelines** | India | Master Direction on IT Risk Management |
+| **RBI Outsourcing** | India | Guidelines on outsourcing of financial services |
+| **DPDI Act 2023** | India | Digital Personal Data Protection - consent, processing |
+| **IDRBT** | India | Institute for Development & Research in Banking Technology |
+
+#### Data Protection Requirements
+
+| Requirement | Implementation |
+|-------------|----------------|
+| **PAN Encryption** | Card numbers encrypted immediately, never logged |
+| **PAN Masking** | Display only last 4 digits (****1234) |
+| **CVV Prohibition** | CVV never stored under any circumstances |
+| **PIN Block Security** | Hardware Security Module (HSM) for PIN operations |
+| **Key Management** | DUKPT or RSA key rotation, split knowledge |
+| **Tokenization** | Card data replaced with tokens for processing |
+
+#### Network Segmentation
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    PCI Cardholder Data Environment          │
+│  ┌────────────────┐  ┌────────────────┐  ┌───────────────┐  │
+│  │ Payment Gateway│  │ Token Vault    │  │ HSM Cluster   │  │
+│  │ (Encrypted)    │  │ (Encrypted)    │  │ (Hardware)    │  │
+│  └────────────────┘  └────────────────┘  └───────────────┘  │
+│                              ↑                              │
+│                         Firewall                            │
+│                              ↑                              │
+├─────────────────────────────────────────────────────────────┤
+│                    Non-CDE Application Zone                 │
+│  ┌────────────────┐  ┌────────────────┐  ┌───────────────┐  │
+│  │ App Servers    │  │ Report Servers │  │ Admin Portal  │  │
+│  └────────────────┘  └────────────────┘  └───────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### Access Control Requirements
+
+| Control | Specification |
+|---------|---------------|
+| **Authentication** | MFA with hardware token for privileged access |
+| **Unique IDs** | No shared accounts, individual accountability |
+| **Privilege Escalation** | Maker-Checker for all sensitive operations |
+| **Access Reviews** | Quarterly recertification of all access rights |
+| **Vendor Access** | Time-limited, monitored, logged access |
+| **Admin Access** | Just-in-time provisioning, 4-hour maximum |
+
+#### Audit & Retention
+
+| Requirement | Duration | Notes |
+|-------------|----------|-------|
+| **Transaction Logs** | 10 years | All financial transactions with full audit trail |
+| **Access Logs** | 7 years | User authentication and authorization events |
+| **System Logs** | 3 years | Infrastructure and application logs |
+| **Security Events** | 7 years | IDS/IPS alerts, WAF blocks, authentication failures |
+| **Change Management** | 7 years | All configuration and code changes |
+
+#### Integration Requirements
+
+```
+Banking Integration Stack:
+├── NPCI Integration
+│   ├── UPI (Unified Payments Interface)
+│   ├── IMPS (Immediate Payment Service)
+│   ├── NACH (National Automated Clearing House)
+│   └── AePS (Aadhaar enabled Payment System)
+├── Core Banking
+│   ├── Finacle / Flexcube / TCS BaNCS
+│   ├── ISO 8583 messages
+│   └── Real-time CBS sync
+├── RBI Reporting
+│   ├── Automated regulatory returns
+│   └── XBRL financial statements
+├── CIBIL/Credit Bureau
+│   ├── Credit score fetch
+│   └── Inquiry logging
+└── KYC/AML
+    ├── Video KYC (DigiLocker)
+    ├── CKYC Registry
+    └── Sanctions screening
+```
+
+#### Default Infrastructure Overrides
+
+```typescript
+const bankingProfile = {
+  securityTier: "massive",
+  networkSegmentation: {
+    cdeZone: true,
+    firewallBetweenZones: true,
+    noDirectInternetAccess: true
+  },
+  encryption: {
+    atRest: "AES-256-GCM",
+    inTransit: "TLS-1.3-only",
+    fieldLevel: ["pan", "accountNumber", "ifsc", "pin"],
+    hsmRequired: true,
+    keyRotationDays: 90
+  },
+  pciDss: {
+    version: "4.0",
+    scopeReduction: "tokenization",
+    asv: "quarterly-scans",
+    penTest: "annual"
+  },
+  accessControl: {
+    mfaRequired: true,
+    hardwareTokenRequired: true,
+    sessionTimeoutMinutes: 10,
+    passwordComplexity: "high",
+    loginAttemptsBeforeLock: 3
+  },
+  audit: {
+    logRetentionYears: 10,
+    tamperEvident: true,
+    realTimeCorrelation: true
+  }
+};
+```
+
+---
+
+### 12.4 Government Compliance Profile (STQC/MeitY)
+
+#### Regulatory Framework
+
+| Regulation | Authority | Key Requirements |
+|------------|-----------|------------------|
+| **STQC Certification** | MeitY | Standardisation Testing and Quality Certification |
+| **GIGW 3.0** | NIC | Guidelines for Indian Government Websites |
+| **IT Act 2000** | MeitY | Electronic records, digital signatures |
+| **GeM Guidelines** | GeM | Government e-Marketplace listing requirements |
+| **CERT-In Rules** | CERT-In | Incident reporting, vulnerability disclosure |
+| **e-Gov Standards** | MeitY | Interoperability, accessibility (WCAG 2.1) |
+
+#### Data Protection Requirements
+
+| Requirement | Implementation |
+|-------------|----------------|
+| **Data Classification** | Public / Restricted / Confidential / Secret |
+| **Data Localization** | All data on Indian soil, no cross-border transfer |
+| **Encryption Standards** | AES-256 minimum, SHA-256 for hashing |
+| **Key Escrow** | Government key escrow for certain classifications |
+| **Anonymization** | Mandatory for public datasets and RTI responses |
+| **Right to Information** | Automated RTI response tracking |
+
+#### Accessibility & Language
+
+| Requirement | Specification |
+|-------------|---------------|
+| **WCAG Compliance** | WCAG 2.1 Level AA mandatory |
+| **Language Support** | Hindi + English mandatory, regional languages |
+| **Screen Reader** | Full NVDA/JAWS compatibility |
+| **Keyboard Navigation** | Complete keyboard accessibility |
+| **Mobile First** | Responsive design mandatory |
+| **Low Bandwidth** | Functional on 2G connections |
+
+#### Access Control Requirements
+
+| Control | Specification |
+|---------|---------------|
+| **Authentication** | Aadhaar eKYC or eSign mandatory for citizens |
+| **SSO Integration** | Parichay (Government SSO) integration |
+| **Role Hierarchy** | Strict government role hierarchy (Gazetted/Non-Gazetted) |
+| **Maker-Checker** | Dual approval for all citizen-facing actions |
+| **IP Restrictions** | Government network (NICNET) for admin functions |
+| **Audit Trail** | Immutable audit for all government actions |
+
+#### Audit & Retention
+
+| Requirement | Duration | Notes |
+|-------------|----------|-------|
+| **Transaction Records** | 10 years | All citizen service transactions |
+| **Audit Logs** | 10 years | Government officer actions |
+| **Correspondence** | 5 years | Digital communications |
+| **Security Incidents** | 10 years | CERT-In reportable incidents |
+| **Archival** | As per CCS Rules | National Archives of India guidelines |
+
+#### Integration Requirements
+
+```
+Government Integration Stack:
+├── DigiLocker
+│   ├── Document fetch (certificates, licenses)
+│   ├── Document issue (government to citizen)
+│   └── URI-based document access
+├── Aadhaar
+│   ├── Demographic verification
+│   ├── eKYC (OTP/Biometric)
+│   └── Face authentication
+├── eSign
+│   ├── Aadhaar eSign (free for govt)
+│   ├── DSC-based signing
+│   └── eStamping integration
+├── UMANG
+│   ├── Service listing
+│   └── Payment gateway
+├── PayGov
+│   ├── GRAS integration
+│   └── Challan generation
+├── eMail (NIC)
+│   ├── @gov.in / @nic.in domains
+│   └── S/MIME encryption
+└── GSTN
+    ├── GST verification
+    └── e-Invoice generation
+```
+
+#### Default Infrastructure Overrides
+
+```typescript
+const governmentProfile = {
+  securityTier: "large",
+  hosting: {
+    provider: ["NIC", "MeghRaj-GI-Cloud", "Empaneled-CSP"],
+    dataCenter: "india-only",
+    certification: ["STQC", "ISO-27001"]
+  },
+  encryption: {
+    atRest: "AES-256",
+    inTransit: "TLS-1.2-minimum",
+    algorithms: ["SHA-256", "RSA-2048"],
+    indianCryptoPreferred: true
+  },
+  accessibility: {
+    wcag: "2.1-AA",
+    languages: ["en", "hi"],
+    lowBandwidth: true
+  },
+  accessControl: {
+    aadhaarAuth: true,
+    parichaySSO: true,
+    nicnetRequired: false,  // For admin
+    mfaRequired: true
+  },
+  compliance: {
+    gigw: "3.0",
+    certIn: {
+      incidentReporting: true,
+      vulnerabilityDisclosure: true
+    }
+  },
+  audit: {
+    logRetentionYears: 10,
+    immutableLogs: true,
+    govtAuditAccess: true
+  }
+};
+```
+
+---
+
+### 12.5 Compliance Profile Selection Flow
+
+```
+Tenant Onboarding
+       ↓
+┌──────────────────────────────────────────────────────────────┐
+│  Step 1: Select Industry                                      │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────┐ │
+│  │ Healthcare  │ │   Banking   │ │ Government  │ │ Default │ │
+│  │   HIPAA     │ │   PCI-DSS   │ │    STQC     │ │ (Mfg)   │ │
+│  └─────────────┘ └─────────────┘ └─────────────┘ └─────────┘ │
+└──────────────────────────────────────────────────────────────┘
+       ↓
+┌──────────────────────────────────────────────────────────────┐
+│  Step 2: Profile Auto-Applied                                 │
+│  • Security tier set                                          │
+│  • Encryption enabled for sensitive fields                    │
+│  • Data residency configured                                  │
+│  • Audit logging enabled                                      │
+│  • Retention policies set                                     │
+│  • Integration endpoints configured                           │
+└──────────────────────────────────────────────────────────────┘
+       ↓
+┌──────────────────────────────────────────────────────────────┐
+│  Step 3: Optional Overrides                                   │
+│  • Custom field encryption list                               │
+│  • Extended retention periods                                 │
+│  • Additional integrations                                    │
+│  • Region preferences (within allowed zones)                  │
+└──────────────────────────────────────────────────────────────┘
+       ↓
+       Tenant Schema Created with Compliance Settings
+```
+
+### 12.6 Compliance Audit Dashboard
+
+Each tenant with a compliance profile gets an audit dashboard showing:
+
+| Metric | Healthcare | Banking | Government |
+|--------|------------|---------|------------|
+| **Encryption Status** | PHI fields encrypted | PAN/CVV protected | Classified data secured |
+| **Access Reviews** | Patient consent valid | Quarterly review due | Gazetted approval status |
+| **Audit Log Health** | 7-year retention OK | 10-year retention OK | 10-year retention OK |
+| **Integration Status** | ABDM connected | NPCI active | DigiLocker linked |
+| **Vulnerability Scan** | Last: 7 days ago | Last: 1 day ago | Last: 30 days ago |
+| **Incident Count** | 0 open / 3 closed | 1 open / 12 closed | 0 open / 1 closed |
+| **Compliance Score** | 94% | 98% | 91% |
+
+### 12.7 Database Schema for Compliance Profiles
+
+```typescript
+// Add to shared/schema.ts
+
+export const complianceProfiles = pgTable("compliance_profiles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 50 }).notNull().unique(),
+  displayName: varchar("display_name", { length: 100 }).notNull(),
+  description: text("description"),
+  regulations: text("regulations").array(),
+  defaultSecurityTier: varchar("default_security_tier", { length: 20 }),
+  encryptionConfig: jsonb("encryption_config").default("{}"),
+  accessControlConfig: jsonb("access_control_config").default("{}"),
+  retentionConfig: jsonb("retention_config").default("{}"),
+  integrationConfig: jsonb("integration_config").default("{}"),
+  auditConfig: jsonb("audit_config").default("{}"),
+  isActive: varchar("is_active", { length: 10 }).default("true"),
+  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+});
+
+// Add complianceProfileId to organizations table
+export const organizations = pgTable("organizations", {
+  // ... existing fields ...
+  complianceProfileId: varchar("compliance_profile_id").references(() => complianceProfiles.id),
+});
+
+// Compliance audit log
+export const complianceAuditLog = pgTable("compliance_audit_log", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").references(() => organizations.id).notNull(),
+  eventType: varchar("event_type", { length: 50 }).notNull(),  // access, modification, export, breach
+  resourceType: varchar("resource_type", { length: 50 }),      // patient, account, citizen
+  resourceId: varchar("resource_id"),
+  userId: varchar("user_id"),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: text("user_agent"),
+  eventData: jsonb("event_data").default("{}"),
+  consentReference: varchar("consent_reference"),              // For healthcare
+  signature: text("signature"),                                // Digital signature for tamper-evidence
+  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+});
+```
 
 ---
 
