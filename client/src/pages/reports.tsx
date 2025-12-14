@@ -23,7 +23,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Package, Receipt, ShoppingCart, Wrench, Filter, FileCheck2, Download, Wallet, Banknote, CreditCard } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { FileText, Package, Receipt, ShoppingCart, Wrench, Filter, FileCheck2, Download, Wallet, Banknote, CreditCard, Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import type { Gatepass, Invoice, RawMaterialIssuance, PurchaseOrder, PMExecution, InvoicePayment } from "@shared/schema";
 import { DataTablePagination } from "@/components/DataTablePagination";
@@ -64,6 +67,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [selectedCustomer, setSelectedCustomer] = useState<string>("all");
+  const [customerPopoverOpen, setCustomerPopoverOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("gatepasses");
   
   // Pagination states for invoice tab
@@ -704,19 +708,55 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
             {(activeTab === 'gatepasses' || activeTab === 'invoices') && (
               <div>
                 <Label htmlFor="customer">Customer</Label>
-                <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
-                  <SelectTrigger id="customer" data-testid="select-customer">
-                    <SelectValue placeholder="All Customers" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Customers</SelectItem>
-                    {uniqueCustomers.map((customer) => (
-                      <SelectItem key={customer} value={customer || ''}>
-                        {customer}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Popover open={customerPopoverOpen} onOpenChange={setCustomerPopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={customerPopoverOpen}
+                      className="w-full justify-between"
+                      data-testid="select-customer"
+                    >
+                      {selectedCustomer === "all" 
+                        ? "All Customers" 
+                        : selectedCustomer}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[300px] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search customers..." data-testid="input-search-customer" />
+                      <CommandEmpty>No customer found.</CommandEmpty>
+                      <CommandList className="max-h-64 overflow-auto">
+                        <CommandGroup>
+                          <CommandItem
+                            value="all"
+                            onSelect={() => {
+                              setSelectedCustomer("all");
+                              setCustomerPopoverOpen(false);
+                            }}
+                          >
+                            <Check className={cn("mr-2 h-4 w-4", selectedCustomer === "all" ? "opacity-100" : "opacity-0")} />
+                            All Customers
+                          </CommandItem>
+                          {uniqueCustomers.map((customer) => (
+                            <CommandItem
+                              key={customer}
+                              value={customer || ''}
+                              onSelect={() => {
+                                setSelectedCustomer(customer || '');
+                                setCustomerPopoverOpen(false);
+                              }}
+                            >
+                              <Check className={cn("mr-2 h-4 w-4", selectedCustomer === customer ? "opacity-100" : "opacity-0")} />
+                              {customer}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
             )}
           </div>
