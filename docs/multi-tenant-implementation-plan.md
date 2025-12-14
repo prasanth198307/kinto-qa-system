@@ -1623,20 +1623,379 @@ screens:
 | Week | Focus | Deliverables |
 |------|-------|--------------|
 | 21-22 | Requirement Parser | NLP extraction, entity recognition, AI prompts |
-| 23-24 | Schema Generator | Database schema from entities, relationship handling |
-| 25-26 | Logic Generator | Business rules, calculations, validation code |
-| 27-28 | UI Generator | Screen configs, form layouts, dashboard components |
-| 29-30 | Integration & Testing | End-to-end flow, refinement, documentation |
+| 23-25 | Schema Generator + Multi-RDBMS | Database schema from entities, dialect generators for 7 databases |
+| 26-27 | Logic Generator | Business rules, calculations, validation code |
+| 28-29 | UI Generator | Screen configs, form layouts, dashboard components |
+| 30-32 | Integration & Testing | End-to-end flow, cross-database testing, documentation |
+
+**Phase 6 Cost Summary:**
+
+| Component | Duration | Cost |
+|-----------|----------|------|
+| Requirement Parser (AI-powered) | 4-5 weeks | ₹3-4L |
+| Schema Generator + Multi-RDBMS | 2-3 weeks + 2 weeks | ₹1.5-2L + ₹1.5L |
+| Logic Generator | 2 weeks | ₹2L |
+| UI Generator | 2 weeks | ₹2L |
+| **Total Phase 6** | **12-14 weeks** | **₹10-11.5L** |
 
 ### 8.6 Phase 6 Deliverables
 - [ ] Natural language requirement parser (AI-powered)
-- [ ] Database schema generator
+- [ ] Database schema generator (multi-RDBMS)
+- [ ] Database dialect generators for 7 databases:
+  - [ ] PostgreSQL (primary, cloud SaaS)
+  - [ ] MySQL/MariaDB (web applications)
+  - [ ] SQLite (edge/embedded)
+  - [ ] SQL Server (enterprise Windows)
+  - [ ] Oracle Database (banking, utilities)
+  - [ ] IBM DB2 (mainframe, legacy)
+  - [ ] SAP HANA (SAP ecosystems)
+- [ ] Cross-database query builder
 - [ ] Business logic code generator
 - [ ] UI screen configuration generator
 - [ ] Workflow generator
 - [ ] Preview and approval interface
 - [ ] One-click deployment to Low-Code engine
 - [ ] Example templates for common industries
+
+### 8.7 Database Abstraction Layer (Multi-RDBMS Support)
+
+**Purpose:** Generate database-agnostic schemas that work across all major enterprise databases.
+
+#### Supported Databases
+
+| Database | Version | Use Case | License |
+|----------|---------|----------|---------|
+| **PostgreSQL** | 14+ | Cloud SaaS, startups | Open Source |
+| **MySQL/MariaDB** | 8.0+ | Web applications | Open Source/GPL |
+| **SQLite** | 3.35+ | Edge/embedded, small scale | Public Domain |
+| **SQL Server** | 2019+ | Enterprise Windows shops | Commercial |
+| **Oracle Database** | 19c+ | Banking, large enterprise | Commercial |
+| **IBM DB2** | 11.5+ | Mainframe, legacy systems | Commercial |
+| **SAP HANA** | 2.0+ | SAP ecosystems | Commercial |
+
+#### Database Dialect Generator
+
+```typescript
+interface DatabaseDialect {
+  name: string;
+  driver: string;
+  
+  // Type mappings
+  types: {
+    string: string;      // VARCHAR(n) vs NVARCHAR vs TEXT
+    text: string;        // TEXT vs CLOB vs NTEXT
+    integer: string;     // INTEGER vs INT vs NUMBER
+    decimal: string;     // DECIMAL vs NUMBER vs NUMERIC
+    boolean: string;     // BOOLEAN vs BIT vs NUMBER(1)
+    date: string;        // DATE vs DATETIME2
+    timestamp: string;   // TIMESTAMP vs DATETIME2
+    json: string;        // JSONB vs JSON vs CLOB
+    uuid: string;        // UUID vs UNIQUEIDENTIFIER vs RAW(16)
+    binary: string;      // BYTEA vs VARBINARY vs BLOB
+  };
+  
+  // Syntax differences
+  syntax: {
+    autoIncrement: string;     // SERIAL vs IDENTITY vs AUTO_INCREMENT
+    uuidGenerate: string;      // gen_random_uuid() vs NEWID() vs SYS_GUID()
+    limitOffset: (limit: number, offset: number) => string;
+    concatenate: (a: string, b: string) => string;
+    currentTimestamp: string;
+    booleanLiteral: (val: boolean) => string;
+  };
+  
+  // Schema creation
+  createSchema: (name: string) => string;
+  setSearchPath: (schema: string) => string;
+}
+```
+
+#### Dialect Implementations
+
+```typescript
+// PostgreSQL Dialect
+const postgresDialect: DatabaseDialect = {
+  name: "PostgreSQL",
+  driver: "pg",
+  types: {
+    string: "VARCHAR",
+    text: "TEXT",
+    integer: "INTEGER",
+    decimal: "NUMERIC",
+    boolean: "BOOLEAN",
+    date: "DATE",
+    timestamp: "TIMESTAMP",
+    json: "JSONB",
+    uuid: "UUID",
+    binary: "BYTEA"
+  },
+  syntax: {
+    autoIncrement: "SERIAL",
+    uuidGenerate: "gen_random_uuid()",
+    limitOffset: (l, o) => `LIMIT ${l} OFFSET ${o}`,
+    concatenate: (a, b) => `${a} || ${b}`,
+    currentTimestamp: "CURRENT_TIMESTAMP",
+    booleanLiteral: (val) => val ? "TRUE" : "FALSE"
+  },
+  createSchema: (name) => `CREATE SCHEMA IF NOT EXISTS ${name}`,
+  setSearchPath: (schema) => `SET search_path TO ${schema}, public`
+};
+
+// SQL Server Dialect
+const sqlServerDialect: DatabaseDialect = {
+  name: "SQL Server",
+  driver: "mssql",
+  types: {
+    string: "NVARCHAR",
+    text: "NVARCHAR(MAX)",
+    integer: "INT",
+    decimal: "DECIMAL",
+    boolean: "BIT",
+    date: "DATE",
+    timestamp: "DATETIME2",
+    json: "NVARCHAR(MAX)",  // JSON support via string
+    uuid: "UNIQUEIDENTIFIER",
+    binary: "VARBINARY(MAX)"
+  },
+  syntax: {
+    autoIncrement: "IDENTITY(1,1)",
+    uuidGenerate: "NEWID()",
+    limitOffset: (l, o) => `OFFSET ${o} ROWS FETCH NEXT ${l} ROWS ONLY`,
+    concatenate: (a, b) => `CONCAT(${a}, ${b})`,
+    currentTimestamp: "GETDATE()",
+    booleanLiteral: (val) => val ? "1" : "0"
+  },
+  createSchema: (name) => `IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '${name}') EXEC('CREATE SCHEMA ${name}')`,
+  setSearchPath: (schema) => `-- SQL Server uses schema prefix: ${schema}.tablename`
+};
+
+// Oracle Dialect
+const oracleDialect: DatabaseDialect = {
+  name: "Oracle",
+  driver: "oracledb",
+  types: {
+    string: "VARCHAR2",
+    text: "CLOB",
+    integer: "NUMBER(10)",
+    decimal: "NUMBER",
+    boolean: "NUMBER(1)",
+    date: "DATE",
+    timestamp: "TIMESTAMP",
+    json: "CLOB",  // JSON via CLOB + IS JSON constraint
+    uuid: "RAW(16)",
+    binary: "BLOB"
+  },
+  syntax: {
+    autoIncrement: "GENERATED BY DEFAULT AS IDENTITY",
+    uuidGenerate: "SYS_GUID()",
+    limitOffset: (l, o) => `OFFSET ${o} ROWS FETCH NEXT ${l} ROWS ONLY`,
+    concatenate: (a, b) => `${a} || ${b}`,
+    currentTimestamp: "SYSTIMESTAMP",
+    booleanLiteral: (val) => val ? "1" : "0"
+  },
+  createSchema: (name) => `CREATE USER ${name} IDENTIFIED BY temp_password`,
+  setSearchPath: (schema) => `ALTER SESSION SET CURRENT_SCHEMA = ${schema}`
+};
+
+// IBM DB2 Dialect
+const db2Dialect: DatabaseDialect = {
+  name: "IBM DB2",
+  driver: "ibm_db",
+  types: {
+    string: "VARCHAR",
+    text: "CLOB",
+    integer: "INTEGER",
+    decimal: "DECIMAL",
+    boolean: "SMALLINT",
+    date: "DATE",
+    timestamp: "TIMESTAMP",
+    json: "CLOB",
+    uuid: "CHAR(36)",
+    binary: "BLOB"
+  },
+  syntax: {
+    autoIncrement: "GENERATED ALWAYS AS IDENTITY",
+    uuidGenerate: "HEX(GENERATE_UNIQUE())",
+    limitOffset: (l, o) => `LIMIT ${l} OFFSET ${o}`,
+    concatenate: (a, b) => `${a} || ${b}`,
+    currentTimestamp: "CURRENT TIMESTAMP",
+    booleanLiteral: (val) => val ? "1" : "0"
+  },
+  createSchema: (name) => `CREATE SCHEMA ${name}`,
+  setSearchPath: (schema) => `SET CURRENT SCHEMA = '${schema}'`
+};
+
+// MySQL Dialect
+const mysqlDialect: DatabaseDialect = {
+  name: "MySQL",
+  driver: "mysql2",
+  types: {
+    string: "VARCHAR",
+    text: "TEXT",
+    integer: "INT",
+    decimal: "DECIMAL",
+    boolean: "TINYINT(1)",
+    date: "DATE",
+    timestamp: "DATETIME",
+    json: "JSON",
+    uuid: "CHAR(36)",
+    binary: "BLOB"
+  },
+  syntax: {
+    autoIncrement: "AUTO_INCREMENT",
+    uuidGenerate: "UUID()",
+    limitOffset: (l, o) => `LIMIT ${l} OFFSET ${o}`,
+    concatenate: (a, b) => `CONCAT(${a}, ${b})`,
+    currentTimestamp: "NOW()",
+    booleanLiteral: (val) => val ? "1" : "0"
+  },
+  createSchema: (name) => `CREATE DATABASE IF NOT EXISTS ${name}`,
+  setSearchPath: (schema) => `USE ${schema}`
+};
+```
+
+#### Schema Generator with Dialect Support
+
+```typescript
+function generateSchema(
+  entities: ParsedEntity[],
+  dialect: DatabaseDialect
+): string[] {
+  const statements: string[] = [];
+  
+  for (const entity of entities) {
+    const columns = entity.fields.map(field => {
+      const dbType = mapFieldType(field.type, dialect);
+      const nullable = field.required ? "NOT NULL" : "NULL";
+      const defaultVal = getDefaultValue(field, dialect);
+      
+      return `  ${field.name} ${dbType} ${nullable}${defaultVal}`;
+    });
+    
+    // Add primary key with dialect-specific auto-increment
+    const pkColumn = `  id ${dialect.types.integer} ${dialect.syntax.autoIncrement} PRIMARY KEY`;
+    columns.unshift(pkColumn);
+    
+    statements.push(`CREATE TABLE ${entity.name} (\n${columns.join(",\n")}\n);`);
+  }
+  
+  return statements;
+}
+
+function mapFieldType(fieldType: string, dialect: DatabaseDialect): string {
+  const typeMap: Record<string, keyof DatabaseDialect["types"]> = {
+    "string": "string",
+    "text": "text",
+    "number": "integer",
+    "decimal": "decimal",
+    "boolean": "boolean",
+    "date": "date",
+    "datetime": "timestamp",
+    "json": "json",
+    "uuid": "uuid",
+    "binary": "binary"
+  };
+  
+  const dialectType = typeMap[fieldType] || "string";
+  return dialect.types[dialectType];
+}
+```
+
+#### Cross-Database Query Builder
+
+```typescript
+class QueryBuilder {
+  constructor(private dialect: DatabaseDialect) {}
+  
+  select(table: string, columns: string[], options: QueryOptions): string {
+    let sql = `SELECT ${columns.join(", ")} FROM ${table}`;
+    
+    if (options.where) {
+      sql += ` WHERE ${this.buildWhere(options.where)}`;
+    }
+    
+    if (options.orderBy) {
+      sql += ` ORDER BY ${options.orderBy}`;
+    }
+    
+    if (options.limit !== undefined) {
+      sql += ` ${this.dialect.syntax.limitOffset(options.limit, options.offset || 0)}`;
+    }
+    
+    return sql;
+  }
+  
+  insert(table: string, data: Record<string, any>): string {
+    const columns = Object.keys(data);
+    const values = Object.values(data).map(v => this.formatValue(v));
+    
+    return `INSERT INTO ${table} (${columns.join(", ")}) VALUES (${values.join(", ")})`;
+  }
+  
+  private formatValue(value: any): string {
+    if (value === null) return "NULL";
+    if (typeof value === "boolean") {
+      return this.dialect.syntax.booleanLiteral(value);
+    }
+    if (typeof value === "string") return `'${value.replace(/'/g, "''")}'`;
+    return String(value);
+  }
+}
+```
+
+#### Database Compatibility Matrix
+
+| Feature | PostgreSQL | SQL Server | Oracle | DB2 | MySQL |
+|---------|------------|------------|--------|-----|-------|
+| **Multi-tenant schemas** | Native | Native | User-based | Native | Database-per-tenant |
+| **JSON support** | Native JSONB | JSON functions | IS JSON | JSON functions | Native JSON |
+| **Full-text search** | tsvector | CONTAINS | Oracle Text | Text Extender | FULLTEXT |
+| **Partitioning** | Native | Native | Native | Native | Native |
+| **Row-level security** | Native policies | Always Encrypted | VPD | RCAC | Limited |
+| **Connection pooling** | PgBouncer | Built-in | UCP | Built-in | ProxySQL |
+
+#### Driver Configuration
+
+```typescript
+const databaseDrivers = {
+  postgresql: {
+    package: "pg",
+    connectionString: "postgresql://user:pass@host:5432/db",
+    pooling: { min: 2, max: 10 }
+  },
+  sqlserver: {
+    package: "mssql",
+    connectionString: "Server=host;Database=db;User Id=user;Password=pass;",
+    pooling: { min: 0, max: 10 }
+  },
+  oracle: {
+    package: "oracledb",
+    connectionString: "host:1521/service",
+    pooling: { poolMin: 2, poolMax: 10 }
+  },
+  db2: {
+    package: "ibm_db",
+    connectionString: "DATABASE=db;HOSTNAME=host;PORT=50000;PROTOCOL=TCPIP;UID=user;PWD=pass;",
+    pooling: { poolSize: 10 }
+  },
+  mysql: {
+    package: "mysql2",
+    connectionString: "mysql://user:pass@host:3306/db",
+    pooling: { connectionLimit: 10 }
+  }
+};
+```
+
+#### Enterprise Database Considerations
+
+| Database | Key Considerations | Typical Customers |
+|----------|-------------------|-------------------|
+| **SQL Server** | Windows integration, Active Directory auth, SSRS reporting | Government, Microsoft shops |
+| **Oracle** | PL/SQL procedures, RAC clustering, Data Guard | Banks, telecom, utilities |
+| **DB2** | Mainframe integration, COBOL compatibility | Insurance, legacy systems |
+| **SAP HANA** | In-memory processing, S/4HANA integration | SAP customers |
+
+**Additional Effort for Multi-RDBMS:** +2 weeks, +₹1.5L
 
 ---
 
