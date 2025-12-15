@@ -5411,7 +5411,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         productId: gatepassItems.productId,
         quantityDispatched: gatepassItems.quantityDispatched,
         batchNumber: finishedGoods.batchNumber,
-        productName: products.name,
+        productName: products.productName,
       })
         .from(gatepassItems)
         .leftJoin(finishedGoods, eq(gatepassItems.finishedGoodId, finishedGoods.id))
