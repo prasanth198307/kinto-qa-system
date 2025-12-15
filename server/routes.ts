@@ -5374,14 +5374,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ne(gatepasses.status, 'cancelled')
       ];
       
-      // Add date filters if provided - use SQL for date comparison since gatepassDate is stored as string
+      // Add date filters if provided - gatepassDate is a timestamp
       if (dateFrom) {
-        const fromDate = String(dateFrom);
-        conditions.push(sql`${gatepasses.gatepassDate}::date >= ${fromDate}::date`);
+        // dateFrom is like "2025-12-08", we want gatepasses on or after this date
+        conditions.push(gte(gatepasses.gatepassDate, `${dateFrom}T00:00:00.000Z`));
       }
       if (dateTo) {
-        const toDate = String(dateTo);
-        conditions.push(sql`${gatepasses.gatepassDate}::date <= ${toDate}::date`);
+        // dateTo is like "2025-12-14", we want gatepasses on or before end of this day
+        conditions.push(lte(gatepasses.gatepassDate, `${dateTo}T23:59:59.999Z`));
       }
       // Add customer filter if provided and not 'all'
       if (customer && customer !== 'all') {
