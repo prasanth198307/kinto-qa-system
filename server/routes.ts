@@ -5375,13 +5375,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ];
       
       // Add date filters if provided - gatepassDate is a timestamp
+      // Use Date objects for proper driver casting across PostgreSQL versions
       if (dateFrom) {
-        // dateFrom is like "2025-12-08", we want gatepasses on or after this date
-        conditions.push(gte(gatepasses.gatepassDate, `${dateFrom}T00:00:00.000Z`));
+        // dateFrom is like "2025-12-08", we want gatepasses on or after start of this date
+        const fromDateObj = new Date(`${dateFrom}T00:00:00`);
+        conditions.push(gte(gatepasses.gatepassDate, fromDateObj.toISOString()));
       }
       if (dateTo) {
         // dateTo is like "2025-12-14", we want gatepasses on or before end of this day
-        conditions.push(lte(gatepasses.gatepassDate, `${dateTo}T23:59:59.999Z`));
+        const toDateObj = new Date(`${dateTo}T23:59:59.999`);
+        conditions.push(lte(gatepasses.gatepassDate, toDateObj.toISOString()));
       }
       // Add customer filter if provided and not 'all'
       if (customer && customer !== 'all') {
@@ -5442,9 +5445,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }));
 
       res.json(enhancedGatepasses);
-    } catch (error) {
-      console.error("Error fetching enhanced gatepasses:", error);
-      res.status(500).json({ message: "Failed to fetch enhanced gatepass data" });
+    } catch (error: any) {
+      console.error("Error fetching enhanced gatepasses:", {
+        message: error?.message,
+        stack: error?.stack,
+        query: { dateFrom: req.query.dateFrom, dateTo: req.query.dateTo, customer: req.query.customer }
+      });
+      res.status(500).json({ message: "Failed to fetch enhanced gatepass data", error: error?.message });
     }
   });
 

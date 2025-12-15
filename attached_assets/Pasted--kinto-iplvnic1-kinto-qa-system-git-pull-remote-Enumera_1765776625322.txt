@@ -1,0 +1,46 @@
+[kinto@iplvnic1 kinto-qa-system]$ git pull
+remote: Enumerating objects: 10, done.
+remote: Counting objects: 100% (10/10), done.
+remote: Compressing objects: 100% (2/2), done.
+remote: Total 6 (delta 4), reused 6 (delta 4), pack-reused 0 (from 0)
+Unpacking objects: 100% (6/6), 2.11 KiB | 103.00 KiB/s, done.
+From https://github.com/prasanth198307/kinto-qa-system
+   df922e7..bfe0447  main       -> origin/main
+Updating df922e7..bfe0447
+Fast-forward
+ attached_assets/Pasted--kinto-iplvnic1-kinto-qa-system-git-pull-remote-Enumera_1765776367744.txt | 41 +++++++++++++++++++++++++++++++++++++++++
+ attached_assets/Pasted--kinto-iplvnic1-kinto-qa-system-git-pull-remote-Enumera_1765776370722.txt | 41 +++++++++++++++++++++++++++++++++++++++++
+ server/routes.ts                                                                                 | 10 +++++-----
+ 3 files changed, 87 insertions(+), 5 deletions(-)
+ create mode 100644 attached_assets/Pasted--kinto-iplvnic1-kinto-qa-system-git-pull-remote-Enumera_1765776367744.txt
+ create mode 100644 attached_assets/Pasted--kinto-iplvnic1-kinto-qa-system-git-pull-remote-Enumera_1765776370722.txt
+[kinto@iplvnic1 kinto-qa-system]$ npm run build
+
+> rest-express@1.0.0 build
+> vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist
+
+vite v7.2.4 building client environment for production...
+transforming (4) src/App.tsx
+A PostCSS plugin did not pass the `from` option to `postcss.parse`. This may cause imported assets to be incorrectly transformed. If you've recently added a PostCSS plugin that raised this warning, please contact the package author to fix the issue.
+✓ 3486 modules transformed.
+../dist/public/index.html                               1.18 kB │ gzip:   0.56 kB
+../dist/public/assets/inmoisture-logo-DIxC4oik.png     21.14 kB
+../dist/public/assets/kinto-logo-B19nflDG.png         110.49 kB
+../dist/public/assets/index-CBELOYgJ.css              100.51 kB │ gzip:  16.26 kB
+../dist/public/assets/xlsx-BvJTHLik.js                429.37 kB │ gzip: 142.99 kB
+../dist/public/assets/index-CV98txHu.js             2,406.97 kB │ gzip: 569.00 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 22.23s
+
+  dist/index.js  959.3kb
+
+⚡ Done in 95ms
+[kinto@iplvnic1 kinto-qa-system]$ sudo systemctl restart kinto.service
+[kinto@iplvnic1 kinto-qa-system]$ exir
+-bash: exir: command not found
+[kinto@iplvnic1 kinto-qa-system]$ exit
+logout
