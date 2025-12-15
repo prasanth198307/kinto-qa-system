@@ -5376,10 +5376,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Add date filters if provided - use SQL for date comparison since gatepassDate is stored as string
       if (dateFrom) {
-        conditions.push(sql`DATE(${gatepasses.gatepassDate}) >= ${dateFrom}`);
+        const fromDate = String(dateFrom);
+        conditions.push(sql`${gatepasses.gatepassDate}::date >= ${fromDate}::date`);
       }
       if (dateTo) {
-        conditions.push(sql`DATE(${gatepasses.gatepassDate}) <= ${dateTo}`);
+        const toDate = String(dateTo);
+        conditions.push(sql`${gatepasses.gatepassDate}::date <= ${toDate}::date`);
       }
       // Add customer filter if provided and not 'all'
       if (customer && customer !== 'all') {
