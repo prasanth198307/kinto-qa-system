@@ -750,7 +750,6 @@ function AdminDashboard() {
         { id: "production-entries", label: "Production Entries", icon: ListChecks },
         { id: "production-reconciliations", label: "Production Reconciliation", icon: Calculator },
         { id: "production-reconciliation-report", label: "Reconciliation Report", icon: FileStack },
-        { id: "finished-goods-report", label: "FG Inventory Report", icon: Package },
         { id: "variance-analytics", label: "Variance Analytics", icon: TrendingUp },
       ],
       quickActions: [
@@ -1560,7 +1559,6 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "production-entries", label: "Production Entries", icon: ListChecks, onClick: () => setLocation('/') },
         { id: "production-reconciliations", label: "Production Reconciliation", icon: Calculator, onClick: () => setLocation('/') },
         { id: "production-reconciliation-report", label: "Reconciliation Report", icon: FileStack, onClick: () => setLocation('/reports/production-reconciliation') },
-        { id: "finished-goods-report", label: "FG Inventory Report", icon: Package, onClick: () => setLocation('/reports/finished-goods') },
         { id: "variance-analytics", label: "Variance Analytics", icon: TrendingUp, onClick: () => setLocation('/') },
       ],
     },

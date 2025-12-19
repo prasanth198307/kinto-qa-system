@@ -373,50 +373,58 @@ export default function FinishedGoodsReport() {
 
       {reportGenerated && summary && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-2">
-                <Package className="w-8 h-8 text-primary" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Products</p>
-                  <p className="text-2xl font-bold" data-testid="text-total-products">{summary.totalProducts}</p>
+          {summary.totalProducts > 0 && (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-2">
+                  <Package className="w-8 h-8 text-primary" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Products</p>
+                    <p className="text-2xl font-bold" data-testid="text-total-products">{summary.totalProducts}</p>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-2">
-                <FileSpreadsheet className="w-8 h-8 text-blue-500" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Batches</p>
-                  <p className="text-2xl font-bold" data-testid="text-total-batches">{summary.totalBatches}</p>
+              </CardContent>
+            </Card>
+          )}
+          {summary.totalBatches > 0 && (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-2">
+                  <FileSpreadsheet className="w-8 h-8 text-blue-500" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Batches</p>
+                    <p className="text-2xl font-bold" data-testid="text-total-batches">{summary.totalBatches}</p>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="w-8 h-8 text-green-500" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Approved Qty</p>
-                  <p className="text-2xl font-bold" data-testid="text-approved-qty">{summary.byQualityStatus.approved.toLocaleString()}</p>
+              </CardContent>
+            </Card>
+          )}
+          {summary.byQualityStatus.approved > 0 && (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-8 h-8 text-green-500" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Approved Qty</p>
+                    <p className="text-2xl font-bold" data-testid="text-approved-qty">{summary.byQualityStatus.approved.toLocaleString()}</p>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-2">
-                <Package className="w-8 h-8 text-orange-500" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Grand Total</p>
-                  <p className="text-2xl font-bold" data-testid="text-grand-total">{summary.grandTotal.toLocaleString()}</p>
+              </CardContent>
+            </Card>
+          )}
+          {summary.grandTotal > 0 && (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-2">
+                  <Package className="w-8 h-8 text-orange-500" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Grand Total</p>
+                    <p className="text-2xl font-bold" data-testid="text-grand-total">{summary.grandTotal.toLocaleString()}</p>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
 

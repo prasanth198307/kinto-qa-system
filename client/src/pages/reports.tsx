@@ -25,7 +25,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { FileText, Package, Receipt, ShoppingCart, Wrench, Filter, FileCheck2, Download, Wallet, Banknote, CreditCard, Check, ChevronsUpDown } from "lucide-react";
+import { FileText, Package, Receipt, ShoppingCart, Wrench, Filter, FileCheck2, Download, Wallet, Banknote, CreditCard, Check, ChevronsUpDown, Boxes } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import type { Gatepass, Invoice, RawMaterialIssuance, PurchaseOrder, PMExecution, InvoicePayment } from "@shared/schema";
@@ -56,6 +56,369 @@ import {
   type CashRegisterReportData,
 } from "@/lib/expense-cash-reports";
 import { exportToExcel, formatCurrencyForExcel, formatDateForExcel } from "@/lib/excel-export";
+import { Badge } from "@/components/ui/badge";
+
+interface FinishedGoodItem {
+  id: string;
+  productId: string;
+  productName: string;
+  batchNumber: string;
+  productionDate: string;
+  quantity: number;
+  qualityStatus: string;
+  storageLocation: string | null;
+}
+
+interface FGProductGroup {
+  productId: string;
+  productName: string;
+  items: FinishedGoodItem[];
+  subtotal: number;
+}
+
+interface FGReportSummary {
+  totalProducts: number;
+  totalBatches: number;
+  grandTotal: number;
+  byQualityStatus: {
+    pending: number;
+    approved: number;
+    rejected: number;
+  };
+}
+
+interface FGReportResponse {
+  groupedData: FGProductGroup[];
+  summary: FGReportSummary;
+  filters: {
+    dateFrom?: string;
+    dateTo?: string;
+    productId?: string;
+    qualityStatus?: string;
+  };
+}
+
+function FinishedGoodsReportContent() {
+  const [fgDateFrom, setFgDateFrom] = useState("");
+  const [fgDateTo, setFgDateTo] = useState("");
+  const [fgSelectedProduct, setFgSelectedProduct] = useState("all");
+  const [fgSelectedQualityStatus, setFgSelectedQualityStatus] = useState("all");
+  const [fgReportGenerated, setFgReportGenerated] = useState(false);
+
+  const { data: fgProducts = [] } = useQuery<any[]>({
+    queryKey: ['/api/products'],
+  });
+
+  const fgQueryParams: Record<string, string> = {};
+  if (fgDateFrom) fgQueryParams.dateFrom = fgDateFrom;
+  if (fgDateTo) fgQueryParams.dateTo = fgDateTo;
+  if (fgSelectedProduct && fgSelectedProduct !== 'all') fgQueryParams.productId = fgSelectedProduct;
+  if (fgSelectedQualityStatus && fgSelectedQualityStatus !== 'all') fgQueryParams.qualityStatus = fgSelectedQualityStatus;
+
+  const { data: fgReportResponse, isLoading: fgIsLoading, refetch: fgRefetch, isFetching: fgIsFetching } = useQuery<FGReportResponse>({
+    queryKey: ['/api/reports/finished-goods', fgQueryParams],
+    enabled: false,
+  });
+
+  const fgGroupedData = fgReportResponse?.groupedData || [];
+  const fgSummary = fgReportResponse?.summary;
+
+  const handleFgGenerateReport = () => {
+    fgRefetch();
+    setFgReportGenerated(true);
+  };
+
+  const handleFgExportExcel = async () => {
+    if (fgGroupedData.length === 0) return;
+
+    const XLSX = await import('xlsx');
+    const wb = XLSX.utils.book_new();
+    
+    const excelData: any[][] = [
+      ['Finished Goods Inventory Report'],
+      ['Generated:', format(new Date(), 'dd MMM yyyy HH:mm')],
+      [''],
+      ['Summary'],
+      ['Total Products:', fgSummary?.totalProducts || 0],
+      ['Total Batches:', fgSummary?.totalBatches || 0],
+      ['Grand Total Quantity:', fgSummary?.grandTotal || 0],
+      [''],
+    ];
+
+    fgGroupedData.forEach(group => {
+      excelData.push(
+        [`Product: ${group.productName}`],
+        ['Batch Number', 'Production Date', 'Quantity', 'Quality Status', 'Storage Location']
+      );
+
+      group.items.forEach(item => {
+        excelData.push([
+          item.batchNumber,
+          format(new Date(item.productionDate), 'dd MMM yyyy'),
+          item.quantity,
+          item.qualityStatus,
+          item.storageLocation || '-'
+        ]);
+      });
+
+      excelData.push(
+        ['', '', `Subtotal: ${group.subtotal}`, '', ''],
+        ['']
+      );
+    });
+
+    excelData.push(['', '', `GRAND TOTAL: ${fgSummary?.grandTotal || 0}`, '', '']);
+
+    const ws = XLSX.utils.aoa_to_sheet(excelData);
+    XLSX.utils.book_append_sheet(wb, ws, 'Finished Goods Report');
+
+    const dateStr = format(new Date(), 'yyyy-MM-dd');
+    XLSX.writeFile(wb, `finished-goods-report-${dateStr}.xlsx`);
+  };
+
+  const handleFgExportPDF = async () => {
+    if (fgGroupedData.length === 0) return;
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert("Please allow popups to download PDF");
+      return;
+    }
+
+    const filterInfo = [];
+    if (fgDateFrom) filterInfo.push(`From: ${format(new Date(fgDateFrom), 'dd MMM yyyy')}`);
+    if (fgDateTo) filterInfo.push(`To: ${format(new Date(fgDateTo), 'dd MMM yyyy')}`);
+    if (fgSelectedProduct !== 'all') {
+      const product = fgProducts.find((p: any) => p.id === fgSelectedProduct);
+      if (product) filterInfo.push(`Product: ${product.productName}`);
+    }
+    if (fgSelectedQualityStatus !== 'all') filterInfo.push(`Status: ${fgSelectedQualityStatus}`);
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Finished Goods Inventory Report</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: Arial, sans-serif; padding: 20px; font-size: 12px; }
+          .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+          .header h1 { font-size: 18px; margin-bottom: 5px; }
+          .header p { color: #666; font-size: 11px; }
+          .summary { display: flex; gap: 20px; margin-bottom: 20px; }
+          .summary-card { padding: 10px; border: 1px solid #ddd; border-radius: 4px; flex: 1; text-align: center; }
+          .summary-card .label { font-size: 10px; color: #666; }
+          .summary-card .value { font-size: 16px; font-weight: bold; }
+          .product-group { margin-bottom: 20px; break-inside: avoid; }
+          .product-header { background: #f0f0f0; padding: 8px 12px; font-weight: bold; display: flex; justify-content: space-between; }
+          table { width: 100%; border-collapse: collapse; }
+          th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; }
+          th { background: #f9f9f9; font-weight: 600; }
+          .text-right { text-align: right; }
+          .grand-total { background: #333; color: white; padding: 10px; text-align: right; font-size: 14px; font-weight: bold; margin-top: 20px; }
+          @media print { body { padding: 10px; } .product-group { break-inside: avoid; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>Finished Goods Inventory Report</h1>
+          <p>Generated: ${format(new Date(), 'dd MMM yyyy HH:mm')}</p>
+        </div>
+        ${filterInfo.length > 0 ? `<div style="margin-bottom:15px;padding:8px;background:#f5f5f5;border-radius:4px;"><strong>Filters:</strong> ${filterInfo.join(' | ')}</div>` : ''}
+        <div class="summary">
+          ${fgSummary?.totalProducts ? `<div class="summary-card"><div class="label">Total Products</div><div class="value">${fgSummary.totalProducts}</div></div>` : ''}
+          ${fgSummary?.totalBatches ? `<div class="summary-card"><div class="label">Total Batches</div><div class="value">${fgSummary.totalBatches}</div></div>` : ''}
+          ${fgSummary?.grandTotal ? `<div class="summary-card"><div class="label">Grand Total</div><div class="value">${fgSummary.grandTotal.toLocaleString()}</div></div>` : ''}
+        </div>
+        ${fgGroupedData.map(group => `
+          <div class="product-group">
+            <div class="product-header"><span>${group.productName}</span><span>Subtotal: ${group.subtotal.toLocaleString()}</span></div>
+            <table>
+              <thead><tr><th>Batch Number</th><th>Production Date</th><th class="text-right">Quantity</th><th>Quality Status</th><th>Storage Location</th></tr></thead>
+              <tbody>
+                ${group.items.map(item => `
+                  <tr>
+                    <td style="font-family: monospace;">${item.batchNumber}</td>
+                    <td>${format(new Date(item.productionDate), 'dd MMM yyyy')}</td>
+                    <td class="text-right">${item.quantity.toLocaleString()}</td>
+                    <td>${item.qualityStatus.charAt(0).toUpperCase() + item.qualityStatus.slice(1)}</td>
+                    <td>${item.storageLocation || '-'}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `).join('')}
+        <div class="grand-total">Grand Total: ${(fgSummary?.grandTotal || 0).toLocaleString()}</div>
+        <script>window.onload = function() { window.print(); }</script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
+
+  const getFgQualityStatusBadge = (status: string) => {
+    switch (status) {
+      case 'approved':
+        return <Badge variant="default" className="bg-green-600">Approved</Badge>;
+      case 'rejected':
+        return <Badge variant="destructive">Rejected</Badge>;
+      default:
+        return <Badge variant="secondary">Pending</Badge>;
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between gap-2">
+        <div>
+          <CardTitle>Finished Goods Inventory</CardTitle>
+          <CardDescription>Product-wise inventory with batch details and subtotals</CardDescription>
+        </div>
+        <div className="flex gap-2">
+          {fgReportGenerated && fgGroupedData.length > 0 && (
+            <>
+              <Button variant="outline" size="sm" onClick={handleFgExportExcel} data-testid="button-fg-export-excel">
+                <Download className="w-4 h-4 mr-2" />
+                Excel
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleFgExportPDF} data-testid="button-fg-export-pdf">
+                <FileText className="w-4 h-4 mr-2" />
+                PDF
+              </Button>
+            </>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 p-4 bg-muted/50 rounded-lg">
+          <div className="space-y-2">
+            <Label>Production Date From</Label>
+            <Input type="date" value={fgDateFrom} onChange={(e) => setFgDateFrom(e.target.value)} data-testid="input-fg-date-from" />
+          </div>
+          <div className="space-y-2">
+            <Label>Production Date To</Label>
+            <Input type="date" value={fgDateTo} onChange={(e) => setFgDateTo(e.target.value)} data-testid="input-fg-date-to" />
+          </div>
+          <div className="space-y-2">
+            <Label>Product</Label>
+            <Select value={fgSelectedProduct} onValueChange={setFgSelectedProduct}>
+              <SelectTrigger data-testid="select-fg-product"><SelectValue placeholder="All Products" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Products</SelectItem>
+                {fgProducts.map((product: any) => (
+                  <SelectItem key={product.id} value={product.id}>{product.productName}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Quality Status</Label>
+            <Select value={fgSelectedQualityStatus} onValueChange={setFgSelectedQualityStatus}>
+              <SelectTrigger data-testid="select-fg-quality-status"><SelectValue placeholder="All Statuses" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="approved">Approved</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2 flex items-end">
+            <Button onClick={handleFgGenerateReport} disabled={fgIsLoading || fgIsFetching} className="w-full" data-testid="button-fg-generate">
+              {fgIsLoading || fgIsFetching ? 'Loading...' : 'Generate Report'}
+            </Button>
+          </div>
+        </div>
+
+        {fgReportGenerated && fgSummary && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {fgSummary.totalProducts > 0 && (
+              <div className="p-4 bg-muted/30 rounded-lg text-center">
+                <p className="text-sm text-muted-foreground">Products</p>
+                <p className="text-2xl font-bold">{fgSummary.totalProducts}</p>
+              </div>
+            )}
+            {fgSummary.totalBatches > 0 && (
+              <div className="p-4 bg-muted/30 rounded-lg text-center">
+                <p className="text-sm text-muted-foreground">Batches</p>
+                <p className="text-2xl font-bold">{fgSummary.totalBatches}</p>
+              </div>
+            )}
+            {fgSummary.byQualityStatus.approved > 0 && (
+              <div className="p-4 bg-green-500/10 rounded-lg text-center">
+                <p className="text-sm text-muted-foreground">Approved Qty</p>
+                <p className="text-2xl font-bold text-green-600">{fgSummary.byQualityStatus.approved.toLocaleString()}</p>
+              </div>
+            )}
+            {fgSummary.grandTotal > 0 && (
+              <div className="p-4 bg-primary/10 rounded-lg text-center">
+                <p className="text-sm text-muted-foreground">Grand Total</p>
+                <p className="text-2xl font-bold">{fgSummary.grandTotal.toLocaleString()}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {fgReportGenerated && (
+          <>
+            {fgIsLoading || fgIsFetching ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : fgGroupedData.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No finished goods found matching the selected criteria.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {fgGroupedData.map((group) => (
+                  <div key={group.productId} className="border rounded-lg overflow-hidden" data-testid={`fg-product-group-${group.productId}`}>
+                    <div className="bg-muted px-4 py-2 flex items-center justify-between">
+                      <span className="font-semibold">{group.productName}</span>
+                      <Badge variant="outline">Subtotal: {group.subtotal.toLocaleString()}</Badge>
+                    </div>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Batch Number</TableHead>
+                          <TableHead>Production Date</TableHead>
+                          <TableHead className="text-right">Quantity</TableHead>
+                          <TableHead>Quality Status</TableHead>
+                          <TableHead>Storage Location</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {group.items.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell className="font-mono">{item.batchNumber}</TableCell>
+                            <TableCell>{format(new Date(item.productionDate), 'dd MMM yyyy')}</TableCell>
+                            <TableCell className="text-right font-semibold">{item.quantity.toLocaleString()}</TableCell>
+                            <TableCell>{getFgQualityStatusBadge(item.qualityStatus)}</TableCell>
+                            <TableCell className="text-muted-foreground">{item.storageLocation || '-'}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ))}
+                <div className="border-t-2 border-primary pt-4">
+                  <div className="flex justify-end">
+                    <div className="bg-primary text-primary-foreground px-6 py-3 rounded-lg">
+                      <span className="text-lg font-bold">Grand Total: {fgSummary?.grandTotal.toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 interface ReportsProps {
   showHeader?: boolean;
@@ -843,6 +1206,10 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
           <TabsTrigger value="payments" data-testid="tab-payments">
             <CreditCard className="w-4 h-4 mr-2" />
             Payments
+          </TabsTrigger>
+          <TabsTrigger value="finished-goods" data-testid="tab-finished-goods">
+            <Boxes className="w-4 h-4 mr-2" />
+            Finished Goods
           </TabsTrigger>
         </TabsList>
 
@@ -2251,6 +2618,11 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Finished Goods Tab */}
+        <TabsContent value="finished-goods">
+          <FinishedGoodsReportContent />
         </TabsContent>
       </Tabs>
       </div>
