@@ -14408,8 +14408,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { dateFrom, dateTo, productId, qualityStatus } = req.query;
       
-      // Build conditions for filtering
-      const conditions: SQL[] = [eq(finishedGoods.recordStatus, 1)];
+      // Build conditions for filtering - exclude items with 0 quantity
+      const conditions: SQL[] = [
+        eq(finishedGoods.recordStatus, 1),
+        gt(finishedGoods.quantity, 0)
+      ];
       
       if (dateFrom) {
         conditions.push(gte(finishedGoods.productionDate, dateFrom as string));
