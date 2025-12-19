@@ -20,7 +20,7 @@ import { importCreditNotesFromExcel } from "./creditnote-import";
 import { parseExcelFile, commitImport } from "./cashRegisterImport";
 import { importCashRegisterFromExcel } from "./importCashRegisterFromExcel";
 import { insertCashRegisterDaySchema, insertCashRegisterTransactionSchema, insertCashRegisterExpenseItemSchema, insertSalespersonMappingSchema, cashRegisterDays, cashRegisterTransactions, cashRegisterExpenseItems, expenseVouchers, expenseItems } from "@shared/schema";
-import { sql, and, eq } from "drizzle-orm";
+import { sql, and, eq, ne, gte, lte, gt, desc, inArray, isNotNull, type SQL } from "drizzle-orm";
 
 // Simple audit logging function
 async function logAudit(userId: string | undefined, action: string, table: string, recordId: string, description: string) {
@@ -73,7 +73,6 @@ async function recalculateDayDiscrepancy(dayId: string) {
   }
 }
 
-import { eq, and, ne, gte, lte, gt, desc, inArray, isNotNull } from "drizzle-orm";
 
 // Custom error class for database conflicts (used in transactions)
 class ConflictError extends Error {
@@ -100,6 +99,7 @@ const endpointToScreenKey: Record<string, string> = {
   '/api/sales-analytics': 'sales_dashboard',
   '/api/vendor-analytics': 'vendor_analytics',
   '/api/reports': 'reports',
+  '/api/reports/finished-goods': 'finished_goods_report',
   '/api/gst-reports': 'reports',
   
   // Quality & Checklists
@@ -14398,6 +14398,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('[REPORTS] Error fetching cash register report:', error);
       res.status(500).json({ message: error.message || 'Failed to fetch cash register report' });
+    }
+  });
+
+  // ==================== FINISHED GOODS INVENTORY REPORT ====================
+  
+  // Finished goods report with product-wise grouping, mfg date, batch code, subtotals and totals
+  app.get('/api/reports/finished-goods', isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { dateFrom, dateTo, productId, qualityStatus } = req.query;
+      
+      // Build conditions for filtering
+      const conditions: SQL[] = [eq(finishedGoods.recordStatus, 1)];
+      
+      if (dateFrom) {
+        conditions.push(gte(finishedGoods.productionDate, dateFrom as string));
+      }
+      if (dateTo) {
+        // Add time to include entire day
+        conditions.push(lte(finishedGoods.productionDate, `${dateTo}T23:59:59.999Z`));
+      }
+      if (productId && productId !== 'all') {
+        conditions.push(eq(finishedGoods.productId, productId as string));
+      }
+      if (qualityStatus && qualityStatus !== 'all') {
+        conditions.push(eq(finishedGoods.qualityStatus, qualityStatus as string));
+      }
+      
+      // Fetch finished goods with product details
+      const finishedGoodsData = await db.select({
+        id: finishedGoods.id,
+        productId: finishedGoods.productId,
+        productName: products.productName,
+        batchNumber: finishedGoods.batchNumber,
+        productionDate: finishedGoods.productionDate,
+        quantity: finishedGoods.quantity,
+        qualityStatus: finishedGoods.qualityStatus,
+        storageLocation: finishedGoods.storageLocation,
+      })
+        .from(finishedGoods)
+        .leftJoin(products, eq(finishedGoods.productId, products.id))
+        .where(and(...conditions))
+        .orderBy(products.productName, finishedGoods.productionDate, finishedGoods.batchNumber);
+      
+      // Group by product and calculate subtotals
+      const productGroups: Record<string, {
+        productId: string;
+        productName: string;
+        items: typeof finishedGoodsData;
+        subtotal: number;
+      }> = {};
+      
+      let grandTotal = 0;
+      
+      finishedGoodsData.forEach(fg => {
+        const key = fg.productId;
+        if (!productGroups[key]) {
+          productGroups[key] = {
+            productId: fg.productId,
+            productName: fg.productName || 'Unknown Product',
+            items: [],
+            subtotal: 0,
+          };
+        }
+        productGroups[key].items.push(fg);
+        productGroups[key].subtotal += fg.quantity;
+        grandTotal += fg.quantity;
+      });
+      
+      // Convert to array and sort by product name
+      const groupedData = Object.values(productGroups).sort((a, b) => 
+        a.productName.localeCompare(b.productName)
+      );
+      
+      // Calculate summary statistics
+      const summary = {
+        totalProducts: groupedData.length,
+        totalBatches: finishedGoodsData.length,
+        grandTotal,
+        byQualityStatus: {
+          pending: finishedGoodsData.filter(fg => fg.qualityStatus === 'pending').reduce((sum, fg) => sum + fg.quantity, 0),
+          approved: finishedGoodsData.filter(fg => fg.qualityStatus === 'approved').reduce((sum, fg) => sum + fg.quantity, 0),
+          rejected: finishedGoodsData.filter(fg => fg.qualityStatus === 'rejected').reduce((sum, fg) => sum + fg.quantity, 0),
+        }
+      };
+      
+      res.json({
+        groupedData,
+        summary,
+        filters: { dateFrom, dateTo, productId, qualityStatus }
+      });
+    } catch (error: any) {
+      console.error('[REPORTS] Error fetching finished goods report:', error);
+      res.status(500).json({ message: error.message || 'Failed to fetch finished goods report' });
     }
   });
 

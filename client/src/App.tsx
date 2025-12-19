@@ -39,6 +39,7 @@ import ProductionManagement from "@/pages/production-management";
 import ProductionEntries from "@/pages/production-entries";
 import ProductionReconciliations from "@/pages/production-reconciliations";
 import ProductionReconciliationReport from "@/pages/production-reconciliation-report";
+import FinishedGoodsReport from "@/pages/finished-goods-report";
 import VarianceAnalytics from "@/pages/variance-analytics";
 import SalesReturns from "@/pages/sales-returns";
 import MachineStartupReminders from "@/pages/machine-startup-reminders";
@@ -337,6 +338,8 @@ function ManagerDashboard() {
         return <ProductionReconciliations />;
       case 'production-reconciliation-report':
         return <ProductionReconciliationReport />;
+      case 'finished-goods-report':
+        return <FinishedGoodsReport />;
       case 'variance-analytics':
         return <VarianceAnalytics />;
       case 'dispatch-tracking':
@@ -747,6 +750,7 @@ function AdminDashboard() {
         { id: "production-entries", label: "Production Entries", icon: ListChecks },
         { id: "production-reconciliations", label: "Production Reconciliation", icon: Calculator },
         { id: "production-reconciliation-report", label: "Reconciliation Report", icon: FileStack },
+        { id: "finished-goods-report", label: "FG Inventory Report", icon: Package },
         { id: "variance-analytics", label: "Variance Analytics", icon: TrendingUp },
       ],
       quickActions: [
@@ -963,6 +967,8 @@ function AdminDashboard() {
         return <ProductionReconciliations />;
       case 'production-reconciliation-report':
         return <ProductionReconciliationReport />;
+      case 'finished-goods-report':
+        return <FinishedGoodsReport />;
       case 'variance-analytics':
         return <VarianceAnalytics />;
       case 'sales-returns':
@@ -1305,6 +1311,7 @@ const navItemToScreenKey: Record<string, string> = {
   'production-entries': 'production_entries',
   'production-reconciliations': 'production_reconciliations',
   'production-reconciliation-report': 'production_reconciliation_report',
+  'finished-goods-report': 'finished_goods_report',
   'variance-analytics': 'variance_analytics',
   // Finance & Sales
   'invoices': 'invoices',
@@ -1372,6 +1379,7 @@ const navItemToScreen: Record<string, string> = {
   'production-entries': 'Create Finished Goods',
   'production-reconciliations': 'Create Finished Goods',
   'production-reconciliation-report': 'Create Finished Goods',
+  'finished-goods-report': 'Create Finished Goods',
   'variance-analytics': 'Create Finished Goods',
   // Finance & Sales
   'invoices': 'Purchase Orders',
@@ -1552,6 +1560,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "production-entries", label: "Production Entries", icon: ListChecks, onClick: () => setLocation('/') },
         { id: "production-reconciliations", label: "Production Reconciliation", icon: Calculator, onClick: () => setLocation('/') },
         { id: "production-reconciliation-report", label: "Reconciliation Report", icon: FileStack, onClick: () => setLocation('/reports/production-reconciliation') },
+        { id: "finished-goods-report", label: "FG Inventory Report", icon: Package, onClick: () => setLocation('/reports/finished-goods') },
         { id: "variance-analytics", label: "Variance Analytics", icon: TrendingUp, onClick: () => setLocation('/') },
       ],
     },
@@ -2161,6 +2170,35 @@ function ProductionReconciliationReportWrapper() {
   );
 }
 
+// Wrapper component for Finished Goods Report page with filtered navigation
+function FinishedGoodsReportWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('finished-goods-report');
+  
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
+  
+  return (
+    <DashboardShell
+      title="Finished Goods Inventory Report"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={(viewId) => {
+        setActiveView(viewId);
+      }}
+    >
+      <FinishedGoodsReport />
+    </DashboardShell>
+  );
+}
+
 // MIS Dashboard wrapper
 function MISDashboardPageWrapper() {
   const { logoutMutation } = useAuth();
@@ -2326,6 +2364,7 @@ function Router() {
       <ProtectedRoute path="/reports" component={ReportsPage} />
       <ProtectedRoute path="/production-management" component={ProductionManagementPageWrapper} />
       <ProtectedRoute path="/reports/production-reconciliation" component={ProductionReconciliationReportWrapper} />
+      <ProtectedRoute path="/reports/finished-goods" component={FinishedGoodsReportWrapper} />
       <ProtectedRoute path="/documents" component={DocumentsPageWrapper} />
       <ProtectedRoute path="/expenses" component={ExpensesPageWrapper} />
       <ProtectedRoute path="/cash-register" component={CashRegisterPageWrapper} />
