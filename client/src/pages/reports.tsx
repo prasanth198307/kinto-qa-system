@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { usePermissions } from "@/hooks/use-permissions";
 import { GlobalHeader } from "@/components/GlobalHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -859,11 +860,46 @@ interface ReportsProps {
 export default function Reports({ showHeader = true }: ReportsProps = {}) {
   const { toast } = useToast();
   const { logoutMutation } = useAuth();
+  const { role, canAccessScreen } = usePermissions();
+  const isAdmin = role.toLowerCase() === 'admin';
+  
+  // Check individual report tab permissions
+  // If user has "reports" permission, they can see all tabs
+  // Otherwise check individual report_* permissions
+  const canAccessReportTab = (tabKey: string): boolean => {
+    if (isAdmin) return true;
+    if (canAccessScreen('reports')) return true;
+    return canAccessScreen(tabKey);
+  };
+  
+  const tabPermissions = {
+    gatepasses: canAccessReportTab('report_gatepasses'),
+    invoices: canAccessReportTab('report_invoices'),
+    issuances: canAccessReportTab('report_issuances'),
+    'purchase-orders': canAccessReportTab('report_purchase_orders'),
+    maintenance: canAccessReportTab('report_maintenance'),
+    expenses: canAccessReportTab('report_expenses'),
+    'cash-register': canAccessReportTab('report_cash_register'),
+    'gst-reports': canAccessReportTab('report_gst'),
+    payments: canAccessReportTab('report_payments'),
+    'finished-goods': canAccessReportTab('report_finished_goods'),
+    'monthly-sales': canAccessReportTab('report_monthly_sales'),
+  };
+  
+  // Find first accessible tab for default
+  const getFirstAccessibleTab = () => {
+    const tabs = ['gatepasses', 'invoices', 'issuances', 'purchase-orders', 'maintenance', 'expenses', 'cash-register', 'gst-reports', 'payments', 'finished-goods', 'monthly-sales'];
+    for (const tab of tabs) {
+      if (tabPermissions[tab as keyof typeof tabPermissions]) return tab;
+    }
+    return 'gatepasses';
+  };
+  
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [selectedCustomer, setSelectedCustomer] = useState<string>("all");
   const [customerPopoverOpen, setCustomerPopoverOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("gatepasses");
+  const [activeTab, setActiveTab] = useState(() => getFirstAccessibleTab());
   
   // Pagination states for invoice tab
   const [invoicePage, setInvoicePage] = useState(1);
@@ -1603,50 +1639,72 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
       {/* Reports Tabs */}
       <Tabs defaultValue="gatepasses" className="w-full" onValueChange={setActiveTab}>
         <TabsList className="flex flex-wrap h-auto gap-1 p-1">
-          <TabsTrigger value="gatepasses" data-testid="tab-gatepasses">
-            <FileText className="w-4 h-4 mr-2" />
-            Gatepasses
-          </TabsTrigger>
-          <TabsTrigger value="invoices" data-testid="tab-invoices">
-            <Receipt className="w-4 h-4 mr-2" />
-            Invoices
-          </TabsTrigger>
-          <TabsTrigger value="issuances" data-testid="tab-issuances">
-            <Package className="w-4 h-4 mr-2" />
-            Issuances
-          </TabsTrigger>
-          <TabsTrigger value="purchase-orders" data-testid="tab-purchase-orders">
-            <ShoppingCart className="w-4 h-4 mr-2" />
-            Purchase Orders
-          </TabsTrigger>
-          <TabsTrigger value="maintenance" data-testid="tab-maintenance">
-            <Wrench className="w-4 h-4 mr-2" />
-            Maintenance
-          </TabsTrigger>
-          <TabsTrigger value="expenses" data-testid="tab-expenses">
-            <Banknote className="w-4 h-4 mr-2" />
-            Expenses
-          </TabsTrigger>
-          <TabsTrigger value="cash-register" data-testid="tab-cash-register">
-            <Wallet className="w-4 h-4 mr-2" />
-            Cash Register
-          </TabsTrigger>
-          <TabsTrigger value="gst-reports" data-testid="tab-gst-reports">
-            <FileCheck2 className="w-4 h-4 mr-2" />
-            GST Reports
-          </TabsTrigger>
-          <TabsTrigger value="payments" data-testid="tab-payments">
-            <CreditCard className="w-4 h-4 mr-2" />
-            Payments
-          </TabsTrigger>
-          <TabsTrigger value="finished-goods" data-testid="tab-finished-goods">
-            <Boxes className="w-4 h-4 mr-2" />
-            Finished Goods
-          </TabsTrigger>
-          <TabsTrigger value="monthly-sales" data-testid="tab-monthly-sales">
-            <Receipt className="w-4 h-4 mr-2" />
-            Monthly Sales
-          </TabsTrigger>
+          {tabPermissions.gatepasses && (
+            <TabsTrigger value="gatepasses" data-testid="tab-gatepasses">
+              <FileText className="w-4 h-4 mr-2" />
+              Gatepasses
+            </TabsTrigger>
+          )}
+          {tabPermissions.invoices && (
+            <TabsTrigger value="invoices" data-testid="tab-invoices">
+              <Receipt className="w-4 h-4 mr-2" />
+              Invoices
+            </TabsTrigger>
+          )}
+          {tabPermissions.issuances && (
+            <TabsTrigger value="issuances" data-testid="tab-issuances">
+              <Package className="w-4 h-4 mr-2" />
+              Issuances
+            </TabsTrigger>
+          )}
+          {tabPermissions['purchase-orders'] && (
+            <TabsTrigger value="purchase-orders" data-testid="tab-purchase-orders">
+              <ShoppingCart className="w-4 h-4 mr-2" />
+              Purchase Orders
+            </TabsTrigger>
+          )}
+          {tabPermissions.maintenance && (
+            <TabsTrigger value="maintenance" data-testid="tab-maintenance">
+              <Wrench className="w-4 h-4 mr-2" />
+              Maintenance
+            </TabsTrigger>
+          )}
+          {tabPermissions.expenses && (
+            <TabsTrigger value="expenses" data-testid="tab-expenses">
+              <Banknote className="w-4 h-4 mr-2" />
+              Expenses
+            </TabsTrigger>
+          )}
+          {tabPermissions['cash-register'] && (
+            <TabsTrigger value="cash-register" data-testid="tab-cash-register">
+              <Wallet className="w-4 h-4 mr-2" />
+              Cash Register
+            </TabsTrigger>
+          )}
+          {tabPermissions['gst-reports'] && (
+            <TabsTrigger value="gst-reports" data-testid="tab-gst-reports">
+              <FileCheck2 className="w-4 h-4 mr-2" />
+              GST Reports
+            </TabsTrigger>
+          )}
+          {tabPermissions.payments && (
+            <TabsTrigger value="payments" data-testid="tab-payments">
+              <CreditCard className="w-4 h-4 mr-2" />
+              Payments
+            </TabsTrigger>
+          )}
+          {tabPermissions['finished-goods'] && (
+            <TabsTrigger value="finished-goods" data-testid="tab-finished-goods">
+              <Boxes className="w-4 h-4 mr-2" />
+              Finished Goods
+            </TabsTrigger>
+          )}
+          {tabPermissions['monthly-sales'] && (
+            <TabsTrigger value="monthly-sales" data-testid="tab-monthly-sales">
+              <Receipt className="w-4 h-4 mr-2" />
+              Monthly Sales
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* Gatepasses Tab */}

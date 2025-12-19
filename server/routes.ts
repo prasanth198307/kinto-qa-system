@@ -99,9 +99,9 @@ const endpointToScreenKey: Record<string, string> = {
   '/api/sales-analytics': 'sales_dashboard',
   '/api/vendor-analytics': 'vendor_analytics',
   '/api/reports': 'reports',
-  '/api/reports/finished-goods': 'finished_goods_report',
-  '/api/reports/monthly-sales': 'reports',
-  '/api/gst-reports': 'reports',
+  '/api/reports/finished-goods': 'report_finished_goods',
+  '/api/reports/monthly-sales': 'report_monthly_sales',
+  '/api/gst-reports': 'report_gst',
   
   // Quality & Checklists
   '/api/checklist-templates': 'checklist_templates',

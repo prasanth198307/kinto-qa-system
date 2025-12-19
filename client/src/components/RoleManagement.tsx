@@ -42,7 +42,20 @@ const AVAILABLE_SCREENS: ScreenDefinition[] = [
   // Dashboards & Overview (Read-only)
   { key: 'dashboard', label: 'Dashboard', allowedActions: ['view'] },
   { key: 'sales_dashboard', label: 'Sales Dashboard', allowedActions: ['view'] },
-  { key: 'reports', label: 'Reports', allowedActions: ['view'] },
+  { key: 'reports', label: 'Reports (All Tabs)', allowedActions: ['view'] },
+  
+  // Individual Report Tabs
+  { key: 'report_gatepasses', label: 'Report: Gatepasses', allowedActions: ['view'] },
+  { key: 'report_invoices', label: 'Report: Invoices', allowedActions: ['view'] },
+  { key: 'report_issuances', label: 'Report: Issuances', allowedActions: ['view'] },
+  { key: 'report_purchase_orders', label: 'Report: Purchase Orders', allowedActions: ['view'] },
+  { key: 'report_maintenance', label: 'Report: Maintenance', allowedActions: ['view'] },
+  { key: 'report_expenses', label: 'Report: Expenses', allowedActions: ['view'] },
+  { key: 'report_cash_register', label: 'Report: Cash Register', allowedActions: ['view'] },
+  { key: 'report_gst', label: 'Report: GST Reports', allowedActions: ['view'] },
+  { key: 'report_payments', label: 'Report: Payments', allowedActions: ['view'] },
+  { key: 'report_finished_goods', label: 'Report: Finished Goods', allowedActions: ['view'] },
+  { key: 'report_monthly_sales', label: 'Report: Monthly Sales', allowedActions: ['view'] },
   
   // Analytics & Reports (Read-only)
   { key: 'production_reconciliation_report', label: 'Production Reconciliation Report', allowedActions: ['view'] },
