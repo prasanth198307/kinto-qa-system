@@ -166,6 +166,21 @@ function canAccessNavItemWithDbPermissions(itemId: string, dbPermissions: Permis
   const screenKey = navItemToScreenKey[itemId];
   if (!screenKey) return false;
   
+  // Special case: For 'reports' nav item, also check if user has any individual report_* permissions
+  if (itemId === 'reports') {
+    const hasReportsAccess = dbPermissions.find(p => p.screenKey === 'reports')?.canView === true;
+    if (hasReportsAccess) return true;
+    
+    // Check for any individual report tab permissions
+    const reportTabKeys = [
+      'report_gatepasses', 'report_invoices', 'report_issuances', 
+      'report_purchase_orders', 'report_maintenance', 'report_expenses',
+      'report_cash_register', 'report_gst', 'report_payments',
+      'report_finished_goods', 'report_monthly_sales'
+    ];
+    return dbPermissions.some(p => reportTabKeys.includes(p.screenKey) && p.canView === true);
+  }
+  
   const permission = dbPermissions.find(p => p.screenKey === screenKey);
   return permission?.canView === true;
 }
