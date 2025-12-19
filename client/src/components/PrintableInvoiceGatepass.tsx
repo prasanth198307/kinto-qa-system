@@ -215,16 +215,13 @@ export default function PrintableInvoiceGatepass({ invoice, gatepass }: Printabl
             ${invoice.placeOfSupply ? `<div>Place Of Supply: ${invoice.placeOfSupply}</div>` : ''}
           </div>
         </div>
-
-        ${invoice.shipToName || invoice.shipToAddress ? `
-          <div class="ship-to">
-            <div class="section-label">Ship To:</div>
-            ${invoice.shipToName ? `<div>${invoice.shipToName}</div>` : ''}
-            ${invoice.shipToAddress ? `<div>${invoice.shipToAddress}, ${invoice.shipToCity || ''}</div>` : ''}
-            ${invoice.shipToPincode ? `<div>Pincode: ${invoice.shipToPincode}</div>` : ''}
-          </div>
-        ` : ''}
-
+${invoice.shipToName || invoice.shipToAddress ? `
+        <div class="ship-to">
+          <div class="section-label">Ship To:</div>
+          ${invoice.shipToName ? `<div class="party-name">${invoice.shipToName}</div>` : ''}
+          ${invoice.shipToAddress ? `<div>${invoice.shipToAddress}</div>` : ''}
+          ${invoice.shipToCity || invoice.shipToState || invoice.shipToPincode ? `<div>${[invoice.shipToCity, invoice.shipToState, invoice.shipToPincode].filter(Boolean).join(', ')}</div>` : ''}
+        </div>` : ''}
         <table class="items-table">
           <thead>
             <tr>

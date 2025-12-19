@@ -226,17 +226,13 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
             ${invoice.placeOfSupply ? `<div>Place Of Supply: ${invoice.placeOfSupply}</div>` : ''}
           </div>
         </div>
-
-        <!-- Ship To (if different) -->
-        ${invoice.shipToName || invoice.shipToAddress ? `
-          <div class="ship-to">
-            <div class="section-label">Ship To:</div>
-            ${invoice.shipToName ? `<div class="party-name">${invoice.shipToName}</div>` : ''}
-            ${invoice.shipToAddress ? `<div>${invoice.shipToAddress}</div>` : ''}
-            ${invoice.shipToCity || invoice.shipToState || invoice.shipToPincode ? `<div>${[invoice.shipToCity, invoice.shipToState, invoice.shipToPincode].filter(Boolean).join(', ')}</div>` : ''}
-          </div>
-        ` : ''}
-
+${invoice.shipToName || invoice.shipToAddress ? `
+        <div class="ship-to">
+          <div class="section-label">Ship To:</div>
+          ${invoice.shipToName ? `<div class="party-name">${invoice.shipToName}</div>` : ''}
+          ${invoice.shipToAddress ? `<div>${invoice.shipToAddress}</div>` : ''}
+          ${invoice.shipToCity || invoice.shipToState || invoice.shipToPincode ? `<div>${[invoice.shipToCity, invoice.shipToState, invoice.shipToPincode].filter(Boolean).join(', ')}</div>` : ''}
+        </div>` : ''}
         <!-- Items Table -->
         <table class="items-table">
           <thead>
