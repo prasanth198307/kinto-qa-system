@@ -100,6 +100,7 @@ const endpointToScreenKey: Record<string, string> = {
   '/api/vendor-analytics': 'vendor_analytics',
   '/api/reports': 'reports',
   '/api/reports/finished-goods': 'finished_goods_report',
+  '/api/reports/monthly-sales': 'reports',
   '/api/gst-reports': 'reports',
   
   // Quality & Checklists
@@ -14494,6 +14495,180 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('[REPORTS] Error fetching finished goods report:', error);
       res.status(500).json({ message: error.message || 'Failed to fetch finished goods report' });
+    }
+  });
+
+  // ==================== MONTHLY SALES REPORT ====================
+  
+  // Monthly sales report with product-wise breakdown
+  app.get('/api/reports/monthly-sales', isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { year, month } = req.query;
+      
+      // Default to current year if not specified
+      const reportYear = year ? parseInt(year as string) : new Date().getFullYear();
+      const reportMonth = month ? parseInt(month as string) : null;
+      
+      // Calculate date range based on year and optional month
+      let startDate: string;
+      let endDate: string;
+      
+      if (reportMonth) {
+        // Specific month
+        startDate = `${reportYear}-${String(reportMonth).padStart(2, '0')}-01`;
+        const lastDay = new Date(reportYear, reportMonth, 0).getDate();
+        endDate = `${reportYear}-${String(reportMonth).padStart(2, '0')}-${lastDay}`;
+      } else {
+        // Full year (April to March for financial year)
+        startDate = `${reportYear}-04-01`;
+        endDate = `${reportYear + 1}-03-31`;
+      }
+      
+      // Fetch invoices within date range
+      const invoicesData = await db.select({
+        id: invoices.id,
+        invoiceNumber: invoices.invoiceNumber,
+        invoiceDate: invoices.invoiceDate,
+        buyerName: invoices.buyerName,
+        totalAmount: invoices.totalAmount,
+        status: invoices.status,
+      })
+        .from(invoices)
+        .where(and(
+          gte(invoices.invoiceDate, startDate),
+          lte(invoices.invoiceDate, endDate),
+          ne(invoices.status, 'cancelled')
+        ))
+        .orderBy(invoices.invoiceDate);
+      
+      // Fetch invoice items for all invoices
+      const invoiceIds = invoicesData.map(inv => inv.id);
+      
+      const itemsData = invoiceIds.length > 0 ? await db.select({
+        invoiceId: invoiceItems.invoiceId,
+        description: invoiceItems.description,
+        quantity: invoiceItems.quantity,
+        unitPrice: invoiceItems.unitPrice,
+        totalAmount: invoiceItems.totalAmount,
+      })
+        .from(invoiceItems)
+        .where(inArray(invoiceItems.invoiceId, invoiceIds)) : [];
+      
+      // Create invoice lookup
+      const invoiceLookup: Record<string, typeof invoicesData[0]> = {};
+      invoicesData.forEach(inv => {
+        invoiceLookup[inv.id] = inv;
+      });
+      
+      // Group items by month and product
+      const monthlyData: Record<string, {
+        month: string;
+        monthLabel: string;
+        products: Record<string, {
+          productName: string;
+          totalQuantity: number;
+          totalAmount: number;
+          invoiceCount: number;
+        }>;
+        totalQuantity: number;
+        totalAmount: number;
+        invoiceCount: number;
+      }> = {};
+      
+      // Track products per invoice to count unique invoices
+      const productInvoices: Record<string, Set<string>> = {};
+      
+      itemsData.forEach(item => {
+        const invoice = invoiceLookup[item.invoiceId];
+        if (!invoice) return;
+        
+        const invoiceDate = new Date(invoice.invoiceDate);
+        const monthKey = `${invoiceDate.getFullYear()}-${String(invoiceDate.getMonth() + 1).padStart(2, '0')}`;
+        const monthLabel = invoiceDate.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+        
+        if (!monthlyData[monthKey]) {
+          monthlyData[monthKey] = {
+            month: monthKey,
+            monthLabel,
+            products: {},
+            totalQuantity: 0,
+            totalAmount: 0,
+            invoiceCount: 0,
+          };
+        }
+        
+        const productName = item.description || 'Unknown Product';
+        const productKey = `${monthKey}-${productName}`;
+        
+        if (!monthlyData[monthKey].products[productName]) {
+          monthlyData[monthKey].products[productName] = {
+            productName,
+            totalQuantity: 0,
+            totalAmount: 0,
+            invoiceCount: 0,
+          };
+          productInvoices[productKey] = new Set();
+        }
+        
+        monthlyData[monthKey].products[productName].totalQuantity += item.quantity || 0;
+        monthlyData[monthKey].products[productName].totalAmount += item.totalAmount || 0;
+        monthlyData[monthKey].totalQuantity += item.quantity || 0;
+        monthlyData[monthKey].totalAmount += item.totalAmount || 0;
+        
+        // Track unique invoices per product
+        if (!productInvoices[productKey].has(invoice.id)) {
+          productInvoices[productKey].add(invoice.id);
+          monthlyData[monthKey].products[productName].invoiceCount++;
+        }
+      });
+      
+      // Count unique invoices per month
+      const monthInvoices: Record<string, Set<string>> = {};
+      itemsData.forEach(item => {
+        const invoice = invoiceLookup[item.invoiceId];
+        if (!invoice) return;
+        
+        const invoiceDate = new Date(invoice.invoiceDate);
+        const monthKey = `${invoiceDate.getFullYear()}-${String(invoiceDate.getMonth() + 1).padStart(2, '0')}`;
+        
+        if (!monthInvoices[monthKey]) {
+          monthInvoices[monthKey] = new Set();
+        }
+        monthInvoices[monthKey].add(invoice.id);
+      });
+      
+      Object.keys(monthlyData).forEach(monthKey => {
+        monthlyData[monthKey].invoiceCount = monthInvoices[monthKey]?.size || 0;
+      });
+      
+      // Convert to array sorted by month
+      const months = Object.values(monthlyData)
+        .map(m => ({
+          ...m,
+          products: Object.values(m.products)
+            .filter(p => p.totalQuantity > 0)
+            .sort((a, b) => b.totalQuantity - a.totalQuantity)
+        }))
+        .filter(m => m.products.length > 0)
+        .sort((a, b) => a.month.localeCompare(b.month));
+      
+      // Calculate summary
+      const summary = {
+        totalMonths: months.length,
+        totalQuantity: months.reduce((sum, m) => sum + m.totalQuantity, 0),
+        totalAmount: months.reduce((sum, m) => sum + m.totalAmount, 0),
+        totalInvoices: invoicesData.length,
+        uniqueProducts: new Set(itemsData.map(i => i.description)).size,
+      };
+      
+      res.json({
+        months,
+        summary,
+        filters: { year: reportYear, month: reportMonth, startDate, endDate }
+      });
+    } catch (error: any) {
+      console.error('[REPORTS] Error fetching monthly sales report:', error);
+      res.status(500).json({ message: error.message || 'Failed to fetch monthly sales report' });
     }
   });
 

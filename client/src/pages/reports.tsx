@@ -420,6 +420,354 @@ function FinishedGoodsReportContent() {
   );
 }
 
+interface MonthlySalesProduct {
+  productName: string;
+  totalQuantity: number;
+  totalAmount: number;
+  invoiceCount: number;
+}
+
+interface MonthlyData {
+  month: string;
+  monthLabel: string;
+  products: MonthlySalesProduct[];
+  totalQuantity: number;
+  totalAmount: number;
+  invoiceCount: number;
+}
+
+interface MonthlySalesResponse {
+  months: MonthlyData[];
+  summary: {
+    totalMonths: number;
+    totalQuantity: number;
+    totalAmount: number;
+    totalInvoices: number;
+    uniqueProducts: number;
+  };
+  filters: {
+    year: number;
+    month: number | null;
+    startDate: string;
+    endDate: string;
+  };
+}
+
+function MonthlySalesReportContent() {
+  const currentYear = new Date().getFullYear();
+  const currentFY = new Date().getMonth() >= 3 ? currentYear : currentYear - 1;
+  
+  const [msYear, setMsYear] = useState(currentFY);
+  const [msMonth, setMsMonth] = useState<string>("all");
+  const [msReportGenerated, setMsReportGenerated] = useState(false);
+
+  const msQueryParams: Record<string, string> = { year: String(msYear) };
+  if (msMonth && msMonth !== 'all') msQueryParams.month = msMonth;
+
+  const { data: msReportResponse, isLoading: msIsLoading, refetch: msRefetch, isFetching: msIsFetching } = useQuery<MonthlySalesResponse>({
+    queryKey: ['/api/reports/monthly-sales', msQueryParams],
+    enabled: false,
+  });
+
+  const msMonths = msReportResponse?.months || [];
+  const msSummary = msReportResponse?.summary;
+
+  const handleMsGenerateReport = () => {
+    msRefetch();
+    setMsReportGenerated(true);
+  };
+
+  const handleMsExportExcel = async () => {
+    if (msMonths.length === 0) return;
+
+    const XLSX = await import('xlsx');
+    const wb = XLSX.utils.book_new();
+    
+    const excelData: any[][] = [
+      ['Monthly Sales Report - Product-wise'],
+      ['Generated:', format(new Date(), 'dd MMM yyyy HH:mm')],
+      ['Financial Year:', `${msYear}-${msYear + 1}`],
+      [''],
+      ['Summary'],
+      ['Total Invoices:', msSummary?.totalInvoices || 0],
+      ['Total Quantity Sold:', msSummary?.totalQuantity || 0],
+      ['Total Amount:', `₹${((msSummary?.totalAmount || 0) / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`],
+      ['Unique Products:', msSummary?.uniqueProducts || 0],
+      [''],
+    ];
+
+    msMonths.forEach(month => {
+      excelData.push(
+        [`${month.monthLabel}`],
+        ['Product Name', 'Quantity Sold', 'Amount (₹)', 'Invoice Count']
+      );
+
+      month.products.forEach(product => {
+        excelData.push([
+          product.productName,
+          product.totalQuantity,
+          (product.totalAmount / 100).toFixed(2),
+          product.invoiceCount
+        ]);
+      });
+
+      excelData.push(
+        ['Month Total', month.totalQuantity, (month.totalAmount / 100).toFixed(2), month.invoiceCount],
+        ['']
+      );
+    });
+
+    excelData.push(['GRAND TOTAL', msSummary?.totalQuantity || 0, ((msSummary?.totalAmount || 0) / 100).toFixed(2), msSummary?.totalInvoices || 0]);
+
+    const ws = XLSX.utils.aoa_to_sheet(excelData);
+    XLSX.utils.book_append_sheet(wb, ws, 'Monthly Sales');
+
+    const dateStr = format(new Date(), 'yyyy-MM-dd');
+    XLSX.writeFile(wb, `monthly-sales-report-${msYear}-${dateStr}.xlsx`);
+  };
+
+  const handleMsExportPDF = async () => {
+    if (msMonths.length === 0) return;
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert("Please allow popups to download PDF");
+      return;
+    }
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Monthly Sales Report</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: Arial, sans-serif; padding: 20px; font-size: 12px; }
+          .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+          .header h1 { font-size: 18px; margin-bottom: 5px; }
+          .header p { color: #666; font-size: 11px; }
+          .summary { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; }
+          .summary-card { padding: 10px; border: 1px solid #ddd; border-radius: 4px; text-align: center; min-width: 120px; }
+          .summary-card .label { font-size: 10px; color: #666; }
+          .summary-card .value { font-size: 14px; font-weight: bold; }
+          .month-section { margin-bottom: 20px; break-inside: avoid; }
+          .month-header { background: #2563eb; color: white; padding: 8px 12px; font-weight: bold; }
+          table { width: 100%; border-collapse: collapse; }
+          th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; }
+          th { background: #f9f9f9; font-weight: 600; }
+          .text-right { text-align: right; }
+          .month-total { background: #f0f0f0; font-weight: bold; }
+          .grand-total { background: #333; color: white; padding: 10px; text-align: right; font-size: 14px; font-weight: bold; margin-top: 20px; }
+          @media print { body { padding: 10px; } .month-section { break-inside: avoid; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>Monthly Sales Report - Product-wise</h1>
+          <p>Financial Year: ${msYear}-${msYear + 1} | Generated: ${format(new Date(), 'dd MMM yyyy HH:mm')}</p>
+        </div>
+        <div class="summary">
+          ${msSummary?.totalInvoices ? `<div class="summary-card"><div class="label">Total Invoices</div><div class="value">${msSummary.totalInvoices}</div></div>` : ''}
+          ${msSummary?.totalQuantity ? `<div class="summary-card"><div class="label">Total Qty Sold</div><div class="value">${msSummary.totalQuantity.toLocaleString()}</div></div>` : ''}
+          ${msSummary?.totalAmount ? `<div class="summary-card"><div class="label">Total Amount</div><div class="value">₹${(msSummary.totalAmount / 100).toLocaleString('en-IN')}</div></div>` : ''}
+          ${msSummary?.uniqueProducts ? `<div class="summary-card"><div class="label">Products</div><div class="value">${msSummary.uniqueProducts}</div></div>` : ''}
+        </div>
+        ${msMonths.map(month => `
+          <div class="month-section">
+            <div class="month-header">${month.monthLabel}</div>
+            <table>
+              <thead><tr><th>Product Name</th><th class="text-right">Quantity</th><th class="text-right">Amount (₹)</th><th class="text-right">Invoices</th></tr></thead>
+              <tbody>
+                ${month.products.map(product => `
+                  <tr>
+                    <td>${product.productName}</td>
+                    <td class="text-right">${product.totalQuantity.toLocaleString()}</td>
+                    <td class="text-right">${(product.totalAmount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    <td class="text-right">${product.invoiceCount}</td>
+                  </tr>
+                `).join('')}
+                <tr class="month-total">
+                  <td>Month Total</td>
+                  <td class="text-right">${month.totalQuantity.toLocaleString()}</td>
+                  <td class="text-right">${(month.totalAmount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                  <td class="text-right">${month.invoiceCount}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        `).join('')}
+        <div class="grand-total">
+          Grand Total: ${msSummary?.totalQuantity?.toLocaleString() || 0} units | ₹${((msSummary?.totalAmount || 0) / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })} | ${msSummary?.totalInvoices || 0} invoices
+        </div>
+        <script>window.onload = function() { window.print(); }</script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
+
+  const fyOptions = [currentFY, currentFY - 1, currentFY - 2, currentFY - 3];
+  const monthOptions = [
+    { value: 'all', label: 'All Months (Full FY)' },
+    { value: '4', label: 'April' },
+    { value: '5', label: 'May' },
+    { value: '6', label: 'June' },
+    { value: '7', label: 'July' },
+    { value: '8', label: 'August' },
+    { value: '9', label: 'September' },
+    { value: '10', label: 'October' },
+    { value: '11', label: 'November' },
+    { value: '12', label: 'December' },
+    { value: '1', label: 'January' },
+    { value: '2', label: 'February' },
+    { value: '3', label: 'March' },
+  ];
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between gap-2">
+        <div>
+          <CardTitle>Monthly Sales Report</CardTitle>
+          <CardDescription>Product-wise sales breakdown by month</CardDescription>
+        </div>
+        <div className="flex gap-2">
+          {msReportGenerated && msMonths.length > 0 && (
+            <>
+              <Button variant="outline" size="sm" onClick={handleMsExportExcel} data-testid="button-ms-export-excel">
+                <Download className="w-4 h-4 mr-2" />
+                Excel
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleMsExportPDF} data-testid="button-ms-export-pdf">
+                <FileText className="w-4 h-4 mr-2" />
+                PDF
+              </Button>
+            </>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
+          <div className="space-y-2">
+            <Label>Financial Year</Label>
+            <Select value={String(msYear)} onValueChange={(v) => setMsYear(Number(v))}>
+              <SelectTrigger data-testid="select-ms-year"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {fyOptions.map(fy => (
+                  <SelectItem key={fy} value={String(fy)}>{fy}-{fy + 1}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Month</Label>
+            <Select value={msMonth} onValueChange={setMsMonth}>
+              <SelectTrigger data-testid="select-ms-month"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {monthOptions.map(opt => (
+                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2 flex items-end md:col-span-2">
+            <Button onClick={handleMsGenerateReport} disabled={msIsLoading || msIsFetching} className="w-full md:w-auto" data-testid="button-ms-generate">
+              {msIsLoading || msIsFetching ? 'Loading...' : 'Generate Report'}
+            </Button>
+          </div>
+        </div>
+
+        {msReportGenerated && msSummary && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {msSummary.totalInvoices > 0 && (
+              <div className="p-4 bg-muted/30 rounded-lg text-center">
+                <p className="text-sm text-muted-foreground">Invoices</p>
+                <p className="text-2xl font-bold">{msSummary.totalInvoices}</p>
+              </div>
+            )}
+            {msSummary.totalQuantity > 0 && (
+              <div className="p-4 bg-muted/30 rounded-lg text-center">
+                <p className="text-sm text-muted-foreground">Qty Sold</p>
+                <p className="text-2xl font-bold">{msSummary.totalQuantity.toLocaleString()}</p>
+              </div>
+            )}
+            {msSummary.totalAmount > 0 && (
+              <div className="p-4 bg-green-500/10 rounded-lg text-center">
+                <p className="text-sm text-muted-foreground">Total Amount</p>
+                <p className="text-2xl font-bold text-green-600">₹{(msSummary.totalAmount / 100).toLocaleString('en-IN')}</p>
+              </div>
+            )}
+            {msSummary.uniqueProducts > 0 && (
+              <div className="p-4 bg-primary/10 rounded-lg text-center">
+                <p className="text-sm text-muted-foreground">Products</p>
+                <p className="text-2xl font-bold">{msSummary.uniqueProducts}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {msReportGenerated && (
+          <>
+            {msIsLoading || msIsFetching ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : msMonths.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No sales data found for the selected period.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {msMonths.map((month) => (
+                  <div key={month.month} className="border rounded-lg overflow-hidden" data-testid={`ms-month-${month.month}`}>
+                    <div className="bg-primary text-primary-foreground px-4 py-2 flex items-center justify-between">
+                      <span className="font-semibold">{month.monthLabel}</span>
+                      <div className="flex gap-4 text-sm">
+                        <span>{month.totalQuantity.toLocaleString()} units</span>
+                        <span>₹{(month.totalAmount / 100).toLocaleString('en-IN')}</span>
+                      </div>
+                    </div>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Product Name</TableHead>
+                          <TableHead className="text-right">Quantity</TableHead>
+                          <TableHead className="text-right">Amount (₹)</TableHead>
+                          <TableHead className="text-right">Invoices</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {month.products.map((product, idx) => (
+                          <TableRow key={idx}>
+                            <TableCell className="font-medium">{product.productName}</TableCell>
+                            <TableCell className="text-right">{product.totalQuantity.toLocaleString()}</TableCell>
+                            <TableCell className="text-right">₹{(product.totalAmount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
+                            <TableCell className="text-right">{product.invoiceCount}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ))}
+                <div className="border-t-2 border-primary pt-4">
+                  <div className="flex justify-end">
+                    <div className="bg-primary text-primary-foreground px-6 py-3 rounded-lg">
+                      <span className="text-lg font-bold">
+                        Grand Total: {msSummary?.totalQuantity?.toLocaleString()} units | ₹{((msSummary?.totalAmount || 0) / 100).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 interface ReportsProps {
   showHeader?: boolean;
 }
@@ -1210,6 +1558,10 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
           <TabsTrigger value="finished-goods" data-testid="tab-finished-goods">
             <Boxes className="w-4 h-4 mr-2" />
             Finished Goods
+          </TabsTrigger>
+          <TabsTrigger value="monthly-sales" data-testid="tab-monthly-sales">
+            <Receipt className="w-4 h-4 mr-2" />
+            Monthly Sales
           </TabsTrigger>
         </TabsList>
 
@@ -2623,6 +2975,10 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
         {/* Finished Goods Tab */}
         <TabsContent value="finished-goods">
           <FinishedGoodsReportContent />
+        </TabsContent>
+
+        <TabsContent value="monthly-sales">
+          <MonthlySalesReportContent />
         </TabsContent>
       </Tabs>
       </div>
