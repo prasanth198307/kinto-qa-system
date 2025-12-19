@@ -83,6 +83,14 @@ export default function PrintableGatepass({ gatepass }: PrintableGatepassProps) 
           </div>
         </div>
 
+${invoice?.shipToName || invoice?.shipToAddress ? `
+        <div class="ship-to-box">
+          <div class="box-title">Ship To</div>
+          ${invoice?.shipToName ? `<div class="customer-name">${invoice.shipToName}</div>` : ''}
+          ${invoice?.shipToAddress ? `<div class="customer-address">${invoice.shipToAddress}</div>` : ''}
+          ${invoice?.shipToCity || invoice?.shipToState || invoice?.shipToPincode ? `<div class="customer-detail">${[invoice?.shipToCity, invoice?.shipToState, invoice?.shipToPincode].filter(Boolean).join(', ')}</div>` : ''}
+        </div>
+` : ''}
         ${invoice?.invoiceNumber ? `<div class="invoice-ref">Invoice No: <strong>${invoice.invoiceNumber}</strong></div>` : ''}
 
         <table class="items-table">
@@ -271,6 +279,13 @@ export default function PrintableGatepass({ gatepass }: PrintableGatepassProps) 
               overflow-wrap: break-word;
             }
 
+            .ship-to-box {
+              border: 1px solid #000;
+              padding: 8px;
+              background: #f5f9ff;
+              margin-bottom: 10px;
+            }
+
             .invoice-ref {
               font-size: 11px;
               margin-bottom: 10px;
@@ -364,6 +379,7 @@ export default function PrintableGatepass({ gatepass }: PrintableGatepassProps) 
               .items-table th, .items-table td { border: 1px solid #000 !important; }
               .info-table td { border: 1px solid #000 !important; }
               .customer-box { border: 1px solid #000 !important; }
+              .ship-to-box { border: 1px solid #000 !important; }
               .copy-label { border: 1px solid #000 !important; }
               .remarks-section { border: 1px solid #000 !important; }
               .header { border-bottom: 2px solid #000 !important; }
