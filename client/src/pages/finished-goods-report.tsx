@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { FileSpreadsheet, FileDown, Calendar, Package, CheckCircle, XCircle, Clock } from "lucide-react";
+import { FileSpreadsheet, FileDown, FileText, Calendar, Package, CheckCircle, XCircle, Clock } from "lucide-react";
 import { format } from "date-fns";
 
 interface FinishedGoodItem {
@@ -137,6 +137,138 @@ export default function FinishedGoodsReport() {
     XLSX.writeFile(wb, `finished-goods-report-${dateStr}.xlsx`);
   };
 
+  const handleExportPDF = async () => {
+    if (groupedData.length === 0) {
+      alert("No data to export. Please generate a report first.");
+      return;
+    }
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert("Please allow popups to download PDF");
+      return;
+    }
+
+    const filterInfo = [];
+    if (dateFrom) filterInfo.push(`From: ${format(new Date(dateFrom), 'dd MMM yyyy')}`);
+    if (dateTo) filterInfo.push(`To: ${format(new Date(dateTo), 'dd MMM yyyy')}`);
+    if (selectedProduct !== 'all') {
+      const product = products.find((p: any) => p.id === selectedProduct);
+      if (product) filterInfo.push(`Product: ${product.productName}`);
+    }
+    if (selectedQualityStatus !== 'all') filterInfo.push(`Status: ${selectedQualityStatus}`);
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Finished Goods Inventory Report</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: Arial, sans-serif; padding: 20px; font-size: 12px; }
+          .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+          .header h1 { font-size: 18px; margin-bottom: 5px; }
+          .header p { color: #666; font-size: 11px; }
+          .filters { margin-bottom: 15px; padding: 8px; background: #f5f5f5; border-radius: 4px; }
+          .filters span { margin-right: 15px; }
+          .summary { display: flex; gap: 20px; margin-bottom: 20px; }
+          .summary-card { padding: 10px; border: 1px solid #ddd; border-radius: 4px; flex: 1; text-align: center; }
+          .summary-card .label { font-size: 10px; color: #666; }
+          .summary-card .value { font-size: 16px; font-weight: bold; }
+          .product-group { margin-bottom: 20px; break-inside: avoid; }
+          .product-header { background: #f0f0f0; padding: 8px 12px; font-weight: bold; display: flex; justify-content: space-between; }
+          table { width: 100%; border-collapse: collapse; }
+          th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; }
+          th { background: #f9f9f9; font-weight: 600; }
+          .text-right { text-align: right; }
+          .subtotal { font-weight: bold; background: #fafafa; }
+          .grand-total { background: #333; color: white; padding: 10px; text-align: right; font-size: 14px; font-weight: bold; margin-top: 20px; }
+          .status-approved { color: #16a34a; }
+          .status-rejected { color: #dc2626; }
+          .status-pending { color: #f59e0b; }
+          @media print { 
+            body { padding: 10px; } 
+            .product-group { break-inside: avoid; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>Finished Goods Inventory Report</h1>
+          <p>Generated: ${format(new Date(), 'dd MMM yyyy HH:mm')}</p>
+        </div>
+        
+        ${filterInfo.length > 0 ? `
+          <div class="filters">
+            <strong>Filters:</strong> ${filterInfo.join(' | ')}
+          </div>
+        ` : ''}
+        
+        <div class="summary">
+          <div class="summary-card">
+            <div class="label">Total Products</div>
+            <div class="value">${summary?.totalProducts || 0}</div>
+          </div>
+          <div class="summary-card">
+            <div class="label">Total Batches</div>
+            <div class="value">${summary?.totalBatches || 0}</div>
+          </div>
+          <div class="summary-card">
+            <div class="label">Approved Qty</div>
+            <div class="value">${(summary?.byQualityStatus.approved || 0).toLocaleString()}</div>
+          </div>
+          <div class="summary-card">
+            <div class="label">Grand Total</div>
+            <div class="value">${(summary?.grandTotal || 0).toLocaleString()}</div>
+          </div>
+        </div>
+        
+        ${groupedData.map(group => `
+          <div class="product-group">
+            <div class="product-header">
+              <span>${group.productName}</span>
+              <span>Subtotal: ${group.subtotal.toLocaleString()}</span>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Batch Number</th>
+                  <th>Production Date</th>
+                  <th class="text-right">Quantity</th>
+                  <th>Quality Status</th>
+                  <th>Storage Location</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${group.items.map(item => `
+                  <tr>
+                    <td style="font-family: monospace;">${item.batchNumber}</td>
+                    <td>${format(new Date(item.productionDate), 'dd MMM yyyy')}</td>
+                    <td class="text-right">${item.quantity.toLocaleString()}</td>
+                    <td class="status-${item.qualityStatus}">${item.qualityStatus.charAt(0).toUpperCase() + item.qualityStatus.slice(1)}</td>
+                    <td>${item.storageLocation || '-'}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `).join('')}
+        
+        <div class="grand-total">
+          Grand Total: ${(summary?.grandTotal || 0).toLocaleString()}
+        </div>
+        
+        <script>
+          window.onload = function() { window.print(); }
+        </script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
+
   const getQualityStatusBadge = (status: string) => {
     switch (status) {
       case 'approved':
@@ -224,10 +356,16 @@ export default function FinishedGoodsReport() {
               {isLoading || isFetching ? 'Generating...' : 'Generate Report'}
             </Button>
             {reportGenerated && groupedData.length > 0 && (
-              <Button variant="outline" onClick={handleExportExcel} data-testid="button-export-excel">
-                <FileDown className="w-4 h-4 mr-2" />
-                Export to Excel
-              </Button>
+              <>
+                <Button variant="outline" onClick={handleExportExcel} data-testid="button-export-excel">
+                  <FileDown className="w-4 h-4 mr-2" />
+                  Export to Excel
+                </Button>
+                <Button variant="outline" onClick={handleExportPDF} data-testid="button-export-pdf">
+                  <FileText className="w-4 h-4 mr-2" />
+                  Export to PDF
+                </Button>
+              </>
             )}
           </div>
         </CardContent>
