@@ -462,6 +462,14 @@ ${invoice.shipToName || invoice.shipToAddress ? `
           </div>
         </div>
 
+${invoice.shipToName || invoice.shipToAddress ? `
+        <div class="gp-ship-to-box">
+          <div class="gp-box-title">Ship To</div>
+          ${invoice.shipToName ? `<div class="gp-customer-name">${invoice.shipToName}</div>` : ''}
+          ${invoice.shipToAddress ? `<div class="gp-customer-address">${invoice.shipToAddress}</div>` : ''}
+          ${invoice.shipToCity || invoice.shipToState || invoice.shipToPincode ? `<div class="gp-customer-detail">${[invoice.shipToCity, invoice.shipToState, invoice.shipToPincode].filter(Boolean).join(', ')}</div>` : ''}
+        </div>
+` : ''}
         ${invoice.invoiceNumber ? `<div class="gp-invoice-ref">Invoice No: <strong>${invoice.invoiceNumber}</strong></div>` : ''}
 
         <table class="gp-items-table">
@@ -650,6 +658,7 @@ ${invoice.shipToName || invoice.shipToAddress ? `
             .gp-customer-name { font-weight: bold; font-size: 12px; margin-bottom: 4px; }
             .gp-customer-detail { font-size: 10px; margin-bottom: 2px; }
             .gp-customer-address { font-size: 10px; color: #555; margin-top: 4px; word-wrap: break-word; overflow-wrap: break-word; }
+            .gp-ship-to-box { border: 1px solid #000; padding: 8px; background: #f5f9ff; margin-bottom: 10px; }
             .gp-invoice-ref { font-size: 11px; margin-bottom: 10px; padding: 4px 8px; background: #e8f4e8; border: 1px solid #c3e0c3; display: inline-block; }
             .gp-items-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
             .gp-items-table th, .gp-items-table td { border: 1px solid #000; padding: 6px 8px; }
