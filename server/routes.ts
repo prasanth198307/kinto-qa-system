@@ -14503,17 +14503,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Monthly sales report with product-wise breakdown
   app.get('/api/reports/monthly-sales', isAuthenticated, async (req: any, res: Response) => {
     try {
-      const { year, month } = req.query;
+      const { year, month, dateFrom, dateTo } = req.query;
       
       // Default to current year if not specified
       const reportYear = year ? parseInt(year as string) : new Date().getFullYear();
       const reportMonth = month ? parseInt(month as string) : null;
       
-      // Calculate date range based on year and optional month
+      // Calculate date range based on parameters
       let startDate: string;
       let endDate: string;
       
-      if (reportMonth) {
+      if (dateFrom && dateTo) {
+        // Custom date range
+        startDate = dateFrom as string;
+        endDate = dateTo as string;
+      } else if (reportMonth) {
         // Specific month
         startDate = `${reportYear}-${String(reportMonth).padStart(2, '0')}-01`;
         const lastDay = new Date(reportYear, reportMonth, 0).getDate();

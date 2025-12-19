@@ -457,12 +457,49 @@ function MonthlySalesReportContent() {
   const currentYear = new Date().getFullYear();
   const currentFY = new Date().getMonth() >= 3 ? currentYear : currentYear - 1;
   
+  const [msPeriodType, setMsPeriodType] = useState<string>("financial_year");
   const [msYear, setMsYear] = useState(currentFY);
   const [msMonth, setMsMonth] = useState<string>("all");
+  const [msWeek, setMsWeek] = useState(1);
+  const [msDateFrom, setMsDateFrom] = useState("");
+  const [msDateTo, setMsDateTo] = useState("");
   const [msReportGenerated, setMsReportGenerated] = useState(false);
 
-  const msQueryParams: Record<string, string> = { year: String(msYear) };
-  if (msMonth && msMonth !== 'all') msQueryParams.month = msMonth;
+  // Calculate date range based on period type
+  const getDateRange = () => {
+    const today = new Date();
+    if (msPeriodType === "weekly") {
+      const endDate = new Date(today);
+      endDate.setDate(today.getDate() - (msWeek - 1) * 7);
+      const startDate = new Date(endDate);
+      startDate.setDate(endDate.getDate() - 6);
+      return {
+        dateFrom: format(startDate, 'yyyy-MM-dd'),
+        dateTo: format(endDate, 'yyyy-MM-dd')
+      };
+    } else if (msPeriodType === "monthly" && msMonth !== "all") {
+      const year = msYear;
+      const month = parseInt(msMonth);
+      const lastDay = new Date(year, month, 0).getDate();
+      return {
+        dateFrom: `${year}-${String(month).padStart(2, '0')}-01`,
+        dateTo: `${year}-${String(month).padStart(2, '0')}-${lastDay}`
+      };
+    } else if (msPeriodType === "custom" && msDateFrom && msDateTo) {
+      return { dateFrom: msDateFrom, dateTo: msDateTo };
+    }
+    return null;
+  };
+
+  const msQueryParams: Record<string, string> = {};
+  const dateRange = getDateRange();
+  if (dateRange) {
+    msQueryParams.dateFrom = dateRange.dateFrom;
+    msQueryParams.dateTo = dateRange.dateTo;
+  } else {
+    msQueryParams.year = String(msYear);
+    if (msPeriodType === "monthly" && msMonth !== 'all') msQueryParams.month = msMonth;
+  }
 
   const { data: msReportResponse, isLoading: msIsLoading, refetch: msRefetch, isFetching: msIsFetching } = useQuery<MonthlySalesResponse>({
     queryKey: ['/api/reports/monthly-sales', msQueryParams],
@@ -648,31 +685,78 @@ function MonthlySalesReportContent() {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 p-4 bg-muted/50 rounded-lg">
           <div className="space-y-2">
-            <Label>Financial Year</Label>
-            <Select value={String(msYear)} onValueChange={(v) => setMsYear(Number(v))}>
-              <SelectTrigger data-testid="select-ms-year"><SelectValue /></SelectTrigger>
+            <Label>Period Type</Label>
+            <Select value={msPeriodType} onValueChange={setMsPeriodType}>
+              <SelectTrigger data-testid="select-ms-period-type"><SelectValue /></SelectTrigger>
               <SelectContent>
-                {fyOptions.map(fy => (
-                  <SelectItem key={fy} value={String(fy)}>{fy}-{fy + 1}</SelectItem>
-                ))}
+                <SelectItem value="financial_year">Financial Year</SelectItem>
+                <SelectItem value="monthly">Monthly</SelectItem>
+                <SelectItem value="weekly">Weekly</SelectItem>
+                <SelectItem value="custom">Custom Date Range</SelectItem>
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2">
-            <Label>Month</Label>
-            <Select value={msMonth} onValueChange={setMsMonth}>
-              <SelectTrigger data-testid="select-ms-month"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {monthOptions.map(opt => (
-                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2 flex items-end md:col-span-2">
-            <Button onClick={handleMsGenerateReport} disabled={msIsLoading || msIsFetching} className="w-full md:w-auto" data-testid="button-ms-generate">
+
+          {(msPeriodType === "financial_year" || msPeriodType === "monthly") && (
+            <div className="space-y-2">
+              <Label>Financial Year</Label>
+              <Select value={String(msYear)} onValueChange={(v) => setMsYear(Number(v))}>
+                <SelectTrigger data-testid="select-ms-year"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {fyOptions.map(fy => (
+                    <SelectItem key={fy} value={String(fy)}>{fy}-{fy + 1}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {msPeriodType === "monthly" && (
+            <div className="space-y-2">
+              <Label>Month</Label>
+              <Select value={msMonth} onValueChange={setMsMonth}>
+                <SelectTrigger data-testid="select-ms-month"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {monthOptions.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {msPeriodType === "weekly" && (
+            <div className="space-y-2">
+              <Label>Week</Label>
+              <Select value={String(msWeek)} onValueChange={(v) => setMsWeek(Number(v))}>
+                <SelectTrigger data-testid="select-ms-week"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">Current Week</SelectItem>
+                  <SelectItem value="2">Last Week</SelectItem>
+                  <SelectItem value="3">2 Weeks Ago</SelectItem>
+                  <SelectItem value="4">3 Weeks Ago</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {msPeriodType === "custom" && (
+            <>
+              <div className="space-y-2">
+                <Label>From Date</Label>
+                <Input type="date" value={msDateFrom} onChange={(e) => setMsDateFrom(e.target.value)} data-testid="input-ms-date-from" />
+              </div>
+              <div className="space-y-2">
+                <Label>To Date</Label>
+                <Input type="date" value={msDateTo} onChange={(e) => setMsDateTo(e.target.value)} data-testid="input-ms-date-to" />
+              </div>
+            </>
+          )}
+
+          <div className="space-y-2 flex items-end">
+            <Button onClick={handleMsGenerateReport} disabled={msIsLoading || msIsFetching || (msPeriodType === "custom" && (!msDateFrom || !msDateTo))} className="w-full" data-testid="button-ms-generate">
               {msIsLoading || msIsFetching ? 'Loading...' : 'Generate Report'}
             </Button>
           </div>
