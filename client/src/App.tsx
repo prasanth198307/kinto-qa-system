@@ -85,6 +85,7 @@ import CashRegisterVoucherPrint from "@/pages/cash-register-voucher-print";
 import VendorHistory from "@/pages/vendor-history";
 import VendorHistoryDetail from "@/pages/vendor-history-detail";
 import VendorDebitNotes from "@/pages/vendor-debit-notes";
+import CustomerAdvances from "@/pages/customer-advances";
 import MISDashboard from "@/pages/mis-dashboard";
 import MISProduction from "@/pages/mis-production";
 import MISInventory from "@/pages/mis-inventory";
@@ -767,6 +768,7 @@ function AdminDashboard() {
         { id: "vendor-debit-notes", label: "Vendor Debit Notes", icon: FileX, onClick: () => setLocation('/vendor-debit-notes') },
         { id: "pending-payments", label: "Pending Payments", icon: IndianRupee, onClick: () => setLocation('/pending-payments') },
         { id: "payment-management", label: "Payment Management", icon: CreditCard, onClick: () => setLocation('/payment-management') },
+        { id: "customer-advances", label: "Customer Advances", icon: Wallet, onClick: () => setLocation('/customer-advances') },
         { id: "credit-notes", label: "Credit Notes", icon: FileText, onClick: () => setLocation('/credit-notes') },
         { id: "cancelled-invoices", label: "Cancelled Invoices", icon: FileX, onClick: () => setLocation('/cancelled-invoices') },
         { id: "write-off-report", label: "Write-Off Report", icon: XCircle, onClick: () => setLocation('/write-off-report') },
@@ -1317,6 +1319,7 @@ const navItemToScreenKey: Record<string, string> = {
   'vendor-history': 'vendors',
   'pending-payments': 'pending_payments',
   'payment-management': 'payments',
+  'customer-advances': 'customer_advances',
   'credit-notes': 'credit_notes',
   'cancelled-invoices': 'cancelled_invoices_report',
   'sales-returns': 'sales_returns',
@@ -1586,6 +1589,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "vendor-debit-notes", label: "Vendor Debit Notes", icon: FileX, onClick: () => setLocation('/vendor-debit-notes') },
         { id: "pending-payments", label: "Pending Payments", icon: IndianRupee, onClick: () => setLocation('/pending-payments') },
         { id: "payment-management", label: "Payment Management", icon: CreditCard, onClick: () => setLocation('/payment-management') },
+        { id: "customer-advances", label: "Customer Advances", icon: Wallet, onClick: () => setLocation('/customer-advances') },
         { id: "credit-notes", label: "Credit Notes", icon: FileText, onClick: () => setLocation('/credit-notes') },
         { id: "cancelled-invoices", label: "Cancelled Invoices", icon: FileX, onClick: () => setLocation('/cancelled-invoices') },
         { id: "write-off-report", label: "Write-Off Report", icon: XCircle, onClick: () => setLocation('/write-off-report') },
@@ -1714,6 +1718,35 @@ function VendorDebitNotesPage() {
       }}
     >
       <VendorDebitNotes />
+    </DashboardShell>
+  );
+}
+
+// Wrapper component for Customer Advances page with filtered navigation
+function CustomerAdvancesPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('customer-advances');
+  
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
+  
+  return (
+    <DashboardShell
+      title="Customer Advances"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={(viewId) => {
+        setActiveView(viewId);
+      }}
+    >
+      <CustomerAdvances />
     </DashboardShell>
   );
 }
@@ -2369,6 +2402,7 @@ function Router() {
       <ProtectedRoute path="/payment-management" component={PaymentManagementPage} />
       <ProtectedRoute path="/vendor-analytics" component={VendorAnalyticsPage} />
       <ProtectedRoute path="/vendor-debit-notes" component={VendorDebitNotesPage} />
+      <ProtectedRoute path="/customer-advances" component={CustomerAdvancesPageWrapper} />
       <ProtectedRoute path="/mis" component={MISDashboardPageWrapper} />
       <ProtectedRoute path="/mis/production" component={MISProductionPageWrapper} />
       <ProtectedRoute path="/mis/inventory" component={MISInventoryPageWrapper} />
