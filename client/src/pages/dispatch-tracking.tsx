@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FileText, Package, Truck, CheckCircle, Clock, Search, X, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
@@ -46,6 +47,10 @@ export default function DispatchTracking({ showHeader = true }: DispatchTracking
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   
+  // Gatepass-specific search
+  const [gatepassSearchQuery, setGatepassSearchQuery] = useState("");
+  const [debouncedGatepassSearch, setDebouncedGatepassSearch] = useState("");
+  
   // Vehicle exit mutation
   const vehicleExitMutation = useMutation({
     mutationFn: async (gatepassId: string) => {
@@ -79,10 +84,23 @@ export default function DispatchTracking({ showHeader = true }: DispatchTracking
     return () => clearTimeout(timer);
   }, [searchQuery]);
   
+  // Debounce gatepass search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedGatepassSearch(gatepassSearchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [gatepassSearchQuery]);
+  
   // Parse pagination params from URL
   const params = useMemo(() => new URLSearchParams(urlSearch), [urlSearch]);
   const currentPage = parseInt(params.get('page') || '1');
   const currentPageSize = parseInt(params.get('pageSize') || '25');
+  
+  // Gatepass pagination params
+  const gatepassPage = parseInt(params.get('gpPage') || '1');
+  const gatepassPageSize = parseInt(params.get('gpPageSize') || '25');
+  const gatepassStatusFilter = params.get('gpStatus') || 'all';
   
   // Reset to page 1 when search changes
   useEffect(() => {
@@ -104,12 +122,18 @@ export default function DispatchTracking({ showHeader = true }: DispatchTracking
   });
 
   const { data: gatepassData, isLoading: gatepassesLoading } = useQuery<PaginatedResponse<Gatepass>>({
-    queryKey: ['/api/gatepasses', { page: 1, pageSize: 100 }],
+    queryKey: ['/api/gatepasses', { 
+      page: gatepassPage, 
+      pageSize: gatepassPageSize,
+      ...(debouncedGatepassSearch ? { searchQuery: debouncedGatepassSearch } : {}),
+      ...(gatepassStatusFilter !== 'all' ? { status: gatepassStatusFilter } : {})
+    }],
   });
   
   const invoices = Array.isArray(invoiceData?.data) ? invoiceData.data : [];
   const gatepasses = Array.isArray(gatepassData?.data) ? gatepassData.data : [];
   const paginationMeta = invoiceData?.meta;
+  const gatepassPaginationMeta = gatepassData?.meta;
 
   // Detect invoice parameter in URL and auto-open gatepass form
   useEffect(() => {
@@ -137,6 +161,42 @@ export default function DispatchTracking({ showHeader = true }: DispatchTracking
     newParams.set('page', '1'); // Reset to page 1 when changing page size
     newParams.set('pageSize', newPageSize.toString());
     // All other params like 'invoice' are automatically preserved by URLSearchParams
+    setLocation(`?${newParams.toString()}`);
+  };
+
+  // Gatepass pagination handlers
+  const handleGatepassPageChange = (newPage: number) => {
+    const newParams = new URLSearchParams(urlSearch);
+    newParams.set('gpPage', newPage.toString());
+    if (!newParams.has('gpPageSize')) {
+      newParams.set('gpPageSize', gatepassPageSize.toString());
+    }
+    setLocation(`?${newParams.toString()}`);
+  };
+  
+  const handleGatepassPageSizeChange = (newPageSize: number) => {
+    const newParams = new URLSearchParams(urlSearch);
+    newParams.set('gpPage', '1');
+    newParams.set('gpPageSize', newPageSize.toString());
+    setLocation(`?${newParams.toString()}`);
+  };
+  
+  const handleGatepassStatusChange = (status: string) => {
+    const newParams = new URLSearchParams(urlSearch);
+    if (status === 'all') {
+      newParams.delete('gpStatus');
+    } else {
+      newParams.set('gpStatus', status);
+    }
+    newParams.set('gpPage', '1'); // Reset to page 1 when changing filter
+    setLocation(`?${newParams.toString()}`);
+  };
+  
+  const clearGatepassFilters = () => {
+    const newParams = new URLSearchParams(urlSearch);
+    newParams.delete('gpStatus');
+    newParams.set('gpPage', '1');
+    setGatepassSearchQuery('');
     setLocation(`?${newParams.toString()}`);
   };
 
@@ -176,11 +236,13 @@ export default function DispatchTracking({ showHeader = true }: DispatchTracking
   };
 
   const gatepassStats = {
-    total: gatepasses.length,
+    total: gatepassPaginationMeta?.totalItems || gatepasses.length,
     generated: gatepasses.filter(g => g.status === 'generated').length,
     vehicleOut: gatepasses.filter(g => g.status === 'vehicle_out').length,
     delivered: gatepasses.filter(g => g.status === 'delivered').length,
   };
+  
+  const hasActiveGatepassFilters = gatepassSearchQuery || gatepassStatusFilter !== 'all';
 
   if (invoicesLoading || gatepassesLoading) {
     return (
@@ -343,8 +405,57 @@ export default function DispatchTracking({ showHeader = true }: DispatchTracking
         <TabsContent value="gatepasses" className="space-y-4 mt-4">
           <Card>
             <CardHeader>
-              <CardTitle>Gate Pass Status</CardTitle>
-              <CardDescription>Track gate passes through exit and delivery stages</CardDescription>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <CardTitle>Gate Pass Status</CardTitle>
+                  <CardDescription>Track gate passes through exit and delivery stages</CardDescription>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative w-full md:w-64">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search GP#, vehicle, driver..."
+                      value={gatepassSearchQuery}
+                      onChange={(e) => setGatepassSearchQuery(e.target.value)}
+                      className="pl-9 pr-9"
+                      data-testid="input-search-gatepass"
+                    />
+                    {gatepassSearchQuery && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6"
+                        onClick={() => setGatepassSearchQuery("")}
+                        data-testid="button-clear-gatepass-search"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  <Select value={gatepassStatusFilter} onValueChange={handleGatepassStatusChange}>
+                    <SelectTrigger className="w-[140px]" data-testid="select-gatepass-status">
+                      <SelectValue placeholder="All Statuses" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Statuses</SelectItem>
+                      <SelectItem value="generated">Generated</SelectItem>
+                      <SelectItem value="vehicle_out">Vehicle Out</SelectItem>
+                      <SelectItem value="delivered">Delivered</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {hasActiveGatepassFilters && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={clearGatepassFilters}
+                      data-testid="button-clear-gatepass-filters"
+                    >
+                      <X className="w-4 h-4 mr-1" />
+                      Clear
+                    </Button>
+                  )}
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
@@ -411,6 +522,15 @@ export default function DispatchTracking({ showHeader = true }: DispatchTracking
                   </tbody>
                 </table>
               </div>
+              {gatepassPaginationMeta && (
+                <div className="mt-4">
+                  <DataTablePagination
+                    meta={gatepassPaginationMeta}
+                    onPageChange={handleGatepassPageChange}
+                    onPageSizeChange={handleGatepassPageSizeChange}
+                  />
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
