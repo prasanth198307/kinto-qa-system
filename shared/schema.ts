@@ -3233,10 +3233,19 @@ export const customerAdvances = pgTable("customer_advances", {
 
 export const insertCustomerAdvanceSchema = createInsertSchema(customerAdvances, {
   receiptDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format"),
+  amount: z.number().int().positive("Amount must be a positive integer"),
+  purpose: z.string().optional().nullable(),
+  remarks: z.string().optional().nullable(),
+  referenceNumber: z.string().optional().nullable(),
+  bankName: z.string().optional().nullable(),
+  status: z.string().optional(),
 }).omit({
   id: true,
   advanceNumber: true, // Auto-generated
   usedAmount: true, // Managed by system
+  cancelledAt: true, // Managed by system
+  cancellationRemarks: true, // Managed by system
+  cancelledBy: true, // Managed by system
   recordStatus: true,
   createdAt: true,
   updatedAt: true,
@@ -3274,9 +3283,15 @@ export const advanceApplications = pgTable("advance_applications", {
   invoiceIdx: index("advance_applications_invoice_idx").on(table.invoiceId),
 }));
 
-export const insertAdvanceApplicationSchema = createInsertSchema(advanceApplications).omit({
+export const insertAdvanceApplicationSchema = createInsertSchema(advanceApplications, {
+  appliedAmount: z.number().int().positive("Applied amount must be a positive integer"),
+  remarks: z.string().optional().nullable(),
+}).omit({
   id: true,
   invoicePaymentId: true, // Set by system
+  reversedAt: true, // Managed by system
+  reversalRemarks: true, // Managed by system
+  reversedBy: true, // Managed by system
   recordStatus: true,
   createdAt: true,
 });
