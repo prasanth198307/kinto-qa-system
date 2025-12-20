@@ -126,7 +126,7 @@ export default function InvoiceTable({ invoices, isLoading, onEdit, onDelete, on
                         <DollarSign className="w-4 h-4 text-green-600" />
                       </Button>
                     )}
-                    {onMarkReadyForGatepass && invoice.status === 'draft' && (
+                    {onMarkReadyForGatepass && invoice.status === 'draft' && !(invoice as any).hasGatepass && (
                       (invoice.shipToName || invoice.shipToAddress) ? (
                         <Button
                           variant="ghost"

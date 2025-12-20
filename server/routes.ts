@@ -6125,6 +6125,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { page, pageSize, sortBy, sortOrder, search, ...filters } = req.query;
       
+      // Get all invoice IDs that have gatepasses (for hasGatepass flag)
+      const invoicesWithGatepasses = await db.select({ invoiceId: gatepasses.invoiceId })
+        .from(gatepasses)
+        .where(and(
+          eq(gatepasses.recordStatus, 1),
+          sql`${gatepasses.invoiceId} IS NOT NULL`
+        ));
+      const invoiceIdsWithGatepass = new Set(invoicesWithGatepasses.map(g => g.invoiceId));
+      
       // If pagination params exist, use paginated endpoint
       if (page !== undefined && pageSize !== undefined) {
         const { paginationRequestSchema } = await import('@shared/schema');
@@ -6132,7 +6141,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // TODO: Optimize with database-level LIMIT/OFFSET for better scalability
         // Get all invoices first (loads all data into memory)
-        let allInvoices = await storage.getAllInvoices();
+        let allInvoicesRaw = await storage.getAllInvoices();
+        
+        // Add hasGatepass flag to each invoice
+        let allInvoices = allInvoicesRaw.map(inv => ({
+          ...inv,
+          hasGatepass: invoiceIdsWithGatepass.has(inv.id)
+        }));
         
         // Apply filters if any
         if (filters.status) {
@@ -6216,7 +6231,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // No pagination - return all invoices sorted by date descending (for backwards compatibility)
-      let allInvoices = await storage.getAllInvoices();
+      let allInvoicesRaw = await storage.getAllInvoices();
+      
+      // Add hasGatepass flag to each invoice
+      let allInvoices = allInvoicesRaw.map(inv => ({
+        ...inv,
+        hasGatepass: invoiceIdsWithGatepass.has(inv.id)
+      }));
       
       // Sort by date descending (newest first)
       allInvoices.sort((a, b) => new Date(b.invoiceDate).getTime() - new Date(a.invoiceDate).getTime());
