@@ -6616,6 +6616,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Block editing of header/line item fields when a gatepass exists (to maintain data integrity)
+      // Allow: status updates, dispatch fields, delivery fields, vehicle/driver info
+      // Block: buyer details, ship-to details, amounts, items, bank details, etc.
+      const blockedFieldsWhenGatepassExists = [
+        // Buyer details
+        'buyerGstin', 'buyerName', 'buyerAddress', 'buyerState', 'buyerStateCode', 'buyerContact',
+        // Ship-to details
+        'shipToName', 'shipToAddress', 'shipToCity', 'shipToState', 'shipToPincode', 'shipToGstin',
+        // Amounts (should not be changed after gatepass)
+        'subtotal', 'cgstAmount', 'sgstAmount', 'igstAmount', 'cessAmount', 'roundOff', 'totalAmount',
+        'transportRatePerCase', 'transportCharges',
+        // Bank details
+        'bankName', 'bankAccountNumber', 'bankIfscCode', 'accountHolderName', 'branchName', 'upiId',
+        // Other header fields
+        'invoiceDate', 'dateOfSupply', 'placeOfSupply', 'termsConditionsId', 'templateId',
+        'sellerGstin', 'sellerName', 'sellerAddress', 'sellerState', 'sellerStateCode',
+        // Items cannot be changed
+        'items'
+      ];
+      
+      const requestedFields = Object.keys(req.body);
+      const blockedFieldsInRequest = requestedFields.filter(field => blockedFieldsWhenGatepassExists.includes(field));
+      
+      if (blockedFieldsInRequest.length > 0) {
+        const existingGatepass = await db
+          .select()
+          .from(gatepasses)
+          .where(
+            and(
+              eq(gatepasses.invoiceId, id),
+              eq(gatepasses.recordStatus, 1)
+            )
+          )
+          .limit(1);
+        
+        if (existingGatepass.length > 0) {
+          return res.status(400).json({ 
+            message: "This invoice cannot be edited because a gatepass has been created. Use 'Cancel & Reissue' to make changes.",
+            gatepassNumber: existingGatepass[0].gatepassNumber,
+            blockedFields: blockedFieldsInRequest
+          });
+        }
+      }
+      
       const validatedData = insertInvoiceSchema.partial().parse(req.body);
       const invoice = await storage.updateInvoice(id, validatedData);
       if (!invoice) {

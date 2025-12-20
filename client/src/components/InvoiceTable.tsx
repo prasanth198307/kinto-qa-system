@@ -184,6 +184,28 @@ export default function InvoiceTable({ invoices, isLoading, onEdit, onDelete, on
                             </p>
                           </TooltipContent>
                         </Tooltip>
+                      ) : (invoice as any).hasGatepass ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                disabled
+                                data-testid={`button-edit-${invoice.id}-disabled`}
+                                title="Gatepass exists - cannot edit"
+                              >
+                                <Lock className="w-4 h-4 text-muted-foreground" />
+                              </Button>
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Cannot edit - gatepass already created.</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Use 'Cancel & Reissue' from the invoice detail page to make changes.
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
                       ) : (
                         <Button
                           variant="ghost"
