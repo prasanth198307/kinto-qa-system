@@ -2054,6 +2054,15 @@ export const salesReturns = pgTable("sales_returns", {
   // Credit note status tracking (for same-month auto vs >1 month manual)
   creditNoteStatus: varchar("credit_note_status", { length: 30 }).default("pending_auto").notNull(), // pending_auto, auto_created, manual_required, manual_linked, not_applicable
   
+  // Transport cost for returning goods
+  totalReturnTransportCost: integer("total_return_transport_cost").default(0), // Total cost to bring goods back (in paise)
+  transporterName: varchar("transporter_name", { length: 255 }),
+  
+  // Scrap approval workflow
+  scrapApprovalStatus: varchar("scrap_approval_status", { length: 30 }).default("not_applicable"), // not_applicable, pending, approved, rejected
+  scrapApprovedBy: varchar("scrap_approved_by").references(() => users.id),
+  scrapApprovalDate: timestamp("scrap_approval_date", { mode: 'string' }),
+  
   remarks: text("remarks"),
   recordStatus: integer("record_status").default(1).notNull(),
   createdBy: varchar("created_by").references(() => users.id),
@@ -2115,6 +2124,10 @@ export const salesReturnItems = pgTable("sales_return_items", {
   batchNumber: varchar("batch_number", { length: 255 }),
   quantityReturned: integer("quantity_returned").notNull(),
   
+  // Original invoice item reference for max quantity validation
+  invoiceItemId: varchar("invoice_item_id").references(() => invoiceItems.id),
+  originalQuantityInvoiced: integer("original_quantity_invoiced"), // Max returnable quantity
+  
   // Condition after inspection
   conditionOnReceipt: varchar("condition_on_receipt", { length: 50 }), // damaged, good, repairable
   
@@ -2124,6 +2137,20 @@ export const salesReturnItems = pgTable("sales_return_items", {
   // Financial - credit for this item
   unitPrice: integer("unit_price").notNull(), // Price per unit from original invoice (in paise)
   creditAmount: integer("credit_amount").notNull(), // Total credit for this item (in paise)
+  
+  // Cost tracking for loss calculation
+  unitCost: integer("unit_cost"), // Original product cost (from BOM/purchase) in paise
+  
+  // Damage evidence
+  damageReason: varchar("damage_reason", { length: 50 }), // transport, handling, manufacturing_defect, customer_misuse, expired, other
+  damageEvidenceUrl: varchar("damage_evidence_url", { length: 500 }), // Photo proof URL
+  
+  // Transport cost for return
+  returnTransportCost: integer("return_transport_cost").default(0), // Cost to bring goods back (in paise)
+  
+  // Expiry check
+  expiryDate: timestamp("expiry_date", { mode: 'string' }),
+  isNearExpiry: integer("is_near_expiry").default(0), // 1 if product is near expiry (< 30 days)
   
   remarks: text("remarks"),
   recordStatus: integer("record_status").default(1).notNull(),
@@ -3075,3 +3102,92 @@ export const insertVendorDebitNoteAdjustmentSchema = createInsertSchema(vendorDe
 
 export type InsertVendorDebitNoteAdjustment = z.infer<typeof insertVendorDebitNoteAdjustmentSchema>;
 export type VendorDebitNoteAdjustment = typeof vendorDebitNoteAdjustments.$inferSelect;
+
+// Scrap Inventory - tracks damaged/scrapped goods from sales returns for loss calculation
+export const scrapInventory = pgTable("scrap_inventory", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  scrapNumber: varchar("scrap_number", { length: 100 }).notNull().unique(), // SCRAP-YYYYMMDD-XXX
+  scrapDate: timestamp("scrap_date", { mode: 'string' }).notNull(),
+  
+  // Source reference
+  salesReturnId: varchar("sales_return_id").references(() => salesReturns.id),
+  salesReturnItemId: varchar("sales_return_item_id").references(() => salesReturnItems.id),
+  invoiceId: varchar("invoice_id").references(() => invoices.id),
+  
+  // Product details
+  productId: varchar("product_id").references(() => products.id).notNull(),
+  productName: varchar("product_name", { length: 255 }).notNull(), // Snapshot for reporting
+  batchNumber: varchar("batch_number", { length: 100 }),
+  quantity: integer("quantity").notNull(),
+  
+  // Cost tracking (all amounts in paise)
+  unitCost: integer("unit_cost").notNull(), // Original cost of product (from BOM or purchase)
+  sellingPrice: integer("selling_price").notNull(), // Price at which it was sold
+  totalCostValue: integer("total_cost_value").notNull(), // quantity * unitCost
+  totalSellingValue: integer("total_selling_value").notNull(), // quantity * sellingPrice
+  lossAmount: integer("loss_amount").notNull(), // totalCostValue (actual loss to business)
+  
+  // Damage details
+  damageReason: varchar("damage_reason", { length: 50 }).notNull(), // transport, handling, manufacturing_defect, customer_misuse, expired, other
+  conditionDescription: text("condition_description"),
+  damageEvidenceUrl: varchar("damage_evidence_url", { length: 500 }), // Photo proof URL
+  
+  // Approval workflow
+  approvalStatus: varchar("approval_status", { length: 30 }).default('pending').notNull(), // pending, approved, rejected
+  approvedBy: varchar("approved_by").references(() => users.id),
+  approvalDate: timestamp("approval_date", { mode: 'string' }),
+  approvalRemarks: text("approval_remarks"),
+  
+  // Processing
+  processedStatus: varchar("processed_status", { length: 30 }).default('pending').notNull(), // pending, processed, disposed
+  processedDate: timestamp("processed_date", { mode: 'string' }),
+  disposalMethod: varchar("disposal_method", { length: 50 }), // recycled, disposed, sold_as_scrap, repaired
+  disposalValue: integer("disposal_value").default(0), // Any recovery value from disposal (in paise)
+  
+  // GST implications
+  gstReversal: integer("gst_reversal").default(0), // GST amount to be reversed (in paise)
+  gstReversalStatus: varchar("gst_reversal_status", { length: 30 }).default('pending'), // pending, reversed, not_applicable
+  
+  remarks: text("remarks"),
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
+});
+
+export const insertScrapInventorySchema = createInsertSchema(scrapInventory, {
+  scrapDate: z.union([z.string(), z.date()]).transform(val => {
+    if (!val) return new Date();
+    if (typeof val === 'string') {
+      if (val.trim() === '') return new Date();
+      const date = new Date(val);
+      return isNaN(date.getTime()) ? new Date() : date;
+    }
+    return val;
+  }),
+  approvalDate: z.union([z.string(), z.date(), z.null(), z.undefined()]).transform(val => {
+    if (!val || val === '') return null;
+    if (typeof val === 'string') {
+      const date = new Date(val);
+      return isNaN(date.getTime()) ? null : date;
+    }
+    return val;
+  }).optional(),
+  processedDate: z.union([z.string(), z.date(), z.null(), z.undefined()]).transform(val => {
+    if (!val || val === '') return null;
+    if (typeof val === 'string') {
+      const date = new Date(val);
+      return isNaN(date.getTime()) ? null : date;
+    }
+    return val;
+  }).optional(),
+}).omit({
+  id: true,
+  scrapNumber: true, // Auto-generated
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertScrapInventory = z.infer<typeof insertScrapInventorySchema>;
+export type ScrapInventory = typeof scrapInventory.$inferSelect;
