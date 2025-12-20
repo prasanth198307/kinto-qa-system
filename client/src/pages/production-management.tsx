@@ -475,10 +475,39 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
         description: "Invoice deleted successfully",
       });
     },
-    onError: () => {
+    onError: (error: any) => {
       toast({
         title: "Error",
-        description: "Failed to delete invoice",
+        description: error?.message || "Failed to delete invoice",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const cancelInvoiceMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiRequest('POST', `/api/invoices/${id}/cancel-and-reissue`);
+      return response as { newInvoice?: Invoice; message?: string };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/gatepasses'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/finished-goods'] });
+      toast({
+        title: "Invoice Cancelled",
+        description: `New invoice ${data.newInvoice?.invoiceNumber || 'created'} is ready for editing.`,
+      });
+      // Open the new invoice for editing
+      if (data.newInvoice) {
+        setEditingInvoice(data.newInvoice);
+        setIsReissueMode(true);
+        setShowInvoiceForm(true);
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to cancel invoice. Only same-month invoices can be cancelled.",
         variant: "destructive",
       });
     },
@@ -534,6 +563,25 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
   const handleDeleteInvoice = (invoice: Invoice) => {
     if (confirm("Are you sure you want to delete this invoice?")) {
       deleteInvoiceMutation.mutate(invoice.id);
+    }
+  };
+
+  const handleCancelInvoice = (invoice: Invoice) => {
+    const invoiceDate = new Date(invoice.invoiceDate);
+    const now = new Date();
+    const isSameMonth = invoiceDate.getMonth() === now.getMonth() && invoiceDate.getFullYear() === now.getFullYear();
+    
+    if (!isSameMonth) {
+      toast({
+        title: "Cannot Cancel",
+        description: "Only same-month invoices can be cancelled. Use Credit Notes for older invoices.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (confirm(`Cancel invoice ${invoice.invoiceNumber} and create a corrected copy?\n\nThis will:\n• Cancel the original invoice and its gatepass\n• Return inventory to stock\n• Create a new editable invoice with the same details`)) {
+      cancelInvoiceMutation.mutate(invoice.id);
     }
   };
 
@@ -1199,6 +1247,7 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
                 isLoading={isLoadingInvoices}
                 onEdit={handleEditInvoice}
                 onDelete={handleDeleteInvoice}
+                onCancel={handleCancelInvoice}
                 onPayment={handlePayment}
                 onMarkReadyForGatepass={handleMarkReadyForGatepass}
               />

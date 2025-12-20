@@ -2,7 +2,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Trash2, Edit, DollarSign, FileText, Package, Truck, CheckCircle, Eye, PackageCheck, Lock } from "lucide-react";
+import { Trash2, Edit, DollarSign, FileText, Package, Truck, CheckCircle, Eye, PackageCheck, Lock, XCircle } from "lucide-react";
 import type { Invoice } from "@shared/schema";
 import { format } from "date-fns";
 import { Link } from "wouter";
@@ -13,11 +13,12 @@ interface InvoiceTableProps {
   isLoading: boolean;
   onEdit?: (invoice: Invoice) => void;
   onDelete?: (invoice: Invoice) => void;
+  onCancel?: (invoice: Invoice) => void;
   onPayment?: (invoice: Invoice) => void;
   onMarkReadyForGatepass?: (invoice: Invoice) => void;
 }
 
-export default function InvoiceTable({ invoices, isLoading, onEdit, onDelete, onPayment, onMarkReadyForGatepass }: InvoiceTableProps) {
+export default function InvoiceTable({ invoices, isLoading, onEdit, onDelete, onCancel, onPayment, onMarkReadyForGatepass }: InvoiceTableProps) {
   // Use invoice.amountReceived for consistency with invoice detail page and vendor analytics
   // This is the authoritative source from Vyapaar Sale Report
   const getTotalPaid = (invoice: Invoice) => {
@@ -162,7 +163,7 @@ export default function InvoiceTable({ invoices, isLoading, onEdit, onDelete, on
                       )
                     )}
                     {onEdit && (
-                      invoice.status === 'delivered' ? (
+                      (invoice.status === 'delivered' || invoice.status === 'dispatched') ? (
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <span>
@@ -171,16 +172,16 @@ export default function InvoiceTable({ invoices, isLoading, onEdit, onDelete, on
                                 size="sm"
                                 disabled
                                 data-testid={`button-edit-${invoice.id}-disabled`}
-                                title="Delivered invoices cannot be edited"
+                                title="Finalized invoices cannot be edited"
                               >
                                 <Lock className="w-4 h-4 text-muted-foreground" />
                               </Button>
                             </span>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>Delivered invoices cannot be edited.</p>
+                            <p>{invoice.status === 'delivered' ? 'Delivered' : 'Dispatched'} invoices cannot be edited.</p>
                             <p className="text-xs text-muted-foreground mt-1">
-                              Use 'Cancel & Reissue' or 'Credit Notes' from the invoice detail page.
+                              Use 'Cancel & Reissue' (same month) or 'Credit Notes'.
                             </p>
                           </TooltipContent>
                         </Tooltip>
@@ -219,16 +220,65 @@ export default function InvoiceTable({ invoices, isLoading, onEdit, onDelete, on
                       )
                     )}
                     <PrintableInvoice invoice={invoice} />
-                    {onDelete && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onDelete(invoice)}
-                        data-testid={`button-delete-${invoice.id}`}
-                        title="Delete Invoice"
-                      >
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
+                    {/* Show Cancel button for finalized invoices (dispatched/delivered), Delete for drafts */}
+                    {(invoice.status === 'dispatched' || invoice.status === 'delivered') ? (
+                      onCancel && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => onCancel(invoice)}
+                              data-testid={`button-cancel-${invoice.id}`}
+                              title="Cancel & Reissue Invoice"
+                            >
+                              <XCircle className="w-4 h-4 text-destructive" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Cancel & Reissue Invoice</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Creates a corrected invoice (same month only)
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      )
+                    ) : (
+                      onDelete && (
+                        (invoice as any).hasGatepass ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled
+                                  data-testid={`button-delete-${invoice.id}-disabled`}
+                                  title="Cannot delete - gatepass exists"
+                                >
+                                  <Lock className="w-4 h-4 text-muted-foreground" />
+                                </Button>
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Cannot delete - gatepass exists.</p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Delete the gatepass first, or use 'Cancel & Reissue'.
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => onDelete(invoice)}
+                            data-testid={`button-delete-${invoice.id}`}
+                            title="Delete Invoice"
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        )
+                      )
                     )}
                   </div>
                 </TableCell>
