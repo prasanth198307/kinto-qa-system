@@ -19,7 +19,7 @@ import { importVyapaarData, clearImportedData, importPaymentsOnly } from "./vyap
 import { importCreditNotesFromExcel } from "./creditnote-import";
 import { parseExcelFile, commitImport } from "./cashRegisterImport";
 import { importCashRegisterFromExcel } from "./importCashRegisterFromExcel";
-import { insertCashRegisterDaySchema, insertCashRegisterTransactionSchema, insertCashRegisterExpenseItemSchema, insertSalespersonMappingSchema, cashRegisterDays, cashRegisterTransactions, cashRegisterExpenseItems, expenseVouchers, expenseItems } from "@shared/schema";
+import { insertCashRegisterDaySchema, insertCashRegisterTransactionSchema, insertCashRegisterExpenseItemSchema, insertSalespersonMappingSchema, cashRegisterDays, cashRegisterTransactions, cashRegisterExpenseItems, expenseVouchers, expenseItems, customerAdvances, advanceApplications, insertCustomerAdvanceSchema, insertAdvanceApplicationSchema } from "@shared/schema";
 import { sql, and, eq, ne, gte, lte, gt, desc, inArray, isNotNull, type SQL } from "drizzle-orm";
 
 // Simple audit logging function
@@ -139,6 +139,8 @@ const endpointToScreenKey: Record<string, string> = {
   '/api/sales-returns': 'sales_returns',
   '/api/payment-writeoff': 'payment_writeoff',
   '/api/write-off': 'payment_writeoff',
+  '/api/customer-advances': 'customer_advances',
+  '/api/advance-applications': 'customer_advances',
   
   // Dispatch & Logistics
   '/api/gatepasses': 'gatepasses',
@@ -8679,6 +8681,392 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error serving scrap evidence:", error);
       res.status(500).json({ message: 'Failed to retrieve photo' });
+    }
+  });
+
+  // Customer Advances API - Track advance payments before invoicing
+  // Get all customer advances with optional filters
+  app.get('/api/customer-advances', isAuthenticated, async (req: any, res) => {
+    try {
+      const { vendorId, status, page, pageSize } = req.query;
+      
+      // Build query with filters
+      let conditions: any[] = [eq(customerAdvances.recordStatus, 1)];
+      
+      if (vendorId) {
+        conditions.push(eq(customerAdvances.vendorId, vendorId as string));
+      }
+      if (status && status !== 'all') {
+        conditions.push(eq(customerAdvances.status, status as string));
+      }
+      
+      // Get advances with vendor info
+      const advances = await db.select({
+        id: customerAdvances.id,
+        advanceNumber: customerAdvances.advanceNumber,
+        vendorId: customerAdvances.vendorId,
+        vendorName: vendors.vendorName,
+        receiptDate: customerAdvances.receiptDate,
+        amount: customerAdvances.amount,
+        usedAmount: customerAdvances.usedAmount,
+        paymentMethod: customerAdvances.paymentMethod,
+        referenceNumber: customerAdvances.referenceNumber,
+        bankName: customerAdvances.bankName,
+        status: customerAdvances.status,
+        purpose: customerAdvances.purpose,
+        remarks: customerAdvances.remarks,
+        receivedBy: customerAdvances.receivedBy,
+        cancelledAt: customerAdvances.cancelledAt,
+        cancellationRemarks: customerAdvances.cancellationRemarks,
+        createdAt: customerAdvances.createdAt,
+      })
+      .from(customerAdvances)
+      .leftJoin(vendors, eq(customerAdvances.vendorId, vendors.id))
+      .where(and(...conditions))
+      .orderBy(desc(customerAdvances.receiptDate));
+      
+      // Add balance calculation
+      const advancesWithBalance = advances.map(adv => ({
+        ...adv,
+        availableBalance: adv.amount - adv.usedAmount,
+      }));
+      
+      // Handle pagination if requested
+      if (page !== undefined && pageSize !== undefined) {
+        const pageNum = Math.max(1, parseInt(page as string) || 1);
+        const pageSizeNum = Math.min(100, Math.max(1, parseInt(pageSize as string) || 25));
+        const totalItems = advancesWithBalance.length;
+        const totalPages = Math.ceil(totalItems / pageSizeNum);
+        const startIndex = (pageNum - 1) * pageSizeNum;
+        const paginatedData = advancesWithBalance.slice(startIndex, startIndex + pageSizeNum);
+        
+        return res.json({
+          data: paginatedData,
+          meta: { page: pageNum, pageSize: pageSizeNum, totalItems, totalPages },
+        });
+      }
+      
+      res.json(advancesWithBalance);
+    } catch (error) {
+      console.error("Error fetching customer advances:", error);
+      res.status(500).json({ message: "Failed to fetch customer advances" });
+    }
+  });
+
+  // Get advance balance for a specific vendor
+  app.get('/api/customer-advances/vendor/:vendorId/balance', isAuthenticated, async (req: any, res) => {
+    try {
+      const { vendorId } = req.params;
+      
+      const advances = await db.select({
+        amount: customerAdvances.amount,
+        usedAmount: customerAdvances.usedAmount,
+      })
+      .from(customerAdvances)
+      .where(and(
+        eq(customerAdvances.vendorId, vendorId),
+        eq(customerAdvances.status, 'active'),
+        eq(customerAdvances.recordStatus, 1)
+      ));
+      
+      const totalAdvance = advances.reduce((sum, adv) => sum + adv.amount, 0);
+      const totalUsed = advances.reduce((sum, adv) => sum + adv.usedAmount, 0);
+      const availableBalance = totalAdvance - totalUsed;
+      
+      res.json({ 
+        vendorId, 
+        totalAdvance, 
+        totalUsed, 
+        availableBalance,
+        hasAdvance: availableBalance > 0,
+      });
+    } catch (error) {
+      console.error("Error fetching vendor advance balance:", error);
+      res.status(500).json({ message: "Failed to fetch vendor advance balance" });
+    }
+  });
+
+  // Get single customer advance with details
+  app.get('/api/customer-advances/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      const [advance] = await db.select({
+        id: customerAdvances.id,
+        advanceNumber: customerAdvances.advanceNumber,
+        vendorId: customerAdvances.vendorId,
+        vendorName: vendors.vendorName,
+        receiptDate: customerAdvances.receiptDate,
+        amount: customerAdvances.amount,
+        usedAmount: customerAdvances.usedAmount,
+        paymentMethod: customerAdvances.paymentMethod,
+        referenceNumber: customerAdvances.referenceNumber,
+        bankName: customerAdvances.bankName,
+        status: customerAdvances.status,
+        purpose: customerAdvances.purpose,
+        remarks: customerAdvances.remarks,
+        receivedBy: customerAdvances.receivedBy,
+        createdAt: customerAdvances.createdAt,
+      })
+      .from(customerAdvances)
+      .leftJoin(vendors, eq(customerAdvances.vendorId, vendors.id))
+      .where(and(eq(customerAdvances.id, id), eq(customerAdvances.recordStatus, 1)));
+      
+      if (!advance) {
+        return res.status(404).json({ message: "Customer advance not found" });
+      }
+      
+      // Get applications for this advance
+      const applications = await db.select({
+        id: advanceApplications.id,
+        invoiceId: advanceApplications.invoiceId,
+        invoiceNumber: invoices.invoiceNumber,
+        appliedAmount: advanceApplications.appliedAmount,
+        applicationDate: advanceApplications.applicationDate,
+        remarks: advanceApplications.remarks,
+        reversedAt: advanceApplications.reversedAt,
+        createdAt: advanceApplications.createdAt,
+      })
+      .from(advanceApplications)
+      .leftJoin(invoices, eq(advanceApplications.invoiceId, invoices.id))
+      .where(and(
+        eq(advanceApplications.advanceId, id),
+        eq(advanceApplications.recordStatus, 1)
+      ))
+      .orderBy(desc(advanceApplications.applicationDate));
+      
+      res.json({
+        ...advance,
+        availableBalance: advance.amount - advance.usedAmount,
+        applications,
+      });
+    } catch (error) {
+      console.error("Error fetching customer advance:", error);
+      res.status(500).json({ message: "Failed to fetch customer advance" });
+    }
+  });
+
+  // Create new customer advance
+  app.post('/api/customer-advances', requireRole('admin', 'manager', 'AccountsManager'), async (req: any, res) => {
+    try {
+      // Generate advance number
+      const today = format(new Date(), 'yyyyMMdd');
+      const existingCount = await db.select({ count: sql<number>`count(*)` })
+        .from(customerAdvances)
+        .where(sql`${customerAdvances.advanceNumber} LIKE ${'ADV-' + today + '%'}`);
+      const seq = (existingCount[0]?.count || 0) + 1;
+      const advanceNumber = `ADV-${today}-${String(seq).padStart(3, '0')}`;
+      
+      const validatedData = insertCustomerAdvanceSchema.parse({
+        ...req.body,
+        receivedBy: req.user?.id,
+      });
+      
+      const [created] = await db.insert(customerAdvances).values({
+        ...validatedData,
+        advanceNumber,
+        usedAmount: 0,
+        status: 'active',
+      }).returning();
+      
+      await logAudit(req.user?.id, 'CREATE', 'customer_advances', created.id, 
+        `Created advance ${advanceNumber} for ₹${(created.amount / 100).toFixed(2)}`);
+      
+      res.json({ advance: created, message: "Advance payment recorded successfully" });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error creating customer advance:", error);
+      res.status(500).json({ message: "Failed to create customer advance" });
+    }
+  });
+
+  // Apply advance to invoice
+  app.post('/api/customer-advances/:id/apply', requireRole('admin', 'manager', 'AccountsManager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { invoiceId, amount, remarks } = req.body;
+      
+      if (!invoiceId || !amount) {
+        return res.status(400).json({ message: "Invoice ID and amount are required" });
+      }
+      
+      const amountPaise = parseInt(amount);
+      if (isNaN(amountPaise) || amountPaise <= 0) {
+        return res.status(400).json({ message: "Amount must be a positive number" });
+      }
+      
+      // Use transaction for atomicity
+      const result = await db.transaction(async (tx) => {
+        // Get advance with lock
+        const [advance] = await tx.select().from(customerAdvances)
+          .where(and(eq(customerAdvances.id, id), eq(customerAdvances.recordStatus, 1)))
+          .for('update');
+        
+        if (!advance) {
+          throw new Error("Advance not found");
+        }
+        
+        if (advance.status === 'cancelled') {
+          throw new Error("Cannot apply cancelled advance");
+        }
+        
+        const availableBalance = advance.amount - advance.usedAmount;
+        if (amountPaise > availableBalance) {
+          throw new Error(`Insufficient advance balance. Available: ₹${(availableBalance / 100).toFixed(2)}`);
+        }
+        
+        // Get invoice
+        const [invoice] = await tx.select().from(invoices)
+          .where(eq(invoices.id, invoiceId));
+        
+        if (!invoice) {
+          throw new Error("Invoice not found");
+        }
+        
+        // Check invoice belongs to same vendor
+        if (invoice.vendorId !== advance.vendorId) {
+          throw new Error("Invoice does not belong to the same customer as the advance");
+        }
+        
+        // Create payment record
+        const [payment] = await tx.insert(invoicePayments).values({
+          invoiceId,
+          paymentDate: new Date().toISOString(),
+          amount: amountPaise,
+          paymentMethod: 'Advance',
+          paymentType: 'Advance',
+          referenceNumber: advance.advanceNumber,
+          bankName: null,
+          remarks: remarks || `Applied from advance ${advance.advanceNumber}`,
+          recordedBy: req.user?.id,
+        }).returning();
+        
+        // Create application record
+        const [application] = await tx.insert(advanceApplications).values({
+          advanceId: id,
+          invoiceId,
+          invoicePaymentId: payment.id,
+          appliedAmount: amountPaise,
+          applicationDate: format(new Date(), 'yyyy-MM-dd'),
+          appliedBy: req.user?.id,
+          remarks,
+        }).returning();
+        
+        // Update advance used amount
+        const newUsedAmount = advance.usedAmount + amountPaise;
+        const newStatus = newUsedAmount >= advance.amount ? 'fully_used' : 'active';
+        
+        await tx.update(customerAdvances)
+          .set({ 
+            usedAmount: newUsedAmount, 
+            status: newStatus,
+            updatedAt: new Date().toISOString(),
+          })
+          .where(eq(customerAdvances.id, id));
+        
+        return { payment, application, advance };
+      });
+      
+      await logAudit(req.user?.id, 'CREATE', 'advance_applications', result.application.id,
+        `Applied ₹${(amountPaise / 100).toFixed(2)} from advance ${result.advance.advanceNumber} to invoice ${invoiceId}`);
+      
+      res.json({ 
+        application: result.application, 
+        payment: result.payment,
+        message: "Advance applied successfully" 
+      });
+    } catch (error) {
+      if (error instanceof Error) {
+        return res.status(400).json({ message: error.message });
+      }
+      console.error("Error applying advance:", error);
+      res.status(500).json({ message: "Failed to apply advance" });
+    }
+  });
+
+  // Cancel customer advance
+  app.post('/api/customer-advances/:id/cancel', requireRole('admin'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { remarks } = req.body;
+      
+      const [advance] = await db.select().from(customerAdvances)
+        .where(and(eq(customerAdvances.id, id), eq(customerAdvances.recordStatus, 1)));
+      
+      if (!advance) {
+        return res.status(404).json({ message: "Advance not found" });
+      }
+      
+      if (advance.usedAmount > 0) {
+        return res.status(400).json({ 
+          message: "Cannot cancel advance that has been partially or fully used" 
+        });
+      }
+      
+      const [updated] = await db.update(customerAdvances)
+        .set({
+          status: 'cancelled',
+          cancelledAt: new Date().toISOString(),
+          cancellationRemarks: remarks,
+          cancelledBy: req.user?.id,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(customerAdvances.id, id))
+        .returning();
+      
+      await logAudit(req.user?.id, 'UPDATE', 'customer_advances', id, 
+        `Cancelled advance ${advance.advanceNumber}`);
+      
+      res.json({ advance: updated, message: "Advance cancelled successfully" });
+    } catch (error) {
+      console.error("Error cancelling advance:", error);
+      res.status(500).json({ message: "Failed to cancel advance" });
+    }
+  });
+
+  // Get advances available for a specific vendor (for invoice creation)
+  app.get('/api/customer-advances/available/:vendorId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { vendorId } = req.params;
+      
+      const advances = await db.select({
+        id: customerAdvances.id,
+        advanceNumber: customerAdvances.advanceNumber,
+        receiptDate: customerAdvances.receiptDate,
+        amount: customerAdvances.amount,
+        usedAmount: customerAdvances.usedAmount,
+        paymentMethod: customerAdvances.paymentMethod,
+        referenceNumber: customerAdvances.referenceNumber,
+        purpose: customerAdvances.purpose,
+      })
+      .from(customerAdvances)
+      .where(and(
+        eq(customerAdvances.vendorId, vendorId),
+        eq(customerAdvances.status, 'active'),
+        eq(customerAdvances.recordStatus, 1)
+      ))
+      .orderBy(customerAdvances.receiptDate);
+      
+      // Filter to only those with available balance
+      const availableAdvances = advances
+        .map(adv => ({
+          ...adv,
+          availableBalance: adv.amount - adv.usedAmount,
+        }))
+        .filter(adv => adv.availableBalance > 0);
+      
+      const totalAvailable = availableAdvances.reduce((sum, adv) => sum + adv.availableBalance, 0);
+      
+      res.json({
+        advances: availableAdvances,
+        totalAvailable,
+        count: availableAdvances.length,
+      });
+    } catch (error) {
+      console.error("Error fetching available advances:", error);
+      res.status(500).json({ message: "Failed to fetch available advances" });
     }
   });
 
