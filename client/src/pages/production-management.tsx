@@ -486,8 +486,8 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
 
   const cancelInvoiceMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await apiRequest('POST', `/api/invoices/${id}/cancel-and-reissue`);
-      return response as { newInvoice?: Invoice; message?: string };
+      const response = await apiRequest('POST', `/api/invoices/${id}/cancel`);
+      return response as { invoiceNumber?: string; message?: string };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
@@ -495,14 +495,8 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
       queryClient.invalidateQueries({ queryKey: ['/api/finished-goods'] });
       toast({
         title: "Invoice Cancelled",
-        description: `New invoice ${data.newInvoice?.invoiceNumber || 'created'} is ready for editing.`,
+        description: `Invoice ${data.invoiceNumber || ''} has been cancelled. Gatepass cancelled and inventory returned.`,
       });
-      // Open the new invoice for editing
-      if (data.newInvoice) {
-        setEditingInvoice(data.newInvoice);
-        setIsReissueMode(true);
-        setShowInvoiceForm(true);
-      }
     },
     onError: (error: any) => {
       toast({
@@ -580,7 +574,7 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
       return;
     }
     
-    if (confirm(`Cancel invoice ${invoice.invoiceNumber} and create a corrected copy?\n\nThis will:\n• Cancel the original invoice and its gatepass\n• Return inventory to stock\n• Create a new editable invoice with the same details`)) {
+    if (confirm(`Cancel invoice ${invoice.invoiceNumber}?\n\nThis will:\n• Cancel the invoice\n• Cancel the gatepass (if any)\n• Return inventory to stock`)) {
       cancelInvoiceMutation.mutate(invoice.id);
     }
   };

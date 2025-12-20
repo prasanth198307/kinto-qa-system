@@ -230,15 +230,15 @@ export default function InvoiceTable({ invoices, isLoading, onEdit, onDelete, on
                               size="sm"
                               onClick={() => onCancel(invoice)}
                               data-testid={`button-cancel-${invoice.id}`}
-                              title="Cancel & Reissue Invoice"
+                              title="Cancel Invoice"
                             >
                               <XCircle className="w-4 h-4 text-destructive" />
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>Cancel & Reissue Invoice</p>
+                            <p>Cancel Invoice</p>
                             <p className="text-xs text-muted-foreground mt-1">
-                              Creates a corrected invoice (same month only)
+                              Cancels invoice, gatepass, and returns inventory (same month only)
                             </p>
                           </TooltipContent>
                         </Tooltip>

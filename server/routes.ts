@@ -6788,6 +6788,124 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Cancel invoice (simple cancel - soft deletes invoice and gatepass, returns inventory)
+  // Uses same pattern as cancel-and-reissue but without creating a new invoice
+  app.post('/api/invoices/:id/cancel', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { reason } = req.body;
+      
+      // Fetch the invoice
+      const invoice = await storage.getInvoice(id);
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      
+      // Check if invoice is already cancelled (recordStatus = 0)
+      if (invoice.recordStatus === 0) {
+        return res.status(400).json({ message: "Invoice is already cancelled" });
+      }
+      
+      // Check if invoice is in current month (same restriction as cancel-and-reissue)
+      const now = new Date();
+      const invoiceDate = new Date(invoice.invoiceDate);
+      const currentMonth = now.getMonth();
+      const currentYear = now.getFullYear();
+      const invoiceMonth = invoiceDate.getMonth();
+      const invoiceYear = invoiceDate.getFullYear();
+      
+      if (invoiceMonth !== currentMonth || invoiceYear !== currentYear) {
+        return res.status(400).json({ 
+          message: "Can only cancel invoices from the current month. For older invoices, use Credit Notes instead.",
+          invoiceMonth: invoiceDate.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }),
+          currentMonth: now.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
+        });
+      }
+      
+      // Check if invoice has an associated gatepass
+      const existingGatepasses = await db
+        .select()
+        .from(gatepasses)
+        .where(
+          and(
+            eq(gatepasses.invoiceId, id),
+            eq(gatepasses.recordStatus, 1)
+          )
+        );
+      
+      // Get invoice items for inventory return
+      const items = await storage.getInvoiceItems(id);
+      
+      // Use a transaction for atomicity
+      await db.transaction(async (tx) => {
+        const cancelledGatepassNumbers: string[] = [];
+        
+        // Cancel gatepasses (soft delete)
+        for (const gp of existingGatepasses) {
+          await tx.update(gatepasses)
+            .set({ recordStatus: 0 })
+            .where(eq(gatepasses.id, gp.id));
+          
+          cancelledGatepassNumbers.push(gp.gatepassNumber);
+          console.log(`[CANCEL] Cancelled gatepass ${gp.gatepassNumber}`);
+        }
+        
+        // Return inventory to finished goods (same logic as cancel-and-reissue)
+        for (const item of items) {
+          if (item.productId && item.quantity > 0) {
+            // Verify product exists
+            const [existingProduct] = await tx.select({ id: products.id })
+              .from(products)
+              .where(eq(products.id, item.productId))
+              .limit(1);
+            
+            if (existingProduct) {
+              const batchNumber = `CANCEL-${invoice.invoiceNumber}-${format(new Date(), 'yyyyMMdd-HHmmss')}`;
+              const hasGatepass = cancelledGatepassNumbers.length > 0;
+              
+              await tx.insert(finishedGoods).values({
+                productId: item.productId,
+                batchNumber,
+                productionDate: new Date().toISOString(),
+                quantity: item.quantity,
+                qualityStatus: 'approved',
+                remarks: hasGatepass 
+                  ? `Inventory returned - Invoice ${invoice.invoiceNumber} cancelled. Gatepass(es): ${cancelledGatepassNumbers.join(', ')}. ${reason ? 'Reason: ' + reason : ''}`
+                  : `Inventory returned - Invoice ${invoice.invoiceNumber} cancelled. ${reason ? 'Reason: ' + reason : ''}`,
+                createdBy: req.user?.id,
+              });
+              
+              console.log(`[INVENTORY] Returned ${item.quantity} units of product ${item.productId} to inventory (Cancel)`);
+            } else {
+              console.warn(`[INVENTORY] Skipping inventory return for product ${item.productId} - product not found`);
+            }
+          }
+        }
+        
+        // Cancel the invoice (soft delete with cancellation tracking)
+        await tx.update(invoices)
+          .set({ 
+            recordStatus: 0,
+            cancelledAt: new Date().toISOString(),
+            cancelledBy: req.user?.id || null,
+            remarks: reason ? `Cancelled: ${reason}` : 'Cancelled'
+          })
+          .where(eq(invoices.id, id));
+        
+        console.log(`[AUDIT] Invoice ${invoice.invoiceNumber} cancelled by user. Reason: ${reason || 'Not specified'}`);
+      });
+      
+      res.json({ 
+        message: "Invoice cancelled successfully",
+        invoiceNumber: invoice.invoiceNumber,
+        gatepassesCancelled: existingGatepasses.length
+      });
+    } catch (error) {
+      console.error("Error cancelling invoice:", error);
+      res.status(500).json({ message: "Failed to cancel invoice" });
+    }
+  });
+
   // Cancel & Reissue invoice (for current month corrections)
   app.post('/api/invoices/:id/cancel-and-reissue', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
