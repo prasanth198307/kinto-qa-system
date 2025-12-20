@@ -5636,6 +5636,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       
+      // Get the gatepass to check its status and linked invoice
+      const gatepass = await storage.getGatepass(id);
+      if (!gatepass) {
+        return res.status(404).json({ message: "Gatepass not found" });
+      }
+      
+      // Check if the gatepass is already dispatched (vehicle left)
+      if (gatepass.status === 'vehicle_out') {
+        return res.status(400).json({ 
+          message: "Cannot delete gatepass. Vehicle has already left the premises. Use 'Cancel & Reissue' workflow instead."
+        });
+      }
+      
+      // Check if the gatepass is delivered
+      if (gatepass.status === 'delivered') {
+        return res.status(400).json({ 
+          message: "Cannot delete gatepass. Goods have been delivered. Use 'Cancel & Reissue' workflow instead."
+        });
+      }
+      
+      // Check if linked invoice is dispatched or delivered
+      if (gatepass.invoiceId) {
+        const invoice = await storage.getInvoice(gatepass.invoiceId);
+        if (invoice) {
+          if (invoice.status === 'dispatched') {
+            return res.status(400).json({ 
+              message: "Cannot delete gatepass. Invoice is marked as dispatched. Use 'Cancel & Reissue' workflow instead."
+            });
+          }
+          if (invoice.status === 'delivered') {
+            return res.status(400).json({ 
+              message: "Cannot delete gatepass. Invoice is marked as delivered. Use 'Cancel & Reissue' workflow instead."
+            });
+          }
+        }
+      }
+      
       // First, get all items from this gatepass to return inventory
       const gatepassItems = await storage.getGatepassItems(id);
       
@@ -5666,6 +5703,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Now delete the gatepass (soft delete)
       await storage.deleteGatepass(id);
       
+      console.log(`[AUDIT] Gatepass ${gatepass.gatepassNumber} deleted by user, ${gatepassItems.length} items returned to inventory`);
       res.json({ 
         message: "Gatepass cancelled and inventory returned to finished goods successfully",
         itemsReturned: gatepassItems.length
@@ -6702,6 +6740,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       
+      // Get invoice to check status
+      const invoice = await storage.getInvoice(id);
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      
+      // Block deletion of delivered invoices
+      if (invoice.status === 'delivered') {
+        return res.status(400).json({ 
+          message: "Delivered invoices cannot be deleted. Use 'Cancel & Reissue' for current month invoices or 'Credit Notes' for older invoices."
+        });
+      }
+      
+      // Block deletion of dispatched invoices (vehicle already left)
+      if (invoice.status === 'dispatched') {
+        return res.status(400).json({ 
+          message: "Dispatched invoices cannot be deleted. The vehicle has already left the premises. Mark as delivered or use 'Cancel & Reissue' if needed."
+        });
+      }
+      
       // Check if invoice has an associated gatepass
       const existingGatepass = await db
         .select()
@@ -6722,6 +6780,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       await storage.deleteInvoice(id);
+      console.log(`[AUDIT] Invoice ${invoice.invoiceNumber} deleted by user`);
       res.json({ message: "Invoice deleted successfully" });
     } catch (error) {
       console.error("Error deleting invoice:", error);
