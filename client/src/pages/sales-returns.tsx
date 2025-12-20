@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -14,8 +14,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Package, CheckCircle, AlertCircle, Trash2 } from "lucide-react";
+import { Plus, Package, CheckCircle, AlertCircle, Trash2, Search, Loader2 } from "lucide-react";
 import { format } from "date-fns";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 
 const createReturnSchema = z.object({
   invoiceId: z.string().min(1, "Invoice is required"),
@@ -25,13 +27,24 @@ const createReturnSchema = z.object({
   items: z.array(z.object({
     productId: z.string().min(1, "Product is required"),
     productName: z.string().min(1),
-    batchNumber: z.string().min(1, "Batch number is required"),
+    batchNumber: z.string().optional(),
     quantityReturned: z.coerce.number().min(1, "Quantity must be at least 1"),
+    maxQuantity: z.coerce.number().optional(), // Max quantity from invoice
+    unitPrice: z.coerce.number().optional(), // Unit price from invoice
     returnReason: z.string().min(1, "Reason is required"),
   })).min(1, "At least one item is required"),
 });
 
 type CreateReturnForm = z.infer<typeof createReturnSchema>;
+
+interface InvoiceItem {
+  id: string;
+  productId: string;
+  description?: string;
+  quantity: number;
+  unitPrice: number;
+  product?: { name: string };
+}
 
 const inspectSchema = z.object({
   inspections: z.array(z.object({
@@ -46,13 +59,33 @@ export default function SalesReturnsPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [inspectDialogOpen, setInspectDialogOpen] = useState(false);
   const [selectedReturn, setSelectedReturn] = useState<any>(null);
+  const [invoiceSearchOpen, setInvoiceSearchOpen] = useState(false);
+  const [invoiceSearch, setInvoiceSearch] = useState("");
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
+  const [loadingInvoiceItems, setLoadingInvoiceItems] = useState(false);
 
   const { data: returns = [], isLoading } = useQuery<any[]>({
     queryKey: ['/api/sales-returns'],
   });
 
+  // Only fetch delivered invoices (can only return delivered items)
   const { data: invoices = [] } = useQuery<any[]>({
     queryKey: ['/api/invoices'],
+  });
+
+  // Filter to only delivered invoices for returns
+  const deliveredInvoices = invoices.filter((inv: any) => 
+    inv.status === 'delivered' || inv.dispatchStatus === 'pod_confirmed'
+  );
+
+  // Filter invoices based on search
+  const filteredInvoices = deliveredInvoices.filter((inv: any) => {
+    const searchLower = invoiceSearch.toLowerCase();
+    return (
+      inv.invoiceNumber?.toLowerCase().includes(searchLower) ||
+      inv.customerName?.toLowerCase().includes(searchLower) ||
+      inv.vendorName?.toLowerCase().includes(searchLower)
+    );
   });
 
   const { data: products = [] } = useQuery<any[]>({
@@ -66,14 +99,56 @@ export default function SalesReturnsPage() {
       returnDate: format(new Date(), "yyyy-MM-dd"),
       returnReason: "",
       customerRemarks: "",
-      items: [{ productId: "", productName: "", batchNumber: "", quantityReturned: 1, returnReason: "" }],
+      items: [],
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, replace } = useFieldArray({
     control: form.control,
     name: "items",
   });
+
+  // Load invoice items when invoice is selected
+  const loadInvoiceItems = async (invoiceId: string) => {
+    setLoadingInvoiceItems(true);
+    try {
+      const response = await apiRequest('GET', `/api/invoices/${invoiceId}/items`);
+      const items: InvoiceItem[] = await response.json();
+      
+      // Convert invoice items to return items with max quantity validation
+      const returnItems = items.map((item) => ({
+        productId: item.productId,
+        productName: item.product?.name || item.description || 'Unknown Product',
+        batchNumber: '',
+        quantityReturned: 1,
+        maxQuantity: item.quantity,
+        unitPrice: item.unitPrice,
+        returnReason: '',
+      }));
+      
+      replace(returnItems);
+      toast({ title: `Loaded ${items.length} items from invoice` });
+    } catch (error: any) {
+      toast({ 
+        title: "Failed to load invoice items", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    } finally {
+      setLoadingInvoiceItems(false);
+    }
+  };
+
+  // Handle invoice selection
+  const handleInvoiceSelect = (invoiceId: string) => {
+    form.setValue('invoiceId', invoiceId);
+    setSelectedInvoiceId(invoiceId);
+    setInvoiceSearchOpen(false);
+    loadInvoiceItems(invoiceId);
+  };
+
+  // Get selected invoice details
+  const selectedInvoice = invoices.find((inv: any) => inv.id === form.watch('invoiceId'));
 
   const createMutation = useMutation({
     mutationFn: async (data: CreateReturnForm) => {
@@ -178,22 +253,60 @@ export default function SalesReturnsPage() {
                     control={form.control}
                     name="invoiceId"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className="flex flex-col">
                         <FormLabel>Invoice</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger data-testid="select-invoice">
-                              <SelectValue placeholder="Select invoice" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {invoices.map((inv: any) => (
-                              <SelectItem key={inv.id} value={inv.id}>
-                                {inv.invoiceNumber} - {inv.customerName}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <Popover open={invoiceSearchOpen} onOpenChange={setInvoiceSearchOpen}>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={invoiceSearchOpen}
+                                className="justify-between"
+                                data-testid="select-invoice"
+                              >
+                                {selectedInvoice 
+                                  ? `${selectedInvoice.invoiceNumber} - ${selectedInvoice.customerName || selectedInvoice.vendorName}`
+                                  : "Search invoice..."}
+                                <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[400px] p-0" align="start">
+                            <Command>
+                              <CommandInput 
+                                placeholder="Search by invoice number or customer..."
+                                value={invoiceSearch}
+                                onValueChange={setInvoiceSearch}
+                                data-testid="input-invoice-search"
+                              />
+                              <CommandList>
+                                <CommandEmpty>
+                                  {deliveredInvoices.length === 0 
+                                    ? "No delivered invoices found"
+                                    : "No matching invoices found"}
+                                </CommandEmpty>
+                                <CommandGroup heading="Delivered Invoices">
+                                  {filteredInvoices.slice(0, 20).map((inv: any) => (
+                                    <CommandItem
+                                      key={inv.id}
+                                      value={`${inv.invoiceNumber} ${inv.customerName || inv.vendorName}`}
+                                      onSelect={() => handleInvoiceSelect(inv.id)}
+                                      data-testid={`invoice-option-${inv.id}`}
+                                    >
+                                      <div className="flex flex-col">
+                                        <span className="font-medium">{inv.invoiceNumber}</span>
+                                        <span className="text-sm text-muted-foreground">
+                                          {inv.customerName || inv.vendorName} - {format(new Date(inv.invoiceDate), 'dd MMM yyyy')}
+                                        </span>
+                                      </div>
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -255,111 +368,112 @@ export default function SalesReturnsPage() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="font-semibold">Return Items</h3>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => append({ productId: "", productName: "", batchNumber: "", quantityReturned: 1, returnReason: "" })}
-                      data-testid="button-add-item"
-                    >
-                      <Plus className="h-4 w-4 mr-1" />
-                      Add Item
-                    </Button>
+                    {loadingInvoiceItems && (
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Loading items...
+                      </div>
+                    )}
                   </div>
 
-                  {fields.map((field, index) => (
-                    <Card key={field.id}>
+                  {fields.length === 0 && !loadingInvoiceItems && (
+                    <Card className="border-dashed">
+                      <CardContent className="py-8 text-center text-muted-foreground">
+                        {form.watch('invoiceId') 
+                          ? "No items loaded from invoice"
+                          : "Select an invoice to load items automatically"}
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {fields.map((field, index) => {
+                    const maxQty = form.watch(`items.${index}.maxQuantity`) || 0;
+                    const currentQty = form.watch(`items.${index}.quantityReturned`) || 0;
+                    const unitPrice = form.watch(`items.${index}.unitPrice`) || 0;
+                    const isOverMax = currentQty > maxQty;
+                    
+                    return (
+                    <Card key={field.id} className={isOverMax ? "border-destructive" : ""}>
                       <CardContent className="pt-6 space-y-4">
                         <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1 grid grid-cols-2 gap-4">
-                            <FormField
-                              control={form.control}
-                              name={`items.${index}.productId`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Product</FormLabel>
-                                  <Select
-                                    onValueChange={(value) => {
-                                      field.onChange(value);
-                                      const product = products.find((p: any) => p.id === value);
-                                      if (product) {
-                                        form.setValue(`items.${index}.productName`, product.name);
-                                      }
-                                    }}
-                                    value={field.value}
-                                  >
+                          <div className="flex-1 space-y-4">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <span className="font-medium">{form.watch(`items.${index}.productName`)}</span>
+                                <span className="text-sm text-muted-foreground ml-2">
+                                  (Max: {maxQty} @ {(unitPrice / 100).toFixed(2)}/unit)
+                                </span>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => remove(index)}
+                                data-testid={`button-remove-item-${index}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                            
+                            <div className="grid grid-cols-3 gap-4">
+                              <FormField
+                                control={form.control}
+                                name={`items.${index}.quantityReturned`}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Qty to Return</FormLabel>
                                     <FormControl>
-                                      <SelectTrigger data-testid={`select-product-${index}`}>
-                                        <SelectValue placeholder="Select product" />
-                                      </SelectTrigger>
+                                      <Input 
+                                        type="number" 
+                                        min={1}
+                                        max={maxQty}
+                                        {...field} 
+                                        className={isOverMax ? "border-destructive" : ""}
+                                        data-testid={`input-quantity-${index}`} 
+                                      />
                                     </FormControl>
-                                    <SelectContent>
-                                      {products.map((prod: any) => (
-                                        <SelectItem key={prod.id} value={prod.id}>
-                                          {prod.name}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name={`items.${index}.batchNumber`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Batch Number</FormLabel>
-                                  <FormControl>
-                                    <Input {...field} data-testid={`input-batch-${index}`} />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name={`items.${index}.quantityReturned`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Quantity Returned</FormLabel>
-                                  <FormControl>
-                                    <Input type="number" {...field} data-testid={`input-quantity-${index}`} />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name={`items.${index}.returnReason`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Item Reason</FormLabel>
-                                  <FormControl>
-                                    <Input {...field} placeholder="e.g., Broken seal" data-testid={`input-item-reason-${index}`} />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
+                                    {isOverMax && (
+                                      <p className="text-xs text-destructive">
+                                        Cannot exceed {maxQty}
+                                      </p>
+                                    )}
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={form.control}
+                                name={`items.${index}.batchNumber`}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Batch (Optional)</FormLabel>
+                                    <FormControl>
+                                      <Input {...field} placeholder="e.g., LOT-2024" data-testid={`input-batch-${index}`} />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={form.control}
+                                name={`items.${index}.returnReason`}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Item Reason</FormLabel>
+                                    <FormControl>
+                                      <Input {...field} placeholder="e.g., Broken seal" data-testid={`input-item-reason-${index}`} />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
                           </div>
-                          {fields.length > 1 && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => remove(index)}
-                              data-testid={`button-remove-item-${index}`}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
                         </div>
                       </CardContent>
                     </Card>
-                  ))}
+                  );
+                  })}
                 </div>
 
                 <div className="flex justify-end gap-2 pt-4">

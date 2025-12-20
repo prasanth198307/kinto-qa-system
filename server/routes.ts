@@ -7880,6 +7880,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "At least one return item is required" });
       }
       
+      // Server-side max quantity validation: fetch invoice items and validate quantities
+      const invoiceItemsList = await storage.getInvoiceItems(header.invoiceId);
+      const invoiceItemMap = new Map<string, number>();
+      invoiceItemsList.forEach((ii: any) => {
+        invoiceItemMap.set(ii.productId, ii.quantity);
+      });
+      
+      for (const item of items) {
+        const maxQty = invoiceItemMap.get(item.productId) || 0;
+        if (item.quantityReturned > maxQty) {
+          return res.status(400).json({ 
+            message: `Cannot return more than invoiced quantity for product ${item.productName || item.productId}. Max: ${maxQty}, Requested: ${item.quantityReturned}` 
+          });
+        }
+        if (item.quantityReturned < 1) {
+          return res.status(400).json({ 
+            message: `Quantity must be at least 1 for product ${item.productName || item.productId}` 
+          });
+        }
+      }
+      
       // Create return header using storage
       const salesReturn = await storage.createSalesReturn(validatedHeader);
       
@@ -8037,16 +8058,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 createdBy: req.user?.id,
               }]);
               
-              // Generate scrap number
-              const scrapCount = await tx.select({ count: sql<number>`count(*)` })
-                .from(scrapInventory)
-                .where(sql`DATE(scrap_date) = CURRENT_DATE`);
-              const seq = (scrapCount[0]?.count || 0) + 1;
-              const scrapNumber = `SCRAP-${format(new Date(), 'yyyyMMdd')}-${String(seq).padStart(3, '0')}`;
+              // Generate scrap number with atomic sequence (use COALESCE + MAX + FOR UPDATE pattern)
+              const today = format(new Date(), 'yyyyMMdd');
+              const scrapCountResult = await tx.execute(sql`
+                SELECT COALESCE(MAX(CAST(SUBSTRING(scrap_number FROM 15 FOR 3) AS INTEGER)), 0) + 1 as next_seq
+                FROM scrap_inventory 
+                WHERE scrap_number LIKE ${'SCRAP-' + today + '-%'}
+                FOR UPDATE
+              `);
+              const seq = scrapCountResult.rows?.[0]?.next_seq || 1;
+              const scrapNumber = `SCRAP-${today}-${String(seq).padStart(3, '0')}`;
               
-              // Calculate costs - use item's unit cost if available, otherwise estimate from selling price
-              const unitCost = item.unitCost || Math.round(item.unitPrice * 0.6); // Assume 40% margin if no cost data
-              const sellingPrice = item.unitPrice;
+              // Calculate costs with robust fallback to prevent NaN
+              // Priority: item.unitCost > 60% of selling price > product cost (if exists) > 0
+              let unitCost = 0;
+              const sellingPrice = item.unitPrice || 0;
+              
+              if (item.unitCost && item.unitCost > 0) {
+                unitCost = item.unitCost;
+              } else if (sellingPrice > 0) {
+                unitCost = Math.round(sellingPrice * 0.6); // Assume 40% margin
+              } else if (product.costPrice && product.costPrice > 0) {
+                unitCost = product.costPrice;
+              }
+              
               const totalCostValue = unitCost * item.quantityReturned;
               const totalSellingValue = sellingPrice * item.quantityReturned;
               
@@ -8237,8 +8272,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============ SCRAP INVENTORY API ============
-  // Get all scrap inventory records with optional filters
-  app.get('/api/scrap-inventory', isAuthenticated, async (req: any, res) => {
+  // Get all scrap inventory records with optional filters (manager+ only)
+  app.get('/api/scrap-inventory', requireRole('admin', 'manager', 'AccountsManager'), async (req: any, res) => {
     try {
       const { startDate, endDate, approvalStatus, productId } = req.query;
       
@@ -8274,8 +8309,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get scrap inventory summary/report for month-end loss calculation
-  app.get('/api/scrap-inventory/report', isAuthenticated, async (req: any, res) => {
+  // Get scrap inventory summary/report for month-end loss calculation (manager+ only)
+  app.get('/api/scrap-inventory/report', requireRole('admin', 'manager', 'AccountsManager'), async (req: any, res) => {
     try {
       const { month, year } = req.query;
       
@@ -8351,8 +8386,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get specific scrap record
-  app.get('/api/scrap-inventory/:id', isAuthenticated, async (req: any, res) => {
+  // Get specific scrap record (manager+ only)
+  app.get('/api/scrap-inventory/:id', requireRole('admin', 'manager', 'AccountsManager'), async (req: any, res) => {
     try {
       const { id } = req.params;
       const [scrap] = await db.select()
