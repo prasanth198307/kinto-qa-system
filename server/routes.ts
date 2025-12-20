@@ -6822,6 +6822,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // For ready_for_gatepass status, validate ship-to details are present
+      if (status === 'ready_for_gatepass') {
+        const [existingInvoice] = await db.select().from(invoices).where(eq(invoices.id, id));
+        if (!existingInvoice) {
+          return res.status(404).json({ message: "Invoice not found" });
+        }
+        
+        if (!existingInvoice.shipToName && !existingInvoice.shipToAddress) {
+          return res.status(400).json({ 
+            message: "Cannot mark invoice ready for gatepass. Ship-to details (name or address) are required. Please edit the invoice and add shipping address first." 
+          });
+        }
+      }
+      
       // Prepare update data
       const updateData: any = { status };
       if (dispatchDate) updateData.dispatchDate = new Date(dispatchDate);
