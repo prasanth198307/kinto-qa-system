@@ -3191,3 +3191,95 @@ export const insertScrapInventorySchema = createInsertSchema(scrapInventory, {
 
 export type InsertScrapInventory = z.infer<typeof insertScrapInventorySchema>;
 export type ScrapInventory = typeof scrapInventory.$inferSelect;
+
+// Customer Advances - Track advance payments received before invoicing
+export const customerAdvances = pgTable("customer_advances", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  advanceNumber: varchar("advance_number", { length: 100 }).unique().notNull(), // ADV-YYYYMMDD-{seq}
+  
+  // Customer reference (vendor = customer in this context)
+  vendorId: varchar("vendor_id").references(() => vendors.id).notNull(),
+  
+  // Receipt details
+  receiptDate: date("receipt_date").notNull(),
+  amount: integer("amount").notNull(), // Amount received (in paise)
+  usedAmount: integer("used_amount").default(0).notNull(), // Amount applied to invoices (in paise)
+  
+  // Payment details
+  paymentMethod: varchar("payment_method", { length: 50 }).notNull(), // Cash, Cheque, NEFT, UPI, etc.
+  referenceNumber: varchar("reference_number", { length: 100 }), // Transaction ID, Cheque number, etc.
+  bankName: varchar("bank_name", { length: 255 }), // Bank name for cheque/transfer
+  
+  // Status tracking
+  status: varchar("status", { length: 50 }).default('active').notNull(), // active, fully_used, cancelled
+  
+  // Metadata
+  purpose: text("purpose"), // What the advance is for (general, specific order, etc.)
+  remarks: text("remarks"),
+  receivedBy: varchar("received_by").references(() => users.id),
+  
+  // Cancellation fields
+  cancelledAt: timestamp("cancelled_at", { mode: 'string' }),
+  cancellationRemarks: text("cancellation_remarks"),
+  cancelledBy: varchar("cancelled_by").references(() => users.id),
+  
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
+}, (table) => ({
+  vendorIdx: index("customer_advances_vendor_idx").on(table.vendorId),
+  statusIdx: index("customer_advances_status_idx").on(table.status),
+}));
+
+export const insertCustomerAdvanceSchema = createInsertSchema(customerAdvances, {
+  receiptDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format"),
+}).omit({
+  id: true,
+  advanceNumber: true, // Auto-generated
+  usedAmount: true, // Managed by system
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertCustomerAdvance = z.infer<typeof insertCustomerAdvanceSchema>;
+export type CustomerAdvance = typeof customerAdvances.$inferSelect;
+
+// Advance Applications - Track how advances are applied to invoices
+export const advanceApplications = pgTable("advance_applications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // References
+  advanceId: varchar("advance_id").references(() => customerAdvances.id).notNull(),
+  invoiceId: varchar("invoice_id").references(() => invoices.id).notNull(),
+  invoicePaymentId: varchar("invoice_payment_id").references(() => invoicePayments.id), // Link to the payment record created
+  
+  // Application details
+  appliedAmount: integer("applied_amount").notNull(), // Amount applied (in paise)
+  applicationDate: date("application_date").notNull(),
+  
+  // Metadata
+  appliedBy: varchar("applied_by").references(() => users.id),
+  remarks: text("remarks"),
+  
+  // Reversal tracking
+  reversedAt: timestamp("reversed_at", { mode: 'string' }),
+  reversalRemarks: text("reversal_remarks"),
+  reversedBy: varchar("reversed_by").references(() => users.id),
+  
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+}, (table) => ({
+  advanceIdx: index("advance_applications_advance_idx").on(table.advanceId),
+  invoiceIdx: index("advance_applications_invoice_idx").on(table.invoiceId),
+}));
+
+export const insertAdvanceApplicationSchema = createInsertSchema(advanceApplications).omit({
+  id: true,
+  invoicePaymentId: true, // Set by system
+  recordStatus: true,
+  createdAt: true,
+});
+
+export type InsertAdvanceApplication = z.infer<typeof insertAdvanceApplicationSchema>;
+export type AdvanceApplication = typeof advanceApplications.$inferSelect;
