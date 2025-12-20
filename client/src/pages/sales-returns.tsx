@@ -14,7 +14,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Package, CheckCircle, AlertCircle, Trash2, Search, Loader2, Camera, Image, Upload, X } from "lucide-react";
+import { Plus, Package, CheckCircle, AlertCircle, Trash2, Search, Loader2, Camera, Image, Upload, X, Printer } from "lucide-react";
+import PrintableSalesReturn from "@/components/PrintableSalesReturn";
+import PrintableScrapInventory from "@/components/PrintableScrapInventory";
 import { format } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -556,6 +558,7 @@ export default function SalesReturnsPage() {
                     <TableCell>{getStatusBadge(returnRecord.status)}</TableCell>
                     <TableCell>
                       <div className="flex gap-2">
+                        <PrintableSalesReturn salesReturn={returnRecord} />
                         {returnRecord.status === 'pending' && (
                           <Button
                             size="sm"
@@ -806,6 +809,7 @@ function ScrapInventorySection() {
               <TableHead>Loss Amount</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Evidence</TableHead>
+              <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -860,6 +864,9 @@ function ScrapInventorySection() {
                       </Button>
                     </div>
                   )}
+                </TableCell>
+                <TableCell>
+                  <PrintableScrapInventory scrap={scrap} />
                 </TableCell>
               </TableRow>
             ))}

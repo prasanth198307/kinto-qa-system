@@ -13,7 +13,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
-import { Plus, FileText, Trash2, Search, Eye, Check, X, Receipt, Send, IndianRupee, Calendar, User, Building2 } from "lucide-react";
+import { Plus, FileText, Trash2, Search, Eye, Check, X, Receipt, Send, IndianRupee, Calendar, User, Building2, Printer } from "lucide-react";
+import PrintableExpenseVoucher from "@/components/PrintableExpenseVoucher";
 import type { ExpenseCategory, ExpenseVoucher, ExpenseItem, PaginationMeta } from "@shared/schema";
 import { DataTablePagination } from "@/components/DataTablePagination";
 
@@ -517,6 +518,7 @@ export default function ExpensesPage() {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
+                          <PrintableExpenseVoucher voucher={voucher} />
                           {voucher.status === 'draft' && (
                             <>
                               <Button
