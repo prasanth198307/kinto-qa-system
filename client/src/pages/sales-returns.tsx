@@ -14,7 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Package, CheckCircle, AlertCircle, Trash2, Search, Loader2 } from "lucide-react";
+import { Plus, Package, CheckCircle, AlertCircle, Trash2, Search, Loader2, Camera, Image, Upload, X } from "lucide-react";
 import { format } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -587,6 +587,9 @@ export default function SalesReturnsPage() {
         </CardContent>
       </Card>
 
+      {/* Scrap Inventory Section */}
+      <ScrapInventorySection />
+
       {/* Inspect Dialog */}
       <Dialog open={inspectDialogOpen} onOpenChange={setInspectDialogOpen}>
         <DialogContent className="max-w-4xl">
@@ -688,5 +691,199 @@ function InspectionForm({ returnRecord, onSubmit, isPending }: { returnRecord: a
         </Button>
       </div>
     </div>
+  );
+}
+
+// Scrap Inventory Section with Photo Upload
+function ScrapInventorySection() {
+  const { toast } = useToast();
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  const { data: scrapRecords = [], isLoading } = useQuery<any[]>({
+    queryKey: ['/api/scrap-inventory'],
+  });
+
+  const uploadEvidenceMutation = useMutation({
+    mutationFn: async ({ id, file }: { id: string; file: File }) => {
+      const formData = new FormData();
+      formData.append('photo', file);
+      
+      const response = await fetch(`/api/scrap-inventory/${id}/evidence`, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Upload failed');
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/scrap-inventory'] });
+      toast({ title: "Damage evidence uploaded successfully" });
+      setUploadingId(null);
+    },
+    onError: (error: Error) => {
+      toast({ 
+        title: "Upload failed", 
+        description: error.message,
+        variant: "destructive" 
+      });
+      setUploadingId(null); // Reset to allow retry
+    },
+  });
+
+  const handleFileChange = (id: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast({ 
+          title: "File too large", 
+          description: "Please select an image under 5MB",
+          variant: "destructive" 
+        });
+        return;
+      }
+      setUploadingId(id);
+      uploadEvidenceMutation.mutate({ id, file });
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'approved':
+        return <Badge className="bg-green-500/10 text-green-600">Approved</Badge>;
+      case 'rejected':
+        return <Badge className="bg-red-500/10 text-red-600">Rejected</Badge>;
+      default:
+        return <Badge className="bg-yellow-500/10 text-yellow-600">Pending</Badge>;
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <AlertCircle className="h-5 w-5" />
+            Scrap Inventory
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (scrapRecords.length === 0) {
+    return null; // Don't show section if no scrap records
+  }
+
+  return (
+    <Card className="mt-6">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <AlertCircle className="h-5 w-5" />
+          Scrap Inventory ({scrapRecords.length} records)
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Scrap #</TableHead>
+              <TableHead>Date</TableHead>
+              <TableHead>Product</TableHead>
+              <TableHead>Qty</TableHead>
+              <TableHead>Damage Reason</TableHead>
+              <TableHead>Loss Amount</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Evidence</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {scrapRecords.slice(0, 20).map((scrap: any) => (
+              <TableRow key={scrap.id}>
+                <TableCell className="font-mono text-sm">{scrap.scrapNumber}</TableCell>
+                <TableCell>{scrap.scrapDate ? format(new Date(scrap.scrapDate), 'dd/MM/yyyy') : '-'}</TableCell>
+                <TableCell>{scrap.productName}</TableCell>
+                <TableCell>{scrap.quantity}</TableCell>
+                <TableCell className="capitalize">{scrap.damageReason?.replace('_', ' ') || '-'}</TableCell>
+                <TableCell className="text-red-600 font-medium">
+                  ₹{((scrap.lossAmount || 0) / 100).toFixed(2)}
+                </TableCell>
+                <TableCell>{getStatusBadge(scrap.approvalStatus)}</TableCell>
+                <TableCell>
+                  {scrap.damageEvidenceUrl ? (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setPreviewUrl(scrap.damageEvidenceUrl)}
+                        data-testid={`button-view-evidence-${scrap.id}`}
+                      >
+                        <Image className="h-4 w-4 mr-1" />
+                        View
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        onChange={(e) => handleFileChange(scrap.id, e)}
+                        disabled={uploadingId === scrap.id}
+                        data-testid={`input-upload-evidence-${scrap.id}`}
+                      />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={uploadingId === scrap.id}
+                        data-testid={`button-upload-evidence-${scrap.id}`}
+                      >
+                        {uploadingId === scrap.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <>
+                            <Upload className="h-4 w-4 mr-1" />
+                            Upload
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+
+      {/* Image Preview Dialog */}
+      <Dialog open={!!previewUrl} onOpenChange={() => setPreviewUrl(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Damage Evidence</DialogTitle>
+          </DialogHeader>
+          {previewUrl && (
+            <div className="flex justify-center">
+              <img 
+                src={previewUrl} 
+                alt="Damage evidence" 
+                className="max-w-full max-h-[60vh] object-contain rounded-lg"
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </Card>
   );
 }

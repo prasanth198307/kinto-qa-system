@@ -7209,6 +7209,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           )
         );
       
+      // Fetch approved scrap inventory records for the period (write-off losses)
+      // scrapDate is stored as ISO timestamp string, so compare using ISO format
+      const scrapStartStr = startDate.toISOString();
+      const scrapEndStr = endDate.toISOString();
+      const scrapLosses = await db.select().from(scrapInventory)
+        .where(
+          and(
+            eq(scrapInventory.recordStatus, 1),
+            eq(scrapInventory.approvalStatus, 'approved'),
+            gte(scrapInventory.scrapDate, scrapStartStr),
+            lte(scrapInventory.scrapDate, scrapEndStr)
+          )
+        );
+      
       // Get vendor details and items for each vendor debit note
       const vendorDebitNotesWithDetails = await Promise.all(
         allVendorDebitNotes.map(async (vdn) => {
@@ -7286,13 +7300,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
         vendorDebitNoteTaxTotal += (vendorDebitNote.cgstAmount + vendorDebitNote.sgstAmount + vendorDebitNote.igstAmount) / 100;
       });
       
+      // Calculate scrap loss totals for write-off disclosure
+      // GST Treatment: Scrap/damaged inventory losses require ITC reversal if ITC was claimed on input
+      let scrapLossCostTotal = 0;
+      let scrapLossSellingTotal = 0;
+      let scrapLossCount = 0;
+      const scrapByReason = new Map<string, { count: number; lossAmount: number }>();
+      
+      scrapLosses.forEach((scrap) => {
+        scrapLossCostTotal += (scrap.totalCostValue || 0) / 100;
+        scrapLossSellingTotal += (scrap.totalSellingValue || 0) / 100;
+        scrapLossCount += scrap.quantity || 0;
+        
+        const reason = scrap.damageReason || 'other';
+        if (!scrapByReason.has(reason)) {
+          scrapByReason.set(reason, { count: 0, lossAmount: 0 });
+        }
+        const entry = scrapByReason.get(reason)!;
+        entry.count += scrap.quantity || 0;
+        entry.lossAmount += (scrap.lossAmount || 0) / 100;
+      });
+      
+      const scrapSummaryByReason = Array.from(scrapByReason.entries()).map(([reason, data]) => ({
+        reason,
+        count: data.count,
+        lossAmount: Number(data.lossAmount.toFixed(2)),
+      }));
+      
       // Build response
       const response = {
         invoices: invoicesWithItems,
         creditNotes: creditNotesWithInvoice,
         debitNotes: debitNotesWithInvoice,
         vendorDebitNotes: vendorDebitNotesWithDetails,
+        scrapLosses: scrapLosses.map(scrap => ({
+          ...scrap,
+          // Convert paise to rupees for frontend display
+          unitCostRupees: (scrap.unitCost || 0) / 100,
+          sellingPriceRupees: (scrap.sellingPrice || 0) / 100,
+          totalCostValueRupees: (scrap.totalCostValue || 0) / 100,
+          totalSellingValueRupees: (scrap.totalSellingValue || 0) / 100,
+          lossAmountRupees: (scrap.lossAmount || 0) / 100,
+        })),
         hsnSummary,
+        scrapSummary: {
+          totalRecords: scrapLosses.length,
+          totalUnits: scrapLossCount,
+          totalCostValue: Number(scrapLossCostTotal.toFixed(2)),
+          totalSellingValue: Number(scrapLossSellingTotal.toFixed(2)),
+          byReason: scrapSummaryByReason,
+        },
         metadata: {
           period: `${month.toString().padStart(2, '0')}${year}`,
           periodType,
@@ -7302,10 +7359,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totalCreditNotes: creditNotesWithInvoice.length,
           totalDebitNotes: debitNotesWithInvoice.length,
           totalVendorDebitNotes: vendorDebitNotesWithDetails.length,
+          totalScrapRecords: scrapLosses.length,
           totalTaxableValue: Number(totalTaxableValue.toFixed(2)),
           totalTax: Number(totalTax.toFixed(2)),
           vendorDebitNoteTaxableTotal: Number(vendorDebitNoteTaxableTotal.toFixed(2)),
           vendorDebitNoteTaxTotal: Number(vendorDebitNoteTaxTotal.toFixed(2)),
+          scrapLossCostTotal: Number(scrapLossCostTotal.toFixed(2)),
+          scrapLossSellingTotal: Number(scrapLossSellingTotal.toFixed(2)),
         },
       };
       
@@ -8495,6 +8555,130 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error recording scrap disposal:", error);
       res.status(500).json({ message: "Failed to record scrap disposal" });
+    }
+  });
+
+  // Configure multer for scrap evidence uploads (disk storage)
+  const scrapEvidenceDir = path.join(process.cwd(), 'uploads', 'scrap-evidence');
+  if (!fs.existsSync(scrapEvidenceDir)) {
+    fs.mkdirSync(scrapEvidenceDir, { recursive: true });
+  }
+  
+  const scrapEvidenceStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, scrapEvidenceDir);
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      const ext = path.extname(file.originalname);
+      cb(null, `scrap-${uniqueSuffix}${ext}`);
+    }
+  });
+  
+  const scrapEvidenceUpload = multer({
+    storage: scrapEvidenceStorage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit for photos
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only JPEG, PNG, and WebP images are allowed'));
+      }
+    }
+  });
+
+  // Upload damage evidence photo for scrap record
+  app.post('/api/scrap-inventory/:id/evidence', requireRole('admin', 'manager'), scrapEvidenceUpload.single('photo'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      if (!req.file) {
+        return res.status(400).json({ message: "No photo uploaded" });
+      }
+      
+      // Secondary MIME type validation (defense in depth)
+      const allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
+      if (!allowedMimes.includes(req.file.mimetype)) {
+        try { fs.promises.unlink(req.file.path).catch(() => {}); } catch {}
+        return res.status(400).json({ message: "Invalid file type. Only JPEG, PNG, and WebP are allowed" });
+      }
+      
+      const [scrap] = await db.select()
+        .from(scrapInventory)
+        .where(and(
+          eq(scrapInventory.id, id),
+          eq(scrapInventory.recordStatus, 1)
+        ))
+        .limit(1);
+      
+      if (!scrap) {
+        // Clean up uploaded file asynchronously
+        fs.promises.unlink(req.file.path).catch((err) => console.error("Failed to cleanup orphan upload:", err));
+        return res.status(404).json({ message: "Scrap record not found" });
+      }
+      
+      // Delete old evidence file asynchronously if exists
+      if (scrap.damageEvidenceUrl) {
+        const oldFilename = scrap.damageEvidenceUrl.split('/').pop();
+        if (oldFilename && /^scrap-\d+-\d+\.(jpg|jpeg|png|webp)$/i.test(oldFilename)) {
+          const oldPath = path.join(scrapEvidenceDir, oldFilename);
+          fs.promises.unlink(oldPath).catch((err) => {
+            if (err.code !== 'ENOENT') console.error("Failed to delete old evidence:", err);
+          });
+        }
+      }
+      
+      // Store relative URL for serving
+      const evidenceUrl = `/api/scrap-evidence/${req.file.filename}`;
+      
+      const [updated] = await db.update(scrapInventory)
+        .set({
+          damageEvidenceUrl: evidenceUrl,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(scrapInventory.id, id))
+        .returning();
+      
+      await logAudit(req.user?.id, 'UPDATE', 'scrap_inventory', id, `Uploaded damage evidence for ${scrap.scrapNumber}`);
+      
+      res.json({ message: "Damage evidence uploaded successfully", evidenceUrl, scrap: updated });
+    } catch (error) {
+      console.error("Error uploading scrap evidence:", error);
+      res.status(500).json({ message: "Failed to upload damage evidence" });
+    }
+  });
+
+  // Serve scrap evidence photos (authenticated access)
+  app.get('/api/scrap-evidence/:filename', isAuthenticated, (req: any, res) => {
+    try {
+      const { filename } = req.params;
+      
+      // Security: validate filename format to prevent path traversal
+      if (!filename || !/^scrap-\d+-\d+\.(jpg|jpeg|png|webp)$/i.test(filename)) {
+        return res.status(400).json({ message: 'Invalid filename format' });
+      }
+      
+      const filePath = path.join(scrapEvidenceDir, filename);
+      
+      // Security: verify file exists and is within allowed directory
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ message: 'Photo not found' });
+      }
+      
+      // Security: ensure resolved path is still within uploads directory
+      const resolvedPath = fs.realpathSync(filePath);
+      const resolvedDir = fs.realpathSync(scrapEvidenceDir);
+      if (!resolvedPath.startsWith(resolvedDir)) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
+      // Set appropriate cache headers
+      res.setHeader('Cache-Control', 'private, max-age=3600');
+      res.sendFile(resolvedPath);
+    } catch (error) {
+      console.error("Error serving scrap evidence:", error);
+      res.status(500).json({ message: 'Failed to retrieve photo' });
     }
   });
 
