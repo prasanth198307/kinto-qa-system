@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import crypto from "crypto";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertPurchaseOrderItemSchema, purchaseOrders, purchaseOrderItems, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, paymentEvidence, salesReturns, salesReturnItems, creditNotes, creditNoteItems, debitNotes, debitNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes, vendors, users, uom, insertDocumentCategorySchema, insertDocumentSchema, insertExpenseCategorySchema, insertExpenseVoucherSchema, insertExpenseItemSchema, insertExpenseAttachmentSchema, rolePermissions, vendorDebitNotes, vendorDebitNoteItems, vendorDebitNoteAdjustments, transporters, vehicles, drivers, insertTransporterSchema, insertVehicleSchema, insertDriverSchema } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertPurchaseOrderItemSchema, purchaseOrders, purchaseOrderItems, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, paymentEvidence, salesReturns, salesReturnItems, creditNotes, creditNoteItems, debitNotes, debitNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes, vendors, users, uom, insertDocumentCategorySchema, insertDocumentSchema, insertExpenseCategorySchema, insertExpenseVoucherSchema, insertExpenseItemSchema, insertExpenseAttachmentSchema, rolePermissions, vendorDebitNotes, vendorDebitNoteItems, vendorDebitNoteAdjustments, transporters, vehicles, drivers, insertTransporterSchema, insertVehicleSchema, insertDriverSchema, scrapInventory, insertScrapInventorySchema } from "@shared/schema";
 import { format } from "date-fns";
 import { z } from "zod";
 import path from "path";
@@ -8021,12 +8021,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
               console.warn(`[INVENTORY] Skipping restock for product ${item.productId} - product not found in master data (Vyapaar import or deleted product)`);
             }
           } else if (inspection.disposition === 'scrap' || inspection.condition === 'damaged') {
-            // Create damaged inventory record
-            // IMPORTANT: Check if product exists before inserting (handles Vyapaar imports where product may be missing)
+            // Create damaged inventory record AND scrap inventory record for loss tracking
             const [product] = await tx.select().from(products)
               .where(eq(products.id, item.productId));
             
             if (product) {
+              // Create rejected finished goods record
               await tx.insert(finishedGoods).values([{
                 productId: item.productId,
                 batchNumber: `${item.batchNumber || 'RETURN'}-DAMAGED`,
@@ -8036,7 +8036,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 remarks: `Returned goods - Damaged/Scrapped`,
                 createdBy: req.user?.id,
               }]);
+              
+              // Generate scrap number
+              const scrapCount = await tx.select({ count: sql<number>`count(*)` })
+                .from(scrapInventory)
+                .where(sql`DATE(scrap_date) = CURRENT_DATE`);
+              const seq = (scrapCount[0]?.count || 0) + 1;
+              const scrapNumber = `SCRAP-${format(new Date(), 'yyyyMMdd')}-${String(seq).padStart(3, '0')}`;
+              
+              // Calculate costs - use item's unit cost if available, otherwise estimate from selling price
+              const unitCost = item.unitCost || Math.round(item.unitPrice * 0.6); // Assume 40% margin if no cost data
+              const sellingPrice = item.unitPrice;
+              const totalCostValue = unitCost * item.quantityReturned;
+              const totalSellingValue = sellingPrice * item.quantityReturned;
+              
+              // Create scrap inventory record for loss tracking
+              await tx.insert(scrapInventory).values({
+                scrapNumber,
+                scrapDate: new Date().toISOString(),
+                salesReturnId: id,
+                salesReturnItemId: item.id,
+                invoiceId: salesReturn.invoiceId,
+                productId: item.productId,
+                productName: product.name,
+                batchNumber: item.batchNumber,
+                quantity: item.quantityReturned,
+                unitCost,
+                sellingPrice,
+                totalCostValue,
+                totalSellingValue,
+                lossAmount: totalCostValue, // Loss is the cost value
+                damageReason: inspection.damageReason || item.damageReason || 'other',
+                conditionDescription: inspection.conditionDescription || item.remarks,
+                damageEvidenceUrl: item.damageEvidenceUrl,
+                approvalStatus: 'pending', // Requires approval
+                createdBy: req.user?.id,
+              });
+              
               console.log(`[INVENTORY] Recorded ${item.quantityReturned} damaged units of product ${item.productId} (Sales Return)`);
+              console.log(`[SCRAP] Created scrap record ${scrapNumber} with loss amount ${totalCostValue / 100} INR`);
             } else {
               console.warn(`[INVENTORY] Skipping damaged goods record for product ${item.productId} - product not found in master data (Vyapaar import or deleted product)`);
             }
@@ -8195,6 +8233,233 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error inspecting sales return:", error);
       res.status(500).json({ message: "Failed to inspect sales return" });
+    }
+  });
+
+  // ============ SCRAP INVENTORY API ============
+  // Get all scrap inventory records with optional filters
+  app.get('/api/scrap-inventory', isAuthenticated, async (req: any, res) => {
+    try {
+      const { startDate, endDate, approvalStatus, productId } = req.query;
+      
+      let query = db.select().from(scrapInventory)
+        .where(eq(scrapInventory.recordStatus, 1))
+        .orderBy(desc(scrapInventory.scrapDate));
+      
+      // Apply filters if provided
+      const conditions = [eq(scrapInventory.recordStatus, 1)];
+      
+      if (startDate) {
+        conditions.push(gte(scrapInventory.scrapDate, new Date(startDate as string).toISOString()));
+      }
+      if (endDate) {
+        conditions.push(lte(scrapInventory.scrapDate, new Date(endDate as string).toISOString()));
+      }
+      if (approvalStatus && approvalStatus !== 'all') {
+        conditions.push(eq(scrapInventory.approvalStatus, approvalStatus as string));
+      }
+      if (productId) {
+        conditions.push(eq(scrapInventory.productId, productId as string));
+      }
+      
+      const scrapRecords = await db.select()
+        .from(scrapInventory)
+        .where(and(...conditions))
+        .orderBy(desc(scrapInventory.scrapDate));
+      
+      res.json(scrapRecords);
+    } catch (error) {
+      console.error("Error fetching scrap inventory:", error);
+      res.status(500).json({ message: "Failed to fetch scrap inventory" });
+    }
+  });
+
+  // Get scrap inventory summary/report for month-end loss calculation
+  app.get('/api/scrap-inventory/report', isAuthenticated, async (req: any, res) => {
+    try {
+      const { month, year } = req.query;
+      
+      // Default to current month/year if not provided
+      const targetMonth = month ? parseInt(month as string) : new Date().getMonth() + 1;
+      const targetYear = year ? parseInt(year as string) : new Date().getFullYear();
+      
+      // Get scrap records for the month
+      const startDate = new Date(targetYear, targetMonth - 1, 1);
+      const endDate = new Date(targetYear, targetMonth, 0, 23, 59, 59);
+      
+      const scrapRecords = await db.select()
+        .from(scrapInventory)
+        .where(and(
+          eq(scrapInventory.recordStatus, 1),
+          gte(scrapInventory.scrapDate, startDate.toISOString()),
+          lte(scrapInventory.scrapDate, endDate.toISOString())
+        ))
+        .orderBy(desc(scrapInventory.scrapDate));
+      
+      // Calculate summary
+      const summary = {
+        totalRecords: scrapRecords.length,
+        totalQuantity: scrapRecords.reduce((sum, r) => sum + r.quantity, 0),
+        totalCostValue: scrapRecords.reduce((sum, r) => sum + (r.totalCostValue || 0), 0),
+        totalSellingValue: scrapRecords.reduce((sum, r) => sum + (r.totalSellingValue || 0), 0),
+        totalLossAmount: scrapRecords.reduce((sum, r) => sum + (r.lossAmount || 0), 0),
+        totalGstReversal: scrapRecords.reduce((sum, r) => sum + (r.gstReversal || 0), 0),
+        totalDisposalValue: scrapRecords.reduce((sum, r) => sum + (r.disposalValue || 0), 0),
+        netLoss: 0, // Will be calculated
+        byApprovalStatus: {
+          pending: scrapRecords.filter(r => r.approvalStatus === 'pending').length,
+          approved: scrapRecords.filter(r => r.approvalStatus === 'approved').length,
+          rejected: scrapRecords.filter(r => r.approvalStatus === 'rejected').length,
+        },
+        byDamageReason: {} as Record<string, { count: number, lossAmount: number }>,
+        byProduct: {} as Record<string, { productName: string, count: number, quantity: number, lossAmount: number }>,
+      };
+      
+      // Net loss = total cost value - disposal recovery
+      summary.netLoss = summary.totalLossAmount - summary.totalDisposalValue;
+      
+      // Group by damage reason
+      scrapRecords.forEach(r => {
+        const reason = r.damageReason || 'other';
+        if (!summary.byDamageReason[reason]) {
+          summary.byDamageReason[reason] = { count: 0, lossAmount: 0 };
+        }
+        summary.byDamageReason[reason].count++;
+        summary.byDamageReason[reason].lossAmount += r.lossAmount || 0;
+      });
+      
+      // Group by product
+      scrapRecords.forEach(r => {
+        const productId = r.productId;
+        if (!summary.byProduct[productId]) {
+          summary.byProduct[productId] = { productName: r.productName, count: 0, quantity: 0, lossAmount: 0 };
+        }
+        summary.byProduct[productId].count++;
+        summary.byProduct[productId].quantity += r.quantity;
+        summary.byProduct[productId].lossAmount += r.lossAmount || 0;
+      });
+      
+      res.json({
+        month: targetMonth,
+        year: targetYear,
+        summary,
+        records: scrapRecords,
+      });
+    } catch (error) {
+      console.error("Error generating scrap report:", error);
+      res.status(500).json({ message: "Failed to generate scrap report" });
+    }
+  });
+
+  // Get specific scrap record
+  app.get('/api/scrap-inventory/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const [scrap] = await db.select()
+        .from(scrapInventory)
+        .where(and(
+          eq(scrapInventory.id, id),
+          eq(scrapInventory.recordStatus, 1)
+        ))
+        .limit(1);
+      
+      if (!scrap) {
+        return res.status(404).json({ message: "Scrap record not found" });
+      }
+      
+      res.json(scrap);
+    } catch (error) {
+      console.error("Error fetching scrap record:", error);
+      res.status(500).json({ message: "Failed to fetch scrap record" });
+    }
+  });
+
+  // Approve/reject scrap record
+  app.patch('/api/scrap-inventory/:id/approve', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { action, remarks } = req.body; // action: 'approve' or 'reject'
+      
+      if (!action || !['approve', 'reject'].includes(action)) {
+        return res.status(400).json({ message: "Action must be 'approve' or 'reject'" });
+      }
+      
+      const [scrap] = await db.select()
+        .from(scrapInventory)
+        .where(and(
+          eq(scrapInventory.id, id),
+          eq(scrapInventory.recordStatus, 1)
+        ))
+        .limit(1);
+      
+      if (!scrap) {
+        return res.status(404).json({ message: "Scrap record not found" });
+      }
+      
+      if (scrap.approvalStatus !== 'pending') {
+        return res.status(400).json({ message: `Scrap record is already ${scrap.approvalStatus}` });
+      }
+      
+      const [updated] = await db.update(scrapInventory)
+        .set({
+          approvalStatus: action === 'approve' ? 'approved' : 'rejected',
+          approvedBy: req.user?.id,
+          approvalDate: new Date().toISOString(),
+          approvalRemarks: remarks || null,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(scrapInventory.id, id))
+        .returning();
+      
+      await logAudit(req.user?.id, 'UPDATE', 'scrap_inventory', id, `${action === 'approve' ? 'Approved' : 'Rejected'} scrap record ${scrap.scrapNumber}`);
+      
+      res.json({ message: `Scrap record ${action === 'approve' ? 'approved' : 'rejected'} successfully`, scrap: updated });
+    } catch (error) {
+      console.error("Error approving scrap record:", error);
+      res.status(500).json({ message: "Failed to approve scrap record" });
+    }
+  });
+
+  // Update scrap disposal details
+  app.patch('/api/scrap-inventory/:id/dispose', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { disposalMethod, disposalValue, remarks } = req.body;
+      
+      const [scrap] = await db.select()
+        .from(scrapInventory)
+        .where(and(
+          eq(scrapInventory.id, id),
+          eq(scrapInventory.recordStatus, 1)
+        ))
+        .limit(1);
+      
+      if (!scrap) {
+        return res.status(404).json({ message: "Scrap record not found" });
+      }
+      
+      if (scrap.approvalStatus !== 'approved') {
+        return res.status(400).json({ message: "Scrap record must be approved before disposal" });
+      }
+      
+      const [updated] = await db.update(scrapInventory)
+        .set({
+          processedStatus: 'disposed',
+          processedDate: new Date().toISOString(),
+          disposalMethod: disposalMethod || 'disposed',
+          disposalValue: disposalValue || 0,
+          remarks: remarks || scrap.remarks,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(scrapInventory.id, id))
+        .returning();
+      
+      await logAudit(req.user?.id, 'UPDATE', 'scrap_inventory', id, `Disposed scrap ${scrap.scrapNumber} via ${disposalMethod}, recovered ${(disposalValue || 0) / 100} INR`);
+      
+      res.json({ message: "Scrap disposal recorded successfully", scrap: updated });
+    } catch (error) {
+      console.error("Error recording scrap disposal:", error);
+      res.status(500).json({ message: "Failed to record scrap disposal" });
     }
   });
 
