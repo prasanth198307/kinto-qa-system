@@ -114,7 +114,8 @@ export default function SalesReturnsPage() {
   const loadInvoiceItems = async (invoiceId: string) => {
     setLoadingInvoiceItems(true);
     try {
-      const response = await apiRequest('GET', `/api/invoices/${invoiceId}/items`);
+      const response = await fetch(`/api/invoice-items/${invoiceId}`, { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch invoice items');
       const items: InvoiceItem[] = await response.json();
       
       // Convert invoice items to return items with max quantity validation
