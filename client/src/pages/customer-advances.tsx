@@ -16,13 +16,20 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from "@/components/ui/table";
+import {
+  Popover, PopoverContent, PopoverTrigger
+} from "@/components/ui/popover";
+import {
+  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList
+} from "@/components/ui/command";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { 
   Plus, Search, IndianRupee, Calendar, User, FileText, 
-  CheckCircle, XCircle, ArrowRightLeft, Eye
+  CheckCircle, XCircle, ArrowRightLeft, Eye, ChevronsUpDown, Check
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { Vendor, CustomerAdvance } from "@shared/schema";
 
 interface AdvanceWithBalance extends CustomerAdvance {
@@ -39,6 +46,7 @@ export default function CustomerAdvancesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [vendorFilter, setVendorFilter] = useState("all");
+  const [customerSearchOpen, setCustomerSearchOpen] = useState(false);
 
   // Form state for creating new advance
   const [formData, setFormData] = useState({
@@ -429,19 +437,50 @@ export default function CustomerAdvancesPage() {
           <form onSubmit={handleCreateSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label>Customer *</Label>
-              <Select
-                value={formData.vendorId}
-                onValueChange={(v) => setFormData({ ...formData, vendorId: v })}
-              >
-                <SelectTrigger data-testid="select-vendor">
-                  <SelectValue placeholder="Select customer" />
-                </SelectTrigger>
-                <SelectContent>
-                  {buyerVendors.map(v => (
-                    <SelectItem key={v.id} value={v.id}>{v.vendorName}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={customerSearchOpen} onOpenChange={setCustomerSearchOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={customerSearchOpen}
+                    className="w-full justify-between font-normal"
+                    data-testid="select-vendor"
+                  >
+                    {formData.vendorId
+                      ? buyerVendors.find(v => v.id === formData.vendorId)?.vendorName
+                      : "Search customer..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[350px] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Type to search customer..." />
+                    <CommandList>
+                      <CommandEmpty>No customer found.</CommandEmpty>
+                      <CommandGroup>
+                        {buyerVendors.map(v => (
+                          <CommandItem
+                            key={v.id}
+                            value={v.vendorName}
+                            onSelect={() => {
+                              setFormData({ ...formData, vendorId: v.id });
+                              setCustomerSearchOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                formData.vendorId === v.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {v.vendorName}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
