@@ -88,8 +88,13 @@ export default function CustomerAdvancesPage() {
     },
   });
 
-  // Filter only buyer vendors
-  const buyerVendors = vendors.filter(v => v.vendorType === 'Buyer' || v.vendorType === 'buyer');
+  // Filter only customer vendors (buyers)
+  const buyerVendors = vendors.filter(v => 
+    v.vendorType === 'Customer' || 
+    v.vendorType === 'customer' || 
+    v.vendorType === 'Both' || 
+    v.vendorType === 'both'
+  );
 
   // Create advance mutation
   const createMutation = useMutation({
