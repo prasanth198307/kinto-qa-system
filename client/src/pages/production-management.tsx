@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +44,7 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
   const [selectedInvoiceForPayment, setSelectedInvoiceForPayment] = useState<Invoice | null>(null);
   
   const [location, navigate] = useLocation();
+  const searchString = useSearch();
   
   // Invoice filters
   const [invoiceSearchQuery, setInvoiceSearchQuery] = useState("");
@@ -59,7 +60,7 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
   const [invoicePageSize, setInvoicePageSize] = useState(25);
   
   // Gatepass filters - URL-based state for pagination
-  const gatepassParams = new URLSearchParams(location.split('?')[1] || '');
+  const gatepassParams = useMemo(() => new URLSearchParams(searchString), [searchString]);
   const gatepassPage = parseInt(gatepassParams.get('gatepassPage') || '1');
   const gatepassPageSize = parseInt(gatepassParams.get('gatepassPageSize') || '25');
   const gatepassSearchQuery = gatepassParams.get('gatepassSearch') || '';
@@ -106,8 +107,8 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
   
   // Helper to update gatepass URL parameters
   const updateGatepassUrlParams = (updates: Record<string, string | number>) => {
-    const pathname = location.split('?')[0];
-    const params = new URLSearchParams(location.split('?')[1] || '');
+    const pathname = location;
+    const params = new URLSearchParams(searchString);
     
     Object.entries(updates).forEach(([key, value]) => {
       if (value === '' || value === 'all' || value === null || value === undefined) {
