@@ -77,6 +77,7 @@ const invoiceFormSchema = z.object({
   
   // Signature settings
   includeSignature: z.number().optional(),
+  signatureType: z.string().optional(), // 'default', 'hpcl', 'alternate'
   
   items: z.array(z.object({
     productId: z.string().min(1, "Product is required"),
@@ -248,6 +249,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       branchName: invoice.branchName || "",
       upiId: invoice.upiId || "",
       includeSignature: invoice.includeSignature ?? 1,
+      signatureType: (invoice as any).signatureType || 'default',
     } : {
       gatepassId: gatepass?.id || "",
       invoiceDate: new Date().toISOString().split('T')[0],
@@ -287,6 +289,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       branchName: "",
       upiId: "",
       includeSignature: 1,
+      signatureType: 'default',
     },
   });
 
@@ -381,6 +384,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         branchName: invoice.branchName || "",
         upiId: invoice.upiId || "",
         includeSignature: invoice.includeSignature ?? 1,
+        signatureType: (invoice as any).signatureType || 'default',
       });
       
       // Schedule items sync for next render cycle to ensure useFieldArray picks it up
@@ -704,6 +708,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         upiId: data.upiId || null,
         remarks: data.remarks || null,
         includeSignature: data.includeSignature ?? 1,
+        signatureType: data.signatureType || 'default',
         // Include original invoice ID for reissue tracking
         // In reissue mode, the cancelled invoice's ID is stored as originalInvoiceId on the invoice prop
         originalInvoiceId: isReissueMode ? (invoice?.id || (invoice as any)?.originalInvoiceId) : null,
@@ -1788,18 +1793,64 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         </div>
 
         {/* Signature Settings */}
-        <div className="flex items-center space-x-2 py-2 border rounded-md px-3 bg-muted/30">
-          <input
-            type="checkbox"
-            id="includeSignature"
-            checked={form.watch("includeSignature") === 1}
-            onChange={(e) => form.setValue("includeSignature", e.target.checked ? 1 : 0)}
-            className="rounded border-gray-300 h-4 w-4"
-            data-testid="checkbox-include-signature"
-          />
-          <Label htmlFor="includeSignature" className="cursor-pointer text-sm">
-            Include digital signature on printed invoice
-          </Label>
+        <div className="border rounded-md px-3 py-2 bg-muted/30 space-y-2">
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="includeSignature"
+              checked={form.watch("includeSignature") === 1}
+              onChange={(e) => form.setValue("includeSignature", e.target.checked ? 1 : 0)}
+              className="rounded border-gray-300 h-4 w-4"
+              data-testid="checkbox-include-signature"
+            />
+            <Label htmlFor="includeSignature" className="cursor-pointer text-sm">
+              Include digital signature on printed invoice
+            </Label>
+          </div>
+          
+          {form.watch("includeSignature") === 1 && (
+            <div className="flex items-center gap-4 pl-6">
+              <Label className="text-sm text-muted-foreground">Signature Type:</Label>
+              <div className="flex gap-3">
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="signatureType"
+                    value="default"
+                    checked={form.watch("signatureType") === 'default' || !form.watch("signatureType")}
+                    onChange={() => form.setValue("signatureType", 'default')}
+                    className="h-4 w-4"
+                    data-testid="radio-signature-default"
+                  />
+                  <span className="text-sm">Default</span>
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="signatureType"
+                    value="hpcl"
+                    checked={form.watch("signatureType") === 'hpcl'}
+                    onChange={() => form.setValue("signatureType", 'hpcl')}
+                    className="h-4 w-4"
+                    data-testid="radio-signature-hpcl"
+                  />
+                  <span className="text-sm">HPCL</span>
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="signatureType"
+                    value="alternate"
+                    checked={form.watch("signatureType") === 'alternate'}
+                    onChange={() => form.setValue("signatureType", 'alternate')}
+                    className="h-4 w-4"
+                    data-testid="radio-signature-alternate"
+                  />
+                  <span className="text-sm">Alternate</span>
+                </label>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Remarks */}

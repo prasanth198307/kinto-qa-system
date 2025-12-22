@@ -1794,6 +1794,7 @@ export const invoices = pgTable("invoices", {
   
   // Signature Settings
   includeSignature: integer("include_signature").default(1).notNull(), // 1 = include signature, 0 = no signature
+  signatureType: varchar("signature_type", { length: 50 }).default('default'), // 'default', 'hpcl', 'alternate'
   
   // Other Details
   placeOfSupply: varchar("place_of_supply", { length: 100 }),
