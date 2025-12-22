@@ -781,8 +781,11 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         console.log('[InvoiceForm] Invoice created successfully:', result);
         return result;
       } else {
-        // Edit mode - update existing invoice
-        const response = await apiRequest('PATCH', `/api/invoices/${invoice.id}`, invoiceHeader);
+        // Edit mode - update existing invoice with header AND items
+        const response = await apiRequest('PATCH', `/api/invoices/${invoice.id}`, {
+          header: invoiceHeader,
+          items: invoiceItems,
+        });
         const result = await response.json();
         return result;
       }

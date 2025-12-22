@@ -6650,9 +6650,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Invoice not found" });
       }
       
+      // Support both old format (flat body) and new format ({ header, items })
+      const hasHeaderItems = req.body.header !== undefined;
+      const headerData = hasHeaderItems ? req.body.header : req.body;
+      const itemsData = hasHeaderItems ? req.body.items : undefined;
+      
       // Block editing of delivered invoices (use Cancel & Reissue or Credit Notes instead)
       // Exception: Allow marking as delivered when current status is dispatched
-      const isMarkingAsDelivered = req.body.status === 'delivered' && existingInvoice.status === 'dispatched';
+      const isMarkingAsDelivered = headerData.status === 'delivered' && existingInvoice.status === 'dispatched';
       if (existingInvoice.status === 'delivered' && !isMarkingAsDelivered) {
         return res.status(400).json({ 
           message: "Delivered invoices cannot be edited. Use 'Cancel & Reissue' for current month invoices or 'Credit Notes' for previous month invoices." 
@@ -6679,7 +6684,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'items'
       ];
       
-      const requestedFields = Object.keys(req.body);
+      const requestedFields = Object.keys(headerData);
+      // Also check if items are being modified
+      if (itemsData && itemsData.length > 0) {
+        requestedFields.push('items');
+      }
       const blockedFieldsInRequest = requestedFields.filter(field => blockedFieldsWhenGatepassExists.includes(field));
       
       if (blockedFieldsInRequest.length > 0) {
@@ -6703,8 +6712,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      const validatedData = insertInvoiceSchema.partial().parse(req.body);
+      const validatedData = insertInvoiceSchema.partial().parse(headerData);
       const invoice = await storage.updateInvoice(id, validatedData);
+      
+      // If items are provided, replace the existing invoice items
+      if (itemsData && Array.isArray(itemsData) && itemsData.length > 0) {
+        // Soft delete existing items
+        await db.update(invoiceItems)
+          .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
+          .where(eq(invoiceItems.invoiceId, id));
+        
+        // Insert new items
+        for (const item of itemsData) {
+          const validatedItem = insertInvoiceItemSchema.parse({
+            ...item,
+            invoiceId: id,
+          });
+          await db.insert(invoiceItems).values(validatedItem);
+        }
+        console.log(`[AUDIT] Invoice ${id} items replaced: ${itemsData.length} new items`);
+      }
       if (!invoice) {
         return res.status(404).json({ message: "Invoice not found" });
       }
