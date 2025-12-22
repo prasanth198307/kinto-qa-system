@@ -5710,9 +5710,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Gatepass cancelled and inventory returned to finished goods successfully",
         itemsReturned: gatepassItems.length
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting gatepass:", error);
-      res.status(500).json({ message: "Failed to delete gatepass" });
+      res.status(500).json({ 
+        message: "Failed to delete gatepass", 
+        error: error?.message || String(error)
+      });
     }
   });
 
