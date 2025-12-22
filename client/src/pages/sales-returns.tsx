@@ -30,6 +30,7 @@ const createReturnSchema = z.object({
     productId: z.string().min(1, "Product is required"),
     productName: z.string().min(1),
     batchNumber: z.string().optional(),
+    availableBatches: z.array(z.string()).optional(), // Multiple batches from gatepass
     quantityReturned: z.coerce.number().min(1, "Quantity must be at least 1"),
     maxQuantity: z.coerce.number().optional(), // Max quantity from invoice
     unitPrice: z.coerce.number().optional(), // Unit price from invoice
@@ -121,10 +122,12 @@ export default function SalesReturnsPage() {
       
       // Convert invoice items to return items with max quantity validation
       // Auto-fill batch number if exactly one available from gatepass
+      // Store availableBatches for items with multiple batches (for dropdown)
       const returnItems = items.map((item) => ({
         productId: item.productId,
         productName: item.product?.name || item.description || 'Unknown Product',
         batchNumber: item.batchNumber || '', // Auto-fill from gatepass if exactly one batch available
+        availableBatches: item.availableBatches || [], // Store multiple batches for selection
         quantityReturned: 1,
         maxQuantity: item.quantity,
         unitPrice: item.unitPrice,
@@ -459,15 +462,45 @@ export default function SalesReturnsPage() {
                               <FormField
                                 control={form.control}
                                 name={`items.${index}.batchNumber`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Batch (Optional)</FormLabel>
-                                    <FormControl>
-                                      <Input {...field} placeholder="e.g., LOT-2024" data-testid={`input-batch-${index}`} />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
+                                render={({ field }) => {
+                                  const availableBatches = form.watch(`items.${index}.availableBatches`) || [];
+                                  const hasMultipleBatches = availableBatches.length > 1;
+                                  
+                                  return (
+                                    <FormItem>
+                                      <FormLabel>
+                                        Batch (Optional)
+                                        {hasMultipleBatches && (
+                                          <span className="ml-1 text-xs text-muted-foreground">
+                                            ({availableBatches.length} available)
+                                          </span>
+                                        )}
+                                      </FormLabel>
+                                      <FormControl>
+                                        {hasMultipleBatches ? (
+                                          <Select
+                                            value={field.value || ""}
+                                            onValueChange={field.onChange}
+                                          >
+                                            <SelectTrigger data-testid={`select-batch-${index}`}>
+                                              <SelectValue placeholder="Select batch..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              {availableBatches.map((batch: string) => (
+                                                <SelectItem key={batch} value={batch}>
+                                                  {batch}
+                                                </SelectItem>
+                                              ))}
+                                            </SelectContent>
+                                          </Select>
+                                        ) : (
+                                          <Input {...field} placeholder="e.g., LOT-2024" data-testid={`input-batch-${index}`} />
+                                        )}
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  );
+                                }}
                               />
                               <FormField
                                 control={form.control}
