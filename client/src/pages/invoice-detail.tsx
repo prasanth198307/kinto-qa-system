@@ -15,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Edit, Mail, FileText, Printer, Star, Receipt, RefreshCw, Calculator, CreditCard, Lock } from "lucide-react";
+import { ArrowLeft, Edit, Mail, FileText, Printer, Star, Receipt, RefreshCw, Calculator, CreditCard, Lock, PackageCheck } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -204,6 +204,32 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
       toast({
         title: "Error",
         description: error.message || "Failed to cancel & reissue invoice",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mark invoice as ready for gatepass mutation
+  const markReadyMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('PATCH', `/api/invoices/${id}`, { 
+        status: 'ready_for_gatepass' 
+      });
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/invoices', id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/invoices/available'] });
+      toast({
+        title: "Invoice Ready for Dispatch",
+        description: "You can now create a gatepass for this invoice.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update invoice status",
         variant: "destructive",
       });
     },
@@ -455,7 +481,21 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
               </Button>
             </>
           )}
-          {!relatedGatepass && invoice.status !== 'delivered' && (
+          {/* Show "Mark Ready for Dispatch" for draft invoices */}
+          {invoice.status === 'draft' && (
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => markReadyMutation.mutate()}
+              disabled={markReadyMutation.isPending}
+              data-testid="button-mark-ready"
+            >
+              <PackageCheck className={`w-4 h-4 mr-2 ${markReadyMutation.isPending ? 'animate-spin' : ''}`} />
+              {markReadyMutation.isPending ? 'Updating...' : 'Mark Ready for Dispatch'}
+            </Button>
+          )}
+          {/* Show "Generate Gatepass" for ready invoices without a gatepass */}
+          {!relatedGatepass && invoice.status === 'ready_for_gatepass' && (
             <Button
               variant="default"
               size="sm"
