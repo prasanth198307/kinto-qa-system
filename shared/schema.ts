@@ -1679,15 +1679,15 @@ export const invoiceTemplates = pgTable("invoice_templates", {
   defaultBranchName: varchar("default_branch_name", { length: 255 }),
   defaultUpiId: varchar("default_upi_id", { length: 100 }),
   
-  // Signature Details - Default
+  // Signature 1 (Default/Primary)
   defaultSignatureImage: text("default_signature_image"), // Base64 encoded signature image
   authorizedSignatoryName: varchar("authorized_signatory_name", { length: 255 }),
   
-  // Signature Details - HPCL
-  hpclSignatureImage: text("hpcl_signature_image"), // Base64 encoded HPCL signature image
+  // Legacy HPCL signature fields (kept for backward compatibility)
+  hpclSignatureImage: text("hpcl_signature_image"),
   hpclSignatoryName: varchar("hpcl_signatory_name", { length: 255 }),
   
-  // Signature Details - Alternate
+  // Signature 2 (Alternate)
   alternateSignatureImage: text("alternate_signature_image"), // Base64 encoded alternate signature image
   alternateSignatoryName: varchar("alternate_signatory_name", { length: 255 }),
   

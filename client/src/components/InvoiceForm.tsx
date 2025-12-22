@@ -1810,7 +1810,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
           
           {form.watch("includeSignature") === 1 && (
             <div className="flex items-center gap-4 pl-6">
-              <Label className="text-sm text-muted-foreground">Signature Type:</Label>
+              <Label className="text-sm text-muted-foreground">Use:</Label>
               <div className="flex gap-3">
                 <label className="flex items-center gap-1.5 cursor-pointer">
                   <input
@@ -1822,19 +1822,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                     className="h-4 w-4"
                     data-testid="radio-signature-default"
                   />
-                  <span className="text-sm">Default</span>
-                </label>
-                <label className="flex items-center gap-1.5 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="signatureType"
-                    value="hpcl"
-                    checked={form.watch("signatureType") === 'hpcl'}
-                    onChange={() => form.setValue("signatureType", 'hpcl')}
-                    className="h-4 w-4"
-                    data-testid="radio-signature-hpcl"
-                  />
-                  <span className="text-sm">HPCL</span>
+                  <span className="text-sm">Signature 1</span>
                 </label>
                 <label className="flex items-center gap-1.5 cursor-pointer">
                   <input
@@ -1846,7 +1834,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                     className="h-4 w-4"
                     data-testid="radio-signature-alternate"
                   />
-                  <span className="text-sm">Alternate</span>
+                  <span className="text-sm">Signature 2</span>
                 </label>
               </div>
             </div>

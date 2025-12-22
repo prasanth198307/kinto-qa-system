@@ -344,6 +344,8 @@ function TemplateDialog({
     defaultBranchName: '',
     defaultSignatureImage: '',
     authorizedSignatoryName: '',
+    alternateSignatureImage: '',
+    alternateSignatoryName: '',
     isActive: true,
     isDefault: false,
   });
@@ -444,6 +446,29 @@ function TemplateDialog({
     }
   };
 
+  const handleAlternateSignatureUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        alert('Please upload an image file (PNG, JPG, or SVG)');
+        return;
+      }
+      
+      if (file.size > 1 * 1024 * 1024) {
+        alert('Signature image should be less than 1MB');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const signatureDataUrl = reader.result as string;
+        const processedSignature = await removeSignatureBackground(signatureDataUrl);
+        setFormData(prev => ({ ...prev, alternateSignatureImage: processedSignature }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   useEffect(() => {
     if (editingItem) {
       setFormData({
@@ -462,6 +487,8 @@ function TemplateDialog({
         defaultBranchName: editingItem.defaultBranchName || '',
         defaultSignatureImage: editingItem.defaultSignatureImage || '',
         authorizedSignatoryName: editingItem.authorizedSignatoryName || '',
+        alternateSignatureImage: (editingItem as any).alternateSignatureImage || '',
+        alternateSignatoryName: (editingItem as any).alternateSignatoryName || '',
         isActive: editingItem.isActive === 1,
         isDefault: editingItem.isDefault === 1,
       });
@@ -482,6 +509,8 @@ function TemplateDialog({
         defaultBranchName: '',
         defaultSignatureImage: '',
         authorizedSignatoryName: '',
+        alternateSignatureImage: '',
+        alternateSignatoryName: '',
         isActive: true,
         isDefault: false,
       });
@@ -701,7 +730,7 @@ function TemplateDialog({
               <h3 className="text-lg font-semibold mb-3">Authorized Signatory</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="authorizedSignatoryName">Signatory Name</Label>
+                  <Label htmlFor="authorizedSignatoryName">Signature 1 - Name</Label>
                   <Input
                     id="authorizedSignatoryName"
                     placeholder="e.g., John Doe (Director)"
@@ -711,7 +740,7 @@ function TemplateDialog({
                   />
                 </div>
                 <div>
-                  <Label htmlFor="signatureImage">Digital Signature Image</Label>
+                  <Label htmlFor="signatureImage">Signature 1 - Image</Label>
                   <div className="flex gap-2">
                     <Button
                       type="button"
@@ -753,6 +782,61 @@ function TemplateDialog({
                   )}
                   <p className="text-xs text-muted-foreground mt-1">
                     Upload a transparent PNG of the signature for best results
+                  </p>
+                </div>
+                <div>
+                  <Label htmlFor="alternateSignatoryName">Signature 2 - Name</Label>
+                  <Input
+                    id="alternateSignatoryName"
+                    placeholder="e.g., Jane Doe (Manager)"
+                    value={formData.alternateSignatoryName}
+                    onChange={(e) => setFormData(prev => ({ ...prev, alternateSignatoryName: e.target.value }))}
+                    data-testid="input-alternate-signatory-name"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="alternateSignatureImage">Signature 2 - Image</Label>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => document.getElementById('alternate-signature-upload')?.click()}
+                      data-testid="button-upload-alternate-signature"
+                    >
+                      Upload Signature
+                    </Button>
+                    <input
+                      id="alternate-signature-upload"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAlternateSignatureUpload}
+                      className="hidden"
+                    />
+                    {formData.alternateSignatureImage && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setFormData(prev => ({ ...prev, alternateSignatureImage: '' }))}
+                        data-testid="button-remove-alternate-signature"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                  {formData.alternateSignatureImage && (
+                    <div className="mt-2 p-2 border rounded bg-white">
+                      <img 
+                        src={formData.alternateSignatureImage} 
+                        alt="Alternate Signature Preview" 
+                        className="max-h-16 object-contain"
+                        data-testid="img-alternate-signature-preview"
+                      />
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Optional: Upload a second signature option
                   </p>
                 </div>
               </div>
