@@ -7117,6 +7117,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get invoice items with batch numbers from gatepass (for sales returns)
+  app.get('/api/invoice-items-with-batch/:invoiceId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { invoiceId } = req.params;
+      const items = await storage.getInvoiceItems(invoiceId, false);
+      
+      // Get gatepass for this invoice
+      const [gatepass] = await db.select().from(gatepasses)
+        .where(and(
+          eq(gatepasses.invoiceId, invoiceId),
+          eq(gatepasses.recordStatus, 1)
+        ));
+      
+      // If gatepass exists, get gatepass items with batch numbers
+      // Use array to handle multiple batches per product
+      let batchMap: Record<string, string[]> = {};
+      if (gatepass) {
+        const gatepassItemsData = await db.select({
+          productId: gatepassItems.productId,
+          batchNumber: finishedGoods.batchNumber
+        })
+        .from(gatepassItems)
+        .innerJoin(finishedGoods, eq(gatepassItems.finishedGoodId, finishedGoods.id))
+        .where(and(
+          eq(gatepassItems.gatepassId, gatepass.id),
+          eq(gatepassItems.recordStatus, 1)
+        ));
+        
+        // Create a map of productId to array of unique batchNumbers
+        for (const item of gatepassItemsData) {
+          if (item.productId && item.batchNumber) {
+            if (!batchMap[item.productId]) {
+              batchMap[item.productId] = [];
+            }
+            // Only add if not already in array (unique batches)
+            if (!batchMap[item.productId].includes(item.batchNumber)) {
+              batchMap[item.productId].push(item.batchNumber);
+            }
+          }
+        }
+      }
+      
+      // Merge batch numbers into items
+      // Only auto-fill if there's exactly one unique batch for the product
+      const itemsWithBatch = items.map(item => {
+        const batches = batchMap[item.productId] || [];
+        return {
+          ...item,
+          // Only auto-fill when exactly one batch available for this product
+          batchNumber: batches.length === 1 ? batches[0] : null,
+          // Provide all available batches for user to choose if multiple
+          availableBatches: batches.length > 1 ? batches : undefined
+        };
+      });
+      
+      res.json(itemsWithBatch);
+    } catch (error) {
+      console.error("Error fetching invoice items with batch:", error);
+      res.status(500).json({ message: "Failed to fetch invoice items" });
+    }
+  });
+
   // GST Reports - Get invoices with items and HSN summary for a period
   // Allow admin, manager, billing manager, and accounts manager roles
   app.post('/api/gst-reports', requireRole('admin', 'manager', 'billing manager', 'accounts manager', 'AccountsManager'), async (req: any, res) => {

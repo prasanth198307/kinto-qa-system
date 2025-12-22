@@ -110,19 +110,21 @@ export default function SalesReturnsPage() {
     name: "items",
   });
 
-  // Load invoice items when invoice is selected
+  // Load invoice items when invoice is selected (with batch numbers from gatepass)
   const loadInvoiceItems = async (invoiceId: string) => {
     setLoadingInvoiceItems(true);
     try {
-      const response = await fetch(`/api/invoice-items/${invoiceId}`, { credentials: 'include' });
+      // Use the new endpoint that includes batch numbers from gatepass
+      const response = await fetch(`/api/invoice-items-with-batch/${invoiceId}`, { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch invoice items');
-      const items: InvoiceItem[] = await response.json();
+      const items: (InvoiceItem & { batchNumber?: string | null; availableBatches?: string[] })[] = await response.json();
       
       // Convert invoice items to return items with max quantity validation
+      // Auto-fill batch number if exactly one available from gatepass
       const returnItems = items.map((item) => ({
         productId: item.productId,
         productName: item.product?.name || item.description || 'Unknown Product',
-        batchNumber: '',
+        batchNumber: item.batchNumber || '', // Auto-fill from gatepass if exactly one batch available
         quantityReturned: 1,
         maxQuantity: item.quantity,
         unitPrice: item.unitPrice,
@@ -130,7 +132,17 @@ export default function SalesReturnsPage() {
       }));
       
       replace(returnItems);
-      toast({ title: `Loaded ${items.length} items from invoice` });
+      const batchCount = items.filter(i => i.batchNumber).length;
+      const multipleBatchCount = items.filter(i => i.availableBatches && i.availableBatches.length > 1).length;
+      
+      let description = '';
+      if (batchCount > 0) description += `${batchCount} item(s) have batch numbers auto-filled. `;
+      if (multipleBatchCount > 0) description += `${multipleBatchCount} item(s) have multiple batches - please select manually.`;
+      
+      toast({ 
+        title: `Loaded ${items.length} items from invoice`,
+        description: description || undefined
+      });
     } catch (error: any) {
       toast({ 
         title: "Failed to load invoice items", 
@@ -787,7 +799,22 @@ function ScrapInventorySection() {
   }
 
   if (scrapRecords.length === 0) {
-    return null; // Don't show section if no scrap records
+    return (
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <AlertCircle className="h-5 w-5" />
+            Scrap Inventory
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground text-center py-4">
+            No scrap records yet. When you inspect a return and mark items as "Scrap/Damage", 
+            they will appear here for approval and disposal tracking.
+          </p>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
