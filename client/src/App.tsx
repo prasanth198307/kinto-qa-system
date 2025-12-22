@@ -29,6 +29,7 @@ import AdminChecklistBuilder from "@/components/AdminChecklistBuilder";
 import AdminSparePartsManagement from "@/components/AdminSparePartsManagement";
 import AdminMachineTypeConfig from "@/components/AdminMachineTypeConfig";
 import AdminPMTaskListTemplates from "@/components/AdminPMTaskListTemplates";
+import AdminHPCLMigration from "@/components/AdminHPCLMigration";
 import SchedulePMDialog from "@/components/SchedulePMDialog";
 import PurchaseOrderManagement from "@/components/PurchaseOrderManagement";
 import PMHistoryView from "@/components/PMHistoryView";
@@ -830,6 +831,7 @@ function AdminDashboard() {
         { id: "role-permissions", label: "Role Permissions", icon: Shield },
         { id: "vendors", label: "Vendor Master", icon: Building2, onClick: () => setLocation('/vendor-management') },
         { id: "vendor-types", label: "Vendor Types", icon: Shield },
+        { id: "hpcl-migration", label: "HPCL Migration", icon: Building2 },
         { id: "machines", label: "Machines", icon: Settings },
         { id: "machine-types", label: "Machine Types", icon: Layers },
         { id: "spare-parts", label: "Spare Parts", icon: Package },
@@ -1638,6 +1640,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "role-permissions", label: "Role Permissions", icon: Shield, onClick: () => setLocation('/') },
         { id: "vendors", label: "Vendor Master", icon: Building2, onClick: () => setLocation('/vendor-management') },
         { id: "vendor-types", label: "Vendor Types", icon: Shield, onClick: () => setLocation('/vendor-types') },
+        { id: "hpcl-migration", label: "HPCL Migration", icon: Building2, onClick: () => setLocation('/hpcl-migration') },
         { id: "machines", label: "Machines", icon: Settings, onClick: () => setLocation('/') },
         { id: "machine-types", label: "Machine Types", icon: Layers, onClick: () => setLocation('/') },
         { id: "spare-parts", label: "Spare Parts", icon: Package, onClick: () => setLocation('/') },
@@ -2100,6 +2103,35 @@ function VendorTypesPageWrapper() {
   );
 }
 
+// Wrapper component for HPCL Migration page with filtered navigation
+function HPCLMigrationPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('hpcl-migration');
+  
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
+  
+  return (
+    <DashboardShell
+      title="HPCL Vendor Migration"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={(viewId) => {
+        setActiveView(viewId);
+      }}
+    >
+      <AdminHPCLMigration />
+    </DashboardShell>
+  );
+}
+
 // Wrapper component for Dispatch Masters page with filtered navigation
 function DispatchMastersPageWrapper() {
   const { logoutMutation } = useAuth();
@@ -2388,6 +2420,7 @@ function Router() {
       <ProtectedRoute path="/checklists" component={ChecklistsPageWrapper} />
       <ProtectedRoute path="/reviewer-dashboard" component={ReviewerDashboardPageWrapper} />
       <ProtectedRoute path="/vendor-types" component={VendorTypesPageWrapper} />
+      <ProtectedRoute path="/hpcl-migration" component={HPCLMigrationPageWrapper} />
       <ProtectedRoute path="/vendor-management" component={VendorManagementPage} />
       <ProtectedRoute path="/vendor-history" component={VendorHistoryPage} />
       <ProtectedRoute path="/vendor-history/:vendorId" component={VendorHistoryDetailPage} />
