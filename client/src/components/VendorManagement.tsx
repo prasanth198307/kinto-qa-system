@@ -481,6 +481,12 @@ export default function VendorManagement() {
       vendorType: formData.get("vendorType") as string || null,
       isCluster: formData.get("isCluster") === "on" ? 1 : 0,
       isActive: formData.get("isActive") as string || 'true',
+      shipToName: formData.get("shipToName") as string || null,
+      shipToAddress: formData.get("shipToAddress") as string || null,
+      shipToCity: formData.get("shipToCity") as string || null,
+      shipToState: formData.get("shipToState") as string || null,
+      shipToPincode: formData.get("shipToPincode") as string || null,
+      shipToGstin: formData.get("shipToGstin") as string || null,
     };
 
     if (editingVendor) {
@@ -1047,6 +1053,79 @@ export default function VendorManagement() {
                   <Label htmlFor="isCluster" className="cursor-pointer">
                     Is Cluster
                   </Label>
+                </div>
+              </div>
+
+              {/* Ship-To Address Section */}
+              <div className="border-t pt-4 mt-4">
+                <Label className="text-base font-semibold">Ship-To Address (Optional)</Label>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Different delivery location for invoices. Used when billing address differs from shipping address.
+                </p>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="shipToName">Ship-To Name</Label>
+                    <Input
+                      id="shipToName"
+                      name="shipToName"
+                      defaultValue={editingVendor?.shipToName || ""}
+                      placeholder="Delivery location name"
+                      data-testid="input-ship-to-name"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="shipToGstin">Ship-To GSTIN</Label>
+                    <Input
+                      id="shipToGstin"
+                      name="shipToGstin"
+                      defaultValue={editingVendor?.shipToGstin || ""}
+                      placeholder="GST number at delivery location"
+                      data-testid="input-ship-to-gstin"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-3">
+                  <Label htmlFor="shipToAddress">Ship-To Address</Label>
+                  <Textarea
+                    id="shipToAddress"
+                    name="shipToAddress"
+                    defaultValue={editingVendor?.shipToAddress || ""}
+                    rows={2}
+                    placeholder="Street address for delivery"
+                    data-testid="input-ship-to-address"
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 gap-4 mt-3">
+                  <div>
+                    <Label htmlFor="shipToCity">City</Label>
+                    <Input
+                      id="shipToCity"
+                      name="shipToCity"
+                      defaultValue={editingVendor?.shipToCity || ""}
+                      data-testid="input-ship-to-city"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="shipToState">State</Label>
+                    <Input
+                      id="shipToState"
+                      name="shipToState"
+                      defaultValue={editingVendor?.shipToState || ""}
+                      data-testid="input-ship-to-state"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="shipToPincode">Pincode</Label>
+                    <Input
+                      id="shipToPincode"
+                      name="shipToPincode"
+                      defaultValue={editingVendor?.shipToPincode || ""}
+                      data-testid="input-ship-to-pincode"
+                    />
+                  </div>
                 </div>
               </div>
 
