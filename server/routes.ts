@@ -7130,20 +7130,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
           eq(gatepasses.recordStatus, 1)
         ));
       
+      console.log(`[BATCH] Invoice ${invoiceId}: Gatepass found: ${gatepass ? gatepass.id : 'NONE'}`);
+      
       // If gatepass exists, get gatepass items with batch numbers
       // Use array to handle multiple batches per product
       let batchMap: Record<string, string[]> = {};
       if (gatepass) {
+        // Use LEFT JOIN to include items even if finished_goods record is missing
         const gatepassItemsData = await db.select({
           productId: gatepassItems.productId,
+          finishedGoodId: gatepassItems.finishedGoodId,
           batchNumber: finishedGoods.batchNumber
         })
         .from(gatepassItems)
-        .innerJoin(finishedGoods, eq(gatepassItems.finishedGoodId, finishedGoods.id))
+        .leftJoin(finishedGoods, eq(gatepassItems.finishedGoodId, finishedGoods.id))
         .where(and(
           eq(gatepassItems.gatepassId, gatepass.id),
           eq(gatepassItems.recordStatus, 1)
         ));
+        
+        console.log(`[BATCH] Gatepass ${gatepass.id}: Found ${gatepassItemsData.length} gatepass items`);
+        gatepassItemsData.forEach((item, i) => {
+          console.log(`[BATCH] Item ${i}: productId=${item.productId}, finishedGoodId=${item.finishedGoodId}, batchNumber=${item.batchNumber}`);
+        });
         
         // Create a map of productId to array of unique batchNumbers
         for (const item of gatepassItemsData) {
@@ -7158,6 +7167,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
       }
+      
+      console.log(`[BATCH] BatchMap:`, JSON.stringify(batchMap));
       
       // Merge batch numbers into items
       // Only auto-fill if there's exactly one unique batch for the product
