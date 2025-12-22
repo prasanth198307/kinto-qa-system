@@ -322,10 +322,25 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
         form.setValue("header.customerName", selectedInvoice.buyerName);
         form.setValue("header.isCluster", selectedInvoice.isCluster || 0);
         
+        // Auto-fill destination from invoice address
+        // Priority: Ship-To City > Ship-To Address > Buyer Address > Buyer State
+        const destination = selectedInvoice.shipToCity 
+          || selectedInvoice.shipToAddress 
+          || selectedInvoice.buyerAddress 
+          || selectedInvoice.buyerState 
+          || "";
+        if (destination) {
+          form.setValue("header.destination", destination);
+        }
+        
         // Find vendor by buyer name (if exists)
         const matchingVendor = vendors.find(v => v.vendorName === selectedInvoice.buyerName);
         if (matchingVendor) {
           form.setValue("header.vendorId", matchingVendor.id);
+          // If invoice doesn't have destination, use vendor's address
+          if (!destination && matchingVendor.address) {
+            form.setValue("header.destination", matchingVendor.address);
+          }
         }
       }
     }
