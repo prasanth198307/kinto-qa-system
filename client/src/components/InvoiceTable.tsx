@@ -128,39 +128,15 @@ export default function InvoiceTable({ invoices, isLoading, onEdit, onDelete, on
                       </Button>
                     )}
                     {onMarkReadyForGatepass && invoice.status === 'draft' && !(invoice as any).hasGatepass && (
-                      (invoice.shipToName || invoice.shipToAddress) ? (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onMarkReadyForGatepass(invoice)}
-                          data-testid={`button-ready-gatepass-${invoice.id}`}
-                          title="Mark Ready for Gatepass"
-                        >
-                          <PackageCheck className="w-4 h-4 text-blue-600" />
-                        </Button>
-                      ) : (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                disabled
-                                data-testid={`button-ready-gatepass-${invoice.id}-disabled`}
-                                title="Ship-to details required"
-                              >
-                                <PackageCheck className="w-4 h-4 text-muted-foreground" />
-                              </Button>
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Ship-to details required for gatepass.</p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Edit the invoice and add shipping address first.
-                            </p>
-                          </TooltipContent>
-                        </Tooltip>
-                      )
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onMarkReadyForGatepass(invoice)}
+                        data-testid={`button-ready-gatepass-${invoice.id}`}
+                        title="Mark Ready for Gatepass"
+                      >
+                        <PackageCheck className="w-4 h-4 text-blue-600" />
+                      </Button>
                     )}
                     {onEdit && (
                       (invoice.status === 'delivered' || invoice.status === 'dispatched') ? (
