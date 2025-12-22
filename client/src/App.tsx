@@ -831,7 +831,7 @@ function AdminDashboard() {
         { id: "role-permissions", label: "Role Permissions", icon: Shield },
         { id: "vendors", label: "Vendor Master", icon: Building2, onClick: () => setLocation('/vendor-management') },
         { id: "vendor-types", label: "Vendor Types", icon: Shield },
-        { id: "hpcl-migration", label: "HPCL Migration", icon: Building2 },
+        { id: "hpcl-migration", label: "HPCL Migration", icon: Building2, onClick: () => setLocation('/hpcl-migration') },
         { id: "machines", label: "Machines", icon: Settings },
         { id: "machine-types", label: "Machine Types", icon: Layers },
         { id: "spare-parts", label: "Spare Parts", icon: Package },
