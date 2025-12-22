@@ -1,6 +1,6 @@
 -- Add ship-to address fields to vendors table for HPCL migration
 -- Run this on production database before deploying HPCL migration feature
--- Date: 2024-12-22
+-- Date: 2025-12-22
 
 ALTER TABLE vendors 
 ADD COLUMN IF NOT EXISTS ship_to_name VARCHAR(255),
