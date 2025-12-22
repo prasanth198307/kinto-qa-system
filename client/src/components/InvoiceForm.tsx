@@ -57,6 +57,7 @@ const invoiceFormSchema = z.object({
   shipToCity: z.string().optional(),
   shipToState: z.string().optional(),
   shipToPincode: z.string().optional(),
+  shipToGstin: z.string().optional(),
   
   // Buyer details
   buyerGstin: z.string().optional(),
@@ -514,6 +515,27 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
     const stateCode = vendor.gstNumber?.substring(0, 2) || "37";
     form.setValue("buyerStateCode", stateCode);
     form.setValue("isCluster", vendor.isCluster || 0);
+    
+    // Auto-fill ship-to fields if vendor has default shipping address (e.g., HPCL vendors)
+    if (vendor.shipToName || vendor.shipToAddress) {
+      form.setValue("shipToName", vendor.shipToName || "");
+      form.setValue("shipToAddress", vendor.shipToAddress || "");
+      form.setValue("shipToCity", vendor.shipToCity || "");
+      form.setValue("shipToState", vendor.shipToState || "");
+      form.setValue("shipToPincode", vendor.shipToPincode || "");
+      form.setValue("shipToGstin", vendor.shipToGstin || "");
+      // Expand the ship-to section if it has data
+      setShipToDifferentAddress(true);
+    } else {
+      // Clear ship-to fields when selecting vendor without default shipping address
+      form.setValue("shipToName", "");
+      form.setValue("shipToAddress", "");
+      form.setValue("shipToCity", "");
+      form.setValue("shipToState", "");
+      form.setValue("shipToPincode", "");
+      form.setValue("shipToGstin", "");
+      setShipToDifferentAddress(false);
+    }
   };
 
   const handleVendorChange = (vendorId: string) => {

@@ -6713,25 +6713,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const validatedData = insertInvoiceSchema.partial().parse(headerData);
-      const invoice = await storage.updateInvoice(id, validatedData);
       
-      // If items are provided, replace the existing invoice items
+      // If items are provided, wrap header update + item replacement in transaction
       if (itemsData && Array.isArray(itemsData) && itemsData.length > 0) {
-        // Soft delete existing items
-        await db.update(invoiceItems)
-          .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
-          .where(eq(invoiceItems.invoiceId, id));
+        // Validate all items first (before any DB changes)
+        const validatedItems = itemsData.map(item => 
+          insertInvoiceItemSchema.parse({ ...item, invoiceId: id })
+        );
         
-        // Insert new items
-        for (const item of itemsData) {
-          const validatedItem = insertInvoiceItemSchema.parse({
-            ...item,
-            invoiceId: id,
-          });
-          await db.insert(invoiceItems).values(validatedItem);
+        // Perform atomic update: header + items in transaction
+        await db.transaction(async (tx) => {
+          // Update invoice header
+          await tx.update(invoices)
+            .set({ ...validatedData, updatedAt: new Date().toISOString() })
+            .where(eq(invoices.id, id));
+          
+          // Soft delete existing items
+          await tx.update(invoiceItems)
+            .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
+            .where(eq(invoiceItems.invoiceId, id));
+          
+          // Insert new items
+          for (const validatedItem of validatedItems) {
+            await tx.insert(invoiceItems).values(validatedItem);
+          }
+        });
+        console.log(`[AUDIT] Invoice ${id} updated with ${itemsData.length} items (atomic transaction)`);
+        
+        // Fetch updated invoice to return
+        const invoice = await storage.getInvoice(id);
+        if (!invoice) {
+          return res.status(404).json({ message: "Invoice not found after update" });
         }
-        console.log(`[AUDIT] Invoice ${id} items replaced: ${itemsData.length} new items`);
+        
+        // If marking invoice as delivered, also update linked gatepass status
+        if (isMarkingAsDelivered) {
+          const linkedGatepass = await db
+            .select()
+            .from(gatepasses)
+            .where(
+              and(
+                eq(gatepasses.invoiceId, id),
+                eq(gatepasses.recordStatus, 1)
+              )
+            )
+            .limit(1);
+          
+          if (linkedGatepass.length > 0 && linkedGatepass[0].status === 'vehicle_out') {
+            await db.update(gatepasses)
+              .set({ status: 'delivered' })
+              .where(eq(gatepasses.id, linkedGatepass[0].id));
+            console.log(`[AUDIT] Gatepass ${linkedGatepass[0].gatepassNumber} marked as delivered along with invoice ${id}`);
+          }
+        }
+        
+        return res.json(invoice);
       }
+      
+      // Header-only update (no items provided)
+      const invoice = await storage.updateInvoice(id, validatedData);
       if (!invoice) {
         return res.status(404).json({ message: "Invoice not found" });
       }
@@ -16812,6 +16852,178 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('[MIS] Error fetching delivery performance:', error);
       res.status(500).json({ message: error.message || 'Failed to fetch delivery performance' });
+    }
+  });
+
+  // HPCL Vendor Migration - Move current vendor details to ship-to, set HPCL corporate as main vendor
+  app.post('/api/admin/migrate-hpcl-vendors', requireRole('admin'), async (req: any, res: Response) => {
+    try {
+      // HPCL Corporate Details (provided by user)
+      const hpclCorporate = {
+        vendorName: 'VISAKH RETAIL RO Petronilayam, HPCL',
+        address: 'Opp AU IN Gate, China Waltair, Visakhapatnam',
+        city: 'Visakhapatnam',
+        state: 'Andhra Pradesh',
+        pincode: '530003',
+        gstNumber: '37AAACH1118B1ZB'
+      };
+
+      // Find HPPani vendor type
+      const hpPaniType = await db
+        .select()
+        .from(vendorTypes)
+        .where(eq(vendorTypes.code, 'HPPANI'))
+        .limit(1);
+
+      if (hpPaniType.length === 0) {
+        return res.status(404).json({ message: "HPPani vendor type not found" });
+      }
+
+      // Get all HPPani vendors
+      const hpPaniVendorIds = await db
+        .select({ vendorId: vendorVendorTypes.vendorId })
+        .from(vendorVendorTypes)
+        .where(
+          and(
+            eq(vendorVendorTypes.vendorTypeId, hpPaniType[0].id),
+            eq(vendorVendorTypes.recordStatus, 1)
+          )
+        );
+
+      if (hpPaniVendorIds.length === 0) {
+        return res.status(404).json({ message: "No HPPani vendors found" });
+      }
+
+      const vendorIds = hpPaniVendorIds.map(v => v.vendorId);
+      let migratedCount = 0;
+      const migrationLog: any[] = [];
+
+      // Wrap entire migration in a transaction for atomicity
+      await db.transaction(async (tx) => {
+        for (const vendorId of vendorIds) {
+          // Get current vendor data
+          const [currentVendor] = await tx
+            .select()
+            .from(vendors)
+            .where(eq(vendors.id, vendorId));
+
+          if (!currentVendor || currentVendor.recordStatus !== 1) continue;
+
+          // Skip if already migrated (ship_to_name is set)
+          if (currentVendor.shipToName) {
+            migrationLog.push({
+              vendorCode: currentVendor.vendorCode,
+              vendorName: currentVendor.vendorName,
+              status: 'skipped',
+              reason: 'Already has ship-to address'
+            });
+            continue;
+          }
+
+          // Migrate: move current details to ship-to, set HPCL corporate as main
+          await tx.update(vendors)
+            .set({
+              // Move current to ship-to
+              shipToName: currentVendor.vendorName,
+              shipToAddress: currentVendor.address,
+              shipToCity: currentVendor.city,
+              shipToState: currentVendor.state,
+              shipToPincode: currentVendor.pincode,
+              shipToGstin: currentVendor.gstNumber,
+              // Set HPCL corporate as main vendor
+              vendorName: hpclCorporate.vendorName,
+              address: hpclCorporate.address,
+              city: hpclCorporate.city,
+              state: hpclCorporate.state,
+              pincode: hpclCorporate.pincode,
+              gstNumber: hpclCorporate.gstNumber,
+              updatedAt: new Date().toISOString()
+            })
+            .where(eq(vendors.id, vendorId));
+
+          migratedCount++;
+          migrationLog.push({
+            vendorCode: currentVendor.vendorCode,
+            originalName: currentVendor.vendorName,
+            originalGst: currentVendor.gstNumber,
+            status: 'migrated',
+            newShipTo: currentVendor.vendorName
+          });
+        }
+      });
+
+      console.log(`[AUDIT] HPCL vendor migration completed by ${req.user?.username}. Migrated: ${migratedCount}/${vendorIds.length}`);
+      
+      res.json({
+        success: true,
+        message: `Migrated ${migratedCount} HPPani vendors to HPCL corporate structure`,
+        totalVendors: vendorIds.length,
+        migratedCount,
+        hpclCorporate,
+        migrationLog
+      });
+    } catch (error: any) {
+      console.error('[HPCL Migration] Error:', error);
+      res.status(500).json({ message: error.message || 'Failed to migrate HPCL vendors' });
+    }
+  });
+
+  // Preview HPCL Vendor Migration (dry run)
+  app.get('/api/admin/preview-hpcl-migration', requireRole('admin'), async (req: any, res: Response) => {
+    try {
+      // Find HPPani vendor type
+      const hpPaniType = await db
+        .select()
+        .from(vendorTypes)
+        .where(eq(vendorTypes.code, 'HPPANI'))
+        .limit(1);
+
+      if (hpPaniType.length === 0) {
+        return res.status(404).json({ message: "HPPani vendor type not found" });
+      }
+
+      // Get all HPPani vendors with details
+      const hpPaniVendors = await db.execute(sql`
+        SELECT v.id, v.vendor_code, v.vendor_name, v.address, v.city, v.state, v.pincode, v.gst_number,
+               v.ship_to_name, v.ship_to_address
+        FROM vendors v
+        JOIN vendor_vendor_types vvt ON v.id = vvt.vendor_id
+        WHERE vvt.vendor_type_id = ${hpPaniType[0].id}
+          AND v.record_status = 1
+          AND vvt.record_status = 1
+        ORDER BY v.vendor_name
+      `);
+
+      const vendors = hpPaniVendors.rows as any[];
+      const alreadyMigrated = vendors.filter(v => v.ship_to_name);
+      const toMigrate = vendors.filter(v => !v.ship_to_name);
+
+      res.json({
+        totalHPPaniVendors: vendors.length,
+        alreadyMigrated: alreadyMigrated.length,
+        toMigrate: toMigrate.length,
+        hpclCorporate: {
+          vendorName: 'VISAKH RETAIL RO Petronilayam, HPCL',
+          address: 'Opp AU IN Gate, China Waltair, Visakhapatnam',
+          city: 'Visakhapatnam',
+          state: 'Andhra Pradesh',
+          pincode: '530003',
+          gstNumber: '37AAACH1118B1ZB'
+        },
+        vendorsToMigrate: toMigrate.map(v => ({
+          vendorCode: v.vendor_code,
+          currentName: v.vendor_name,
+          currentAddress: v.address,
+          currentGst: v.gst_number,
+          willBecome: {
+            shipToName: v.vendor_name,
+            shipToAddress: v.address
+          }
+        }))
+      });
+    } catch (error: any) {
+      console.error('[HPCL Migration Preview] Error:', error);
+      res.status(500).json({ message: error.message || 'Failed to preview migration' });
     }
   });
 
