@@ -16879,13 +16879,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "HPPani vendor type not found" });
       }
 
-      // Get all HPPani vendors
+      // Get all HPPani vendors where HPPani is their PRIMARY vendor type
       const hpPaniVendorIds = await db
         .select({ vendorId: vendorVendorTypes.vendorId })
         .from(vendorVendorTypes)
         .where(
           and(
             eq(vendorVendorTypes.vendorTypeId, hpPaniType[0].id),
+            eq(vendorVendorTypes.isPrimary, 1),
             eq(vendorVendorTypes.recordStatus, 1)
           )
         );
@@ -16982,13 +16983,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "HPPani vendor type not found" });
       }
 
-      // Get all HPPani vendors with details
+      // Get all HPPani vendors with details (only where HPPani is PRIMARY type)
       const hpPaniVendors = await db.execute(sql`
         SELECT v.id, v.vendor_code, v.vendor_name, v.address, v.city, v.state, v.pincode, v.gst_number,
                v.ship_to_name, v.ship_to_address
         FROM vendors v
         JOIN vendor_vendor_types vvt ON v.id = vvt.vendor_id
         WHERE vvt.vendor_type_id = ${hpPaniType[0].id}
+          AND vvt.is_primary = 1
           AND v.record_status = 1
           AND vvt.record_status = 1
         ORDER BY v.vendor_name
