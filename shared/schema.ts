@@ -891,6 +891,13 @@ export const vendors = pgTable("vendors", {
   vendorType: varchar("vendor_type", { length: 50 }),
   isCluster: integer("is_cluster").default(0).notNull(), // 0 = No, 1 = Yes
   isActive: varchar("is_active").default('true'),
+  // Default shipping address fields (for auto-filling invoices)
+  shipToName: varchar("ship_to_name", { length: 255 }),
+  shipToAddress: text("ship_to_address"),
+  shipToCity: varchar("ship_to_city", { length: 100 }),
+  shipToState: varchar("ship_to_state", { length: 100 }),
+  shipToPincode: varchar("ship_to_pincode", { length: 20 }),
+  shipToGstin: varchar("ship_to_gstin", { length: 20 }),
   recordStatus: integer("record_status").default(1).notNull(),
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
