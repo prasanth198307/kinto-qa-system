@@ -443,14 +443,45 @@ ${invoice.shipToName || invoice.shipToAddress ? `
           <!-- Signature Section (Right) -->
           <div class="signature-section">
             <div class="company-for-line">For <strong>${invoice.sellerName || 'Inmoisture Private Limited'}:</strong></div>
-            ${(invoice.includeSignature === 1 || invoice.includeSignature === undefined) && template?.defaultSignatureImage ? `
-              <div class="signature-image">
-                <img src="${template.defaultSignatureImage}" alt="Authorized Signature" style="max-height: 50px; object-fit: contain;" />
-              </div>
-            ` : `
-              <div class="signature-space"></div>
-            `}
-            <div class="signatory-label">${template?.authorizedSignatoryName || 'Authorized Signatory'}</div>
+            ${(() => {
+              const signatureType = (invoice as any).signatureType || 'default';
+              const showSignature = invoice.includeSignature === 1 || invoice.includeSignature === undefined;
+              
+              if (!showSignature) {
+                return '<div class="signature-space"></div>';
+              }
+              
+              // Different signature content based on type
+              if (signatureType === 'hpcl') {
+                // HPCL-specific signature with different layout
+                return template?.hpclSignatureImage 
+                  ? `<div class="signature-image"><img src="${template.hpclSignatureImage}" alt="HPCL Authorized Signature" style="max-height: 50px; object-fit: contain;" /></div>`
+                  : template?.defaultSignatureImage 
+                    ? `<div class="signature-image"><img src="${template.defaultSignatureImage}" alt="Authorized Signature" style="max-height: 50px; object-fit: contain;" /></div>`
+                    : '<div class="signature-space"></div>';
+              } else if (signatureType === 'alternate') {
+                // Alternate signature
+                return template?.alternateSignatureImage 
+                  ? `<div class="signature-image"><img src="${template.alternateSignatureImage}" alt="Alternate Authorized Signature" style="max-height: 50px; object-fit: contain;" /></div>`
+                  : template?.defaultSignatureImage 
+                    ? `<div class="signature-image"><img src="${template.defaultSignatureImage}" alt="Authorized Signature" style="max-height: 50px; object-fit: contain;" /></div>`
+                    : '<div class="signature-space"></div>';
+              } else {
+                // Default signature
+                return template?.defaultSignatureImage 
+                  ? `<div class="signature-image"><img src="${template.defaultSignatureImage}" alt="Authorized Signature" style="max-height: 50px; object-fit: contain;" /></div>`
+                  : '<div class="signature-space"></div>';
+              }
+            })()}
+            <div class="signatory-label">${(() => {
+              const signatureType = (invoice as any).signatureType || 'default';
+              if (signatureType === 'hpcl') {
+                return template?.hpclSignatoryName || template?.authorizedSignatoryName || 'Authorized Signatory';
+              } else if (signatureType === 'alternate') {
+                return template?.alternateSignatoryName || template?.authorizedSignatoryName || 'Authorized Signatory';
+              }
+              return template?.authorizedSignatoryName || 'Authorized Signatory';
+            })()}</div>
           </div>
         </div>
 
