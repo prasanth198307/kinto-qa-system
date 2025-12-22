@@ -355,15 +355,26 @@ export default function VendorManagement() {
 
   const createMutation = useMutation({
     mutationFn: async (data: Partial<Vendor>) => {
-      return apiRequest("POST", "/api/vendors", data);
+      const response = await apiRequest("POST", "/api/vendors", data);
+      return response.json();
     },
     onSuccess: async (vendor: any) => {
-      if (selectedVendorTypes.length > 0) {
-        await syncVendorTypes(vendor.id);
+      try {
+        if (selectedVendorTypes.length > 0 && vendor?.id) {
+          await syncVendorTypes(vendor.id);
+        }
+        queryClient.invalidateQueries({ queryKey: ["/api/vendors"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/vendor-vendor-types/batch"] });
+        toast({ title: "Vendor created successfully" });
+      } catch (syncError: any) {
+        console.error('Sync error during create:', syncError);
+        queryClient.invalidateQueries({ queryKey: ["/api/vendors"] });
+        toast({ 
+          title: "Vendor created but classification sync failed",
+          description: "Please edit the vendor to update classifications.",
+          variant: "destructive" 
+        });
       }
-      queryClient.invalidateQueries({ queryKey: ["/api/vendors"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/vendor-vendor-types/batch"] });
-      toast({ title: "Vendor created successfully" });
       setIsDialogOpen(false);
       setSelectedVendorTypes([]);
       setPrimaryVendorTypeId(null);
