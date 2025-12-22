@@ -1178,7 +1178,7 @@ export default function VendorManagement() {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   id="vendor-search"
-                  placeholder="Search by name, code, GST number, or mobile..."
+                  placeholder="Search by name, code, GST, mobile, or ship-to..."
                   value={searchQuery}
                   onChange={(e) => handleSearchChange(e.target.value)}
                   className="pl-9"
@@ -1281,6 +1281,7 @@ export default function VendorManagement() {
                 <TableRow>
                   <TableHead>Code</TableHead>
                   <TableHead>Name</TableHead>
+                  <TableHead>Ship-To</TableHead>
                   <TableHead>Mobile</TableHead>
                   <TableHead>GST/Aadhaar</TableHead>
                   <TableHead>City</TableHead>
@@ -1296,6 +1297,9 @@ export default function VendorManagement() {
                   <TableRow key={vendor.id} data-testid={`row-vendor-${vendor.id}`}>
                     <TableCell className="font-medium">{vendor.vendorCode}</TableCell>
                     <TableCell>{vendor.vendorName}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground max-w-[150px] truncate" title={vendor.shipToName || ''}>
+                      {vendor.shipToName || "-"}
+                    </TableCell>
                     <TableCell>{vendor.mobileNumber}</TableCell>
                     <TableCell className="text-sm">
                       <div className="flex flex-col gap-1">

@@ -2712,7 +2712,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           v.vendorCode.toLowerCase().includes(query) ||
           (v.gstNumber && v.gstNumber.toLowerCase().includes(query)) ||
           (v.aadhaarNumber && v.aadhaarNumber.toLowerCase().includes(query)) ||
-          (v.mobileNumber && v.mobileNumber.includes(query))
+          (v.mobileNumber && v.mobileNumber.includes(query)) ||
+          (v.shipToName && v.shipToName.toLowerCase().includes(query)) ||
+          (v.shipToGstin && v.shipToGstin.toLowerCase().includes(query))
         );
       }
       
