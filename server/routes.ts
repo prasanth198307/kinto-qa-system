@@ -7124,6 +7124,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update invoice signature settings (allowed even on locked/delivered invoices)
+  app.patch('/api/invoices/:id/signature', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { signatureType, includeSignature } = req.body;
+      
+      // Validate signature type
+      const validTypes = ['default', 'alternate'];
+      if (signatureType && !validTypes.includes(signatureType)) {
+        return res.status(400).json({ 
+          message: `Invalid signature type. Must be one of: ${validTypes.join(', ')}` 
+        });
+      }
+      
+      // Prepare update data
+      const updateData: any = {};
+      if (signatureType !== undefined) updateData.signatureType = signatureType;
+      if (includeSignature !== undefined) updateData.includeSignature = includeSignature ? 1 : 0;
+      
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ message: "No signature settings provided to update" });
+      }
+      
+      // Update invoice
+      const [updated] = await db.update(invoices)
+        .set(updateData)
+        .where(eq(invoices.id, id))
+        .returning();
+      
+      if (!updated) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      
+      console.log(`[AUDIT] Invoice ${id} signature updated: type=${signatureType}, include=${includeSignature}`);
+      res.json({ invoice: updated, message: "Invoice signature settings updated" });
+    } catch (error) {
+      console.error("Error updating invoice signature:", error);
+      res.status(500).json({ message: "Failed to update invoice signature" });
+    }
+  });
+
   // Update invoice status (for dispatch workflow)
   app.patch('/api/invoices/:id/status', requireRole('admin', 'manager'), async (req: any, res) => {
     try {

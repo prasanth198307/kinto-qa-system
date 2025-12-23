@@ -15,7 +15,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Edit, Mail, FileText, Printer, Star, Receipt, RefreshCw, Calculator, CreditCard, Lock, PackageCheck } from "lucide-react";
+import { ArrowLeft, Edit, Mail, FileText, Printer, Star, Receipt, RefreshCw, Calculator, CreditCard, Lock, PackageCheck, PenTool } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Tooltip,
   TooltipContent,
@@ -235,6 +242,30 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
     },
   });
 
+  // Update invoice signature mutation
+  const updateSignatureMutation = useMutation({
+    mutationFn: async (signatureType: string) => {
+      const response = await apiRequest('PATCH', `/api/invoices/${id}/signature`, { 
+        signatureType 
+      });
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/invoices', id] });
+      toast({
+        title: "Signature Updated",
+        description: "Invoice signature has been changed.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update signature",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Find the vendor matching the buyer name - use Array.isArray for safety
   const safeVendors = Array.isArray(vendors) ? vendors : [];
   const matchingVendor = safeVendors.find(v => v.vendorName === invoice?.buyerName);
@@ -416,6 +447,21 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
               Edit
             </Button>
           )}
+          {/* Signature selector - works on locked invoices */}
+          <Select
+            value={(invoice as any).signatureType || 'default'}
+            onValueChange={(value) => updateSignatureMutation.mutate(value)}
+            disabled={updateSignatureMutation.isPending}
+          >
+            <SelectTrigger className="w-[140px] h-9" data-testid="select-signature-type">
+              <PenTool className="w-4 h-4 mr-2 flex-shrink-0" />
+              <SelectValue placeholder="Signature" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="default">Signature 1</SelectItem>
+              <SelectItem value="alternate">Signature 2</SelectItem>
+            </SelectContent>
+          </Select>
           <PrintableInvoice invoice={invoice} />
           <Button
             variant="outline"
