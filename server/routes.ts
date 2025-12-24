@@ -11048,8 +11048,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           })
           .where(eq(vendorDebitNotes.id, debitNoteId));
 
-        // If adjusting against an invoice, record it as a payment (debit note adjustment type)
+        // If adjusting against an invoice, record it as a payment and update amountReceived
         if (referenceType === 'invoice' && invoiceId) {
+          // Get current invoice to update amountReceived
+          const [currentInvoice] = await tx.select().from(invoices).where(eq(invoices.id, invoiceId));
+          
           await tx.insert(invoicePayments).values({
             invoiceId,
             paymentDate: new Date().toISOString(),
@@ -11060,6 +11063,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             remarks: `Adjusted against Vendor Debit Note ${debitNote.noteNumber}`,
             recordedBy: req.user?.id,
           });
+
+          // Update invoice amountReceived to reflect the adjustment
+          const currentAmountReceived = currentInvoice?.amountReceived || 0;
+          await tx.update(invoices)
+            .set({ amountReceived: currentAmountReceived + adjustmentAmount })
+            .where(eq(invoices.id, invoiceId));
         }
       });
 
@@ -11103,8 +11112,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await db.transaction(async (tx) => {
         // For each adjustment, find and soft-delete the corresponding invoice payment
+        // and reverse the amountReceived update
         for (const adjustment of adjustments) {
           if (adjustment.referenceType === 'invoice' && adjustment.invoiceId) {
+            // Get current invoice to update amountReceived
+            const [currentInvoice] = await tx.select().from(invoices).where(eq(invoices.id, adjustment.invoiceId));
+            
             // Find the payment record created for this adjustment
             await tx.update(invoicePayments)
               .set({ recordStatus: 0 })
@@ -11114,6 +11127,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 eq(invoicePayments.paymentMethod, 'Debit Note Adjustment'),
                 eq(invoicePayments.recordStatus, 1)
               ));
+
+            // Decrease invoice amountReceived to reverse the adjustment
+            if (currentInvoice) {
+              const newAmountReceived = Math.max(0, (currentInvoice.amountReceived || 0) - adjustment.adjustmentAmount);
+              await tx.update(invoices)
+                .set({ amountReceived: newAmountReceived })
+                .where(eq(invoices.id, adjustment.invoiceId));
+            }
           }
         }
 
