@@ -205,7 +205,9 @@ export function QuickFullCreditDialog({
                       {item.productName} x {item.hasAdjustments ? item.remainingQuantity : item.originalQuantity}
                       {item.hasAdjustments && (
                         <span className="text-xs text-blue-500 ml-1">
-                          (was {item.originalQuantity}, credited: {item.creditedQuantity} qty)
+                          (was {item.originalQuantity}
+                          {item.creditedQuantity > 0 && `, credited: ${item.creditedQuantity} qty`}
+                          {item.debitedQuantity > 0 && `, debited: +${item.debitedQuantity} qty`})
                         </span>
                       )}
                     </span>

@@ -319,9 +319,14 @@ export function CreateCreditNoteDialog({
                           <div className="text-sm text-muted-foreground">
                             Invoice Qty: {item.quantity} @ {formatCurrency(item.unitPrice)}
                           </div>
-                          {effectiveItem?.hasAdjustments && (
+                          {effectiveItem?.hasAdjustments && effectiveItem.creditedQuantity > 0 && (
                             <div className="text-xs text-blue-600 dark:text-blue-400">
                               Already credited: {effectiveItem.creditedQuantity} qty ({formatCurrency(effectiveItem.creditedValue)})
+                            </div>
+                          )}
+                          {effectiveItem?.hasAdjustments && effectiveItem.debitedQuantity > 0 && (
+                            <div className="text-xs text-orange-600 dark:text-orange-400">
+                              Debited (price increase): {effectiveItem.debitedQuantity} qty ({formatCurrency(effectiveItem.debitedValue)})
                             </div>
                           )}
                           {!isFullyCredited && effectiveItem?.hasAdjustments && (
