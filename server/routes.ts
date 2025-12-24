@@ -10230,21 +10230,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ));
       }
       
-      // Get debit notes for these invoices
-      let vendorDebitNotes: any[] = [];
+      // Get debit notes for these invoices (customer debit notes)
+      let customerDebitNotes: any[] = [];
       if (invoiceIds.length > 0) {
-        vendorDebitNotes = await db.select()
+        customerDebitNotes = await db.select()
           .from(debitNotes)
           .where(and(
             eq(debitNotes.recordStatus, 1),
             inArray(debitNotes.invoiceId, invoiceIds)
           ));
       }
+
+      // Get invoice payments to show detailed payment breakdown
+      let allInvoicePayments: any[] = [];
+      if (invoiceIds.length > 0) {
+        allInvoicePayments = await db.select()
+          .from(invoicePayments)
+          .where(and(
+            eq(invoicePayments.recordStatus, 1),
+            inArray(invoicePayments.invoiceId, invoiceIds)
+          ));
+      }
+
+      // Group payments by invoice
+      const paymentsByInvoice = allInvoicePayments.reduce((acc, pmt) => {
+        if (!acc[pmt.invoiceId]) acc[pmt.invoiceId] = [];
+        acc[pmt.invoiceId].push(pmt);
+        return acc;
+      }, {} as Record<string, any[]>);
       
       // Build ledger entries - use a single-pass approach
       const ledgerEntries: any[] = [];
       
-      // Add invoices to ledger (with amountReceived as payment info)
+      // Add invoices to ledger with detailed payment breakdown
       vendorInvoices.forEach(inv => {
         // Invoice entry - what they owe
         ledgerEntries.push({
@@ -10258,16 +10276,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
           status: inv.paymentStatus,
         });
         
-        // Payment entry - what they paid (using amountReceived as authoritative source)
-        if (inv.amountReceived && inv.amountReceived > 0) {
+        // Get payments for this invoice
+        const invoicePaymentsList = paymentsByInvoice[inv.id] || [];
+        
+        if (invoicePaymentsList.length > 0) {
+          // Show each payment as a separate line item
+          invoicePaymentsList.forEach(pmt => {
+            const isDebitNoteAdjustment = pmt.paymentMethod === 'Debit Note Adjustment';
+            ledgerEntries.push({
+              type: isDebitNoteAdjustment ? 'vendor_debit_note_adjustment' : 'payment',
+              id: pmt.id,
+              date: pmt.paymentDate ? new Date(pmt.paymentDate).toISOString().split('T')[0] : inv.invoiceDate,
+              reference: isDebitNoteAdjustment ? pmt.referenceNumber : `PMT-${inv.invoiceNumber}`,
+              description: isDebitNoteAdjustment 
+                ? `Vendor Debit Note Adjustment ${pmt.referenceNumber} (against Invoice ${inv.invoiceNumber})`
+                : `Payment received for ${inv.invoiceNumber} (${pmt.paymentMethod || 'Cash'})`,
+              debit: 0,
+              credit: pmt.amount, // Reduces what customer owes
+              paymentMethod: pmt.paymentMethod,
+            });
+          });
+        } else if (inv.amountReceived && inv.amountReceived > 0) {
+          // Fallback: If no payment records exist, use amountReceived (for imported data)
           ledgerEntries.push({
             type: 'payment',
             id: `pmt-${inv.id}`,
-            date: inv.invoiceDate, // Use invoice date as payment date approximation
+            date: inv.invoiceDate,
             reference: `PMT-${inv.invoiceNumber}`,
             description: `Payment received for ${inv.invoiceNumber}`,
             debit: 0,
-            credit: inv.amountReceived, // Reduces what customer owes
+            credit: inv.amountReceived,
           });
         }
       });
@@ -10288,8 +10326,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       });
       
-      // Add debit notes to ledger (increase what customer owes)
-      vendorDebitNotes.forEach(dn => {
+      // Add customer debit notes to ledger (increase what customer owes)
+      customerDebitNotes.forEach(dn => {
         const relatedInvoice = vendorInvoices.find(inv => inv.id === dn.invoiceId);
         ledgerEntries.push({
           type: 'debit_note',
@@ -10324,7 +10362,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalInvoiced = vendorInvoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
       const totalPayments = vendorInvoices.reduce((sum, inv) => sum + (inv.amountReceived || 0), 0);
       const totalCredits = vendorCreditNotes.reduce((sum, cn) => sum + (cn.grandTotal || 0), 0);
-      const totalDebits = vendorDebitNotes.reduce((sum, dn) => sum + (dn.grandTotal || 0), 0);
+      const totalDebits = customerDebitNotes.reduce((sum, dn) => sum + (dn.grandTotal || 0), 0);
+      
+      // Calculate vendor debit note adjustments total
+      const vendorDebitNoteAdjustmentsTotal = allInvoicePayments
+        .filter(pmt => pmt.paymentMethod === 'Debit Note Adjustment')
+        .reduce((sum, pmt) => sum + pmt.amount, 0);
+      
       // Current balance = Invoiced + Debits - Credits - Payments (consistent with list view)
       const currentBalance = totalInvoiced + totalDebits - totalCredits - totalPayments;
       
@@ -10345,10 +10389,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totalCredits,
           totalDebits,
           totalPayments,
+          vendorDebitNoteAdjustments: vendorDebitNoteAdjustmentsTotal,
           currentBalance,
           invoiceCount: vendorInvoices.length,
           creditNoteCount: vendorCreditNotes.length,
-          debitNoteCount: vendorDebitNotes.length,
+          debitNoteCount: customerDebitNotes.length,
           paymentCount: vendorInvoices.filter(inv => inv.amountReceived && inv.amountReceived > 0).length,
         },
         ledger: filteredEntries.reverse(), // Most recent first for display
