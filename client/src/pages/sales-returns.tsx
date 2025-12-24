@@ -213,6 +213,25 @@ export default function SalesReturnsPage() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest('DELETE', `/api/sales-returns/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/sales-returns'] });
+      toast({ title: "Sales return deleted successfully" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Failed to delete return", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleDelete = async (returnRecord: any) => {
+    if (window.confirm(`Are you sure you want to delete return ${returnRecord.returnNumber}?`)) {
+      deleteMutation.mutate(returnRecord.id);
+    }
+  };
+
   const handleReceive = async (id: string) => {
     receiveMutation.mutate(id);
   };
@@ -648,6 +667,18 @@ export default function SalesReturnsPage() {
                             data-testid={`button-inspect-${returnRecord.id}`}
                           >
                             Inspect
+                          </Button>
+                        )}
+                        {(returnRecord.status === 'pending' || returnRecord.status === 'pending_receipt') && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => handleDelete(returnRecord)}
+                            disabled={deleteMutation.isPending}
+                            data-testid={`button-delete-${returnRecord.id}`}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         )}
                       </div>

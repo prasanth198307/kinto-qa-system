@@ -8678,6 +8678,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete sales return (soft delete)
+  app.delete('/api/sales-returns/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Check if sales return exists
+      const salesReturn = await storage.getSalesReturn(id);
+      if (!salesReturn) {
+        return res.status(404).json({ message: "Sales return not found" });
+      }
+      
+      // Only allow deletion of pending returns (not yet received/inspected)
+      if (salesReturn.status !== 'pending_receipt' && salesReturn.status !== 'pending') {
+        return res.status(400).json({ 
+          message: "Cannot delete sales return that has been received or inspected. Only pending returns can be deleted." 
+        });
+      }
+      
+      // Soft delete the return and its items
+      await storage.deleteSalesReturn(id);
+      
+      // Also soft delete the items
+      const items = await storage.getSalesReturnItems(id);
+      for (const item of items) {
+        await storage.deleteSalesReturnItem(item.id);
+      }
+      
+      await logAudit(req.user?.id, 'DELETE', 'sales_returns', id, `Deleted sales return ${salesReturn.returnNumber}`);
+      res.json({ message: "Sales return deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting sales return:", error);
+      res.status(500).json({ message: "Failed to delete sales return" });
+    }
+  });
+
   // ============ SCRAP INVENTORY API ============
   // Get all scrap inventory records with optional filters (manager+ only)
   app.get('/api/scrap-inventory', requireRole('admin', 'manager', 'AccountsManager'), async (req: any, res) => {
