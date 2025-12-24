@@ -93,30 +93,27 @@ WHERE vt.code = 'HPPANI'
 BEGIN;
 
 -- Update Invoices: Move buyer to ship-to, set HPCL corporate as buyer
+
 UPDATE invoices i
 SET 
     ship_to_name = i.buyer_name,
     ship_to_address = i.buyer_address,
-    ship_to_city = i.buyer_city,
     ship_to_state = i.buyer_state,
-    ship_to_pincode = i.buyer_pincode,
-    ship_to_gstin = i.buyer_gstin,
     buyer_name = 'VISAKH RETAIL RO Petronilayam, HPCL',
-    buyer_address = 'Opp AU IN Gate, China Waltair, Visakhapatnam',
-    buyer_city = 'Visakhapatnam',
+    buyer_address = 'Opp AU IN Gate, China Waltair, Visakhapatnam-530003',
     buyer_state = 'Andhra Pradesh',
-    buyer_pincode = '530003',
     buyer_gstin = '37AAACH1118B1ZB'
 FROM vendors v
 JOIN vendor_vendor_types vvt ON v.id = vvt.vendor_id
 JOIN vendor_types vt ON vvt.vendor_type_id = vt.id
-WHERE i.vendor_id = v.id
+WHERE i.buyer_name = v.ship_to_name
   AND vt.code = 'HPPANI'
   AND vvt.is_primary = 1
   AND v.ship_to_name IS NOT NULL
-  AND i.invoice_date >= '2024-12-01'
+  AND i.invoice_date >= '2025-12-01'
   AND i.record_status = 1
   AND i.buyer_name != 'VISAKH RETAIL RO Petronilayam, HPCL';
+
 
 -- Update Gatepasses: Move buyer to ship-to, set HPCL corporate as buyer
 UPDATE gatepasses g

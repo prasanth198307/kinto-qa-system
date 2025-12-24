@@ -139,3 +139,78 @@ ORDER BY v.vendor_code;
 -- If everything looks good, commit. Otherwise rollback.
 COMMIT;
 -- ROLLBACK;  -- Uncomment this and comment COMMIT if you need to undo
+
+
+
+SELECT 
+    v.vendor_code,
+    v.vendor_name,
+    v.address,
+    v.city,
+    v.state,
+    v.pincode,
+    v.gst_number,
+    v.ship_to_name AS current_ship_to
+FROM vendors v
+JOIN vendor_vendor_types vvt ON v.id = vvt.vendor_id
+JOIN vendor_types vt ON vvt.vendor_type_id = vt.id
+WHERE vt.code = 'HPPANI'
+  AND vvt.is_primary = 1
+  AND v.record_status = 1
+  AND vvt.record_status = 1
+  AND v.ship_to_name IS NULL
+  AND VENDOR_NAME NOT LIKE '%GAS%' AND  VENDOR_NAME NOT LIKE'%AGENCY%'
+  AND  VENDOR_NAME NOT LIKE'%Agencies%' AND  VENDOR_NAME NOT LIKE'%SONS%'
+  AND  VENDOR_NAME NOT LIKE'%Gas%' AND  VENDOR_NAME NOT LIKE'%AGENCIES%' 
+  AND  VENDOR_NAME NOT LIKE'%ENTERPRISES%'  and VENDOR_NAME NOT LIKE '%PENTAPATI KAMARAJU%'
+  and  VENDOR_NAME NOT LIKE'%D V RAMACHANDRARAJU%'
+  and vendor_name not in('ASR MURTHY VISAKH','KARUNAMAYA PETROLEUM VIS','PEST CONTROL MANAGEMENT PVT LTD')
+ORDER BY v.vendor_name;
+
+
+SELECT 
+    v.vendor_code,
+    v.vendor_name AS new_vendor_name,
+    v.gst_number AS new_gst,
+    v.ship_to_name,
+    v.ship_to_gstin
+FROM vendors v
+JOIN vendor_vendor_types vvt ON v.id = vvt.vendor_id
+JOIN vendor_types vt ON vvt.vendor_type_id = vt.id
+WHERE vt.code = 'HPPANI'
+  AND vvt.is_primary = 1
+  AND v.record_status = 1
+  AND vvt.record_status = 1
+  AND v.ship_to_name IS NOT NULL
+ORDER BY v.vendor_code;
+
+
+UPDATE vendors v
+SET 
+    ship_to_name = v.vendor_name,
+    ship_to_address = v.address,
+    ship_to_city = v.city,
+    ship_to_state = v.state,
+    ship_to_pincode = v.pincode,
+    ship_to_gstin = v.gst_number,
+    vendor_name = 'VISAKH RETAIL RO Petronilayam, HPCL',
+    address = 'Opp AU IN Gate, China Waltair, Visakhapatnam',
+    city = 'Visakhapatnam',
+    state = 'Andhra Pradesh',
+    pincode = '530003',
+    gst_number = '37AAACH1118B1ZB'
+FROM vendor_vendor_types vvt
+JOIN vendor_types vt ON vvt.vendor_type_id = vt.id
+WHERE v.id = vvt.vendor_id
+  AND vt.code = 'HPPANI'
+  AND vvt.is_primary = 1
+  AND v.record_status = 1
+  AND vvt.record_status = 1
+   AND VENDOR_NAME NOT LIKE '%GAS%' AND  VENDOR_NAME NOT LIKE'%AGENCY%'
+  AND  VENDOR_NAME NOT LIKE'%Agencies%' AND  VENDOR_NAME NOT LIKE'%SONS%'
+  AND  VENDOR_NAME NOT LIKE'%Gas%' AND  VENDOR_NAME NOT LIKE'%AGENCIES%' 
+  AND  VENDOR_NAME NOT LIKE'%ENTERPRISES%'  and VENDOR_NAME NOT LIKE '%PENTAPATI KAMARAJU%'
+  and  VENDOR_NAME NOT LIKE'%D V RAMACHANDRARAJU%'
+  and vendor_name not in('ASR MURTHY VISAKH','KARUNAMAYA PETROLEUM VIS','PEST CONTROL MANAGEMENT PVT LTD')
+  AND v.ship_to_name IS NULL;
+
