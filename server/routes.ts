@@ -9577,34 +9577,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "creditNoteId is required" });
       }
       
-      // Fetch items with product names
-      const itemsWithProducts = await db
-        .select({
-          id: creditNoteItems.id,
-          creditNoteId: creditNoteItems.creditNoteId,
-          productId: creditNoteItems.productId,
-          invoiceItemId: creditNoteItems.invoiceItemId,
-          description: creditNoteItems.description,
-          quantity: creditNoteItems.quantity,
-          unitPrice: creditNoteItems.unitPrice,
-          discountAmount: creditNoteItems.discountAmount,
-          taxableValue: creditNoteItems.taxableValue,
-          cgstRate: creditNoteItems.cgstRate,
-          cgstAmount: creditNoteItems.cgstAmount,
-          sgstRate: creditNoteItems.sgstRate,
-          sgstAmount: creditNoteItems.sgstAmount,
-          igstRate: creditNoteItems.igstRate,
-          igstAmount: creditNoteItems.igstAmount,
-          totalAmount: creditNoteItems.totalAmount,
-          // Product name
-          productName: products.name,
-        })
-        .from(creditNoteItems)
-        .leftJoin(products, eq(creditNoteItems.productId, products.id))
-        .where(and(
-          eq(creditNoteItems.creditNoteId, creditNoteId as string),
-          eq(creditNoteItems.recordStatus, 1)
-        ));
+      // Step 1: Fetch items using storage
+      const items = await storage.getCreditNoteItems(creditNoteId as string);
+      
+      // Step 2: Fetch product names for each item
+      const productIds = [...new Set(items.map(item => item.productId).filter(Boolean))];
+      const productMap = new Map<string, string>();
+      
+      if (productIds.length > 0) {
+        const productsList = await db.select({ id: products.id, name: products.name })
+          .from(products)
+          .where(sql`${products.id} IN (${sql.join(productIds.map(id => sql`${id}`), sql`, `)})`);
+        
+        productsList.forEach(p => productMap.set(p.id, p.name));
+      }
+      
+      // Step 3: Enrich items with product names
+      const itemsWithProducts = items.map(item => ({
+        ...item,
+        productName: productMap.get(item.productId) || item.description || 'Unknown Product',
+      }));
       
       res.json(itemsWithProducts);
     } catch (error) {
