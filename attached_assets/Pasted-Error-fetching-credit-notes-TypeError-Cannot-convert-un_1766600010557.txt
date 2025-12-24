@@ -1,0 +1,45 @@
+Error fetching credit notes: TypeError: Cannot convert undefined or null to object
+    at Function.entries (<anonymous>)
+    at orderSelectedFields (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/utils.js:53:17)
+    at file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/utils.js:63:22
+    at Array.reduce (<anonymous>)
+    at orderSelectedFields (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/utils.js:53:33)
+    at file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/pg-core/query-builders/select.js:684:26
+    at Object.startActiveSpan (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/tracing.js:8:14)
+    at PgSelectBase._prepare (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/pg-core/query-builders/select.js:683:19)
+    at file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/pg-core/query-builders/select.js:708:19
+    at Object.startActiveSpan (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/tracing.js:8:14)
+11:42:43 PM [express] GET /api/credit-notes 500 in 11ms :: {"message":"Failed to fetch credit notes"}
+🔹 Request: GET /api/my-permissions
+   Cookie header: connect.sid=s%3ABrW5808QzFlGv1mnY7ZGgVlgQdT16Se6.G6ZDv%2FXr4KDgLvfoDJjC05lHkxgUkkNs1w1MiUZ4F8Y
+   Session ID: BrW5808QzFlGv1mnY7ZGgVlgQdT16Se6
+   Authenticated: true
+🔹 Request: GET /api/customer-advances
+   Cookie header: connect.sid=s%3ABrW5808QzFlGv1mnY7ZGgVlgQdT16Se6.G6ZDv%2FXr4KDgLvfoDJjC05lHkxgUkkNs1w1MiUZ4F8Y
+   Session ID: BrW5808QzFlGv1mnY7ZGgVlgQdT16Se6
+   Authenticated: true
+🔹 Request: GET /api/vendors
+   Cookie header: connect.sid=s%3ABrW5808QzFlGv1mnY7ZGgVlgQdT16Se6.G6ZDv%2FXr4KDgLvfoDJjC05lHkxgUkkNs1w1MiUZ4F8Y
+   Session ID: BrW5808QzFlGv1mnY7ZGgVlgQdT16Se6
+   Authenticated: true
+11:42:46 PM [express] GET /api/my-permissions 304 in 16ms :: {"role":"admin","roleId":"role-admin","p…
+11:42:46 PM [express] GET /api/customer-advances 304 in 15ms :: []
+11:42:46 PM [express] GET /api/vendors 304 in 17ms :: [{"id":"f1ee9a92-10ee-4d99-b1fb-1882e023feca","…
+🔹 Request: GET /api/credit-notes
+   Cookie header: connect.sid=s%3ABrW5808QzFlGv1mnY7ZGgVlgQdT16Se6.G6ZDv%2FXr4KDgLvfoDJjC05lHkxgUkkNs1w1MiUZ4F8Y
+   Session ID: BrW5808QzFlGv1mnY7ZGgVlgQdT16Se6
+   Authenticated: true
+Error fetching credit notes: TypeError: Cannot convert undefined or null to object
+    at Function.entries (<anonymous>)
+    at orderSelectedFields (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/utils.js:53:17)
+    at file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/utils.js:63:22
+    at Array.reduce (<anonymous>)
+    at orderSelectedFields (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/utils.js:53:33)
+    at file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/pg-core/query-builders/select.js:684:26
+    at Object.startActiveSpan (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/tracing.js:8:14)
+    at PgSelectBase._prepare (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/pg-core/query-builders/select.js:683:19)
+    at file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/pg-core/query-builders/select.js:708:19
+    at Object.startActiveSpan (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/tracing.js:8:14)
+🔹 Request: GET /api/my-permissions
+   Cookie header: connect.sid=s%3ABrW5808QzFlGv1mnY7ZGgVlgQdT16Se6.G6ZDv%2FXr4KDgLvfoDJjC05lHkxgUkkNs1w1MiUZ4F8Y
+   Session ID: BrW5808QzFlGv1mnY7ZGgVlgQdT16Se6

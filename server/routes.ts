@@ -9434,22 +9434,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
           issuedBy: creditNotes.issuedBy,
           createdAt: creditNotes.createdAt,
           invoiceNumber: invoices.invoiceNumber,
-          invoiceVendorId: invoices.vendorId,
+          invoiceBuyerName: invoices.buyerName,
         })
         .from(creditNotes)
         .leftJoin(invoices, eq(creditNotes.invoiceId, invoices.id))
         .where(eq(creditNotes.recordStatus, 1))
         .orderBy(desc(creditNotes.createdAt));
       
-      // Fetch all vendors for lookup
+      // Fetch all vendors for lookup (by name since invoices store buyerName)
       const allVendors = await storage.getAllVendors();
-      const vendorMap = new Map(allVendors.map(v => [v.id, v]));
+      const vendorByIdMap = new Map(allVendors.map(v => [v.id, v]));
+      const vendorByNameMap = new Map(allVendors.map(v => [v.vendorName, v]));
       
       // Enrich with vendor details
       const creditNotesWithDetails = creditNotesData.map(cn => {
-        // Use vendorId if available, otherwise fallback to invoice's vendorId
-        const vendorId = cn.vendorId || cn.invoiceVendorId;
-        const vendor = vendorId ? vendorMap.get(vendorId) : null;
+        // Use vendorId if available, otherwise lookup by invoice buyerName
+        let vendor = cn.vendorId ? vendorByIdMap.get(cn.vendorId) : null;
+        if (!vendor && cn.invoiceBuyerName) {
+          vendor = vendorByNameMap.get(cn.invoiceBuyerName);
+        }
         return {
           id: cn.id,
           noteNumber: cn.noteNumber,
@@ -9468,7 +9471,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           issuedBy: cn.issuedBy,
           createdAt: cn.createdAt,
           invoiceNumber: cn.invoiceNumber,
-          buyerName: vendor?.vendorName || null,
+          buyerName: vendor?.vendorName || cn.invoiceBuyerName || null,
           buyerAddress: vendor?.address || null,
           buyerGstin: vendor?.gstNumber || null,
           buyerState: vendor?.state || null,
