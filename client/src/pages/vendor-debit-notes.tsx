@@ -94,7 +94,8 @@ export default function VendorDebitNotesPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      return apiRequest(`/api/vendor-debit-notes/${id}`, { method: "DELETE" });
+      const res = await apiRequest("DELETE", `/api/vendor-debit-notes/${id}`);
+      return res.json();
     },
     onSuccess: (data: any) => {
       toast({
