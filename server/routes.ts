@@ -9414,8 +9414,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const sellerGstin = '';
       const sellerStateCode = '29';
       
-      // Fetch credit notes with invoice and vendor details
-      const creditNotesWithDetails = await db
+      // Fetch credit notes with invoice details first
+      const creditNotesData = await db
         .select({
           id: creditNotes.id,
           noteNumber: creditNotes.noteNumber,
@@ -9433,25 +9433,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
           notes: creditNotes.notes,
           issuedBy: creditNotes.issuedBy,
           createdAt: creditNotes.createdAt,
-          // Invoice details
           invoiceNumber: invoices.invoiceNumber,
-          // Buyer details from vendor (using correct column names)
-          buyerName: vendors.vendorName,
-          buyerAddress: vendors.address,
-          buyerGstin: vendors.gstNumber,
-          buyerState: vendors.state,
+          invoiceVendorId: invoices.vendorId,
         })
         .from(creditNotes)
         .leftJoin(invoices, eq(creditNotes.invoiceId, invoices.id))
-        .leftJoin(vendors, or(
-          eq(creditNotes.vendorId, vendors.id),
-          and(
-            isNull(creditNotes.vendorId),
-            eq(invoices.vendorId, vendors.id)
-          )
-        ))
         .where(eq(creditNotes.recordStatus, 1))
         .orderBy(desc(creditNotes.createdAt));
+      
+      // Fetch all vendors for lookup
+      const allVendors = await storage.getAllVendors();
+      const vendorMap = new Map(allVendors.map(v => [v.id, v]));
+      
+      // Enrich with vendor details
+      const creditNotesWithDetails = creditNotesData.map(cn => {
+        // Use vendorId if available, otherwise fallback to invoice's vendorId
+        const vendorId = cn.vendorId || cn.invoiceVendorId;
+        const vendor = vendorId ? vendorMap.get(vendorId) : null;
+        return {
+          id: cn.id,
+          noteNumber: cn.noteNumber,
+          invoiceId: cn.invoiceId,
+          vendorId: cn.vendorId,
+          salesReturnId: cn.salesReturnId,
+          creditDate: cn.creditDate,
+          reason: cn.reason,
+          status: cn.status,
+          subtotal: cn.subtotal,
+          cgstAmount: cn.cgstAmount,
+          sgstAmount: cn.sgstAmount,
+          igstAmount: cn.igstAmount,
+          grandTotal: cn.grandTotal,
+          notes: cn.notes,
+          issuedBy: cn.issuedBy,
+          createdAt: cn.createdAt,
+          invoiceNumber: cn.invoiceNumber,
+          buyerName: vendor?.vendorName || null,
+          buyerAddress: vendor?.address || null,
+          buyerGstin: vendor?.gstNumber || null,
+          buyerState: vendor?.state || null,
+        };
+      });
       
       // Add seller details to each credit note
       const enrichedCreditNotes = creditNotesWithDetails.map(cn => ({
