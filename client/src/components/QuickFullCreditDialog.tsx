@@ -25,6 +25,9 @@ interface EffectiveItem {
   originalTaxableValue: number;
   creditedValue: number;
   debitedValue: number;
+  creditedQuantity: number;
+  debitedQuantity: number;
+  remainingQuantity: number;
   effectiveQuantity: number;
   effectiveUnitPrice: number;
   effectiveTaxableValue: number;
@@ -199,11 +202,10 @@ export function QuickFullCreditDialog({
                 {effectiveData?.items.map((item) => (
                   <div key={item.id} className="flex justify-between text-muted-foreground">
                     <span className="truncate max-w-[200px]" title={item.productName}>
-                      {item.productName} x {item.originalQuantity}
+                      {item.productName} x {item.hasAdjustments ? item.remainingQuantity : item.originalQuantity}
                       {item.hasAdjustments && (
                         <span className="text-xs text-blue-500 ml-1">
-                          (credited: {formatCurrency(item.creditedValue)}
-                          {item.debitedValue > 0 && `, debited: ${formatCurrency(item.debitedValue)}`})
+                          (was {item.originalQuantity}, credited: {item.creditedQuantity} qty)
                         </span>
                       )}
                     </span>

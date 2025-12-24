@@ -68,6 +68,9 @@ interface EffectiveItem {
   originalTaxableValue: number;
   creditedValue: number;
   debitedValue: number;
+  creditedQuantity: number;
+  debitedQuantity: number;
+  remainingQuantity: number;
   effectiveQuantity: number;
   effectiveUnitPrice: number;
   effectiveTaxableValue: number;
@@ -401,8 +404,13 @@ export function CorrectAndDebitDialog({
                             </Badge>
                             {item.hasAdjustments && (
                               <Badge variant="secondary" className="text-xs">
-                                {item.creditedValue > 0 && `Credited: ${formatCurrency(item.creditedValue)}`}
-                                {item.debitedValue > 0 && ` | Debited: ${formatCurrency(item.debitedValue)}`}
+                                {item.creditedValue > 0 && `Credited: ${item.creditedQuantity} qty`}
+                                {item.debitedValue > 0 && ` | Debited: ${item.debitedQuantity} qty`}
+                              </Badge>
+                            )}
+                            {item.hasAdjustments && (
+                              <Badge variant="outline" className="text-xs text-green-600 border-green-300">
+                                Current: {item.remainingQuantity} qty
                               </Badge>
                             )}
                           </div>
