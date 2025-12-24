@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useQuery } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
@@ -30,8 +31,35 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { FileText } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { FileText, History } from "lucide-react";
 import type { InvoiceItem } from "@shared/schema";
+
+interface EffectiveItem {
+  id: string;
+  productName: string;
+  originalQuantity: number;
+  originalUnitPrice: number;
+  creditedValue: number;
+  debitedValue: number;
+  creditedQuantity: number;
+  debitedQuantity: number;
+  remainingQuantity: number;
+  remainingCreditable: number;
+  hasAdjustments: boolean;
+}
+
+interface EffectiveItemsResponse {
+  items: EffectiveItem[];
+  summary: {
+    totalCreditedValue: number;
+    totalDebitedValue: number;
+    creditNoteCount: number;
+    debitNoteCount: number;
+  };
+}
 
 const creditNoteSchema = z.object({
   reason: z.enum(["pricing_error", "discount", "damage", "other"], {
@@ -70,6 +98,12 @@ export function CreateCreditNoteDialog({
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Fetch effective items with remaining quantities
+  const { data: effectiveData, isLoading: isLoadingEffective } = useQuery<EffectiveItemsResponse>({
+    queryKey: ['/api/invoice-items-effective', invoiceId],
+    enabled: open && !!invoiceId,
+  });
+
   const form = useForm<CreditNoteForm>({
     resolver: zodResolver(creditNoteSchema),
     defaultValues: {
@@ -81,24 +115,45 @@ export function CreateCreditNoteDialog({
 
   const reason = form.watch("reason");
 
+  // Get effective item data by invoice item ID
+  const getEffectiveItem = (itemId: string): EffectiveItem | undefined => {
+    return effectiveData?.items.find(e => e.id === itemId);
+  };
+
+  const hasPreviousAdjustments = effectiveData?.summary && 
+    (effectiveData.summary.creditNoteCount > 0 || effectiveData.summary.debitNoteCount > 0);
+
   const handleItemToggle = (itemId: string) => {
+    const effectiveItem = getEffectiveItem(itemId);
+    const invoiceItem = invoiceItems.find(i => i.id === itemId);
+    if (!invoiceItem) return;
+
     const newSelected = new Set(selectedItems);
     if (newSelected.has(itemId)) {
       newSelected.delete(itemId);
     } else {
+      // Only allow selection if there's remaining quantity
+      if (effectiveItem && effectiveItem.remainingQuantity <= 0) return;
       newSelected.add(itemId);
     }
     setSelectedItems(newSelected);
     
-    // Update form items
+    // Update form items with remaining quantity (not original)
     const items = invoiceItems
       .filter(item => newSelected.has(item.id))
-      .map(item => ({
-        invoiceItemId: item.id,
-        quantity: item.quantity,
-        adjustedUnitPrice: item.unitPrice, // Already in paise from invoice
-      }));
+      .map(item => {
+        const effItem = getEffectiveItem(item.id);
+        return {
+          invoiceItemId: item.id,
+          quantity: effItem?.remainingQuantity ?? item.quantity,
+          adjustedUnitPrice: item.unitPrice,
+        };
+      });
     form.setValue("items", items);
+  };
+
+  const formatCurrency = (amountInPaise: number) => {
+    return `₹${(amountInPaise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   const handleSubmit = async (data: CreditNoteForm) => {
@@ -145,10 +200,6 @@ export function CreateCreditNoteDialog({
     }
   };
 
-  const formatCurrency = (amountInPaise: number) => {
-    return `₹${(amountInPaise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" data-testid="dialog-create-credit-note">
@@ -162,8 +213,28 @@ export function CreateCreditNoteDialog({
           </DialogDescription>
         </DialogHeader>
 
+        {isLoadingEffective ? (
+          <div className="space-y-4">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-32 w-full" />
+          </div>
+        ) : (
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+            {hasPreviousAdjustments && (
+              <Card className="p-3 bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+                <div className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300">
+                  <History className="h-4 w-4" />
+                  <span>
+                    This invoice has previous adjustments: 
+                    {effectiveData?.summary.creditNoteCount ? ` ${effectiveData.summary.creditNoteCount} credit note(s) (${formatCurrency(effectiveData.summary.totalCreditedValue)})` : ''}
+                    {effectiveData?.summary.creditNoteCount && effectiveData?.summary.debitNoteCount ? ' and' : ''}
+                    {effectiveData?.summary.debitNoteCount ? ` ${effectiveData.summary.debitNoteCount} debit note(s) (${formatCurrency(effectiveData.summary.totalDebitedValue)})` : ''}.
+                  </span>
+                </div>
+              </Card>
+            )}
+
             {/* Reason */}
             <FormField
               control={form.control}
@@ -223,22 +294,41 @@ export function CreateCreditNoteDialog({
                 {invoiceItems.map((item) => {
                   const isSelected = selectedItems.has(item.id);
                   const itemData = form.watch("items").find(i => i.invoiceItemId === item.id);
+                  const effectiveItem = getEffectiveItem(item.id);
+                  const remainingQty = effectiveItem?.remainingQuantity ?? item.quantity;
+                  const isFullyCredited = remainingQty <= 0;
 
                   return (
-                    <div key={item.id} className="p-3 space-y-2" data-testid={`item-${item.id}`}>
+                    <div key={item.id} className={`p-3 space-y-2 ${isFullyCredited ? 'opacity-50 bg-muted/30' : ''}`} data-testid={`item-${item.id}`}>
                       <div className="flex items-start gap-3">
                         <Checkbox
                           checked={isSelected}
                           onCheckedChange={() => handleItemToggle(item.id)}
+                          disabled={isFullyCredited}
                           data-testid={`checkbox-item-${item.id}`}
                         />
                         <div className="flex-1">
-                          <div className="font-medium" data-testid={`text-item-name-${item.id}`}>
-                            {item.description}
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium" data-testid={`text-item-name-${item.id}`}>
+                              {item.description}
+                            </span>
+                            {isFullyCredited && (
+                              <Badge variant="secondary" className="text-xs">Fully Credited</Badge>
+                            )}
                           </div>
                           <div className="text-sm text-muted-foreground">
                             Invoice Qty: {item.quantity} @ {formatCurrency(item.unitPrice)}
                           </div>
+                          {effectiveItem?.hasAdjustments && (
+                            <div className="text-xs text-blue-600 dark:text-blue-400">
+                              Already credited: {effectiveItem.creditedQuantity} qty ({formatCurrency(effectiveItem.creditedValue)})
+                            </div>
+                          )}
+                          {!isFullyCredited && effectiveItem?.hasAdjustments && (
+                            <div className="text-xs text-green-600 dark:text-green-400 font-medium">
+                              Remaining: {remainingQty} qty
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -250,13 +340,13 @@ export function CreateCreditNoteDialog({
                             name={`items.${form.watch("items").findIndex(i => i.invoiceItemId === item.id)}.quantity`}
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Credit Quantity</FormLabel>
+                                <FormLabel>Credit Quantity (max: {remainingQty})</FormLabel>
                                 <FormControl>
                                   <Input
                                     type="number"
                                     {...field}
                                     min={1}
-                                    max={item.quantity}
+                                    max={remainingQty}
                                     data-testid={`input-quantity-${item.id}`}
                                     onChange={(e) => {
                                       const val = parseInt(e.target.value) || 0;
@@ -362,6 +452,7 @@ export function CreateCreditNoteDialog({
             </DialogFooter>
           </form>
         </Form>
+        )}
       </DialogContent>
     </Dialog>
   );
