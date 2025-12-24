@@ -9298,11 +9298,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           createdAt: creditNotes.createdAt,
           // Invoice details
           invoiceNumber: invoices.invoiceNumber,
-          // Buyer details from vendor
-          buyerName: vendors.name,
+          // Buyer details from vendor (using correct column names)
+          buyerName: vendors.vendorName,
           buyerAddress: vendors.address,
-          buyerGstin: vendors.gstin,
-          buyerStateCode: vendors.stateCode,
+          buyerGstin: vendors.gstNumber,
+          buyerState: vendors.state,
         })
         .from(creditNotes)
         .leftJoin(invoices, eq(creditNotes.invoiceId, invoices.id))
