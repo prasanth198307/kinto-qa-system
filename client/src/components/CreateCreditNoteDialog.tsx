@@ -42,6 +42,7 @@ interface EffectiveItem {
   productName: string;
   originalQuantity: number;
   originalUnitPrice: number;
+  effectiveUnitPrice: number; // Highest price charged (original or from debit note)
   creditedValue: number;
   debitedValue: number;
   creditedQuantity: number;
@@ -366,7 +367,12 @@ export function CreateCreditNoteDialog({
                           <FormField
                             control={form.control}
                             name={`items.${form.watch("items").findIndex(i => i.invoiceItemId === item.id)}.adjustedUnitPrice`}
-                            render={({ field }) => (
+                            render={({ field }) => {
+                              // Use effectiveUnitPrice (includes price from debit notes) or fall back to invoice price
+                              const maxPrice = effectiveItem?.effectiveUnitPrice || item.unitPrice;
+                              const priceLabel = effectiveItem?.effectiveUnitPrice && effectiveItem.effectiveUnitPrice > item.unitPrice 
+                                ? "Adjusted Price" : "Invoice Price";
+                              return (
                               <FormItem>
                                 <FormLabel>Adjusted Price (₹)</FormLabel>
                                 <FormControl>
@@ -374,25 +380,26 @@ export function CreateCreditNoteDialog({
                                     type="number"
                                     step="0.01"
                                     min={0}
-                                    max={(item.unitPrice / 100).toFixed(2)}
+                                    max={(maxPrice / 100).toFixed(2)}
                                     data-testid={`input-price-${item.id}`}
                                     onChange={(e) => {
                                       // Convert rupees to paise and store
                                       const rupeesValue = parseFloat(e.target.value) || 0;
                                       const paiseValue = Math.round(rupeesValue * 100);
-                                      // Clamp to invoice price
-                                      const clampedValue = Math.min(paiseValue, item.unitPrice);
+                                      // Clamp to effective price (may include debit note price increase)
+                                      const clampedValue = Math.min(paiseValue, maxPrice);
                                       field.onChange(clampedValue);
                                     }}
                                     value={(field.value / 100).toFixed(2)}
                                   />
                                 </FormControl>
                                 <FormDescription className="text-xs">
-                                  Max: {formatCurrency(item.unitPrice)} (Invoice Price)
+                                  Max: {formatCurrency(maxPrice)} ({priceLabel})
                                 </FormDescription>
                                 <FormMessage />
                               </FormItem>
-                            )}
+                            );
+                            }}
                           />
                         </div>
                       )}

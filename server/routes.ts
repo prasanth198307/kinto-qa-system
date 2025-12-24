@@ -7294,8 +7294,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Get debit note items grouped by invoice item - track VALUE and QUANTITY
-      const debitedByItem = new Map<string, { value: number, quantity: number }>(); // invoiceItemId -> total debited value & qty
+      // Get debit note items grouped by invoice item - track VALUE, QUANTITY, and PRICE
+      const debitedByItem = new Map<string, { value: number, quantity: number, maxPrice: number }>(); // invoiceItemId -> total debited value, qty, max price
       
       for (const dn of issuedDebitNotes) {
         const dnItems = await db.select()
@@ -7307,12 +7307,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         for (const item of dnItems) {
           if (item.invoiceItemId) {
-            const existing = debitedByItem.get(item.invoiceItemId) || { value: 0, quantity: 0 };
+            const existing = debitedByItem.get(item.invoiceItemId) || { value: 0, quantity: 0, maxPrice: 0 };
             // Debit note items use additionalQuantity (not quantity) for extra units charged
             const debitQty = item.additionalQuantity || 0;
+            // Track the highest price charged (new price from debit note)
+            const newPrice = item.newUnitPrice || 0;
             debitedByItem.set(item.invoiceItemId, {
               value: existing.value + item.taxableValue,
-              quantity: existing.quantity + debitQty
+              quantity: existing.quantity + debitQty,
+              maxPrice: Math.max(existing.maxPrice, newPrice)
             });
           }
         }
@@ -7322,12 +7325,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Track both VALUE and QUANTITY for user-friendly display
       const effectiveItems = originalItems.map(item => {
         const creditedData = creditedByItem.get(item.id) || { value: 0, quantity: 0 };
-        const debitedData = debitedByItem.get(item.id) || { value: 0, quantity: 0 };
+        const debitedData = debitedByItem.get(item.id) || { value: 0, quantity: 0, maxPrice: 0 };
         
         const creditedValue = creditedData.value;
         const creditedQuantity = creditedData.quantity;
         const debitedValue = debitedData.value;
         const debitedQuantity = debitedData.quantity;
+        const debitedMaxPrice = debitedData.maxPrice;
         
         // Original taxable value for this item
         const originalValue = item.quantity * item.unitPrice;
@@ -7342,6 +7346,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Calculate remaining creditable amount for this item (value-based)
         const remainingCreditable = Math.max(0, effectiveValue);
+        
+        // Effective unit price: use highest price charged (original or from debit note)
+        // If debit note increased the price, credit note can credit at that higher price
+        const effectiveUnitPrice = Math.max(item.unitPrice, debitedMaxPrice);
         
         return {
           // Original item data
@@ -7368,7 +7376,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Effective values - for correction dialogs
           effectiveQuantity: remainingQuantity,
-          effectiveUnitPrice: item.unitPrice,
+          effectiveUnitPrice, // Now uses highest price (original or debit note's new price)
           effectiveTaxableValue: effectiveValue,
           remainingCreditable,
           
