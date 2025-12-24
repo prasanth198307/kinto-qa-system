@@ -9271,12 +9271,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all credit notes with buyer/seller details for GST compliance
   app.get('/api/credit-notes', isAuthenticated, async (req: any, res) => {
     try {
-      // Get company settings for seller details
-      const settings = await storage.getSettings();
-      const sellerName = settings?.companyName || 'KINTO Operations';
-      const sellerAddress = settings?.companyAddress || '';
-      const sellerGstin = settings?.gstin || '';
-      const sellerStateCode = settings?.stateCode || '';
+      // Seller details - hardcoded for now (can be moved to settings table later)
+      const sellerName = 'KINTO Operations';
+      const sellerAddress = 'Karnataka, India';
+      const sellerGstin = '';
+      const sellerStateCode = '29';
       
       // Fetch credit notes with invoice and vendor details
       const creditNotesWithDetails = await db
