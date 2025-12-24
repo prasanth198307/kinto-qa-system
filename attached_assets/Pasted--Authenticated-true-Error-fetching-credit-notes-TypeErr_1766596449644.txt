@@ -1,0 +1,34 @@
+   Authenticated: true
+Error fetching credit notes: TypeError: storage.getSettings is not a function
+    at file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:16621:38
+    at Layer.handle [as handle_request] (/Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/express/lib/router/layer.js:95:5)
+    at next (/Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/express/lib/router/route.js:149:13)
+    at isAuthenticated (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:9763:12)
+    at Layer.handle [as handle_request] (/Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/express/lib/router/layer.js:95:5)
+    at next (/Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/express/lib/router/route.js:149:13)
+    at Route.dispatch (/Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/express/lib/router/route.js:119:3)
+    at Layer.handle [as handle_request] (/Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/express/lib/router/layer.js:95:5)
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/express/lib/router/index.js:284:15
+    at Function.process_params (/Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/express/lib/router/index.js:346:12)
+🔹 Request: GET /api/my-permissions
+   Cookie header: connect.sid=s%3AOpNUu_D1TYT44vlhkCup41tuhJSd-Kdy.If5pcXKGO5VtOVrTh5GhlKJRSvKp4n7NSKfGMspeW6w
+   Session ID: OpNUu_D1TYT44vlhkCup41tuhJSd-Kdy
+   Authenticated: true
+10:38:03 PM [express] GET /api/credit-notes 500 in 5ms :: {"message":"Failed to fetch credit notes"}
+10:38:03 PM [express] GET /api/my-permissions 304 in 11ms :: {"role":"admin","roleId":"role-admin","p…
+🔹 Request: GET /api/credit-notes
+   Cookie header: connect.sid=s%3AOpNUu_D1TYT44vlhkCup41tuhJSd-Kdy.If5pcXKGO5VtOVrTh5GhlKJRSvKp4n7NSKfGMspeW6w
+   Session ID: OpNUu_D1TYT44vlhkCup41tuhJSd-Kdy
+   Authenticated: true
+Error fetching credit notes: TypeError: storage.getSettings is not a function
+    at file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:16621:38
+    at Layer.handle [as handle_request] (/Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/express/lib/router/layer.js:95:5)
+    at next (/Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/express/lib/router/route.js:149:13)
+    at isAuthenticated (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:9763:12)
+    at Layer.handle [as handle_request] (/Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/express/lib/router/layer.js:95:5)
+    at next (/Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/express/lib/router/route.js:149:13)
+    at Route.dispatch (/Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/express/lib/router/route.js:119:3)
+    at Layer.handle [as handle_request] (/Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/express/lib/router/layer.js:95:5)
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/express/lib/router/index.js:284:15
+    at Function.process_params (/Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/express/lib/router/index.js:346:12)
+🔹 Request: GET /api/my-permissions
