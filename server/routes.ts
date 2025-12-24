@@ -9601,13 +9601,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const items = await storage.getCreditNoteItems(creditNoteId as string);
       
       // Step 2: Fetch product names for each item
-      const productIds = [...new Set(items.map(item => item.productId).filter(Boolean))];
+      const productIds = [...new Set(items.map(item => item.productId).filter(Boolean))] as string[];
       const productMap = new Map<string, string>();
       
       if (productIds.length > 0) {
         const productsList = await db.select({ id: products.id, name: products.name })
           .from(products)
-          .where(sql`${products.id} IN (${sql.join(productIds.map(id => sql`${id}`), sql`, `)})`);
+          .where(inArray(products.id, productIds));
         
         productsList.forEach(p => productMap.set(p.id, p.name));
       }
