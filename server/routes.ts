@@ -10025,17 +10025,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Invoice has no items" });
       }
 
-      // Check for existing credit notes
+      // Check for existing credit notes AND debit notes (value-based approach)
       const existingCreditNotes = await db.select()
         .from(creditNotes)
-        .where(eq(creditNotes.invoiceId, invoiceId));
+        .where(and(
+          eq(creditNotes.invoiceId, invoiceId),
+          eq(creditNotes.status, 'issued'),
+          eq(creditNotes.recordStatus, 1)
+        ));
       
-      const existingCreditTotal = existingCreditNotes
-        .filter(cn => cn.status === 'issued')
-        .reduce((sum, cn) => sum + cn.grandTotal, 0);
+      const existingDebitNotes = await db.select()
+        .from(debitNotes)
+        .where(and(
+          eq(debitNotes.invoiceId, invoiceId),
+          eq(debitNotes.status, 'issued'),
+          eq(debitNotes.recordStatus, 1)
+        ));
+      
+      const existingCreditTotal = existingCreditNotes.reduce((sum, cn) => sum + cn.grandTotal, 0);
+      const existingDebitTotal = existingDebitNotes.reduce((sum, dn) => sum + dn.grandTotal, 0);
 
-      // Calculate remaining creditable amount
-      const remainingCreditableAmount = invoice.totalAmount - existingCreditTotal;
+      // Calculate remaining creditable amount: Original + Debited - Credited
+      const remainingCreditableAmount = invoice.totalAmount + existingDebitTotal - existingCreditTotal;
       
       if (remainingCreditableAmount <= 0) {
         return res.status(400).json({ 
@@ -10045,9 +10056,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Calculate credit amounts by summing from invoice ITEMS (authoritative source)
       // Invoice-level rates may be null for Vyapaar-imported invoices
-      const existingCreditSubtotal = existingCreditNotes
-        .filter(cn => cn.status === 'issued')
-        .reduce((sum, cn) => sum + cn.subtotal, 0);
+      const existingCreditSubtotal = existingCreditNotes.reduce((sum, cn) => sum + cn.subtotal, 0);
+      const existingDebitSubtotal = existingDebitNotes.reduce((sum, dn) => sum + dn.subtotal, 0);
       
       // Sum GST from invoice items (this is where Vyapaar import stores GST data)
       let itemsSubtotal = 0;
@@ -10064,11 +10074,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         itemsIgstAmount += item.igstAmount || 0;
       }
       
-      // Credit the remaining amount (full amount if no prior credits)
-      const subtotal = itemsSubtotal - existingCreditSubtotal;
-      const cgstAmount = itemsCgstAmount;
-      const sgstAmount = itemsSgstAmount;
-      const igstAmount = itemsIgstAmount;
+      // Credit the remaining amount: Original + Debited - Credited
+      const subtotal = itemsSubtotal + existingDebitSubtotal - existingCreditSubtotal;
+      
+      // Calculate GST on remaining subtotal (proportional)
+      const gstRatio = itemsSubtotal > 0 ? subtotal / itemsSubtotal : 0;
+      const cgstAmount = Math.round(itemsCgstAmount * gstRatio);
+      const sgstAmount = Math.round(itemsSgstAmount * gstRatio);
+      const igstAmount = Math.round(itemsIgstAmount * gstRatio);
       const grandTotal = subtotal + cgstAmount + sgstAmount + igstAmount;
 
       // Generate credit note number
