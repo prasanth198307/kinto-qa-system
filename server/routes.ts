@@ -9443,7 +9443,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
         .from(creditNotes)
         .leftJoin(invoices, eq(creditNotes.invoiceId, invoices.id))
-        .leftJoin(vendors, sql`COALESCE(${creditNotes.vendorId}, ${invoices.vendorId}) = ${vendors.id}`)
+        .leftJoin(vendors, or(
+          eq(creditNotes.vendorId, vendors.id),
+          and(
+            isNull(creditNotes.vendorId),
+            eq(invoices.vendorId, vendors.id)
+          )
+        ))
         .where(eq(creditNotes.recordStatus, 1))
         .orderBy(desc(creditNotes.createdAt));
       
