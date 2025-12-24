@@ -1,0 +1,89 @@
+<meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">Understand this warning
+index-kOND0AGv.js:8  GET http://localhost:5050/api/credit-notes 500 (Internal Server Error)
+(anonymous) @ index-kOND0AGv.js:8
+a @ index-kOND0AGv.js:8
+b @ index-kOND0AGv.js:8
+start @ index-kOND0AGv.js:8
+fetch @ index-kOND0AGv.js:8
+#u @ index-kOND0AGv.js:8
+onSubscribe @ index-kOND0AGv.js:8
+subscribe @ index-kOND0AGv.js:8
+(anonymous) @ index-kOND0AGv.js:8
+tD @ index-kOND0AGv.js:6
+bg @ index-kOND0AGv.js:8
+qu @ index-kOND0AGv.js:8
+vH @ index-kOND0AGv.js:8
+jd @ index-kOND0AGv.js:8
+ZD @ index-kOND0AGv.js:8
+uc @ index-kOND0AGv.js:6
+(anonymous) @ index-kOND0AGv.js:8
+setTimeout
+mQ @ index-kOND0AGv.js:8
+o @ index-kOND0AGv.js:8
+batch @ index-kOND0AGv.js:8
+#a @ index-kOND0AGv.js:8
+setData @ index-kOND0AGv.js:8
+fetch @ index-kOND0AGv.js:8
+await in fetch
+#u @ index-kOND0AGv.js:8
+onSubscribe @ index-kOND0AGv.js:8
+subscribe @ index-kOND0AGv.js:8
+(anonymous) @ index-kOND0AGv.js:8
+tD @ index-kOND0AGv.js:6
+bg @ index-kOND0AGv.js:8
+qu @ index-kOND0AGv.js:8
+vH @ index-kOND0AGv.js:8
+jd @ index-kOND0AGv.js:8
+ZD @ index-kOND0AGv.js:8
+uc @ index-kOND0AGv.js:6
+(anonymous) @ index-kOND0AGv.js:8
+setTimeout
+mQ @ index-kOND0AGv.js:8
+o @ index-kOND0AGv.js:8
+batch @ index-kOND0AGv.js:8
+#a @ index-kOND0AGv.js:8
+setData @ index-kOND0AGv.js:8
+fetch @ index-kOND0AGv.js:8
+await in fetch
+#u @ index-kOND0AGv.js:8
+onSubscribe @ index-kOND0AGv.js:8
+subscribe @ index-kOND0AGv.js:8
+(anonymous) @ index-kOND0AGv.js:8
+tD @ index-kOND0AGv.js:6
+bg @ index-kOND0AGv.js:8
+qu @ index-kOND0AGv.js:8
+ZD @ index-kOND0AGv.js:8
+uc @ index-kOND0AGv.js:6
+vH @ index-kOND0AGv.js:8
+jd @ index-kOND0AGv.js:8
+XD @ index-kOND0AGv.js:8
+S @ index-kOND0AGv.js:1
+$ @ index-kOND0AGv.js:1Understand this error
+index-kOND0AGv.js:8  GET http://localhost:5050/api/sales-returns 500 (Internal Server Error)
+(anonymous) @ index-kOND0AGv.js:8
+a @ index-kOND0AGv.js:8
+b @ index-kOND0AGv.js:8
+start @ index-kOND0AGv.js:8
+fetch @ index-kOND0AGv.js:8
+#u @ index-kOND0AGv.js:8
+onSubscribe @ index-kOND0AGv.js:8
+subscribe @ index-kOND0AGv.js:8
+(anonymous) @ index-kOND0AGv.js:8
+tD @ index-kOND0AGv.js:6
+bg @ index-kOND0AGv.js:8
+qu @ index-kOND0AGv.js:8
+vH @ index-kOND0AGv.js:8
+jd @ index-kOND0AGv.js:8
+ZD @ index-kOND0AGv.js:8
+uc @ index-kOND0AGv.js:6
+(anonymous) @ index-kOND0AGv.js:8Understand this error
+index-kOND0AGv.js:52 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ index-kOND0AGv.js:52
+bg @ index-kOND0AGv.js:8
+qu @ index-kOND0AGv.js:8
+vH @ index-kOND0AGv.js:8
+jd @ index-kOND0AGv.js:8
+ZD @ index-kOND0AGv.js:8
+uc @ index-kOND0AGv.js:6
+(anonymous) @ index-kOND0AGv.js:8Understand this warning
+index-kOND0AGv.js:8  POST http://localhost:5050/api/sales-returns 500 (Internal Server Error)
