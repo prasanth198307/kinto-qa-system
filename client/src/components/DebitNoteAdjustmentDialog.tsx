@@ -92,13 +92,13 @@ export function DebitNoteAdjustmentDialog({
 
   const { data: pendingInvoices = [], isLoading: loadingInvoices } = useQuery<PendingInvoice[]>({
     queryKey: ["/api/vendor-debit-notes/pending-invoices", debitNote.vendorId],
-    queryFn: () => fetch(`/api/vendor-debit-notes/pending-invoices/${debitNote.vendorId}`).then(r => r.json()),
+    queryFn: () => fetch(`/api/vendor-debit-notes/pending-invoices/${debitNote.vendorId}`, { credentials: "include" }).then(r => r.json()),
     enabled: open && !!debitNote.vendorId,
   });
 
   const { data: pendingPOs = [], isLoading: loadingPOs } = useQuery<PendingPO[]>({
     queryKey: ["/api/vendor-debit-notes/pending-purchase-orders", debitNote.vendorId],
-    queryFn: () => fetch(`/api/vendor-debit-notes/pending-purchase-orders/${debitNote.vendorId}`).then(r => r.json()),
+    queryFn: () => fetch(`/api/vendor-debit-notes/pending-purchase-orders/${debitNote.vendorId}`, { credentials: "include" }).then(r => r.json()),
     enabled: open && !!debitNote.vendorId,
   });
 
@@ -110,7 +110,8 @@ export function DebitNoteAdjustmentDialog({
       adjustmentAmount: number;
       remarks: string;
     }) => {
-      return apiRequest("POST", `/api/vendor-debit-notes/${debitNote.id}/adjustments`, data);
+      const res = await apiRequest("POST", `/api/vendor-debit-notes/${debitNote.id}/adjustments`, data);
+      return res.json();
     },
   });
 
