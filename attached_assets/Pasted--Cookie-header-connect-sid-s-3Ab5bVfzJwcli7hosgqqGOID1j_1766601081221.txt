@@ -1,0 +1,36 @@
+   Cookie header: connect.sid=s%3Ab5bVfzJwcli7hosgqqGOID1jH3wzOeuR.VvPuGMTfIe3rLznHnO6fPeDIu8xmzJu5IQZEXJy2N44
+   Session ID: b5bVfzJwcli7hosgqqGOID1jH3wzOeuR
+   Authenticated: true
+[BATCH] Invoice 283000ea-e7ff-4459-9187-4de0f26c7866: Gatepass found: NONE
+[BATCH] BatchMap: {}
+12:00:35 AM [express] GET /api/invoice-items-with-batch/283000ea-e7ff-4459-9187-4de0f26c7866 200 in 1…
+🔹 Request: POST /api/sales-returns
+   Cookie header: connect.sid=s%3Ab5bVfzJwcli7hosgqqGOID1jH3wzOeuR.VvPuGMTfIe3rLznHnO6fPeDIu8xmzJu5IQZEXJy2N44
+   Session ID: b5bVfzJwcli7hosgqqGOID1jH3wzOeuR
+   Authenticated: true
+Error creating sales return: error: null value in column "customer_name" of relation "sales_returns" violates not-null constraint
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.createSalesReturn (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:4657:27)
+    at async file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:15882:27 {
+  length: 578,
+  severity: 'ERROR',
+  code: '23502',
+  detail: 'Failing row contains (24b1c719-9321-438a-a406-edf1d44a9131, RET-1766601043218, 283000ea-e7ff-4459-9187-4de0f26c7866, 2025-12-25, null, null, damaged_in_transit, pending, null, null, null, null, null, null, null, null, not_applicable, null, 1, 2025-12-25 00:00:43.21989, 2025-12-25 00:00:43.21989, null, partial, 0, null, not_applicable, null, null, null, null, 0, null, user-admin).',
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: 'public',
+  table: 'sales_returns',
+  column: 'customer_name',
+  dataType: undefined,
+  constraint: undefined,
+  file: 'execMain.c',
+  line: '2029',
+  routine: 'ExecConstraints'
+}
+12:00:43 AM [express] POST /api/sales-returns 500 in 24ms :: {"message":"null value in column \"custo…
+

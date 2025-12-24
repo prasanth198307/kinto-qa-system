@@ -8265,9 +8265,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { header, items } = req.body;
       
-      // Validate header
+      // Fetch invoice to get customer name
+      const invoice = await storage.getInvoice(header.invoiceId);
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      
+      // Validate header with customerName from invoice
       const validatedHeader = insertSalesReturnSchema.parse({
         ...header,
+        customerName: invoice.buyerName,
         createdBy: req.user?.id,
       });
       
