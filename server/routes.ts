@@ -8309,9 +8309,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create return items using storage
       for (const item of items) {
+        // Calculate creditAmount if not provided: creditAmount = quantityReturned * unitPrice
+        const creditAmount = item.creditAmount ?? (item.quantityReturned * (item.unitPrice || 0));
+        
         const validatedItem = insertSalesReturnItemSchema.parse({
           ...item,
           returnId: salesReturn.id,
+          creditAmount,
         });
         await storage.createSalesReturnItem(validatedItem);
       }
