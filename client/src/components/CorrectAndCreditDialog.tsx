@@ -137,10 +137,12 @@ export function CorrectAndCreditDialog({
         items: effectiveData.items.map(item => ({
           invoiceItemId: item.id,
           originalQuantity: item.originalQuantity,
-          originalUnitPrice: item.originalUnitPrice,
-          // Default to remaining quantity (original - already credited)
+          // Use effectiveUnitPrice (includes debit note price increases) for calculations
+          originalUnitPrice: item.effectiveUnitPrice || item.originalUnitPrice,
+          // Default to remaining quantity (original - already credited + debited)
           correctedQuantity: item.remainingQuantity,
-          correctedUnitPrice: item.originalUnitPrice,
+          // Default price to effective price (may include debit note increase)
+          correctedUnitPrice: item.effectiveUnitPrice || item.originalUnitPrice,
         })),
       });
     }
@@ -389,7 +391,7 @@ export function CorrectAndCreditDialog({
                   <div className="grid grid-cols-12 gap-2 p-3 bg-muted/50 text-sm font-medium">
                     <div className="col-span-3">Product</div>
                     <div className="col-span-2 text-center">Original Qty</div>
-                    <div className="col-span-2 text-center">Original Price</div>
+                    <div className="col-span-2 text-center">Current Price</div>
                     <div className="col-span-2 text-center">New Qty</div>
                     <div className="col-span-2 text-center">New Price</div>
                     <div className="col-span-1 text-right">Credit</div>
@@ -397,7 +399,9 @@ export function CorrectAndCreditDialog({
                   
                   {effectiveData?.items.map((item, index) => {
                     const watchedItem = watchedItems[index];
-                    const originalAmount = item.originalQuantity * item.originalUnitPrice;
+                    // Use effectiveUnitPrice (includes debit note price increases)
+                    const effectivePrice = item.effectiveUnitPrice || item.originalUnitPrice;
+                    const originalAmount = item.originalQuantity * effectivePrice;
                     const correctedAmount = watchedItem ? watchedItem.correctedQuantity * watchedItem.correctedUnitPrice : originalAmount;
                     const difference = originalAmount - correctedAmount;
                     const exceeds = difference > item.remainingCreditable;
@@ -426,7 +430,10 @@ export function CorrectAndCreditDialog({
                         </div>
                         
                         <div className="col-span-2 text-center text-muted-foreground">
-                          {formatCurrency(item.originalUnitPrice)}
+                          {formatCurrency(item.effectiveUnitPrice || item.originalUnitPrice)}
+                          {item.effectiveUnitPrice && item.effectiveUnitPrice > item.originalUnitPrice && (
+                            <span className="text-xs text-orange-500 block">(adj.)</span>
+                          )}
                         </div>
                         
                         <div className="col-span-2">
