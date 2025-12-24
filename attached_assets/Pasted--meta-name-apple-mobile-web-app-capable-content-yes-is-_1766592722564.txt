@@ -1,0 +1,27 @@
+<meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">Understand this warning
+api/user:1  Failed to load resource: the server responded with a status of 401 (Unauthorized)Understand this error
+auth:1 [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) <input type=​"password" class=​"flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:​border-0 file:​bg-transparent file:​text-sm file:​font-medium file:​text-foreground placeholder:​text-muted-foreground focus-visible:​outline-none focus-visible:​ring-2 focus-visible:​ring-ring focus-visible:​ring-offset-2 disabled:​cursor-not-allowed disabled:​opacity-50 md:​text-sm pl-10" id=​"login-password" placeholder=​"Enter your password" required data-testid=​"input-password-login" value=​"admin123">​
+api/invoices:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)Understand this error
+api/pending-payments?page=1&pageSize=25:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)Understand this error
+api/invoice-templates/default:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)Understand this error
+index-CL2Hfq1z.js:8  POST http://localhost:5050/api/vendor-debit-notes/bbb71115-c192-4fd2-91b5-6ea12681ba4d/adjustments 500 (Internal Server Error)
+He @ index-CL2Hfq1z.js:8
+mutationFn @ index-CL2Hfq1z.js:4834
+fn @ index-CL2Hfq1z.js:8
+b @ index-CL2Hfq1z.js:8
+start @ index-CL2Hfq1z.js:8
+execute @ index-CL2Hfq1z.js:8
+await in execute
+mutate @ index-CL2Hfq1z.js:8
+I @ index-CL2Hfq1z.js:4834
+ld @ index-CL2Hfq1z.js:5
+Zl @ index-CL2Hfq1z.js:5
+fu @ index-CL2Hfq1z.js:5
+PI @ index-CL2Hfq1z.js:5
+kI @ index-CL2Hfq1z.js:5
+(anonymous) @ index-CL2Hfq1z.js:5
+rN @ index-CL2Hfq1z.js:8
+ar @ index-CL2Hfq1z.js:5
+r0 @ index-CL2Hfq1z.js:5
+Lb @ index-CL2Hfq1z.js:5
+nW @ index-CL2Hfq1z.js:5Understand this error

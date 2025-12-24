@@ -11072,9 +11072,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       res.json({ message: "Adjustment created successfully" });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating adjustment:", error);
-      res.status(500).json({ message: "Failed to create adjustment" });
+      console.error("Error details:", error?.message, error?.stack);
+      res.status(500).json({ message: error?.message || "Failed to create adjustment" });
     }
   });
 
