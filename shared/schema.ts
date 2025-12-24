@@ -2059,7 +2059,7 @@ export const salesReturns = pgTable("sales_returns", {
   // Status tracking
   status: varchar("status", { length: 50 }).default("pending_receipt").notNull(), // pending_receipt, received, inspected, completed
   receivedDate: timestamp("received_date", { mode: 'string' }),
-  inspectedDate: timestamp("inspected_date", { mode: 'string' }),
+  inspectedDate: timestamp("inspection_date", { mode: 'string' }),
   inspectedBy: varchar("inspected_by").references(() => users.id),
   
   // Financial
