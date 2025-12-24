@@ -110,10 +110,7 @@ export function DebitNoteAdjustmentDialog({
       adjustmentAmount: number;
       remarks: string;
     }) => {
-      return apiRequest(`/api/vendor-debit-notes/${debitNote.id}/adjustments`, {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      return apiRequest("POST", `/api/vendor-debit-notes/${debitNote.id}/adjustments`, data);
     },
   });
 
