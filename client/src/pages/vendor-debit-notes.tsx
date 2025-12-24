@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,11 +19,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Search, FileText, CheckCircle, Clock, XCircle, DollarSign, ArrowRightLeft, Printer } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Plus, Search, FileText, CheckCircle, Clock, XCircle, DollarSign, ArrowRightLeft, Trash2, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { VendorDebitNoteDialog } from "@/components/VendorDebitNoteDialog";
 import { DebitNoteAdjustmentDialog } from "@/components/DebitNoteAdjustmentDialog";
 import PrintableDebitNote from "@/components/PrintableDebitNote";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 
 interface VendorDebitNote {
   id: string;
@@ -68,13 +81,39 @@ const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secon
 };
 
 export default function VendorDebitNotesPage() {
+  const { toast } = useToast();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [adjustmentNote, setAdjustmentNote] = useState<VendorDebitNote | null>(null);
+  const [deleteNote, setDeleteNote] = useState<VendorDebitNote | null>(null);
 
   const { data: debitNotes = [], isLoading } = useQuery<VendorDebitNote[]>({
     queryKey: ["/api/vendor-debit-notes"],
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest(`/api/vendor-debit-notes/${id}`, { method: "DELETE" });
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Debit Note Deleted",
+        description: data.revokedAdjustments > 0 
+          ? `Debit note deleted. ${data.revokedAdjustments} adjustment(s) and related invoice payments have been revoked.`
+          : "Debit note deleted successfully.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/vendor-debit-notes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/invoice-payments"] });
+      setDeleteNote(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete debit note",
+        variant: "destructive",
+      });
+    },
   });
 
   const formatCurrency = (paise: number) => {
@@ -252,6 +291,17 @@ export default function VendorDebitNotesPage() {
                               Adjust
                             </Button>
                           )}
+                          {note.status !== 'cancelled' && (
+                            <Button 
+                              size="icon" 
+                              variant="ghost"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => setDeleteNote(note)}
+                              data-testid={`button-delete-${note.id}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -284,6 +334,53 @@ export default function VendorDebitNotesPage() {
           onSuccess={() => setAdjustmentNote(null)}
         />
       )}
+
+      <AlertDialog open={!!deleteNote} onOpenChange={(open) => !open && setDeleteNote(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle data-testid="text-delete-dialog-title">Delete Debit Note?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteNote && (
+                <>
+                  <p className="mb-2">
+                    Are you sure you want to delete <strong>{deleteNote.noteNumber}</strong>?
+                  </p>
+                  {deleteNote.settledAmount > 0 && (
+                    <p className="text-orange-600 font-medium">
+                      This debit note has {formatCurrency(deleteNote.settledAmount)} in adjustments. 
+                      <strong> All adjustments will be revoked</strong> and any related invoice payments will be removed.
+                    </p>
+                  )}
+                  <p className="mt-2 text-muted-foreground">
+                    This action cannot be undone.
+                  </p>
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              onClick={() => deleteNote && deleteMutation.mutate(deleteNote.id)}
+              disabled={deleteMutation.isPending}
+              data-testid="button-confirm-delete"
+            >
+              {deleteMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </>
+              )}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

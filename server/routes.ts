@@ -11078,6 +11078,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete a vendor debit note (revokes all adjustments and payments)
+  app.delete('/api/vendor-debit-notes/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id: debitNoteId } = req.params;
+
+      // Get the debit note
+      const [debitNote] = await db.select()
+        .from(vendorDebitNotes)
+        .where(and(eq(vendorDebitNotes.id, debitNoteId), eq(vendorDebitNotes.recordStatus, 1)));
+
+      if (!debitNote) {
+        return res.status(404).json({ message: "Vendor debit note not found" });
+      }
+
+      // Get all adjustments for this debit note
+      const adjustments = await db.select()
+        .from(vendorDebitNoteAdjustments)
+        .where(and(
+          eq(vendorDebitNoteAdjustments.vendorDebitNoteId, debitNoteId),
+          eq(vendorDebitNoteAdjustments.recordStatus, 1)
+        ));
+
+      await db.transaction(async (tx) => {
+        // For each adjustment, find and soft-delete the corresponding invoice payment
+        for (const adjustment of adjustments) {
+          if (adjustment.referenceType === 'invoice' && adjustment.invoiceId) {
+            // Find the payment record created for this adjustment
+            await tx.update(invoicePayments)
+              .set({ recordStatus: 0 })
+              .where(and(
+                eq(invoicePayments.invoiceId, adjustment.invoiceId),
+                eq(invoicePayments.referenceNumber, debitNote.noteNumber),
+                eq(invoicePayments.paymentMethod, 'Debit Note Adjustment'),
+                eq(invoicePayments.recordStatus, 1)
+              ));
+          }
+        }
+
+        // Soft-delete all adjustments
+        await tx.update(vendorDebitNoteAdjustments)
+          .set({ recordStatus: 0 })
+          .where(eq(vendorDebitNoteAdjustments.vendorDebitNoteId, debitNoteId));
+
+        // Soft-delete the debit note
+        await tx.update(vendorDebitNotes)
+          .set({ 
+            recordStatus: 0,
+            status: 'cancelled'
+          })
+          .where(eq(vendorDebitNotes.id, debitNoteId));
+      });
+
+      await logAudit(
+        req.user?.id,
+        'DELETE',
+        'vendor_debit_notes',
+        debitNoteId,
+        `Deleted vendor debit note ${debitNote.noteNumber}. Revoked ${adjustments.length} adjustment(s).`
+      );
+
+      res.json({ 
+        message: "Debit note deleted successfully", 
+        revokedAdjustments: adjustments.length 
+      });
+    } catch (error) {
+      console.error("Error deleting vendor debit note:", error);
+      res.status(500).json({ message: "Failed to delete vendor debit note" });
+    }
+  });
+
   // Get adjustments for a debit note
   app.get('/api/vendor-debit-notes/:id/adjustments', isAuthenticated, async (req: any, res) => {
     try {
