@@ -1,0 +1,24 @@
+enticated: true
+11:35:00 PM [express] GET /api/scrap-inventory 304 in 9ms :: []
+11:35:00 PM [express] GET /api/invoices 304 in 33ms :: [{"id":"f7658dd4-1dd1-4e49-8d38-20f97eb9fe05",…
+🔹 Request: GET /api/credit-notes
+   Cookie header: connect.sid=s%3ABrW5808QzFlGv1mnY7ZGgVlgQdT16Se6.G6ZDv%2FXr4KDgLvfoDJjC05lHkxgUkkNs1w1MiUZ4F8Y
+   Session ID: BrW5808QzFlGv1mnY7ZGgVlgQdT16Se6
+   Authenticated: true
+Error fetching credit notes: ReferenceError: isNull is not defined
+    at file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:16739:9
+    at Layer.handle [as handle_request] (/Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/express/lib/router/layer.js:95:5)
+    at next (/Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/express/lib/router/route.js:149:13)
+    at isAuthenticated (file:///Users/prasanthdusi/kinto-qa-system/kinto-qa-system/dist/index.js:9763:12)
+    at Layer.handle [as handle_request] (/Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/express/lib/router/layer.js:95:5)
+    at next (/Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/express/lib/router/route.js:149:13)
+    at Route.dispatch (/Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/express/lib/router/route.js:119:3)
+    at Layer.handle [as handle_request] (/Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/express/lib/router/layer.js:95:5)
+    at /Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/express/lib/router/index.js:284:15
+    at Function.process_params (/Users/prasanthdusi/kinto-qa-system/kinto-qa-system/node_modules/express/lib/router/index.js:346:12)
+🔹 Request: GET /api/my-permissions
+   Cookie header: connect.sid=s%3ABrW5808QzFlGv1mnY7ZGgVlgQdT16Se6.G6ZDv%2FXr4KDgLvfoDJjC05lHkxgUkkNs1w1MiUZ4F8Y
+   Session ID: BrW5808QzFlGv1mnY7ZGgVlgQdT16Se6
+   Authenticated: true
+11:35:02 PM [express] GET /api/credit-notes 500 in 9ms :: {"message":"Failed to fetch credit notes"}
+11:35:02 PM [express] GET /api/my-permissions 304 in 16ms :: {"role":"admin","roleId":"role-admin","p…
