@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -27,16 +27,38 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, FileText, AlertCircle } from "lucide-react";
+import { Plus, Trash2, FileText, AlertCircle, Check, ChevronsUpDown, Building2, MapPin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { cn } from "@/lib/utils";
 import type { Vendor } from "@shared/schema";
+
+const VENDOR_TYPE_OPTIONS = [
+  { value: "all", label: "All Types" },
+  { value: "kinto", label: "Kinto" },
+  { value: "hppani", label: "HP Pani" },
+  { value: "purejal", label: "Pure Jal" },
+];
 
 const vendorDebitNoteItemSchema = z.object({
   description: z.string().min(1, "Description is required"),
@@ -105,10 +127,20 @@ export function VendorDebitNoteDialog({
 }: VendorDebitNoteDialogProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [vendorTypeFilter, setVendorTypeFilter] = useState("all");
+  const [vendorPopoverOpen, setVendorPopoverOpen] = useState(false);
 
   const { data: vendors = [] } = useQuery<Vendor[]>({
     queryKey: ["/api/vendors"],
   });
+
+  // Filter vendors by type
+  const filteredVendors = useMemo(() => {
+    if (vendorTypeFilter === "all") return vendors;
+    return vendors.filter((v) => 
+      v.vendorType?.toLowerCase() === vendorTypeFilter.toLowerCase()
+    );
+  }, [vendors, vendorTypeFilter]);
 
   const form = useForm<VendorDebitNoteForm>({
     resolver: zodResolver(vendorDebitNoteSchema),
@@ -304,30 +336,103 @@ export function VendorDebitNoteDialog({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+            {/* Vendor Type Filter */}
+            <div className="flex flex-wrap gap-2">
+              {VENDOR_TYPE_OPTIONS.map((option) => (
+                <Button
+                  key={option.value}
+                  type="button"
+                  variant={vendorTypeFilter === option.value ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setVendorTypeFilter(option.value);
+                    form.setValue("vendorId", ""); // Reset vendor when type changes
+                  }}
+                  data-testid={`filter-vendor-type-${option.value}`}
+                >
+                  {option.label}
+                  {option.value !== "all" && (
+                    <Badge variant="secondary" className="ml-2">
+                      {vendors.filter(v => v.vendorType?.toLowerCase() === option.value.toLowerCase()).length}
+                    </Badge>
+                  )}
+                </Button>
+              ))}
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="vendorId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Vendor *</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-vendor">
-                          <SelectValue placeholder="Select vendor" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {vendors.map((vendor) => (
-                          <SelectItem key={vendor.id} value={vendor.id}>
-                            {vendor.vendorName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const selectedVendor = vendors.find(v => v.id === field.value);
+                  return (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Vendor *</FormLabel>
+                      <Popover open={vendorPopoverOpen} onOpenChange={setVendorPopoverOpen}>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              aria-expanded={vendorPopoverOpen}
+                              className={cn(
+                                "justify-between",
+                                !field.value && "text-muted-foreground"
+                              )}
+                              data-testid="select-vendor"
+                            >
+                              {selectedVendor ? selectedVendor.vendorName : "Search vendor..."}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[400px] p-0" align="start">
+                          <Command>
+                            <CommandInput placeholder="Search vendors..." />
+                            <CommandList>
+                              <CommandEmpty>No vendor found.</CommandEmpty>
+                              <CommandGroup>
+                                {filteredVendors.map((vendor) => (
+                                  <CommandItem
+                                    key={vendor.id}
+                                    value={`${vendor.vendorName} ${vendor.shipToName || ""}`}
+                                    onSelect={() => {
+                                      field.onChange(vendor.id);
+                                      setVendorPopoverOpen(false);
+                                    }}
+                                    data-testid={`vendor-option-${vendor.id}`}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        field.value === vendor.id ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    <div className="flex flex-col">
+                                      <span className="font-medium">{vendor.vendorName}</span>
+                                      {vendor.shipToName && vendor.shipToName !== vendor.vendorName && (
+                                        <span className="text-xs text-muted-foreground">
+                                          Ship to: {vendor.shipToName}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {vendor.vendorType && (
+                                      <Badge variant="outline" className="ml-auto text-xs">
+                                        {vendor.vendorType}
+                                      </Badge>
+                                    )}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
 
               <FormField
@@ -344,6 +449,36 @@ export function VendorDebitNoteDialog({
                 )}
               />
             </div>
+
+            {/* Selected Vendor Details */}
+            {form.watch("vendorId") && (() => {
+              const selectedVendor = vendors.find(v => v.id === form.watch("vendorId"));
+              if (!selectedVendor) return null;
+              return (
+                <Card className="p-3 bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+                  <div className="flex items-start gap-3">
+                    <Building2 className="h-5 w-5 text-blue-600 mt-0.5" />
+                    <div className="flex-1 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{selectedVendor.vendorName}</span>
+                        {selectedVendor.vendorType && (
+                          <Badge variant="secondary">{selectedVendor.vendorType}</Badge>
+                        )}
+                      </div>
+                      {selectedVendor.shipToName && selectedVendor.shipToName !== selectedVendor.vendorName && (
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <MapPin className="h-3 w-3" />
+                          <span>Ship to: {selectedVendor.shipToName}</span>
+                        </div>
+                      )}
+                      {selectedVendor.gstNumber && (
+                        <p className="text-xs text-muted-foreground">GST: {selectedVendor.gstNumber}</p>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              );
+            })()}
 
             <div className="grid grid-cols-2 gap-4">
               <FormField
