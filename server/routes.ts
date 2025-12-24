@@ -9268,11 +9268,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Credit Notes API
-  // Get all credit notes
+  // Get all credit notes with buyer/seller details for GST compliance
   app.get('/api/credit-notes', isAuthenticated, async (req: any, res) => {
     try {
-      const creditNotes_list = await storage.getAllCreditNotes();
-      res.json(creditNotes_list);
+      // Get company settings for seller details
+      const settings = await storage.getSettings();
+      const sellerName = settings?.companyName || 'KINTO Operations';
+      const sellerAddress = settings?.companyAddress || '';
+      const sellerGstin = settings?.gstin || '';
+      const sellerStateCode = settings?.stateCode || '';
+      
+      // Fetch credit notes with invoice and vendor details
+      const creditNotesWithDetails = await db
+        .select({
+          id: creditNotes.id,
+          noteNumber: creditNotes.noteNumber,
+          invoiceId: creditNotes.invoiceId,
+          vendorId: creditNotes.vendorId,
+          salesReturnId: creditNotes.salesReturnId,
+          creditDate: creditNotes.creditDate,
+          reason: creditNotes.reason,
+          status: creditNotes.status,
+          subtotal: creditNotes.subtotal,
+          cgstAmount: creditNotes.cgstAmount,
+          sgstAmount: creditNotes.sgstAmount,
+          igstAmount: creditNotes.igstAmount,
+          grandTotal: creditNotes.grandTotal,
+          notes: creditNotes.notes,
+          issuedBy: creditNotes.issuedBy,
+          createdAt: creditNotes.createdAt,
+          // Invoice details
+          invoiceNumber: invoices.invoiceNumber,
+          // Buyer details from vendor
+          buyerName: vendors.name,
+          buyerAddress: vendors.address,
+          buyerGstin: vendors.gstin,
+          buyerStateCode: vendors.stateCode,
+        })
+        .from(creditNotes)
+        .leftJoin(invoices, eq(creditNotes.invoiceId, invoices.id))
+        .leftJoin(vendors, sql`COALESCE(${creditNotes.vendorId}, ${invoices.vendorId}) = ${vendors.id}`)
+        .where(eq(creditNotes.recordStatus, 1))
+        .orderBy(desc(creditNotes.createdAt));
+      
+      // Add seller details to each credit note
+      const enrichedCreditNotes = creditNotesWithDetails.map(cn => ({
+        ...cn,
+        sellerName,
+        sellerAddress,
+        sellerGstin,
+        sellerStateCode,
+      }));
+      
+      res.json(enrichedCreditNotes);
     } catch (error) {
       console.error("Error fetching credit notes:", error);
       res.status(500).json({ message: "Failed to fetch credit notes" });
@@ -9305,6 +9353,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching credit note:", error);
       res.status(500).json({ message: "Failed to fetch credit note" });
+    }
+  });
+
+  // Get credit note items with product names for printing
+  app.get('/api/credit-note-items', isAuthenticated, async (req: any, res) => {
+    try {
+      const { creditNoteId } = req.query;
+      if (!creditNoteId) {
+        return res.status(400).json({ message: "creditNoteId is required" });
+      }
+      
+      // Fetch items with product names
+      const itemsWithProducts = await db
+        .select({
+          id: creditNoteItems.id,
+          creditNoteId: creditNoteItems.creditNoteId,
+          productId: creditNoteItems.productId,
+          invoiceItemId: creditNoteItems.invoiceItemId,
+          description: creditNoteItems.description,
+          quantity: creditNoteItems.quantity,
+          unitPrice: creditNoteItems.unitPrice,
+          discountAmount: creditNoteItems.discountAmount,
+          taxableValue: creditNoteItems.taxableValue,
+          cgstRate: creditNoteItems.cgstRate,
+          cgstAmount: creditNoteItems.cgstAmount,
+          sgstRate: creditNoteItems.sgstRate,
+          sgstAmount: creditNoteItems.sgstAmount,
+          igstRate: creditNoteItems.igstRate,
+          igstAmount: creditNoteItems.igstAmount,
+          totalAmount: creditNoteItems.totalAmount,
+          // Product name
+          productName: products.name,
+        })
+        .from(creditNoteItems)
+        .leftJoin(products, eq(creditNoteItems.productId, products.id))
+        .where(and(
+          eq(creditNoteItems.creditNoteId, creditNoteId as string),
+          eq(creditNoteItems.recordStatus, 1)
+        ));
+      
+      res.json(itemsWithProducts);
+    } catch (error) {
+      console.error("Error fetching credit note items:", error);
+      res.status(500).json({ message: "Failed to fetch credit note items" });
     }
   });
 
