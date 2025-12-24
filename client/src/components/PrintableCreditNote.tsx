@@ -68,6 +68,11 @@ export default function PrintableCreditNote({ creditNote }: PrintableCreditNoteP
     return `${(rateInBasisPoints / 100).toFixed(2)}%`;
   };
 
+  const formatQuantity = (qty: number | null | undefined): string => {
+    if (qty === null || qty === undefined) return '0';
+    return Number(qty).toLocaleString('en-IN', { maximumFractionDigits: 0 });
+  };
+
   const isIntrastate = creditNote.sellerStateCode === creditNote.buyerStateCode;
 
   const handlePrint = () => {
@@ -330,7 +335,7 @@ export default function PrintableCreditNote({ creditNote }: PrintableCreditNoteP
                     <strong>${item.productName || 'N/A'}</strong>
                     ${item.description ? `<br/><small style="color: #666;">${item.description}</small>` : ''}
                   </td>
-                  <td class="text-center">${item.quantity}</td>
+                  <td class="text-center">${formatQuantity(item.quantity)}</td>
                   <td class="text-right">${formatCurrency(item.unitPrice)}</td>
                   <td class="text-right">${formatCurrency(item.taxableValue)}</td>
                   ${isIntrastate ? `
