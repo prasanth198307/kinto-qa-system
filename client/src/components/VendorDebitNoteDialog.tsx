@@ -134,13 +134,48 @@ export function VendorDebitNoteDialog({
     queryKey: ["/api/vendors"],
   });
 
+  // Fetch vendor type mappings
+  interface VendorTypeMapping {
+    vendorId: string;
+    vendorTypeId: string;
+    vendorTypeName: string;
+    vendorTypeCode: string;
+  }
+  const { data: vendorTypeMappings = [] } = useQuery<VendorTypeMapping[]>({
+    queryKey: ["/api/vendor-type-mappings"],
+  });
+
+  // Create a map of vendorId -> type names for quick lookup
+  const vendorTypeMap = useMemo(() => {
+    const map = new Map<string, string[]>();
+    vendorTypeMappings.forEach((m) => {
+      const existing = map.get(m.vendorId) || [];
+      existing.push(m.vendorTypeName.toLowerCase());
+      map.set(m.vendorId, existing);
+    });
+    return map;
+  }, [vendorTypeMappings]);
+
   // Filter vendors by type
   const filteredVendors = useMemo(() => {
     if (vendorTypeFilter === "all") return vendors;
-    return vendors.filter((v) => 
-      v.vendorType?.toLowerCase() === vendorTypeFilter.toLowerCase()
-    );
-  }, [vendors, vendorTypeFilter]);
+    return vendors.filter((v) => {
+      const types = vendorTypeMap.get(v.id) || [];
+      return types.includes(vendorTypeFilter.toLowerCase());
+    });
+  }, [vendors, vendorTypeFilter, vendorTypeMap]);
+
+  // Count vendors per type
+  const vendorTypeCounts = useMemo(() => {
+    const counts: Record<string, number> = { kinto: 0, hppani: 0, purejal: 0 };
+    vendorTypeMappings.forEach((m) => {
+      const typeName = m.vendorTypeName.toLowerCase();
+      if (typeName === "kinto") counts.kinto++;
+      else if (typeName === "hppani") counts.hppani++;
+      else if (typeName === "purejal") counts.purejal++;
+    });
+    return counts;
+  }, [vendorTypeMappings]);
 
   const form = useForm<VendorDebitNoteForm>({
     resolver: zodResolver(vendorDebitNoteSchema),
@@ -353,7 +388,7 @@ export function VendorDebitNoteDialog({
                   {option.label}
                   {option.value !== "all" && (
                     <Badge variant="secondary" className="ml-2">
-                      {vendors.filter(v => v.vendorType?.toLowerCase() === option.value.toLowerCase()).length}
+                      {vendorTypeCounts[option.value] || 0}
                     </Badge>
                   )}
                 </Button>

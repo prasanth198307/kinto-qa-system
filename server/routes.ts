@@ -2344,6 +2344,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all vendor-type mappings for filtering
+  app.get('/api/vendor-type-mappings', isAuthenticated, async (req: any, res) => {
+    try {
+      const mappings = await db
+        .select({
+          vendorId: vendorVendorTypes.vendorId,
+          vendorTypeId: vendorVendorTypes.vendorTypeId,
+          vendorTypeName: vendorTypes.name,
+          vendorTypeCode: vendorTypes.code,
+        })
+        .from(vendorVendorTypes)
+        .innerJoin(vendorTypes, eq(vendorVendorTypes.vendorTypeId, vendorTypes.id))
+        .where(and(
+          eq(vendorVendorTypes.recordStatus, 1),
+          eq(vendorTypes.recordStatus, 1)
+        ));
+      res.json(mappings);
+    } catch (error) {
+      console.error("Error fetching vendor type mappings:", error);
+      res.status(500).json({ message: "Failed to fetch vendor type mappings" });
+    }
+  });
+
   // Products API
   app.get('/api/products', isAuthenticated, async (req: any, res) => {
     try {
