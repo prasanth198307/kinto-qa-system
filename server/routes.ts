@@ -7308,9 +7308,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         for (const item of dnItems) {
           if (item.invoiceItemId) {
             const existing = debitedByItem.get(item.invoiceItemId) || { value: 0, quantity: 0 };
+            // Debit note items use additionalQuantity (not quantity) for extra units charged
+            const debitQty = item.additionalQuantity || 0;
             debitedByItem.set(item.invoiceItemId, {
               value: existing.value + item.taxableValue,
-              quantity: existing.quantity + item.quantity
+              quantity: existing.quantity + debitQty
             });
           }
         }
