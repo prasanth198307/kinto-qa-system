@@ -7272,44 +7272,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
           eq(debitNotes.recordStatus, 1)
         ));
       
-      // Get credit note items grouped by invoice item - track VALUE only
-      // Trying to reconstruct qty/price changes is fragile; use value-based approach
-      const creditedByItem = new Map<string, number>(); // invoiceItemId -> total credited value
+      // Get credit note items grouped by invoice item - track VALUE and QUANTITY
+      const creditedByItem = new Map<string, { value: number, quantity: number }>(); // invoiceItemId -> total credited value & qty
       
       for (const cn of issuedCreditNotes) {
         const cnItems = await db.select()
           .from(creditNoteItems)
-          .where(eq(creditNoteItems.creditNoteId, cn.id));
+          .where(and(
+            eq(creditNoteItems.creditNoteId, cn.id),
+            eq(creditNoteItems.recordStatus, 1)
+          ));
         
         for (const item of cnItems) {
           if (item.invoiceItemId) {
-            const existing = creditedByItem.get(item.invoiceItemId) || 0;
-            creditedByItem.set(item.invoiceItemId, existing + item.taxableValue);
+            const existing = creditedByItem.get(item.invoiceItemId) || { value: 0, quantity: 0 };
+            creditedByItem.set(item.invoiceItemId, {
+              value: existing.value + item.taxableValue,
+              quantity: existing.quantity + item.quantity
+            });
           }
         }
       }
       
-      // Get debit note items grouped by invoice item - track VALUE only
-      const debitedByItem = new Map<string, number>(); // invoiceItemId -> total debited value
+      // Get debit note items grouped by invoice item - track VALUE and QUANTITY
+      const debitedByItem = new Map<string, { value: number, quantity: number }>(); // invoiceItemId -> total debited value & qty
       
       for (const dn of issuedDebitNotes) {
         const dnItems = await db.select()
           .from(debitNoteItems)
-          .where(eq(debitNoteItems.debitNoteId, dn.id));
+          .where(and(
+            eq(debitNoteItems.debitNoteId, dn.id),
+            eq(debitNoteItems.recordStatus, 1)
+          ));
         
         for (const item of dnItems) {
           if (item.invoiceItemId) {
-            const existing = debitedByItem.get(item.invoiceItemId) || 0;
-            debitedByItem.set(item.invoiceItemId, existing + item.taxableValue);
+            const existing = debitedByItem.get(item.invoiceItemId) || { value: 0, quantity: 0 };
+            debitedByItem.set(item.invoiceItemId, {
+              value: existing.value + item.taxableValue,
+              quantity: existing.quantity + item.quantity
+            });
           }
         }
       }
       
       // Calculate effective values for each item
-      // Key insight: Use VALUE-based approach instead of trying to reconstruct qty/price
+      // Track both VALUE and QUANTITY for user-friendly display
       const effectiveItems = originalItems.map(item => {
-        const creditedValue = creditedByItem.get(item.id) || 0;
-        const debitedValue = debitedByItem.get(item.id) || 0;
+        const creditedData = creditedByItem.get(item.id) || { value: 0, quantity: 0 };
+        const debitedData = debitedByItem.get(item.id) || { value: 0, quantity: 0 };
+        
+        const creditedValue = creditedData.value;
+        const creditedQuantity = creditedData.quantity;
+        const debitedValue = debitedData.value;
+        const debitedQuantity = debitedData.quantity;
         
         // Original taxable value for this item
         const originalValue = item.quantity * item.unitPrice;
@@ -7317,12 +7333,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Effective remaining value = original - credited + debited
         const effectiveValue = originalValue - creditedValue + debitedValue;
         
-        // For UI display, keep original qty/price but show effective VALUE
-        // The "effective" qty/price shown are the ORIGINAL values - user adjusts from these
-        // But we track what's already been adjusted via value summaries
+        // For UI: remaining quantity = original - credited + debited
+        const remainingQuantity = Math.max(0, item.quantity - creditedQuantity + debitedQuantity);
+        
         const hasAdjustments = creditedValue > 0 || debitedValue > 0;
         
-        // Calculate remaining creditable amount for this item
+        // Calculate remaining creditable amount for this item (value-based)
         const remainingCreditable = Math.max(0, effectiveValue);
         
         return {
@@ -7343,9 +7359,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           creditedValue,
           debitedValue,
           
-          // Effective values - for correction dialogs, show original qty/price
-          // but track what value can still be credited/debited
-          effectiveQuantity: item.quantity,
+          // Adjustment summaries (quantity-based) for UI display
+          creditedQuantity,
+          debitedQuantity,
+          remainingQuantity,
+          
+          // Effective values - for correction dialogs
+          effectiveQuantity: remainingQuantity,
           effectiveUnitPrice: item.unitPrice,
           effectiveTaxableValue: effectiveValue,
           remainingCreditable,

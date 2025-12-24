@@ -67,6 +67,9 @@ interface EffectiveItem {
   originalTaxableValue: number;
   creditedValue: number;
   debitedValue: number;
+  creditedQuantity: number;
+  debitedQuantity: number;
+  remainingQuantity: number;
   effectiveQuantity: number;
   effectiveUnitPrice: number;
   effectiveTaxableValue: number;
@@ -135,7 +138,8 @@ export function CorrectAndCreditDialog({
           invoiceItemId: item.id,
           originalQuantity: item.originalQuantity,
           originalUnitPrice: item.originalUnitPrice,
-          correctedQuantity: item.originalQuantity,
+          // Default to remaining quantity (original - already credited)
+          correctedQuantity: item.remainingQuantity,
           correctedUnitPrice: item.originalUnitPrice,
         })),
       });
@@ -151,13 +155,13 @@ export function CorrectAndCreditDialog({
   })));
 
   const creditCalculation = useMemo(() => {
-    let totalOriginal = 0;
+    let totalRemaining = 0;
     let totalCorrected = 0;
     let exceedsRemaining = false;
     const itemDifferences: Array<{
       invoiceItemId: string;
       productName: string;
-      originalAmount: number;
+      remainingAmount: number;
       correctedAmount: number;
       difference: number;
       remainingCreditable: number;
@@ -168,16 +172,17 @@ export function CorrectAndCreditDialog({
       const effectiveItem = effectiveData?.items[index];
       if (!effectiveItem) return;
 
-      const origQty = Number(item.originalQuantity) || 0;
+      const remainingQty = effectiveItem.remainingQuantity;
       const origPrice = Number(item.originalUnitPrice) || 0;
       const corrQty = Number(item.correctedQuantity) || 0;
       const corrPrice = Number(item.correctedUnitPrice) || 0;
 
-      const originalAmount = origQty * origPrice;
+      // Calculate based on REMAINING quantity (after previous credits)
+      const remainingAmount = remainingQty * origPrice;
       const correctedAmount = corrQty * corrPrice;
-      const difference = originalAmount - correctedAmount;
+      const difference = remainingAmount - correctedAmount;
 
-      totalOriginal += originalAmount;
+      totalRemaining += remainingAmount;
       totalCorrected += correctedAmount;
 
       const exceeds = difference > effectiveItem.remainingCreditable;
@@ -187,7 +192,7 @@ export function CorrectAndCreditDialog({
         itemDifferences.push({
           invoiceItemId: item.invoiceItemId,
           productName: effectiveItem.productName || invoiceItems[index]?.description || 'Unknown',
-          originalAmount,
+          remainingAmount,
           correctedAmount,
           difference,
           remainingCreditable: effectiveItem.remainingCreditable,
@@ -196,16 +201,16 @@ export function CorrectAndCreditDialog({
       }
     });
 
-    const subtotalDifference = totalOriginal - totalCorrected;
+    const subtotalDifference = totalRemaining - totalCorrected;
     const cgstDifference = Math.round(subtotalDifference * cgstRate / 10000);
     const sgstDifference = Math.round(subtotalDifference * sgstRate / 10000);
     const igstDifference = Math.round(subtotalDifference * igstRate / 10000);
     const grandTotalDifference = subtotalDifference + cgstDifference + sgstDifference + igstDifference;
 
-    const isIncreasing = totalCorrected > totalOriginal;
+    const isIncreasing = totalCorrected > totalRemaining;
     
     return {
-      totalOriginal,
+      totalRemaining,
       totalCorrected,
       subtotalDifference,
       cgstDifference,
@@ -405,8 +410,13 @@ export function CorrectAndCreditDialog({
                           </div>
                           {item.hasAdjustments && (
                             <div className="text-xs text-blue-600 dark:text-blue-400">
-                              Already credited: {formatCurrency(item.creditedValue)}
-                              {item.debitedValue > 0 && ` | Debited: ${formatCurrency(item.debitedValue)}`}
+                              Already credited: {item.creditedQuantity} qty ({formatCurrency(item.creditedValue)})
+                              {item.debitedValue > 0 && ` | Debited: ${item.debitedQuantity} qty (${formatCurrency(item.debitedValue)})`}
+                            </div>
+                          )}
+                          {item.hasAdjustments && (
+                            <div className="text-xs text-green-600 dark:text-green-400 font-medium">
+                              Remaining: {item.remainingQuantity} qty
                             </div>
                           )}
                         </div>
@@ -429,7 +439,7 @@ export function CorrectAndCreditDialog({
                                   <Input
                                     type="number"
                                     min={0}
-                                    max={item.originalQuantity}
+                                    max={item.remainingQuantity}
                                     className="h-8 text-center"
                                     data-testid={`input-corrected-qty-${item.id}`}
                                     {...field}
@@ -494,8 +504,8 @@ export function CorrectAndCreditDialog({
                 {creditCalculation.hasChanges ? (
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span>Original Subtotal:</span>
-                      <span>{formatCurrency(creditCalculation.totalOriginal)}</span>
+                      <span>Remaining Subtotal:</span>
+                      <span>{formatCurrency(creditCalculation.totalRemaining)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Corrected Subtotal:</span>
