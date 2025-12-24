@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   Dialog,
@@ -13,10 +13,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
 import { FileText, Package, Check, AlertCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -26,10 +27,12 @@ interface PendingInvoice {
   id: string;
   invoiceNumber: string;
   invoiceDate: string;
-  grandTotal: number;
-  vendorName: string | null;
+  totalAmount?: number;
+  grandTotal?: number;
+  buyerName?: string | null;
+  vendorName?: string | null;
   paidAmount: number;
-  adjustedAmount: number;
+  adjustedAmount?: number;
   pendingAmount: number;
 }
 
@@ -41,6 +44,14 @@ interface PendingPO {
   status: string | null;
   adjustedAmount: number;
   pendingAmount: number;
+}
+
+interface SelectedItem {
+  id: string;
+  amount: number;
+  maxAmount: number;
+  type: "invoice" | "purchase_order";
+  label: string;
 }
 
 interface DebitNoteAdjustmentDialogProps {
@@ -65,12 +76,19 @@ export function DebitNoteAdjustmentDialog({
 }: DebitNoteAdjustmentDialogProps) {
   const { toast } = useToast();
   const [selectedType, setSelectedType] = useState<"invoice" | "purchase_order">("invoice");
-  const [selectedId, setSelectedId] = useState<string>("");
-  const [adjustmentAmount, setAdjustmentAmount] = useState<number>(0);
+  const [selectedItems, setSelectedItems] = useState<Record<string, SelectedItem>>({});
   const [remarks, setRemarks] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const unsettledAmount = debitNote.grandTotal - debitNote.settledAmount;
+
+  // Reset selections when dialog opens
+  useEffect(() => {
+    if (open) {
+      setSelectedItems({});
+      setRemarks("");
+    }
+  }, [open]);
 
   const { data: pendingInvoices = [], isLoading: loadingInvoices } = useQuery<PendingInvoice[]>({
     queryKey: ["/api/vendor-debit-notes/pending-invoices", debitNote.vendorId],
@@ -97,65 +115,59 @@ export function DebitNoteAdjustmentDialog({
         body: JSON.stringify(data),
       });
     },
-    onSuccess: () => {
-      toast({
-        title: "Adjustment Created",
-        description: "The debit note has been adjusted successfully.",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/vendor-debit-notes"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/vendor-debit-notes/pending-invoices"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/vendor-debit-notes/pending-purchase-orders"] });
-      onSuccess?.();
-      onOpenChange(false);
-      resetForm();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create adjustment",
-        variant: "destructive",
-      });
-    },
   });
-
-  const resetForm = () => {
-    setSelectedId("");
-    setAdjustmentAmount(0);
-    setRemarks("");
-  };
 
   const formatCurrency = (paise: number) => {
     return `₹${(paise / 100).toFixed(2)}`;
   };
 
-  const handleSelect = (id: string, pendingAmount: number) => {
-    setSelectedId(id);
-    setAdjustmentAmount(Math.min(pendingAmount, unsettledAmount));
+  const totalSelectedAmount = Object.values(selectedItems).reduce((sum, item) => sum + item.amount, 0);
+  const remainingToAllocate = unsettledAmount - totalSelectedAmount;
+
+  const handleToggleItem = (id: string, type: "invoice" | "purchase_order", maxAmount: number, label: string) => {
+    setSelectedItems(prev => {
+      if (prev[id]) {
+        const { [id]: removed, ...rest } = prev;
+        return rest;
+      } else {
+        // Auto-allocate: use remaining amount or max, whichever is smaller
+        const autoAmount = Math.min(maxAmount, remainingToAllocate);
+        return {
+          ...prev,
+          [id]: { id, amount: autoAmount > 0 ? autoAmount : 0, maxAmount, type, label }
+        };
+      }
+    });
+  };
+
+  const handleAmountChange = (id: string, value: number) => {
+    setSelectedItems(prev => {
+      if (!prev[id]) return prev;
+      const item = prev[id];
+      const clampedValue = Math.min(Math.max(0, value), item.maxAmount);
+      return {
+        ...prev,
+        [id]: { ...item, amount: clampedValue }
+      };
+    });
   };
 
   const handleSubmit = async () => {
-    if (!selectedId) {
+    const items = Object.values(selectedItems).filter(item => item.amount > 0);
+    
+    if (items.length === 0) {
       toast({
         title: "Error",
-        description: "Please select an invoice or purchase order",
+        description: "Please select at least one item with an amount",
         variant: "destructive",
       });
       return;
     }
 
-    if (adjustmentAmount <= 0) {
+    if (totalSelectedAmount > unsettledAmount) {
       toast({
         title: "Error",
-        description: "Adjustment amount must be greater than 0",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (adjustmentAmount > unsettledAmount) {
-      toast({
-        title: "Error",
-        description: `Adjustment amount cannot exceed unsettled balance (${formatCurrency(unsettledAmount)})`,
+        description: `Total adjustment (${formatCurrency(totalSelectedAmount)}) exceeds unsettled balance (${formatCurrency(unsettledAmount)})`,
         variant: "destructive",
       });
       return;
@@ -163,12 +175,31 @@ export function DebitNoteAdjustmentDialog({
 
     setIsSubmitting(true);
     try {
-      await adjustmentMutation.mutateAsync({
-        referenceType: selectedType,
-        invoiceId: selectedType === "invoice" ? selectedId : undefined,
-        purchaseOrderId: selectedType === "purchase_order" ? selectedId : undefined,
-        adjustmentAmount,
-        remarks,
+      // Submit each adjustment sequentially
+      for (const item of items) {
+        await adjustmentMutation.mutateAsync({
+          referenceType: item.type,
+          invoiceId: item.type === "invoice" ? item.id : undefined,
+          purchaseOrderId: item.type === "purchase_order" ? item.id : undefined,
+          adjustmentAmount: item.amount,
+          remarks,
+        });
+      }
+      
+      toast({
+        title: "Adjustments Created",
+        description: `${items.length} adjustment(s) totaling ${formatCurrency(totalSelectedAmount)} created successfully.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/vendor-debit-notes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/vendor-debit-notes/pending-invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/vendor-debit-notes/pending-purchase-orders"] });
+      onSuccess?.();
+      onOpenChange(false);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create adjustments",
+        variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);
@@ -206,7 +237,26 @@ export function DebitNoteAdjustmentDialog({
             </div>
           </div>
 
-          <Tabs value={selectedType} onValueChange={(v) => { setSelectedType(v as any); setSelectedId(""); }}>
+          {/* Allocation Summary */}
+          {Object.keys(selectedItems).length > 0 && (
+            <div className="p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-sm font-medium text-green-800 dark:text-green-200">
+                    Allocating to {Object.keys(selectedItems).length} item(s)
+                  </p>
+                  <p className="text-xs text-green-600 dark:text-green-400">
+                    Total: {formatCurrency(totalSelectedAmount)} | Remaining: {formatCurrency(remainingToAllocate)}
+                  </p>
+                </div>
+                {totalSelectedAmount > unsettledAmount && (
+                  <Badge variant="destructive">Exceeds Balance!</Badge>
+                )}
+              </div>
+            </div>
+          )}
+
+          <Tabs value={selectedType} onValueChange={(v) => setSelectedType(v as any)}>
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="invoice" className="gap-2">
                 <FileText className="h-4 w-4" />
@@ -219,7 +269,7 @@ export function DebitNoteAdjustmentDialog({
             </TabsList>
 
             <TabsContent value="invoice" className="mt-4">
-              <ScrollArea className="h-[250px] border rounded-md p-2">
+              <ScrollArea className="h-[280px] border rounded-md p-2">
                 {loadingInvoices ? (
                   <div className="flex items-center justify-center h-full">
                     <Loader2 className="h-6 w-6 animate-spin" />
@@ -231,39 +281,64 @@ export function DebitNoteAdjustmentDialog({
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {pendingInvoices.map((invoice) => (
-                      <Card 
-                        key={invoice.id} 
-                        className={`cursor-pointer transition-colors hover-elevate ${selectedId === invoice.id ? "border-primary bg-primary/5" : ""}`}
-                        onClick={() => handleSelect(invoice.id, invoice.pendingAmount)}
-                        data-testid={`invoice-option-${invoice.id}`}
-                      >
-                        <CardContent className="p-3 flex justify-between items-center">
-                          <div className="flex items-center gap-3">
-                            {selectedId === invoice.id && <Check className="h-5 w-5 text-primary" />}
-                            <div>
-                              <p className="font-medium">{invoice.invoiceNumber}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {format(new Date(invoice.invoiceDate), "dd MMM yyyy")}
-                              </p>
+                    {pendingInvoices.map((invoice) => {
+                      const isSelected = !!selectedItems[invoice.id];
+                      const selectedItem = selectedItems[invoice.id];
+                      return (
+                        <Card 
+                          key={invoice.id} 
+                          className={`transition-colors ${isSelected ? "border-primary bg-primary/5" : ""}`}
+                          data-testid={`invoice-option-${invoice.id}`}
+                        >
+                          <CardContent className="p-3">
+                            <div className="flex items-start gap-3">
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={() => handleToggleItem(invoice.id, "invoice", invoice.pendingAmount, invoice.invoiceNumber)}
+                                data-testid={`checkbox-invoice-${invoice.id}`}
+                              />
+                              <div className="flex-1">
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <p className="font-medium">{invoice.invoiceNumber}</p>
+                                    <p className="text-sm text-muted-foreground">
+                                      {format(new Date(invoice.invoiceDate), "dd MMM yyyy")}
+                                    </p>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="font-medium">{formatCurrency(invoice.pendingAmount)}</p>
+                                    <p className="text-xs text-muted-foreground">pending</p>
+                                  </div>
+                                </div>
+                                {isSelected && (
+                                  <div className="mt-2 flex items-center gap-2">
+                                    <Label className="text-xs whitespace-nowrap">Adjust Amount:</Label>
+                                    <Input
+                                      type="number"
+                                      step="0.01"
+                                      className="h-8 w-32"
+                                      value={((selectedItem?.amount || 0) / 100).toFixed(2)}
+                                      onChange={(e) => handleAmountChange(invoice.id, Math.round(parseFloat(e.target.value || "0") * 100))}
+                                      data-testid={`input-amount-${invoice.id}`}
+                                    />
+                                    <span className="text-xs text-muted-foreground">
+                                      max: {formatCurrency(invoice.pendingAmount)}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-medium">{formatCurrency(invoice.pendingAmount)}</p>
-                            <p className="text-xs text-muted-foreground">
-                              of {formatCurrency(invoice.grandTotal)} pending
-                            </p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                   </div>
                 )}
               </ScrollArea>
             </TabsContent>
 
             <TabsContent value="purchase_order" className="mt-4">
-              <ScrollArea className="h-[250px] border rounded-md p-2">
+              <ScrollArea className="h-[280px] border rounded-md p-2">
                 {loadingPOs ? (
                   <div className="flex items-center justify-center h-full">
                     <Loader2 className="h-6 w-6 animate-spin" />
@@ -275,63 +350,74 @@ export function DebitNoteAdjustmentDialog({
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {pendingPOs.map((po) => (
-                      <Card 
-                        key={po.id} 
-                        className={`cursor-pointer transition-colors hover-elevate ${selectedId === po.id ? "border-primary bg-primary/5" : ""}`}
-                        onClick={() => handleSelect(po.id, po.pendingAmount)}
-                        data-testid={`po-option-${po.id}`}
-                      >
-                        <CardContent className="p-3 flex justify-between items-center">
-                          <div className="flex items-center gap-3">
-                            {selectedId === po.id && <Check className="h-5 w-5 text-primary" />}
-                            <div>
-                              <p className="font-medium">{po.poNumber}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {po.poDate ? format(new Date(po.poDate), "dd MMM yyyy") : "N/A"}
-                              </p>
+                    {pendingPOs.map((po) => {
+                      const isSelected = !!selectedItems[po.id];
+                      const selectedItem = selectedItems[po.id];
+                      return (
+                        <Card 
+                          key={po.id} 
+                          className={`transition-colors ${isSelected ? "border-primary bg-primary/5" : ""}`}
+                          data-testid={`po-option-${po.id}`}
+                        >
+                          <CardContent className="p-3">
+                            <div className="flex items-start gap-3">
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={() => handleToggleItem(po.id, "purchase_order", po.pendingAmount, po.poNumber)}
+                                data-testid={`checkbox-po-${po.id}`}
+                              />
+                              <div className="flex-1">
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <p className="font-medium">{po.poNumber}</p>
+                                    <p className="text-sm text-muted-foreground">
+                                      {po.poDate ? format(new Date(po.poDate), "dd MMM yyyy") : "N/A"}
+                                    </p>
+                                  </div>
+                                  <div className="text-right">
+                                    <Badge variant="outline" className="mb-1">{po.status}</Badge>
+                                    <p className="font-medium">{formatCurrency(po.pendingAmount)}</p>
+                                  </div>
+                                </div>
+                                {isSelected && (
+                                  <div className="mt-2 flex items-center gap-2">
+                                    <Label className="text-xs whitespace-nowrap">Adjust Amount:</Label>
+                                    <Input
+                                      type="number"
+                                      step="0.01"
+                                      className="h-8 w-32"
+                                      value={((selectedItem?.amount || 0) / 100).toFixed(2)}
+                                      onChange={(e) => handleAmountChange(po.id, Math.round(parseFloat(e.target.value || "0") * 100))}
+                                      data-testid={`input-amount-${po.id}`}
+                                    />
+                                    <span className="text-xs text-muted-foreground">
+                                      max: {formatCurrency(po.pendingAmount)}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                          <div className="text-right">
-                            <Badge variant="outline">{po.status}</Badge>
-                            <p className="font-medium mt-1">{formatCurrency(po.pendingAmount)}</p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                   </div>
                 )}
               </ScrollArea>
             </TabsContent>
           </Tabs>
 
-          {selectedId && (
-            <div className="space-y-3 pt-2">
-              <Separator />
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="adjustmentAmount">Adjustment Amount (₹)</Label>
-                  <Input
-                    id="adjustmentAmount"
-                    type="number"
-                    step="0.01"
-                    value={(adjustmentAmount / 100).toFixed(2)}
-                    onChange={(e) => setAdjustmentAmount(Math.round(parseFloat(e.target.value || "0") * 100))}
-                    data-testid="input-adjustment-amount"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="remarks">Remarks (Optional)</Label>
-                  <Textarea
-                    id="remarks"
-                    value={remarks}
-                    onChange={(e) => setRemarks(e.target.value)}
-                    placeholder="Add any notes about this adjustment..."
-                    className="resize-none"
-                    data-testid="input-adjustment-remarks"
-                  />
-                </div>
-              </div>
+          {Object.keys(selectedItems).length > 0 && (
+            <div className="space-y-2">
+              <Label htmlFor="remarks">Remarks (Optional)</Label>
+              <Textarea
+                id="remarks"
+                value={remarks}
+                onChange={(e) => setRemarks(e.target.value)}
+                placeholder="Add any notes about this adjustment..."
+                className="resize-none"
+                data-testid="input-adjustment-remarks"
+              />
             </div>
           )}
         </div>
@@ -342,7 +428,7 @@ export function DebitNoteAdjustmentDialog({
           </Button>
           <Button 
             onClick={handleSubmit} 
-            disabled={!selectedId || adjustmentAmount <= 0 || isSubmitting}
+            disabled={Object.keys(selectedItems).length === 0 || totalSelectedAmount <= 0 || totalSelectedAmount > unsettledAmount || isSubmitting}
             data-testid="button-confirm-adjustment"
           >
             {isSubmitting ? (
