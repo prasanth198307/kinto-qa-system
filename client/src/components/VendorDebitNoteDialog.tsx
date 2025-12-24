@@ -424,19 +424,18 @@ export function VendorDebitNoteDialog({
                     name="lumpSumAmount"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Amount (paise) *</FormLabel>
+                        <FormLabel>Amount (₹) *</FormLabel>
                         <FormControl>
                           <Input 
                             type="number" 
                             min="0" 
-                            placeholder="e.g., 100000 = ₹1000" 
-                            {...field} 
+                            step="0.01"
+                            placeholder="e.g., 1000.00" 
+                            value={field.value ? (Number(field.value) / 100).toFixed(2) : ""}
+                            onChange={(e) => field.onChange(Math.round(parseFloat(e.target.value || "0") * 100))}
                             data-testid="input-lumpsum-amount" 
                           />
                         </FormControl>
-                        <p className="text-xs text-muted-foreground">
-                          {field.value ? formatCurrency(Number(field.value)) : "₹0.00"}
-                        </p>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -467,19 +466,18 @@ export function VendorDebitNoteDialog({
                     name="lumpSumCgstRate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>CGST Rate (basis points)</FormLabel>
+                        <FormLabel>CGST Rate (%)</FormLabel>
                         <FormControl>
                           <Input 
                             type="number" 
                             min="0" 
-                            placeholder="900 = 9%" 
-                            {...field} 
+                            step="0.01"
+                            placeholder="e.g., 9" 
+                            value={field.value ? (Number(field.value) / 100).toString() : ""}
+                            onChange={(e) => field.onChange(Math.round(parseFloat(e.target.value || "0") * 100))}
                             data-testid="input-lumpsum-cgst" 
                           />
                         </FormControl>
-                        <p className="text-xs text-muted-foreground">
-                          {field.value ? `${(Number(field.value) / 100).toFixed(2)}%` : "0%"}
-                        </p>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -490,19 +488,18 @@ export function VendorDebitNoteDialog({
                     name="lumpSumSgstRate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>SGST Rate (basis points)</FormLabel>
+                        <FormLabel>SGST Rate (%)</FormLabel>
                         <FormControl>
                           <Input 
                             type="number" 
                             min="0" 
-                            placeholder="900 = 9%" 
-                            {...field} 
+                            step="0.01"
+                            placeholder="e.g., 9" 
+                            value={field.value ? (Number(field.value) / 100).toString() : ""}
+                            onChange={(e) => field.onChange(Math.round(parseFloat(e.target.value || "0") * 100))}
                             data-testid="input-lumpsum-sgst" 
                           />
                         </FormControl>
-                        <p className="text-xs text-muted-foreground">
-                          {field.value ? `${(Number(field.value) / 100).toFixed(2)}%` : "0%"}
-                        </p>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -594,9 +591,16 @@ export function VendorDebitNoteDialog({
                           name={`items.${index}.unitPrice`}
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-xs">Unit Price (paise) *</FormLabel>
+                              <FormLabel className="text-xs">Unit Price (₹) *</FormLabel>
                               <FormControl>
-                                <Input type="number" min="0" {...field} data-testid={`input-item-price-${index}`} />
+                                <Input 
+                                  type="number" 
+                                  min="0" 
+                                  step="0.01"
+                                  value={field.value ? (Number(field.value) / 100).toFixed(2) : ""}
+                                  onChange={(e) => field.onChange(Math.round(parseFloat(e.target.value || "0") * 100))}
+                                  data-testid={`input-item-price-${index}`} 
+                                />
                               </FormControl>
                             </FormItem>
                           )}
@@ -611,7 +615,15 @@ export function VendorDebitNoteDialog({
                             <FormItem>
                               <FormLabel className="text-xs">CGST %</FormLabel>
                               <FormControl>
-                                <Input type="number" min="0" {...field} placeholder="900=9%" data-testid={`input-item-cgst-${index}`} />
+                                <Input 
+                                  type="number" 
+                                  min="0" 
+                                  step="0.01"
+                                  placeholder="9"
+                                  value={field.value ? (Number(field.value) / 100).toString() : ""}
+                                  onChange={(e) => field.onChange(Math.round(parseFloat(e.target.value || "0") * 100))}
+                                  data-testid={`input-item-cgst-${index}`} 
+                                />
                               </FormControl>
                             </FormItem>
                           )}
@@ -626,7 +638,15 @@ export function VendorDebitNoteDialog({
                             <FormItem>
                               <FormLabel className="text-xs">SGST %</FormLabel>
                               <FormControl>
-                                <Input type="number" min="0" {...field} placeholder="900=9%" data-testid={`input-item-sgst-${index}`} />
+                                <Input 
+                                  type="number" 
+                                  min="0" 
+                                  step="0.01"
+                                  placeholder="9"
+                                  value={field.value ? (Number(field.value) / 100).toString() : ""}
+                                  onChange={(e) => field.onChange(Math.round(parseFloat(e.target.value || "0") * 100))}
+                                  data-testid={`input-item-sgst-${index}`} 
+                                />
                               </FormControl>
                             </FormItem>
                           )}
