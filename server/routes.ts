@@ -10841,15 +10841,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get pending invoices for a vendor - Note: Invoices don't have vendorId, 
-  // they have buyerName. This endpoint returns empty as vendor debit notes 
-  // should be adjusted against purchase orders, not sales invoices.
+  // Get pending invoices for a vendor - matches invoices by buyer name to vendor name
+  // Used for adjusting vendor debit notes against sales invoices owed by the vendor
   app.get('/api/vendor-debit-notes/pending-invoices/:vendorId', isAuthenticated, async (req: any, res) => {
     try {
-      // Invoices are issued TO buyers (customers), not FROM vendors (suppliers).
-      // Vendor debit notes should be adjusted against purchase orders instead.
-      // Return empty array as this adjustment type doesn't apply to vendor context.
-      res.json([]);
+      const { vendorId } = req.params;
+      
+      // Get the vendor details to find matching invoices by buyer name
+      const vendor = await storage.getVendor(vendorId);
+      if (!vendor) {
+        return res.status(404).json({ message: "Vendor not found" });
+      }
+      
+      // Find invoices where buyer matches this vendor (by name or ship_to_name)
+      const vendorInvoices = await db.select({
+        id: invoices.id,
+        invoiceNumber: invoices.invoiceNumber,
+        invoiceDate: invoices.invoiceDate,
+        buyerName: invoices.buyerName,
+        totalAmount: invoices.totalAmount,
+        amountReceived: invoices.amountReceived,
+        status: invoices.status,
+      })
+        .from(invoices)
+        .where(and(
+          eq(invoices.recordStatus, 1),
+          or(
+            eq(invoices.buyerName, vendor.vendorName),
+            eq(invoices.buyerName, vendor.shipToName || '')
+          )
+        ))
+        .orderBy(desc(invoices.invoiceDate));
+      
+      // Get existing payments for these invoices
+      const invoiceIds = vendorInvoices.map(inv => inv.id);
+      
+      const existingPayments = invoiceIds.length > 0
+        ? await db.select({
+            invoiceId: invoicePayments.invoiceId,
+            amount: invoicePayments.amount,
+          })
+          .from(invoicePayments)
+          .where(and(
+            inArray(invoicePayments.invoiceId, invoiceIds),
+            eq(invoicePayments.recordStatus, 1)
+          ))
+        : [];
+      
+      const paymentsByInvoice = existingPayments.reduce((acc, p) => {
+        if (p.invoiceId) {
+          acc[p.invoiceId] = (acc[p.invoiceId] || 0) + p.amount;
+        }
+        return acc;
+      }, {} as Record<string, number>);
+      
+      // Return invoices with pending amounts (totalAmount - paid)
+      const pendingInvoices = vendorInvoices.map(inv => ({
+        ...inv,
+        paidAmount: paymentsByInvoice[inv.id] || inv.amountReceived || 0,
+        pendingAmount: (inv.totalAmount || 0) - (paymentsByInvoice[inv.id] || inv.amountReceived || 0),
+      })).filter(inv => inv.pendingAmount > 0);
+      
+      res.json(pendingInvoices);
     } catch (error) {
       console.error("Error fetching pending invoices:", error);
       res.status(500).json({ message: "Failed to fetch pending invoices" });
