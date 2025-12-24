@@ -24,6 +24,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 const createReturnSchema = z.object({
   invoiceId: z.string().min(1, "Invoice is required"),
   returnDate: z.string().min(1, "Return date is required"),
+  returnType: z.enum(["full", "partial"], { required_error: "Return type is required" }),
   returnReason: z.string().min(1, "Return reason is required"),
   customerRemarks: z.string().optional(),
   items: z.array(z.object({
@@ -100,6 +101,7 @@ export default function SalesReturnsPage() {
     defaultValues: {
       invoiceId: "",
       returnDate: format(new Date(), "yyyy-MM-dd"),
+      returnType: "partial",
       returnReason: "",
       customerRemarks: "",
       items: [],
@@ -343,6 +345,28 @@ export default function SalesReturnsPage() {
                     )}
                   />
                 </div>
+
+                <FormField
+                  control={form.control}
+                  name="returnType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Return Type</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-return-type">
+                            <SelectValue placeholder="Select return type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="partial">Partial Return</SelectItem>
+                          <SelectItem value="full">Full Return</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <FormField
                   control={form.control}
