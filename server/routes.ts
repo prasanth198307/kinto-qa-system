@@ -7241,6 +7241,143 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get effective invoice item values (after credit/debit notes adjustments)
+  // This calculates: Effective Qty = Original - Credited + Debited
+  // And: Effective Price = Original + Price Adjustments from Debits
+  app.get('/api/invoice-items-effective/:invoiceId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { invoiceId } = req.params;
+      
+      // Get original invoice items
+      const originalItems = await storage.getInvoiceItems(invoiceId, false);
+      if (!originalItems || originalItems.length === 0) {
+        return res.json([]);
+      }
+      
+      // Get all issued credit notes for this invoice
+      const issuedCreditNotes = await db.select()
+        .from(creditNotes)
+        .where(and(
+          eq(creditNotes.invoiceId, invoiceId),
+          eq(creditNotes.status, 'issued'),
+          eq(creditNotes.recordStatus, 1)
+        ));
+      
+      // Get all issued debit notes for this invoice
+      const issuedDebitNotes = await db.select()
+        .from(debitNotes)
+        .where(and(
+          eq(debitNotes.invoiceId, invoiceId),
+          eq(debitNotes.status, 'issued'),
+          eq(debitNotes.recordStatus, 1)
+        ));
+      
+      // Get credit note items grouped by invoice item - track VALUE only
+      // Trying to reconstruct qty/price changes is fragile; use value-based approach
+      const creditedByItem = new Map<string, number>(); // invoiceItemId -> total credited value
+      
+      for (const cn of issuedCreditNotes) {
+        const cnItems = await db.select()
+          .from(creditNoteItems)
+          .where(eq(creditNoteItems.creditNoteId, cn.id));
+        
+        for (const item of cnItems) {
+          if (item.invoiceItemId) {
+            const existing = creditedByItem.get(item.invoiceItemId) || 0;
+            creditedByItem.set(item.invoiceItemId, existing + item.taxableValue);
+          }
+        }
+      }
+      
+      // Get debit note items grouped by invoice item - track VALUE only
+      const debitedByItem = new Map<string, number>(); // invoiceItemId -> total debited value
+      
+      for (const dn of issuedDebitNotes) {
+        const dnItems = await db.select()
+          .from(debitNoteItems)
+          .where(eq(debitNoteItems.debitNoteId, dn.id));
+        
+        for (const item of dnItems) {
+          if (item.invoiceItemId) {
+            const existing = debitedByItem.get(item.invoiceItemId) || 0;
+            debitedByItem.set(item.invoiceItemId, existing + item.taxableValue);
+          }
+        }
+      }
+      
+      // Calculate effective values for each item
+      // Key insight: Use VALUE-based approach instead of trying to reconstruct qty/price
+      const effectiveItems = originalItems.map(item => {
+        const creditedValue = creditedByItem.get(item.id) || 0;
+        const debitedValue = debitedByItem.get(item.id) || 0;
+        
+        // Original taxable value for this item
+        const originalValue = item.quantity * item.unitPrice;
+        
+        // Effective remaining value = original - credited + debited
+        const effectiveValue = originalValue - creditedValue + debitedValue;
+        
+        // For UI display, keep original qty/price but show effective VALUE
+        // The "effective" qty/price shown are the ORIGINAL values - user adjusts from these
+        // But we track what's already been adjusted via value summaries
+        const hasAdjustments = creditedValue > 0 || debitedValue > 0;
+        
+        // Calculate remaining creditable amount for this item
+        const remainingCreditable = Math.max(0, effectiveValue);
+        
+        return {
+          // Original item data
+          id: item.id,
+          invoiceId: item.invoiceId,
+          productId: item.productId,
+          productName: item.productName,
+          hsnCode: item.hsnCode,
+          uom: item.uom,
+          
+          // Original values (what the invoice shows)
+          originalQuantity: item.quantity,
+          originalUnitPrice: item.unitPrice,
+          originalTaxableValue: item.taxableValue,
+          
+          // Adjustment summaries (value-based)
+          creditedValue,
+          debitedValue,
+          
+          // Effective values - for correction dialogs, show original qty/price
+          // but track what value can still be credited/debited
+          effectiveQuantity: item.quantity,
+          effectiveUnitPrice: item.unitPrice,
+          effectiveTaxableValue: effectiveValue,
+          remainingCreditable,
+          
+          // GST rates (unchanged from original)
+          cgstRate: item.cgstRate,
+          sgstRate: item.sgstRate,
+          igstRate: item.igstRate,
+          
+          // Flags
+          hasAdjustments,
+        };
+      });
+      
+      // Calculate totals
+      const summary = {
+        totalCreditedValue: issuedCreditNotes.reduce((sum, cn) => sum + cn.grandTotal, 0),
+        totalDebitedValue: issuedDebitNotes.reduce((sum, dn) => sum + dn.grandTotal, 0),
+        creditNoteCount: issuedCreditNotes.length,
+        debitNoteCount: issuedDebitNotes.length,
+      };
+      
+      res.json({
+        items: effectiveItems,
+        summary,
+      });
+    } catch (error) {
+      console.error("Error fetching effective invoice items:", error);
+      res.status(500).json({ message: "Failed to fetch effective invoice items" });
+    }
+  });
+
   // Get invoice items with batch numbers from gatepass (for sales returns)
   app.get('/api/invoice-items-with-batch/:invoiceId', isAuthenticated, async (req: any, res) => {
     try {
