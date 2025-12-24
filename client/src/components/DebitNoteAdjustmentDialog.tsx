@@ -239,18 +239,46 @@ export function DebitNoteAdjustmentDialog({
 
           {/* Allocation Summary */}
           {Object.keys(selectedItems).length > 0 && (
-            <div className="p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
+            <div className={`p-3 border rounded-lg ${
+              totalSelectedAmount === unsettledAmount 
+                ? "bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800" 
+                : totalSelectedAmount > unsettledAmount 
+                  ? "bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800"
+                  : "bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-800"
+            }`}>
               <div className="flex justify-between items-center">
                 <div>
-                  <p className="text-sm font-medium text-green-800 dark:text-green-200">
+                  <p className={`text-sm font-medium ${
+                    totalSelectedAmount === unsettledAmount 
+                      ? "text-green-800 dark:text-green-200" 
+                      : totalSelectedAmount > unsettledAmount 
+                        ? "text-red-800 dark:text-red-200"
+                        : "text-yellow-800 dark:text-yellow-200"
+                  }`}>
                     Allocating to {Object.keys(selectedItems).length} item(s)
                   </p>
-                  <p className="text-xs text-green-600 dark:text-green-400">
+                  <p className={`text-xs ${
+                    totalSelectedAmount === unsettledAmount 
+                      ? "text-green-600 dark:text-green-400" 
+                      : totalSelectedAmount > unsettledAmount 
+                        ? "text-red-600 dark:text-red-400"
+                        : "text-yellow-600 dark:text-yellow-400"
+                  }`}>
                     Total: {formatCurrency(totalSelectedAmount)} | Remaining: {formatCurrency(remainingToAllocate)}
                   </p>
                 </div>
                 {totalSelectedAmount > unsettledAmount && (
                   <Badge variant="destructive">Exceeds Balance!</Badge>
+                )}
+                {totalSelectedAmount < unsettledAmount && totalSelectedAmount > 0 && (
+                  <Badge variant="outline" className="border-yellow-500 text-yellow-700 dark:text-yellow-400">
+                    Partial Adjustment
+                  </Badge>
+                )}
+                {totalSelectedAmount === unsettledAmount && (
+                  <Badge variant="outline" className="border-green-500 text-green-700 dark:text-green-400">
+                    Fully Allocated
+                  </Badge>
                 )}
               </div>
             </div>
