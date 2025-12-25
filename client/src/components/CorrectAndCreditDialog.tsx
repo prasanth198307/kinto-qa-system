@@ -139,10 +139,11 @@ export function CorrectAndCreditDialog({
         notes: "",
         items: effectiveData.items.map(item => ({
           invoiceItemId: item.id,
-          originalQuantity: item.originalQuantity,
+          // Use remainingQuantity as the "original" for credit calculation (original + debited - credited)
+          originalQuantity: item.remainingQuantity,
           // Use currentUnitPrice (actual per-unit value after ALL adjustments)
           originalUnitPrice: item.currentUnitPrice || item.originalUnitPrice,
-          // Default to remaining quantity (original - already credited + debited)
+          // Default to remaining quantity (no change = no credit)
           correctedQuantity: item.remainingQuantity,
           // Default price to current price (reflects all adjustments - credits AND debits)
           correctedUnitPrice: item.currentUnitPrice || item.originalUnitPrice,
@@ -393,7 +394,7 @@ export function CorrectAndCreditDialog({
                 <div className="border rounded-md divide-y" data-testid="list-correction-items">
                   <div className="grid grid-cols-12 gap-2 p-3 bg-muted/50 text-sm font-medium">
                     <div className="col-span-3">Product</div>
-                    <div className="col-span-2 text-center">Original Qty</div>
+                    <div className="col-span-2 text-center">Remaining Qty</div>
                     <div className="col-span-2 text-center">Current Price</div>
                     <div className="col-span-2 text-center">New Qty</div>
                     <div className="col-span-2 text-center">New Price</div>
@@ -404,7 +405,8 @@ export function CorrectAndCreditDialog({
                     const watchedItem = watchedItems[index];
                     // Use currentUnitPrice (actual per-unit value after ALL adjustments)
                     const currentPrice = item.currentUnitPrice || item.originalUnitPrice;
-                    const originalAmount = item.originalQuantity * currentPrice;
+                    // Use remainingQuantity for credit calculation (original + debited - credited)
+                    const originalAmount = item.remainingQuantity * currentPrice;
                     const correctedAmount = watchedItem ? watchedItem.correctedQuantity * watchedItem.correctedUnitPrice : originalAmount;
                     const difference = originalAmount - correctedAmount;
                     const exceeds = difference > item.remainingCreditable;
@@ -429,7 +431,7 @@ export function CorrectAndCreditDialog({
                         </div>
                         
                         <div className="col-span-2 text-center text-muted-foreground">
-                          {item.originalQuantity}
+                          {item.remainingQuantity}
                         </div>
                         
                         <div className="col-span-2 text-center text-muted-foreground">
