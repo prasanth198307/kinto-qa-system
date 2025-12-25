@@ -9699,17 +9699,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Invoice has no items" });
       }
 
-      // Generate credit note number
+      // Fetch existing debit notes to get effective prices (after price increases)
+      const issuedDebitNotes = await db.select()
+        .from(debitNotes)
+        .where(and(
+          eq(debitNotes.invoiceId, invoiceId),
+          eq(debitNotes.status, 'issued'),
+          eq(debitNotes.recordStatus, 1)
+        ));
+      
+      // Build maps of debit note adjustments for each invoice item
+      const debitPriceByItem = new Map<string, number>(); // Max price from debit notes
+      const debitQtyByItem = new Map<string, number>(); // Additional qty from debit notes
+      for (const dn of issuedDebitNotes) {
+        const dnItems = await storage.getDebitNoteItems(dn.id);
+        for (const item of dnItems) {
+          if (item.invoiceItemId) {
+            const newPrice = item.newUnitPrice || 0;
+            const additionalQty = item.additionalQuantity || 0;
+            
+            const existingPrice = debitPriceByItem.get(item.invoiceItemId) || 0;
+            debitPriceByItem.set(item.invoiceItemId, Math.max(existingPrice, newPrice));
+            
+            const existingQty = debitQtyByItem.get(item.invoiceItemId) || 0;
+            debitQtyByItem.set(item.invoiceItemId, existingQty + additionalQty);
+          }
+        }
+      }
+      
+      // Fetch existing credit notes for validation
       const existingCreditNotes = await db.select()
         .from(creditNotes)
         .where(eq(creditNotes.invoiceId, invoiceId));
+      const issuedCreditNotes = existingCreditNotes.filter(cn => cn.status === 'issued');
+      
+      // Build map of credited quantities for each invoice item
+      const creditedQtyByItem = new Map<string, number>();
+      for (const cn of issuedCreditNotes) {
+        const cnItems = await storage.getCreditNoteItems(cn.id);
+        for (const item of cnItems) {
+          if (item.invoiceItemId) {
+            const existingQty = creditedQtyByItem.get(item.invoiceItemId) || 0;
+            creditedQtyByItem.set(item.invoiceItemId, existingQty + item.quantity);
+          }
+        }
+      }
+
+      // Generate credit note number
       const sequence = existingCreditNotes.length + 1;
       const creditNoteNumber = `CN-${invoice.invoiceNumber}-${sequence.toString().padStart(2, '0')}`;
 
       // Calculate existing credit notes total to prevent over-crediting
-      const existingCreditTotal = existingCreditNotes
-        .filter(cn => cn.status === 'issued')
-        .reduce((sum, cn) => sum + cn.grandTotal, 0);
+      const existingCreditTotal = issuedCreditNotes.reduce((sum, cn) => sum + cn.grandTotal, 0);
 
       // Validate and calculate totals using AUTHORITATIVE invoice data
       let subtotal = 0;
@@ -9727,18 +9768,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        // STRICT VALIDATION: Quantity cannot exceed invoiced amount
-        if (item.quantity > invoiceItem.quantity) {
+        // STRICT VALIDATION: Quantity cannot exceed remaining amount
+        // Remaining = original + debited - credited
+        const debitedQty = debitQtyByItem.get(item.invoiceItemId) || 0;
+        const creditedQty = creditedQtyByItem.get(item.invoiceItemId) || 0;
+        const remainingQty = invoiceItem.quantity + debitedQty - creditedQty;
+        
+        if (item.quantity > remainingQty) {
           return res.status(400).json({ 
-            message: `Credit quantity (${item.quantity}) cannot exceed invoiced quantity (${invoiceItem.quantity}) for ${invoiceItem.productName}` 
+            message: `Credit quantity (${item.quantity}) cannot exceed remaining quantity (${remainingQty}) for ${invoiceItem.productName}. Original: ${invoiceItem.quantity}, Debited: ${debitedQty}, Already Credited: ${creditedQty}` 
           });
         }
 
-        // SECURITY: Use adjusted price but validate it doesn't exceed invoice price
-        // For pricing_error corrections, the adjusted price should be <= original
-        if (reason === 'pricing_error' && item.adjustedUnitPrice > invoiceItem.unitPrice) {
+        // SECURITY: Use adjusted price but validate it doesn't exceed effective price
+        // Effective price = max(original invoice price, debit note increased price)
+        // For pricing_error corrections, the adjusted price should be <= effective price
+        const debitMaxPrice = debitPriceByItem.get(item.invoiceItemId) || 0;
+        const effectiveMaxPrice = Math.max(invoiceItem.unitPrice, debitMaxPrice);
+        
+        if (reason === 'pricing_error' && item.adjustedUnitPrice > effectiveMaxPrice) {
           return res.status(400).json({ 
-            message: `Adjusted price (₹${item.adjustedUnitPrice/100}) cannot exceed invoice price (₹${invoiceItem.unitPrice/100}) for pricing error corrections on ${invoiceItem.productName}` 
+            message: `Adjusted price (₹${(item.adjustedUnitPrice/100).toFixed(2)}) cannot exceed effective price (₹${(effectiveMaxPrice/100).toFixed(2)}) for pricing error corrections on ${invoiceItem.productName}` 
           });
         }
 
