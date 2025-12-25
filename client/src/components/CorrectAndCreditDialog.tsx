@@ -72,12 +72,15 @@ interface EffectiveItem {
   remainingQuantity: number;
   effectiveQuantity: number;
   effectiveUnitPrice: number;
+  currentUnitPrice: number; // Actual per-unit value after ALL adjustments
   effectiveTaxableValue: number;
   remainingCreditable: number;
   cgstRate: number;
   sgstRate: number;
   igstRate: number;
   hasAdjustments: boolean;
+  priceIncreased: boolean;
+  priceDecreased: boolean;
 }
 
 interface EffectiveItemsResponse {
@@ -137,12 +140,12 @@ export function CorrectAndCreditDialog({
         items: effectiveData.items.map(item => ({
           invoiceItemId: item.id,
           originalQuantity: item.originalQuantity,
-          // Use effectiveUnitPrice (includes debit note price increases) for calculations
-          originalUnitPrice: item.effectiveUnitPrice || item.originalUnitPrice,
+          // Use currentUnitPrice (actual per-unit value after ALL adjustments)
+          originalUnitPrice: item.currentUnitPrice || item.originalUnitPrice,
           // Default to remaining quantity (original - already credited + debited)
           correctedQuantity: item.remainingQuantity,
-          // Default price to effective price (may include debit note increase)
-          correctedUnitPrice: item.effectiveUnitPrice || item.originalUnitPrice,
+          // Default price to current price (reflects all adjustments - credits AND debits)
+          correctedUnitPrice: item.currentUnitPrice || item.originalUnitPrice,
         })),
       });
     }
@@ -399,9 +402,9 @@ export function CorrectAndCreditDialog({
                   
                   {effectiveData?.items.map((item, index) => {
                     const watchedItem = watchedItems[index];
-                    // Use effectiveUnitPrice (includes debit note price increases)
-                    const effectivePrice = item.effectiveUnitPrice || item.originalUnitPrice;
-                    const originalAmount = item.originalQuantity * effectivePrice;
+                    // Use currentUnitPrice (actual per-unit value after ALL adjustments)
+                    const currentPrice = item.currentUnitPrice || item.originalUnitPrice;
+                    const originalAmount = item.originalQuantity * currentPrice;
                     const correctedAmount = watchedItem ? watchedItem.correctedQuantity * watchedItem.correctedUnitPrice : originalAmount;
                     const difference = originalAmount - correctedAmount;
                     const exceeds = difference > item.remainingCreditable;
@@ -430,9 +433,12 @@ export function CorrectAndCreditDialog({
                         </div>
                         
                         <div className="col-span-2 text-center text-muted-foreground">
-                          {formatCurrency(item.effectiveUnitPrice || item.originalUnitPrice)}
-                          {item.effectiveUnitPrice && item.effectiveUnitPrice > item.originalUnitPrice && (
-                            <span className="text-xs text-orange-500 block">(adj.)</span>
+                          {formatCurrency(item.currentUnitPrice || item.originalUnitPrice)}
+                          {item.priceIncreased && (
+                            <span className="text-xs text-orange-500 block">(+adj.)</span>
+                          )}
+                          {item.priceDecreased && (
+                            <span className="text-xs text-blue-500 block">(-adj.)</span>
                           )}
                         </div>
                         

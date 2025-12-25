@@ -7351,6 +7351,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // If debit note increased the price, credit note can credit at that higher price
         const effectiveUnitPrice = Math.max(item.unitPrice, debitedMaxPrice);
         
+        // Current unit price: actual per-unit value after ALL adjustments (credits AND debits)
+        // This reflects the true value remaining per unit, whether increased or decreased
+        const currentUnitPrice = remainingQuantity > 0 
+          ? Math.round(remainingCreditable / remainingQuantity) 
+          : item.unitPrice;
+        
+        // Determine price change direction for UI indicators
+        const priceIncreased = currentUnitPrice > item.unitPrice;
+        const priceDecreased = currentUnitPrice < item.unitPrice;
+        
         return {
           // Original item data
           id: item.id,
@@ -7376,9 +7386,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Effective values - for correction dialogs
           effectiveQuantity: remainingQuantity,
-          effectiveUnitPrice, // Now uses highest price (original or debit note's new price)
+          effectiveUnitPrice, // Highest price charged (original or debit note's new price)
+          currentUnitPrice, // Actual per-unit value after ALL adjustments
           effectiveTaxableValue: effectiveValue,
           remainingCreditable,
+          
+          // Price change indicators for UI
+          priceIncreased,
+          priceDecreased,
           
           // GST rates (unchanged from original)
           cgstRate: item.cgstRate,

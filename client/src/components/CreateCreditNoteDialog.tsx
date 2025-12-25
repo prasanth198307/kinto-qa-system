@@ -43,6 +43,7 @@ interface EffectiveItem {
   originalQuantity: number;
   originalUnitPrice: number;
   effectiveUnitPrice: number; // Highest price charged (original or from debit note)
+  currentUnitPrice: number; // Actual per-unit value after ALL adjustments
   creditedValue: number;
   debitedValue: number;
   creditedQuantity: number;
@@ -50,6 +51,8 @@ interface EffectiveItem {
   remainingQuantity: number;
   remainingCreditable: number;
   hasAdjustments: boolean;
+  priceIncreased: boolean;
+  priceDecreased: boolean;
 }
 
 interface EffectiveItemsResponse {
@@ -139,7 +142,7 @@ export function CreateCreditNoteDialog({
     }
     setSelectedItems(newSelected);
     
-    // Update form items with remaining quantity (not original)
+    // Update form items with remaining quantity and current unit price (after all adjustments)
     const items = invoiceItems
       .filter(item => newSelected.has(item.id))
       .map(item => {
@@ -147,7 +150,8 @@ export function CreateCreditNoteDialog({
         return {
           invoiceItemId: item.id,
           quantity: effItem?.remainingQuantity ?? item.quantity,
-          adjustedUnitPrice: item.unitPrice,
+          // Use currentUnitPrice (reflects all adjustments - credits AND debits)
+          adjustedUnitPrice: effItem?.currentUnitPrice || item.unitPrice,
         };
       });
     form.setValue("items", items);
@@ -368,10 +372,15 @@ export function CreateCreditNoteDialog({
                             control={form.control}
                             name={`items.${form.watch("items").findIndex(i => i.invoiceItemId === item.id)}.adjustedUnitPrice`}
                             render={({ field }) => {
-                              // Use effectiveUnitPrice (includes price from debit notes) or fall back to invoice price
-                              const maxPrice = effectiveItem?.effectiveUnitPrice || item.unitPrice;
-                              const priceLabel = effectiveItem?.effectiveUnitPrice && effectiveItem.effectiveUnitPrice > item.unitPrice 
-                                ? "Adjusted Price" : "Invoice Price";
+                              // Use currentUnitPrice (actual per-unit value after ALL adjustments)
+                              const maxPrice = effectiveItem?.currentUnitPrice || item.unitPrice;
+                              const priceIncreased = effectiveItem?.priceIncreased;
+                              const priceDecreased = effectiveItem?.priceDecreased;
+                              const priceLabel = priceIncreased 
+                                ? "Price Increased" 
+                                : priceDecreased 
+                                  ? "Price Reduced" 
+                                  : "Invoice Price";
                               return (
                               <FormItem>
                                 <FormLabel>Adjusted Price (₹)</FormLabel>
@@ -386,14 +395,14 @@ export function CreateCreditNoteDialog({
                                       // Convert rupees to paise and store
                                       const rupeesValue = parseFloat(e.target.value) || 0;
                                       const paiseValue = Math.round(rupeesValue * 100);
-                                      // Clamp to effective price (may include debit note price increase)
+                                      // Clamp to current price (reflects all adjustments)
                                       const clampedValue = Math.min(paiseValue, maxPrice);
                                       field.onChange(clampedValue);
                                     }}
                                     value={(field.value / 100).toFixed(2)}
                                   />
                                 </FormControl>
-                                <FormDescription className="text-xs">
+                                <FormDescription className={`text-xs ${priceIncreased ? 'text-orange-500' : priceDecreased ? 'text-blue-500' : ''}`}>
                                   Max: {formatCurrency(maxPrice)} ({priceLabel})
                                 </FormDescription>
                                 <FormMessage />
