@@ -430,11 +430,11 @@ export function CorrectAndDebitDialog({
                             name={`items.${index}.newQuantity`}
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="text-xs">New Quantity</FormLabel>
+                                <FormLabel className="text-xs">New Quantity (min: {item.remainingQuantity})</FormLabel>
                                 <FormControl>
                                   <Input
                                     type="number"
-                                    min={item.originalQuantity}
+                                    min={item.remainingQuantity}
                                     step="1"
                                     {...field}
                                     data-testid={`input-new-qty-${index}`}
