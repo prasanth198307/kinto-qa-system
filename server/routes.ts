@@ -9997,8 +9997,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sgstAmount: number;
         igstRate: number;
         igstAmount: number;
-        cessRate: number;
-        cessAmount: number;
         totalAmount: number;
         qtyReturned: number; // Track actual quantity being returned for inventory
       }> = [];
@@ -10065,12 +10063,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const safeCgstRate = invoiceItem.cgstRate || 0;
           const safeSgstRate = invoiceItem.sgstRate || 0;
           const safeIgstRate = invoiceItem.igstRate || 0;
-          const safeCessRate = invoiceItem.cessRate || 0;
-          
           const cgstAmountCalc = Math.round(taxableValue * safeCgstRate / 10000);
           const sgstAmountCalc = Math.round(taxableValue * safeSgstRate / 10000);
           const igstAmountCalc = Math.round(taxableValue * safeIgstRate / 10000);
-          const cessAmountCalc = Math.round(taxableValue * safeCessRate / 10000);
 
           creditItems.push({
             invoiceItemId: item.invoiceItemId,
@@ -10086,9 +10081,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             sgstAmount: sgstAmountCalc,
             igstRate: safeIgstRate,
             igstAmount: igstAmountCalc,
-            cessRate: safeCessRate,
-            cessAmount: cessAmountCalc,
-            totalAmount: taxableValue + cgstAmountCalc + sgstAmountCalc + igstAmountCalc + cessAmountCalc,
+            totalAmount: taxableValue + cgstAmountCalc + sgstAmountCalc + igstAmountCalc,
             qtyReturned: qtyDiff > 0 ? qtyDiff : 0, // Only return inventory for quantity reductions
           });
 
@@ -10163,8 +10156,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             sgstAmount: itemData.sgstAmount,
             igstRate: itemData.igstRate,
             igstAmount: itemData.igstAmount,
-            cessRate: itemData.cessRate,
-            cessAmount: itemData.cessAmount,
             totalAmount: itemData.totalAmount,
           });
           
@@ -10409,9 +10400,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const itemCgstRate = invoiceItem.cgstRate || 0;
           const itemSgstRate = invoiceItem.sgstRate || 0;
           const itemIgstRate = invoiceItem.igstRate || 0;
-          const itemCessRate = invoiceItem.cessRate || 0;
-          const itemCessAmount = Math.round(taxableValue * itemCessRate / 10000);
-          const totalAmount = taxableValue + effItem.cgstAmount + effItem.sgstAmount + effItem.igstAmount + itemCessAmount;
+          const totalAmount = taxableValue + effItem.cgstAmount + effItem.sgstAmount + effItem.igstAmount;
           
           await tx.insert(creditNoteItems).values({
             creditNoteId: creditNote.id,
@@ -10428,8 +10417,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             sgstAmount: effItem.sgstAmount,
             igstRate: itemIgstRate,
             igstAmount: effItem.igstAmount,
-            cessRate: itemCessRate,
-            cessAmount: itemCessAmount,
             totalAmount: totalAmount,
           });
           
