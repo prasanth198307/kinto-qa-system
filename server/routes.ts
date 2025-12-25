@@ -9932,6 +9932,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Invoice has no items" });
       }
 
+      // Fetch issued debit notes to calculate effective prices and quantities
+      const issuedDebitNotes = await db.select()
+        .from(debitNotes)
+        .where(and(
+          eq(debitNotes.invoiceId, invoiceId),
+          eq(debitNotes.status, 'issued'),
+          eq(debitNotes.recordStatus, 1)
+        ));
+      
+      // Build maps of debit note adjustments for each invoice item
+      const debitPriceByItem = new Map<string, number>(); // Max price from debit notes
+      const debitQtyByItem = new Map<string, number>(); // Additional qty from debit notes
+      for (const dn of issuedDebitNotes) {
+        const dnItems = await storage.getDebitNoteItems(dn.id);
+        for (const dnItem of dnItems) {
+          if (dnItem.invoiceItemId) {
+            const newPrice = dnItem.newUnitPrice || 0;
+            const additionalQty = dnItem.additionalQuantity || 0;
+            
+            const existingPrice = debitPriceByItem.get(dnItem.invoiceItemId) || 0;
+            debitPriceByItem.set(dnItem.invoiceItemId, Math.max(existingPrice, newPrice));
+            
+            const existingQty = debitQtyByItem.get(dnItem.invoiceItemId) || 0;
+            debitQtyByItem.set(dnItem.invoiceItemId, existingQty + additionalQty);
+          }
+        }
+      }
+      
+      // Fetch existing credit notes for quantity tracking
+      const existingCreditNotesCC = await db.select()
+        .from(creditNotes)
+        .where(and(
+          eq(creditNotes.invoiceId, invoiceId),
+          eq(creditNotes.status, 'issued'),
+          eq(creditNotes.recordStatus, 1)
+        ));
+      
+      // Build map of credited quantities for each invoice item
+      const creditedQtyByItem = new Map<string, number>();
+      for (const cn of existingCreditNotesCC) {
+        const cnItems = await storage.getCreditNoteItems(cn.id);
+        for (const cnItem of cnItems) {
+          if (cnItem.invoiceItemId) {
+            const existingQty = creditedQtyByItem.get(cnItem.invoiceItemId) || 0;
+            creditedQtyByItem.set(cnItem.invoiceItemId, existingQty + cnItem.quantity);
+          }
+        }
+      }
+
       // Calculate differences and create credit items
       let subtotal = 0;
       const creditItems: Array<{
@@ -9955,15 +10004,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }> = [];
 
       for (const item of items) {
+        // Find the invoice item first for validation
+        const invoiceItem = invoiceItems_list.find(i => i.id === item.invoiceItemId);
+        if (!invoiceItem) {
+          return res.status(400).json({ 
+            message: `Invalid invoice item ID: ${item.invoiceItemId}` 
+          });
+        }
+        
+        // Calculate effective price and quantity considering debit note adjustments
+        const debitMaxPrice = debitPriceByItem.get(item.invoiceItemId) || 0;
+        const effectivePrice = Math.max(invoiceItem.unitPrice, debitMaxPrice);
+        const debitedQty = debitQtyByItem.get(item.invoiceItemId) || 0;
+        const creditedQty = creditedQtyByItem.get(item.invoiceItemId) || 0;
+        const effectiveQty = invoiceItem.quantity + debitedQty;
+        const remainingQty = effectiveQty - creditedQty;
+        
+        // Validate: original values from request should match effective values
+        if (item.originalUnitPrice > effectivePrice) {
+          return res.status(400).json({ 
+            message: `Original unit price (₹${(item.originalUnitPrice/100).toFixed(2)}) exceeds effective price (₹${(effectivePrice/100).toFixed(2)}) for ${invoiceItem.productName || invoiceItem.description}` 
+          });
+        }
+        
+        if (item.originalQuantity > remainingQty) {
+          return res.status(400).json({ 
+            message: `Original quantity (${item.originalQuantity}) exceeds remaining quantity (${remainingQty}) for ${invoiceItem.productName || invoiceItem.description}` 
+          });
+        }
+        
         const originalAmount = item.originalQuantity * item.originalUnitPrice;
         const correctedAmount = item.correctedQuantity * item.correctedUnitPrice;
         const difference = originalAmount - correctedAmount;
 
         if (difference > 0) {
-          // Find the original invoice item for GST rates and product details
-          const invoiceItem = invoiceItems_list.find(i => i.id === item.invoiceItemId);
-          if (!invoiceItem) continue;
-
           // Determine credit quantity and unit price
           const qtyDiff = item.originalQuantity - item.correctedQuantity;
           const priceDiff = item.originalUnitPrice - item.correctedUnitPrice;
@@ -10212,34 +10286,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Calculate credit amounts by summing from invoice ITEMS (authoritative source)
-      // Invoice-level rates may be null for Vyapaar-imported invoices
-      const existingCreditSubtotal = existingCreditNotes.reduce((sum, cn) => sum + cn.subtotal, 0);
-      const existingDebitSubtotal = existingDebitNotes.reduce((sum, dn) => sum + dn.subtotal, 0);
-      
-      // Sum GST from invoice items (this is where Vyapaar import stores GST data)
-      let itemsSubtotal = 0;
-      let itemsCgstAmount = 0;
-      let itemsSgstAmount = 0;
-      let itemsIgstAmount = 0;
-      
-      for (const item of invoiceItems_list) {
-        const lineTotal = item.quantity * item.unitPrice;
-        const discountAmount = item.discount || 0;
-        itemsSubtotal += lineTotal - discountAmount;
-        itemsCgstAmount += item.cgstAmount || 0;
-        itemsSgstAmount += item.sgstAmount || 0;
-        itemsIgstAmount += item.igstAmount || 0;
+      // Build per-item effective values from debit notes
+      const debitPriceByItem = new Map<string, number>(); // Max price from debit notes
+      const debitQtyByItem = new Map<string, number>(); // Additional qty from debit notes
+      for (const dn of existingDebitNotes) {
+        const dnItems = await storage.getDebitNoteItems(dn.id);
+        for (const dnItem of dnItems) {
+          if (dnItem.invoiceItemId) {
+            const newPrice = dnItem.newUnitPrice || 0;
+            const additionalQty = dnItem.additionalQuantity || 0;
+            
+            const existingPrice = debitPriceByItem.get(dnItem.invoiceItemId) || 0;
+            debitPriceByItem.set(dnItem.invoiceItemId, Math.max(existingPrice, newPrice));
+            
+            const existingQty = debitQtyByItem.get(dnItem.invoiceItemId) || 0;
+            debitQtyByItem.set(dnItem.invoiceItemId, existingQty + additionalQty);
+          }
+        }
       }
       
-      // Credit the remaining amount: Original + Debited - Credited
-      const subtotal = itemsSubtotal + existingDebitSubtotal - existingCreditSubtotal;
+      // Build map of credited quantities for each invoice item
+      const creditedQtyByItem = new Map<string, number>();
+      for (const cn of existingCreditNotes) {
+        const cnItems = await storage.getCreditNoteItems(cn.id);
+        for (const cnItem of cnItems) {
+          if (cnItem.invoiceItemId) {
+            const existingQty = creditedQtyByItem.get(cnItem.invoiceItemId) || 0;
+            creditedQtyByItem.set(cnItem.invoiceItemId, existingQty + cnItem.quantity);
+          }
+        }
+      }
+
+      // Calculate per-item effective values and totals
+      let subtotal = 0;
+      let cgstAmount = 0;
+      let sgstAmount = 0;
+      let igstAmount = 0;
       
-      // Calculate GST on remaining subtotal (proportional)
-      const gstRatio = itemsSubtotal > 0 ? subtotal / itemsSubtotal : 0;
-      const cgstAmount = Math.round(itemsCgstAmount * gstRatio);
-      const sgstAmount = Math.round(itemsSgstAmount * gstRatio);
-      const igstAmount = Math.round(itemsIgstAmount * gstRatio);
+      // Store effective item data for credit note items
+      type EffectiveItem = {
+        invoiceItem: typeof invoiceItems_list[0];
+        effectiveQty: number;
+        remainingQty: number;
+        effectivePrice: number;
+        taxableValue: number;
+        cgstAmount: number;
+        sgstAmount: number;
+        igstAmount: number;
+      };
+      const effectiveItems: EffectiveItem[] = [];
+      
+      for (const item of invoiceItems_list) {
+        const debitMaxPrice = debitPriceByItem.get(item.id) || 0;
+        const effectivePrice = Math.max(item.unitPrice, debitMaxPrice);
+        const debitedQty = debitQtyByItem.get(item.id) || 0;
+        const creditedQty = creditedQtyByItem.get(item.id) || 0;
+        const effectiveQty = item.quantity + debitedQty;
+        const remainingQty = effectiveQty - creditedQty;
+        
+        if (remainingQty > 0) {
+          const lineTotal = remainingQty * effectivePrice;
+          const discountAmount = item.discount || 0;
+          const discountRatio = remainingQty / effectiveQty;
+          const adjustedDiscount = Math.round(discountAmount * discountRatio);
+          const taxableValue = lineTotal - adjustedDiscount;
+          
+          // Calculate GST based on original rates
+          const itemCgstRate = item.cgstRate || 0;
+          const itemSgstRate = item.sgstRate || 0;
+          const itemIgstRate = item.igstRate || 0;
+          const itemCgstAmount = Math.round(taxableValue * itemCgstRate / 10000);
+          const itemSgstAmount = Math.round(taxableValue * itemSgstRate / 10000);
+          const itemIgstAmount = Math.round(taxableValue * itemIgstRate / 10000);
+          
+          subtotal += taxableValue;
+          cgstAmount += itemCgstAmount;
+          sgstAmount += itemSgstAmount;
+          igstAmount += itemIgstAmount;
+          
+          effectiveItems.push({
+            invoiceItem: item,
+            effectiveQty,
+            remainingQty,
+            effectivePrice,
+            taxableValue,
+            cgstAmount: itemCgstAmount,
+            sgstAmount: itemSgstAmount,
+            igstAmount: itemIgstAmount,
+          });
+        }
+      }
+      
       const grandTotal = subtotal + cgstAmount + sgstAmount + igstAmount;
 
       // Generate credit note number
@@ -10264,43 +10401,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
           notes: `Quick full credit for invoice ${invoice.invoiceNumber}`,
         }).returning();
 
-        // Create credit note items for all invoice items
-        for (const invoiceItem of invoiceItems_list) {
-          const lineTotal = invoiceItem.quantity * invoiceItem.unitPrice;
-          const discountAmount = invoiceItem.discount || 0;
-          const taxableValue = lineTotal - discountAmount;
+        // Create credit note items using effective values (accounting for debit notes)
+        for (const effItem of effectiveItems) {
+          const { invoiceItem, remainingQty, effectivePrice, taxableValue } = effItem;
           
           // Handle null/undefined tax rates for old/ported invoice items
           const itemCgstRate = invoiceItem.cgstRate || 0;
           const itemSgstRate = invoiceItem.sgstRate || 0;
           const itemIgstRate = invoiceItem.igstRate || 0;
-          const itemCgstAmount = invoiceItem.cgstAmount || 0;
-          const itemSgstAmount = invoiceItem.sgstAmount || 0;
-          const itemIgstAmount = invoiceItem.igstAmount || 0;
+          const itemCessRate = invoiceItem.cessRate || 0;
+          const itemCessAmount = Math.round(taxableValue * itemCessRate / 10000);
+          const totalAmount = taxableValue + effItem.cgstAmount + effItem.sgstAmount + effItem.igstAmount + itemCessAmount;
           
           await tx.insert(creditNoteItems).values({
             creditNoteId: creditNote.id,
             invoiceItemId: invoiceItem.id,
             productId: invoiceItem.productId,
             description: invoiceItem.description,
-            quantity: invoiceItem.quantity,
-            unitPrice: invoiceItem.unitPrice,
-            discountAmount: discountAmount,
+            quantity: remainingQty,
+            unitPrice: effectivePrice,
+            discountAmount: 0,
             taxableValue: taxableValue,
             cgstRate: itemCgstRate,
-            cgstAmount: itemCgstAmount,
+            cgstAmount: effItem.cgstAmount,
             sgstRate: itemSgstRate,
-            sgstAmount: itemSgstAmount,
+            sgstAmount: effItem.sgstAmount,
             igstRate: itemIgstRate,
-            igstAmount: itemIgstAmount,
-            cessRate: invoiceItem.cessRate || 0,
-            cessAmount: invoiceItem.cessAmount || 0,
-            totalAmount: invoiceItem.totalAmount || taxableValue + itemCgstAmount + itemSgstAmount + itemIgstAmount,
+            igstAmount: effItem.igstAmount,
+            cessRate: itemCessRate,
+            cessAmount: itemCessAmount,
+            totalAmount: totalAmount,
           });
           
           // Return finished goods inventory for this item (full credit means goods returned)
+          // Only return the remaining quantity that's being credited
           // IMPORTANT: Check if product exists before inserting (handles Vyapaar imports where product may be missing)
-          if (invoiceItem.productId && invoiceItem.quantity > 0) {
+          if (invoiceItem.productId && remainingQty > 0) {
             // Verify product exists in products table to avoid foreign key violation
             const [existingProduct] = await tx.select({ id: products.id })
               .from(products)
@@ -10314,13 +10450,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 productId: invoiceItem.productId,
                 batchNumber,
                 productionDate: new Date().toISOString(),
-                quantity: invoiceItem.quantity,
+                quantity: remainingQty,
                 qualityStatus: 'approved',
                 remarks: `Inventory returned - Full credit note ${creditNoteNumber} for invoice ${invoice.invoiceNumber}`,
                 createdBy: req.user?.id,
               });
               
-              console.log(`[INVENTORY] Returned ${invoiceItem.quantity} units of product ${invoiceItem.productId} to inventory (Quick Full Credit)`);
+              console.log(`[INVENTORY] Returned ${remainingQty} units of product ${invoiceItem.productId} to inventory (Quick Full Credit)`);
             } else {
               // Product not found - skip inventory return but continue with credit note (compliance priority)
               console.warn(`[INVENTORY] Skipping inventory return for product ${invoiceItem.productId} - product not found in master data (Vyapaar import or deleted product)`);
