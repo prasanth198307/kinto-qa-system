@@ -72,13 +72,16 @@ interface EffectiveItem {
   debitedQuantity: number;
   remainingQuantity: number;
   effectiveQuantity: number;
-  effectiveUnitPrice: number;
+  effectiveUnitPrice: number; // Max price ever charged
+  currentUnitPrice: number; // Actual per-unit value after ALL adjustments
   effectiveTaxableValue: number;
   remainingCreditable: number;
   cgstRate: number;
   sgstRate: number;
   igstRate: number;
   hasAdjustments: boolean;
+  priceIncreased?: boolean;
+  priceDecreased?: boolean;
 }
 
 interface EffectiveItemsResponse {
@@ -137,10 +140,14 @@ export function CorrectAndDebitDialog({
         notes: "",
         items: effectiveData.items.map(item => ({
           invoiceItemId: item.id,
+          // Store original invoice values for reference
           originalQuantity: item.originalQuantity,
           originalUnitPrice: item.originalUnitPrice,
-          newQuantity: item.originalQuantity,
-          newUnitPrice: item.originalUnitPrice,
+          // Default NEW values to current effective values (after all adjustments)
+          // For quantity: use remainingQuantity (original + debited - credited)
+          newQuantity: item.remainingQuantity,
+          // For price: use currentUnitPrice (effective price after debit note increases)
+          newUnitPrice: item.currentUnitPrice || item.originalUnitPrice,
         })),
       });
     }
@@ -177,16 +184,17 @@ export function CorrectAndDebitDialog({
       const effectiveItem = effectiveData?.items[index];
       if (!effectiveItem) return;
 
-      const origQty = Number(item.originalQuantity) || 0;
-      const origPrice = Number(item.originalUnitPrice) || 0;
+      // Use current effective values as the baseline (after all previous adjustments)
+      const currentQty = effectiveItem.remainingQuantity;
+      const currentPrice = effectiveItem.currentUnitPrice || effectiveItem.originalUnitPrice;
       const newQty = Number(item.newQuantity) || 0;
       const newPrice = Number(item.newUnitPrice) || 0;
 
-      const originalAmount = origQty * origPrice;
+      const currentAmount = currentQty * currentPrice;
       const newAmount = newQty * newPrice;
-      const difference = newAmount - originalAmount;
+      const difference = newAmount - currentAmount;
 
-      totalOriginal += originalAmount;
+      totalOriginal += currentAmount;
       totalNew += newAmount;
 
       if (difference > 0) {
@@ -205,11 +213,11 @@ export function CorrectAndDebitDialog({
         itemDifferences.push({
           invoiceItemId: item.invoiceItemId,
           productName: effectiveItem.productName || invoiceItems[index]?.description || 'Unknown',
-          originalAmount,
+          originalAmount: currentAmount,
           newAmount,
           difference,
-          additionalQuantity: newQty - origQty > 0 ? newQty - origQty : 0,
-          priceIncrease: newPrice - origPrice > 0 ? newPrice - origPrice : 0,
+          additionalQuantity: newQty - currentQty > 0 ? newQty - currentQty : 0,
+          priceIncrease: newPrice - currentPrice > 0 ? newPrice - currentPrice : 0,
           cgstDifference: itemCgstDiff,
           sgstDifference: itemSgstDiff,
           igstDifference: itemIgstDiff,
