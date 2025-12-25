@@ -10018,12 +10018,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const effectiveQty = invoiceItem.quantity + debitedQty;
         const remainingQty = effectiveQty - creditedQty;
         
-        // Validate: original values from request should match effective values
-        if (item.originalUnitPrice > effectivePrice) {
-          return res.status(400).json({ 
-            message: `Original unit price (₹${(item.originalUnitPrice/100).toFixed(2)}) exceeds effective price (₹${(effectivePrice/100).toFixed(2)}) for ${invoiceItem.productName || invoiceItem.description}` 
-          });
-        }
+        // VALUE-BASED calculation: We no longer validate originalUnitPrice against effectivePrice
+        // because currentUnitPrice can legitimately be higher than original price when
+        // previous credits were issued at a lower price (due to rounding/averaging)
         
         if (item.originalQuantity > remainingQty) {
           return res.status(400).json({ 
