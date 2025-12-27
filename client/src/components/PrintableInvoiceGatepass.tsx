@@ -412,14 +412,36 @@ ${invoice.shipToName || invoice.shipToAddress ? `
           
           <div class="signature-section">
             <div class="company-for-line">For <strong>${invoice.sellerName || 'Inmoisture Private Limited'}:</strong></div>
-            ${(invoice.includeSignature === 1 || invoice.includeSignature === undefined) && template?.defaultSignatureImage ? `
-              <div class="signature-image">
-                <img src="${template.defaultSignatureImage}" alt="Authorized Signature" style="max-height: 50px; object-fit: contain;" />
-              </div>
-            ` : `
-              <div class="signature-space"></div>
-            `}
-            <div class="signatory-label">${template?.authorizedSignatoryName || 'Authorized Signatory'}</div>
+            ${(() => {
+              const signatureType = (invoice as any).signatureType || 'default';
+              const showSignature = invoice.includeSignature === 1 || invoice.includeSignature === undefined;
+              
+              if (!showSignature) {
+                return '<div class="signature-space"></div>';
+              }
+              
+              // Different signature content based on type (Signature 1 = default, Signature 2 = alternate)
+              if (signatureType === 'alternate') {
+                // Signature 2 (alternate)
+                return (template as any)?.alternateSignatureImage 
+                  ? `<div class="signature-image"><img src="${(template as any).alternateSignatureImage}" alt="Authorized Signature" style="max-height: 50px; object-fit: contain;" /></div>`
+                  : template?.defaultSignatureImage 
+                    ? `<div class="signature-image"><img src="${template.defaultSignatureImage}" alt="Authorized Signature" style="max-height: 50px; object-fit: contain;" /></div>`
+                    : '<div class="signature-space"></div>';
+              } else {
+                // Signature 1 (default)
+                return template?.defaultSignatureImage 
+                  ? `<div class="signature-image"><img src="${template.defaultSignatureImage}" alt="Authorized Signature" style="max-height: 50px; object-fit: contain;" /></div>`
+                  : '<div class="signature-space"></div>';
+              }
+            })()}
+            <div class="signatory-label">${(() => {
+              const signatureType = (invoice as any).signatureType || 'default';
+              if (signatureType === 'alternate') {
+                return (template as any)?.alternateSignatoryName || template?.authorizedSignatoryName || 'Authorized Signatory';
+              }
+              return template?.authorizedSignatoryName || 'Authorized Signatory';
+            })()}</div>
           </div>
         </div>
 
