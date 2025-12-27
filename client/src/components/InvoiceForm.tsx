@@ -116,6 +116,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
   // Vendor filtering state
   const [vendorTypeFilter, setVendorTypeFilter] = useState<string>('all');
   const [vendorSearchOpen, setVendorSearchOpen] = useState(false);
+  const [shipToSearchOpen, setShipToSearchOpen] = useState(false);
 
   const { data: products = [] } = useQuery<Product[]>({
     queryKey: ['/api/products'],
@@ -207,6 +208,11 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
     // Filter vendors by type using Set for faster lookup
     return activeVendors.filter(v => vendorIdsWithType.has(v.id));
   }, [vendors, vendorTypeFilter, vendorVendorTypes]);
+
+  // Filter vendors that have ship-to names (for HP Pani and similar scenarios)
+  const vendorsWithShipTo = useMemo(() => {
+    return vendors.filter(v => v.isActive === 'true' && v.shipToName && v.shipToName.trim() !== '');
+  }, [vendors]);
 
   const form = useForm<InvoiceFormData>({
     resolver: zodResolver(invoiceFormSchema),
@@ -549,6 +555,16 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
     if (vendor) {
       populateBuyerFromVendor(vendor);
     }
+  };
+
+  // Handle ship-to selection - auto-populates both buyer and ship-to fields
+  const handleShipToSelect = (vendorId: string) => {
+    setSelectedVendorId(vendorId);
+    const vendor = vendors.find(v => v.id === vendorId);
+    if (vendor) {
+      populateBuyerFromVendor(vendor);
+    }
+    setShipToSearchOpen(false);
   };
 
   // Pre-select vendor based on buyer name (for reissue/edit mode)
@@ -1098,10 +1114,10 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
 
         {/* Vendor/Customer Selection */}
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             {/* Vendor Type Filter */}
             <div>
-              <Label htmlFor="vendorTypeFilter">Filter by Vendor Type</Label>
+              <Label htmlFor="vendorTypeFilter">Filter by Type</Label>
               <Select 
                 value={vendorTypeFilter} 
                 onValueChange={setVendorTypeFilter}
@@ -1129,7 +1145,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
 
             {/* Vendor Search with Combobox */}
             <div>
-              <Label htmlFor="vendorSelect">Select Customer/Vendor</Label>
+              <Label htmlFor="vendorSelect">Search by Buyer Name</Label>
               <Popover open={vendorSearchOpen} onOpenChange={setVendorSearchOpen}>
                 <PopoverTrigger asChild>
                   <Button
@@ -1141,14 +1157,14 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                   >
                     {selectedVendorId
                       ? filteredVendors.find((vendor) => vendor.id === selectedVendorId)?.vendorName
-                      : "Search and select vendor..."}
+                      : "Select vendor..."}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[400px] p-0">
                   <Command>
                     <CommandInput 
-                      placeholder="Search vendors by name or GST..." 
+                      placeholder="Search by buyer name or GST..." 
                       data-testid="input-vendor-search"
                     />
                     <CommandEmpty>
@@ -1194,9 +1210,68 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                 </PopoverContent>
               </Popover>
             </div>
+
+            {/* Ship-To Search with Combobox */}
+            <div>
+              <Label htmlFor="shipToSelect">Search by Ship To</Label>
+              <Popover open={shipToSearchOpen} onOpenChange={setShipToSearchOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={shipToSearchOpen}
+                    className="w-full justify-between"
+                    data-testid="button-ship-to-combobox"
+                  >
+                    {selectedVendorId && vendors.find((v) => v.id === selectedVendorId)?.shipToName
+                      ? vendors.find((v) => v.id === selectedVendorId)?.shipToName
+                      : "Search shipper..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[400px] p-0">
+                  <Command>
+                    <CommandInput 
+                      placeholder="Search by shipper name or city..." 
+                      data-testid="input-ship-to-search"
+                    />
+                    <CommandEmpty>
+                      {vendorsWithShipTo.length === 0 ? "No vendors with ship-to addresses." : "No match found."}
+                    </CommandEmpty>
+                    <CommandList className="max-h-[300px] overflow-y-auto">
+                      <CommandGroup>
+                        {vendorsWithShipTo.map((vendor) => (
+                          <CommandItem
+                            key={vendor.id}
+                            value={vendor.shipToName || ''}
+                            keywords={[vendor.vendorName, vendor.shipToCity || '', vendor.shipToAddress || '']}
+                            onSelect={() => handleShipToSelect(vendor.id)}
+                            data-testid={`ship-to-option-${vendor.id}`}
+                            className="flex items-center gap-2 px-2 py-1.5"
+                          >
+                            <Check
+                              className={cn(
+                                "h-4 w-4 shrink-0",
+                                selectedVendorId === vendor.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            <span className="flex-1 flex flex-col">
+                              <span className="font-medium">{vendor.shipToName}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {vendor.shipToCity}{vendor.shipToCity && vendor.vendorName ? ' • ' : ''}{vendor.vendorName}
+                              </span>
+                            </span>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            Filter by vendor type and search by name or GST. Auto-fills buyer details from selected vendor.
+            Search by buyer name, shipper name, or filter by type. Selecting fills buyer and ship-to details.
           </p>
         </div>
 
