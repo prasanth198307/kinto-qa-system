@@ -5334,6 +5334,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Apply filters
       let filteredGatepasses = [...allGatepasses];
       
+      // Sort by gatepass date descending (latest first) as primary sort, then by gatepass number
+      filteredGatepasses.sort((a, b) => {
+        const dateA = new Date(a.gatepassDate).getTime();
+        const dateB = new Date(b.gatepassDate).getTime();
+        if (dateB !== dateA) return dateB - dateA; // Latest date first
+        // Secondary sort by gatepass number (alphanumeric descending)
+        return b.gatepassNumber.localeCompare(a.gatepassNumber);
+      });
+      
       // Search filter (gatepassNumber, vehicleNumber, driverName, customerName)
       if (searchQuery && typeof searchQuery === 'string' && searchQuery.trim()) {
         const query = searchQuery.toLowerCase().trim();
@@ -6321,6 +6330,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/invoices/available', isAuthenticated, async (req: any, res) => {
     try {
       const availableInvoices = await storage.getAvailableInvoices();
+      // Sort by invoice date descending (latest first)
+      availableInvoices.sort((a, b) => {
+        const dateA = new Date(a.invoiceDate).getTime();
+        const dateB = new Date(b.invoiceDate).getTime();
+        if (dateB !== dateA) return dateB - dateA;
+        // Secondary sort by invoice number descending
+        return b.invoiceNumber.localeCompare(a.invoiceNumber);
+      });
       res.json(availableInvoices);
     } catch (error) {
       console.error("Error fetching available invoices:", error);
