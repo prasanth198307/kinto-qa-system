@@ -395,7 +395,10 @@ ${invoice?.shipToName || invoice?.shipToAddress ? `
       </html>
     `;
 
-    // Create iframe for printing - more reliable approach
+    // Detect mobile device
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    // Create iframe for printing
     const existingFrame = document.getElementById('gatepass-print-frame');
     if (existingFrame) {
       document.body.removeChild(existingFrame);
@@ -406,9 +409,20 @@ ${invoice?.shipToName || invoice?.shipToAddress ? `
     iframe.style.position = 'fixed';
     iframe.style.right = '0';
     iframe.style.bottom = '0';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
     iframe.style.border = 'none';
+    iframe.style.zIndex = '99999';
+    iframe.style.backgroundColor = 'white';
+    
+    if (isMobile) {
+      // Mobile: Show full-screen preview with buttons
+      iframe.style.width = '100%';
+      iframe.style.height = '100%';
+    } else {
+      // Desktop: Hidden iframe, auto-print
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+    }
+    
     document.body.appendChild(iframe);
 
     const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
@@ -417,23 +431,45 @@ ${invoice?.shipToName || invoice?.shipToAddress ? `
       iframeDoc.write(htmlContent);
       iframeDoc.close();
 
-      // Use requestAnimationFrame to ensure content is rendered
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          try {
-            iframe.contentWindow?.focus();
-            iframe.contentWindow?.print();
-          } catch (e) {
-            console.error('Print failed:', e);
+      if (isMobile) {
+        // Add close button for mobile
+        const closeBtn = iframeDoc.createElement('button');
+        closeBtn.innerHTML = '✕ Close Preview';
+        closeBtn.style.cssText = 'position:fixed;top:10px;right:10px;z-index:100000;padding:10px 20px;background:#ef4444;color:white;border:none;border-radius:8px;font-size:16px;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,0.3);';
+        closeBtn.onclick = () => {
+          if (document.body.contains(iframe)) {
+            document.body.removeChild(iframe);
           }
-          // Cleanup after print dialog closes
+        };
+        iframeDoc.body.insertBefore(closeBtn, iframeDoc.body.firstChild);
+        
+        // Add print button for mobile
+        const printBtn = iframeDoc.createElement('button');
+        printBtn.innerHTML = '🖨️ Print / Save PDF';
+        printBtn.style.cssText = 'position:fixed;top:10px;right:150px;z-index:100000;padding:10px 20px;background:#3b82f6;color:white;border:none;border-radius:8px;font-size:16px;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,0.3);';
+        printBtn.onclick = () => {
+          iframe.contentWindow?.print();
+        };
+        iframeDoc.body.insertBefore(printBtn, iframeDoc.body.firstChild);
+      } else {
+        // Desktop: Use requestAnimationFrame to ensure content is rendered
+        requestAnimationFrame(() => {
           setTimeout(() => {
-            if (document.body.contains(iframe)) {
-              document.body.removeChild(iframe);
+            try {
+              iframe.contentWindow?.focus();
+              iframe.contentWindow?.print();
+            } catch (e) {
+              console.error('Print failed:', e);
             }
-          }, 2000);
-        }, 300);
-      });
+            // Cleanup after print dialog closes
+            setTimeout(() => {
+              if (document.body.contains(iframe)) {
+                document.body.removeChild(iframe);
+              }
+            }, 2000);
+          }, 300);
+        });
+      }
     }
   };
 

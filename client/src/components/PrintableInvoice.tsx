@@ -935,35 +935,84 @@ ${invoice.shipToName || invoice.shipToAddress ? `
 
     console.log('📝 HTML content generated, length:', htmlContent.length);
 
-    // Create blob URL to avoid popup blockers
+    // Detect mobile device
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    // Create blob URL
     const blob = new Blob([htmlContent], { type: 'text/html' });
     const blobUrl = URL.createObjectURL(blob);
     
-    console.log('🔗 Blob URL created:', blobUrl);
+    console.log('🔗 Blob URL created:', blobUrl, 'Mobile:', isMobile);
     
-    // Open in new tab/window (blob URLs are not blocked)
-    const printWindow = window.open(blobUrl, '_blank');
-    
-    console.log('🪟 Window.open result:', printWindow);
-    
-    if (!printWindow) {
-      console.log('❌ Failed to open window - popup blocked');
+    if (isMobile) {
+      // Mobile-friendly approach: Use iframe for printing
+      const printFrame = document.createElement('iframe');
+      printFrame.style.position = 'fixed';
+      printFrame.style.right = '0';
+      printFrame.style.bottom = '0';
+      printFrame.style.width = '100%';
+      printFrame.style.height = '100%';
+      printFrame.style.border = 'none';
+      printFrame.style.zIndex = '99999';
+      printFrame.style.backgroundColor = 'white';
+      
+      document.body.appendChild(printFrame);
+      
+      const frameDoc = printFrame.contentDocument || printFrame.contentWindow?.document;
+      if (frameDoc) {
+        frameDoc.open();
+        frameDoc.write(htmlContent);
+        frameDoc.close();
+        
+        // Add close button for mobile
+        const closeBtn = frameDoc.createElement('button');
+        closeBtn.innerHTML = '✕ Close Preview';
+        closeBtn.style.cssText = 'position:fixed;top:10px;right:10px;z-index:100000;padding:10px 20px;background:#ef4444;color:white;border:none;border-radius:8px;font-size:16px;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,0.3);';
+        closeBtn.onclick = () => {
+          document.body.removeChild(printFrame);
+          URL.revokeObjectURL(blobUrl);
+        };
+        frameDoc.body.insertBefore(closeBtn, frameDoc.body.firstChild);
+        
+        // Add print button for mobile
+        const printBtn = frameDoc.createElement('button');
+        printBtn.innerHTML = '🖨️ Print / Save PDF';
+        printBtn.style.cssText = 'position:fixed;top:10px;right:150px;z-index:100000;padding:10px 20px;background:#3b82f6;color:white;border:none;border-radius:8px;font-size:16px;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,0.3);';
+        printBtn.onclick = () => {
+          printFrame.contentWindow?.print();
+        };
+        frameDoc.body.insertBefore(printBtn, frameDoc.body.firstChild);
+      }
+      
       toast({
-        title: "Unable to Open Print Preview",
-        description: "Please check your browser settings and allow popups for this site.",
-        variant: "destructive",
+        title: "Preview Ready",
+        description: "Tap 'Print / Save PDF' button to print or save as PDF.",
       });
-      URL.revokeObjectURL(blobUrl);
-      return;
+    } else {
+      // Desktop approach: Open in new tab
+      const printWindow = window.open(blobUrl, '_blank');
+      
+      console.log('🪟 Window.open result:', printWindow);
+      
+      if (!printWindow) {
+        console.log('❌ Failed to open window - popup blocked');
+        toast({
+          title: "Unable to Open Print Preview",
+          description: "Please check your browser settings and allow popups for this site.",
+          variant: "destructive",
+        });
+        URL.revokeObjectURL(blobUrl);
+        return;
+      }
+
+      console.log('✅ Print window opened successfully!');
+
+      // Clean up blob URL after window loads
+      setTimeout(() => {
+        console.log('🧹 Cleaning up blob URL');
+        URL.revokeObjectURL(blobUrl);
+      }, 1000);
     }
-
-    console.log('✅ Print window opened successfully!');
-
-    // Clean up blob URL after window loads
-    setTimeout(() => {
-      console.log('🧹 Cleaning up blob URL');
-      URL.revokeObjectURL(blobUrl);
-    }, 1000);
   };
 
   return (

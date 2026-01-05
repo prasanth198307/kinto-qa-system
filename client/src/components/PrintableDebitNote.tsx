@@ -97,15 +97,8 @@ export default function PrintableDebitNote({ debitNote }: PrintableDebitNoteProp
       return;
     }
 
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      toast({
-        title: "Error",
-        description: "Unable to open print window. Please allow popups.",
-        variant: "destructive",
-      });
-      return;
-    }
+    // Detect mobile device
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
     // Get company details from template or use defaults
     const companyName = template?.defaultSellerName || 'Inmoisture Private Limited';
@@ -619,8 +612,57 @@ export default function PrintableDebitNote({ debitNote }: PrintableDebitNoteProp
 </html>
     `;
 
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
+    if (isMobile) {
+      // Mobile-friendly approach: Use iframe for printing
+      const printFrame = document.createElement('iframe');
+      printFrame.style.position = 'fixed';
+      printFrame.style.right = '0';
+      printFrame.style.bottom = '0';
+      printFrame.style.width = '100%';
+      printFrame.style.height = '100%';
+      printFrame.style.border = 'none';
+      printFrame.style.zIndex = '99999';
+      printFrame.style.backgroundColor = 'white';
+      
+      document.body.appendChild(printFrame);
+      
+      const frameDoc = printFrame.contentDocument || printFrame.contentWindow?.document;
+      if (frameDoc) {
+        frameDoc.open();
+        frameDoc.write(htmlContent);
+        frameDoc.close();
+        
+        // Add close button for mobile
+        const closeBtn = frameDoc.createElement('button');
+        closeBtn.innerHTML = '✕ Close Preview';
+        closeBtn.style.cssText = 'position:fixed;top:10px;right:10px;z-index:100000;padding:10px 20px;background:#ef4444;color:white;border:none;border-radius:8px;font-size:16px;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,0.3);';
+        closeBtn.onclick = () => {
+          document.body.removeChild(printFrame);
+        };
+        frameDoc.body.insertBefore(closeBtn, frameDoc.body.firstChild);
+        
+        // Add print button for mobile
+        const printBtn = frameDoc.createElement('button');
+        printBtn.innerHTML = '🖨️ Print / Save PDF';
+        printBtn.style.cssText = 'position:fixed;top:10px;right:150px;z-index:100000;padding:10px 20px;background:#3b82f6;color:white;border:none;border-radius:8px;font-size:16px;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,0.3);';
+        printBtn.onclick = () => {
+          printFrame.contentWindow?.print();
+        };
+        frameDoc.body.insertBefore(printBtn, frameDoc.body.firstChild);
+      }
+    } else {
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        toast({
+          title: "Error",
+          description: "Unable to open print window. Please allow popups.",
+          variant: "destructive",
+        });
+        return;
+      }
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+    }
   };
 
   return (
