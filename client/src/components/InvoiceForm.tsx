@@ -1114,7 +1114,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
 
         {/* Vendor/Customer Selection */}
         <div className="space-y-3">
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {/* Vendor Type Filter */}
             <div>
               <Label htmlFor="vendorTypeFilter">Filter by Type</Label>
@@ -1161,7 +1161,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[400px] p-0">
+                <PopoverContent className="w-[280px] md:w-[400px] p-0">
                   <Command>
                     <CommandInput 
                       placeholder="Search by buyer name or GST..." 
@@ -1229,7 +1229,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[400px] p-0">
+                <PopoverContent className="w-[280px] md:w-[400px] p-0">
                   <Command>
                     <CommandInput 
                       placeholder="Search by shipper name or city..." 
@@ -1278,7 +1278,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         {/* Buyer Details (Bill To) */}
         <div className="space-y-4">
           <h3 className="font-semibold text-lg">Buyer Details (Bill To)</h3>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="buyerName">Buyer Name *</Label>
               <Input
@@ -1299,7 +1299,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                 data-testid="input-buyer-gstin"
               />
             </div>
-            <div className="col-span-2">
+            <div className="md:col-span-2">
               <Label htmlFor="buyerAddress">Buyer Address</Label>
               <Input
                 id="buyerAddress"
@@ -1398,7 +1398,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         {shipToDifferentAddress && (
           <div className="space-y-3">
             <h3 className="font-semibold text-lg">Ship-To Address</h3>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="shipToName">Ship-To Name</Label>
                 <Input
@@ -1415,7 +1415,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                   data-testid="input-ship-to-city"
                 />
               </div>
-              <div className="col-span-2">
+              <div className="md:col-span-2">
                 <Label htmlFor="shipToAddress">Ship-To Address</Label>
                 <Input
                   id="shipToAddress"
@@ -1448,7 +1448,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         {/* Seller Details */}
         <div className="space-y-3">
           <h3 className="font-semibold text-lg">Seller Details</h3>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <Label htmlFor="sellerName">Seller Name</Label>
               <Input
@@ -1466,7 +1466,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                 data-testid="input-seller-gstin"
               />
             </div>
-            <div className="col-span-2">
+            <div className="md:col-span-2">
               <Label htmlFor="sellerAddress">Seller Address</Label>
               <Input
                 id="sellerAddress"
@@ -1529,8 +1529,8 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
             </Button>
           </div>
 
-          {/* Table Header */}
-          <div className="grid grid-cols-12 gap-2 text-xs font-semibold text-muted-foreground px-2">
+          {/* Table Header - Hidden on mobile */}
+          <div className="hidden md:grid grid-cols-12 gap-2 text-xs font-semibold text-muted-foreground px-2">
             <div className="col-span-3">Product *</div>
             <div className="col-span-1">HSN</div>
             <div className="col-span-2">Description *</div>
@@ -1550,9 +1550,12 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
           
           {/* Items */}
           {fields.map((field, index) => (
-            <div key={field.id} className="grid grid-cols-12 gap-2 items-start p-1.5 border rounded-md hover-elevate">
+            <div key={field.id} className="border rounded-md p-3 md:p-1.5 hover-elevate">
+              {/* Mobile: Stacked layout, Desktop: Grid layout */}
+              <div className="flex flex-col gap-3 md:grid md:grid-cols-12 md:gap-2 md:items-start">
               {/* Product */}
-              <div className="col-span-3">
+              <div className="md:col-span-3">
+                <Label className="md:hidden text-xs text-muted-foreground mb-1">Product *</Label>
                 <Select
                   value={form.watch(`items.${index}.productId`)}
                   onValueChange={(value) => {
@@ -1637,7 +1640,8 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
               </div>
 
               {/* HSN Code */}
-              <div className="col-span-1">
+              <div className="md:col-span-1">
+                <Label className="md:hidden text-xs text-muted-foreground mb-1">HSN</Label>
                 <Input
                   {...form.register(`items.${index}.hsnCode`)}
                   placeholder="8471"
@@ -1647,7 +1651,8 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
               </div>
 
               {/* Description */}
-              <div className="col-span-2">
+              <div className="md:col-span-2">
+                <Label className="md:hidden text-xs text-muted-foreground mb-1">Description *</Label>
                 <Input
                   {...form.register(`items.${index}.description`)}
                   placeholder="Description"
@@ -1657,7 +1662,8 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
               </div>
 
               {/* Quantity */}
-              <div className="col-span-1">
+              <div className="md:col-span-1">
+                <Label className="md:hidden text-xs text-muted-foreground mb-1">Quantity *</Label>
                 <Input
                   type="number"
                   {...form.register(`items.${index}.quantity`, { 
@@ -1696,7 +1702,8 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
               </div>
 
               {/* Unit Price */}
-              <div className="col-span-2">
+              <div className="md:col-span-2">
+                <Label className="md:hidden text-xs text-muted-foreground mb-1">Price (₹) *</Label>
                 <Input
                   type="number"
                   step="0.01"
@@ -1708,7 +1715,8 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
               </div>
 
               {/* GST Rate */}
-              <div className="col-span-1">
+              <div className="md:col-span-1">
+                <Label className="md:hidden text-xs text-muted-foreground mb-1">GST %</Label>
                 <Select
                   value={(() => {
                     const watchedValue = form.watch(`items.${index}.gstRate`);
@@ -1732,7 +1740,8 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
               </div>
 
               {/* Transport Rate (per case) */}
-              <div className="col-span-1">
+              <div className="md:col-span-1">
+                <Label className="md:hidden text-xs text-muted-foreground mb-1">Transport</Label>
                 <Input
                   type="number"
                   step="0.01"
@@ -1745,7 +1754,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
               </div>
 
               {/* Remove Button */}
-              <div className="col-span-1 flex justify-center">
+              <div className="md:col-span-1 flex justify-center md:justify-center">
                 {fields.length > 1 && (
                   <Button
                     type="button"
@@ -1758,6 +1767,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 )}
+              </div>
               </div>
             </div>
           ))}
@@ -1807,8 +1817,8 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         {/* Payment Details */}
         <div className="space-y-3">
           <h3 className="font-semibold text-lg">Payment Details</h3>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="md:col-span-2">
               <Label>Select Bank Account</Label>
               <Select
                 value={selectedBankId}
@@ -1857,7 +1867,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                   <Input value={form.watch("branchName")} disabled data-testid="input-bank-branch-name" />
                 </div>
                 {form.watch("upiId") && (
-                  <div className="col-span-2">
+                  <div className="md:col-span-2">
                     <Label>UPI ID</Label>
                     <Input value={form.watch("upiId")} disabled data-testid="input-upi-id" />
                   </div>
