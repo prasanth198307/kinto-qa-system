@@ -5339,8 +5339,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const dateA = new Date(a.gatepassDate).getTime();
         const dateB = new Date(b.gatepassDate).getTime();
         if (dateB !== dateA) return dateB - dateA; // Latest date first
-        // Secondary sort by gatepass number (alphanumeric descending)
-        return b.gatepassNumber.localeCompare(a.gatepassNumber);
+        // Secondary sort by gatepass number (numeric comparison for proper ordering)
+        // Extract the numeric suffix from gatepass numbers like "GP-202501-0123"
+        const numA = parseInt(a.gatepassNumber.replace(/\D/g, '').slice(-4) || '0');
+        const numB = parseInt(b.gatepassNumber.replace(/\D/g, '').slice(-4) || '0');
+        return numB - numA; // Descending order (higher numbers first)
       });
       
       // Search filter (gatepassNumber, vehicleNumber, driverName, customerName)
@@ -6335,8 +6338,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const dateA = new Date(a.invoiceDate).getTime();
         const dateB = new Date(b.invoiceDate).getTime();
         if (dateB !== dateA) return dateB - dateA;
-        // Secondary sort by invoice number descending
-        return b.invoiceNumber.localeCompare(a.invoiceNumber);
+        // Secondary sort by invoice number (numeric comparison for proper ordering)
+        // Extract numeric suffix from invoice numbers like "INV-202501-0123"
+        const numA = parseInt(a.invoiceNumber.replace(/\D/g, '').slice(-4) || '0');
+        const numB = parseInt(b.invoiceNumber.replace(/\D/g, '').slice(-4) || '0');
+        return numB - numA; // Descending order (higher numbers first)
       });
       res.json(availableInvoices);
     } catch (error) {
