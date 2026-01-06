@@ -942,10 +942,9 @@ ${invoice.shipToName || invoice.shipToAddress ? `
 
     console.log('📝 HTML content generated, length:', htmlContent.length);
 
-    // Detect mobile device - including iPadOS which reports as Mac
-    const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
-      (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || isIOSDevice;
+    // Detect mobile device - use strict mobile UA detection only
+    // Don't use touch detection as it catches touch-enabled laptops
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
     // Create blob URL
     const blob = new Blob([htmlContent], { type: 'text/html' });
@@ -966,9 +965,10 @@ ${invoice.shipToName || invoice.shipToAddress ? `
           <div style="padding-top:56px;">`
       ).replace('</body>', '</div></body>');
       
-      // Check if iOS Safari specifically (including iPadOS which reports as Mac)
+      // Check if iOS Safari specifically (including iPadOS which may report as Mac)
+      // Use touch + Mac detection only within the mobile branch
       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
-        (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
+        (navigator.userAgent.includes('Mac') && navigator.maxTouchPoints > 1);
       
       if (isIOS) {
         // iOS Safari: Use iframe overlay approach
