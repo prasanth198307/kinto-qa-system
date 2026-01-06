@@ -143,12 +143,168 @@ export default function PrintDebitNotePage() {
     (navigator.userAgent.includes('Mac') && navigator.maxTouchPoints > 1);
   const isSafariIOS = isIOSDevice && !isNonSafariIOSBrowser;
 
+  // Function to render a single copy
+  const renderDebitNoteCopy = (copyLabel: string) => (
+    <div key={copyLabel} className="debit-note-copy" style={{ pageBreakAfter: 'always', padding: '15mm', fontFamily: 'Arial, sans-serif' }}>
+      <div style={{ textAlign: 'center', marginBottom: '15px' }}>
+        <div style={{ fontSize: '14px', fontWeight: 'bold' }}>{companyName}</div>
+        <div style={{ fontSize: '11px', color: '#666' }}>{companyAddress}</div>
+        {companyGstin && <div style={{ fontSize: '11px' }}>GSTIN: {companyGstin}</div>}
+        <div style={{ fontSize: '20px', fontWeight: 'bold', marginTop: '10px', padding: '5px', background: '#f5f5f5' }}>DEBIT NOTE</div>
+        <div style={{ 
+          display: 'inline-block', 
+          border: '1px solid #333', 
+          padding: '2px 10px',
+          marginTop: '5px',
+          fontSize: '10px'
+        }}>
+          {copyLabel}
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px', fontSize: '12px' }}>
+        <div>
+          <strong>Debit Note No:</strong> {fullNote.noteNumber}<br/>
+          <strong>Date:</strong> {formattedDate}<br/>
+          <strong>Reason:</strong> {REASON_LABELS[fullNote.reason] || fullNote.reason}
+        </div>
+        <div>
+          <strong>Status:</strong> {fullNote.status.charAt(0).toUpperCase() + fullNote.status.slice(1)}
+        </div>
+      </div>
+
+      <div style={{ border: '1px solid #ddd', padding: '10px', borderRadius: '4px', marginBottom: '15px' }}>
+        <div style={{ fontWeight: 'bold', fontSize: '11px', color: '#666', marginBottom: '5px' }}>VENDOR</div>
+        <div style={{ fontSize: '13px', fontWeight: 'bold' }}>{vendorName}</div>
+        {vendorAddress && <div style={{ fontSize: '11px' }}>{vendorAddress}</div>}
+        {(vendorCity || vendorState || vendorPincode) && (
+          <div style={{ fontSize: '11px' }}>{[vendorCity, vendorState, vendorPincode].filter(Boolean).join(', ')}</div>
+        )}
+        {vendorGst && <div style={{ fontSize: '11px' }}>GSTIN: {vendorGst}</div>}
+      </div>
+
+      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '15px', fontSize: '11px' }}>
+        <thead>
+          <tr style={{ background: '#f5f5f5' }}>
+            <th style={{ border: '1px solid #ddd', padding: '6px', textAlign: 'center', width: '30px' }}>#</th>
+            <th style={{ border: '1px solid #ddd', padding: '6px', textAlign: 'left' }}>Description</th>
+            <th style={{ border: '1px solid #ddd', padding: '6px', textAlign: 'center', width: '60px' }}>HSN</th>
+            <th style={{ border: '1px solid #ddd', padding: '6px', textAlign: 'center', width: '50px' }}>Qty</th>
+            <th style={{ border: '1px solid #ddd', padding: '6px', textAlign: 'center', width: '50px' }}>Unit</th>
+            <th style={{ border: '1px solid #ddd', padding: '6px', textAlign: 'right', width: '80px' }}>Rate</th>
+            <th style={{ border: '1px solid #ddd', padding: '6px', textAlign: 'right', width: '80px' }}>Taxable</th>
+            {isIntrastate ? (
+              <>
+                <th style={{ border: '1px solid #ddd', padding: '6px', textAlign: 'center', width: '60px' }}>CGST</th>
+                <th style={{ border: '1px solid #ddd', padding: '6px', textAlign: 'center', width: '60px' }}>SGST</th>
+              </>
+            ) : (
+              <th style={{ border: '1px solid #ddd', padding: '6px', textAlign: 'center', width: '60px' }}>IGST</th>
+            )}
+            <th style={{ border: '1px solid #ddd', padding: '6px', textAlign: 'right', width: '80px' }}>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item, index) => (
+            <tr key={item.id}>
+              <td style={{ border: '1px solid #ddd', padding: '5px', textAlign: 'center' }}>{index + 1}</td>
+              <td style={{ border: '1px solid #ddd', padding: '5px' }}>{item.description}</td>
+              <td style={{ border: '1px solid #ddd', padding: '5px', textAlign: 'center' }}>{item.hsnCode || '-'}</td>
+              <td style={{ border: '1px solid #ddd', padding: '5px', textAlign: 'center' }}>{item.quantity}</td>
+              <td style={{ border: '1px solid #ddd', padding: '5px', textAlign: 'center' }}>{item.unit}</td>
+              <td style={{ border: '1px solid #ddd', padding: '5px', textAlign: 'right' }}>{formatCurrency(item.unitPrice)}</td>
+              <td style={{ border: '1px solid #ddd', padding: '5px', textAlign: 'right' }}>{formatCurrency(item.taxableValue)}</td>
+              {isIntrastate ? (
+                <>
+                  <td style={{ border: '1px solid #ddd', padding: '5px', textAlign: 'center' }}>{formatRate(item.cgstRate)}</td>
+                  <td style={{ border: '1px solid #ddd', padding: '5px', textAlign: 'center' }}>{formatRate(item.sgstRate)}</td>
+                </>
+              ) : (
+                <td style={{ border: '1px solid #ddd', padding: '5px', textAlign: 'center' }}>{formatRate(item.igstRate)}</td>
+              )}
+              <td style={{ border: '1px solid #ddd', padding: '5px', textAlign: 'right' }}>{formatCurrency(item.totalAmount)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '15px' }}>
+        <table style={{ width: '250px', fontSize: '12px' }}>
+          <tbody>
+            <tr>
+              <td style={{ padding: '4px 0' }}>Subtotal:</td>
+              <td style={{ textAlign: 'right', padding: '4px 0' }}>{formatCurrency(fullNote.subtotal)}</td>
+            </tr>
+            {isIntrastate ? (
+              <>
+                <tr>
+                  <td style={{ padding: '4px 0' }}>CGST:</td>
+                  <td style={{ textAlign: 'right', padding: '4px 0' }}>{formatCurrency(fullNote.cgstAmount)}</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: '4px 0' }}>SGST:</td>
+                  <td style={{ textAlign: 'right', padding: '4px 0' }}>{formatCurrency(fullNote.sgstAmount)}</td>
+                </tr>
+              </>
+            ) : (
+              <tr>
+                <td style={{ padding: '4px 0' }}>IGST:</td>
+                <td style={{ textAlign: 'right', padding: '4px 0' }}>{formatCurrency(fullNote.igstAmount)}</td>
+              </tr>
+            )}
+            <tr style={{ fontWeight: 'bold', background: '#f5f5f5' }}>
+              <td style={{ padding: '6px 0' }}>Grand Total:</td>
+              <td style={{ textAlign: 'right', padding: '6px 0' }}>{formatCurrency(fullNote.grandTotal)}</td>
+            </tr>
+            {fullNote.settledAmount > 0 && (
+              <>
+                <tr>
+                  <td style={{ padding: '4px 0' }}>Settled:</td>
+                  <td style={{ textAlign: 'right', padding: '4px 0' }}>{formatCurrency(fullNote.settledAmount)}</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: '4px 0' }}>Outstanding:</td>
+                  <td style={{ textAlign: 'right', padding: '4px 0' }}>{formatCurrency(fullNote.grandTotal - fullNote.settledAmount)}</td>
+                </tr>
+              </>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <div style={{ fontSize: '11px', marginBottom: '15px', fontStyle: 'italic' }}>
+        Amount in words: <strong>{amountToWords(fullNote.grandTotal)}</strong>
+      </div>
+
+      {fullNote.notes && (
+        <div style={{ fontSize: '11px', marginBottom: '15px', padding: '8px', background: '#f9f9f9', borderRadius: '4px' }}>
+          <strong>Notes:</strong> {fullNote.notes}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '40px' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ borderTop: '1px solid #333', paddingTop: '5px', marginTop: '40px', minWidth: '150px', fontSize: '11px' }}>
+            Vendor Acknowledgment
+          </div>
+        </div>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ borderTop: '1px solid #333', paddingTop: '5px', marginTop: '40px', minWidth: '150px', fontSize: '11px' }}>
+            For {companyName}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div>
       <style dangerouslySetInnerHTML={{ __html: `
         @media print {
           #print-controls { display: none !important; }
           body { margin: 0; padding: 0; }
+          .debit-note-copy { page-break-after: always; }
+          .debit-note-copy:last-child { page-break-after: auto; }
         }
         @media screen {
           body { background: #f3f4f6; }
@@ -222,146 +378,10 @@ export default function PrintDebitNotePage() {
       </div>
       
       <div style={{ paddingTop: '70px', background: '#f3f4f6', minHeight: '100vh' }}>
-        <div style={{ maxWidth: '210mm', margin: '0 auto', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '15mm', fontFamily: 'Arial, sans-serif' }}>
-          <div style={{ textAlign: 'center', marginBottom: '15px' }}>
-            <div style={{ fontSize: '14px', fontWeight: 'bold' }}>{companyName}</div>
-            <div style={{ fontSize: '11px', color: '#666' }}>{companyAddress}</div>
-            {companyGstin && <div style={{ fontSize: '11px' }}>GSTIN: {companyGstin}</div>}
-            <div style={{ fontSize: '20px', fontWeight: 'bold', marginTop: '10px', padding: '5px', background: '#f5f5f5' }}>DEBIT NOTE</div>
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px', fontSize: '12px' }}>
-            <div>
-              <strong>Debit Note No:</strong> {fullNote.noteNumber}<br/>
-              <strong>Date:</strong> {formattedDate}<br/>
-              <strong>Reason:</strong> {REASON_LABELS[fullNote.reason] || fullNote.reason}
-            </div>
-            <div>
-              <strong>Status:</strong> {fullNote.status.charAt(0).toUpperCase() + fullNote.status.slice(1)}
-            </div>
-          </div>
-
-          <div style={{ border: '1px solid #ddd', padding: '10px', borderRadius: '4px', marginBottom: '15px' }}>
-            <div style={{ fontWeight: 'bold', fontSize: '11px', color: '#666', marginBottom: '5px' }}>VENDOR</div>
-            <div style={{ fontSize: '13px', fontWeight: 'bold' }}>{vendorName}</div>
-            {vendorAddress && <div style={{ fontSize: '11px' }}>{vendorAddress}</div>}
-            {(vendorCity || vendorState || vendorPincode) && (
-              <div style={{ fontSize: '11px' }}>{[vendorCity, vendorState, vendorPincode].filter(Boolean).join(', ')}</div>
-            )}
-            {vendorGst && <div style={{ fontSize: '11px' }}>GSTIN: {vendorGst}</div>}
-          </div>
-
-          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '15px', fontSize: '11px' }}>
-            <thead>
-              <tr style={{ background: '#f5f5f5' }}>
-                <th style={{ border: '1px solid #ddd', padding: '6px', textAlign: 'center', width: '30px' }}>#</th>
-                <th style={{ border: '1px solid #ddd', padding: '6px', textAlign: 'left' }}>Description</th>
-                <th style={{ border: '1px solid #ddd', padding: '6px', textAlign: 'center', width: '60px' }}>HSN</th>
-                <th style={{ border: '1px solid #ddd', padding: '6px', textAlign: 'center', width: '50px' }}>Qty</th>
-                <th style={{ border: '1px solid #ddd', padding: '6px', textAlign: 'center', width: '50px' }}>Unit</th>
-                <th style={{ border: '1px solid #ddd', padding: '6px', textAlign: 'right', width: '80px' }}>Rate</th>
-                <th style={{ border: '1px solid #ddd', padding: '6px', textAlign: 'right', width: '80px' }}>Taxable</th>
-                {isIntrastate ? (
-                  <>
-                    <th style={{ border: '1px solid #ddd', padding: '6px', textAlign: 'center', width: '60px' }}>CGST</th>
-                    <th style={{ border: '1px solid #ddd', padding: '6px', textAlign: 'center', width: '60px' }}>SGST</th>
-                  </>
-                ) : (
-                  <th style={{ border: '1px solid #ddd', padding: '6px', textAlign: 'center', width: '60px' }}>IGST</th>
-                )}
-                <th style={{ border: '1px solid #ddd', padding: '6px', textAlign: 'right', width: '80px' }}>Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item, index) => (
-                <tr key={item.id}>
-                  <td style={{ border: '1px solid #ddd', padding: '5px', textAlign: 'center' }}>{index + 1}</td>
-                  <td style={{ border: '1px solid #ddd', padding: '5px' }}>{item.description}</td>
-                  <td style={{ border: '1px solid #ddd', padding: '5px', textAlign: 'center' }}>{item.hsnCode || '-'}</td>
-                  <td style={{ border: '1px solid #ddd', padding: '5px', textAlign: 'center' }}>{item.quantity}</td>
-                  <td style={{ border: '1px solid #ddd', padding: '5px', textAlign: 'center' }}>{item.unit}</td>
-                  <td style={{ border: '1px solid #ddd', padding: '5px', textAlign: 'right' }}>{formatCurrency(item.unitPrice)}</td>
-                  <td style={{ border: '1px solid #ddd', padding: '5px', textAlign: 'right' }}>{formatCurrency(item.taxableValue)}</td>
-                  {isIntrastate ? (
-                    <>
-                      <td style={{ border: '1px solid #ddd', padding: '5px', textAlign: 'center' }}>{formatRate(item.cgstRate)}</td>
-                      <td style={{ border: '1px solid #ddd', padding: '5px', textAlign: 'center' }}>{formatRate(item.sgstRate)}</td>
-                    </>
-                  ) : (
-                    <td style={{ border: '1px solid #ddd', padding: '5px', textAlign: 'center' }}>{formatRate(item.igstRate)}</td>
-                  )}
-                  <td style={{ border: '1px solid #ddd', padding: '5px', textAlign: 'right' }}>{formatCurrency(item.totalAmount)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '15px' }}>
-            <table style={{ width: '250px', fontSize: '12px' }}>
-              <tbody>
-                <tr>
-                  <td style={{ padding: '4px 0' }}>Subtotal:</td>
-                  <td style={{ textAlign: 'right', padding: '4px 0' }}>{formatCurrency(fullNote.subtotal)}</td>
-                </tr>
-                {isIntrastate ? (
-                  <>
-                    <tr>
-                      <td style={{ padding: '4px 0' }}>CGST:</td>
-                      <td style={{ textAlign: 'right', padding: '4px 0' }}>{formatCurrency(fullNote.cgstAmount)}</td>
-                    </tr>
-                    <tr>
-                      <td style={{ padding: '4px 0' }}>SGST:</td>
-                      <td style={{ textAlign: 'right', padding: '4px 0' }}>{formatCurrency(fullNote.sgstAmount)}</td>
-                    </tr>
-                  </>
-                ) : (
-                  <tr>
-                    <td style={{ padding: '4px 0' }}>IGST:</td>
-                    <td style={{ textAlign: 'right', padding: '4px 0' }}>{formatCurrency(fullNote.igstAmount)}</td>
-                  </tr>
-                )}
-                <tr style={{ fontWeight: 'bold', background: '#f5f5f5' }}>
-                  <td style={{ padding: '6px 0' }}>Grand Total:</td>
-                  <td style={{ textAlign: 'right', padding: '6px 0' }}>{formatCurrency(fullNote.grandTotal)}</td>
-                </tr>
-                {fullNote.settledAmount > 0 && (
-                  <>
-                    <tr>
-                      <td style={{ padding: '4px 0' }}>Settled:</td>
-                      <td style={{ textAlign: 'right', padding: '4px 0' }}>{formatCurrency(fullNote.settledAmount)}</td>
-                    </tr>
-                    <tr>
-                      <td style={{ padding: '4px 0' }}>Outstanding:</td>
-                      <td style={{ textAlign: 'right', padding: '4px 0' }}>{formatCurrency(fullNote.grandTotal - fullNote.settledAmount)}</td>
-                    </tr>
-                  </>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          <div style={{ fontSize: '11px', marginBottom: '15px', fontStyle: 'italic' }}>
-            Amount in words: <strong>{amountToWords(fullNote.grandTotal)}</strong>
-          </div>
-
-          {fullNote.notes && (
-            <div style={{ fontSize: '11px', marginBottom: '15px', padding: '8px', background: '#f9f9f9', borderRadius: '4px' }}>
-              <strong>Notes:</strong> {fullNote.notes}
-            </div>
-          )}
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '40px' }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ borderTop: '1px solid #333', paddingTop: '5px', marginTop: '40px', minWidth: '150px', fontSize: '11px' }}>
-                Vendor Acknowledgment
-              </div>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ borderTop: '1px solid #333', paddingTop: '5px', marginTop: '40px', minWidth: '150px', fontSize: '11px' }}>
-                For {companyName}
-              </div>
-            </div>
-          </div>
+        <div style={{ maxWidth: '210mm', margin: '0 auto', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+          {renderDebitNoteCopy('ORIGINAL FOR VENDOR')}
+          {renderDebitNoteCopy('DUPLICATE FOR ACCOUNTS')}
+          {renderDebitNoteCopy('TRIPLICATE FOR OFFICE')}
         </div>
       </div>
     </div>

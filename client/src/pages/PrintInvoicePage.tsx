@@ -228,22 +228,225 @@ export default function PrintInvoicePage() {
   const bankAccountNumber = template?.defaultBankAccountNumber || invoice.bankAccountNumber;
   const bankIfscCode = template?.defaultBankIfscCode || invoice.bankIfscCode;
 
+  // Function to render a single invoice copy
+  const renderInvoiceCopy = (copyLabel: string) => (
+    <div key={copyLabel} className="invoice-copy" style={{ pageBreakAfter: 'always', padding: '15px', fontFamily: 'Arial, sans-serif' }}>
+      <div style={{ textAlign: 'center', marginBottom: '15px' }}>
+        <h1 style={{ margin: 0, fontSize: '18px' }}>Tax Invoice</h1>
+        <div style={{ 
+          display: 'inline-block', 
+          border: '1px solid #333', 
+          padding: '2px 10px',
+          marginTop: '5px',
+          fontSize: '10px'
+        }}>
+          {copyLabel}
+        </div>
+      </div>
+
+      {template?.defaultLogoImage && (
+        <div style={{ textAlign: 'center', marginBottom: '10px' }}>
+          <img src={template.defaultLogoImage} alt="Logo" style={{ maxHeight: '60px' }} />
+        </div>
+      )}
+
+      <div style={{ textAlign: 'center', marginBottom: '15px', fontSize: '11px' }}>
+        <strong style={{ fontSize: '14px' }}>{invoice.sellerName}</strong><br/>
+        {invoice.sellerAddress}<br/>
+        Phone: {invoice.sellerPhone} | Email: {invoice.sellerEmail}<br/>
+        GSTIN: {invoice.sellerGstin} | State: {invoice.sellerStateCode}-{invoice.sellerState}
+      </div>
+
+      <table style={{ marginBottom: '15px', width: '100%', borderCollapse: 'collapse' }}>
+        <tbody>
+          <tr>
+            <td style={{ width: '50%', verticalAlign: 'top', border: '1px solid #333', padding: '6px', fontSize: '11px' }}>
+              <strong>Bill To:</strong><br/>
+              {invoice.buyerName}<br/>
+              {invoice.buyerAddress}<br/>
+              GSTIN: {invoice.buyerGstin}<br/>
+              State: {invoice.buyerStateCode}-{invoice.buyerState}
+            </td>
+            <td style={{ width: '50%', verticalAlign: 'top', border: '1px solid #333', padding: '6px', fontSize: '11px' }}>
+              <strong>Invoice Details:</strong><br/>
+              No: {invoice.invoiceNumber}<br/>
+              Date: {format(new Date(invoice.invoiceDate), 'dd/MM/yyyy')}<br/>
+              {invoice.vehicleNumber && <>Vehicle: {invoice.vehicleNumber}<br/></>}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <table style={{ marginBottom: '15px', width: '100%', borderCollapse: 'collapse' }}>
+        <thead>
+          <tr>
+            <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '11px', background: '#f0f0f0' }}>#</th>
+            <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '11px', background: '#f0f0f0' }}>Product</th>
+            <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '11px', background: '#f0f0f0' }}>HSN/SAC</th>
+            <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '11px', background: '#f0f0f0' }}>Qty</th>
+            <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '11px', background: '#f0f0f0' }}>Unit</th>
+            <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '11px', background: '#f0f0f0' }}>Price/Unit (₹)</th>
+            <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '11px', background: '#f0f0f0' }}>Amount (₹)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item, idx) => (
+            <tr key={item.id}>
+              <td style={{ textAlign: 'center', border: '1px solid #333', padding: '4px 6px', fontSize: '11px' }}>{idx + 1}</td>
+              <td style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '11px' }}>{getProductName(item.productId)}</td>
+              <td style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '11px' }}>{item.hsnCode || item.sacCode || 'N/A'}</td>
+              <td style={{ textAlign: 'right', border: '1px solid #333', padding: '4px 6px', fontSize: '11px' }}>{item.quantity}</td>
+              <td style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '11px' }}>{getUomName(item.uomId)}</td>
+              <td style={{ textAlign: 'right', border: '1px solid #333', padding: '4px 6px', fontSize: '11px' }}>{(item.unitPrice / 100).toFixed(2)}</td>
+              <td style={{ textAlign: 'right', border: '1px solid #333', padding: '4px 6px', fontSize: '11px' }}>{(item.taxableAmount / 100).toFixed(2)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <table style={{ marginBottom: '15px', width: '100%', borderCollapse: 'collapse' }}>
+        <thead>
+          <tr>
+            <th rowSpan={2} style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '11px', background: '#f0f0f0' }}>Taxable amount (₹)</th>
+            {isIntrastate ? (
+              <>
+                <th colSpan={2} style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '11px', background: '#f0f0f0' }}>CGST</th>
+                <th colSpan={2} style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '11px', background: '#f0f0f0' }}>SGST</th>
+              </>
+            ) : (
+              <th colSpan={2} style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '11px', background: '#f0f0f0' }}>IGST</th>
+            )}
+            <th rowSpan={2} style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '11px', background: '#f0f0f0' }}>Total Tax (₹)</th>
+          </tr>
+          <tr>
+            {isIntrastate ? (
+              <>
+                <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '11px', background: '#f0f0f0' }}>Rate (%)</th>
+                <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '11px', background: '#f0f0f0' }}>Amt (₹)</th>
+                <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '11px', background: '#f0f0f0' }}>Rate (%)</th>
+                <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '11px', background: '#f0f0f0' }}>Amt (₹)</th>
+              </>
+            ) : (
+              <>
+                <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '11px', background: '#f0f0f0' }}>Rate (%)</th>
+                <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '11px', background: '#f0f0f0' }}>Amt (₹)</th>
+              </>
+            )}
+          </tr>
+        </thead>
+        <tbody>
+          {hsnSummary.map((row, idx) => (
+            <tr key={idx}>
+              <td style={{ textAlign: 'right', border: '1px solid #333', padding: '4px 6px', fontSize: '11px' }}>{(row.taxableAmount / 100).toFixed(2)}</td>
+              {isIntrastate ? (
+                <>
+                  <td style={{ textAlign: 'center', border: '1px solid #333', padding: '4px 6px', fontSize: '11px' }}>{formatRate(row.cgstRate)}</td>
+                  <td style={{ textAlign: 'right', border: '1px solid #333', padding: '4px 6px', fontSize: '11px' }}>{(row.cgstAmount / 100).toFixed(2)}</td>
+                  <td style={{ textAlign: 'center', border: '1px solid #333', padding: '4px 6px', fontSize: '11px' }}>{formatRate(row.sgstRate)}</td>
+                  <td style={{ textAlign: 'right', border: '1px solid #333', padding: '4px 6px', fontSize: '11px' }}>{(row.sgstAmount / 100).toFixed(2)}</td>
+                </>
+              ) : (
+                <>
+                  <td style={{ textAlign: 'center', border: '1px solid #333', padding: '4px 6px', fontSize: '11px' }}>{formatRate(row.igstRate)}</td>
+                  <td style={{ textAlign: 'right', border: '1px solid #333', padding: '4px 6px', fontSize: '11px' }}>{(row.igstAmount / 100).toFixed(2)}</td>
+                </>
+              )}
+              <td style={{ textAlign: 'right', border: '1px solid #333', padding: '4px 6px', fontSize: '11px' }}>{(row.totalTax / 100).toFixed(2)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <div style={{ display: 'flex', gap: '20px', marginBottom: '15px' }}>
+        <div style={{ width: '65%' }}>
+          <div style={{ fontSize: '11px', marginBottom: '5px' }}>
+            <strong>Invoice Amount in words:</strong> {amountToWords(invoice.totalAmount / 100)} Rupees Only
+          </div>
+          {invoice.remarks && (
+            <div style={{ fontSize: '10px', color: '#666' }}>
+              <strong>Remarks:</strong> {invoice.remarks}
+            </div>
+          )}
+        </div>
+        <div style={{ width: '35%', textAlign: 'right' }}>
+          <table style={{ marginLeft: 'auto', borderCollapse: 'collapse' }}>
+            <tbody>
+              <tr>
+                <td style={{ fontSize: '11px', padding: '2px 6px' }}><strong>Subtotal:</strong></td>
+                <td style={{ textAlign: 'right', fontSize: '11px', padding: '2px 6px' }}>{formatCurrency(invoice.subtotal)}</td>
+              </tr>
+              <tr>
+                <td style={{ fontSize: '11px', padding: '2px 6px' }}><strong>Total Tax:</strong></td>
+                <td style={{ textAlign: 'right', fontSize: '11px', padding: '2px 6px' }}>{formatCurrency((invoice.cgstAmount || 0) + (invoice.sgstAmount || 0) + (invoice.igstAmount || 0))}</td>
+              </tr>
+              <tr style={{ background: '#f0f0f0' }}>
+                <td style={{ fontSize: '11px', padding: '2px 6px' }}><strong>Grand Total:</strong></td>
+                <td style={{ textAlign: 'right', fontSize: '11px', padding: '2px 6px' }}><strong>{formatCurrency(invoice.totalAmount)}</strong></td>
+              </tr>
+              {amountReceived > 0 && (
+                <>
+                  <tr>
+                    <td style={{ fontSize: '11px', padding: '2px 6px' }}>Amount Received:</td>
+                    <td style={{ textAlign: 'right', fontSize: '11px', padding: '2px 6px' }}>{formatCurrency(amountReceived)}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ fontSize: '11px', padding: '2px 6px' }}><strong>Balance Due:</strong></td>
+                    <td style={{ textAlign: 'right', fontSize: '11px', padding: '2px 6px' }}><strong>{formatCurrency(balanceDue)}</strong></td>
+                  </tr>
+                </>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px' }}>
+        <div style={{ width: '30%' }}>
+          {bankName && (
+            <div style={{ fontSize: '10px' }}>
+              <strong>Bank Details:</strong><br/>
+              Bank: {bankName}<br/>
+              A/C: {bankAccountNumber}<br/>
+              IFSC: {bankIfscCode}
+            </div>
+          )}
+          {qrCodeUrl && (
+            <div style={{ marginTop: '10px' }}>
+              <img src={qrCodeUrl} alt="UPI QR Code" style={{ width: '100px' }} />
+              <div style={{ fontSize: '9px' }}>Scan to Pay</div>
+            </div>
+          )}
+        </div>
+        <div style={{ width: '30%', textAlign: 'right' }}>
+          {template?.defaultSignatureImage && (
+            <div>
+              <img src={template.defaultSignatureImage} alt="Signature" style={{ maxHeight: '50px' }} />
+              <div style={{ borderTop: '1px solid #333', marginTop: '5px', paddingTop: '5px', fontSize: '10px' }}>
+                Authorized Signatory
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <>
       <style>{`
         @media print {
           .print-header { display: none !important; }
           body { margin: 0; padding: 0; }
+          .invoice-copy { page-break-after: always; }
+          .invoice-copy:last-child { page-break-after: auto; }
         }
         @media screen {
           body { background: #f5f5f5; }
         }
         .print-content {
-          font-family: Arial, sans-serif;
           max-width: 210mm;
           margin: 0 auto;
           background: white;
-          padding: 15px;
         }
         @media screen {
           .print-content {
@@ -251,9 +454,6 @@ export default function PrintInvoicePage() {
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
           }
         }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #333; padding: 4px 6px; font-size: 11px; }
-        th { background: #f0f0f0; text-align: left; }
       `}</style>
       
       <div className="print-header" style={{
@@ -315,209 +515,9 @@ export default function PrintInvoicePage() {
       </div>
 
       <div className="print-content">
-        <div style={{ textAlign: 'center', marginBottom: '15px' }}>
-          <h1 style={{ margin: 0, fontSize: '18px' }}>Tax Invoice</h1>
-          <div style={{ 
-            display: 'inline-block', 
-            border: '1px solid #333', 
-            padding: '2px 10px',
-            marginTop: '5px',
-            fontSize: '10px'
-          }}>
-            ORIGINAL FOR RECIPIENT
-          </div>
-        </div>
-
-        {template?.defaultLogoImage && (
-          <div style={{ textAlign: 'center', marginBottom: '10px' }}>
-            <img src={template.defaultLogoImage} alt="Logo" style={{ maxHeight: '60px' }} />
-          </div>
-        )}
-
-        <div style={{ textAlign: 'center', marginBottom: '15px', fontSize: '11px' }}>
-          <strong style={{ fontSize: '14px' }}>{invoice.sellerName}</strong><br/>
-          {invoice.sellerAddress}<br/>
-          Phone: {invoice.sellerPhone} | Email: {invoice.sellerEmail}<br/>
-          GSTIN: {invoice.sellerGstin} | State: {invoice.sellerStateCode}-{invoice.sellerState}
-        </div>
-
-        <table style={{ marginBottom: '15px' }}>
-          <tbody>
-            <tr>
-              <td style={{ width: '50%', verticalAlign: 'top' }}>
-                <strong>Bill To:</strong><br/>
-                {invoice.buyerName}<br/>
-                {invoice.buyerAddress}<br/>
-                GSTIN: {invoice.buyerGstin}<br/>
-                State: {invoice.buyerStateCode}-{invoice.buyerState}
-              </td>
-              <td style={{ width: '50%', verticalAlign: 'top' }}>
-                <strong>Invoice Details:</strong><br/>
-                No: {invoice.invoiceNumber}<br/>
-                Date: {format(new Date(invoice.invoiceDate), 'dd/MM/yyyy')}<br/>
-                {invoice.vehicleNumber && <>Vehicle: {invoice.vehicleNumber}<br/></>}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-
-        <table style={{ marginBottom: '15px' }}>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Product</th>
-              <th>HSN/SAC</th>
-              <th>Qty</th>
-              <th>Unit</th>
-              <th>Price/Unit (₹)</th>
-              <th>Amount (₹)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item, idx) => (
-              <tr key={item.id}>
-                <td style={{ textAlign: 'center' }}>{idx + 1}</td>
-                <td>{getProductName(item.productId)}</td>
-                <td>{item.hsnCode || item.sacCode || 'N/A'}</td>
-                <td style={{ textAlign: 'right' }}>{item.quantity}</td>
-                <td>{getUomName(item.uomId)}</td>
-                <td style={{ textAlign: 'right' }}>{(item.unitPrice / 100).toFixed(2)}</td>
-                <td style={{ textAlign: 'right' }}>{(item.taxableAmount / 100).toFixed(2)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        <table style={{ marginBottom: '15px' }}>
-          <thead>
-            <tr>
-              <th rowSpan={2}>Taxable amount (₹)</th>
-              {isIntrastate ? (
-                <>
-                  <th colSpan={2}>CGST</th>
-                  <th colSpan={2}>SGST</th>
-                </>
-              ) : (
-                <th colSpan={2}>IGST</th>
-              )}
-              <th rowSpan={2}>Total Tax (₹)</th>
-            </tr>
-            <tr>
-              {isIntrastate ? (
-                <>
-                  <th>Rate (%)</th>
-                  <th>Amt (₹)</th>
-                  <th>Rate (%)</th>
-                  <th>Amt (₹)</th>
-                </>
-              ) : (
-                <>
-                  <th>Rate (%)</th>
-                  <th>Amt (₹)</th>
-                </>
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {hsnSummary.map((row, idx) => (
-              <tr key={idx}>
-                <td style={{ textAlign: 'right' }}>{formatCurrency(row.taxableAmount)}</td>
-                {isIntrastate ? (
-                  <>
-                    <td style={{ textAlign: 'center' }}>{formatRate(row.cgstRate)}</td>
-                    <td style={{ textAlign: 'right' }}>{formatCurrency(row.cgstAmount)}</td>
-                    <td style={{ textAlign: 'center' }}>{formatRate(row.sgstRate)}</td>
-                    <td style={{ textAlign: 'right' }}>{formatCurrency(row.sgstAmount)}</td>
-                  </>
-                ) : (
-                  <>
-                    <td style={{ textAlign: 'center' }}>{formatRate(row.igstRate)}</td>
-                    <td style={{ textAlign: 'right' }}>{formatCurrency(row.igstAmount)}</td>
-                  </>
-                )}
-                <td style={{ textAlign: 'right' }}>{formatCurrency(row.totalTax)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
-          <div style={{ width: '60%' }}>
-            {termsConditions && (
-              <div style={{ fontSize: '10px' }}>
-                <strong>Terms & Conditions:</strong>
-                <ol style={{ margin: '5px 0', paddingLeft: '15px' }}>
-                  {termsConditions.terms?.map((term, idx) => (
-                    <li key={idx}>{term}</li>
-                  ))}
-                </ol>
-              </div>
-            )}
-          </div>
-          <div style={{ width: '35%', textAlign: 'right' }}>
-            <table style={{ marginLeft: 'auto' }}>
-              <tbody>
-                <tr>
-                  <td><strong>Subtotal:</strong></td>
-                  <td style={{ textAlign: 'right' }}>{formatCurrency(invoice.subtotal)}</td>
-                </tr>
-                <tr>
-                  <td><strong>Total Tax:</strong></td>
-                  <td style={{ textAlign: 'right' }}>{formatCurrency((invoice.cgstAmount || 0) + (invoice.sgstAmount || 0) + (invoice.igstAmount || 0))}</td>
-                </tr>
-                <tr style={{ background: '#f0f0f0' }}>
-                  <td><strong>Grand Total:</strong></td>
-                  <td style={{ textAlign: 'right' }}><strong>{formatCurrency(invoice.totalAmount)}</strong></td>
-                </tr>
-                {amountReceived > 0 && (
-                  <>
-                    <tr>
-                      <td>Amount Received:</td>
-                      <td style={{ textAlign: 'right' }}>{formatCurrency(amountReceived)}</td>
-                    </tr>
-                    <tr>
-                      <td><strong>Balance Due:</strong></td>
-                      <td style={{ textAlign: 'right' }}><strong>{formatCurrency(balanceDue)}</strong></td>
-                    </tr>
-                  </>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div style={{ fontSize: '11px', marginBottom: '10px' }}>
-          <strong>Invoice Amount in words:</strong> {amountToWords(invoice.totalAmount / 100)} Rupees Only
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px' }}>
-          <div style={{ width: '30%' }}>
-            {bankName && (
-              <div style={{ fontSize: '10px' }}>
-                <strong>Bank Details:</strong><br/>
-                Bank: {bankName}<br/>
-                A/C: {bankAccountNumber}<br/>
-                IFSC: {bankIfscCode}
-              </div>
-            )}
-            {qrCodeUrl && (
-              <div style={{ marginTop: '10px' }}>
-                <img src={qrCodeUrl} alt="UPI QR Code" style={{ width: '100px' }} />
-                <div style={{ fontSize: '9px' }}>Scan to Pay</div>
-              </div>
-            )}
-          </div>
-          <div style={{ width: '30%', textAlign: 'right' }}>
-            {template?.defaultSignatureImage && (
-              <div>
-                <img src={template.defaultSignatureImage} alt="Signature" style={{ maxHeight: '50px' }} />
-                <div style={{ borderTop: '1px solid #333', marginTop: '5px', paddingTop: '5px', fontSize: '10px' }}>
-                  Authorized Signatory
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+        {renderInvoiceCopy('ORIGINAL FOR RECIPIENT')}
+        {renderInvoiceCopy('DUPLICATE FOR TRANSPORTER')}
+        {renderInvoiceCopy('TRIPLICATE FOR SUPPLIER')}
       </div>
     </>
   );
