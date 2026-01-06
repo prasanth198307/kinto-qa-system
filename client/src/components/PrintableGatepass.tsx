@@ -48,6 +48,17 @@ export default function PrintableGatepass({ gatepass }: PrintableGatepassProps) 
   };
 
   const handlePrint = () => {
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const isNonSafariIOSBrowser = /CriOS|FxiOS|EdgiOS/.test(navigator.userAgent);
+    const isIOSDevice = /iPhone|iPad|iPod/.test(navigator.userAgent) || 
+      (navigator.userAgent.includes('Mac') && navigator.maxTouchPoints > 1);
+    const isSafariIOS = isIOSDevice && !isNonSafariIOSBrowser;
+
+    if (isSafariIOS) {
+      window.location.href = `/print/gatepass/${gatepass.id}`;
+      return;
+    }
+
     const formattedDate = format(new Date(gatepass.gatepassDate), 'dd/MM/yyyy');
 
     const generateGatepassHTML = (copyType: string, copyFor: string) => `

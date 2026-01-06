@@ -42,17 +42,27 @@ interface PrintInvoice {
 
 export default function PrintInvoicePage() {
   const params = useParams<{ id: string }>();
-  const invoiceId = params.id ? parseInt(params.id) : null;
+  const invoiceId = params.id || null;
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
   const [isReady, setIsReady] = useState(false);
 
   const { data: invoice, isLoading: isLoadingInvoice } = useQuery<PrintInvoice>({
     queryKey: ['/api/invoices', invoiceId],
+    queryFn: async () => {
+      const response = await fetch(`/api/invoices/${invoiceId}`, { credentials: 'include' });
+      if (!response.ok) throw new Error('Invoice not found');
+      return response.json();
+    },
     enabled: !!invoiceId,
   });
 
   const { data: items = [] } = useQuery<InvoiceItem[]>({
     queryKey: ['/api/invoice-items', invoiceId],
+    queryFn: async () => {
+      const response = await fetch(`/api/invoice-items/${invoiceId}`, { credentials: 'include' });
+      if (!response.ok) return [];
+      return response.json();
+    },
     enabled: !!invoiceId,
   });
 

@@ -94,6 +94,9 @@ import MISSales from "@/pages/mis-sales";
 import MISDelivery from "@/pages/mis-delivery";
 import DispatchMasters from "@/pages/dispatch-masters";
 import PrintInvoicePage from "@/pages/PrintInvoicePage";
+import PrintGatepassPage from "@/pages/PrintGatepassPage";
+import PrintCreditNotePage from "@/pages/PrintCreditNotePage";
+import PrintDebitNotePage from "@/pages/PrintDebitNotePage";
 
 type Role = 'admin' | 'operator' | 'reviewer' | 'manager';
 
@@ -2419,6 +2422,9 @@ function Router() {
       <Route path="/auth" component={AuthPage} />
       <Route path="/reset-password" component={ResetPasswordPage} />
       <Route path="/print/invoice/:id" component={PrintInvoicePage} />
+      <Route path="/print/gatepass/:id" component={PrintGatepassPage} />
+      <Route path="/print/credit-note/:id" component={PrintCreditNotePage} />
+      <Route path="/print/debit-note/:id" component={PrintDebitNotePage} />
       <ProtectedRoute path="/checklists" component={ChecklistsPageWrapper} />
       <ProtectedRoute path="/reviewer-dashboard" component={ReviewerDashboardPageWrapper} />
       <ProtectedRoute path="/vendor-types" component={VendorTypesPageWrapper} />

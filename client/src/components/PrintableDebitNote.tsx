@@ -97,14 +97,16 @@ export default function PrintableDebitNote({ debitNote }: PrintableDebitNoteProp
       return;
     }
 
-    // Detect mobile device
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    
-    // Detect ONLY Safari on iOS (not Chrome/Firefox/Edge which handle blob URLs fine)
     const isNonSafariIOSBrowser = /CriOS|FxiOS|EdgiOS/.test(navigator.userAgent);
     const isIOSDevice = /iPhone|iPad|iPod/.test(navigator.userAgent) || 
       (navigator.userAgent.includes('Mac') && navigator.maxTouchPoints > 1);
     const isSafariIOS = isIOSDevice && !isNonSafariIOSBrowser;
+
+    if (isSafariIOS) {
+      window.location.href = `/print/debit-note/${debitNote.id}`;
+      return;
+    }
 
     // Get company details from template or use defaults
     const companyName = template?.defaultSellerName || 'Inmoisture Private Limited';
