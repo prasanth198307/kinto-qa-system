@@ -514,10 +514,10 @@ export default function PrintInvoicePage() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px' }}>
-        <div style={{ width: '35%' }}>
+      <div className="bank-signature-section" style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px', gap: '10px' }}>
+        <div style={{ flex: '1', minWidth: 0 }}>
           {(bankName || upiId) && (
-            <div style={{ fontSize: '10px' }}>
+            <div style={{ fontSize: '9px' }}>
               <strong>Bank Details:</strong><br/>
               {bankName && <>Bank: <strong>{bankName}</strong><br/></>}
               {bankAccountNumber && <>A/C No: {bankAccountNumber}<br/></>}
@@ -527,30 +527,30 @@ export default function PrintInvoicePage() {
             </div>
           )}
           {qrCodeUrl && (
-            <div style={{ marginTop: '10px' }}>
-              <img src={qrCodeUrl} alt="UPI QR Code" style={{ width: '100px', border: '1px solid #ddd' }} />
-              <div style={{ fontSize: '9px' }}>Scan to Pay</div>
+            <div style={{ marginTop: '5px' }}>
+              <img src={qrCodeUrl} alt="UPI QR Code" style={{ width: '70px', border: '1px solid #000' }} />
+              <div style={{ fontSize: '8px' }}>Scan to Pay</div>
             </div>
           )}
         </div>
-        <div style={{ width: '30%', textAlign: 'right' }}>
-          <div style={{ fontSize: '9px', marginBottom: '5px' }}>For {invoice.sellerName || 'Company'}:</div>
+        <div style={{ flex: '1', minWidth: 0, textAlign: 'right' }}>
+          <div style={{ fontSize: '9px', marginBottom: '3px' }}>For {invoice.sellerName || 'Company'}:</div>
           {(() => {
             const signatureType = (invoice as any).signatureType || 'default';
             const showSignature = (invoice as any).includeSignature === 1 || (invoice as any).includeSignature === undefined;
             
             if (!showSignature) {
-              return <div style={{ height: '40px' }}></div>;
+              return <div style={{ height: '30px' }}></div>;
             }
             
             if (signatureType === 'alternate' && template?.alternateSignatureImage) {
-              return <img src={template.alternateSignatureImage} alt="Signature" style={{ maxHeight: '50px', objectFit: 'contain' }} />;
+              return <img src={template.alternateSignatureImage} alt="Signature" style={{ maxHeight: '40px', objectFit: 'contain' }} />;
             } else if (template?.defaultSignatureImage) {
-              return <img src={template.defaultSignatureImage} alt="Signature" style={{ maxHeight: '50px', objectFit: 'contain' }} />;
+              return <img src={template.defaultSignatureImage} alt="Signature" style={{ maxHeight: '40px', objectFit: 'contain' }} />;
             }
-            return <div style={{ height: '40px' }}></div>;
+            return <div style={{ height: '30px' }}></div>;
           })()}
-          <div style={{ borderTop: '1px solid #333', marginTop: '5px', paddingTop: '5px', fontSize: '10px' }}>
+          <div style={{ borderTop: '1px solid #000', marginTop: '3px', paddingTop: '3px', fontSize: '9px' }}>
             {(() => {
               const signatureType = (invoice as any).signatureType || 'default';
               if (signatureType === 'alternate') {
@@ -563,7 +563,7 @@ export default function PrintInvoicePage() {
       </div>
 
       {/* Declaration */}
-      <div style={{ marginTop: '10px', padding: '8px', background: '#f9f9f9', border: '1px solid #ddd', fontSize: '9px' }}>
+      <div className="declaration-section" style={{ marginTop: '8px', padding: '6px', background: '#f9f9f9', border: '1.5px solid #000', fontSize: '9px' }}>
         <strong>Declaration:</strong> We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.
       </div>
     </div>
@@ -582,13 +582,15 @@ export default function PrintInvoicePage() {
             top: -9999px !important;
           }
           body { margin: 0; padding: 0; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-          .invoice-copy { page-break-after: always; }
+          .invoice-copy { page-break-after: always; page-break-inside: avoid; }
           .invoice-copy:last-child { page-break-after: auto; }
           .print-content { padding-top: 0 !important; margin-top: 0 !important; }
+          /* Prevent page breaks inside sections */
+          .bank-signature-section, .declaration-section { page-break-inside: avoid !important; }
           /* Force borders to print on iOS */
-          table { border-collapse: collapse !important; border: 2px solid #000 !important; }
-          th, td { border: 1px solid #000 !important; border-width: 1px !important; border-style: solid !important; border-color: #000 !important; }
-          div[style*="border"]:not([style*="position: fixed"]) { border-color: #000 !important; border-style: solid !important; }
+          table { border-collapse: collapse !important; border: 1px solid #000 !important; }
+          th, td { border: 1px solid #000 !important; }
+          .declaration-section { border: 1.5px solid #000 !important; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
         @media screen {
