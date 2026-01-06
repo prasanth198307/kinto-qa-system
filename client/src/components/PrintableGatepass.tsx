@@ -398,6 +398,11 @@ ${invoice?.shipToName || invoice?.shipToAddress ? `
     // Detect mobile device
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
+    // Detect ANY iOS browser (Safari, Chrome, Firefox, Edge on iOS all use WebKit)
+    const isAnyiOSBrowser = /iPhone|iPad|iPod/.test(navigator.userAgent) || 
+      /CriOS|FxiOS|EdgiOS/.test(navigator.userAgent) ||
+      (navigator.userAgent.includes('Mac') && navigator.maxTouchPoints > 1);
+    
     // Create iframe for printing
     const existingFrame = document.getElementById('gatepass-print-frame');
     if (existingFrame) {
@@ -413,61 +418,54 @@ ${invoice?.shipToName || invoice?.shipToAddress ? `
     iframe.style.zIndex = '99999';
     iframe.style.backgroundColor = 'white';
     
-    if (isMobile) {
-      // Mobile-friendly approach: Add navigation controls and open in same tab
+    // iOS browsers need overlay approach first
+    if (isAnyiOSBrowser) {
+      const overlay = document.createElement('div');
+      overlay.id = 'ios-print-overlay';
+      overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:999999;background:#fff;';
+      
+      const header = document.createElement('div');
+      header.style.cssText = 'position:fixed;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#1f2937;z-index:1000000;gap:8px;';
+      
+      const backBtn = document.createElement('button');
+      backBtn.textContent = '← Back';
+      backBtn.style.cssText = 'padding:10px 16px;background:#3b82f6;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;';
+      backBtn.onclick = () => {
+        document.body.removeChild(overlay);
+        document.body.style.overflow = '';
+      };
+      
+      const instructions = document.createElement('div');
+      instructions.innerHTML = 'Tap <strong>Share ↗</strong> → <strong>Print</strong>';
+      instructions.style.cssText = 'color:white;font-size:13px;text-align:center;flex:1;';
+      
+      header.appendChild(backBtn);
+      header.appendChild(instructions);
+      
+      const iframeEl = document.createElement('iframe');
+      iframeEl.style.cssText = 'position:absolute;top:56px;left:0;right:0;bottom:0;width:100%;height:calc(100% - 56px);border:none;';
+      iframeEl.srcdoc = htmlContent;
+      
+      overlay.appendChild(header);
+      overlay.appendChild(iframeEl);
+      
+      document.body.style.overflow = 'hidden';
+      document.body.appendChild(overlay);
+    } else if (isMobile) {
+      // Android - blob URL navigation works
       const mobileHtmlContent = htmlContent.replace(
         '<body>',
         `<body>
           <div id="mobile-controls" style="position:fixed;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#1f2937;border-bottom:1px solid #374151;z-index:100000;gap:12px;">
             <button onclick="history.back()" style="padding:10px 16px;background:#3b82f6;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">← Back</button>
-            <div style="color:white;font-size:13px;text-align:center;flex:1;">Tap <strong>Share ↗</strong> then <strong>Print</strong></div>
+            <div style="color:white;font-size:13px;text-align:center;flex:1;">Tap <strong>⋮ Menu</strong> → <strong>Print</strong></div>
           </div>
           <div style="padding-top:56px;">`
       ).replace('</body>', '</div></body>');
       
-      // iOS Safari doesn't work with blob URLs - use iframe overlay instead
-      // Including iPadOS which may report as Mac but has touch points
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
-        (navigator.userAgent.includes('Mac') && navigator.maxTouchPoints > 1);
-      
-      if (isIOS) {
-        // Create a full-screen overlay with iframe for iOS Safari
-        const overlay = document.createElement('div');
-        overlay.id = 'ios-print-overlay';
-        overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:999999;background:#fff;';
-        
-        const header = document.createElement('div');
-        header.style.cssText = 'position:fixed;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#1f2937;z-index:1000000;gap:8px;';
-        
-        const backBtn = document.createElement('button');
-        backBtn.textContent = '← Back';
-        backBtn.style.cssText = 'padding:10px 16px;background:#3b82f6;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;';
-        backBtn.onclick = () => {
-          document.body.removeChild(overlay);
-          document.body.style.overflow = '';
-        };
-        
-        const instructions = document.createElement('div');
-        instructions.innerHTML = 'Tap <strong>Share ↗</strong> → <strong>Print</strong>';
-        instructions.style.cssText = 'color:white;font-size:13px;text-align:center;flex:1;';
-        
-        header.appendChild(backBtn);
-        header.appendChild(instructions);
-        
-        const iframeEl = document.createElement('iframe');
-        iframeEl.style.cssText = 'position:absolute;top:56px;left:0;right:0;bottom:0;width:100%;height:calc(100% - 56px);border:none;';
-        iframeEl.srcdoc = htmlContent;
-        
-        overlay.appendChild(header);
-        overlay.appendChild(iframeEl);
-        
-        document.body.style.overflow = 'hidden';
-        document.body.appendChild(overlay);
-      } else {
-        const blob = new Blob([mobileHtmlContent], { type: 'text/html' });
-        const blobUrl = URL.createObjectURL(blob);
-        window.location.href = blobUrl;
-      }
+      const blob = new Blob([mobileHtmlContent], { type: 'text/html' });
+      const blobUrl = URL.createObjectURL(blob);
+      window.location.href = blobUrl;
     } else {
       // Desktop: Hidden iframe, auto-print
       iframe.style.width = '0';
