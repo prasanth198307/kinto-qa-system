@@ -194,14 +194,19 @@ export default function PrintGatepassPage() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '30px', fontSize: '12px' }}>
         <div style={{ textAlign: 'center', width: '30%' }}>
-          <div style={{ borderTop: '1px solid #333', paddingTop: '5px', marginTop: '40px' }}>Prepared By</div>
+          <div style={{ borderTop: '1px solid #333', paddingTop: '5px', marginTop: '40px' }}>Receiver's Signature</div>
         </div>
         <div style={{ textAlign: 'center', width: '30%' }}>
-          <div style={{ borderTop: '1px solid #333', paddingTop: '5px', marginTop: '40px' }}>Security</div>
+          <div style={{ borderTop: '1px solid #333', paddingTop: '5px', marginTop: '40px' }}>Security/Gate</div>
         </div>
         <div style={{ textAlign: 'center', width: '30%' }}>
-          <div style={{ borderTop: '1px solid #333', paddingTop: '5px', marginTop: '40px' }}>Receiver Signature</div>
+          <div style={{ borderTop: '1px solid #333', paddingTop: '5px', marginTop: '40px' }}>Authorized Signatory</div>
         </div>
+      </div>
+
+      {/* Footer */}
+      <div style={{ marginTop: '20px', padding: '8px', background: '#f9f9f9', border: '1px solid #ddd', fontSize: '10px', textAlign: 'center', fontStyle: 'italic' }}>
+        This is a computer-generated gate pass. Please verify all details before accepting goods.
       </div>
     </div>
   );

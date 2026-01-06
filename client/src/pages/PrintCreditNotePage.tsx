@@ -254,6 +254,12 @@ export default function PrintCreditNotePage() {
           </div>
         </div>
       </div>
+
+      {/* Footer */}
+      <div style={{ marginTop: '30px', paddingTop: '15px', borderTop: '1px solid #ddd', fontSize: '10px', color: '#666', textAlign: 'center' }}>
+        <div>This is a computer-generated credit note and does not require a physical signature.</div>
+        <div style={{ marginTop: '3px' }}>Credit Note #{creditNote.noteNumber} | Date: {formattedDate}</div>
+      </div>
     </div>
   );
 

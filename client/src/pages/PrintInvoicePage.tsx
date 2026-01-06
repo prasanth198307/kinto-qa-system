@@ -235,6 +235,8 @@ export default function PrintInvoicePage() {
   const bankName = template?.defaultBankName || invoice.bankName;
   const bankAccountNumber = template?.defaultBankAccountNumber || invoice.bankAccountNumber;
   const bankIfscCode = template?.defaultBankIfscCode || invoice.bankIfscCode;
+  const accountHolderName = template?.defaultAccountHolderName || invoice.accountHolderName;
+  const upiId = template?.defaultUpiId || invoice.upiId;
 
   const isCancelled = invoice.recordStatus === 0;
   
@@ -277,9 +279,9 @@ export default function PrintInvoicePage() {
         </div>
       </div>
 
-      {template?.defaultLogoImage && (
+      {template?.logoUrl && (
         <div style={{ textAlign: 'center', marginBottom: '10px' }}>
-          <img src={template.defaultLogoImage} alt="Logo" style={{ maxHeight: '60px' }} />
+          <img src={template.logoUrl} alt="Company Logo" style={{ maxWidth: '150px', maxHeight: '60px', objectFit: 'contain' }} />
         </div>
       )}
 
@@ -513,32 +515,56 @@ export default function PrintInvoicePage() {
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px' }}>
-        <div style={{ width: '30%' }}>
-          {bankName && (
+        <div style={{ width: '35%' }}>
+          {(bankName || upiId) && (
             <div style={{ fontSize: '10px' }}>
               <strong>Bank Details:</strong><br/>
-              Bank: {bankName}<br/>
-              A/C: {bankAccountNumber}<br/>
-              IFSC: {bankIfscCode}
+              {bankName && <>Bank: <strong>{bankName}</strong><br/></>}
+              {bankAccountNumber && <>A/C No: {bankAccountNumber}<br/></>}
+              {bankIfscCode && <>IFSC: {bankIfscCode}<br/></>}
+              {accountHolderName && <>A/C Holder: {accountHolderName}<br/></>}
+              {upiId && <>UPI: {upiId}</>}
             </div>
           )}
           {qrCodeUrl && (
             <div style={{ marginTop: '10px' }}>
-              <img src={qrCodeUrl} alt="UPI QR Code" style={{ width: '100px' }} />
+              <img src={qrCodeUrl} alt="UPI QR Code" style={{ width: '100px', border: '1px solid #ddd' }} />
               <div style={{ fontSize: '9px' }}>Scan to Pay</div>
             </div>
           )}
         </div>
         <div style={{ width: '30%', textAlign: 'right' }}>
-          {template?.defaultSignatureImage && (
-            <div>
-              <img src={template.defaultSignatureImage} alt="Signature" style={{ maxHeight: '50px' }} />
-              <div style={{ borderTop: '1px solid #333', marginTop: '5px', paddingTop: '5px', fontSize: '10px' }}>
-                Authorized Signatory
-              </div>
-            </div>
-          )}
+          <div style={{ fontSize: '9px', marginBottom: '5px' }}>For {invoice.sellerName || 'Company'}:</div>
+          {(() => {
+            const signatureType = (invoice as any).signatureType || 'default';
+            const showSignature = (invoice as any).includeSignature === 1 || (invoice as any).includeSignature === undefined;
+            
+            if (!showSignature) {
+              return <div style={{ height: '40px' }}></div>;
+            }
+            
+            if (signatureType === 'alternate' && template?.alternateSignatureImage) {
+              return <img src={template.alternateSignatureImage} alt="Signature" style={{ maxHeight: '50px', objectFit: 'contain' }} />;
+            } else if (template?.defaultSignatureImage) {
+              return <img src={template.defaultSignatureImage} alt="Signature" style={{ maxHeight: '50px', objectFit: 'contain' }} />;
+            }
+            return <div style={{ height: '40px' }}></div>;
+          })()}
+          <div style={{ borderTop: '1px solid #333', marginTop: '5px', paddingTop: '5px', fontSize: '10px' }}>
+            {(() => {
+              const signatureType = (invoice as any).signatureType || 'default';
+              if (signatureType === 'alternate') {
+                return template?.alternateSignatoryName || template?.authorizedSignatoryName || 'Authorized Signatory';
+              }
+              return template?.authorizedSignatoryName || 'Authorized Signatory';
+            })()}
+          </div>
         </div>
+      </div>
+
+      {/* Declaration */}
+      <div style={{ marginTop: '10px', padding: '8px', background: '#f9f9f9', border: '1px solid #ddd', fontSize: '9px' }}>
+        <strong>Declaration:</strong> We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.
       </div>
     </div>
   );

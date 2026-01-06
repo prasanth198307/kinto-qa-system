@@ -248,15 +248,22 @@ export default function PrintInvoiceGatepassPage() {
         </div>
       </div>
 
-      <div style={{ border: '1px solid #000', padding: '8px', marginBottom: '10px', textAlign: 'center' }}>
-        <div style={{ fontSize: '14px', fontWeight: 'bold' }}>{invoice.sellerName || 'Inmoisture Private Limited'}</div>
-        <div style={{ fontSize: '9px' }}>{invoice.sellerAddress}</div>
-        <div style={{ fontSize: '9px' }}>
-          {invoice.sellerPhone && `Phone: ${invoice.sellerPhone}`}
-          {invoice.sellerPhone && invoice.sellerEmail && ' | '}
-          {invoice.sellerEmail && `Email: ${invoice.sellerEmail}`}
+      <div style={{ border: '1px solid #000', padding: '8px', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '15px' }}>
+        {activeTemplate?.logoUrl && (
+          <div style={{ flexShrink: 0 }}>
+            <img src={activeTemplate.logoUrl} alt="Company Logo" style={{ maxWidth: '120px', maxHeight: '50px', objectFit: 'contain' }} />
+          </div>
+        )}
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '14px', fontWeight: 'bold' }}>{invoice.sellerName || 'Inmoisture Private Limited'}</div>
+          <div style={{ fontSize: '9px' }}>{invoice.sellerAddress}</div>
+          <div style={{ fontSize: '9px' }}>
+            {invoice.sellerPhone && `Phone: ${invoice.sellerPhone}`}
+            {invoice.sellerPhone && invoice.sellerEmail && ' | '}
+            {invoice.sellerEmail && `Email: ${invoice.sellerEmail}`}
+          </div>
+          {invoice.sellerGstin && <div style={{ fontSize: '9px' }}>GSTIN: {invoice.sellerGstin}</div>}
         </div>
-        {invoice.sellerGstin && <div style={{ fontSize: '9px' }}>GSTIN: {invoice.sellerGstin}</div>}
       </div>
 
       <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
@@ -447,9 +454,30 @@ export default function PrintInvoiceGatepassPage() {
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '9px', marginBottom: '30px' }}>For {invoice.sellerName || 'Inmoisture Private Limited'}:</div>
+          <div style={{ fontSize: '9px', marginBottom: '5px' }}>For {invoice.sellerName || 'Inmoisture Private Limited'}:</div>
+          {(() => {
+            const signatureType = (invoice as any).signatureType || 'default';
+            const showSignature = (invoice as any).includeSignature === 1 || (invoice as any).includeSignature === undefined;
+            
+            if (!showSignature) {
+              return <div style={{ height: '40px' }}></div>;
+            }
+            
+            if (signatureType === 'alternate' && activeTemplate?.alternateSignatureImage) {
+              return <img src={activeTemplate.alternateSignatureImage} alt="Signature" style={{ maxHeight: '50px', objectFit: 'contain' }} />;
+            } else if (activeTemplate?.defaultSignatureImage) {
+              return <img src={activeTemplate.defaultSignatureImage} alt="Signature" style={{ maxHeight: '50px', objectFit: 'contain' }} />;
+            }
+            return <div style={{ height: '40px' }}></div>;
+          })()}
           <div style={{ borderTop: '1px solid #000', paddingTop: '5px', minWidth: '150px', fontSize: '9px' }}>
-            Authorized Signatory
+            {(() => {
+              const signatureType = (invoice as any).signatureType || 'default';
+              if (signatureType === 'alternate') {
+                return activeTemplate?.alternateSignatoryName || activeTemplate?.authorizedSignatoryName || 'Authorized Signatory';
+              }
+              return activeTemplate?.authorizedSignatoryName || 'Authorized Signatory';
+            })()}
           </div>
         </div>
       </div>
