@@ -946,15 +946,15 @@ ${invoice.shipToName || invoice.shipToAddress ? `
     
     if (isMobile) {
       // Mobile-friendly approach: Add navigation controls and open in same tab
-      // Add a header with Print and Back buttons to the HTML
+      // Add a header with Back button and Share instructions
       const mobileHtmlContent = htmlContent.replace(
         '<body>',
         `<body>
-          <div id="mobile-controls" style="position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;padding:12px 16px;background:#f8f9fa;border-bottom:1px solid #e5e7eb;z-index:100000;gap:12px;">
-            <button onclick="history.back()" style="padding:12px 20px;background:#6b7280;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;min-width:80px;">← Back</button>
-            <button onclick="window.print()" style="padding:12px 20px;background:#3b82f6;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;flex:1;max-width:200px;">Print / Save PDF</button>
+          <div id="mobile-controls" style="position:fixed;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#1f2937;border-bottom:1px solid #374151;z-index:100000;gap:12px;">
+            <button onclick="history.back()" style="padding:10px 16px;background:#3b82f6;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">← Back</button>
+            <div style="color:white;font-size:13px;text-align:center;flex:1;">Tap <strong>Share ↗</strong> then <strong>Print</strong></div>
           </div>
-          <div style="padding-top:60px;">`
+          <div style="padding-top:56px;">`
       ).replace('</body>', '</div></body>');
       
       // Create blob with modified content
