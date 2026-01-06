@@ -81,13 +81,14 @@ export default function PrintableCreditNote({ creditNote }: PrintableCreditNoteP
     // Detect mobile device
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
-    // Detect ANY iOS browser (Safari, Chrome, Firefox, Edge on iOS all use WebKit)
-    const isAnyiOSBrowser = /iPhone|iPad|iPod/.test(navigator.userAgent) || 
-      /CriOS|FxiOS|EdgiOS/.test(navigator.userAgent) ||
+    // Detect ONLY Safari on iOS (not Chrome/Firefox/Edge which handle blob URLs fine)
+    const isNonSafariIOSBrowser = /CriOS|FxiOS|EdgiOS/.test(navigator.userAgent);
+    const isIOSDevice = /iPhone|iPad|iPod/.test(navigator.userAgent) || 
       (navigator.userAgent.includes('Mac') && navigator.maxTouchPoints > 1);
+    const isSafariIOS = isIOSDevice && !isNonSafariIOSBrowser;
     
-    // iOS browsers need overlay approach first
-    if (isAnyiOSBrowser) {
+    // Only Safari on iOS needs overlay - Chrome/Firefox/Edge on iOS work with blob URLs
+    if (isSafariIOS) {
       const overlay = document.createElement('div');
       overlay.id = 'ios-print-overlay';
       overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:999999;background:#fff;';

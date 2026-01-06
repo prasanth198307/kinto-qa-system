@@ -946,21 +946,22 @@ ${invoice.shipToName || invoice.shipToAddress ? `
     // Don't use touch detection as it catches touch-enabled laptops
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
-    // Detect ANY iOS browser (Safari, Chrome, Firefox, Edge on iOS all use WebKit)
-    // CriOS = Chrome iOS, FxiOS = Firefox iOS, EdgiOS = Edge iOS
-    const isAnyiOSBrowser = /iPhone|iPad|iPod/.test(navigator.userAgent) || 
-      /CriOS|FxiOS|EdgiOS/.test(navigator.userAgent) ||
+    // Detect ONLY Safari on iOS (not Chrome/Firefox/Edge which handle blob URLs fine)
+    // Safari on iOS has blob URL download issues, other iOS browsers work with blob URLs
+    const isNonSafariIOSBrowser = /CriOS|FxiOS|EdgiOS/.test(navigator.userAgent);
+    const isIOSDevice = /iPhone|iPad|iPod/.test(navigator.userAgent) || 
       (navigator.userAgent.includes('Mac') && navigator.maxTouchPoints > 1);
+    const isSafariIOS = isIOSDevice && !isNonSafariIOSBrowser;
     
     // Create blob URL
     const blob = new Blob([htmlContent], { type: 'text/html' });
     const blobUrl = URL.createObjectURL(blob);
     
-    console.log('🔗 Blob URL created:', blobUrl, 'Mobile:', isMobile, 'iOS:', isAnyiOSBrowser);
+    console.log('🔗 Blob URL created:', blobUrl, 'Mobile:', isMobile, 'Safari iOS:', isSafariIOS);
     
-    // iOS browsers need overlay approach regardless of mobile detection
-    if (isAnyiOSBrowser) {
-      console.log('📱 iOS browser detected, using overlay approach');
+    // Only Safari on iOS needs overlay approach - Chrome/Firefox/Edge on iOS work with blob URLs
+    if (isSafariIOS) {
+      console.log('📱 Safari iOS detected, using overlay approach');
       
       const overlay = document.createElement('div');
       overlay.id = 'ios-print-overlay';
