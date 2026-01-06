@@ -75,6 +75,18 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
 
   const handlePrint = async () => {
     try {
+      // Detect iOS Safari FIRST and redirect immediately (before any other processing)
+      const isNonSafariIOSBrowser = /CriOS|FxiOS|EdgiOS/.test(navigator.userAgent);
+      const isIOSDevice = /iPhone|iPad|iPod/.test(navigator.userAgent) || 
+        (navigator.userAgent.includes('Mac') && navigator.maxTouchPoints > 1);
+      const isSafariIOS = isIOSDevice && !isNonSafariIOSBrowser;
+      
+      if (isSafariIOS) {
+        // iOS Safari: Navigate directly to print page (no toasts, no delays)
+        window.location.href = `/print/invoice/${invoice.id}`;
+        return;
+      }
+
       console.log('🖨️ Print button clicked!', { 
         invoiceId: invoice.id, 
         hasTemplateId: !!invoice.templateId, 
@@ -85,7 +97,7 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
         hasSignature: !!template?.defaultSignatureImage
       });
 
-      // Show immediate feedback
+      // Show immediate feedback (non-iOS only)
       toast({
         title: "Preparing document...",
         description: "Please wait",
@@ -942,32 +954,17 @@ ${invoice.shipToName || invoice.shipToAddress ? `
 
     console.log('📝 HTML content generated, length:', htmlContent.length);
 
-    // Detect mobile device - use strict mobile UA detection only
-    // Don't use touch detection as it catches touch-enabled laptops
+    // Detect mobile device (note: iOS Safari already handled at start of function)
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    
-    // Detect ONLY Safari on iOS (not Chrome/Firefox/Edge which handle blob URLs fine)
-    // Safari on iOS has blob URL download issues, other iOS browsers work with blob URLs
-    const isNonSafariIOSBrowser = /CriOS|FxiOS|EdgiOS/.test(navigator.userAgent);
-    const isIOSDevice = /iPhone|iPad|iPod/.test(navigator.userAgent) || 
-      (navigator.userAgent.includes('Mac') && navigator.maxTouchPoints > 1);
-    const isSafariIOS = isIOSDevice && !isNonSafariIOSBrowser;
     
     // Create blob URL
     const blob = new Blob([htmlContent], { type: 'text/html' });
     const blobUrl = URL.createObjectURL(blob);
     
-    console.log('🔗 Blob URL created:', blobUrl, 'Mobile:', isMobile, 'Safari iOS:', isSafariIOS);
+    console.log('🔗 Blob URL created:', blobUrl, 'Mobile:', isMobile);
     
-    // iOS Safari: Navigate to dedicated print route (only way that works)
-    if (isSafariIOS) {
-      console.log('📱 Safari iOS detected, navigating to print route');
-      
-      // Navigate to the dedicated print page
-      window.location.href = `/print/invoice/${invoice.id}`;
-      return; // Exit early
-    } else if (isMobile) {
-      // Android and other mobile browsers - blob URL navigation works
+    // Android and other mobile browsers - blob URL navigation works
+    if (isMobile) {
       console.log('📱 Android/other mobile detected, using blob URL navigation');
       
       const mobileHtmlContent = htmlContent.replace(

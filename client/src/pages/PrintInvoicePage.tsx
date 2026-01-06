@@ -166,6 +166,12 @@ export default function PrintInvoicePage() {
     window.print();
   };
 
+  // Detect iOS Safari for display purposes
+  const isNonSafariIOSBrowser = /CriOS|FxiOS|EdgiOS/.test(navigator.userAgent);
+  const isIOSDevice = /iPhone|iPad|iPod/.test(navigator.userAgent) || 
+    (navigator.userAgent.includes('Mac') && navigator.maxTouchPoints > 1);
+  const isSafariIOS = isIOSDevice && !isNonSafariIOSBrowser;
+
   if (isLoadingInvoice) {
     return (
       <div style={{ padding: '20px', textAlign: 'center' }}>
@@ -278,21 +284,34 @@ export default function PrintInvoicePage() {
         >
           ← Back
         </button>
-        <button 
-          onClick={handlePrint}
-          style={{
-            padding: '12px 20px',
-            background: '#10b981',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '16px',
-            fontWeight: 600,
-            cursor: 'pointer'
-          }}
-        >
-          Print / Save PDF
-        </button>
+        {isSafariIOS ? (
+          <div style={{ 
+            color: 'white', 
+            fontSize: '13px', 
+            textAlign: 'center', 
+            flex: 1, 
+            lineHeight: 1.3 
+          }}>
+            <div style={{ fontWeight: 600 }}>To Print/Save PDF:</div>
+            <div>Tap Safari's <span style={{ fontSize: '18px' }}>⬆</span> Share button → Print</div>
+          </div>
+        ) : (
+          <button 
+            onClick={handlePrint}
+            style={{
+              padding: '12px 20px',
+              background: '#10b981',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '16px',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            Print / Save PDF
+          </button>
+        )}
       </div>
 
       <div className="print-content">

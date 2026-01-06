@@ -117,6 +117,12 @@ export default function PrintCreditNotePage() {
     window.print();
   };
 
+  // Detect iOS Safari for display purposes
+  const isNonSafariIOSBrowser = /CriOS|FxiOS|EdgiOS/.test(navigator.userAgent);
+  const isIOSDevice = /iPhone|iPad|iPod/.test(navigator.userAgent) || 
+    (navigator.userAgent.includes('Mac') && navigator.maxTouchPoints > 1);
+  const isSafariIOS = isIOSDevice && !isNonSafariIOSBrowser;
+
   return (
     <div>
       <style dangerouslySetInnerHTML={{ __html: `
@@ -161,25 +167,38 @@ export default function PrintCreditNotePage() {
           <ArrowLeft style={{ width: '16px', height: '16px' }} />
           Back
         </button>
-        <button
-          onClick={handlePrint}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '10px 16px',
-            background: '#3b82f6',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: 600,
-            cursor: 'pointer'
-          }}
-        >
-          <Printer style={{ width: '16px', height: '16px' }} />
-          Print
-        </button>
+        {isSafariIOS ? (
+          <div style={{ 
+            color: 'white', 
+            fontSize: '13px', 
+            textAlign: 'center', 
+            flex: 1, 
+            lineHeight: 1.3 
+          }}>
+            <div style={{ fontWeight: 600 }}>To Print/Save PDF:</div>
+            <div>Tap Safari's <span style={{ fontSize: '18px' }}>⬆</span> Share button → Print</div>
+          </div>
+        ) : (
+          <button
+            onClick={handlePrint}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '10px 16px',
+              background: '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            <Printer style={{ width: '16px', height: '16px' }} />
+            Print
+          </button>
+        )}
       </div>
       
       <div style={{ paddingTop: '70px', background: '#f3f4f6', minHeight: '100vh' }}>
