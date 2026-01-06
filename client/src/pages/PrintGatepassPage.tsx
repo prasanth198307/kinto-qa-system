@@ -98,11 +98,9 @@ export default function PrintGatepassPage() {
     window.print();
   };
 
-  // Detect iOS Safari for display purposes
-  const isNonSafariIOSBrowser = /CriOS|FxiOS|EdgiOS/.test(navigator.userAgent);
+  // Detect ALL iOS devices for display purposes (all iOS browsers need Share button instructions)
   const isIOSDevice = /iPhone|iPad|iPod/.test(navigator.userAgent) || 
     (navigator.userAgent.includes('Mac') && navigator.maxTouchPoints > 1);
-  const isSafariIOS = isIOSDevice && !isNonSafariIOSBrowser;
 
   const generateGatepassCopy = (copyType: string, copyFor: string) => (
     <div className="gp-page" style={{ pageBreakAfter: 'always', padding: '10mm', fontFamily: 'Arial, sans-serif' }}>
@@ -253,7 +251,7 @@ export default function PrintGatepassPage() {
           <ArrowLeft style={{ width: '16px', height: '16px' }} />
           Back
         </button>
-        {isSafariIOS ? (
+        {isIOSDevice ? (
           <div style={{ 
             color: 'white', 
             fontSize: '13px', 
@@ -262,7 +260,7 @@ export default function PrintGatepassPage() {
             lineHeight: 1.3 
           }}>
             <div style={{ fontWeight: 600 }}>To Print/Save PDF:</div>
-            <div>Tap Safari's <span style={{ fontSize: '18px' }}>⬆</span> Share button → Print</div>
+            <div>Tap the <span style={{ fontSize: '18px' }}>⬆</span> Share button → Print</div>
           </div>
         ) : (
           <button

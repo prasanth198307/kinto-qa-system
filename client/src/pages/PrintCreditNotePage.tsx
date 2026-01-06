@@ -117,11 +117,9 @@ export default function PrintCreditNotePage() {
     window.print();
   };
 
-  // Detect iOS Safari for display purposes
-  const isNonSafariIOSBrowser = /CriOS|FxiOS|EdgiOS/.test(navigator.userAgent);
+  // Detect ALL iOS devices for display purposes (all iOS browsers need Share button instructions)
   const isIOSDevice = /iPhone|iPad|iPod/.test(navigator.userAgent) || 
     (navigator.userAgent.includes('Mac') && navigator.maxTouchPoints > 1);
-  const isSafariIOS = isIOSDevice && !isNonSafariIOSBrowser;
 
   // Function to render a single copy
   const renderCreditNoteCopy = (copyLabel: string) => (
@@ -305,7 +303,7 @@ export default function PrintCreditNotePage() {
           <ArrowLeft style={{ width: '16px', height: '16px' }} />
           Back
         </button>
-        {isSafariIOS ? (
+        {isIOSDevice ? (
           <div style={{ 
             color: 'white', 
             fontSize: '13px', 
@@ -314,7 +312,7 @@ export default function PrintCreditNotePage() {
             lineHeight: 1.3 
           }}>
             <div style={{ fontWeight: 600 }}>To Print/Save PDF:</div>
-            <div>Tap Safari's <span style={{ fontSize: '18px' }}>⬆</span> Share button → Print</div>
+            <div>Tap the <span style={{ fontSize: '18px' }}>⬆</span> Share button → Print</div>
           </div>
         ) : (
           <button
