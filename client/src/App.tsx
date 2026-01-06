@@ -97,6 +97,7 @@ import PrintInvoicePage from "@/pages/PrintInvoicePage";
 import PrintGatepassPage from "@/pages/PrintGatepassPage";
 import PrintCreditNotePage from "@/pages/PrintCreditNotePage";
 import PrintDebitNotePage from "@/pages/PrintDebitNotePage";
+import PrintInvoiceGatepassPage from "@/pages/PrintInvoiceGatepassPage";
 
 type Role = 'admin' | 'operator' | 'reviewer' | 'manager';
 
@@ -2425,6 +2426,7 @@ function Router() {
       <Route path="/print/gatepass/:id" component={PrintGatepassPage} />
       <Route path="/print/credit-note/:id" component={PrintCreditNotePage} />
       <Route path="/print/debit-note/:id" component={PrintDebitNotePage} />
+      <Route path="/print/invoice-gatepass/:invoiceId/:gatepassId" component={PrintInvoiceGatepassPage} />
       <ProtectedRoute path="/checklists" component={ChecklistsPageWrapper} />
       <ProtectedRoute path="/reviewer-dashboard" component={ReviewerDashboardPageWrapper} />
       <ProtectedRoute path="/vendor-types" component={VendorTypesPageWrapper} />
