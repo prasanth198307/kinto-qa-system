@@ -56,6 +56,7 @@ export default function PrintCreditNotePage() {
       return response.json();
     },
     enabled: !!creditNoteId,
+    retry: false,
   });
 
   const { data: items = [] } = useQuery<CreditNoteItem[]>({

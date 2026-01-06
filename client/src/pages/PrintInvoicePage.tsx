@@ -46,7 +46,7 @@ export default function PrintInvoicePage() {
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
   const [isReady, setIsReady] = useState(false);
 
-  const { data: invoice, isLoading: isLoadingInvoice } = useQuery<PrintInvoice>({
+  const { data: invoice, isLoading: isLoadingInvoice, error: invoiceError } = useQuery<PrintInvoice>({
     queryKey: ['/api/invoices', invoiceId],
     queryFn: async () => {
       const response = await fetch(`/api/invoices/${invoiceId}`, { credentials: 'include' });
@@ -54,6 +54,7 @@ export default function PrintInvoicePage() {
       return response.json();
     },
     enabled: !!invoiceId,
+    retry: false,
   });
 
   const { data: items = [] } = useQuery<InvoiceItem[]>({
@@ -165,10 +166,24 @@ export default function PrintInvoicePage() {
     window.print();
   };
 
-  if (isLoadingInvoice || !invoice) {
+  if (isLoadingInvoice) {
     return (
       <div style={{ padding: '20px', textAlign: 'center' }}>
         <p>Loading invoice...</p>
+      </div>
+    );
+  }
+
+  if (invoiceError || !invoice) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'white', padding: '20px' }}>
+        <p style={{ color: '#dc2626', fontSize: '18px', marginBottom: '20px' }}>Failed to load invoice</p>
+        <button 
+          onClick={() => window.history.back()}
+          style={{ padding: '12px 24px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', fontSize: '16px', cursor: 'pointer' }}
+        >
+          Go Back
+        </button>
       </div>
     );
   }

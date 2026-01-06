@@ -406,15 +406,6 @@ ${invoice?.shipToName || invoice?.shipToAddress ? `
       </html>
     `;
 
-    // Detect mobile device
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    
-    // Detect ONLY Safari on iOS (not Chrome/Firefox/Edge which handle blob URLs fine)
-    const isNonSafariIOSBrowser = /CriOS|FxiOS|EdgiOS/.test(navigator.userAgent);
-    const isIOSDevice = /iPhone|iPad|iPod/.test(navigator.userAgent) || 
-      (navigator.userAgent.includes('Mac') && navigator.maxTouchPoints > 1);
-    const isSafariIOS = isIOSDevice && !isNonSafariIOSBrowser;
-    
     // Create iframe for printing
     const existingFrame = document.getElementById('gatepass-print-frame');
     if (existingFrame) {
@@ -430,34 +421,8 @@ ${invoice?.shipToName || invoice?.shipToAddress ? `
     iframe.style.zIndex = '99999';
     iframe.style.backgroundColor = 'white';
     
-    // iOS Safari: Show document with instructions to use native Share → Print
-    if (isSafariIOS) {
-      const returnUrl = window.location.href;
-      const printableHtml = htmlContent.replace(
-        '<body>',
-        `<body>
-          <div id="ios-print-header" style="position:fixed;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#1f2937;z-index:1000000;gap:8px;-webkit-touch-callout:none;">
-            <button id="backBtn" style="padding:12px 20px;background:#3b82f6;color:white;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent;">← Back</button>
-            <div style="color:white;font-size:13px;text-align:center;flex:1;line-height:1.3;">
-              <div style="font-weight:600;">To Print/Save PDF:</div>
-              <div>Tap Safari's <span style="font-size:18px;">⬆</span> Share button below → Print</div>
-            </div>
-          </div>
-          <div style="height:70px;"></div>
-          <style>@media print { #ios-print-header { display: none !important; } }</style>
-          <script>
-            document.getElementById('backBtn').addEventListener('click', function() {
-              window.location.href = '${returnUrl}';
-            });
-          </script>
-        `
-      );
-      
-      document.open();
-      document.write(printableHtml);
-      document.close();
-      return;
-    } else if (isMobile) {
+    // Android and other mobile browsers - blob URL navigation works
+    if (isMobile) {
       // Android - blob URL navigation works
       const mobileHtmlContent = htmlContent.replace(
         '<body>',

@@ -65,6 +65,7 @@ export default function PrintDebitNotePage() {
       return response.json();
     },
     enabled: !!debitNoteId,
+    retry: false,
   });
 
   const { data: vendor } = useQuery<any>({

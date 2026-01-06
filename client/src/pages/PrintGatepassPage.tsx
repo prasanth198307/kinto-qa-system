@@ -16,6 +16,7 @@ export default function PrintGatepassPage() {
       return response.json();
     },
     enabled: !!gatepassId,
+    retry: false,
   });
 
   const { data: items = [] } = useQuery<GatepassItem[]>({
