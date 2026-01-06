@@ -635,16 +635,22 @@ export default function PrintableDebitNote({ debitNote }: PrintableDebitNoteProp
         document.body.style.overflow = '';
       };
       
-      const instructions = document.createElement('div');
-      instructions.innerHTML = 'Tap <strong>Share ↗</strong> → <strong>Print</strong>';
-      instructions.style.cssText = 'color:white;font-size:13px;text-align:center;flex:1;';
+      const printBtn = document.createElement('button');
+      printBtn.textContent = '🖨️ Print / Save PDF';
+      printBtn.style.cssText = 'padding:10px 16px;background:#10b981;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;';
       
       header.appendChild(backBtn);
-      header.appendChild(instructions);
+      header.appendChild(printBtn);
       
       const iframeEl = document.createElement('iframe');
       iframeEl.style.cssText = 'position:absolute;top:56px;left:0;right:0;bottom:0;width:100%;height:calc(100% - 56px);border:none;';
       iframeEl.srcdoc = htmlContent;
+      
+      printBtn.onclick = () => {
+        if (iframeEl.contentWindow) {
+          iframeEl.contentWindow.print();
+        }
+      };
       
       overlay.appendChild(header);
       overlay.appendChild(iframeEl);

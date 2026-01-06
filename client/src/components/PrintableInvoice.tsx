@@ -978,16 +978,23 @@ ${invoice.shipToName || invoice.shipToAddress ? `
         document.body.style.overflow = '';
       };
       
-      const instructions = document.createElement('div');
-      instructions.innerHTML = 'Tap <strong>Share ↗</strong> → <strong>Print</strong>';
-      instructions.style.cssText = 'color:white;font-size:13px;text-align:center;flex:1;';
+      const printBtn = document.createElement('button');
+      printBtn.textContent = '🖨️ Print / Save PDF';
+      printBtn.style.cssText = 'padding:10px 16px;background:#10b981;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;';
       
       header.appendChild(backBtn);
-      header.appendChild(instructions);
+      header.appendChild(printBtn);
       
       const printIframe = document.createElement('iframe');
       printIframe.style.cssText = 'position:absolute;top:56px;left:0;right:0;bottom:0;width:100%;height:calc(100% - 56px);border:none;';
       printIframe.srcdoc = htmlContent;
+      
+      // Print button triggers iframe print after it loads
+      printBtn.onclick = () => {
+        if (printIframe.contentWindow) {
+          printIframe.contentWindow.print();
+        }
+      };
       
       overlay.appendChild(header);
       overlay.appendChild(printIframe);
@@ -997,7 +1004,7 @@ ${invoice.shipToName || invoice.shipToAddress ? `
       
       toast({
         title: "Document Ready",
-        description: "Use Share → Print to save as PDF",
+        description: "Tap 'Print / Save PDF' to print or save",
       });
     } else if (isMobile) {
       // Android and other mobile browsers - blob URL navigation works
