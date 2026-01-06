@@ -93,9 +93,21 @@ export default function PrintableCreditNote({ creditNote }: PrintableCreditNoteP
           <div style="padding-top:56px;">`
       ).replace('</body>', '</div></body>');
       
-      const blob = new Blob([mobileHtmlContent], { type: 'text/html' });
-      const blobUrl = URL.createObjectURL(blob);
-      window.location.href = blobUrl;
+      // iOS Safari doesn't work with blob URLs - use data URL instead
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      
+      if (isIOS) {
+        const blob = new Blob([mobileHtmlContent], { type: 'text/html' });
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          window.location.href = reader.result as string;
+        };
+        reader.readAsDataURL(blob);
+      } else {
+        const blob = new Blob([mobileHtmlContent], { type: 'text/html' });
+        const blobUrl = URL.createObjectURL(blob);
+        window.location.href = blobUrl;
+      }
     } else {
       const printWindow = window.open('', '_blank');
       if (!printWindow) return;

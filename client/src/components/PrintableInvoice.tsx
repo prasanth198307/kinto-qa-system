@@ -957,12 +957,24 @@ ${invoice.shipToName || invoice.shipToAddress ? `
           <div style="padding-top:56px;">`
       ).replace('</body>', '</div></body>');
       
-      // Create blob with modified content
-      const mobileBlob = new Blob([mobileHtmlContent], { type: 'text/html' });
-      const mobileBlobUrl = URL.createObjectURL(mobileBlob);
+      // iOS Safari doesn't work with blob URLs - use data URL instead
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
       
-      // Navigate to blob URL in same tab
-      window.location.href = mobileBlobUrl;
+      if (isIOS) {
+        // Convert to data URL for iOS Safari
+        const mobileBlob = new Blob([mobileHtmlContent], { type: 'text/html' });
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const dataUrl = reader.result as string;
+          window.location.href = dataUrl;
+        };
+        reader.readAsDataURL(mobileBlob);
+      } else {
+        // Android and other mobile browsers - blob URL works
+        const mobileBlob = new Blob([mobileHtmlContent], { type: 'text/html' });
+        const mobileBlobUrl = URL.createObjectURL(mobileBlob);
+        window.location.href = mobileBlobUrl;
+      }
     } else {
       // Desktop approach: Open in new tab
       const printWindow = window.open(blobUrl, '_blank');
