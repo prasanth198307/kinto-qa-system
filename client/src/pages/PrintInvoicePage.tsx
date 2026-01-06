@@ -485,13 +485,13 @@ export default function PrintInvoicePage() {
         {isIOSDevice ? (
           <div style={{ 
             color: 'white', 
-            fontSize: '12px', 
+            fontSize: '11px', 
             textAlign: 'center', 
             flex: 1, 
             lineHeight: 1.4 
           }}>
-            <div style={{ fontWeight: 600 }}>To Save PDF:</div>
-            <div>Menu (⋮) → Share → Print → Pinch to zoom preview</div>
+            <div style={{ fontWeight: 600, marginBottom: '2px' }}>To Save PDF:</div>
+            <div>Share (↑ in URL bar) → Print → Hold preview → Share → Save</div>
           </div>
         ) : (
           <button 
