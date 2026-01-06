@@ -344,13 +344,13 @@ export default function PrintDebitNotePage() {
         {isIOSDevice ? (
           <div style={{ 
             color: 'white', 
-            fontSize: '13px', 
+            fontSize: '12px', 
             textAlign: 'center', 
             flex: 1, 
-            lineHeight: 1.3 
+            lineHeight: 1.4 
           }}>
-            <div style={{ fontWeight: 600 }}>To Print/Save PDF:</div>
-            <div>Tap the <span style={{ fontSize: '18px' }}>⬆</span> Share button → Print</div>
+            <div style={{ fontWeight: 600 }}>To Save PDF:</div>
+            <div>Menu (⋮) → Share → Print → Pinch to zoom preview</div>
           </div>
         ) : (
           <button
