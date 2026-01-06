@@ -74,26 +74,33 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
   const isIntrastate = invoice.sellerStateCode === invoice.buyerStateCode;
 
   const handlePrint = async () => {
-    console.log('🖨️ Print button clicked!', { 
-      invoiceId: invoice.id, 
-      hasTemplateId: !!invoice.templateId, 
-      isLoadingTemplate,
-      isLoadingUoms,
-      uomsCount: uoms.length,
-      hasTemplate: !!template,
-      hasSignature: !!template?.defaultSignatureImage
-    });
-
-    // Wait for template and UOMs to load
-    if (isLoadingTemplate || isLoadingUoms) {
-      console.log('⏳ Data still loading...', { isLoadingTemplate, isLoadingUoms });
-      toast({
-        title: "Please wait",
-        description: "Loading print data...",
-        variant: "default",
+    try {
+      console.log('🖨️ Print button clicked!', { 
+        invoiceId: invoice.id, 
+        hasTemplateId: !!invoice.templateId, 
+        isLoadingTemplate,
+        isLoadingUoms,
+        uomsCount: uoms.length,
+        hasTemplate: !!template,
+        hasSignature: !!template?.defaultSignatureImage
       });
-      return;
-    }
+
+      // Show immediate feedback
+      toast({
+        title: "Preparing document...",
+        description: "Please wait",
+      });
+
+      // Wait for template and UOMs to load
+      if (isLoadingTemplate || isLoadingUoms) {
+        console.log('⏳ Data still loading...', { isLoadingTemplate, isLoadingUoms });
+        toast({
+          title: "Please wait",
+          description: "Loading print data...",
+          variant: "default",
+        });
+        return;
+      }
     
     console.log('✅ Data loaded, generating HTML...', { 
       template,
@@ -999,6 +1006,14 @@ ${invoice.shipToName || invoice.shipToAddress ? `
         console.log('🧹 Cleaning up blob URL');
         URL.revokeObjectURL(blobUrl);
       }, 1000);
+    }
+    } catch (error) {
+      console.error('❌ Print error:', error);
+      toast({
+        title: "Print Error",
+        description: `Failed to generate print: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive",
+      });
     }
   };
 
