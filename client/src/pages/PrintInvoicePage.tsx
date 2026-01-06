@@ -577,9 +577,10 @@ export default function PrintInvoicePage() {
           body { margin: 0; padding: 0; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           .invoice-copy { page-break-after: always; }
           .invoice-copy:last-child { page-break-after: auto; }
-          /* Force borders to print */
-          table { border-collapse: collapse !important; }
-          table, th, td { border: 1px solid #000 !important; }
+          /* Force borders to print on iOS */
+          table { border-collapse: collapse !important; border: 2px solid #000 !important; }
+          th, td { border: 1px solid #000 !important; border-width: 1px !important; border-style: solid !important; border-color: #000 !important; }
+          div[style*="border"] { border-color: #000 !important; border-style: solid !important; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
         @media screen {
@@ -659,9 +660,9 @@ export default function PrintInvoicePage() {
       </div>
 
       <div className="print-content">
-        {renderInvoiceCopy('ORIGINAL FOR RECIPIENT')}
-        {renderInvoiceCopy('DUPLICATE FOR TRANSPORTER')}
-        {renderInvoiceCopy('TRIPLICATE FOR SUPPLIER')}
+        {renderInvoiceCopy('ORIGINAL')}
+        {renderInvoiceCopy('DUPLICATE')}
+        {renderInvoiceCopy('TRIPLICATE')}
       </div>
     </>
   );
