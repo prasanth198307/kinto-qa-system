@@ -618,25 +618,33 @@ export default function PrintableDebitNote({ debitNote }: PrintableDebitNoteProp
 </html>
     `;
 
-    // Only Safari on iOS needs full page replacement - iframe.print() doesn't work
+    // iOS Safari: Replace current page content to preserve user activation for print
     if (isSafariIOS) {
+      const returnUrl = window.location.href;
       const printableHtml = htmlContent.replace(
         '<body>',
         `<body>
-          <div id="ios-print-header" style="position:fixed;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#1f2937;z-index:1000000;gap:8px;">
-            <button onclick="window.history.back()" style="padding:10px 16px;background:#3b82f6;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">← Back</button>
-            <button onclick="window.print()" style="padding:10px 16px;background:#10b981;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">🖨️ Print / Save PDF</button>
+          <div id="ios-print-header" style="position:fixed;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#1f2937;z-index:1000000;gap:8px;-webkit-touch-callout:none;">
+            <button id="backBtn" style="padding:12px 20px;background:#3b82f6;color:white;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent;">← Back</button>
+            <button id="printBtn" style="padding:12px 20px;background:#10b981;color:white;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent;">Print / Save PDF</button>
           </div>
-          <div style="height:56px;"></div>
+          <div style="height:60px;"></div>
           <style>@media print { #ios-print-header { display: none !important; } body > div:first-child { display: none !important; } }</style>
+          <script>
+            document.getElementById('backBtn').addEventListener('click', function() {
+              window.location.href = '${returnUrl}';
+            });
+            document.getElementById('printBtn').addEventListener('click', function() {
+              window.print();
+            });
+          </script>
         `
       );
       
-      const newTab = window.open('', '_blank');
-      if (newTab) {
-        newTab.document.write(printableHtml);
-        newTab.document.close();
-      }
+      document.open();
+      document.write(printableHtml);
+      document.close();
+      return;
     } else if (isMobile) {
       // Android - blob URL navigation works
       const mobileHtmlContent = htmlContent.replace(
