@@ -959,48 +959,29 @@ ${invoice.shipToName || invoice.shipToAddress ? `
     
     console.log('🔗 Blob URL created:', blobUrl, 'Mobile:', isMobile, 'Safari iOS:', isSafariIOS);
     
-    // Only Safari on iOS needs overlay approach - Chrome/Firefox/Edge on iOS work with blob URLs
+    // Only Safari on iOS needs full page replacement - iframe.print() doesn't work
     if (isSafariIOS) {
-      console.log('📱 Safari iOS detected, using overlay approach');
+      console.log('📱 Safari iOS detected, using full page replacement');
       
-      const overlay = document.createElement('div');
-      overlay.id = 'ios-print-overlay';
-      overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:999999;background:#fff;';
+      // Add header controls to the HTML content
+      const printableHtml = htmlContent.replace(
+        '<body>',
+        `<body>
+          <div id="ios-print-header" style="position:fixed;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#1f2937;z-index:1000000;gap:8px;">
+            <button onclick="window.history.back()" style="padding:10px 16px;background:#3b82f6;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">← Back</button>
+            <button onclick="window.print()" style="padding:10px 16px;background:#10b981;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">🖨️ Print / Save PDF</button>
+          </div>
+          <div style="height:56px;"></div>
+          <style>@media print { #ios-print-header { display: none !important; } body > div:first-child { display: none !important; } }</style>
+        `
+      );
       
-      const header = document.createElement('div');
-      header.style.cssText = 'position:fixed;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#1f2937;z-index:1000000;gap:8px;';
-      
-      const backBtn = document.createElement('button');
-      backBtn.textContent = '← Back';
-      backBtn.style.cssText = 'padding:10px 16px;background:#3b82f6;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;';
-      backBtn.onclick = () => {
-        document.body.removeChild(overlay);
-        document.body.style.overflow = '';
-      };
-      
-      const printBtn = document.createElement('button');
-      printBtn.textContent = '🖨️ Print / Save PDF';
-      printBtn.style.cssText = 'padding:10px 16px;background:#10b981;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;';
-      
-      header.appendChild(backBtn);
-      header.appendChild(printBtn);
-      
-      const printIframe = document.createElement('iframe');
-      printIframe.style.cssText = 'position:absolute;top:56px;left:0;right:0;bottom:0;width:100%;height:calc(100% - 56px);border:none;';
-      printIframe.srcdoc = htmlContent;
-      
-      // Print button triggers iframe print after it loads
-      printBtn.onclick = () => {
-        if (printIframe.contentWindow) {
-          printIframe.contentWindow.print();
-        }
-      };
-      
-      overlay.appendChild(header);
-      overlay.appendChild(printIframe);
-      
-      document.body.style.overflow = 'hidden';
-      document.body.appendChild(overlay);
+      // Open in new tab for iOS Safari
+      const newTab = window.open('', '_blank');
+      if (newTab) {
+        newTab.document.write(printableHtml);
+        newTab.document.close();
+      }
       
       toast({
         title: "Document Ready",
