@@ -573,14 +573,22 @@ export default function PrintInvoicePage() {
     <>
       <style>{`
         @media print {
-          .print-header { display: none !important; }
+          .print-header, [class*="print-header"], div[style*="position: fixed"] { 
+            display: none !important; 
+            visibility: hidden !important; 
+            height: 0 !important; 
+            overflow: hidden !important;
+            position: absolute !important;
+            top: -9999px !important;
+          }
           body { margin: 0; padding: 0; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           .invoice-copy { page-break-after: always; }
           .invoice-copy:last-child { page-break-after: auto; }
+          .print-content { padding-top: 0 !important; margin-top: 0 !important; }
           /* Force borders to print on iOS */
           table { border-collapse: collapse !important; border: 2px solid #000 !important; }
           th, td { border: 1px solid #000 !important; border-width: 1px !important; border-style: solid !important; border-color: #000 !important; }
-          div[style*="border"] { border-color: #000 !important; border-style: solid !important; }
+          div[style*="border"]:not([style*="position: fixed"]) { border-color: #000 !important; border-style: solid !important; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
         @media screen {
