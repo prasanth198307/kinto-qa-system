@@ -434,9 +434,13 @@ export default function PrintInvoicePage() {
       <style>{`
         @media print {
           .print-header { display: none !important; }
-          body { margin: 0; padding: 0; }
+          body { margin: 0; padding: 0; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           .invoice-copy { page-break-after: always; }
           .invoice-copy:last-child { page-break-after: auto; }
+          /* Force borders to print */
+          table { border-collapse: collapse !important; }
+          table, th, td { border: 1px solid #000 !important; }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
         @media screen {
           body { background: #f5f5f5; }
@@ -446,6 +450,8 @@ export default function PrintInvoicePage() {
           margin: 0 auto;
           background: white;
         }
+        .print-content table { border-collapse: collapse; }
+        .print-content table, .print-content th, .print-content td { border: 1px solid #333; }
         @media screen {
           .print-content {
             margin-top: 70px;

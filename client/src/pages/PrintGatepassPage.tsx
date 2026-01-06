@@ -211,12 +211,19 @@ export default function PrintGatepassPage() {
       <style dangerouslySetInnerHTML={{ __html: `
         @media print {
           #print-controls { display: none !important; }
-          body { margin: 0; padding: 0; }
+          body { margin: 0; padding: 0; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           .gp-page { page-break-after: always; }
+          /* Force borders to print */
+          table { border-collapse: collapse !important; }
+          table, th, td { border: 1px solid #000 !important; }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          div[style*="border"] { border-color: #000 !important; }
         }
         @media screen {
           body { background: #f3f4f6; }
         }
+        table { border-collapse: collapse; }
+        table, th, td { border: 1px solid #333; }
       `}} />
       
       <div id="print-controls" style={{
