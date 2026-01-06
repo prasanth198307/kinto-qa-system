@@ -959,35 +959,35 @@ ${invoice.shipToName || invoice.shipToAddress ? `
     
     console.log('🔗 Blob URL created:', blobUrl, 'Mobile:', isMobile, 'Safari iOS:', isSafariIOS);
     
-    // iOS Safari: Replace current page content to preserve user activation for print
+    // iOS Safari: Show document with instructions to use native Share → Print
     if (isSafariIOS) {
-      console.log('📱 Safari iOS detected, using same-window page replacement');
+      console.log('📱 Safari iOS detected, using native Share → Print approach');
       
       // Store current URL to return to
       const returnUrl = window.location.href;
       
-      // Add header controls and auto-print script to the HTML content
+      // Add header with back button and clear instructions for Safari's Share → Print
       const printableHtml = htmlContent.replace(
         '<body>',
         `<body>
           <div id="ios-print-header" style="position:fixed;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#1f2937;z-index:1000000;gap:8px;-webkit-touch-callout:none;">
             <button id="backBtn" style="padding:12px 20px;background:#3b82f6;color:white;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent;">← Back</button>
-            <button id="printBtn" style="padding:12px 20px;background:#10b981;color:white;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent;">Print / Save PDF</button>
+            <div style="color:white;font-size:13px;text-align:center;flex:1;line-height:1.3;">
+              <div style="font-weight:600;">To Print/Save PDF:</div>
+              <div>Tap Safari's <span style="font-size:18px;">⬆</span> Share button below → Print</div>
+            </div>
           </div>
-          <div style="height:60px;"></div>
-          <style>@media print { #ios-print-header { display: none !important; } body > div:first-child { display: none !important; } }</style>
+          <div style="height:70px;"></div>
+          <style>@media print { #ios-print-header { display: none !important; } }</style>
           <script>
             document.getElementById('backBtn').addEventListener('click', function() {
               window.location.href = '${returnUrl}';
-            });
-            document.getElementById('printBtn').addEventListener('click', function() {
-              window.print();
             });
           </script>
         `
       );
       
-      // Replace current document content (preserves user activation)
+      // Replace current document content
       document.open();
       document.write(printableHtml);
       document.close();
