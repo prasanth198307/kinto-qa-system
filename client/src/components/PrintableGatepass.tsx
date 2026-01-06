@@ -49,12 +49,12 @@ export default function PrintableGatepass({ gatepass }: PrintableGatepassProps) 
 
   const handlePrint = () => {
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    const isNonSafariIOSBrowser = /CriOS|FxiOS|EdgiOS/.test(navigator.userAgent);
+    // Detect ALL iOS devices - blob URLs can't be shared/printed on any iOS browser
     const isIOSDevice = /iPhone|iPad|iPod/.test(navigator.userAgent) || 
       (navigator.userAgent.includes('Mac') && navigator.maxTouchPoints > 1);
-    const isSafariIOS = isIOSDevice && !isNonSafariIOSBrowser;
 
-    if (isSafariIOS) {
+    if (isIOSDevice) {
+      // ALL iOS browsers: Navigate directly to print page
       window.location.href = `/print/gatepass/${gatepass.id}`;
       return;
     }

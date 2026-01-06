@@ -98,12 +98,12 @@ export default function PrintableDebitNote({ debitNote }: PrintableDebitNoteProp
     }
 
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    const isNonSafariIOSBrowser = /CriOS|FxiOS|EdgiOS/.test(navigator.userAgent);
+    // Detect ALL iOS devices - blob URLs can't be shared/printed on any iOS browser
     const isIOSDevice = /iPhone|iPad|iPod/.test(navigator.userAgent) || 
       (navigator.userAgent.includes('Mac') && navigator.maxTouchPoints > 1);
-    const isSafariIOS = isIOSDevice && !isNonSafariIOSBrowser;
 
-    if (isSafariIOS) {
+    if (isIOSDevice) {
+      // ALL iOS browsers: Navigate directly to print page
       window.location.href = `/print/debit-note/${debitNote.id}`;
       return;
     }
@@ -620,8 +620,9 @@ export default function PrintableDebitNote({ debitNote }: PrintableDebitNoteProp
 </html>
     `;
 
-    // iOS Safari: Show document with instructions to use native Share → Print
-    if (isSafariIOS) {
+    // ALL iOS browsers are now handled via early redirect above - this code path is for non-iOS only
+    // Note: This branch will never be reached for iOS devices anymore
+    if (false) { // iOS devices already redirected at start of function
       const returnUrl = window.location.href;
       const printableHtml = htmlContent.replace(
         '<body>',

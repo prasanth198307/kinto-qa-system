@@ -75,14 +75,12 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
 
   const handlePrint = async () => {
     try {
-      // Detect iOS Safari FIRST and redirect immediately (before any other processing)
-      const isNonSafariIOSBrowser = /CriOS|FxiOS|EdgiOS/.test(navigator.userAgent);
+      // Detect ALL iOS devices and redirect to print page (blob URLs don't work on any iOS browser)
       const isIOSDevice = /iPhone|iPad|iPod/.test(navigator.userAgent) || 
         (navigator.userAgent.includes('Mac') && navigator.maxTouchPoints > 1);
-      const isSafariIOS = isIOSDevice && !isNonSafariIOSBrowser;
       
-      if (isSafariIOS) {
-        // iOS Safari: Navigate directly to print page (no toasts, no delays)
+      if (isIOSDevice) {
+        // ALL iOS browsers: Navigate directly to print page (blob URLs can't be shared/printed on iOS)
         window.location.href = `/print/invoice/${invoice.id}`;
         return;
       }

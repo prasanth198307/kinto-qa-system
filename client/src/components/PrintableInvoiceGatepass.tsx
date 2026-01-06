@@ -550,11 +550,9 @@ ${invoice.shipToName || invoice.shipToAddress ? `
     // Detect mobile device
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
-    // Detect ONLY Safari on iOS (not Chrome/Firefox/Edge which handle blob URLs fine)
-    const isNonSafariIOSBrowser = /CriOS|FxiOS|EdgiOS/.test(navigator.userAgent);
+    // Detect ALL iOS devices - blob URLs can't be shared/printed on any iOS browser
     const isIOSDevice = /iPhone|iPad|iPod/.test(navigator.userAgent) || 
       (navigator.userAgent.includes('Mac') && navigator.maxTouchPoints > 1);
-    const isSafariIOS = isIOSDevice && !isNonSafariIOSBrowser;
     
     const fullHtmlContent = `
       <html>
@@ -752,8 +750,8 @@ ${invoice.shipToName || invoice.shipToAddress ? `
       </html>
     `;
 
-    // iOS Safari: Show document with instructions to use native Share → Print
-    if (isSafariIOS) {
+    // ALL iOS browsers: Show document with instructions to use native Share → Print
+    if (isIOSDevice) {
       const returnUrl = window.location.href;
       const printableHtml = fullHtmlContent.replace(
         '<body>',
