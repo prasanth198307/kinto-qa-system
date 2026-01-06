@@ -414,44 +414,62 @@ ${invoice?.shipToName || invoice?.shipToAddress ? `
     iframe.style.backgroundColor = 'white';
     
     if (isMobile) {
-      // Mobile: Show full-screen preview with buttons
-      iframe.style.width = '100%';
-      iframe.style.height = '100%';
+      // Mobile-friendly approach: Full-screen iframe with button bar inside
+      const printFrame = document.createElement('iframe');
+      printFrame.id = 'mobile-print-frame';
+      printFrame.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;width:100%;height:100%;border:none;z-index:99998;background:white;';
+      
+      document.body.style.overflow = 'hidden';
+      document.body.appendChild(printFrame);
+      
+      // Write content to iframe
+      const frameDoc = printFrame.contentDocument || printFrame.contentWindow?.document;
+      if (frameDoc) {
+        frameDoc.open();
+        frameDoc.write(htmlContent);
+        frameDoc.close();
+        
+        // Create button bar inside iframe at top
+        const buttonBar = frameDoc.createElement('div');
+        buttonBar.style.cssText = 'position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;padding:12px 16px;background:#f8f9fa;border-bottom:1px solid #e5e7eb;z-index:100000;gap:12px;';
+        
+        const closeBtn = frameDoc.createElement('button');
+        closeBtn.innerHTML = '✕ Close';
+        closeBtn.style.cssText = 'padding:12px 20px;background:#ef4444;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.15);min-width:80px;';
+        closeBtn.onclick = () => {
+          if (document.body.contains(printFrame)) {
+            document.body.removeChild(printFrame);
+          }
+          document.body.style.overflow = '';
+        };
+        
+        const printBtn = frameDoc.createElement('button');
+        printBtn.innerHTML = '🖨️ Print / Save PDF';
+        printBtn.style.cssText = 'padding:12px 20px;background:#3b82f6;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.15);flex:1;max-width:200px;';
+        printBtn.onclick = () => {
+          printFrame.contentWindow?.print();
+        };
+        
+        buttonBar.appendChild(closeBtn);
+        buttonBar.appendChild(printBtn);
+        frameDoc.body.insertBefore(buttonBar, frameDoc.body.firstChild);
+        
+        // Add padding to body to account for button bar
+        frameDoc.body.style.paddingTop = '60px';
+      }
     } else {
       // Desktop: Hidden iframe, auto-print
       iframe.style.width = '0';
       iframe.style.height = '0';
-    }
-    
-    document.body.appendChild(iframe);
+      
+      document.body.appendChild(iframe);
 
-    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-    if (iframeDoc) {
-      iframeDoc.open();
-      iframeDoc.write(htmlContent);
-      iframeDoc.close();
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (iframeDoc) {
+        iframeDoc.open();
+        iframeDoc.write(htmlContent);
+        iframeDoc.close();
 
-      if (isMobile) {
-        // Add close button for mobile
-        const closeBtn = iframeDoc.createElement('button');
-        closeBtn.innerHTML = '✕ Close Preview';
-        closeBtn.style.cssText = 'position:fixed;top:10px;right:10px;z-index:100000;padding:10px 20px;background:#ef4444;color:white;border:none;border-radius:8px;font-size:16px;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,0.3);';
-        closeBtn.onclick = () => {
-          if (document.body.contains(iframe)) {
-            document.body.removeChild(iframe);
-          }
-        };
-        iframeDoc.body.insertBefore(closeBtn, iframeDoc.body.firstChild);
-        
-        // Add print button for mobile
-        const printBtn = iframeDoc.createElement('button');
-        printBtn.innerHTML = '🖨️ Print / Save PDF';
-        printBtn.style.cssText = 'position:fixed;top:10px;right:150px;z-index:100000;padding:10px 20px;background:#3b82f6;color:white;border:none;border-radius:8px;font-size:16px;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,0.3);';
-        printBtn.onclick = () => {
-          iframe.contentWindow?.print();
-        };
-        iframeDoc.body.insertBefore(printBtn, iframeDoc.body.firstChild);
-      } else {
         // Desktop: Use requestAnimationFrame to ensure content is rendered
         requestAnimationFrame(() => {
           setTimeout(() => {
