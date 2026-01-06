@@ -942,8 +942,10 @@ ${invoice.shipToName || invoice.shipToAddress ? `
 
     console.log('📝 HTML content generated, length:', htmlContent.length);
 
-    // Detect mobile device
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    // Detect mobile device - including iPadOS which reports as Mac
+    const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+      (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || isIOSDevice;
     
     // Create blob URL
     const blob = new Blob([htmlContent], { type: 'text/html' });
@@ -964,59 +966,52 @@ ${invoice.shipToName || invoice.shipToAddress ? `
           <div style="padding-top:56px;">`
       ).replace('</body>', '</div></body>');
       
-      // iOS Safari doesn't work with blob URLs - use iframe overlay instead
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      // Check if iOS Safari specifically (including iPadOS which reports as Mac)
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+        (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
       
-      console.log('📱 Mobile detected, iOS:', isIOS, 'UA:', navigator.userAgent);
-      
-      // For mobile, always use overlay approach (simpler and more reliable)
-      // Create a full-screen overlay with iframe
-      const overlay = document.createElement('div');
-      overlay.id = 'mobile-print-overlay';
-      overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:999999;background:#fff;';
-      
-      // Header with back button and instructions
-      const header = document.createElement('div');
-      header.style.cssText = 'position:fixed;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#1f2937;z-index:1000000;gap:8px;';
-      
-      const backBtn = document.createElement('button');
-      backBtn.textContent = '← Back';
-      backBtn.style.cssText = 'padding:10px 16px;background:#3b82f6;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;';
-      backBtn.onclick = () => {
-        document.body.removeChild(overlay);
-        document.body.style.overflow = '';
-      };
-      
-      const instructions = document.createElement('div');
-      instructions.innerHTML = isIOS 
-        ? 'Tap <strong>Share ↗</strong> → <strong>Print</strong>'
-        : 'Tap <strong>⋮ Menu</strong> → <strong>Print</strong>';
-      instructions.style.cssText = 'color:white;font-size:13px;text-align:center;flex:1;';
-      
-      header.appendChild(backBtn);
-      header.appendChild(instructions);
-      
-      // Iframe for content
-      const printIframe = document.createElement('iframe');
-      printIframe.style.cssText = 'position:absolute;top:56px;left:0;right:0;bottom:0;width:100%;height:calc(100% - 56px);border:none;';
-      printIframe.srcdoc = htmlContent;
-      
-      overlay.appendChild(header);
-      overlay.appendChild(printIframe);
-      
-      document.body.style.overflow = 'hidden';
-      document.body.appendChild(overlay);
-      
-      console.log('✅ Overlay appended to body');
-      
-      toast({
-        title: "Document Ready",
-        description: isIOS ? "Use Share → Print" : "Use Menu → Print",
-      });
-      
-      // Skip the else branch for Android blob URL approach
-      if (false) {
-        // Android and other mobile browsers - blob URL works
+      if (isIOS) {
+        // iOS Safari: Use iframe overlay approach
+        console.log('📱 iOS detected, using overlay approach');
+        
+        const overlay = document.createElement('div');
+        overlay.id = 'ios-print-overlay';
+        overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:999999;background:#fff;';
+        
+        const header = document.createElement('div');
+        header.style.cssText = 'position:fixed;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#1f2937;z-index:1000000;gap:8px;';
+        
+        const backBtn = document.createElement('button');
+        backBtn.textContent = '← Back';
+        backBtn.style.cssText = 'padding:10px 16px;background:#3b82f6;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;';
+        backBtn.onclick = () => {
+          document.body.removeChild(overlay);
+          document.body.style.overflow = '';
+        };
+        
+        const instructions = document.createElement('div');
+        instructions.innerHTML = 'Tap <strong>Share ↗</strong> → <strong>Print</strong>';
+        instructions.style.cssText = 'color:white;font-size:13px;text-align:center;flex:1;';
+        
+        header.appendChild(backBtn);
+        header.appendChild(instructions);
+        
+        const printIframe = document.createElement('iframe');
+        printIframe.style.cssText = 'position:absolute;top:56px;left:0;right:0;bottom:0;width:100%;height:calc(100% - 56px);border:none;';
+        printIframe.srcdoc = htmlContent;
+        
+        overlay.appendChild(header);
+        overlay.appendChild(printIframe);
+        
+        document.body.style.overflow = 'hidden';
+        document.body.appendChild(overlay);
+        
+        toast({
+          title: "Document Ready",
+          description: "Use Share → Print to save as PDF",
+        });
+      } else {
+        // Android and other mobile browsers - blob URL works fine
         const mobileBlob = new Blob([mobileHtmlContent], { type: 'text/html' });
         const mobileBlobUrl = URL.createObjectURL(mobileBlob);
         window.location.href = mobileBlobUrl;

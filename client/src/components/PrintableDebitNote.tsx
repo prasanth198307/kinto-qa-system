@@ -625,7 +625,9 @@ export default function PrintableDebitNote({ debitNote }: PrintableDebitNoteProp
       ).replace('</body>', '</div></body>');
       
       // iOS Safari doesn't work with blob URLs - use iframe overlay instead
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      // Including iPadOS which reports as Mac but has touch capability
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+        (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
       
       if (isIOS) {
         // Create a full-screen overlay with iframe for iOS Safari
