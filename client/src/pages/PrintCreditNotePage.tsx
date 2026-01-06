@@ -256,7 +256,7 @@ export default function PrintCreditNotePage() {
       </div>
 
       {/* Footer */}
-      <div style={{ marginTop: '30px', paddingTop: '15px', borderTop: '1px solid #ddd', fontSize: '10px', color: '#666', textAlign: 'center' }}>
+      <div style={{ marginTop: '20px', paddingTop: '10px', borderTop: '1px solid #000', fontSize: '10px', color: '#333', textAlign: 'center' }}>
         <div>This is a computer-generated credit note and does not require a physical signature.</div>
         <div style={{ marginTop: '3px' }}>Credit Note #{creditNote.noteNumber} | Date: {formattedDate}</div>
       </div>
@@ -267,15 +267,20 @@ export default function PrintCreditNotePage() {
     <div>
       <style dangerouslySetInnerHTML={{ __html: `
         @media print {
-          #print-controls { display: none !important; }
+          #print-controls, [id="print-controls"], div[style*="position: fixed"] { 
+            display: none !important; 
+            visibility: hidden !important; 
+            height: 0 !important; 
+            overflow: hidden !important;
+            position: absolute !important;
+            top: -9999px !important;
+          }
           body { margin: 0; padding: 0; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-          .credit-note-copy { page-break-after: always; }
+          .credit-note-copy { page-break-after: always; page-break-inside: avoid; }
           .credit-note-copy:last-child { page-break-after: auto; }
-          /* Force borders to print */
-          table { border-collapse: collapse !important; }
-          table, th, td { border: 1px solid #000 !important; }
+          table { border-collapse: collapse !important; border: 1px solid #000 !important; }
+          th, td { border: 1px solid #000 !important; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-          div[style*="border"] { border-color: #000 !important; }
         }
         @media screen {
           body { background: #f3f4f6; }

@@ -205,7 +205,7 @@ export default function PrintGatepassPage() {
       </div>
 
       {/* Footer */}
-      <div style={{ marginTop: '20px', padding: '8px', background: '#f9f9f9', border: '1px solid #ddd', fontSize: '10px', textAlign: 'center', fontStyle: 'italic' }}>
+      <div style={{ marginTop: '15px', padding: '6px', background: '#f9f9f9', border: '1.5px solid #000', fontSize: '10px', textAlign: 'center', fontStyle: 'italic' }}>
         This is a computer-generated gate pass. Please verify all details before accepting goods.
       </div>
     </div>
@@ -215,14 +215,19 @@ export default function PrintGatepassPage() {
     <div>
       <style dangerouslySetInnerHTML={{ __html: `
         @media print {
-          #print-controls { display: none !important; }
+          #print-controls, [id="print-controls"], div[style*="position: fixed"] { 
+            display: none !important; 
+            visibility: hidden !important; 
+            height: 0 !important; 
+            overflow: hidden !important;
+            position: absolute !important;
+            top: -9999px !important;
+          }
           body { margin: 0; padding: 0; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-          .gp-page { page-break-after: always; }
-          /* Force borders to print */
-          table { border-collapse: collapse !important; }
-          table, th, td { border: 1px solid #000 !important; }
+          .gp-page { page-break-after: always; page-break-inside: avoid; }
+          table { border-collapse: collapse !important; border: 1px solid #000 !important; }
+          th, td { border: 1px solid #000 !important; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-          div[style*="border"] { border-color: #000 !important; }
         }
         @media screen {
           body { background: #f3f4f6; }
