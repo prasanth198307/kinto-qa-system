@@ -613,28 +613,20 @@ export default function PrintableDebitNote({ debitNote }: PrintableDebitNoteProp
     `;
 
     if (isMobile) {
-      // Mobile-friendly approach: Open blob URL in new tab
-      // Mobile browsers don't support window.print() reliably
-      const blob = new Blob([htmlContent], { type: 'text/html' });
+      // Mobile-friendly approach: Add navigation controls and open in same tab
+      const mobileHtmlContent = htmlContent.replace(
+        '<body>',
+        `<body>
+          <div id="mobile-controls" style="position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;padding:12px 16px;background:#f8f9fa;border-bottom:1px solid #e5e7eb;z-index:100000;gap:12px;">
+            <button onclick="history.back()" style="padding:12px 20px;background:#6b7280;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;min-width:80px;">← Back</button>
+            <button onclick="window.print()" style="padding:12px 20px;background:#3b82f6;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;flex:1;max-width:200px;">Print / Save PDF</button>
+          </div>
+          <div style="padding-top:60px;">`
+      ).replace('</body>', '</div></body>');
+      
+      const blob = new Blob([mobileHtmlContent], { type: 'text/html' });
       const blobUrl = URL.createObjectURL(blob);
-      
-      const printWindow = window.open(blobUrl, '_blank');
-      
-      if (!printWindow) {
-        // Fallback: Create a download link if popup blocked
-        const link = document.createElement('a');
-        link.href = blobUrl;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
-      
-      // Clean up blob URL after a delay
-      setTimeout(() => {
-        URL.revokeObjectURL(blobUrl);
-      }, 60000);
+      window.location.href = blobUrl;
     } else {
       const printWindow = window.open('', '_blank');
       if (!printWindow) {

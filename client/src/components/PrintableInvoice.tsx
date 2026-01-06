@@ -945,40 +945,24 @@ ${invoice.shipToName || invoice.shipToAddress ? `
     console.log('🔗 Blob URL created:', blobUrl, 'Mobile:', isMobile);
     
     if (isMobile) {
-      // Mobile-friendly approach: Open blob URL in new tab
-      // Mobile browsers don't support window.print() reliably
-      // Users can use browser's share menu to print or save as PDF
-      const printWindow = window.open(blobUrl, '_blank');
+      // Mobile-friendly approach: Add navigation controls and open in same tab
+      // Add a header with Print and Back buttons to the HTML
+      const mobileHtmlContent = htmlContent.replace(
+        '<body>',
+        `<body>
+          <div id="mobile-controls" style="position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;padding:12px 16px;background:#f8f9fa;border-bottom:1px solid #e5e7eb;z-index:100000;gap:12px;">
+            <button onclick="history.back()" style="padding:12px 20px;background:#6b7280;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;min-width:80px;">← Back</button>
+            <button onclick="window.print()" style="padding:12px 20px;background:#3b82f6;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;flex:1;max-width:200px;">Print / Save PDF</button>
+          </div>
+          <div style="padding-top:60px;">`
+      ).replace('</body>', '</div></body>');
       
-      if (printWindow) {
-        toast({
-          title: "Document Opened",
-          description: "Use your browser's Share menu to Print or Save as PDF.",
-        });
-        
-        // Clean up blob URL after a delay
-        setTimeout(() => {
-          URL.revokeObjectURL(blobUrl);
-        }, 60000); // Keep for 1 minute on mobile
-      } else {
-        // Fallback: Create a download link if popup blocked
-        const link = document.createElement('a');
-        link.href = blobUrl;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        toast({
-          title: "Document Ready",
-          description: "Use your browser's Share menu to Print or Save as PDF.",
-        });
-        
-        setTimeout(() => {
-          URL.revokeObjectURL(blobUrl);
-        }, 60000);
-      }
+      // Create blob with modified content
+      const mobileBlob = new Blob([mobileHtmlContent], { type: 'text/html' });
+      const mobileBlobUrl = URL.createObjectURL(mobileBlob);
+      
+      // Navigate to blob URL in same tab
+      window.location.href = mobileBlobUrl;
     } else {
       // Desktop approach: Open in new tab
       const printWindow = window.open(blobUrl, '_blank');
