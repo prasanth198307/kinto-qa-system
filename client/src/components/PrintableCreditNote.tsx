@@ -82,49 +82,28 @@ export default function PrintableCreditNote({ creditNote }: PrintableCreditNoteP
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
     if (isMobile) {
-      // Mobile-friendly approach: Full-screen iframe with button bar inside
-      const printFrame = document.createElement('iframe');
-      printFrame.id = 'mobile-print-frame';
-      printFrame.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;width:100%;height:100%;border:none;z-index:99998;background:white;';
+      // Mobile-friendly approach: Open blob URL in new tab
+      // Mobile browsers don't support window.print() reliably
+      const blob = new Blob([htmlContent], { type: 'text/html' });
+      const blobUrl = URL.createObjectURL(blob);
       
-      document.body.style.overflow = 'hidden';
-      document.body.appendChild(printFrame);
+      const printWindow = window.open(blobUrl, '_blank');
       
-      // Write content to iframe
-      const frameDoc = printFrame.contentDocument || printFrame.contentWindow?.document;
-      if (frameDoc) {
-        frameDoc.open();
-        frameDoc.write(htmlContent);
-        frameDoc.close();
-        
-        // Create button bar inside iframe at top
-        const buttonBar = frameDoc.createElement('div');
-        buttonBar.style.cssText = 'position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;padding:12px 16px;background:#f8f9fa;border-bottom:1px solid #e5e7eb;z-index:100000;gap:12px;';
-        
-        const closeBtn = frameDoc.createElement('button');
-        closeBtn.innerHTML = '✕ Close';
-        closeBtn.style.cssText = 'padding:12px 20px;background:#ef4444;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.15);min-width:80px;';
-        closeBtn.onclick = () => {
-          if (document.body.contains(printFrame)) {
-            document.body.removeChild(printFrame);
-          }
-          document.body.style.overflow = '';
-        };
-        
-        const printBtn = frameDoc.createElement('button');
-        printBtn.innerHTML = '🖨️ Print / Save PDF';
-        printBtn.style.cssText = 'padding:12px 20px;background:#3b82f6;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.15);flex:1;max-width:200px;';
-        printBtn.onclick = () => {
-          printFrame.contentWindow?.print();
-        };
-        
-        buttonBar.appendChild(closeBtn);
-        buttonBar.appendChild(printBtn);
-        frameDoc.body.insertBefore(buttonBar, frameDoc.body.firstChild);
-        
-        // Add padding to body to account for button bar
-        frameDoc.body.style.paddingTop = '60px';
+      if (!printWindow) {
+        // Fallback: Create a download link if popup blocked
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
       }
+      
+      // Clean up blob URL after a delay
+      setTimeout(() => {
+        URL.revokeObjectURL(blobUrl);
+      }, 60000);
     } else {
       const printWindow = window.open('', '_blank');
       if (!printWindow) return;

@@ -945,55 +945,40 @@ ${invoice.shipToName || invoice.shipToAddress ? `
     console.log('🔗 Blob URL created:', blobUrl, 'Mobile:', isMobile);
     
     if (isMobile) {
-      // Mobile-friendly approach: Full-screen iframe with button bar overlay
-      const printFrame = document.createElement('iframe');
-      printFrame.id = 'mobile-print-frame';
-      printFrame.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;width:100%;height:100%;border:none;z-index:99998;background:white;';
+      // Mobile-friendly approach: Open blob URL in new tab
+      // Mobile browsers don't support window.print() reliably
+      // Users can use browser's share menu to print or save as PDF
+      const printWindow = window.open(blobUrl, '_blank');
       
-      document.body.style.overflow = 'hidden';
-      document.body.appendChild(printFrame);
-      
-      // Write content to iframe
-      const frameDoc = printFrame.contentDocument || printFrame.contentWindow?.document;
-      if (frameDoc) {
-        frameDoc.open();
-        frameDoc.write(htmlContent);
-        frameDoc.close();
+      if (printWindow) {
+        toast({
+          title: "Document Opened",
+          description: "Use your browser's Share menu to Print or Save as PDF.",
+        });
         
-        // Create button bar inside iframe at top
-        const buttonBar = frameDoc.createElement('div');
-        buttonBar.style.cssText = 'position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;padding:12px 16px;background:#f8f9fa;border-bottom:1px solid #e5e7eb;z-index:100000;gap:12px;';
-        
-        const closeBtn = frameDoc.createElement('button');
-        closeBtn.innerHTML = '✕ Close';
-        closeBtn.style.cssText = 'padding:12px 20px;background:#ef4444;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.15);min-width:80px;';
-        closeBtn.onclick = () => {
-          if (document.body.contains(printFrame)) {
-            document.body.removeChild(printFrame);
-          }
-          document.body.style.overflow = '';
+        // Clean up blob URL after a delay
+        setTimeout(() => {
           URL.revokeObjectURL(blobUrl);
-        };
+        }, 60000); // Keep for 1 minute on mobile
+      } else {
+        // Fallback: Create a download link if popup blocked
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
         
-        const printBtn = frameDoc.createElement('button');
-        printBtn.innerHTML = '🖨️ Print / Save PDF';
-        printBtn.style.cssText = 'padding:12px 20px;background:#3b82f6;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.15);flex:1;max-width:200px;';
-        printBtn.onclick = () => {
-          printFrame.contentWindow?.print();
-        };
+        toast({
+          title: "Document Ready",
+          description: "Use your browser's Share menu to Print or Save as PDF.",
+        });
         
-        buttonBar.appendChild(closeBtn);
-        buttonBar.appendChild(printBtn);
-        frameDoc.body.insertBefore(buttonBar, frameDoc.body.firstChild);
-        
-        // Add padding to body to account for button bar
-        frameDoc.body.style.paddingTop = '60px';
+        setTimeout(() => {
+          URL.revokeObjectURL(blobUrl);
+        }, 60000);
       }
-      
-      toast({
-        title: "Preview Ready",
-        description: "Tap 'Print / Save PDF' button to print or save as PDF.",
-      });
     } else {
       // Desktop approach: Open in new tab
       const printWindow = window.open(blobUrl, '_blank');
