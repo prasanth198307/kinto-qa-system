@@ -73,20 +73,27 @@ export interface ImportResult {
 // Convert Excel serial date to ISO string
 function excelDateToISO(excelDate: number | string | Date | null | undefined): string {
   try {
+    console.log('[CASH_REGISTER] Date parsing input:', JSON.stringify(excelDate), 'type:', typeof excelDate);
+    
     // Handle null/undefined/empty
     if (excelDate === null || excelDate === undefined || excelDate === '') {
+      console.log('[CASH_REGISTER] Date is null/undefined/empty');
       return '';
     }
     
     // Handle Date objects (when xlsx parses with cellDates: true)
     if (excelDate instanceof Date) {
+      console.log('[CASH_REGISTER] Date is Date object:', excelDate.toString(), 'getTime:', excelDate.getTime());
       if (!isNaN(excelDate.getTime()) && excelDate.getFullYear() >= 1900 && excelDate.getFullYear() <= 2100) {
         // Use local date components to avoid timezone shift issues
         const year = excelDate.getFullYear();
         const month = String(excelDate.getMonth() + 1).padStart(2, '0');
         const day = String(excelDate.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
+        const result = `${year}-${month}-${day}`;
+        console.log('[CASH_REGISTER] Date parsed as:', result);
+        return result;
       }
+      console.log('[CASH_REGISTER] Date object invalid or out of range');
       return '';
     }
     
@@ -131,8 +138,10 @@ function excelDateToISO(excelDate: number | string | Date | null | undefined): s
     
     // Handle numeric Excel serial date
     if (typeof excelDate === 'number') {
+      console.log('[CASH_REGISTER] Date is number (Excel serial):', excelDate);
       // Validate reasonable Excel date range (1 = Jan 1, 1900, ~45000 = year 2023)
       if (excelDate < 1 || excelDate > 100000 || !isFinite(excelDate)) {
+        console.log('[CASH_REGISTER] Excel serial out of range');
         return '';
       }
       
@@ -141,13 +150,16 @@ function excelDateToISO(excelDate: number | string | Date | null | undefined): s
       // But there's a bug in Excel: it thinks 1900 was a leap year
       const excelEpoch = new Date(1899, 11, 30); // Dec 30, 1899
       const date = new Date(excelEpoch.getTime() + excelDate * 24 * 60 * 60 * 1000);
+      console.log('[CASH_REGISTER] Converted serial to date:', date.toString());
       
       if (!isNaN(date.getTime()) && date.getFullYear() >= 1900 && date.getFullYear() <= 2100) {
         // Use local date components to avoid timezone shift issues
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
+        const result = `${year}-${month}-${day}`;
+        console.log('[CASH_REGISTER] Excel serial parsed as:', result);
+        return result;
       }
     }
     
