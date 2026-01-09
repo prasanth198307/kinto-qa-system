@@ -379,13 +379,12 @@ export async function parseExcelFile(buffer: Buffer, fileName: string): Promise<
         parsedRow.salespersonName = String(row[columnMap.so] || '').trim().toUpperCase();
       }
       
-      // Skip rows where salesperson is a non-data marker (HOLIDAY, SUNDAY, ALL, NIL, empty)
-      // These are summary/placeholder rows, not actual salesperson data
-      // Note: 'NA' is kept as a valid salesperson name to match legacy import behavior
-      const skipSalespersons = ['HOLIDAY', 'SUNDAY', 'ALL', 'NIL', ''];
-      if (skipSalespersons.includes(parsedRow.salespersonName)) {
-        console.log('[CASH_REGISTER] Skipping non-salesperson row:', parsedRow.salespersonName || '(empty)', 'on', parsedRow.date);
-        continue;
+      // Handle non-data markers (HOLIDAY, SUNDAY, ALL, NIL, empty) as "DAILY SUMMARY"
+      // These rows still contain financial data that should be merged with the date
+      const nonPersonMarkers = ['HOLIDAY', 'SUNDAY', 'ALL', 'NIL', ''];
+      if (nonPersonMarkers.includes(parsedRow.salespersonName)) {
+        console.log('[CASH_REGISTER] Converting non-salesperson row:', parsedRow.salespersonName || '(empty)', 'on', parsedRow.date, 'to DAILY SUMMARY');
+        parsedRow.salespersonName = 'DAILY SUMMARY';
       }
       
       salespersonSet.add(parsedRow.salespersonName);
@@ -484,14 +483,15 @@ export async function commitImport(
     errors: []
   };
   
-  // Group rows by date and salesperson
+  // Group rows by DATE ONLY to merge all rows for same date
+  // (previously grouped by date+salesperson which missed multi-row days)
   const dayGroups = new Map<string, ParsedRow[]>();
   
   for (const row of rows) {
     if (row.errors.length > 0) continue;
-    if (!row.date || !row.salespersonName) continue;
+    if (!row.date) continue;
     
-    const key = `${row.date}|${row.salespersonName}`;
+    const key = row.date;
     if (!dayGroups.has(key)) {
       dayGroups.set(key, []);
     }
@@ -500,13 +500,20 @@ export async function commitImport(
   
   try {
     const entries = Array.from(dayGroups.entries());
-    for (const [key, groupRows] of entries) {
-      const [date, salespersonName] = key.split('|');
+    for (const [date, groupRows] of entries) {
+      // Determine salesperson name - use first non-DAILY SUMMARY name, or fallback to DAILY SUMMARY
+      let salespersonName = 'DAILY SUMMARY';
+      for (const row of groupRows) {
+        if (row.salespersonName && row.salespersonName !== 'DAILY SUMMARY') {
+          salespersonName = row.salespersonName;
+          break;
+        }
+      }
       
-      // Check if day already exists
-      const existingDay = await storage.getCashRegisterDayByDateAndPerson(date, salespersonName);
+      // Check if day already exists for this date (any salesperson)
+      const existingDay = await storage.getCashRegisterDayByDate(date);
       if (existingDay) {
-        result.errors.push(`Day already exists for ${salespersonName} on ${date}`);
+        result.errors.push(`Day already exists for ${date}`);
         continue;
       }
       

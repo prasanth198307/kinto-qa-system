@@ -650,6 +650,7 @@ export interface IStorage {
   getCashRegisterDays(filters?: { startDate?: string; endDate?: string; salespersonName?: string; status?: string }): Promise<CashRegisterDay[]>;
   getCashRegisterDay(id: string): Promise<CashRegisterDay | undefined>;
   getCashRegisterDayByDateAndPerson(date: string, salespersonName: string): Promise<CashRegisterDay | undefined>;
+  getCashRegisterDayByDate(date: string): Promise<CashRegisterDay | undefined>;
   updateCashRegisterDay(id: string, day: Partial<InsertCashRegisterDay>): Promise<CashRegisterDay | undefined>;
   deleteCashRegisterDay(id: string): Promise<void>;
   
@@ -3890,6 +3891,15 @@ export class DatabaseStorage implements IStorage {
       .where(and(
         eq(cashRegisterDays.registerDate, date),
         eq(cashRegisterDays.salespersonName, salespersonName),
+        eq(cashRegisterDays.recordStatus, 1)
+      ));
+    return day;
+  }
+
+  async getCashRegisterDayByDate(date: string): Promise<CashRegisterDay | undefined> {
+    const [day] = await db.select().from(cashRegisterDays)
+      .where(and(
+        eq(cashRegisterDays.registerDate, date),
         eq(cashRegisterDays.recordStatus, 1)
       ));
     return day;
