@@ -946,10 +946,15 @@ export default function CashRegisterPage() {
                   <p className="text-sm text-muted-foreground text-center py-4">No expenses today</p>
                 ) : (
                   <div className="space-y-2">
-                    {expenseTxns.map((txn) => (
+                    {expenseTxns.map((txn) => {
+                      // Calculate expense total from items if available, otherwise use transaction amount
+                      const expenseTotal = (txn as any).items?.length > 0 
+                        ? (txn as any).items.reduce((sum: number, item: any) => sum + (item.amount || 0), 0)
+                        : txn.amount;
+                      return (
                       <div key={txn.id} className="flex items-center justify-between p-2 border rounded-md hover-elevate" data-testid={`txn-expense-${txn.id}`}>
                         <div className="flex-1">
-                          <div className="font-medium text-red-600">{formatCurrency(txn.amount)}</div>
+                          <div className="font-medium text-red-600">{formatCurrency(expenseTotal)}</div>
                           {txn.reference && <div className="text-xs text-muted-foreground">{txn.reference}</div>}
                           {txn.description && <div className="text-xs text-muted-foreground">{txn.description}</div>}
                           <div className="flex items-center gap-2 mt-1">
@@ -1005,7 +1010,8 @@ export default function CashRegisterPage() {
                           )}
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </ScrollArea>
