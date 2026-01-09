@@ -50,6 +50,15 @@ export interface ParsedRow {
   warnings: string[];
 }
 
+export interface Discrepancy {
+  date: string;
+  type: 'cb_mismatch' | 'ob_mismatch';
+  description: string;
+  expected: number; // in paise
+  actual: number; // in paise
+  difference: number; // in paise
+}
+
 export interface ImportPreview {
   fileName: string;
   totalRows: number;
@@ -60,6 +69,7 @@ export interface ImportPreview {
   dateRange: { start: string; end: string } | null;
   rows: ParsedRow[];
   errors: string[];
+  discrepancies: Discrepancy[];
 }
 
 export interface ImportResult {
@@ -270,7 +280,8 @@ export async function parseExcelFile(buffer: Buffer, fileName: string): Promise<
     unmappedSalespersons: [],
     dateRange: null,
     rows: [],
-    errors: []
+    errors: [],
+    discrepancies: []
   };
   
   const salespersonSet = new Set<string>();
@@ -462,6 +473,91 @@ export async function parseExcelFile(buffer: Buffer, fileName: string): Promise<
   const mappings = await storage.getAllSalespersonMappings();
   const mappedNames = new Set(mappings.map(m => m.excelName.toUpperCase()));
   result.unmappedSalespersons = result.uniqueSalespersons.filter(name => !mappedNames.has(name));
+  
+  // === DISCREPANCY DETECTION ===
+  // Group rows by date and aggregate values, then check for discrepancies
+  const dayAggregates = new Map<string, {
+    openingBalance: number;
+    receivedCash: number;
+    expenses: number;
+    transfers: number;
+    closingBalance: number;
+    calculatedClosing: number;
+  }>();
+  
+  for (const row of result.rows) {
+    if (!row.date || row.errors.length > 0) continue;
+    
+    if (!dayAggregates.has(row.date)) {
+      dayAggregates.set(row.date, {
+        openingBalance: row.openingBalance,
+        receivedCash: 0,
+        expenses: 0,
+        transfers: 0,
+        closingBalance: 0,
+        calculatedClosing: 0
+      });
+    }
+    
+    const agg = dayAggregates.get(row.date)!;
+    agg.receivedCash += row.receivedCash;
+    agg.expenses += row.expenses;
+    agg.transfers += row.sentToTulasi;
+    // Use first row's opening, last row's closing
+    if (agg.openingBalance === 0) agg.openingBalance = row.openingBalance;
+    agg.closingBalance = row.balanceAmount || row.calculatedBalance;
+  }
+  
+  // Calculate expected closing for each day
+  Array.from(dayAggregates.entries()).forEach(([date, agg]) => {
+    agg.calculatedClosing = agg.openingBalance + agg.receivedCash - agg.expenses - agg.transfers;
+  });
+  
+  // Sort dates chronologically
+  const sortedDates = Array.from(dayAggregates.keys()).sort();
+  
+  // Check discrepancies
+  for (let i = 0; i < sortedDates.length; i++) {
+    const date = sortedDates[i];
+    const agg = dayAggregates.get(date)!;
+    
+    // 1. CB Mismatch: Calculated closing != Actual closing (1 rupee tolerance)
+    if (agg.closingBalance > 0) {
+      const cbDiff = agg.closingBalance - agg.calculatedClosing;
+      if (Math.abs(cbDiff) > 100) { // More than 1 rupee difference
+        result.discrepancies.push({
+          date,
+          type: 'cb_mismatch',
+          description: `Closing Balance doesn't match formula (OB + Cash In - Expenses - Transfers)`,
+          expected: agg.calculatedClosing,
+          actual: agg.closingBalance,
+          difference: cbDiff
+        });
+      }
+    }
+    
+    // 2. OB Mismatch: Current day OB != Previous day CB (1 rupee tolerance)
+    if (i > 0) {
+      const prevDate = sortedDates[i - 1];
+      const prevAgg = dayAggregates.get(prevDate)!;
+      const prevClosing = prevAgg.closingBalance > 0 ? prevAgg.closingBalance : prevAgg.calculatedClosing;
+      const currentOpening = agg.openingBalance;
+      
+      const obDiff = currentOpening - prevClosing;
+      if (Math.abs(obDiff) > 100) { // More than 1 rupee difference
+        result.discrepancies.push({
+          date,
+          type: 'ob_mismatch',
+          description: `Opening Balance doesn't match previous day's (${prevDate}) Closing Balance`,
+          expected: prevClosing,
+          actual: currentOpening,
+          difference: obDiff
+        });
+      }
+    }
+  }
+  
+  console.log('[CASH_REGISTER] Discrepancy check: Found', result.discrepancies.length, 'discrepancies');
   
   return result;
 }

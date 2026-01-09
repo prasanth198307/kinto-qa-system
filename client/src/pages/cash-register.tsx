@@ -32,6 +32,15 @@ interface DayWithTransactions extends CashRegisterDay {
   transactions?: (CashRegisterTransaction & { items?: CashRegisterExpenseItem[] })[];
 }
 
+interface Discrepancy {
+  date: string;
+  type: 'cb_mismatch' | 'ob_mismatch';
+  description: string;
+  expected: number;
+  actual: number;
+  difference: number;
+}
+
 interface ImportPreview {
   fileName: string;
   totalRows: number;
@@ -42,6 +51,7 @@ interface ImportPreview {
   dateRange: { start: string; end: string } | null;
   rows: ParsedRow[];
   errors: string[];
+  discrepancies: Discrepancy[];
 }
 
 interface ParsedRow {
@@ -1405,6 +1415,54 @@ export default function CashRegisterPage() {
                       <div className="text-sm text-muted-foreground">
                         Date range: {importPreview.dateRange.start} to {importPreview.dateRange.end}
                       </div>
+                    )}
+
+                    {/* Discrepancies Section */}
+                    {importPreview.discrepancies && importPreview.discrepancies.length > 0 && (
+                      <Card className="border-amber-500 bg-amber-50 dark:bg-amber-950">
+                        <CardHeader className="py-3">
+                          <CardTitle className="text-sm flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                            <AlertTriangle className="w-4 h-4" />
+                            {importPreview.discrepancies.length} Discrepancies Found
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="py-2">
+                          <ScrollArea className="max-h-48">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Date</TableHead>
+                                  <TableHead>Issue</TableHead>
+                                  <TableHead className="text-right">Expected</TableHead>
+                                  <TableHead className="text-right">Actual</TableHead>
+                                  <TableHead className="text-right">Diff</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {importPreview.discrepancies.map((d, idx) => (
+                                  <TableRow key={idx}>
+                                    <TableCell className="font-medium">{d.date}</TableCell>
+                                    <TableCell>
+                                      <Badge 
+                                        variant={d.type === 'cb_mismatch' ? 'destructive' : 'outline'}
+                                        className="text-xs"
+                                      >
+                                        {d.type === 'cb_mismatch' ? 'CB Mismatch' : 'OB Mismatch'}
+                                      </Badge>
+                                      <div className="text-xs text-muted-foreground mt-1">{d.description}</div>
+                                    </TableCell>
+                                    <TableCell className="text-right">{formatCurrency(d.expected)}</TableCell>
+                                    <TableCell className="text-right">{formatCurrency(d.actual)}</TableCell>
+                                    <TableCell className={`text-right font-medium ${d.difference > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                      {d.difference > 0 ? '+' : ''}{formatCurrency(d.difference)}
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </ScrollArea>
+                        </CardContent>
+                      </Card>
                     )}
 
                     <div className="border rounded-md overflow-auto max-h-64">
