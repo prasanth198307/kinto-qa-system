@@ -268,6 +268,7 @@ export default function CashRegisterVoucherPrint() {
               border: 1px solid #333;
               padding: 5mm 6mm;
               background: #fff;
+              overflow: visible;
             }
 
             .header {
@@ -378,8 +379,10 @@ export default function CashRegisterVoucherPrint() {
             .signatures {
               display: flex;
               justify-content: space-between;
-              margin-top: 8px;
-              padding-top: 6px;
+              margin-top: 10px;
+              padding-top: 8px;
+              border-top: 1px dashed #999;
+              page-break-inside: avoid;
             }
 
             .signature-box {
@@ -388,14 +391,15 @@ export default function CashRegisterVoucherPrint() {
             }
 
             .signature-line {
-              border-bottom: 1px solid #333;
-              height: 20px;
-              margin-bottom: 3px;
+              border-bottom: 2px solid #000;
+              height: 25px;
+              margin-bottom: 4px;
             }
 
             .signature-label {
-              font-size: 8px;
-              color: #555;
+              font-size: 9px;
+              font-weight: bold;
+              color: #333;
             }
 
             @media print {
