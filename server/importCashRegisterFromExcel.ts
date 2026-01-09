@@ -31,7 +31,7 @@ function parseCurrency(val: any): number {
   if (!val || val === 'NIL' || val === '') return 0;
   const str = String(val).replace(/[₹,\/-]/g, '').replace(/\s+/g, '').trim();
   const num = parseFloat(str);
-  return isNaN(num) ? 0 : Math.round(num * 100);
+  return isNaN(num) ? 0 : Math.round(num); // Store in rupees
 }
 
 function parseItemDetails(details: string): { label: string; amount: number; rawText: string }[] {
@@ -49,7 +49,7 @@ function parseItemDetails(details: string): { label: string; amount: number; raw
     if (match) {
       items.push({
         label: match[1].trim().toUpperCase(),
-        amount: parseInt(match[2]) * 100,
+        amount: parseInt(match[2]), // Store in rupees
         rawText: trimmed
       });
     } else {
@@ -143,7 +143,7 @@ export async function importCashRegisterFromExcel(filePath: string, userId: stri
             closingBalance: calculatedClosing,
             varianceAmount: calculatedClosing - balanceAmount,
             status: 'open',
-            notes: `Imported from ${sheetName}. Expected closing: ${balanceAmount/100}`,
+            notes: `Imported from ${sheetName}. Expected closing: ₹${balanceAmount}`,
             importedFromFile: sheetName,
             importedAt: new Date().toISOString(),
           }).returning();
@@ -192,16 +192,17 @@ export async function importCashRegisterFromExcel(filePath: string, userId: stri
                 continue;
               }
               
-              // Create expense voucher for this single item
+              // Create expense voucher for this single item (convert rupees to paise for voucher)
+              const itemAmountInPaise = itemAmount * 100;
               const [voucher] = await db.insert(expenseVouchers).values({
                 voucherNumber,
                 voucherDate: dateStr,
                 payeeType: 'employee',
                 payeeName: salesperson,
                 paymentMode: 'cash',
-                subtotal: itemAmount,
+                subtotal: itemAmountInPaise,
                 gstAmount: 0,
-                totalAmount: itemAmount,
+                totalAmount: itemAmountInPaise,
                 status: 'approved',
                 purpose: item.label,
                 remarks: `Auto-imported from Excel (${sheetName})`,
@@ -209,14 +210,14 @@ export async function importCashRegisterFromExcel(filePath: string, userId: stri
               }).returning();
               vouchersCreated++;
               
-              // Create single expense item for this voucher
+              // Create single expense item for this voucher (in paise)
               await db.insert(expenseItems).values({
                 voucherId: voucher.id,
                 categoryId: defaultCategoryId,
                 description: item.label,
                 quantity: 1,
-                unitPrice: itemAmount,
-                amount: itemAmount,
+                unitPrice: itemAmountInPaise,
+                amount: itemAmountInPaise,
                 gstRate: '0',
                 gstAmount: 0,
               });
@@ -250,15 +251,17 @@ export async function importCashRegisterFromExcel(filePath: string, userId: stri
               .limit(1);
             
             if (existingVoucher.length === 0) {
+              // Convert rupees to paise for expense voucher
+              const expensesInPaise = expenses * 100;
               const [voucher] = await db.insert(expenseVouchers).values({
                 voucherNumber,
                 voucherDate: dateStr,
                 payeeType: 'employee',
                 payeeName: salesperson,
                 paymentMode: 'cash',
-                subtotal: expenses,
+                subtotal: expensesInPaise,
                 gstAmount: 0,
-                totalAmount: expenses,
+                totalAmount: expensesInPaise,
                 status: 'approved',
                 purpose: itemDetails || 'Daily Expenses',
                 remarks: `Auto-imported from Excel (${sheetName})`,
@@ -271,8 +274,8 @@ export async function importCashRegisterFromExcel(filePath: string, userId: stri
                 categoryId: defaultCategoryId,
                 description: itemDetails || 'Daily Expenses',
                 quantity: 1,
-                unitPrice: expenses,
-                amount: expenses,
+                unitPrice: expensesInPaise,
+                amount: expensesInPaise,
                 gstRate: '0',
                 gstAmount: 0,
               });

@@ -430,7 +430,7 @@ export async function parseExcelFile(buffer: Buffer, fileName: string): Promise<
         const itemsTotal = parsedRow.parsedItems.reduce((sum, item) => sum + item.amount, 0);
         if (itemsTotal > 0 && parsedRow.expenses > 0) {
           if (Math.abs(itemsTotal - parsedRow.expenses) > 100) { // Allow 1 rupee tolerance
-            parsedRow.warnings.push(`Item details total (${itemsTotal/100}) doesn't match expenses (${parsedRow.expenses/100})`);
+            parsedRow.warnings.push(`Item details total (₹${itemsTotal}) doesn't match expenses (₹${parsedRow.expenses})`);
           }
         }
       }
@@ -445,7 +445,7 @@ export async function parseExcelFile(buffer: Buffer, fileName: string): Promise<
         parsedRow.hasVariance = Math.abs(parsedRow.variance) > 100; // 1 rupee tolerance
         
         if (parsedRow.hasVariance) {
-          parsedRow.warnings.push(`Balance mismatch: expected ${parsedRow.calculatedBalance/100}, found ${parsedRow.balanceAmount/100}`);
+          parsedRow.warnings.push(`Balance mismatch: expected ₹${parsedRow.calculatedBalance}, found ₹${parsedRow.balanceAmount}`);
         }
       }
       
