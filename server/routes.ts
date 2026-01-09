@@ -16091,11 +16091,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Single voucher
         voucherIds = [id as string];
       } else if (mode === 'all') {
-        // Get all expense vouchers from cash register (EXP-CR-*)
+        // Get all expense vouchers from cash register (EXP-CR-* or CR-*)
         const allVouchers = await db.select({ id: expenseVouchers.id })
           .from(expenseVouchers)
           .where(and(
-            sql`${expenseVouchers.voucherNumber} LIKE 'EXP-CR-%'`,
+            or(
+              sql`${expenseVouchers.voucherNumber} LIKE 'EXP-CR-%'`,
+              sql`${expenseVouchers.voucherNumber} LIKE 'CR-%'`
+            ),
             eq(expenseVouchers.recordStatus, 1)
           ))
           .orderBy(desc(expenseVouchers.voucherDate))
@@ -16185,12 +16188,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // 3. Delete days
       const daysDeleted = await db.delete(cashRegisterDays).returning();
       
-      // 4. Delete related vouchers (EXP-CR-*)
+      // 4. Delete related vouchers (EXP-CR-* and CR-*)
       const vouchersResult = await db.execute(sql`
         DELETE FROM expense_items WHERE voucher_id IN (
-          SELECT id FROM expense_vouchers WHERE voucher_number LIKE 'EXP-CR-%'
+          SELECT id FROM expense_vouchers WHERE voucher_number LIKE 'EXP-CR-%' OR voucher_number LIKE 'CR-%'
         );
-        DELETE FROM expense_vouchers WHERE voucher_number LIKE 'EXP-CR-%';
+        DELETE FROM expense_vouchers WHERE voucher_number LIKE 'EXP-CR-%' OR voucher_number LIKE 'CR-%';
       `);
       
       await logAudit(req.user?.id, 'DELETE', 'cash_register', '', 

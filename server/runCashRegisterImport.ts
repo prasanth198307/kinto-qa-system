@@ -219,8 +219,9 @@ async function importData() {
             itemsCreated++;
           }
           
-          // Create expense voucher
-          const voucherNumber = 'EXP-CR-' + dateStr.replace(/-/g, '') + '-' + salesperson.substring(0, 3);
+          // Create expense voucher (format: CR-YYMMDD-SP)
+          const shortDate = dateStr.replace(/-/g, '').slice(2); // YYMMDD
+          const voucherNumber = 'CR-' + shortDate + '-' + salesperson.substring(0, 2);
           const voucherExists = await client.query('SELECT id FROM expense_vouchers WHERE voucher_number = $1', [voucherNumber]);
           if (voucherExists.rows.length === 0 && adminId) {
             const voucherResult = await client.query(

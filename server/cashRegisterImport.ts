@@ -11,12 +11,13 @@ import type {
 let voucherCounter = 0;
 
 // Helper to generate expense voucher number with collision prevention
+// Format: CR-YYMMDD-NNN (e.g., CR-250608-001)
 function generateVoucherNumber(date: string): string {
-  const dateStr = date.replace(/-/g, '');
-  const timestamp = Date.now().toString(36);
+  // Convert YYYY-MM-DD to YYMMDD
+  const dateStr = date.replace(/-/g, '').slice(2); // Remove year prefix, get YYMMDD
   voucherCounter++;
-  const counter = voucherCounter.toString().padStart(4, '0');
-  return `EXP-CR-${dateStr}-${timestamp}-${counter}`;
+  const counter = voucherCounter.toString().padStart(3, '0');
+  return `CR-${dateStr}-${counter}`;
 }
 
 // Reset counter at start of each import

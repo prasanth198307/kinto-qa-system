@@ -179,8 +179,9 @@ export async function importCashRegisterFromExcel(filePath: string, userId: stri
               itemCounter++;
               const itemAmount = item.amount || Math.round(expenses / parsedItems.length);
               
-              // Create unique voucher number for each item
-              const voucherNumber = `EXP-CR-${dateStr.replace(/-/g, '')}-${salesperson.substring(0, 3)}-${String(itemCounter).padStart(2, '0')}`;
+              // Create unique voucher number for each item (format: CR-YYMMDD-SP-NN)
+              const shortDate = dateStr.replace(/-/g, '').slice(2); // YYMMDD
+              const voucherNumber = `CR-${shortDate}-${salesperson.substring(0, 2)}-${String(itemCounter).padStart(2, '0')}`;
               
               // Check for existing voucher with this number
               const existingVoucher = await db.select().from(expenseVouchers)
@@ -244,7 +245,8 @@ export async function importCashRegisterFromExcel(filePath: string, userId: stri
             }
           } else if (expenses > 0) {
             // Fallback: no parsed items, create single voucher for total expense
-            const voucherNumber = `EXP-CR-${dateStr.replace(/-/g, '')}-${salesperson.substring(0, 3)}-01`;
+            const shortDate = dateStr.replace(/-/g, '').slice(2); // YYMMDD
+            const voucherNumber = `CR-${shortDate}-${salesperson.substring(0, 2)}-01`;
             
             const existingVoucher = await db.select().from(expenseVouchers)
               .where(eq(expenseVouchers.voucherNumber, voucherNumber))
