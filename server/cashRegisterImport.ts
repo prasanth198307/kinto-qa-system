@@ -81,7 +81,11 @@ function excelDateToISO(excelDate: number | string | Date | null | undefined): s
     // Handle Date objects (when xlsx parses with cellDates: true)
     if (excelDate instanceof Date) {
       if (!isNaN(excelDate.getTime()) && excelDate.getFullYear() >= 1900 && excelDate.getFullYear() <= 2100) {
-        return excelDate.toISOString().split('T')[0];
+        // Use local date components to avoid timezone shift issues
+        const year = excelDate.getFullYear();
+        const month = String(excelDate.getMonth() + 1).padStart(2, '0');
+        const day = String(excelDate.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
       }
       return '';
     }
@@ -115,7 +119,11 @@ function excelDateToISO(excelDate: number | string | Date | null | undefined): s
       // Try parsing as a general date string
       const parsed = new Date(str);
       if (!isNaN(parsed.getTime()) && parsed.getFullYear() >= 1900 && parsed.getFullYear() <= 2100) {
-        return parsed.toISOString().split('T')[0];
+        // Use local date components to avoid timezone shift issues
+        const year = parsed.getFullYear();
+        const month = String(parsed.getMonth() + 1).padStart(2, '0');
+        const day = String(parsed.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
       }
       
       return '';
@@ -135,7 +143,11 @@ function excelDateToISO(excelDate: number | string | Date | null | undefined): s
       const date = new Date(excelEpoch.getTime() + excelDate * 24 * 60 * 60 * 1000);
       
       if (!isNaN(date.getTime()) && date.getFullYear() >= 1900 && date.getFullYear() <= 2100) {
-        return date.toISOString().split('T')[0];
+        // Use local date components to avoid timezone shift issues
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
       }
     }
     

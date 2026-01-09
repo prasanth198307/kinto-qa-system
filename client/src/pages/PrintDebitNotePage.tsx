@@ -319,6 +319,7 @@ export default function PrintDebitNotePage() {
           table { border-collapse: collapse !important; border: 1px solid #000 !important; }
           th, td { border: 1px solid #000 !important; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          div[style*="border"] { border-color: #000 !important; }
         }
         @media screen {
           body { background: #f3f4f6; }
