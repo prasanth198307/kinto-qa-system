@@ -73,13 +73,13 @@ interface ParsedRow {
   warnings: string[];
 }
 
-function formatCurrency(paise: number): string {
+function formatCurrency(rupees: number): string {
   return new Intl.NumberFormat('en-IN', { 
     style: 'currency', 
     currency: 'INR',
     minimumFractionDigits: 0,
     maximumFractionDigits: 2
-  }).format(paise / 100);
+  }).format(rupees);
 }
 
 export default function CashRegisterPage() {
@@ -298,7 +298,7 @@ export default function CashRegisterPage() {
     setEditingTransaction({
       id: txn.id,
       type: txn.transactionType,
-      amount: ((txn.amount || 0) / 100).toString(),
+      amount: (txn.amount || 0).toString(),
       reference: txn.reference || '',
       description: txn.description || '',
       transferTo: txn.transferTo || '',
@@ -310,7 +310,7 @@ export default function CashRegisterPage() {
     if (!editingTransaction) return;
     updateTransactionMutation.mutate({
       id: editingTransaction.id,
-      amount: Math.round(parseFloat(editingTransaction.amount || '0') * 100),
+      amount: Math.round(parseFloat(editingTransaction.amount || '0')),
       reference: editingTransaction.reference,
       description: editingTransaction.description,
       transferTo: editingTransaction.transferTo,
@@ -423,7 +423,7 @@ export default function CashRegisterPage() {
     addTransactionMutation.mutate({
       dayId: selectedDay.id,
       transactionType: 'cash_received',
-      amount: Math.round(parseFloat(newCashReceived.amount) * 100),
+      amount: Math.round(parseFloat(newCashReceived.amount)),
       reference: newCashReceived.reference,
       description: newCashReceived.description,
       sourceType: newCashReceived.sourceType,
@@ -466,7 +466,7 @@ export default function CashRegisterPage() {
         await apiRequest('POST', `/api/cash-register/days/${selectedDay.id}/transactions`, {
           dayId: selectedDay.id,
           transactionType: 'expense',
-          amount: Math.round(parseFloat(item.amount) * 100),
+          amount: Math.round(parseFloat(item.amount)),
           reference: item.reference,
           description: item.description,
         });
@@ -511,7 +511,7 @@ export default function CashRegisterPage() {
     addTransactionMutation.mutate({
       dayId: selectedDay.id,
       transactionType: 'transfer',
-      amount: Math.round(parseFloat(newTransfer.amount) * 100),
+      amount: Math.round(parseFloat(newTransfer.amount)),
       transferTo: newTransfer.transferTo,
       description: newTransfer.description,
     });
@@ -1141,7 +1141,7 @@ export default function CashRegisterPage() {
                 <Dialog open={isReconcileOpen} onOpenChange={(open) => {
                   setIsReconcileOpen(open);
                   if (open) {
-                    setActualBalance((calculatedClosing / 100).toString());
+                    setActualBalance(calculatedClosing.toString());
                     setVarianceNotes('');
                   }
                 }}>
@@ -1201,7 +1201,7 @@ export default function CashRegisterPage() {
                         />
                       </div>
                       
-                      {actualBalance && Math.round(parseFloat(actualBalance) * 100) !== calculatedClosing && (
+                      {actualBalance && Math.round(parseFloat(actualBalance)) !== calculatedClosing && (
                         <div className="p-3 border border-amber-500/50 bg-amber-500/10 rounded-lg space-y-3">
                           <div className="flex items-center gap-2 text-amber-600">
                             <AlertTriangle className="w-4 h-4" />
@@ -1209,25 +1209,25 @@ export default function CashRegisterPage() {
                           </div>
                           <div className="flex justify-between text-sm">
                             <span>Variance Amount:</span>
-                            <span className={Math.round(parseFloat(actualBalance) * 100) > calculatedClosing ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
-                              {formatCurrency(Math.abs(Math.round(parseFloat(actualBalance) * 100) - calculatedClosing))}
-                              {Math.round(parseFloat(actualBalance) * 100) > calculatedClosing ? ' (Surplus)' : ' (Shortage)'}
+                            <span className={Math.round(parseFloat(actualBalance)) > calculatedClosing ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
+                              {formatCurrency(Math.abs(Math.round(parseFloat(actualBalance)) - calculatedClosing))}
+                              {Math.round(parseFloat(actualBalance)) > calculatedClosing ? ' (Surplus)' : ' (Shortage)'}
                             </span>
                           </div>
                           <p className="text-sm text-muted-foreground">
-                            {Math.round(parseFloat(actualBalance) * 100) < calculatedClosing 
+                            {Math.round(parseFloat(actualBalance)) < calculatedClosing 
                               ? 'You have less cash than expected. Record this as an Expense to balance the books.'
                               : 'You have more cash than expected. Record this as Cash Received to balance the books.'}
                           </p>
                           <div className="flex gap-2">
-                            {Math.round(parseFloat(actualBalance) * 100) < calculatedClosing ? (
+                            {Math.round(parseFloat(actualBalance)) < calculatedClosing ? (
                               <Button 
                                 size="sm" 
                                 variant="destructive"
                                 onClick={() => {
-                                  const shortage = calculatedClosing - Math.round(parseFloat(actualBalance) * 100);
+                                  const shortage = calculatedClosing - Math.round(parseFloat(actualBalance));
                                   setExpenseItems([{ 
-                                    amount: (shortage / 100).toString(), 
+                                    amount: shortage.toString(), 
                                     reference: 'Reconciliation Adjustment', 
                                     description: 'Cash shortage during reconciliation' 
                                   }]);
@@ -1238,16 +1238,16 @@ export default function CashRegisterPage() {
                                 data-testid="button-add-shortage-expense"
                               >
                                 <TrendingDown className="w-4 h-4 mr-1" />
-                                Record as Expense ({formatCurrency(Math.abs(Math.round(parseFloat(actualBalance) * 100) - calculatedClosing))})
+                                Record as Expense ({formatCurrency(Math.abs(Math.round(parseFloat(actualBalance)) - calculatedClosing))})
                               </Button>
                             ) : (
                               <Button 
                                 size="sm" 
                                 className="bg-green-600 hover:bg-green-700"
                                 onClick={() => {
-                                  const surplus = Math.round(parseFloat(actualBalance) * 100) - calculatedClosing;
+                                  const surplus = Math.round(parseFloat(actualBalance)) - calculatedClosing;
                                   setNewCashReceived({ 
-                                    amount: (surplus / 100).toString(), 
+                                    amount: surplus.toString(), 
                                     reference: 'Reconciliation Adjustment', 
                                     description: 'Unaccounted cash found during reconciliation',
                                     sourceType: 'other'
@@ -1259,7 +1259,7 @@ export default function CashRegisterPage() {
                                 data-testid="button-add-surplus-cash"
                               >
                                 <TrendingUp className="w-4 h-4 mr-1" />
-                                Record as Cash Received ({formatCurrency(Math.abs(Math.round(parseFloat(actualBalance) * 100) - calculatedClosing))})
+                                Record as Cash Received ({formatCurrency(Math.abs(Math.round(parseFloat(actualBalance)) - calculatedClosing))})
                               </Button>
                             )}
                           </div>
@@ -1277,18 +1277,18 @@ export default function CashRegisterPage() {
                             toast({ title: "Error", description: "Please enter actual cash on hand", variant: "destructive" });
                             return;
                           }
-                          const actualPaise = Math.round(parseFloat(actualBalance) * 100);
+                          const actualRupees = Math.round(parseFloat(actualBalance));
                           closeDayMutation.mutate({
                             dayId: selectedDay.id,
-                            actualClosingBalance: actualPaise,
+                            actualClosingBalance: actualRupees,
                             varianceNotes: '',
                           });
                         }}
-                        disabled={closeDayMutation.isPending || !actualBalance || Math.round(parseFloat(actualBalance || '0') * 100) !== calculatedClosing}
+                        disabled={closeDayMutation.isPending || !actualBalance || Math.round(parseFloat(actualBalance || '0')) !== calculatedClosing}
                         data-testid="button-confirm-close"
                       >
                         {closeDayMutation.isPending ? 'Closing...' : 
-                          Math.round(parseFloat(actualBalance || '0') * 100) !== calculatedClosing 
+                          Math.round(parseFloat(actualBalance || '0')) !== calculatedClosing 
                             ? 'Record Adjustment First' 
                             : 'Reconcile & Close'}
                       </Button>

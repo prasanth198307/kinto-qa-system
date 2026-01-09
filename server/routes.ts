@@ -52,18 +52,18 @@ async function recalculateDayDiscrepancy(dayId: string) {
     const itemsMismatch = day.totalExpenses !== itemsTotal;
     const hasDiscrepancy = balanceMismatch || itemsMismatch;
     
-    // Update the day with discrepancy info
+    // Update the day with discrepancy info (amounts already in rupees)
     await storage.updateCashRegisterDay(dayId, {
       hasDiscrepancy: hasDiscrepancy ? 1 : 0,
       discrepancyDetails: {
         balance_mismatch: balanceMismatch,
         items_mismatch: itemsMismatch,
-        expected_closing: expectedClosing / 100,
-        actual_closing: day.closingBalance / 100,
-        closing_difference: (day.closingBalance - expectedClosing) / 100,
-        total_expenses: day.totalExpenses / 100,
-        items_total: itemsTotal / 100,
-        items_difference: (day.totalExpenses - itemsTotal) / 100,
+        expected_closing: expectedClosing,
+        actual_closing: day.closingBalance,
+        closing_difference: day.closingBalance - expectedClosing,
+        total_expenses: day.totalExpenses,
+        items_total: itemsTotal,
+        items_difference: day.totalExpenses - itemsTotal,
       },
     } as any);
     
@@ -15205,14 +15205,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Auto-generate expense voucher
           try {
             const voucherNumber = `EV-CR-${day.registerDate.replace(/-/g, '')}-${Date.now().toString().slice(-4)}`;
+            // Cash Register stores in rupees, expense_vouchers table uses paise
+            const amountInPaise = amount * 100;
             const voucher = await storage.createExpenseVoucher({
               voucherNumber,
               voucherDate: day.registerDate,
               status: 'submitted',
               paymentMode: 'cash',
-              totalAmount: amount,
+              totalAmount: amountInPaise,
               gstAmount: 0,
-              netAmount: amount,
+              netAmount: amountInPaise,
               notes: `Cash Register Expense: ${parsed.reference || parsed.description || 'Expense'}`,
               submittedBy: req.user?.id,
               submittedAt: new Date().toISOString(),
@@ -15280,7 +15282,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Enforce that actual must match expected - user must record adjustment transactions first
       if (varianceAmount !== 0) {
         return res.status(400).json({ 
-          message: `Cannot close day with variance of ${varianceAmount} paise. Please record an adjustment transaction (Expense for shortage, Cash Received for surplus) to balance the books first.` 
+          message: `Cannot close day with variance of ₹${varianceAmount}. Please record an adjustment transaction (Expense for shortage, Cash Received for surplus) to balance the books first.` 
         });
       }
       

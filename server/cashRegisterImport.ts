@@ -715,16 +715,17 @@ export async function commitImport(
             }
             const itemDescription = item.label || item.rawText;
             
-            // Create expense voucher first
+            // Create expense voucher first (expense_vouchers table uses paise)
             const voucherNumber = generateVoucherNumber(date);
+            const itemAmountInPaise = itemAmount * 100; // Convert rupees to paise for voucher
             const voucher = await storage.createExpenseVoucher({
               voucherNumber,
               voucherDate: date,
               payeeType: 'staff',
               payeeName: salespersonName || 'Cash Register Import',
               payeeId: null,
-              totalAmount: itemAmount,
-              subtotal: itemAmount,
+              totalAmount: itemAmountInPaise,
+              subtotal: itemAmountInPaise,
               gstAmount: 0,
               paymentMode: 'cash',
               status: 'submitted',
@@ -732,11 +733,11 @@ export async function commitImport(
               preparedBy: createdBy,
             });
             
-            // Create expense item for the voucher
+            // Create expense item for the voucher (uses paise)
             await storage.createExpenseItem({
               voucherId: voucher.id,
               description: itemDescription,
-              amount: itemAmount,
+              amount: itemAmountInPaise,
               gstAmount: 0,
               categoryId: null,
             });
@@ -765,16 +766,17 @@ export async function commitImport(
           // Fallback: no parsed items, create single expense transaction with voucher
           const itemDescription = row.itemDetails || 'Expense from Excel import';
           
-          // Create expense voucher
+          // Create expense voucher (expense_vouchers table uses paise)
           const voucherNumber = generateVoucherNumber(date);
+          const expenseAmountInPaise = row.expenses * 100; // Convert rupees to paise for voucher
           const voucher = await storage.createExpenseVoucher({
             voucherNumber,
             voucherDate: date,
             payeeType: 'staff',
             payeeName: salespersonName,
             payeeId: null,
-            totalAmount: row.expenses,
-            subtotal: row.expenses,
+            totalAmount: expenseAmountInPaise,
+            subtotal: expenseAmountInPaise,
             gstAmount: 0,
             paymentMode: 'cash',
             status: 'approved',
@@ -782,11 +784,11 @@ export async function commitImport(
             preparedBy: createdBy,
           });
           
-          // Create expense item for the voucher
+          // Create expense item for the voucher (uses paise)
           await storage.createExpenseItem({
             voucherId: voucher.id,
             description: itemDescription,
-            amount: row.expenses,
+            amount: expenseAmountInPaise,
             gstAmount: 0,
             categoryId: null,
           });
