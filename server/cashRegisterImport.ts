@@ -180,12 +180,13 @@ function excelDateToISO(excelDate: number | string | Date | null | undefined): s
   }
 }
 
-// Parse currency string to paise (handles "6K", "5840", "260", "9,310/-", "NIL", etc.)
-function parseCurrencyToPaise(value: string | number | undefined | null): number {
+// Parse currency string to rupees (handles "6K", "5840", "260", "9,310/-", "NIL", etc.)
+// Returns whole rupee amounts (no paise conversion)
+function parseCurrencyToRupees(value: string | number | undefined | null): number {
   if (value === undefined || value === null || value === '') return 0;
   
   if (typeof value === 'number') {
-    return Math.round(value * 100);
+    return Math.round(value);
   }
   
   let str = value.toString().trim().toUpperCase();
@@ -201,7 +202,7 @@ function parseCurrencyToPaise(value: string | number | undefined | null): number
   // Handle "K" suffix (thousands) - e.g., "6K" = 6000
   const kMatch = str.match(/^(\d+(?:\.\d+)?)\s*K$/i);
   if (kMatch) {
-    return Math.round(parseFloat(kMatch[1]) * 1000 * 100);
+    return Math.round(parseFloat(kMatch[1]) * 1000);
   }
   
   // Handle plain numbers with optional commas - e.g., "9,310" or "9310"
@@ -210,7 +211,7 @@ function parseCurrencyToPaise(value: string | number | undefined | null): number
     const cleanNum = str.replace(/,/g, '');
     const parsed = parseFloat(cleanNum);
     if (!isNaN(parsed)) {
-      return Math.round(parsed * 100);
+      return Math.round(parsed);
     }
   }
   
@@ -220,7 +221,7 @@ function parseCurrencyToPaise(value: string | number | undefined | null): number
     const cleanNum = currencyMatch[0].replace(/,/g, '');
     const parsed = parseFloat(cleanNum);
     if (!isNaN(parsed)) {
-      return Math.round(parsed * 100);
+      return Math.round(parsed);
     }
   }
   
@@ -247,7 +248,7 @@ function parseItemDetails(itemDetails: string | undefined | null): ParsedExpense
     if (amountMatch) {
       const label = amountMatch[1].trim();
       const amountStr = amountMatch[2];
-      const amount = parseCurrencyToPaise(amountStr);
+      const amount = parseCurrencyToRupees(amountStr);
       
       items.push({
         label,
@@ -402,22 +403,22 @@ export async function parseExcelFile(buffer: Buffer, fileName: string): Promise<
       
       // Parse numeric fields
       if (columnMap.openingBalance >= 0) {
-        parsedRow.openingBalance = parseCurrencyToPaise(row[columnMap.openingBalance]);
+        parsedRow.openingBalance = parseCurrencyToRupees(row[columnMap.openingBalance]);
       }
       if (columnMap.depositAmount >= 0) {
-        parsedRow.depositAmount = parseCurrencyToPaise(row[columnMap.depositAmount]);
+        parsedRow.depositAmount = parseCurrencyToRupees(row[columnMap.depositAmount]);
       }
       if (columnMap.receivedCash >= 0) {
-        parsedRow.receivedCash = parseCurrencyToPaise(row[columnMap.receivedCash]);
+        parsedRow.receivedCash = parseCurrencyToRupees(row[columnMap.receivedCash]);
       }
       if (columnMap.expenses >= 0) {
-        parsedRow.expenses = parseCurrencyToPaise(row[columnMap.expenses]);
+        parsedRow.expenses = parseCurrencyToRupees(row[columnMap.expenses]);
       }
       if (columnMap.balanceAmount >= 0) {
-        parsedRow.balanceAmount = parseCurrencyToPaise(row[columnMap.balanceAmount]);
+        parsedRow.balanceAmount = parseCurrencyToRupees(row[columnMap.balanceAmount]);
       }
       if (columnMap.sentToTulasi >= 0) {
-        parsedRow.sentToTulasi = parseCurrencyToPaise(row[columnMap.sentToTulasi]);
+        parsedRow.sentToTulasi = parseCurrencyToRupees(row[columnMap.sentToTulasi]);
       }
       
       // Parse item details
