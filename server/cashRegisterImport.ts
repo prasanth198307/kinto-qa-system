@@ -694,9 +694,24 @@ export async function commitImport(
         
         // Create SEPARATE expense transaction (voucher) for EACH item
         if (row.expenses > 0 && row.parsedItems.length > 0) {
+          // Calculate if items have amounts parsed
+          const itemsWithAmounts = row.parsedItems.filter(i => i.amount > 0);
+          const totalParsedAmount = row.parsedItems.reduce((sum, i) => sum + i.amount, 0);
+          
+          // If no items have amounts, distribute total expense evenly
+          // If only some items have amounts but don't add up, use row.expenses for single item
+          const useRowExpenseForSingleItem = itemsWithAmounts.length === 0 && row.parsedItems.length === 1;
+          
           for (const item of row.parsedItems) {
             // Each item gets its own transaction/voucher
-            const itemAmount = item.amount > 0 ? item.amount : 0;
+            // If item has no amount and there's only one item, use the row's expense amount
+            let itemAmount = item.amount;
+            if (item.amount === 0 && useRowExpenseForSingleItem) {
+              itemAmount = row.expenses;
+            } else if (item.amount === 0 && itemsWithAmounts.length === 0) {
+              // Multiple items with no amounts - distribute evenly
+              itemAmount = Math.round(row.expenses / row.parsedItems.length);
+            }
             const itemDescription = item.label || item.rawText;
             
             // Create expense voucher first
