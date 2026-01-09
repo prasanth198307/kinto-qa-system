@@ -273,6 +273,24 @@ export default function CashRegisterPage() {
     },
   });
 
+  // Clear discrepancy mutation
+  const clearDiscrepancyMutation = useMutation({
+    mutationFn: async (dayId: string) => {
+      const response = await apiRequest('POST', `/api/cash-register/days/${dayId}/clear-discrepancy`, {});
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/cash-register/days'] });
+      if (selectedDay) {
+        viewDayDetails(selectedDay.id);
+      }
+      toast({ title: "Success", description: "Discrepancy remarks cleared" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
   // Edit transaction state
   const [editingTransaction, setEditingTransaction] = useState<{ id: string; type: string; amount: string; reference: string; description: string; transferTo: string; sourceType: string } | null>(null);
 
@@ -366,6 +384,7 @@ export default function CashRegisterPage() {
       const response = await apiRequest('POST', '/api/cash-register/import/commit', {
         rows: importPreview.rows.filter(r => r.errors.length === 0),
         fileName: importPreview.fileName,
+        discrepancies: importPreview.discrepancies || [],
       });
       
       const result = await response.json();
@@ -634,6 +653,56 @@ export default function CashRegisterPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Discrepancy Alert */}
+        {(selectedDay as any).hasDiscrepancy === 1 && (selectedDay as any).discrepancyDetails && (
+          <Card className="border-amber-500 bg-amber-50 dark:bg-amber-950">
+            <CardHeader className="py-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                  <AlertTriangle className="w-4 h-4" />
+                  Import Discrepancy Detected
+                </CardTitle>
+                {isAdmin && (
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => clearDiscrepancyMutation.mutate(selectedDay.id)}
+                    disabled={clearDiscrepancyMutation.isPending}
+                    data-testid="button-clear-discrepancy"
+                  >
+                    <CheckCircle2 className="w-4 h-4 mr-1" />
+                    {clearDiscrepancyMutation.isPending ? 'Clearing...' : 'Mark as Resolved'}
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="py-2">
+              <div className="space-y-2">
+                {((selectedDay as any).discrepancyDetails as { items?: { type: string; description: string; expected: number; actual: number; difference: number }[] })?.items?.map((item: any, idx: number) => (
+                  <div key={idx} className="p-2 bg-white/50 dark:bg-black/20 rounded border border-amber-200 dark:border-amber-800">
+                    <div className="flex items-center gap-2">
+                      <Badge variant={item.type === 'cb_mismatch' ? 'destructive' : 'outline'} className="text-xs">
+                        {item.type === 'cb_mismatch' ? 'Closing Balance Mismatch' : 'Opening Balance Mismatch'}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">{item.description}</p>
+                    <div className="flex gap-4 mt-1 text-xs">
+                      <span>Expected: <strong>{formatCurrency(item.expected)}</strong></span>
+                      <span>Actual: <strong>{formatCurrency(item.actual)}</strong></span>
+                      <span className={item.difference > 0 ? 'text-green-600' : 'text-red-600'}>
+                        Diff: <strong>{item.difference > 0 ? '+' : ''}{formatCurrency(item.difference)}</strong>
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Resolve this discrepancy by reviewing the data and clicking "Mark as Resolved" to enable closing this day.
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Transactions */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -1056,6 +1125,12 @@ export default function CashRegisterPage() {
                   <p className="text-sm text-muted-foreground">
                     Expected closing balance: {formatCurrency(calculatedClosing)}. Reconcile and close to carry forward.
                   </p>
+                  {(selectedDay as any).hasDiscrepancy === 1 && (
+                    <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3" />
+                      Resolve import discrepancy first to close this day.
+                    </p>
+                  )}
                 </div>
                 <Dialog open={isReconcileOpen} onOpenChange={(open) => {
                   setIsReconcileOpen(open);
@@ -1065,7 +1140,11 @@ export default function CashRegisterPage() {
                   }
                 }}>
                   <DialogTrigger asChild>
-                    <Button variant="default" data-testid="button-close-day">
+                    <Button 
+                      variant="default" 
+                      data-testid="button-close-day"
+                      disabled={(selectedDay as any).hasDiscrepancy === 1}
+                    >
                       <Lock className="w-4 h-4 mr-2" />
                       Close Day
                     </Button>
@@ -1624,23 +1703,26 @@ export default function CashRegisterPage() {
                   <TableHead className="text-right">Transfers</TableHead>
                   <TableHead className="text-right">Closing</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Remarks</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {paginatedDays.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                       No cash register entries yet. Click "New Day" to start tracking.
                     </TableCell>
                   </TableRow>
                 ) : (
                   paginatedDays.map((day) => {
                     const expectedClosing = day.openingBalance + day.totalCashReceived - day.totalExpenses - day.totalTransfers;
+                    const hasIssues = (day as any).hasDiscrepancy === 1;
+                    const discrepancyInfo = (day as any).discrepancyDetails as { items?: { type: string; description: string }[] } | null;
                     return (
                       <TableRow 
                         key={day.id} 
-                        className="cursor-pointer hover-elevate" 
+                        className={`cursor-pointer hover-elevate ${hasIssues ? 'bg-amber-50 dark:bg-amber-950/30' : ''}`}
                         onClick={() => viewDayDetails(day.id)}
                         data-testid={`row-day-${day.id}`}
                       >
@@ -1653,6 +1735,18 @@ export default function CashRegisterPage() {
                         <TableCell className="text-right text-blue-600">-{formatCurrency(day.totalTransfers)}</TableCell>
                         <TableCell className="text-right font-medium">{formatCurrency(expectedClosing)}</TableCell>
                         <TableCell>{getStatusBadge(day.status)}</TableCell>
+                        <TableCell>
+                          {hasIssues && discrepancyInfo?.items && discrepancyInfo.items.length > 0 ? (
+                            <div className="flex items-center gap-1">
+                              <AlertTriangle className="w-4 h-4 text-amber-600" />
+                              <span className="text-xs text-amber-700 dark:text-amber-400">
+                                {discrepancyInfo.items.map(i => i.type === 'cb_mismatch' ? 'CB' : 'OB').join(', ')} Issue
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-right">
                           <Button size="icon" variant="ghost" data-testid={`button-view-${day.id}`}>
                             <ChevronRight className="h-4 w-4" />

@@ -566,7 +566,8 @@ export async function parseExcelFile(buffer: Buffer, fileName: string): Promise<
 export async function commitImport(
   rows: ParsedRow[], 
   fileName: string, 
-  createdBy: string
+  createdBy: string,
+  discrepancies: Discrepancy[] = []
 ): Promise<ImportResult> {
   // Reset voucher counter for this import batch
   resetVoucherCounter();
@@ -633,6 +634,19 @@ export async function commitImport(
         closingBalance = row.balanceAmount || row.calculatedBalance;
       }
       
+      // Check for discrepancies for this date
+      const dayDiscrepancies = discrepancies.filter(d => d.date === date);
+      const hasDiscrepancy = dayDiscrepancies.length > 0 ? 1 : 0;
+      const discrepancyDetails = dayDiscrepancies.length > 0 ? {
+        items: dayDiscrepancies.map(d => ({
+          type: d.type,
+          description: d.description,
+          expected: d.expected,
+          actual: d.actual,
+          difference: d.difference
+        }))
+      } : null;
+      
       // Create day record
       const dayData: InsertCashRegisterDay = {
         registerDate: date,
@@ -647,6 +661,8 @@ export async function commitImport(
         importedFromFile: fileName,
         importedAt: new Date().toISOString(),
         createdBy,
+        hasDiscrepancy,
+        discrepancyDetails,
       };
       
       const createdDay = await storage.createCashRegisterDay(dayData);

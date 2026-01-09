@@ -15146,6 +15146,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Clear discrepancy remarks from a cash register day
+  app.post('/api/cash-register/days/:id/clear-discrepancy', isAuthenticated, requireRole('Admin'), async (req: any, res: Response) => {
+    try {
+      const { id } = req.params;
+      const day = await storage.getCashRegisterDay(id);
+      if (!day) {
+        return res.status(404).json({ message: 'Cash register day not found' });
+      }
+      
+      const updated = await storage.updateCashRegisterDay(id, {
+        hasDiscrepancy: 0,
+        discrepancyDetails: null,
+      });
+      
+      await logAudit(req.user?.id, 'UPDATE', 'cash_register_days', id, 
+        `Cleared discrepancy remarks for ${day.registerDate}`);
+      res.json(updated);
+    } catch (error: any) {
+      console.error('[CASH_REGISTER] Error clearing discrepancy:', error);
+      res.status(400).json({ message: error.message || 'Failed to clear discrepancy' });
+    }
+  });
+
   // Add transaction to cash register day
   app.post('/api/cash-register/days/:dayId/transactions', isAuthenticated, async (req: any, res: Response) => {
     try {
@@ -15720,13 +15743,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Excel import - commit (admin only)
   app.post('/api/cash-register/import/commit', isAuthenticated, requireRole('admin'), async (req: any, res: Response) => {
     try {
-      const { rows, fileName } = req.body;
+      const { rows, fileName, discrepancies } = req.body;
       
       if (!rows || !Array.isArray(rows)) {
         return res.status(400).json({ message: 'No rows to import' });
       }
       
-      const result = await commitImport(rows, fileName, req.user?.id);
+      const result = await commitImport(rows, fileName, req.user?.id, discrepancies || []);
       
       if (result.success) {
         await logAudit(req.user?.id, 'IMPORT', 'cash_register', '', 
