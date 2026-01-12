@@ -1599,12 +1599,12 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
           <div className="hidden md:grid grid-cols-12 gap-2 text-xs font-semibold text-muted-foreground px-2">
             <div className="col-span-2">Product *</div>
             <div className="col-span-1">HSN</div>
-            <div className="col-span-2">Description *</div>
+            <div className={gstInclusiveMode ? "col-span-1" : "col-span-2"}>Description *</div>
             <div className="col-span-1">Qty *</div>
             <div className="col-span-1">{gstInclusiveMode ? 'Base ₹' : 'Price ₹'}</div>
             <div className="col-span-1">GST %</div>
             {gstInclusiveMode && <div className="col-span-2">Total (incl. GST)</div>}
-            {!gstInclusiveMode && <div className="col-span-1">Transport</div>}
+            <div className="col-span-1">Transport</div>
             <div className="col-span-1"></div>
           </div>
 
@@ -1719,7 +1719,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
               </div>
 
               {/* Description */}
-              <div className={gstInclusiveMode ? "md:col-span-2" : "md:col-span-2"}>
+              <div className={gstInclusiveMode ? "md:col-span-1" : "md:col-span-2"}>
                 <Label className="md:hidden text-xs text-muted-foreground mb-1">Description *</Label>
                 <Input
                   {...form.register(`items.${index}.description`)}
@@ -1846,21 +1846,19 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                 </div>
               )}
 
-              {/* Transport Rate (per case) - Hidden in GST Inclusive mode */}
-              {!gstInclusiveMode && (
-                <div className="md:col-span-1">
-                  <Label className="md:hidden text-xs text-muted-foreground mb-1">Transport</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    {...form.register(`items.${index}.transportRatePerCase`, { valueAsNumber: true })}
-                    placeholder="₹0"
-                    className="h-9 text-sm"
-                    data-testid={`input-transport-rate-${index}`}
-                  />
-                </div>
-              )}
+              {/* Transport Rate (per case) - Always visible, separate from GST calculation */}
+              <div className="md:col-span-1">
+                <Label className="md:hidden text-xs text-muted-foreground mb-1">Transport</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  {...form.register(`items.${index}.transportRatePerCase`, { valueAsNumber: true })}
+                  placeholder="₹0"
+                  className="h-9 text-sm"
+                  data-testid={`input-transport-rate-${index}`}
+                />
+              </div>
 
               {/* Remove Button */}
               <div className="md:col-span-1 flex justify-center md:justify-center">
