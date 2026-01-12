@@ -673,15 +673,14 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
   };
   
   // Handle total amount change in GST Inclusive mode
+  // totalValue = price per unit INCLUDING GST (e.g., 106.72 per case)
   const handleTotalAmountChange = (index: number, totalValue: number) => {
     setItemTotalAmounts(prev => ({ ...prev, [index]: totalValue }));
     
     const gstRate = form.watch(`items.${index}.gstRate`) || 18;
-    const quantity = form.watch(`items.${index}.quantity`) || 1;
     
-    // Calculate unit price from total (totalValue is for all items in this row)
-    const totalPerUnit = totalValue / quantity;
-    const basePerUnit = calculateBaseFromTotal(totalPerUnit, gstRate);
+    // totalValue is the per-unit inclusive price, calculate base per unit directly
+    const basePerUnit = calculateBaseFromTotal(totalValue, gstRate);
     
     form.setValue(`items.${index}.unitPrice`, basePerUnit);
   };
@@ -1591,7 +1590,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
           {gstInclusiveMode && (
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200 text-sm p-2 rounded-md flex items-center gap-2">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
-              <span>Enter <strong>Total Amount (incl. GST)</strong> and the system will auto-calculate Base Price + GST split</span>
+              <span>Enter <strong>Price per Case (incl. GST)</strong> and the system will auto-calculate Base Price + GST split</span>
             </div>
           )}
 
@@ -1603,7 +1602,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
             <div className="col-span-1">Qty *</div>
             <div className="col-span-1">{gstInclusiveMode ? 'Base ₹' : 'Price ₹'}</div>
             <div className="col-span-1">GST %</div>
-            {gstInclusiveMode && <div className="col-span-2">Total (incl. GST)</div>}
+            {gstInclusiveMode && <div className="col-span-2">Price/Case (incl. GST)</div>}
             <div className="col-span-1">Transport</div>
             <div className="col-span-1"></div>
           </div>
@@ -1738,18 +1737,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                     valueAsNumber: true,
                     onChange: (e) => {
                       const enteredQty = parseInt(e.target.value) || 0;
-                      const oldQty = form.watch(`items.${index}.quantity`) || 1;
                       const productId = form.watch(`items.${index}.productId`);
-                      
-                      // GST Inclusive Mode: Auto-recalculate total when quantity changes
-                      if (gstInclusiveMode && itemTotalAmounts[index] > 0 && oldQty > 0 && enteredQty > 0) {
-                        // Calculate per-unit inclusive price from current total and old quantity
-                        const perUnitInclusive = itemTotalAmounts[index] / oldQty;
-                        // Calculate new total for new quantity
-                        const newTotal = Math.round(perUnitInclusive * enteredQty * 100) / 100;
-                        // Update total amount and recalculate base price
-                        handleTotalAmountChange(index, newTotal);
-                      }
                       
                       // Skip strict validation in edit/reissue mode - API already excludes current invoice
                       // User can still see warnings but won't be blocked
@@ -1819,10 +1807,10 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                 </Select>
               </div>
 
-              {/* Total Amount (GST Inclusive Mode) - This is the main input when in inclusive mode */}
+              {/* Total Amount per Case (GST Inclusive Mode) - Price per unit including GST */}
               {gstInclusiveMode && (
                 <div className="md:col-span-2">
-                  <Label className="md:hidden text-xs text-muted-foreground mb-1">Total (incl. GST) *</Label>
+                  <Label className="md:hidden text-xs text-muted-foreground mb-1">Price/Case (incl. GST)</Label>
                   <div className="relative">
                     <Input
                       type="number"
@@ -1830,26 +1818,26 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                       min="0"
                       value={itemTotalAmounts[index] || ''}
                       onChange={(e) => handleTotalAmountChange(index, parseFloat(e.target.value) || 0)}
-                      placeholder="Enter total amount"
-                      className="h-9 text-sm pr-16"
+                      placeholder="Price per case"
+                      className="h-9 text-sm pr-20"
                       data-testid={`input-total-amount-${index}`}
                     />
-                    {/* Show GST breakdown tooltip */}
+                    {/* Show per-unit GST breakdown tooltip */}
                     {itemTotalAmounts[index] > 0 && (
                       <div className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                        GST: ₹{(itemTotalAmounts[index] - (form.watch(`items.${index}.unitPrice`) * form.watch(`items.${index}.quantity`))).toFixed(2)}
+                        GST: ₹{(itemTotalAmounts[index] - form.watch(`items.${index}.unitPrice`)).toFixed(2)}
                       </div>
                     )}
                   </div>
-                  {/* Show breakdown below */}
+                  {/* Show line total breakdown below */}
                   {itemTotalAmounts[index] > 0 && (
                     <div className="text-xs text-muted-foreground mt-1 flex gap-2">
                       <span>Base: ₹{(form.watch(`items.${index}.unitPrice`) * form.watch(`items.${index}.quantity`)).toFixed(2)}</span>
                       <span>|</span>
                       <span>
                         {isIntrastateSupply 
-                          ? `CGST+SGST: ₹${(itemTotalAmounts[index] - (form.watch(`items.${index}.unitPrice`) * form.watch(`items.${index}.quantity`))).toFixed(2)}`
-                          : `IGST: ₹${(itemTotalAmounts[index] - (form.watch(`items.${index}.unitPrice`) * form.watch(`items.${index}.quantity`))).toFixed(2)}`
+                          ? `CGST+SGST: ₹${((itemTotalAmounts[index] - form.watch(`items.${index}.unitPrice`)) * form.watch(`items.${index}.quantity`)).toFixed(2)}`
+                          : `IGST: ₹${((itemTotalAmounts[index] - form.watch(`items.${index}.unitPrice`)) * form.watch(`items.${index}.quantity`)).toFixed(2)}`
                         }
                       </span>
                     </div>
