@@ -108,16 +108,17 @@ interface DocumentData {
   voucherId?: string;
 }
 
-const formatCurrency = (paise: number) => {
+// Cash register amounts are stored in RUPEES (not paise)
+const formatCurrency = (rupees: number) => {
   return new Intl.NumberFormat('en-IN', {
     style: 'currency',
     currency: 'INR',
     minimumFractionDigits: 2,
-  }).format(paise / 100);
+  }).format(rupees);
 };
 
-const formatCurrencyNumber = (paise: number) => {
-  return (paise / 100).toFixed(2);
+const formatCurrencyNumber = (rupees: number) => {
+  return rupees.toFixed(2);
 };
 
 const exportToExcel = async (reportData: ReportData, periodType: string) => {
