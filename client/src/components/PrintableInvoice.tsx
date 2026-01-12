@@ -49,10 +49,28 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
   const template = specificTemplate || defaultTemplate;
   const isLoadingTemplate = isLoadingSpecificTemplate || isLoadingDefaultTemplate;
 
+  // Fetch terms & conditions by ID
   const { data: termsConditions } = useQuery<TermsConditions | null>({
     queryKey: ['/api/terms-conditions', invoice.termsConditionsId],
+    queryFn: async () => {
+      if (!invoice.termsConditionsId) return null;
+      const response = await fetch(`/api/terms-conditions/${invoice.termsConditionsId}`, {
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Failed to fetch terms & conditions');
+      return response.json();
+    },
     enabled: !!invoice.termsConditionsId,
   });
+
+  // Fallback to default terms & conditions if invoice doesn't have specific one
+  const { data: defaultTermsConditions } = useQuery<TermsConditions | null>({
+    queryKey: ['/api/terms-conditions/default'],
+    enabled: !invoice.termsConditionsId,
+  });
+
+  // Use specific terms or default
+  const activeTermsConditions = termsConditions || defaultTermsConditions;
 
   const getProductName = (productId: string): string => {
     const product = products.find(p => p.id === productId);
@@ -411,10 +429,10 @@ ${invoice.shipToName || invoice.shipToAddress ? `
         <div class="terms-payment-grid">
           <!-- Terms & Conditions (Left Column) -->
           <div class="terms-section">
-            ${termsConditions && termsConditions.terms && termsConditions.terms.length > 0 ? `
+            ${activeTermsConditions && activeTermsConditions.terms && activeTermsConditions.terms.length > 0 ? `
               <div class="terms-title">Terms & Conditions:</div>
               <ol>
-                ${termsConditions.terms.map(term => `<li>${term}</li>`).join('')}
+                ${activeTermsConditions.terms.map(term => `<li>${term}</li>`).join('')}
               </ol>
             ` : ''}
           </div>

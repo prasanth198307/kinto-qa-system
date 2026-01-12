@@ -104,10 +104,28 @@ export default function PrintInvoicePage() {
 
   const template = specificTemplate || defaultTemplate;
 
+  // Fetch terms & conditions by ID
   const { data: termsConditions } = useQuery<TermsConditions | null>({
     queryKey: ['/api/terms-conditions', invoice?.termsConditionsId],
+    queryFn: async () => {
+      if (!invoice?.termsConditionsId) return null;
+      const response = await fetch(`/api/terms-conditions/${invoice.termsConditionsId}`, {
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Failed to fetch terms & conditions');
+      return response.json();
+    },
     enabled: !!invoice?.termsConditionsId,
   });
+
+  // Fallback to default terms & conditions
+  const { data: defaultTermsConditions } = useQuery<TermsConditions | null>({
+    queryKey: ['/api/terms-conditions/default'],
+    enabled: !invoice?.termsConditionsId,
+  });
+
+  // Use specific terms or default
+  const activeTermsConditions = termsConditions || defaultTermsConditions;
 
   const getProductName = (productId: string): string => {
     const product = products.find(p => p.id === productId);
@@ -443,11 +461,11 @@ export default function PrintInvoicePage() {
 
       <div style={{ display: 'flex', gap: '20px', marginBottom: '15px' }}>
         <div style={{ width: '55%' }}>
-          {termsConditions && termsConditions.terms && termsConditions.terms.length > 0 && (
+          {activeTermsConditions && activeTermsConditions.terms && activeTermsConditions.terms.length > 0 && (
             <div style={{ marginBottom: '10px' }}>
               <strong style={{ fontSize: '10px' }}>Terms & Conditions:</strong>
               <ol style={{ margin: '5px 0 0 15px', padding: 0, fontSize: '9px', lineHeight: '1.4' }}>
-                {termsConditions.terms.map((term: string, idx: number) => (
+                {activeTermsConditions.terms.map((term: string, idx: number) => (
                   <li key={idx}>{term}</li>
                 ))}
               </ol>
