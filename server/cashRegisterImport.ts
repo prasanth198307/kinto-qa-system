@@ -699,6 +699,10 @@ export async function commitImport(
           // Calculate if items have amounts parsed
           const itemsWithAmounts = row.parsedItems.filter(i => i.amount > 0);
           const totalParsedAmount = row.parsedItems.reduce((sum, i) => sum + i.amount, 0);
+          const itemsWithoutAmounts = row.parsedItems.filter(i => i.amount === 0);
+          
+          // Calculate remaining amount after items with explicit amounts
+          const remainingAmount = row.expenses - totalParsedAmount;
           
           // If no items have amounts, distribute total expense evenly
           // If only some items have amounts but don't add up, use row.expenses for single item
@@ -713,6 +717,13 @@ export async function commitImport(
             } else if (item.amount === 0 && itemsWithAmounts.length === 0) {
               // Multiple items with no amounts - distribute evenly
               itemAmount = Math.round(row.expenses / row.parsedItems.length);
+            } else if (item.amount === 0 && remainingAmount > 0 && itemsWithoutAmounts.length > 0) {
+              // Some items have amounts, some don't - distribute remaining among items without amounts
+              itemAmount = Math.round(remainingAmount / itemsWithoutAmounts.length);
+            } else if (item.amount === 0 && remainingAmount <= 0) {
+              // Items with amounts already cover the total - skip items without amounts (they're just labels/notes)
+              console.log(`[CASH_REGISTER] Skipping label-only item "${item.label}" - no remaining amount to allocate`);
+              continue;
             }
             const itemDescription = item.label || item.rawText;
             
