@@ -717,13 +717,14 @@ export async function commitImport(
             const itemDescription = item.label || item.rawText;
             
             // Create expense voucher first (expense_vouchers table uses paise)
+            // Use item description as payeeName (Paid To) - salesperson stored in remarks
             const voucherNumber = generateVoucherNumber(date);
             const itemAmountInPaise = itemAmount * 100; // Convert rupees to paise for voucher
             const voucher = await storage.createExpenseVoucher({
               voucherNumber,
               voucherDate: date,
-              payeeType: 'staff',
-              payeeName: salespersonName || 'Cash Register Import',
+              payeeType: 'other',
+              payeeName: itemDescription, // Use description as "Paid To"
               payeeId: null,
               totalAmount: itemAmountInPaise,
               subtotal: itemAmountInPaise,
@@ -731,6 +732,7 @@ export async function commitImport(
               paymentMode: 'cash',
               status: 'submitted',
               purpose: `Imported: ${itemDescription}`,
+              remarks: `Salesperson: ${salespersonName || 'Unknown'} | Auto-imported from Excel`,
               preparedBy: createdBy,
             });
             
@@ -768,13 +770,15 @@ export async function commitImport(
           const itemDescription = row.itemDetails || 'Expense from Excel import';
           
           // Create expense voucher (expense_vouchers table uses paise)
+          // Use item description as payeeName (Paid To) - salesperson stored in remarks
           const voucherNumber = generateVoucherNumber(date);
           const expenseAmountInPaise = row.expenses * 100; // Convert rupees to paise for voucher
+          const payeeName = itemDescription || `${salespersonName} - Daily Expenses`;
           const voucher = await storage.createExpenseVoucher({
             voucherNumber,
             voucherDate: date,
-            payeeType: 'staff',
-            payeeName: salespersonName,
+            payeeType: 'other',
+            payeeName: payeeName, // Use description as "Paid To"
             payeeId: null,
             totalAmount: expenseAmountInPaise,
             subtotal: expenseAmountInPaise,
@@ -782,6 +786,7 @@ export async function commitImport(
             paymentMode: 'cash',
             status: 'approved',
             purpose: `Imported: ${itemDescription}`,
+            remarks: `Salesperson: ${salespersonName || 'Unknown'} | Auto-imported from Excel`,
             preparedBy: createdBy,
           });
           
