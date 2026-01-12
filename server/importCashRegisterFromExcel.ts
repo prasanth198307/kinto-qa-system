@@ -194,19 +194,20 @@ export async function importCashRegisterFromExcel(filePath: string, userId: stri
               }
               
               // Create expense voucher for this single item (convert rupees to paise for voucher)
+              // Use item description as payeeName (Paid To) - salesperson stored in remarks
               const itemAmountInPaise = itemAmount * 100;
               const [voucher] = await db.insert(expenseVouchers).values({
                 voucherNumber,
                 voucherDate: dateStr,
-                payeeType: 'employee',
-                payeeName: salesperson,
+                payeeType: 'other',
+                payeeName: item.label, // Use description as "Paid To"
                 paymentMode: 'cash',
                 subtotal: itemAmountInPaise,
                 gstAmount: 0,
                 totalAmount: itemAmountInPaise,
                 status: 'approved',
-                purpose: item.label,
-                remarks: `Auto-imported from Excel (${sheetName})`,
+                purpose: `Imported: ${item.label}`,
+                remarks: `Salesperson: ${salesperson} | Auto-imported from Excel (${sheetName})`,
                 preparedBy: userId,
               }).returning();
               vouchersCreated++;
@@ -254,19 +255,21 @@ export async function importCashRegisterFromExcel(filePath: string, userId: stri
             
             if (existingVoucher.length === 0) {
               // Convert rupees to paise for expense voucher
+              // Use itemDetails as payeeName (Paid To) - salesperson stored in remarks
               const expensesInPaise = expenses * 100;
+              const payeeName = itemDetails || `${salesperson} - Daily Expenses`;
               const [voucher] = await db.insert(expenseVouchers).values({
                 voucherNumber,
                 voucherDate: dateStr,
-                payeeType: 'employee',
-                payeeName: salesperson,
+                payeeType: 'other',
+                payeeName: payeeName, // Use description as "Paid To"
                 paymentMode: 'cash',
                 subtotal: expensesInPaise,
                 gstAmount: 0,
                 totalAmount: expensesInPaise,
                 status: 'approved',
-                purpose: itemDetails || 'Daily Expenses',
-                remarks: `Auto-imported from Excel (${sheetName})`,
+                purpose: `Imported: ${itemDetails || 'Daily Expenses'}`,
+                remarks: `Salesperson: ${salesperson} | Auto-imported from Excel (${sheetName})`,
                 preparedBy: userId,
               }).returning();
               vouchersCreated++;
