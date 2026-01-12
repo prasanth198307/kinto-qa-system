@@ -1738,7 +1738,18 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                     valueAsNumber: true,
                     onChange: (e) => {
                       const enteredQty = parseInt(e.target.value) || 0;
+                      const oldQty = form.watch(`items.${index}.quantity`) || 1;
                       const productId = form.watch(`items.${index}.productId`);
+                      
+                      // GST Inclusive Mode: Auto-recalculate total when quantity changes
+                      if (gstInclusiveMode && itemTotalAmounts[index] > 0 && oldQty > 0 && enteredQty > 0) {
+                        // Calculate per-unit inclusive price from current total and old quantity
+                        const perUnitInclusive = itemTotalAmounts[index] / oldQty;
+                        // Calculate new total for new quantity
+                        const newTotal = Math.round(perUnitInclusive * enteredQty * 100) / 100;
+                        // Update total amount and recalculate base price
+                        handleTotalAmountChange(index, newTotal);
+                      }
                       
                       // Skip strict validation in edit/reissue mode - API already excludes current invoice
                       // User can still see warnings but won't be blocked
