@@ -76,6 +76,19 @@ interface PeriodSummary {
   }[];
 }
 
+interface TransactionData {
+  id: string;
+  dayId: string;
+  date: string;
+  salespersonName: string;
+  transactionType: string;
+  sourceType?: string;
+  amount: number;
+  description?: string;
+  reference?: string;
+  convertedToVoucherId?: string;
+}
+
 interface ReportData {
   periodType: string;
   startDate?: string;
@@ -92,6 +105,7 @@ interface ReportData {
     closedDays: number;
   };
   periods: PeriodSummary[];
+  transactions?: TransactionData[];
 }
 
 interface DocumentData {
@@ -185,6 +199,33 @@ const exportToExcel = async (reportData: ReportData, periodType: string) => {
   
   const periodSheet = XLSX.utils.aoa_to_sheet(periodRows);
   XLSX.utils.book_append_sheet(workbook, periodSheet, 'Period Summary');
+  
+  // Add Transactions sheet with all line items
+  if (reportData.transactions && reportData.transactions.length > 0) {
+    const transactionHeaders = ['Date', 'Salesperson', 'Type', 'Source', 'Amount', 'Description', 'Reference', 'Voucher ID'];
+    const transactionRows: (string | number)[][] = [transactionHeaders];
+    
+    // Sort transactions by date
+    const sortedTransactions = [...reportData.transactions].sort((a, b) => 
+      a.date.localeCompare(b.date) || a.transactionType.localeCompare(b.transactionType)
+    );
+    
+    sortedTransactions.forEach(t => {
+      transactionRows.push([
+        t.date,
+        t.salespersonName || '',
+        t.transactionType || '',
+        t.sourceType || '',
+        parseFloat(formatCurrencyNumber(t.amount)),
+        t.description || '',
+        t.reference || '',
+        t.convertedToVoucherId || '',
+      ]);
+    });
+    
+    const transactionSheet = XLSX.utils.aoa_to_sheet(transactionRows);
+    XLSX.utils.book_append_sheet(workbook, transactionSheet, 'Transactions');
+  }
   
   XLSX.writeFile(workbook, `cash-register-report-${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
 };

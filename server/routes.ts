@@ -15888,6 +15888,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       });
       
+      // Fetch transactions for all days for line items export
+      const allDayIds = sortedDays.map(d => d.id);
+      let allTransactions: any[] = [];
+      if (allDayIds.length > 0) {
+        allTransactions = await db.select({
+          id: cashRegisterTransactions.id,
+          dayId: cashRegisterTransactions.dayId,
+          transactionType: cashRegisterTransactions.transactionType,
+          sourceType: cashRegisterTransactions.sourceType,
+          amount: cashRegisterTransactions.amount,
+          description: cashRegisterTransactions.description,
+          reference: cashRegisterTransactions.reference,
+          convertedToVoucherId: cashRegisterTransactions.convertedToVoucherId,
+        })
+        .from(cashRegisterTransactions)
+        .where(and(
+          inArray(cashRegisterTransactions.dayId, allDayIds),
+          eq(cashRegisterTransactions.recordStatus, 1)
+        ));
+      }
+      
+      // Create day lookup for transaction mapping
+      const dayLookup = new Map(sortedDays.map(d => [d.id, { date: d.registerDate, salespersonName: d.salespersonName }]));
+      const transactionsWithDayInfo = allTransactions.map(t => {
+        const dayInfo = dayLookup.get(t.dayId);
+        return {
+          ...t,
+          date: dayInfo?.date || '',
+          salespersonName: dayInfo?.salespersonName || '',
+        };
+      });
+      
       // Sort periods chronologically
       periodSummaries.sort((a, b) => a.period.localeCompare(b.period));
       
@@ -15915,6 +15947,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         endDate,
         overallSummary,
         periods: periodSummaries,
+        transactions: transactionsWithDayInfo,
       });
     } catch (error: any) {
       console.error('[CASH_REGISTER] Error generating report:', error);
