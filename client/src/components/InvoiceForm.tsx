@@ -117,6 +117,11 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
   const [vendorTypeFilter, setVendorTypeFilter] = useState<string>('all');
   const [vendorSearchOpen, setVendorSearchOpen] = useState(false);
   const [shipToSearchOpen, setShipToSearchOpen] = useState(false);
+  
+  // GST Inclusive mode - when ON, user enters total amount and system calculates base + GST
+  const [gstInclusiveMode, setGstInclusiveMode] = useState(false);
+  // Track total amounts per item for inclusive mode calculation
+  const [itemTotalAmounts, setItemTotalAmounts] = useState<{ [index: number]: number }>({});
 
   const { data: products = [] } = useQuery<Product[]>({
     queryKey: ['/api/products'],
@@ -643,6 +648,43 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
   useEffect(() => {
     setIsIntrastateSupply(watchBuyerState === watchSellerState);
   }, [watchBuyerState, watchSellerState]);
+
+  // Reverse GST calculation: Calculate base price from total (inclusive) amount
+  const calculateBaseFromTotal = (totalAmount: number, gstRate: number): number => {
+    // Total = Base + (Base * GST/100) = Base * (1 + GST/100)
+    // Base = Total / (1 + GST/100)
+    const divisor = 1 + (gstRate / 100);
+    return Math.round((totalAmount / divisor) * 100) / 100; // Round to 2 decimals
+  };
+  
+  // Calculate GST breakdown from total amount
+  const calculateGstSplit = (totalAmount: number, gstRate: number) => {
+    const baseAmount = calculateBaseFromTotal(totalAmount, gstRate);
+    const totalGst = totalAmount - baseAmount;
+    const halfGst = Math.round((totalGst / 2) * 100) / 100;
+    
+    return {
+      baseAmount,
+      totalGst,
+      cgst: halfGst,
+      sgst: halfGst,
+      igst: totalGst,
+    };
+  };
+  
+  // Handle total amount change in GST Inclusive mode
+  const handleTotalAmountChange = (index: number, totalValue: number) => {
+    setItemTotalAmounts(prev => ({ ...prev, [index]: totalValue }));
+    
+    const gstRate = form.watch(`items.${index}.gstRate`) || 18;
+    const quantity = form.watch(`items.${index}.quantity`) || 1;
+    
+    // Calculate unit price from total (totalValue is for all items in this row)
+    const totalPerUnit = totalValue / quantity;
+    const basePerUnit = calculateBaseFromTotal(totalPerUnit, gstRate);
+    
+    form.setValue(`items.${index}.unitPrice`, basePerUnit);
+  };
 
   const calculateTaxes = () => {
     let subtotal = 0;
@@ -1516,28 +1558,53 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
 
         {/* Items - Single Line Layout */}
         <div className="space-y-3">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-wrap justify-between items-center gap-2">
             <h3 className="font-semibold text-lg">Invoice Items</h3>
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => append({ productId: "", description: "", hsnCode: "", quantity: 1, unitPrice: 0, gstRate: 18, transportRatePerCase: 0 })}
-              data-testid="button-add-item"
-            >
-              <Plus className="w-4 h-4 mr-1" />
-              Add Item
-            </Button>
+            <div className="flex items-center gap-3">
+              {/* GST Inclusive Mode Toggle */}
+              <div className="flex items-center gap-2 bg-muted/50 px-3 py-1.5 rounded-md">
+                <Label htmlFor="gstInclusiveToggle" className="text-sm cursor-pointer whitespace-nowrap">
+                  {gstInclusiveMode ? "Total → Split GST" : "Base + GST"}
+                </Label>
+                <input
+                  type="checkbox"
+                  id="gstInclusiveToggle"
+                  checked={gstInclusiveMode}
+                  onChange={(e) => setGstInclusiveMode(e.target.checked)}
+                  className="h-4 w-4 cursor-pointer"
+                  data-testid="toggle-gst-inclusive"
+                />
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => append({ productId: "", description: "", hsnCode: "", quantity: 1, unitPrice: 0, gstRate: 18, transportRatePerCase: 0 })}
+                data-testid="button-add-item"
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Add Item
+              </Button>
+            </div>
           </div>
+          
+          {/* GST Inclusive Mode Info */}
+          {gstInclusiveMode && (
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200 text-sm p-2 rounded-md flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <span>Enter <strong>Total Amount (incl. GST)</strong> and the system will auto-calculate Base Price + GST split</span>
+            </div>
+          )}
 
           {/* Table Header - Hidden on mobile */}
           <div className="hidden md:grid grid-cols-12 gap-2 text-xs font-semibold text-muted-foreground px-2">
-            <div className="col-span-3">Product *</div>
+            <div className="col-span-2">Product *</div>
             <div className="col-span-1">HSN</div>
             <div className="col-span-2">Description *</div>
             <div className="col-span-1">Qty *</div>
-            <div className="col-span-2">Price (₹) *</div>
+            <div className="col-span-1">{gstInclusiveMode ? 'Base ₹' : 'Price ₹'}</div>
             <div className="col-span-1">GST %</div>
-            <div className="col-span-1">Transport</div>
+            {gstInclusiveMode && <div className="col-span-2">Total (incl. GST)</div>}
+            {!gstInclusiveMode && <div className="col-span-1">Transport</div>}
             <div className="col-span-1"></div>
           </div>
 
@@ -1554,7 +1621,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
               {/* Mobile: Stacked layout, Desktop: Grid layout */}
               <div className="flex flex-col gap-3 md:grid md:grid-cols-12 md:gap-2 md:items-start">
               {/* Product */}
-              <div className="md:col-span-3">
+              <div className="md:col-span-2">
                 <Label className="md:hidden text-xs text-muted-foreground mb-1">Product *</Label>
                 <Select
                   value={form.watch(`items.${index}.productId`)}
@@ -1595,8 +1662,9 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                     if (product) {
                       form.setValue(`items.${index}.description`, product.productName);
                       // Auto-fill base price from Product Master (convert from paise to rupees) - only for NEW items
-                      if (product.basePrice && !isExistingItem) {
-                        form.setValue(`items.${index}.unitPrice`, product.basePrice / 100);
+                      const basePriceNum = product.basePrice ? parseFloat(String(product.basePrice)) : 0;
+                      if (basePriceNum > 0 && !isExistingItem) {
+                        form.setValue(`items.${index}.unitPrice`, basePriceNum / 100);
                       }
                       // Auto-fill HSN code if available - only for NEW items
                       if (product.hsnCode && !isExistingItem) {
@@ -1608,7 +1676,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                         const reservedInfo = reserved > 0 ? ` (${reserved} reserved)` : '';
                         toast({
                           title: "Stock Available",
-                          description: `Available: ${totalAvailable} units${reservedInfo}${product.basePrice ? ` | Price: ₹${(product.basePrice / 100).toFixed(2)}` : ''}`,
+                          description: `Available: ${totalAvailable} units${reservedInfo}${basePriceNum > 0 ? ` | Price: ₹${(basePriceNum / 100).toFixed(2)}` : ''}`,
                         });
                       }
                     }
@@ -1651,7 +1719,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
               </div>
 
               {/* Description */}
-              <div className="md:col-span-2">
+              <div className={gstInclusiveMode ? "md:col-span-2" : "md:col-span-2"}>
                 <Label className="md:hidden text-xs text-muted-foreground mb-1">Description *</Label>
                 <Input
                   {...form.register(`items.${index}.description`)}
@@ -1663,7 +1731,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
 
               {/* Quantity */}
               <div className="md:col-span-1">
-                <Label className="md:hidden text-xs text-muted-foreground mb-1">Quantity *</Label>
+                <Label className="md:hidden text-xs text-muted-foreground mb-1">Qty *</Label>
                 <Input
                   type="number"
                   {...form.register(`items.${index}.quantity`, { 
@@ -1701,15 +1769,16 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                 />
               </div>
 
-              {/* Unit Price */}
-              <div className="md:col-span-2">
-                <Label className="md:hidden text-xs text-muted-foreground mb-1">Price (₹) *</Label>
+              {/* Unit Price (Base Price - calculated in inclusive mode, entered in exclusive mode) */}
+              <div className="md:col-span-1">
+                <Label className="md:hidden text-xs text-muted-foreground mb-1">{gstInclusiveMode ? 'Base ₹' : 'Price ₹'}</Label>
                 <Input
                   type="number"
                   step="0.01"
                   {...form.register(`items.${index}.unitPrice`, { valueAsNumber: true })}
                   placeholder="0.00"
-                  className="h-9 text-sm"
+                  className={`h-9 text-sm ${gstInclusiveMode ? 'bg-muted/50' : ''}`}
+                  readOnly={gstInclusiveMode}
                   data-testid={`input-unit-price-${index}`}
                 />
               </div>
@@ -1739,19 +1808,59 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                 </Select>
               </div>
 
-              {/* Transport Rate (per case) */}
-              <div className="md:col-span-1">
-                <Label className="md:hidden text-xs text-muted-foreground mb-1">Transport</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  {...form.register(`items.${index}.transportRatePerCase`, { valueAsNumber: true })}
-                  placeholder="₹0"
-                  className="h-9 text-sm"
-                  data-testid={`input-transport-rate-${index}`}
-                />
-              </div>
+              {/* Total Amount (GST Inclusive Mode) - This is the main input when in inclusive mode */}
+              {gstInclusiveMode && (
+                <div className="md:col-span-2">
+                  <Label className="md:hidden text-xs text-muted-foreground mb-1">Total (incl. GST) *</Label>
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={itemTotalAmounts[index] || ''}
+                      onChange={(e) => handleTotalAmountChange(index, parseFloat(e.target.value) || 0)}
+                      placeholder="Enter total amount"
+                      className="h-9 text-sm pr-16"
+                      data-testid={`input-total-amount-${index}`}
+                    />
+                    {/* Show GST breakdown tooltip */}
+                    {itemTotalAmounts[index] > 0 && (
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                        GST: ₹{(itemTotalAmounts[index] - (form.watch(`items.${index}.unitPrice`) * form.watch(`items.${index}.quantity`))).toFixed(2)}
+                      </div>
+                    )}
+                  </div>
+                  {/* Show breakdown below */}
+                  {itemTotalAmounts[index] > 0 && (
+                    <div className="text-xs text-muted-foreground mt-1 flex gap-2">
+                      <span>Base: ₹{(form.watch(`items.${index}.unitPrice`) * form.watch(`items.${index}.quantity`)).toFixed(2)}</span>
+                      <span>|</span>
+                      <span>
+                        {isIntrastateSupply 
+                          ? `CGST+SGST: ₹${(itemTotalAmounts[index] - (form.watch(`items.${index}.unitPrice`) * form.watch(`items.${index}.quantity`))).toFixed(2)}`
+                          : `IGST: ₹${(itemTotalAmounts[index] - (form.watch(`items.${index}.unitPrice`) * form.watch(`items.${index}.quantity`))).toFixed(2)}`
+                        }
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Transport Rate (per case) - Hidden in GST Inclusive mode */}
+              {!gstInclusiveMode && (
+                <div className="md:col-span-1">
+                  <Label className="md:hidden text-xs text-muted-foreground mb-1">Transport</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    {...form.register(`items.${index}.transportRatePerCase`, { valueAsNumber: true })}
+                    placeholder="₹0"
+                    className="h-9 text-sm"
+                    data-testid={`input-transport-rate-${index}`}
+                  />
+                </div>
+              )}
 
               {/* Remove Button */}
               <div className="md:col-span-1 flex justify-center md:justify-center">
