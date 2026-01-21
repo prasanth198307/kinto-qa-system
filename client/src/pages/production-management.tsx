@@ -450,6 +450,8 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/gatepasses'] });
       queryClient.invalidateQueries({ queryKey: ['/api/finished-goods'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/invoices/available'] });
       toast({
         title: "Success",
         description: "Gatepass deleted successfully",
