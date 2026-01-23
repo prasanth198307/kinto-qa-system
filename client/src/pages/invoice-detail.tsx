@@ -38,6 +38,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import PrintableInvoice from "@/components/PrintableInvoice";
+import InvoiceForm from "@/components/InvoiceForm";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { format } from "date-fns";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -86,6 +88,8 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
   const [isCorrectAndDebitOpen, setIsCorrectAndDebitOpen] = useState(false);
   const [isQuickFullCreditOpen, setIsQuickFullCreditOpen] = useState(false);
   const [isCancelReissueConfirmOpen, setIsCancelReissueConfirmOpen] = useState(false);
+  const [isReissueFormOpen, setIsReissueFormOpen] = useState(false);
+  const [reissueInvoiceData, setReissueInvoiceData] = useState<any>(null);
 
   // Check if we're viewing a cancelled invoice (from cancelled invoices page)
   const urlParams = new URLSearchParams(window.location.search);
@@ -216,17 +220,21 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
     },
     onSuccess: (data: any) => {
       toast({
-        title: "Invoice Reissued",
-        description: data.message || "Invoice cancelled and replacement created as draft.",
+        title: "Invoice Cancelled",
+        description: data.message || "Invoice cancelled. Create a replacement now.",
       });
       
-      // Navigate directly to the newly created replacement invoice detail page
-      if (data.invoiceId) {
-        navigate(`/invoice/${data.invoiceId}`);
-      } else {
-        // Fallback to production management invoices tab if no ID returned
-        window.location.href = '/production-management?tab=invoices';
+      // Store invoice data and open the reissue form popup
+      if (data.invoiceData) {
+        setReissueInvoiceData({
+          ...data.invoiceData,
+          items: data.invoiceItems || [],
+        });
+        setIsReissueFormOpen(true);
       }
+      
+      // Refresh the invoice list
+      queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
     },
     onError: (error: any) => {
       toast({
@@ -1159,6 +1167,27 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Reissue Invoice Form Dialog */}
+      <Dialog open={isReissueFormOpen} onOpenChange={setIsReissueFormOpen}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto" data-testid="dialog-reissue-invoice-form">
+          <DialogHeader>
+            <DialogTitle>Create Replacement Invoice</DialogTitle>
+          </DialogHeader>
+          {reissueInvoiceData && (
+            <InvoiceForm 
+              invoice={reissueInvoiceData}
+              isReissueMode={true}
+              onClose={() => {
+                setIsReissueFormOpen(false);
+                setReissueInvoiceData(null);
+                // Navigate back to production management after closing
+                navigate('/production-management?tab=invoices');
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
       </div>
     </>
   );

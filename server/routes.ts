@@ -7199,43 +7199,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           })
           .where(eq(invoices.id, id));
 
-        // Generate a temporary invoice number for the reissue data
-        const tempInvoiceNumber = `REISSUE-${invoice.invoiceNumber}-${Date.now()}`;
-
-        // Create a new "replacement" invoice record immediately in the backend
-        // This makes the "cancelled" invoice data "normal" (active) again as a new record
-        // The user will then be able to edit and "Update" this record.
-        const invoiceData = {
-          ...invoice,
-          id: undefined, // Let DB generate new ID
-          invoiceNumber: tempInvoiceNumber,
-          originalInvoiceId: id,
-          status: 'Normal', // Set to Normal immediately instead of draft
-          recordStatus: 1,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          generatedBy: req.user?.id,
-          replacedByInvoiceId: null,
-        };
-
-        const [reissuedInvoice] = await tx.insert(invoices).values(invoiceData).returning();
-
-        // Copy items to the new invoice
-        for (const item of items) {
-          const { id: itemId, invoiceId: itemInvId, createdAt, updatedAt, ...cleanItem } = item;
-          await tx.insert(invoiceItems).values({
-            ...cleanItem,
-            invoiceId: reissuedInvoice.id,
-            recordStatus: 1
-          });
-        }
-
-        return reissuedInvoice;
+        // Return the invoice and items data for the frontend to populate the form
+        return { invoice, items };
       });
       
+      // Return invoice data so frontend can open a popup form with it pre-filled
       res.json({ 
-        message: "Invoice cancelled and replacement created as active.",
-        invoiceId: result.id,
+        message: "Invoice cancelled. You can now create a corrected replacement.",
+        invoiceData: result.invoice,
+        invoiceItems: result.items,
         isReissue: true
       });
     } catch (error) {
