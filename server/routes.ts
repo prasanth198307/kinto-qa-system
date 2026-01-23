@@ -5741,12 +5741,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Now delete the gatepass (soft delete)
       await storage.deleteGatepass(id);
       
-      // Reset invoice status to draft so user can edit invoice before creating a new gatepass
+      // Keep invoice status at ready_for_gatepass so user can immediately create a new gatepass
+      // The invoice is already in ready_for_gatepass when a gatepass exists
       if (gatepass.invoiceId) {
         await db.update(invoices)
-          .set({ status: 'draft' })
+          .set({ status: 'ready_for_gatepass' })
           .where(eq(invoices.id, gatepass.invoiceId));
-        console.log(`[AUDIT] Reset invoice status to draft after gatepass deletion`);
+        console.log(`[AUDIT] Invoice status set to ready_for_gatepass after gatepass deletion - can now create new gatepass`);
       }
       
       console.log(`[AUDIT] Gatepass ${gatepass.gatepassNumber} deleted by user, ${gatepassItems.length} items returned to inventory`);
