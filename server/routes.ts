@@ -3618,11 +3618,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Fetch finished goods by IDs - used when editing gatepasses to show assigned batches
-  app.get('/api/finished-goods/by-ids', isAuthenticated, async (req: any, res) => {
+  // Supports both query params (?0=id1&1=id2) and path parameter (/by-ids/id1,id2)
+  app.get('/api/finished-goods/by-ids/:ids?', isAuthenticated, async (req: any, res) => {
     try {
-      // IDs can be passed as comma-separated string or as array (depends on how query string is parsed)
-      const idsParam = req.query['0'] ? Object.values(req.query) : (req.query.ids || '').split(',');
-      const ids = (Array.isArray(idsParam) ? idsParam : [idsParam]).filter(Boolean);
+      let ids: string[] = [];
+      
+      // Check path parameter first (comma-separated)
+      if (req.params.ids) {
+        ids = req.params.ids.split(',').filter(Boolean);
+      } 
+      // Then check query params as array (TanStack Query sends array params as ?0=id1&1=id2)
+      else if (req.query['0']) {
+        ids = Object.values(req.query).filter(Boolean) as string[];
+      }
+      // Finally check for comma-separated query param
+      else if (req.query.ids) {
+        ids = (req.query.ids as string).split(',').filter(Boolean);
+      }
       
       if (ids.length === 0) {
         return res.json([]);
