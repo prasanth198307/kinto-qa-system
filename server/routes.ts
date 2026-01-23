@@ -6564,6 +6564,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // If this is a reissued invoice, update the cancelled invoice to link back
         // AND deduct inventory (to balance what was returned during cancellation)
+        // AND auto-create a gatepass since the original had one
+        let autoCreatedGatepass: any = null;
+        const batchAllocations: { productId: string; finishedGoodId: string; quantity: number }[] = [];
+        
         if (originalInvoiceId) {
           await tx.update(invoices)
             .set({ replacedByInvoiceId: invoice.id })
@@ -6593,6 +6597,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 
                 const deductFromThisBatch = Math.min(batch.quantity, remainingToDeduct);
                 const newQuantity = batch.quantity - deductFromThisBatch;
+                
+                // Track this allocation for gatepass item creation
+                batchAllocations.push({
+                  productId: item.productId,
+                  finishedGoodId: batch.id,
+                  quantity: deductFromThisBatch
+                });
                 
                 // If quantity becomes 0, soft-delete the batch to keep inventory clean
                 if (newQuantity === 0) {
@@ -6633,9 +6644,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             }
           }
+          
+          // Auto-create gatepass for reissued invoice using the batch allocations
+          if (batchAllocations.length > 0) {
+            const gatepassNumber = `GP-${Date.now()}`;
+            const [newGatepass] = await tx.insert(gatepasses).values({
+              invoiceId: invoice.id,
+              gatepassNumber,
+              gatepassDate: new Date().toISOString(),
+              vehicleNumber: 'PENDING', // User can update later
+              driverName: 'PENDING',
+              driverContact: null,
+              dispatchedBy: req.user?.id,
+              remarks: `Auto-generated gatepass for reissued invoice ${invoice.invoiceNumber}`,
+              status: 'draft',
+              recordStatus: 1,
+            }).returning();
+            
+            // Create gatepass items for each batch allocation
+            for (const allocation of batchAllocations) {
+              await tx.insert(gatepassItems).values({
+                gatepassId: newGatepass.id,
+                productId: allocation.productId,
+                finishedGoodId: allocation.finishedGoodId,
+                quantityDispatched: allocation.quantity,
+                recordStatus: 1,
+              });
+            }
+            
+            // Update invoice status to ready_for_gatepass since gatepass is created
+            await tx.update(invoices)
+              .set({ status: 'ready_for_gatepass' })
+              .where(eq(invoices.id, invoice.id));
+            
+            autoCreatedGatepass = newGatepass;
+            console.log(`[REISSUE] Auto-created gatepass ${gatepassNumber} for reissued invoice ${invoice.invoiceNumber} with ${batchAllocations.length} item allocations`);
+          }
         }
         
-        return invoice;
+        return { invoice, autoCreatedGatepass };
       });
       
       // Audit for potential oversell conditions (non-blocking, for admin visibility)
@@ -6645,9 +6692,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .map((item: any) => item.productId);
         
         if (productIds.length > 0) {
-          const auditResult = await storage.auditProductOversell(productIds, result.id);
+          const auditResult = await storage.auditProductOversell(productIds, result.invoice.id);
           if (auditResult.oversellProducts.length > 0) {
-            console.log(`[INVOICE ${result.invoiceNumber}] Oversell alert created for: ${auditResult.oversellProducts.join(', ')}`);
+            console.log(`[INVOICE ${result.invoice.invoiceNumber}] Oversell alert created for: ${auditResult.oversellProducts.join(', ')}`);
           }
         }
       } catch (auditError) {
@@ -6655,7 +6702,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error('[OVERSELL_AUDIT_ERROR]', auditError);
       }
       
-      res.json({ invoice: result, message: "Invoice created successfully with items" });
+      // Build response message based on what was created
+      let message = "Invoice created successfully with items";
+      if (result.autoCreatedGatepass) {
+        message = `Invoice created with auto-generated gatepass ${result.autoCreatedGatepass.gatepassNumber}. Update vehicle/driver details before dispatch.`;
+      }
+      
+      res.json({ 
+        invoice: result.invoice, 
+        gatepass: result.autoCreatedGatepass,
+        message 
+      });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
