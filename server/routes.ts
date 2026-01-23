@@ -7163,31 +7163,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`[CANCEL_REISSUE] Cancelled gatepass ${gatepass.gatepassNumber}`);
         }
         
-        // Return finished goods inventory
-        for (const item of items) {
-          if (item.productId && item.quantity > 0) {
-            const [existingProduct] = await tx.select({ id: products.id })
-              .from(products)
-              .where(eq(products.id, item.productId))
-              .limit(1);
-            
-            if (existingProduct) {
-              const batchNumber = `CANCEL-${invoice.invoiceNumber}-${format(new Date(), 'yyyyMMdd-HHmmss')}`;
-              const hasGatepass = cancelledGatepassNumbers.length > 0;
+        // Only return finished goods inventory if there was a gatepass
+        // Inventory is only deducted when gatepass is created, not when invoice is created
+        // So if there's no gatepass, there's no inventory to return
+        if (cancelledGatepassNumbers.length > 0) {
+          for (const item of items) {
+            if (item.productId && item.quantity > 0) {
+              const [existingProduct] = await tx.select({ id: products.id })
+                .from(products)
+                .where(eq(products.id, item.productId))
+                .limit(1);
               
-              await tx.insert(finishedGoods).values({
-                productId: item.productId,
-                batchNumber,
-                productionDate: new Date().toISOString(),
-                quantity: item.quantity,
-                qualityStatus: 'approved',
-                remarks: hasGatepass 
-                  ? `Inventory returned - Invoice ${invoice.invoiceNumber} cancelled & reissued. Gatepass(es): ${cancelledGatepassNumbers.join(', ')}`
-                  : `Inventory returned - Invoice ${invoice.invoiceNumber} cancelled & reissued (no gatepass - Vyapaar import)`,
-                createdBy: req.user?.id,
-              });
+              if (existingProduct) {
+                const batchNumber = `CANCEL-${invoice.invoiceNumber}-${format(new Date(), 'yyyyMMdd-HHmmss')}`;
+                
+                await tx.insert(finishedGoods).values({
+                  productId: item.productId,
+                  batchNumber,
+                  productionDate: new Date().toISOString(),
+                  quantity: item.quantity,
+                  qualityStatus: 'approved',
+                  remarks: `Inventory returned - Invoice ${invoice.invoiceNumber} cancelled & reissued. Gatepass(es): ${cancelledGatepassNumbers.join(', ')}`,
+                  createdBy: req.user?.id,
+                });
+              }
             }
           }
+          console.log(`[CANCEL_REISSUE] Returned inventory for ${items.length} items from cancelled gatepass(es)`);
+        } else {
+          console.log(`[CANCEL_REISSUE] No gatepass found - skipping inventory return (inventory was never deducted)`);
         }
         
         // Cancel the invoice (soft delete) with tracking info
