@@ -1567,7 +1567,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
               {/* GST Inclusive Mode Toggle */}
               <div className="flex items-center gap-2 bg-muted/50 px-3 py-1.5 rounded-md">
                 <Label htmlFor="gstInclusiveToggle" className="text-sm cursor-pointer whitespace-nowrap">
-                  {gstInclusiveMode ? "Total → Split GST" : "Base + GST"}
+                  {gstInclusiveMode ? "GST Inclusive Mode (Total Price)" : "GST Exclusive Mode (Base + GST)"}
                 </Label>
                 <input
                   type="checkbox"
