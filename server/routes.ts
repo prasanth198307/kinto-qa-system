@@ -7026,6 +7026,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Restore a cancelled invoice (Undo cancellation)
+  app.post('/api/invoices/:id/restore', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      const invoice = await storage.getInvoice(id, true); // true to include cancelled
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      
+      if (invoice.recordStatus === 1) {
+        return res.status(400).json({ message: "Invoice is already active" });
+      }
+      
+      await db.transaction(async (tx) => {
+        // Restore invoice header
+        await tx.update(invoices)
+          .set({ 
+            recordStatus: 1,
+            cancelledAt: null,
+            cancelledBy: null,
+            updatedAt: new Date().toISOString()
+          })
+          .where(eq(invoices.id, id));
+          
+        // Restore invoice items
+        await tx.update(invoiceItems)
+          .set({ 
+            recordStatus: 1,
+            updatedAt: new Date().toISOString()
+          })
+          .where(eq(invoiceItems.invoiceId, id));
+          
+        // Note: We don't automatically restore the gatepass because inventory was returned.
+        // The user would need to create a new gatepass or we'd need complex inventory logic.
+      });
+      
+      res.json({ message: "Invoice restored successfully. It is now active again." });
+    } catch (error) {
+      console.error("Error restoring invoice:", error);
+      res.status(500).json({ message: "Failed to restore invoice" });
+    }
+  });
+
   // Cancel & Reissue invoice (for current month corrections)
   app.post('/api/invoices/:id/cancel-and-reissue', requireRole('admin', 'manager'), async (req: any, res) => {
     try {

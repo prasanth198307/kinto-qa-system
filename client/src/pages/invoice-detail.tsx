@@ -185,6 +185,29 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
     enabled: !!id,
   });
 
+  // Restore invoice mutation
+  const restoreInvoiceMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', `/api/invoices/${id}/restore`, {});
+      return await response.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/invoices', id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
+      toast({
+        title: "Invoice Restored",
+        description: data.message,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Restore Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+
   // Cancel & Reissue mutation - MUST be before early returns to avoid hooks ordering violation
   const cancelAndReissueMutation = useMutation({
     mutationFn: async () => {
@@ -479,6 +502,18 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
             >
               <Receipt className="w-4 h-4 mr-2" />
               Create Credit Note
+            </Button>
+          )}
+          {invoice.recordStatus === 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => restoreInvoiceMutation.mutate()}
+              disabled={restoreInvoiceMutation.isPending}
+              data-testid="button-restore-invoice"
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${restoreInvoiceMutation.isPending ? 'animate-spin' : ''}`} />
+              {restoreInvoiceMutation.isPending ? 'Restoring...' : 'Restore Invoice'}
             </Button>
           )}
           {canCancelAndReissue && (
