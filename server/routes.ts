@@ -7288,6 +7288,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Inventory is only deducted when gatepass is created, not when invoice is created
         // So if there's no gatepass, there's no inventory to return
         if (cancelledGatepassNumbers.length > 0) {
+          // Get the original batch numbers from the cancelled gatepass items
+          const originalBatchMap = new Map<string, string>(); // productId -> original batch number
+          for (const gatepass of existingGatepasses) {
+            const gpItems = await tx.select({
+              productId: gatepassItems.productId,
+              finishedGoodId: gatepassItems.finishedGoodId,
+            })
+              .from(gatepassItems)
+              .where(eq(gatepassItems.gatepassId, gatepass.id));
+            
+            for (const gpItem of gpItems) {
+              if (gpItem.finishedGoodId) {
+                const [fg] = await tx.select({ batchNumber: finishedGoods.batchNumber, originalBatchNumber: finishedGoods.originalBatchNumber })
+                  .from(finishedGoods)
+                  .where(eq(finishedGoods.id, gpItem.finishedGoodId))
+                  .limit(1);
+                if (fg && gpItem.productId) {
+                  // Use originalBatchNumber if available, otherwise use batchNumber
+                  const displayBatch = fg.originalBatchNumber || fg.batchNumber;
+                  originalBatchMap.set(gpItem.productId, displayBatch);
+                }
+              }
+            }
+          }
+          
           for (const item of items) {
             if (item.productId && item.quantity > 0) {
               const [existingProduct] = await tx.select({ id: products.id })
@@ -7297,14 +7322,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
               
               if (existingProduct) {
                 const batchNumber = `CANCEL-${invoice.invoiceNumber}-${format(new Date(), 'yyyyMMdd-HHmmss')}`;
+                const originalBatchNumber = originalBatchMap.get(item.productId) || null;
                 
                 await tx.insert(finishedGoods).values({
                   productId: item.productId,
                   batchNumber,
+                  originalBatchNumber, // Store the original batch number for display
                   productionDate: new Date().toISOString(),
                   quantity: item.quantity,
                   qualityStatus: 'approved',
-                  remarks: `Inventory returned - Invoice ${invoice.invoiceNumber} cancelled & reissued. Gatepass(es): ${cancelledGatepassNumbers.join(', ')}`,
+                  remarks: `Inventory returned - Invoice ${invoice.invoiceNumber} cancelled & reissued. Gatepass(es): ${cancelledGatepassNumbers.join(', ')}${originalBatchNumber ? `. Original batch: ${originalBatchNumber}` : ''}`,
                   createdBy: req.user?.id,
                 });
               }

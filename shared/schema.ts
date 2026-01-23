@@ -1216,6 +1216,7 @@ export const finishedGoods = pgTable("finished_goods", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   productId: varchar("product_id").references(() => products.id).notNull(),
   batchNumber: varchar("batch_number", { length: 100 }).notNull(),
+  originalBatchNumber: varchar("original_batch_number", { length: 100 }), // Original batch number for cancelled/reissued goods
   productionDate: timestamp("production_date", { mode: 'string' }).notNull(),
   quantity: integer("quantity").notNull(),
   uomId: varchar("uom_id").references(() => uom.id),

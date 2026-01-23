@@ -118,7 +118,8 @@ export default function PrintableInvoiceGatepass({ invoice, gatepass }: Printabl
 
   const getBatchNumber = (item: GatepassItem): string => {
     const fg = finishedGoods.find(f => f.id === item.finishedGoodId);
-    return fg?.batchNumber || '-';
+    // Use originalBatchNumber if available (for cancelled/reissued items), otherwise use batchNumber
+    return fg?.originalBatchNumber || fg?.batchNumber || '-';
   };
 
   const formatCurrency = (amountInPaise: number): string => {
