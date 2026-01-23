@@ -433,7 +433,7 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
         </div>
 
         <div className="flex items-center gap-2">
-          {invoice.status === 'delivered' ? (
+          {invoice.status === 'delivered' && !invoice.invoiceNumber?.startsWith('REISSUE-') ? (
             <Tooltip>
               <TooltipTrigger asChild>
                 <span>
