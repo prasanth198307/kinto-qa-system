@@ -7161,6 +7161,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invoice is already active" });
       }
       
+      // Check if this invoice was replaced by another invoice (Cancel & Reissue)
+      if (invoice.replacedByInvoiceId) {
+        return res.status(400).json({ 
+          message: "Cannot restore: This invoice was replaced by a reissued invoice. Delete the replacement invoice first if you want to restore this one." 
+        });
+      }
+      
       await db.transaction(async (tx) => {
         // 1. Restore invoice header
         await tx.update(invoices)

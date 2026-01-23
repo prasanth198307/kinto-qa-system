@@ -530,7 +530,7 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
               Create Credit Note
             </Button>
           )}
-          {invoice.recordStatus === 0 && (
+          {invoice.recordStatus === 0 && !invoice.replacedByInvoiceId && (
             <Button
               variant="outline"
               size="sm"
