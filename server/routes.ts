@@ -5669,7 +5669,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/gatepasses/:id', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const { id } = req.params;
-      const validatedData = insertGatepassSchema.partial().parse(req.body);
+      
+      // Handle both flat structure and nested { header, items } structure
+      const { header, items } = req.body;
+      const gatepassData = header || req.body;
+      
+      const validatedData = insertGatepassSchema.partial().parse(gatepassData);
       
       // Check if invoice is already linked to another gatepass (not this one)
       if (validatedData.invoiceId) {
@@ -5692,10 +5697,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      // Update gatepass header
       const gatepass = await storage.updateGatepass(id, validatedData);
       if (!gatepass) {
         return res.status(404).json({ message: "Gatepass not found" });
       }
+      
+      // Update items if provided
+      if (items && Array.isArray(items) && items.length > 0) {
+        // For now, we're only updating header info - items update would require
+        // handling inventory changes which is complex. The main use case is
+        // updating driver/vehicle info, not changing batch allocations.
+        // Items are already correctly allocated during creation.
+      }
+      
       res.json(gatepass);
     } catch (error) {
       if (error instanceof z.ZodError) {
