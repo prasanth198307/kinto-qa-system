@@ -364,6 +364,10 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       
       console.log('[InvoiceForm] Resetting form with invoice data, items:', normalizedItems);
 
+      // Ensure GST Inclusive mode is OFF when loading invoice data (edit/reissue)
+      // This allows direct editing of base prices
+      setGstInclusiveMode(false);
+      
       form.reset({
         gatepassId: gatepass?.id || "",
         invoiceDate: new Date(invoice.invoiceDate).toISOString().split('T')[0],
