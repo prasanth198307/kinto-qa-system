@@ -428,8 +428,8 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
   const currentMonthCheck = isCurrentMonth();
   const isOldInvoice = invoice && invoice.invoiceDate ? !currentMonthCheck : false;
   
-  // Check if invoice is active (not cancelled)
-  const isActiveInvoice = invoice && invoice.recordStatus === 1;
+  // Check if invoice is active (not cancelled) - use Number() to handle string/number type
+  const isActiveInvoice = invoice && Number(invoice.recordStatus) === 1;
   
   // Cancel & Reissue - only for current month invoices (and invoice must be loaded and active)
   const canCancelAndReissue = canManageInvoices && isActiveInvoice && currentMonthCheck;
@@ -539,7 +539,7 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
               Create Credit Note
             </Button>
           )}
-          {invoice.recordStatus === 0 && !invoice.replacedByInvoiceId && (
+          {Number(invoice.recordStatus) === 0 && !invoice.replacedByInvoiceId && (
             <Button
               variant="outline"
               size="sm"
