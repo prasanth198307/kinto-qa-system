@@ -428,14 +428,17 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
   const currentMonthCheck = isCurrentMonth();
   const isOldInvoice = invoice && invoice.invoiceDate ? !currentMonthCheck : false;
   
-  // Cancel & Reissue - only for current month invoices (and invoice must be loaded)
-  const canCancelAndReissue = canManageInvoices && invoice && currentMonthCheck;
+  // Check if invoice is active (not cancelled)
+  const isActiveInvoice = invoice && invoice.recordStatus === 1;
   
-  // Credit Notes - only for previous month invoices (GST compliance)
-  // IMPORTANT: Only show these buttons when invoice is fully loaded AND is from a previous month
-  const canCreateCreditNote = canManageCreditNotes && invoice && isOldInvoice;
-  const canCorrectAndCredit = canManageCreditNotes && invoice && isOldInvoice;
-  const canCorrectAndDebit = canManageDebitNotes && invoice && isOldInvoice;
+  // Cancel & Reissue - only for current month invoices (and invoice must be loaded and active)
+  const canCancelAndReissue = canManageInvoices && isActiveInvoice && currentMonthCheck;
+  
+  // Credit Notes - only for previous month invoices (GST compliance) and active invoices
+  // IMPORTANT: Only show these buttons when invoice is fully loaded AND is from a previous month AND is active
+  const canCreateCreditNote = canManageCreditNotes && isActiveInvoice && isOldInvoice;
+  const canCorrectAndCredit = canManageCreditNotes && isActiveInvoice && isOldInvoice;
+  const canCorrectAndDebit = canManageDebitNotes && isActiveInvoice && isOldInvoice;
 
   return (
     <>
@@ -459,66 +462,72 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
         </div>
 
         <div className="flex items-center gap-2">
-          {invoice.status === 'delivered' ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled
-                    data-testid="button-edit-invoice-disabled"
-                  >
-                    <Lock className="w-4 h-4 mr-2" />
-                    Edit
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Delivered invoices cannot be edited.</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {currentMonthCheck 
-                    ? "Use 'Cancel & Reissue' to make corrections." 
-                    : "Use 'Credit Note' or 'Correct & Credit' for adjustments."}
-                </p>
-              </TooltipContent>
-            </Tooltip>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleEdit}
-              data-testid="button-edit-invoice"
-            >
-              <Edit className="w-4 h-4 mr-2" />
-              Edit
-            </Button>
+          {/* Only show edit/email buttons for active invoices */}
+          {isActiveInvoice && (
+            <>
+              {invoice.status === 'delivered' ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled
+                        data-testid="button-edit-invoice-disabled"
+                      >
+                        <Lock className="w-4 h-4 mr-2" />
+                        Edit
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Delivered invoices cannot be edited.</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {currentMonthCheck 
+                        ? "Use 'Cancel & Reissue' to make corrections." 
+                        : "Use 'Credit Note' or 'Correct & Credit' for adjustments."}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleEdit}
+                  data-testid="button-edit-invoice"
+                >
+                  <Edit className="w-4 h-4 mr-2" />
+                  Edit
+                </Button>
+              )}
+              {/* Signature selector - works on locked invoices */}
+              <Select
+                value={(invoice as any).signatureType || 'default'}
+                onValueChange={(value) => updateSignatureMutation.mutate(value)}
+                disabled={updateSignatureMutation.isPending}
+              >
+                <SelectTrigger className="w-[140px] h-9" data-testid="select-signature-type">
+                  <PenTool className="w-4 h-4 mr-2 flex-shrink-0" />
+                  <SelectValue placeholder="Signature" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="default">Signature 1</SelectItem>
+                  <SelectItem value="alternate">Signature 2</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleEmail}
+                data-testid="button-email-invoice"
+              >
+                <Mail className="w-4 h-4 mr-2" />
+                Email
+              </Button>
+            </>
           )}
-          {/* Signature selector - works on locked invoices */}
-          <Select
-            value={(invoice as any).signatureType || 'default'}
-            onValueChange={(value) => updateSignatureMutation.mutate(value)}
-            disabled={updateSignatureMutation.isPending}
-          >
-            <SelectTrigger className="w-[140px] h-9" data-testid="select-signature-type">
-              <PenTool className="w-4 h-4 mr-2 flex-shrink-0" />
-              <SelectValue placeholder="Signature" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="default">Signature 1</SelectItem>
-              <SelectItem value="alternate">Signature 2</SelectItem>
-            </SelectContent>
-          </Select>
+          {/* Print is always available, even for cancelled invoices */}
           <PrintableInvoice invoice={invoice} />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleEmail}
-            data-testid="button-email-invoice"
-          >
-            <Mail className="w-4 h-4 mr-2" />
-            Email
-          </Button>
           {canCreateCreditNote && (
             <Button
               variant="outline"
@@ -586,8 +595,8 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
               </Button>
             </>
           )}
-          {/* Show "Mark Ready for Dispatch" for draft invoices */}
-          {invoice.status === 'draft' && (
+          {/* Show "Mark Ready for Dispatch" for draft invoices (active only) */}
+          {isActiveInvoice && invoice.status === 'draft' && (
             <Button
               variant="default"
               size="sm"
@@ -599,8 +608,8 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
               {markReadyMutation.isPending ? 'Updating...' : 'Mark Ready for Dispatch'}
             </Button>
           )}
-          {/* Show "Generate Gatepass" for ready invoices without a gatepass */}
-          {!relatedGatepass && invoice.status === 'ready_for_gatepass' && (
+          {/* Show "Generate Gatepass" for ready invoices without a gatepass (active only) */}
+          {isActiveInvoice && !relatedGatepass && invoice.status === 'ready_for_gatepass' && (
             <Button
               variant="default"
               size="sm"
