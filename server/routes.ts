@@ -7041,7 +7041,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       await db.transaction(async (tx) => {
-        // Restore invoice header
+        // 1. Restore invoice header
         await tx.update(invoices)
           .set({ 
             recordStatus: 1,
@@ -7051,7 +7051,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           })
           .where(eq(invoices.id, id));
           
-        // Restore invoice items
+        // 2. Restore invoice items
         await tx.update(invoiceItems)
           .set({ 
             recordStatus: 1,
@@ -7059,8 +7059,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
           })
           .where(eq(invoiceItems.invoiceId, id));
           
-        // Note: We don't automatically restore the gatepass because inventory was returned.
-        // The user would need to create a new gatepass or we'd need complex inventory logic.
+        // 3. Find and restore the associated gatepass
+        const [linkedGatepass] = await tx.select()
+          .from(gatepasses)
+          .where(eq(gatepasses.invoiceId, id))
+          .limit(1);
+
+        if (linkedGatepass) {
+          // Reactivate gatepass
+          await tx.update(gatepasses)
+            .set({ 
+              recordStatus: 1,
+              updatedAt: new Date().toISOString()
+            })
+            .where(eq(gatepasses.id, linkedGatepass.id));
+
+          // Reactivate gatepass items
+          await tx.update(gatepassItems)
+            .set({ 
+              recordStatus: 1,
+              updatedAt: new Date().toISOString()
+            })
+            .where(eq(gatepassItems.gatepassId, linkedGatepass.id));
+
+          // 4. Remove the 'CANCEL' inventory returns from finished goods
+          // When we cancel, we add records with batchNumber like 'CANCEL-INV-...'
+          // We need to delete or mark these as inactive to "un-return" the stock
+          const cancelBatchPrefix = `CANCEL-${invoice.invoiceNumber}-`;
+          await tx.update(finishedGoods)
+            .set({ 
+              recordStatus: 0,
+              remarks: `Correction: Cancellation undone for Invoice ${invoice.invoiceNumber}`
+            })
+            .where(and(
+              ilike(finishedGoods.batchNumber, `${cancelBatchPrefix}%`),
+              eq(finishedGoods.recordStatus, 1)
+            ));
+          
+          console.log(`[RESTORE] Undid inventory returns for invoice ${invoice.invoiceNumber} and reactivated gatepass ${linkedGatepass.gatepassNumber}`);
+        }
       });
       
       res.json({ message: "Invoice restored successfully. It is now active again." });
