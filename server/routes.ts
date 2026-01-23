@@ -7210,7 +7210,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: undefined, // Let DB generate new ID
           invoiceNumber: tempInvoiceNumber,
           originalInvoiceId: id,
-          status: 'draft',
+          status: 'Normal', // Set to Normal immediately instead of draft
           recordStatus: 1,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -7234,7 +7234,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       res.json({ 
-        message: "Invoice cancelled and replacement created as draft.",
+        message: "Invoice cancelled and replacement created as active.",
         invoiceId: result.id,
         isReissue: true
       });
