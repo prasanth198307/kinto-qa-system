@@ -2150,8 +2150,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteGatepass(id: string): Promise<void> {
-    // Clear invoiceId to avoid unique constraint violation when creating new gatepass for same invoice
-    await db.update(gatepasses).set({ recordStatus: 0, invoiceId: null }).where(eq(gatepasses.id, id));
+    await db.update(gatepasses).set({ recordStatus: 0 }).where(eq(gatepasses.id, id));
   }
 
   async getGatepassesByDate(date: Date): Promise<Gatepass[]> {
