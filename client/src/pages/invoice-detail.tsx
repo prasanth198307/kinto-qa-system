@@ -129,9 +129,14 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
     queryKey: ['/api/products'],
   });
 
-  const { data: gatepasses = [] } = useQuery<Gatepass[]>({
+  const { data: gatepassesResponse } = useQuery<{ data: Gatepass[] } | Gatepass[]>({
     queryKey: ['/api/gatepasses'],
   });
+
+  // Handle both paginated response {data: [...]} and plain array formats
+  const gatepasses = Array.isArray(gatepassesResponse) 
+    ? gatepassesResponse 
+    : (gatepassesResponse as any)?.data || [];
 
   // Find related gatepass early to fetch its items
   const safeGatepassesEarly = Array.isArray(gatepasses) ? gatepasses : [];
