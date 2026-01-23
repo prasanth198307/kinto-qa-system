@@ -213,6 +213,14 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
   const { data: availableInvoices = [] } = useQuery<Invoice[]>({
     queryKey: ['/api/invoices/available'],
   });
+  
+  // Also fetch the linked invoice when editing an existing gatepass
+  // This is needed because the linked invoice won't be in the "available" list
+  const { data: linkedInvoice } = useQuery<Invoice>({
+    queryKey: ['/api/invoices', gatepass?.invoiceId],
+    enabled: !!gatepass?.invoiceId,
+  });
+  
   const { data: invoiceItems = [] } = useQuery<any[]>({
     queryKey: ['/api/invoice-items', selectedInvoiceId],
     enabled: !!selectedInvoiceId,
@@ -315,8 +323,15 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
 
   // Auto-populate customer and items when invoice is selected
   useEffect(() => {
-    if (selectedInvoiceId && availableInvoices.length > 0) {
-      const selectedInvoice = availableInvoices.find(inv => inv.id === selectedInvoiceId);
+    if (selectedInvoiceId) {
+      // Try to find the invoice in available list first, then fall back to linked invoice
+      let selectedInvoice = availableInvoices.find(inv => inv.id === selectedInvoiceId);
+      
+      // If not in available list (editing existing gatepass), use the linked invoice
+      if (!selectedInvoice && linkedInvoice && linkedInvoice.id === selectedInvoiceId) {
+        selectedInvoice = linkedInvoice;
+      }
+      
       if (selectedInvoice) {
         // Auto-fill customer details from invoice buyer
         form.setValue("header.customerName", selectedInvoice.buyerName);
@@ -344,7 +359,7 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
         }
       }
     }
-  }, [selectedInvoiceId, availableInvoices, vendors, form]);
+  }, [selectedInvoiceId, availableInvoices, linkedInvoice, vendors, form]);
 
   // FIFO allocation function - allocates batches from oldest production date first
   const performFifoAllocation = async () => {
@@ -1042,6 +1057,12 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="none">None - No items can be added</SelectItem>
+                        {/* Show linked invoice first when editing existing gatepass */}
+                        {linkedInvoice && !availableInvoices.find(inv => inv.id === linkedInvoice.id) && (
+                          <SelectItem key={linkedInvoice.id} value={linkedInvoice.id}>
+                            {linkedInvoice.invoiceNumber} - {linkedInvoice.buyerName} - ₹{(linkedInvoice.totalAmount / 100).toFixed(2)} (Current)
+                          </SelectItem>
+                        )}
                         {availableInvoices.map((invoice) => (
                           <SelectItem key={invoice.id} value={invoice.id}>
                             {invoice.invoiceNumber} - {invoice.buyerName} - ₹{(invoice.totalAmount / 100).toFixed(2)}
