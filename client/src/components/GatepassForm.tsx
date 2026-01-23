@@ -1249,14 +1249,18 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                             </FormControl>
                             <SelectContent>
                               {finishedGoods
-                                .filter(fg => ((fg as any).availableQuantity ?? fg.quantity) > 0)
+                                // Include batches with available quantity > 0, OR the currently assigned batch (even if 0)
+                                .filter(fg => ((fg as any).availableQuantity ?? fg.quantity) > 0 || fg.id === field.value)
+                                // Exclude already selected batches (except the current one)
                                 .filter(fg => !selectedBatchIds.includes(fg.id) || fg.id === field.value)
                                 .map((fg) => {
                                   const product = products.find(p => p.id === fg.productId);
                                   const available = (fg as any).availableQuantity ?? fg.quantity;
+                                  const isCurrentBatch = fg.id === field.value;
                                   return (
                                     <SelectItem key={fg.id} value={fg.id}>
-                                      {product?.productName || 'Unknown'} - Batch: {fg.batchNumber} (Available: {available})
+                                      {product?.productName || 'Unknown'} - Batch: {fg.batchNumber} 
+                                      {isCurrentBatch && available === 0 ? ' (Assigned)' : ` (Available: ${available})`}
                                     </SelectItem>
                                   );
                                 })}
