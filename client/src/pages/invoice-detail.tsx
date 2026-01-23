@@ -193,19 +193,17 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
     },
     onSuccess: (data: any) => {
       toast({
-        title: "Invoice Cancelled",
-        description: data.message || "Invoice cancelled. Redirecting to create new invoice...",
+        title: "Invoice Reissued",
+        description: data.message || "Invoice cancelled and replacement created as draft.",
       });
       
-      // Store invoice data and reissue flag in sessionStorage for re-issue
-      if (data.invoiceData) {
-        sessionStorage.setItem('reissue-invoice-data', JSON.stringify(data.invoiceData));
-        sessionStorage.setItem('is-reissue', data.isReissue ? 'true' : 'false');
+      // Navigate directly to the newly created replacement invoice detail page
+      if (data.invoiceId) {
+        navigate(`/invoice/${data.invoiceId}`);
+      } else {
+        // Fallback to production management invoices tab if no ID returned
+        window.location.href = '/production-management?tab=invoices';
       }
-      
-      // Use window.location for full page navigation to ensure it works in production
-      // Navigate to /production-management which is where the invoices tab lives
-      window.location.href = '/production-management?tab=invoices&reissue=true';
     },
     onError: (error: any) => {
       toast({

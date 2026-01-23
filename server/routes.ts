@@ -7068,7 +7068,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const items = await storage.getInvoiceItems(id);
       
       // Use a transaction for atomicity
-      await db.transaction(async (tx) => {
+      const result = await db.transaction(async (tx) => {
         // Track which gatepass numbers were cancelled for audit trail
         const cancelledGatepassNumbers: string[] = [];
         
@@ -7082,12 +7082,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`[CANCEL_REISSUE] Cancelled gatepass ${gatepass.gatepassNumber}`);
         }
         
-        // Return finished goods inventory for ALL cancelled invoices (including Vyapaar imports without gatepasses)
-        // Goods were dispatched, so on cancellation they should come back to inventory
-        // IMPORTANT: Check if product exists before inserting (handles cases where product may be missing)
+        // Return finished goods inventory
         for (const item of items) {
           if (item.productId && item.quantity > 0) {
-            // Verify product exists in products table to avoid foreign key violation
             const [existingProduct] = await tx.select({ id: products.id })
               .from(products)
               .where(eq(products.id, item.productId))
@@ -7108,11 +7105,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   : `Inventory returned - Invoice ${invoice.invoiceNumber} cancelled & reissued (no gatepass - Vyapaar import)`,
                 createdBy: req.user?.id,
               });
-              
-              console.log(`[INVENTORY] Returned ${item.quantity} units of product ${item.productId} to inventory (Cancel & Reissue${hasGatepass ? '' : ' - Vyapaar import'})`);
-            } else {
-              // Product not found - skip inventory return but continue with cancellation (compliance priority)
-              console.warn(`[INVENTORY] Skipping inventory return for product ${item.productId} - product not found in master data`);
             }
           }
         }
@@ -7125,45 +7117,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
             cancelledBy: req.user?.id || null,
           })
           .where(eq(invoices.id, id));
+
+        // Generate a temporary invoice number for the reissue data
+        const tempInvoiceNumber = `REISSUE-${invoice.invoiceNumber}-${Date.now()}`;
+
+        // Create a new "replacement" invoice record immediately in the backend
+        // This makes the "cancelled" invoice data "normal" (active) again as a new record
+        // The user will then be able to edit and "Update" this record.
+        const invoiceData = {
+          ...invoice,
+          id: undefined, // Let DB generate new ID
+          invoiceNumber: tempInvoiceNumber,
+          originalInvoiceId: id,
+          status: 'draft',
+          recordStatus: 1,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          generatedBy: req.user?.id,
+          replacedByInvoiceId: null,
+        };
+
+        const [reissuedInvoice] = await tx.insert(invoices).values(invoiceData).returning();
+
+        // Copy items to the new invoice
+        for (const item of items) {
+          const { id: itemId, invoiceId: itemInvId, createdAt, updatedAt, ...cleanItem } = item;
+          await tx.insert(invoiceItems).values({
+            ...cleanItem,
+            invoiceId: reissuedInvoice.id,
+            recordStatus: 1
+          });
+        }
+
+        return reissuedInvoice;
       });
       
-      // Deep clean invoice data - remove identifying fields but KEEP template and terms
-      const { 
-        id: invoiceId, 
-        invoiceNumber, 
-        gatepassId,
-        createdAt, 
-        updatedAt, 
-        recordStatus,
-        ...cleanInvoice 
-      } = invoice;
-      
-      // Clean invoice items - remove all IDs and references
-      // IMPORTANT: Keep values in DB format (paise/basis points) - the frontend InvoiceForm
-      // will handle conversion in its useEffect (lines 406-444 in InvoiceForm.tsx)
-      const cleanItems = items.map(item => {
-        const {
-          id: itemId,
-          invoiceId: itemInvoiceId,
-          createdAt: itemCreatedAt,
-          updatedAt: itemUpdatedAt,
-          recordStatus: itemRecordStatus,
-          ...cleanItem
-        } = item;
-        return cleanItem;
-      });
-      
-      // Return invoice data for pre-filling the form with explicit reissue flag
       res.json({ 
-        message: "Invoice cancelled successfully. Redirecting to create new invoice...",
-        invoiceData: {
-          ...cleanInvoice,
-          items: cleanItems,
-          originalInvoiceId: id,  // Link to the cancelled invoice
-          status: 'draft'         // Ensure reissued invoice starts as draft
-        },
-        isReissue: true,  // Explicit flag to differentiate from edit mode
-        cancelledInvoiceId: id  // ID of the cancelled invoice (for updating replacedByInvoiceId later)
+        message: "Invoice cancelled and replacement created as draft.",
+        invoiceId: result.id,
+        isReissue: true
       });
     } catch (error) {
       console.error("Error in cancel & reissue:", error);
