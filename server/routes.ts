@@ -7159,7 +7159,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         invoiceData: {
           ...cleanInvoice,
           items: cleanItems,
-          originalInvoiceId: id  // Link to the cancelled invoice
+          originalInvoiceId: id,  // Link to the cancelled invoice
+          status: 'draft'         // Ensure reissued invoice starts as draft
         },
         isReissue: true,  // Explicit flag to differentiate from edit mode
         cancelledInvoiceId: id  // ID of the cancelled invoice (for updating replacedByInvoiceId later)

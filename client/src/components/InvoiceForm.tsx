@@ -409,6 +409,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         upiId: invoice.upiId || "",
         includeSignature: invoice.includeSignature ?? 1,
         signatureType: (invoice as any).signatureType || 'default',
+        status: isReissueMode ? 'draft' : (invoice.status || 'draft'),
       });
       
       // Schedule items sync for next render cycle to ensure useFieldArray picks it up
@@ -782,9 +783,8 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         // Include original invoice ID for reissue tracking
         // In reissue mode, the cancelled invoice's ID is stored as originalInvoiceId on the invoice prop
         originalInvoiceId: isReissueMode ? (invoice?.id || (invoice as any)?.originalInvoiceId) : null,
-        // For reissued invoices, inherit the status from the original invoice (typically "delivered")
-        // For new invoices, default to "draft"
-        status: isReissueMode ? (invoice?.status || 'delivered') : 'draft',
+        // Ensure status is correctly set
+        status: data.status || 'draft',
       };
       
       console.log('[InvoiceForm] Invoice header being sent:', {
