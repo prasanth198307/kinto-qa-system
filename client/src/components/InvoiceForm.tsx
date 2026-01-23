@@ -364,20 +364,19 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       
       console.log('[InvoiceForm] Resetting form with invoice data, items:', normalizedItems);
 
-      // Ensure GST Inclusive mode is OFF when loading invoice data (edit/reissue)
-      // This allows direct editing of base prices
-      setGstInclusiveMode(false);
-
       // Pre-calculate item total amounts for inclusive mode if we ever switch to it
       const totalAmounts: { [index: number]: number } = {};
-      normalizedItems.forEach((item, index) => {
+      normalizedItems.forEach((item: any, index: number) => {
         const basePrice = item.unitPrice || 0;
         const gstRate = item.gstRate || 0;
         // Total = Base * (1 + GST/100)
         totalAmounts[index] = parseFloat((basePrice * (1 + gstRate / 100)).toFixed(2));
       });
       setItemTotalAmounts(totalAmounts);
-      
+
+      // Reset form when invoice prop changes (critical for reissue mode)
+      // React Hook Form only applies defaultValues on first mount, so we need to reset
+      // when invoice changes to make the form editable with the new data
       form.reset({
         gatepassId: gatepass?.id || "",
         invoiceDate: new Date(invoice.invoiceDate).toISOString().split('T')[0],
@@ -1160,6 +1159,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
             id="invoiceDate"
             type="date"
             {...form.register("invoiceDate")}
+            className="h-9 text-sm"
             data-testid="input-invoice-date"
           />
           {form.formState.errors.invoiceDate && (
@@ -1339,6 +1339,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
               <Input
                 id="buyerName"
                 {...form.register("buyerName")}
+                className="h-9 text-sm"
                 data-testid="input-buyer-name"
               />
               {form.formState.errors.buyerName && (
@@ -1351,6 +1352,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                 id="buyerGstin"
                 {...form.register("buyerGstin")}
                 placeholder="29AAAAA0000A1Z5"
+                className="h-9 text-sm"
                 data-testid="input-buyer-gstin"
               />
             </div>
@@ -1782,19 +1784,17 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                 />
               </div>
 
-              {/* Unit Price (Base Price - calculated in inclusive mode, entered in exclusive mode) */}
-              <div className="md:col-span-1">
-                <Label className="md:hidden text-xs text-muted-foreground mb-1">{gstInclusiveMode ? 'Base ₹' : 'Price ₹'}</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  {...form.register(`items.${index}.unitPrice`, { valueAsNumber: true })}
-                  placeholder="0.00"
-                  className={`h-9 text-sm ${gstInclusiveMode ? 'bg-muted/50' : ''}`}
-                  readOnly={gstInclusiveMode}
-                  data-testid={`input-unit-price-${index}`}
-                />
-              </div>
+            <div className="md:col-span-1">
+              <Label className="md:hidden text-xs text-muted-foreground mb-1">{gstInclusiveMode ? 'Base ₹' : 'Price ₹'}</Label>
+              <Input
+                type="number"
+                step="0.01"
+                {...form.register(`items.${index}.unitPrice`, { valueAsNumber: true })}
+                placeholder="0.00"
+                className={`h-9 text-sm ${gstInclusiveMode ? 'bg-muted/50' : ''}`}
+                data-testid={`input-unit-price-${index}`}
+              />
+            </div>
 
               {/* GST Rate */}
               <div className="md:col-span-1">
@@ -1955,9 +1955,9 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                   }
                 }}
               >
-                <SelectTrigger data-testid="select-bank">
-                  <SelectValue placeholder="Select bank account" />
-                </SelectTrigger>
+                  <SelectTrigger data-testid="select-bank" className="h-9">
+                    <SelectValue placeholder="Select bank account" />
+                  </SelectTrigger>
                 <SelectContent>
                   {banks.map((bank) => (
                     <SelectItem key={bank.id} value={bank.id}>
@@ -1971,25 +1971,25 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
             {selectedBankId && (
               <>
                 <div>
-                  <Label>Account Holder Name</Label>
-                  <Input value={form.watch("accountHolderName")} disabled data-testid="input-account-holder-name" />
+                  <Label className="text-xs text-muted-foreground mb-1">Account Holder Name</Label>
+                  <Input value={form.watch("accountHolderName")} disabled className="h-9 text-sm bg-muted/50" data-testid="input-account-holder-name" />
                 </div>
                 <div>
-                  <Label>Bank Account Number</Label>
-                  <Input value={form.watch("bankAccountNumber")} disabled data-testid="input-bank-account-number" />
+                  <Label className="text-xs text-muted-foreground mb-1">Bank Account Number</Label>
+                  <Input value={form.watch("bankAccountNumber")} disabled className="h-9 text-sm bg-muted/50" data-testid="input-bank-account-number" />
                 </div>
                 <div>
-                  <Label>IFSC Code</Label>
-                  <Input value={form.watch("bankIfscCode")} disabled data-testid="input-bank-ifsc-code" />
+                  <Label className="text-xs text-muted-foreground mb-1">IFSC Code</Label>
+                  <Input value={form.watch("bankIfscCode")} disabled className="h-9 text-sm bg-muted/50" data-testid="input-bank-ifsc-code" />
                 </div>
                 <div>
-                  <Label>Branch Name</Label>
-                  <Input value={form.watch("branchName")} disabled data-testid="input-bank-branch-name" />
+                  <Label className="text-xs text-muted-foreground mb-1">Branch Name</Label>
+                  <Input value={form.watch("branchName")} disabled className="h-9 text-sm bg-muted/50" data-testid="input-bank-branch-name" />
                 </div>
                 {form.watch("upiId") && (
                   <div className="md:col-span-2">
-                    <Label>UPI ID</Label>
-                    <Input value={form.watch("upiId")} disabled data-testid="input-upi-id" />
+                    <Label className="text-xs text-muted-foreground mb-1">UPI ID</Label>
+                    <Input value={form.watch("upiId")} disabled className="h-9 text-sm bg-muted/50" data-testid="input-upi-id" />
                   </div>
                 )}
               </>
