@@ -19,26 +19,9 @@ export default function PrintableGatepass({ gatepass }: PrintableGatepassProps) 
     queryKey: ['/api/products'],
   });
 
-  // Get unique finished good IDs from gatepass items - memoize to prevent hook issues
-  const finishedGoodIdsKey = useMemo(() => {
-    return items
-      .map(item => item.finishedGoodId)
-      .filter((id): id is string => !!id)
-      .join(',');
-  }, [items]);
-
-  // Fetch specific finished goods by IDs (includes consumed/cancelled records)
+  // Fetch all finished goods (the by-ids endpoint handles consumed/cancelled records)
   const { data: finishedGoods = [] } = useQuery<FinishedGood[]>({
-    queryKey: ['/api/finished-goods/by-ids', finishedGoodIdsKey],
-    queryFn: async () => {
-      if (!finishedGoodIdsKey) return [];
-      const response = await fetch(`/api/finished-goods/by-ids/${finishedGoodIdsKey}`, {
-        credentials: 'include'
-      });
-      if (!response.ok) throw new Error('Failed to fetch finished goods');
-      return response.json();
-    },
-    enabled: !!finishedGoodIdsKey,
+    queryKey: ['/api/finished-goods'],
   });
 
   const { data: vendors = [] } = useQuery<Vendor[]>({

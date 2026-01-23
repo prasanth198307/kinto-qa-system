@@ -84,6 +84,8 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
   const [location, navigate] = useLocation();
   const { toast } = useToast();
   const { logoutMutation, user } = useAuth();
+  // Call usePermissions early to avoid hooks ordering violation with early returns
+  const { hasPermission, role: permissionRole } = usePermissions();
   const [isCreditNoteDialogOpen, setIsCreditNoteDialogOpen] = useState(false);
   const [isCorrectAndCreditOpen, setIsCorrectAndCreditOpen] = useState(false);
   const [isCorrectAndDebitOpen, setIsCorrectAndDebitOpen] = useState(false);
@@ -390,8 +392,7 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
     queryClient.invalidateQueries({ queryKey: ['/api/credit-notes'] });
   };
 
-  // Use permissions hook for role-based access control
-  const { hasPermission, role: permissionRole } = usePermissions();
+  // hasPermission and permissionRole moved to top to avoid hooks ordering violation
   
   // Check permissions - support both default roles AND custom roles with appropriate permissions
   const userRole = ((user as any)?.role || '').toLowerCase();
