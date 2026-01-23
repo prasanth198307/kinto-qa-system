@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { type Gatepass, type GatepassItem, type Product, type Vendor, type FinishedGood, type Invoice } from "@shared/schema";
 import { Button } from "@/components/ui/button";
@@ -19,9 +18,24 @@ export default function PrintableGatepass({ gatepass }: PrintableGatepassProps) 
     queryKey: ['/api/products'],
   });
 
-  // Fetch all finished goods (the by-ids endpoint handles consumed/cancelled records)
+  // Get unique finished good IDs from gatepass items - for fetching batch numbers
+  const finishedGoodIds = items
+    .map(item => item.finishedGoodId)
+    .filter((id): id is string => !!id);
+  const finishedGoodIdsKey = finishedGoodIds.join(',');
+
+  // Fetch specific finished goods by IDs (includes consumed/cancelled records for batch number lookup)
   const { data: finishedGoods = [] } = useQuery<FinishedGood[]>({
-    queryKey: ['/api/finished-goods'],
+    queryKey: ['/api/finished-goods/by-ids', finishedGoodIdsKey],
+    queryFn: async () => {
+      if (!finishedGoodIdsKey) return [];
+      const response = await fetch(`/api/finished-goods/by-ids/${finishedGoodIdsKey}`, {
+        credentials: 'include'
+      });
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!finishedGoodIdsKey,
   });
 
   const { data: vendors = [] } = useQuery<Vendor[]>({
