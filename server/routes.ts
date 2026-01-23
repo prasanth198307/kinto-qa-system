@@ -6624,7 +6624,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // AND deduct inventory (to balance what was returned during cancellation)
         // AND auto-create a gatepass since the original had one
         let autoCreatedGatepass: any = null;
-        const batchAllocations: { productId: string; finishedGoodId: string; quantity: number }[] = [];
+        const batchAllocations: { productId: string; finishedGoodId: string; quantity: number; uomId: string | null }[] = [];
         
         if (originalInvoiceId) {
           await tx.update(invoices)
@@ -6656,11 +6656,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 const deductFromThisBatch = Math.min(batch.quantity, remainingToDeduct);
                 const newQuantity = batch.quantity - deductFromThisBatch;
                 
-                // Track this allocation for gatepass item creation
+                // Track this allocation for gatepass item creation (include UOM from invoice item)
                 batchAllocations.push({
                   productId: item.productId,
                   finishedGoodId: batch.id,
-                  quantity: deductFromThisBatch
+                  quantity: deductFromThisBatch,
+                  uomId: item.uomId || null
                 });
                 
                 // If quantity becomes 0, soft-delete the batch to keep inventory clean
@@ -6725,13 +6726,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
               recordStatus: 1,
             }).returning();
             
-            // Create gatepass items for each batch allocation
+            // Create gatepass items for each batch allocation (with UOM from invoice)
             for (const allocation of batchAllocations) {
               await tx.insert(gatepassItems).values({
                 gatepassId: newGatepass.id,
                 productId: allocation.productId,
                 finishedGoodId: allocation.finishedGoodId,
                 quantityDispatched: allocation.quantity,
+                uomId: allocation.uomId, // Copy UOM from invoice item
                 recordStatus: 1,
               });
             }
