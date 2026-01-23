@@ -18,8 +18,23 @@ export default function PrintableGatepass({ gatepass }: PrintableGatepassProps) 
     queryKey: ['/api/products'],
   });
 
+  // Get unique finished good IDs from gatepass items
+  const finishedGoodIds = items
+    .map(item => item.finishedGoodId)
+    .filter((id): id is string => !!id);
+
+  // Fetch specific finished goods by IDs (includes consumed/cancelled records)
   const { data: finishedGoods = [] } = useQuery<FinishedGood[]>({
-    queryKey: ['/api/finished-goods'],
+    queryKey: ['/api/finished-goods/by-ids', finishedGoodIds.join(',')],
+    queryFn: async () => {
+      if (finishedGoodIds.length === 0) return [];
+      const response = await fetch(`/api/finished-goods/by-ids/${finishedGoodIds.join(',')}`, {
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Failed to fetch finished goods');
+      return response.json();
+    },
+    enabled: finishedGoodIds.length > 0,
   });
 
   const { data: vendors = [] } = useQuery<Vendor[]>({
