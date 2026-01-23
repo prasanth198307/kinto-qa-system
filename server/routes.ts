@@ -6647,16 +6647,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Auto-create gatepass for reissued invoice using the batch allocations
           if (batchAllocations.length > 0) {
+            // Fetch the old gatepass from the original invoice to copy vehicle/driver info
+            const [oldGatepass] = await tx.select()
+              .from(gatepasses)
+              .where(eq(gatepasses.invoiceId, originalInvoiceId))
+              .limit(1);
+            
             const gatepassNumber = `GP-${Date.now()}`;
             const [newGatepass] = await tx.insert(gatepasses).values({
               invoiceId: invoice.id,
               gatepassNumber,
               gatepassDate: new Date().toISOString(),
-              vehicleNumber: 'PENDING', // User can update later
-              driverName: 'PENDING',
-              driverContact: null,
+              vehicleNumber: oldGatepass?.vehicleNumber || 'PENDING',
+              driverName: oldGatepass?.driverName || 'PENDING',
+              driverContact: oldGatepass?.driverContact || null,
               dispatchedBy: req.user?.id,
-              remarks: `Auto-generated gatepass for reissued invoice ${invoice.invoiceNumber}`,
+              remarks: `Auto-generated gatepass for reissued invoice ${invoice.invoiceNumber} (replaces ${oldGatepass?.gatepassNumber || 'unknown'})`,
               status: 'draft',
               recordStatus: 1,
             }).returning();
