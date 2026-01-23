@@ -1806,7 +1806,17 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                     const finalValue = watchedValue ?? fieldValue ?? 18;
                     return String(finalValue);
                   })()}
-                  onValueChange={(value) => form.setValue(`items.${index}.gstRate`, parseFloat(value))}
+                  onValueChange={(value) => {
+                    const newGstRate = parseFloat(value);
+                    form.setValue(`items.${index}.gstRate`, newGstRate);
+                    
+                    // In GST inclusive mode, recalculate base price when GST rate changes
+                    if (gstInclusiveMode && itemTotalAmounts[index] > 0) {
+                      const totalAmount = itemTotalAmounts[index];
+                      const newBasePrice = calculateBaseFromTotal(totalAmount, newGstRate);
+                      form.setValue(`items.${index}.unitPrice`, newBasePrice);
+                    }
+                  }}
                 >
                   <SelectTrigger data-testid={`select-gst-rate-${index}`} className="h-9">
                     <SelectValue placeholder="18%" />
