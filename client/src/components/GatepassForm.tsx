@@ -102,8 +102,29 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
     queryKey: ['/api/finished-goods/available-stock', { excludeInvoiceId: selectedInvoiceId || '' }],
   });
   
-  // Extract items from the response - these have availableQuantity for display
-  const finishedGoods = availableStockData?.items || [];
+  // Fetch the specific finished goods that are already assigned to this gatepass
+  // These may not appear in the available stock list since they're "in use"
+  const existingFinishedGoodIds = gatepassItems.map(item => item.finishedGoodId).filter(Boolean);
+  const { data: existingFinishedGoods = [] } = useQuery<FinishedGood[]>({
+    queryKey: ['/api/finished-goods/by-ids', existingFinishedGoodIds],
+    enabled: existingFinishedGoodIds.length > 0,
+  });
+  
+  // Combine available stock with existing gatepass items' finished goods
+  // This ensures the dropdown shows the currently assigned batches even if they have no available stock
+  const availableItems = availableStockData?.items || [];
+  const finishedGoods: AvailableStockItem[] = [
+    ...availableItems,
+    // Add existing finished goods that aren't already in the available list
+    ...existingFinishedGoods
+      .filter(fg => !availableItems.find(a => a.id === fg.id))
+      .map(fg => ({
+        ...fg,
+        physicalQuantity: fg.quantity || 0,
+        reservedQuantity: 0,
+        availableQuantity: fg.quantity || 0,
+      }))
+  ];
   const stockSummary = availableStockData?.summary || [];
 
   const { data: products = [] } = useQuery<Product[]>({

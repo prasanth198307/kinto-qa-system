@@ -3617,6 +3617,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Fetch finished goods by IDs - used when editing gatepasses to show assigned batches
+  app.get('/api/finished-goods/by-ids', isAuthenticated, async (req: any, res) => {
+    try {
+      // IDs can be passed as comma-separated string or as array (depends on how query string is parsed)
+      const idsParam = req.query['0'] ? Object.values(req.query) : (req.query.ids || '').split(',');
+      const ids = (Array.isArray(idsParam) ? idsParam : [idsParam]).filter(Boolean);
+      
+      if (ids.length === 0) {
+        return res.json([]);
+      }
+      
+      // Fetch finished goods by IDs (including soft-deleted ones for display purposes)
+      const goods = await db.select()
+        .from(finishedGoods)
+        .where(sql`${finishedGoods.id} IN (${sql.raw(ids.map((id: string) => `'${id}'`).join(','))})`);
+      
+      res.json(goods);
+    } catch (error) {
+      console.error("Error fetching finished goods by IDs:", error);
+      res.status(500).json({ message: "Failed to fetch finished goods" });
+    }
+  });
+
   // Available Stock API - Returns finished goods with reserved quantities deducted
   // Reserved = quantities in invoices with status 'draft' or 'ready_for_gatepass'
   // IMPORTANT: Invoices that have an associated gatepass are NOT counted as reserved
