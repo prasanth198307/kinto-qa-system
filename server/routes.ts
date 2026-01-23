@@ -6671,7 +6671,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               driverContact: oldGatepass?.driverContact || null,
               dispatchedBy: req.user?.id,
               remarks: `Auto-generated gatepass for reissued invoice ${invoice.invoiceNumber} (replaces ${oldGatepass?.gatepassNumber || 'unknown'})`,
-              status: 'draft',
+              status: oldGatepass?.status || 'generated', // Copy status from old gatepass, default to 'generated'
               recordStatus: 1,
             }).returning();
             
