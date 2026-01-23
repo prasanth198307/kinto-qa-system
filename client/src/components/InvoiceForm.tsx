@@ -367,6 +367,16 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       // Ensure GST Inclusive mode is OFF when loading invoice data (edit/reissue)
       // This allows direct editing of base prices
       setGstInclusiveMode(false);
+
+      // Pre-calculate item total amounts for inclusive mode if we ever switch to it
+      const totalAmounts: { [index: number]: number } = {};
+      normalizedItems.forEach((item, index) => {
+        const basePrice = item.unitPrice || 0;
+        const gstRate = item.gstRate || 0;
+        // Total = Base * (1 + GST/100)
+        totalAmounts[index] = parseFloat((basePrice * (1 + gstRate / 100)).toFixed(2));
+      });
+      setItemTotalAmounts(totalAmounts);
       
       form.reset({
         gatepassId: gatepass?.id || "",
