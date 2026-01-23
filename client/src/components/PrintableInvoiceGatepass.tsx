@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { type Invoice, type Gatepass, type InvoiceItem, type GatepassItem, type Product, type Vendor, type FinishedGood, type TermsConditions } from "@shared/schema";
 import { Button } from "@/components/ui/button";
@@ -28,23 +28,26 @@ export default function PrintableInvoiceGatepass({ invoice, gatepass }: Printabl
     queryKey: ['/api/products'],
   });
 
-  // Get unique finished good IDs from gatepass items
-  const finishedGoodIds = gatepassItems
-    .map(item => item.finishedGoodId)
-    .filter((id): id is string => !!id);
+  // Get unique finished good IDs from gatepass items - memoize to prevent hook issues
+  const finishedGoodIdsKey = useMemo(() => {
+    return gatepassItems
+      .map(item => item.finishedGoodId)
+      .filter((id): id is string => !!id)
+      .join(',');
+  }, [gatepassItems]);
 
   // Fetch specific finished goods by IDs (includes consumed/cancelled records)
   const { data: finishedGoods = [] } = useQuery<FinishedGood[]>({
-    queryKey: ['/api/finished-goods/by-ids', finishedGoodIds.join(',')],
+    queryKey: ['/api/finished-goods/by-ids', finishedGoodIdsKey],
     queryFn: async () => {
-      if (finishedGoodIds.length === 0) return [];
-      const response = await fetch(`/api/finished-goods/by-ids/${finishedGoodIds.join(',')}`, {
+      if (!finishedGoodIdsKey) return [];
+      const response = await fetch(`/api/finished-goods/by-ids/${finishedGoodIdsKey}`, {
         credentials: 'include'
       });
       if (!response.ok) throw new Error('Failed to fetch finished goods');
       return response.json();
     },
-    enabled: finishedGoodIds.length > 0,
+    enabled: !!finishedGoodIdsKey,
   });
 
   const { data: vendors = [] } = useQuery<Vendor[]>({
