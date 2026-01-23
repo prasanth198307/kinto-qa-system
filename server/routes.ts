@@ -5718,20 +5718,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Return inventory back to finished goods for each item
       for (const item of gatepassItems) {
         if (item.finishedGoodId) {
+          // Look for batch regardless of recordStatus (it might have been soft-deleted when quantity hit 0)
           const [finishedGood] = await db
             .select()
             .from(finishedGoods)
-            .where(and(
-              eq(finishedGoods.id, item.finishedGoodId),
-              eq(finishedGoods.recordStatus, 1)
-            ))
+            .where(eq(finishedGoods.id, item.finishedGoodId))
             .limit(1);
           
           if (finishedGood) {
-            // Return the quantity back to finished goods inventory
+            // Return the quantity back to finished goods inventory and reactivate if it was soft-deleted
             await db.update(finishedGoods)
               .set({ 
                 quantity: (finishedGood.quantity || 0) + (item.quantityDispatched || 0),
+                recordStatus: 1, // Reactivate the batch
                 updatedAt: new Date().toISOString()
               })
               .where(eq(finishedGoods.id, item.finishedGoodId));
@@ -5742,9 +5741,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Now delete the gatepass (soft delete)
       await storage.deleteGatepass(id);
       
+      // Reset invoice status to ready_for_gatepass so a new gatepass can be created
+      if (gatepass.invoiceId) {
+        await db.update(invoices)
+          .set({ status: 'ready_for_gatepass' })
+          .where(eq(invoices.id, gatepass.invoiceId));
+        console.log(`[AUDIT] Reset invoice status to ready_for_gatepass after gatepass deletion`);
+      }
+      
       console.log(`[AUDIT] Gatepass ${gatepass.gatepassNumber} deleted by user, ${gatepassItems.length} items returned to inventory`);
       res.json({ 
-        message: "Gatepass cancelled and inventory returned to finished goods successfully",
+        message: "Gatepass cancelled and inventory returned to finished goods successfully. You can now create a new gatepass.",
         itemsReturned: gatepassItems.length
       });
     } catch (error: any) {
