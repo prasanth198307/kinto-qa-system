@@ -44,6 +44,7 @@ import { format } from "date-fns";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { usePermissions } from "@/hooks/use-permissions";
 import { GlobalHeader } from "@/components/GlobalHeader";
 import { CreateCreditNoteDialog } from "@/components/CreateCreditNoteDialog";
 import { CorrectAndCreditDialog } from "@/components/CorrectAndCreditDialog";
@@ -389,9 +390,24 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
     queryClient.invalidateQueries({ queryKey: ['/api/credit-notes'] });
   };
 
-  // Check if user is admin or manager (case-insensitive comparison)
+  // Use permissions hook for role-based access control
+  const { hasPermission, role: permissionRole } = usePermissions();
+  
+  // Check permissions - support both default roles AND custom roles with appropriate permissions
   const userRole = ((user as any)?.role || '').toLowerCase();
-  const isAdminOrManager = user && (userRole === 'admin' || userRole === 'manager');
+  const isDefaultAdminOrManager = user && (userRole === 'admin' || userRole === 'manager');
+  
+  // Check if user has invoice edit permissions (for Cancel & Reissue)
+  const hasInvoiceEditPermission = hasPermission('invoices', 'edit');
+  // Check if user has credit note create permissions
+  const hasCreditNotePermission = hasPermission('credit_notes', 'create');
+  // Check if user has vendor debit note create permissions (for debit notes)
+  const hasDebitNotePermission = hasPermission('vendor_debit_notes', 'create') || hasPermission('credit_notes', 'create');
+  
+  // Combined check: either default admin/manager role OR has specific permissions
+  const canManageInvoices = isDefaultAdminOrManager || hasInvoiceEditPermission;
+  const canManageCreditNotes = isDefaultAdminOrManager || hasCreditNotePermission;
+  const canManageDebitNotes = isDefaultAdminOrManager || hasDebitNotePermission;
   
   // Check if invoice is in current month
   // IMPORTANT: Must have invoice loaded to determine this correctly
@@ -412,12 +428,13 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
   const isOldInvoice = invoice && invoice.invoiceDate ? !currentMonthCheck : false;
   
   // Cancel & Reissue - only for current month invoices (and invoice must be loaded)
-  const canCancelAndReissue = isAdminOrManager && invoice && currentMonthCheck;
+  const canCancelAndReissue = canManageInvoices && invoice && currentMonthCheck;
   
   // Credit Notes - only for previous month invoices (GST compliance)
   // IMPORTANT: Only show these buttons when invoice is fully loaded AND is from a previous month
-  const canCreateCreditNote = isAdminOrManager && invoice && isOldInvoice;
-  const canCorrectAndCredit = isAdminOrManager && invoice && isOldInvoice;
+  const canCreateCreditNote = canManageCreditNotes && invoice && isOldInvoice;
+  const canCorrectAndCredit = canManageCreditNotes && invoice && isOldInvoice;
+  const canCorrectAndDebit = canManageDebitNotes && invoice && isOldInvoice;
 
   return (
     <>
