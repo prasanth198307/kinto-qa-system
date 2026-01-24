@@ -42,6 +42,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { usePermissions } from "@/hooks/use-permissions";
 import { GlobalHeader } from "@/components/GlobalHeader";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -88,6 +89,10 @@ interface MachineStartupTask {
 export default function MachineStartupReminders() {
   const { toast } = useToast();
   const { logoutMutation } = useAuth();
+  const { hasPermission } = usePermissions();
+  const canCreate = hasPermission('machine_startup_reminders', 'create');
+  const canEdit = hasPermission('machine_startup_reminders', 'edit');
+  const canDelete = hasPermission('machine_startup_reminders', 'delete');
   const [showForm, setShowForm] = useState(false);
   const [showBulkAssignment, setShowBulkAssignment] = useState(false);
   const [editingTask, setEditingTask] = useState<MachineStartupTask | null>(null);
@@ -224,22 +229,26 @@ export default function MachineStartupReminders() {
               </p>
             </div>
             <div className="flex gap-2">
-              <Button
-                onClick={() => setShowBulkAssignment(true)}
-                variant="default"
-                data-testid="button-bulk-assignment"
-              >
-                <Users className="w-4 h-4 mr-2" />
-                Bulk Assignment
-              </Button>
-              <Button
-                onClick={() => setShowForm(true)}
-                variant="outline"
-                data-testid="button-create-reminder"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Single Task
-              </Button>
+              {canCreate && (
+                <Button
+                  onClick={() => setShowBulkAssignment(true)}
+                  variant="default"
+                  data-testid="button-bulk-assignment"
+                >
+                  <Users className="w-4 h-4 mr-2" />
+                  Bulk Assignment
+                </Button>
+              )}
+              {canCreate && (
+                <Button
+                  onClick={() => setShowForm(true)}
+                  variant="outline"
+                  data-testid="button-create-reminder"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Single Task
+                </Button>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -318,14 +327,16 @@ export default function MachineStartupReminders() {
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDelete(task.id)}
-                        data-testid={`button-delete-${task.id}`}
-                      >
-                        Delete
-                      </Button>
+                      {canDelete && (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDelete(task.id)}
+                          data-testid={`button-delete-${task.id}`}
+                        >
+                          Delete
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
