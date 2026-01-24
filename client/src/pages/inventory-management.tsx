@@ -76,8 +76,14 @@ export default function InventoryManagement({ activeTab: externalActiveTab }: In
   }, [externalActiveTab]);
 
   // Check access using database permissions
+  // Allow access if user has permission to any inventory-related screen
   const roleLower = (role || (user as any)?.role || '').toLowerCase();
-  const hasAccess = roleLower === 'admin' || roleLower === 'manager' || canAccessScreen('inventory_management');
+  const hasAccess = roleLower === 'admin' || roleLower === 'manager' || 
+    canAccessScreen('inventory_management') || 
+    canAccessScreen('finished_goods') ||
+    canAccessScreen('products') ||
+    canAccessScreen('raw_materials') ||
+    canAccessScreen('uom');
 
   if (permissionsLoading) {
     return (
