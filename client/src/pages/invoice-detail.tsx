@@ -600,8 +600,8 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
               </Button>
             </>
           )}
-          {/* Show "Mark Ready for Dispatch" for draft invoices (active only) */}
-          {isActiveInvoice && invoice.status === 'draft' && (
+          {/* Show "Mark Ready for Dispatch" for draft invoices (active only) - requires edit permission */}
+          {canManageInvoices && isActiveInvoice && invoice.status === 'draft' && (
             <Button
               variant="default"
               size="sm"
