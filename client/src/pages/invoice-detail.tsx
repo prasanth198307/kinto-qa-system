@@ -403,7 +403,8 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
   const userRole = ((user as any)?.role || '').toLowerCase();
   const isDefaultAdminOrManager = user && (userRole === 'admin' || userRole === 'manager');
   
-  // Check if user has invoice edit permissions (for Cancel & Reissue)
+  // Check if user has invoice permissions
+  const hasInvoiceCreatePermission = hasPermission('invoices', 'create');
   const hasInvoiceEditPermission = hasPermission('invoices', 'edit');
   // Check if user has credit note create permissions
   const hasCreditNotePermission = hasPermission('credit_notes', 'create');
@@ -412,6 +413,8 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
   
   // Combined check: either default admin/manager role OR has specific permissions
   const canManageInvoices = isDefaultAdminOrManager || hasInvoiceEditPermission;
+  // For workflow progression (mark ready for dispatch), allow create OR edit permission
+  const canProgressInvoiceWorkflow = isDefaultAdminOrManager || hasInvoiceCreatePermission || hasInvoiceEditPermission;
   const canManageCreditNotes = isDefaultAdminOrManager || hasCreditNotePermission;
   const canManageDebitNotes = isDefaultAdminOrManager || hasDebitNotePermission;
   
@@ -600,8 +603,8 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
               </Button>
             </>
           )}
-          {/* Show "Mark Ready for Dispatch" for draft invoices (active only) - requires edit permission */}
-          {canManageInvoices && isActiveInvoice && invoice.status === 'draft' && (
+          {/* Show "Mark Ready for Dispatch" for draft invoices (active only) - requires create OR edit permission */}
+          {canProgressInvoiceWorkflow && isActiveInvoice && invoice.status === 'draft' && (
             <Button
               variant="default"
               size="sm"
