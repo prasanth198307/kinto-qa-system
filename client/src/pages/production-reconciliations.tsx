@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { usePermissions } from "@/hooks/use-permissions";
 import { queryClient } from "@/lib/queryClient";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -37,6 +38,11 @@ interface ProductionReconciliation {
 
 export default function ProductionReconciliations() {
   const { toast } = useToast();
+  const { hasPermission } = usePermissions();
+  const canCreate = hasPermission('production_reconciliations', 'create');
+  const canEdit = hasPermission('production_reconciliations', 'edit');
+  const canDelete = hasPermission('production_reconciliations', 'delete');
+  
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedReconciliation, setSelectedReconciliation] = useState<ProductionReconciliation | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'detail'>('list');
@@ -162,10 +168,12 @@ export default function ProductionReconciliations() {
             End-of-day material usage reconciliation tracking
           </p>
         </div>
-        <Button onClick={handleCreate} data-testid="button-create-reconciliation">
-          <Plus className="mr-2 h-4 w-4" />
-          Create Reconciliation
-        </Button>
+        {canCreate && (
+          <Button onClick={handleCreate} data-testid="button-create-reconciliation">
+            <Plus className="mr-2 h-4 w-4" />
+            Create Reconciliation
+          </Button>
+        )}
       </div>
 
       {/* Summary Cards */}
@@ -294,22 +302,26 @@ export default function ProductionReconciliations() {
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEdit(reconciliation)}
-                              data-testid={`button-edit-${reconciliation.id}`}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDelete(reconciliation)}
-                              data-testid={`button-delete-${reconciliation.id}`}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
+                            {canEdit && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleEdit(reconciliation)}
+                                data-testid={`button-edit-${reconciliation.id}`}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {canDelete && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDelete(reconciliation)}
+                                data-testid={`button-delete-${reconciliation.id}`}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>

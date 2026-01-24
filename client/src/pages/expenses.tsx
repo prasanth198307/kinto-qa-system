@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { usePermissions } from "@/hooks/use-permissions";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +35,10 @@ interface VoucherWithDetails extends ExpenseVoucher {
 
 export default function ExpensesPage() {
   const { toast } = useToast();
+  const { hasPermission } = usePermissions();
+  const canCreate = hasPermission('expenses', 'create');
+  const canDelete = hasPermission('expenses', 'delete');
+  
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -277,12 +282,14 @@ export default function ExpensesPage() {
         </div>
         
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-create-voucher">
-              <Plus className="h-4 w-4 mr-2" />
-              New Expense Voucher
-            </Button>
-          </DialogTrigger>
+          {canCreate && (
+            <DialogTrigger asChild>
+              <Button data-testid="button-create-voucher">
+                <Plus className="h-4 w-4 mr-2" />
+                New Expense Voucher
+              </Button>
+            </DialogTrigger>
+          )}
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Create Expense Voucher</DialogTitle>
@@ -530,18 +537,20 @@ export default function ExpensesPage() {
                               >
                                 <Send className="h-4 w-4 text-blue-500" />
                               </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => {
-                                  if (confirm('Are you sure you want to delete this voucher?')) {
-                                    deleteMutation.mutate(voucher.id);
-                                  }
-                                }}
-                                data-testid={`button-delete-${voucher.id}`}
-                              >
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
+                              {canDelete && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => {
+                                    if (confirm('Are you sure you want to delete this voucher?')) {
+                                      deleteMutation.mutate(voucher.id);
+                                    }
+                                  }}
+                                  data-testid={`button-delete-${voucher.id}`}
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              )}
                             </>
                           )}
                         </div>
@@ -624,7 +633,7 @@ export default function ExpensesPage() {
                           <TableCell>{getCategoryName(item.categoryId)}</TableCell>
                           <TableCell className="text-right">{formatAmount(item.unitPrice)}</TableCell>
                           <TableCell className="text-right">{formatAmount(item.gstAmount)}</TableCell>
-                          <TableCell className="text-right font-medium">{formatAmount(item.netAmount)}</TableCell>
+                          <TableCell className="text-right font-medium">{formatAmount(item.amount)}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

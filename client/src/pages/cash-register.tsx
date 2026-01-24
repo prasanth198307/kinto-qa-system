@@ -27,6 +27,7 @@ import {
 import type { CashRegisterDay, CashRegisterTransaction, CashRegisterExpenseItem, PaginationMeta } from "@shared/schema";
 import { DataTablePagination } from "@/components/DataTablePagination";
 import { useAuth } from "@/hooks/use-auth";
+import { usePermissions } from "@/hooks/use-permissions";
 
 interface DayWithTransactions extends CashRegisterDay {
   transactions?: (CashRegisterTransaction & { items?: CashRegisterExpenseItem[] })[];
@@ -86,6 +87,11 @@ export default function CashRegisterPage() {
   const { toast } = useToast();
   const { user } = useAuth();
   const isAdmin = (user as any)?.role?.toLowerCase() === 'admin';
+  const { hasPermission } = usePermissions();
+  const canCreate = hasPermission('cash_register', 'create');
+  const canEdit = hasPermission('cash_register', 'edit');
+  const canDelete = hasPermission('cash_register', 'delete');
+  
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedDay, setSelectedDay] = useState<DayWithTransactions | null>(null);
@@ -714,7 +720,7 @@ export default function CashRegisterPage() {
                   <TrendingUp className="w-5 h-5 text-green-600" />
                   Cash Received
                 </CardTitle>
-                {isDayOpen && (
+                {isDayOpen && canCreate && (
                   <Button size="sm" variant="outline" onClick={() => setIsAddingCash(!isAddingCash)} data-testid="button-add-cash">
                     <Plus className="w-4 h-4 mr-1" /> Add
                   </Button>
@@ -822,12 +828,12 @@ export default function CashRegisterPage() {
                               </Button>
                             </label>
                           )}
-                          {isDayOpen && (
+                          {isDayOpen && canEdit && (
                             <Button size="icon" variant="ghost" onClick={() => startEditTransaction(txn)} data-testid={`button-edit-cash-${txn.id}`}>
                               <Edit className="w-4 h-4 text-muted-foreground" />
                             </Button>
                           )}
-                          {isDayOpen && (
+                          {isDayOpen && canDelete && (
                             <Button size="icon" variant="ghost" onClick={() => deleteTransactionMutation.mutate(txn.id)} data-testid={`button-delete-cash-${txn.id}`}>
                               <Trash2 className="w-4 h-4 text-muted-foreground" />
                             </Button>
@@ -849,7 +855,7 @@ export default function CashRegisterPage() {
                   <TrendingDown className="w-5 h-5 text-red-600" />
                   Expenses
                 </CardTitle>
-                {isDayOpen && (
+                {isDayOpen && canCreate && (
                   <Button size="sm" variant="outline" onClick={() => setIsAddingExpense(!isAddingExpense)} data-testid="button-add-expense">
                     <Plus className="w-4 h-4 mr-1" /> Add
                   </Button>
@@ -998,12 +1004,12 @@ export default function CashRegisterPage() {
                               </Button>
                             </label>
                           )}
-                          {isDayOpen && (
+                          {isDayOpen && canEdit && (
                             <Button size="icon" variant="ghost" onClick={() => startEditTransaction(txn)} data-testid={`button-edit-expense-${txn.id}`}>
                               <Edit className="w-4 h-4 text-muted-foreground" />
                             </Button>
                           )}
-                          {isDayOpen && (
+                          {isDayOpen && canDelete && (
                             <Button size="icon" variant="ghost" onClick={() => deleteTransactionMutation.mutate(txn.id)} data-testid={`button-delete-expense-${txn.id}`}>
                               <Trash2 className="w-4 h-4 text-muted-foreground" />
                             </Button>
@@ -1026,7 +1032,7 @@ export default function CashRegisterPage() {
                   <ArrowUpRight className="w-5 h-5 text-blue-600" />
                   Transfers
                 </CardTitle>
-                {isDayOpen && (
+                {isDayOpen && canCreate && (
                   <Button size="sm" variant="outline" onClick={() => setIsAddingTransfer(!isAddingTransfer)} data-testid="button-add-transfer">
                     <Plus className="w-4 h-4 mr-1" /> Add
                   </Button>
@@ -1101,12 +1107,12 @@ export default function CashRegisterPage() {
                               </Button>
                             </label>
                           )}
-                          {isDayOpen && (
+                          {isDayOpen && canEdit && (
                             <Button size="icon" variant="ghost" onClick={() => startEditTransaction(txn)} data-testid={`button-edit-transfer-${txn.id}`}>
                               <Edit className="w-4 h-4 text-muted-foreground" />
                             </Button>
                           )}
-                          {isDayOpen && (
+                          {isDayOpen && canDelete && (
                             <Button size="icon" variant="ghost" onClick={() => deleteTransactionMutation.mutate(txn.id)} data-testid={`button-delete-transfer-${txn.id}`}>
                               <Trash2 className="w-4 h-4 text-muted-foreground" />
                             </Button>

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { usePermissions } from "@/hooks/use-permissions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -60,6 +61,10 @@ const inspectSchema = z.object({
 
 export default function SalesReturnsPage() {
   const { toast } = useToast();
+  const { hasPermission } = usePermissions();
+  const canCreate = hasPermission('sales_returns', 'create');
+  const canDelete = hasPermission('sales_returns', 'delete');
+  
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [inspectDialogOpen, setInspectDialogOpen] = useState(false);
   const [selectedReturn, setSelectedReturn] = useState<any>(null);
@@ -275,12 +280,14 @@ export default function SalesReturnsPage() {
           <p className="text-muted-foreground">Manage post-delivery returns and damaged goods</p>
         </div>
         <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-create-return">
-              <Plus className="mr-2 h-4 w-4" />
-              Create Return
-            </Button>
-          </DialogTrigger>
+          {canCreate && (
+            <DialogTrigger asChild>
+              <Button data-testid="button-create-return">
+                <Plus className="mr-2 h-4 w-4" />
+                Create Return
+              </Button>
+            </DialogTrigger>
+          )}
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Create Sales Return</DialogTitle>
@@ -669,7 +676,7 @@ export default function SalesReturnsPage() {
                             Inspect
                           </Button>
                         )}
-                        {(returnRecord.status === 'pending' || returnRecord.status === 'pending_receipt') && (
+                        {(returnRecord.status === 'pending' || returnRecord.status === 'pending_receipt') && canDelete && (
                           <Button
                             size="icon"
                             variant="ghost"

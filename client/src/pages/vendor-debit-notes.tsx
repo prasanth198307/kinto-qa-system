@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { usePermissions } from "@/hooks/use-permissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -82,6 +83,10 @@ const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secon
 
 export default function VendorDebitNotesPage() {
   const { toast } = useToast();
+  const { hasPermission } = usePermissions();
+  const canCreate = hasPermission('vendor_debit_notes', 'create');
+  const canDelete = hasPermission('vendor_debit_notes', 'delete');
+  
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -145,9 +150,11 @@ export default function VendorDebitNotesPage() {
             Create and manage debit notes against vendors for claims
           </p>
         </div>
-        <Button onClick={() => setIsCreateDialogOpen(true)} data-testid="button-create-debit-note">
-          <Plus className="h-4 w-4 mr-2" /> Create Debit Note
-        </Button>
+        {canCreate && (
+          <Button onClick={() => setIsCreateDialogOpen(true)} data-testid="button-create-debit-note">
+            <Plus className="h-4 w-4 mr-2" /> Create Debit Note
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -292,7 +299,7 @@ export default function VendorDebitNotesPage() {
                               Adjust
                             </Button>
                           )}
-                          {note.status !== 'cancelled' && (
+                          {note.status !== 'cancelled' && canDelete && (
                             <Button 
                               size="icon" 
                               variant="ghost"
