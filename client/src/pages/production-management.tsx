@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { usePermissions } from "@/hooks/use-permissions";
 import { GlobalHeader } from "@/components/GlobalHeader";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Plus, Package, FileText, Search, X, Calendar } from "lucide-react";
@@ -31,6 +32,17 @@ interface ProductionManagementProps {
 }
 
 export default function ProductionManagement({ activeTab: externalActiveTab }: ProductionManagementProps = {}) {
+  const { hasPermission } = usePermissions();
+  const canCreateIssuance = hasPermission('raw_material_issuance', 'create');
+  const canEditIssuance = hasPermission('raw_material_issuance', 'edit');
+  const canDeleteIssuance = hasPermission('raw_material_issuance', 'delete');
+  const canCreateGatepass = hasPermission('gatepasses', 'create');
+  const canEditGatepass = hasPermission('gatepasses', 'edit');
+  const canDeleteGatepass = hasPermission('gatepasses', 'delete');
+  const canCreateInvoice = hasPermission('invoices', 'create');
+  const canEditInvoice = hasPermission('invoices', 'edit');
+  const canDeleteInvoice = hasPermission('invoices', 'delete');
+  
   const [activeTab, setActiveTab] = useState(externalActiveTab || "raw-material-issuance");
   const [showIssuanceForm, setShowIssuanceForm] = useState(false);
   const [showGatepassForm, setShowGatepassForm] = useState(false);
@@ -656,14 +668,16 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
                     {filteredIssuances.length} of {issuances.length} issuances
                   </p>
                 </div>
-                <Button 
-                  onClick={() => setShowIssuanceForm(true)} 
-                  size="sm"
-                  data-testid="button-add-issuance"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Issue Material
-                </Button>
+                {canCreateIssuance && (
+                  <Button 
+                    onClick={() => setShowIssuanceForm(true)} 
+                    size="sm"
+                    data-testid="button-add-issuance"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Issue Material
+                  </Button>
+                )}
               </div>
             </Card>
 
@@ -830,14 +844,16 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
                     {gatepassMeta ? `${gatepassMeta.totalItems} total gatepasses` : `${gatepasses.length} gatepasses`}
                   </p>
                 </div>
-                <Button 
-                  onClick={() => setShowGatepassForm(true)} 
-                  size="sm"
-                  data-testid="button-add-gatepass"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Issue Gatepass
-                </Button>
+                {canCreateGatepass && (
+                  <Button 
+                    onClick={() => setShowGatepassForm(true)} 
+                    size="sm"
+                    data-testid="button-add-gatepass"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Issue Gatepass
+                  </Button>
+                )}
               </div>
             </Card>
 
@@ -1065,14 +1081,16 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
                   </p>
                 </div>
                 <div className="flex gap-2">
-                  <Button 
-                    onClick={() => setShowInvoiceForm(true)} 
-                    size="sm"
-                    data-testid="button-create-invoice"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Invoice
-                  </Button>
+                  {canCreateInvoice && (
+                    <Button 
+                      onClick={() => setShowInvoiceForm(true)} 
+                      size="sm"
+                      data-testid="button-create-invoice"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create Invoice
+                    </Button>
+                  )}
                   <Button 
                     onClick={() => setShowFIFODialog(true)} 
                     size="sm"

@@ -17,6 +17,7 @@ import ProofOfDelivery from "@/components/ProofOfDelivery";
 import GatepassForm from "@/components/GatepassForm";
 import { GlobalHeader } from "@/components/GlobalHeader";
 import { useAuth } from "@/hooks/use-auth";
+import { usePermissions } from "@/hooks/use-permissions";
 import { DataTablePagination } from "@/components/DataTablePagination";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -38,6 +39,11 @@ interface DispatchTrackingProps {
 }
 
 export default function DispatchTracking({ showHeader = true }: DispatchTrackingProps = {}) {
+  const { hasPermission } = usePermissions();
+  const canCreateGatepass = hasPermission('gatepasses', 'create');
+  const canEditGatepass = hasPermission('gatepasses', 'edit');
+  const canEditDispatch = hasPermission('dispatch_tracking', 'edit');
+  
   const urlSearch = useSearch();
   const [, setLocation] = useLocation();
   const { logoutMutation } = useAuth();

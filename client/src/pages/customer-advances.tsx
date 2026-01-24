@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/command";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { usePermissions } from "@/hooks/use-permissions";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { 
   Plus, Search, IndianRupee, Calendar, User, FileText, 
@@ -39,6 +40,10 @@ interface AdvanceWithBalance extends CustomerAdvance {
 
 export default function CustomerAdvancesPage() {
   const { toast } = useToast();
+  const { hasPermission } = usePermissions();
+  const canCreate = hasPermission('customer_advances', 'create');
+  const canEdit = hasPermission('customer_advances', 'edit');
+  const canDelete = hasPermission('customer_advances', 'delete');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [showApplyDialog, setShowApplyDialog] = useState(false);
@@ -245,10 +250,12 @@ export default function CustomerAdvancesPage() {
             Track advance payments received from customers before invoicing
           </p>
         </div>
-        <Button onClick={() => setShowCreateDialog(true)} data-testid="button-record-advance">
-          <Plus className="h-4 w-4 mr-1" />
-          Record Advance
-        </Button>
+        {canCreate && (
+          <Button onClick={() => setShowCreateDialog(true)} data-testid="button-record-advance">
+            <Plus className="h-4 w-4 mr-1" />
+            Record Advance
+          </Button>
+        )}
       </div>
 
       {/* Summary Cards */}
