@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { usePermissions } from "@/hooks/use-permissions";
 
 interface Transporter {
   id: string;
@@ -101,6 +102,11 @@ export default function DispatchMasters() {
 
 function TransportersTab() {
   const { toast } = useToast();
+  const { hasPermission } = usePermissions();
+  const canCreate = hasPermission('dispatch_masters', 'create');
+  const canEdit = hasPermission('dispatch_masters', 'edit');
+  const canDelete = hasPermission('dispatch_masters', 'delete');
+  
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Transporter | null>(null);
@@ -209,9 +215,11 @@ function TransportersTab() {
           <Truck className="w-5 h-5" />
           Transporters
         </CardTitle>
-        <Button onClick={() => setIsCreateOpen(true)} size="sm" data-testid="button-add-transporter">
-          <Plus className="w-4 h-4 mr-2" /> Add Transporter
-        </Button>
+        {canCreate && (
+          <Button onClick={() => setIsCreateOpen(true)} size="sm" data-testid="button-add-transporter">
+            <Plus className="w-4 h-4 mr-2" /> Add Transporter
+          </Button>
+        )}
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -245,12 +253,16 @@ function TransportersTab() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => handleEdit(item)} data-testid={`button-edit-transporter-${item.id}`}>
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => { setItemToDelete(item); setDeleteConfirmOpen(true); }} data-testid={`button-delete-transporter-${item.id}`}>
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    {canEdit && (
+                      <Button variant="ghost" size="icon" onClick={() => handleEdit(item)} data-testid={`button-edit-transporter-${item.id}`}>
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                    )}
+                    {canDelete && (
+                      <Button variant="ghost" size="icon" onClick={() => { setItemToDelete(item); setDeleteConfirmOpen(true); }} data-testid={`button-delete-transporter-${item.id}`}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -336,6 +348,11 @@ function TransportersTab() {
 
 function VehiclesTab() {
   const { toast } = useToast();
+  const { hasPermission } = usePermissions();
+  const canCreate = hasPermission('dispatch_masters', 'create');
+  const canEdit = hasPermission('dispatch_masters', 'edit');
+  const canDelete = hasPermission('dispatch_masters', 'delete');
+  
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Vehicle | null>(null);
@@ -471,9 +488,11 @@ function VehiclesTab() {
           <Car className="w-5 h-5" />
           Vehicles
         </CardTitle>
-        <Button onClick={() => setIsCreateOpen(true)} size="sm" data-testid="button-add-vehicle">
-          <Plus className="w-4 h-4 mr-2" /> Add Vehicle
-        </Button>
+        {canCreate && (
+          <Button onClick={() => setIsCreateOpen(true)} size="sm" data-testid="button-add-vehicle">
+            <Plus className="w-4 h-4 mr-2" /> Add Vehicle
+          </Button>
+        )}
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -521,12 +540,16 @@ function VehiclesTab() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => handleEdit(item)} data-testid={`button-edit-vehicle-${item.id}`}>
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => { setItemToDelete(item); setDeleteConfirmOpen(true); }} data-testid={`button-delete-vehicle-${item.id}`}>
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    {canEdit && (
+                      <Button variant="ghost" size="icon" onClick={() => handleEdit(item)} data-testid={`button-edit-vehicle-${item.id}`}>
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                    )}
+                    {canDelete && (
+                      <Button variant="ghost" size="icon" onClick={() => { setItemToDelete(item); setDeleteConfirmOpen(true); }} data-testid={`button-delete-vehicle-${item.id}`}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -639,6 +662,11 @@ function VehiclesTab() {
 
 function DriversTab() {
   const { toast } = useToast();
+  const { hasPermission } = usePermissions();
+  const canCreate = hasPermission('dispatch_masters', 'create');
+  const canEdit = hasPermission('dispatch_masters', 'edit');
+  const canDelete = hasPermission('dispatch_masters', 'delete');
+  
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Driver | null>(null);
@@ -769,9 +797,11 @@ function DriversTab() {
           <User className="w-5 h-5" />
           Drivers
         </CardTitle>
-        <Button onClick={() => setIsCreateOpen(true)} size="sm" data-testid="button-add-driver">
-          <Plus className="w-4 h-4 mr-2" /> Add Driver
-        </Button>
+        {canCreate && (
+          <Button onClick={() => setIsCreateOpen(true)} size="sm" data-testid="button-add-driver">
+            <Plus className="w-4 h-4 mr-2" /> Add Driver
+          </Button>
+        )}
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -813,12 +843,16 @@ function DriversTab() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => handleEdit(item)} data-testid={`button-edit-driver-${item.id}`}>
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => { setItemToDelete(item); setDeleteConfirmOpen(true); }} data-testid={`button-delete-driver-${item.id}`}>
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    {canEdit && (
+                      <Button variant="ghost" size="icon" onClick={() => handleEdit(item)} data-testid={`button-edit-driver-${item.id}`}>
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                    )}
+                    {canDelete && (
+                      <Button variant="ghost" size="icon" onClick={() => { setItemToDelete(item); setDeleteConfirmOpen(true); }} data-testid={`button-delete-driver-${item.id}`}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

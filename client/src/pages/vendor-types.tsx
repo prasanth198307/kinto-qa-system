@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Plus, Edit, Trash2, Tag, AlertCircle } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { usePermissions } from "@/hooks/use-permissions";
 
 interface VendorType {
   id: string;
@@ -26,6 +27,11 @@ interface VendorType {
 
 export default function VendorTypes() {
   const { toast } = useToast();
+  const { hasPermission } = usePermissions();
+  const canCreate = hasPermission('vendor_types', 'create');
+  const canEdit = hasPermission('vendor_types', 'edit');
+  const canDelete = hasPermission('vendor_types', 'delete');
+  
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingType, setEditingType] = useState<VendorType | null>(null);
@@ -219,10 +225,12 @@ export default function VendorTypes() {
               Manage vendor classifications based on product brands (Kinto, HPPani, Purejal)
             </p>
           </div>
-          <Button onClick={() => setIsCreateOpen(true)} data-testid="button-create-vendor-type">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Vendor Type
-          </Button>
+          {canCreate && (
+            <Button onClick={() => setIsCreateOpen(true)} data-testid="button-create-vendor-type">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Vendor Type
+            </Button>
+          )}
         </div>
 
         <Card>
@@ -263,22 +271,26 @@ export default function VendorTypes() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(type)}
-                          data-testid={`button-edit-vendor-type-${type.id}`}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteClick(type)}
-                          data-testid={`button-delete-vendor-type-${type.id}`}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        {canEdit && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(type)}
+                            data-testid={`button-edit-vendor-type-${type.id}`}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {canDelete && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteClick(type)}
+                            data-testid={`button-delete-vendor-type-${type.id}`}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ))}

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { usePermissions } from "@/hooks/use-permissions";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +49,10 @@ function getExpiryStatus(expiryDate: string | null | undefined): {
 
 export default function DocumentsPage() {
   const { toast } = useToast();
+  const { hasPermission } = usePermissions();
+  const canCreate = hasPermission('documents', 'create');
+  const canDelete = hasPermission('documents', 'delete');
+  
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -273,12 +278,14 @@ export default function DocumentsPage() {
           )}
           
           <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
-            <DialogTrigger asChild>
-              <Button data-testid="button-upload-document">
-                <Upload className="h-4 w-4 mr-2" />
-                Upload Document
-              </Button>
-            </DialogTrigger>
+            {canCreate && (
+              <DialogTrigger asChild>
+                <Button data-testid="button-upload-document">
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload Document
+                </Button>
+              </DialogTrigger>
+            )}
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Upload Document</DialogTitle>
@@ -511,18 +518,20 @@ export default function DocumentsPage() {
                           >
                             <Download className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              if (confirm('Are you sure you want to delete this document?')) {
-                                deleteMutation.mutate(doc.id);
-                              }
-                            }}
-                            data-testid={`button-delete-${doc.id}`}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+                          {canDelete && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                if (confirm('Are you sure you want to delete this document?')) {
+                                  deleteMutation.mutate(doc.id);
+                                }
+                              }}
+                              data-testid={`button-delete-${doc.id}`}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

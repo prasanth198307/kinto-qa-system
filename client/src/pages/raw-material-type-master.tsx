@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Edit, Trash2, Package } from "lucide-react";
 import { z } from "zod";
+import { usePermissions } from "@/hooks/use-permissions";
 import {
   Table,
   TableBody,
@@ -99,6 +100,11 @@ type FormValues = z.infer<typeof formSchema>;
 
 export default function RawMaterialTypeMaster() {
   const { toast } = useToast();
+  const { hasPermission } = usePermissions();
+  const canCreate = hasPermission('raw_material_type_master', 'create');
+  const canEdit = hasPermission('raw_material_type_master', 'edit');
+  const canDelete = hasPermission('raw_material_type_master', 'delete');
+  
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingType, setEditingType] = useState<RawMaterialType | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -257,10 +263,12 @@ export default function RawMaterialTypeMaster() {
             Define raw material types with conversion methods for inventory management
           </p>
         </div>
-        <Button onClick={handleAddNew} data-testid="button-add-type">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Type
-        </Button>
+        {canCreate && (
+          <Button onClick={handleAddNew} data-testid="button-add-type">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Type
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -331,22 +339,26 @@ export default function RawMaterialTypeMaster() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex gap-2 justify-end">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleEdit(type)}
-                          data-testid={`button-edit-${type.id}`}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleDelete(type)}
-                          data-testid={`button-delete-${type.id}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {canEdit && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleEdit(type)}
+                            data-testid={`button-edit-${type.id}`}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {canDelete && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDelete(type)}
+                            data-testid={`button-delete-${type.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Plus, Edit, Trash2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { usePermissions } from "@/hooks/use-permissions";
 
 interface ProductCategory {
   id: string;
@@ -24,6 +25,11 @@ interface ProductCategory {
 
 export default function ProductCategories() {
   const { toast } = useToast();
+  const { hasPermission } = usePermissions();
+  const canCreate = hasPermission('product_categories', 'create');
+  const canEdit = hasPermission('product_categories', 'edit');
+  const canDelete = hasPermission('product_categories', 'delete');
+  
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<ProductCategory | null>(null);
@@ -140,10 +146,12 @@ export default function ProductCategories() {
               Manage product categories and their organization
             </p>
           </div>
-          <Button onClick={() => setIsCreateOpen(true)} data-testid="button-create-category">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Category
-          </Button>
+          {canCreate && (
+            <Button onClick={() => setIsCreateOpen(true)} data-testid="button-create-category">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Category
+            </Button>
+          )}
         </div>
 
         <Card>
@@ -185,22 +193,26 @@ export default function ProductCategories() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(category)}
-                          data-testid={`button-edit-${category.id}`}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(category.id)}
-                          data-testid={`button-delete-${category.id}`}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        {canEdit && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(category)}
+                            data-testid={`button-edit-${category.id}`}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {canDelete && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(category.id)}
+                            data-testid={`button-delete-${category.id}`}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ))}

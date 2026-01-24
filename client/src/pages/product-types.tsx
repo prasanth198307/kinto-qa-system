@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Plus, Edit, Trash2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { usePermissions } from "@/hooks/use-permissions";
 
 interface ProductType {
   id: string;
@@ -24,6 +25,11 @@ interface ProductType {
 
 export default function ProductTypes() {
   const { toast } = useToast();
+  const { hasPermission } = usePermissions();
+  const canCreate = hasPermission('product_types', 'create');
+  const canEdit = hasPermission('product_types', 'edit');
+  const canDelete = hasPermission('product_types', 'delete');
+  
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingType, setEditingType] = useState<ProductType | null>(null);
@@ -140,10 +146,12 @@ export default function ProductTypes() {
               Manage product types and classifications
             </p>
           </div>
-          <Button onClick={() => setIsCreateOpen(true)} data-testid="button-create-type">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Type
-          </Button>
+          {canCreate && (
+            <Button onClick={() => setIsCreateOpen(true)} data-testid="button-create-type">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Type
+            </Button>
+          )}
         </div>
 
         <Card>
@@ -185,22 +193,26 @@ export default function ProductTypes() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(type)}
-                          data-testid={`button-edit-${type.id}`}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(type.id)}
-                          data-testid={`button-delete-${type.id}`}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        {canEdit && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(type)}
+                            data-testid={`button-edit-${type.id}`}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {canDelete && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(type.id)}
+                            data-testid={`button-delete-${type.id}`}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ))}

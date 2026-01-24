@@ -61,6 +61,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Loader2, Plus, X, FileText, Search, Filter, Check, ChevronsUpDown, Pencil, ChevronDown, ChevronRight, Link2, CircleCheck, AlertTriangle, CircleDashed, AlertCircle } from "lucide-react";
+import { usePermissions } from "@/hooks/use-permissions";
 import { cn } from "@/lib/utils";
 
 const fifoPaymentSchema = z.object({
@@ -183,6 +184,10 @@ function PaymentEvidenceRow({ paymentId }: { paymentId: string }) {
 
 export default function PaymentManagement() {
   const { toast } = useToast();
+  const { hasPermission } = usePermissions();
+  const canCreate = hasPermission('payment_management', 'create');
+  const canEdit = hasPermission('payment_management', 'edit');
+  
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [allocationPreview, setAllocationPreview] = useState<any>(null);
   const [cancelPaymentId, setCancelPaymentId] = useState<string | null>(null);
@@ -445,10 +450,12 @@ export default function PaymentManagement() {
             FIFO payment entry and payment history
           </p>
         </div>
-        <Button onClick={() => setShowPaymentDialog(true)} data-testid="button-add-payment">
-          <Plus className="w-4 h-4 mr-2" />
-          New Payment
-        </Button>
+        {canCreate && (
+          <Button onClick={() => setShowPaymentDialog(true)} data-testid="button-add-payment">
+            <Plus className="w-4 h-4 mr-2" />
+            New Payment
+          </Button>
+        )}
       </div>
 
       {/* Payment History */}
@@ -602,7 +609,7 @@ export default function PaymentManagement() {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1">
-                              {!payment.cancelledAt && (
+                              {!payment.cancelledAt && canEdit && (
                                 <Button
                                   variant="ghost"
                                   size="sm"
