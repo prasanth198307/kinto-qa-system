@@ -145,10 +145,18 @@ export default function InventoryManagement({ activeTab: externalActiveTab }: In
 
 function UOMTab({ searchTerm, onSearchChange }: { searchTerm: string; onSearchChange: (value: string) => void }) {
   const { toast } = useToast();
+  const { role, hasPermission } = usePermissions();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Uom | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  
+  // Permission checks for granular access control
+  const roleLower = role.toLowerCase();
+  const isAdminOrManager = roleLower === 'admin' || roleLower === 'manager';
+  const canCreate = isAdminOrManager || hasPermission('uom', 'create');
+  const canEdit = isAdminOrManager || hasPermission('uom', 'edit');
+  const canDelete = isAdminOrManager || hasPermission('uom', 'delete');
 
   const { data: uoms = [], isLoading } = useQuery<Uom[]>({
     queryKey: ['/api/uom'],
@@ -233,10 +241,12 @@ function UOMTab({ searchTerm, onSearchChange }: { searchTerm: string; onSearchCh
             data-testid="input-search-uom"
           />
         </div>
-        <Button onClick={handleAdd} data-testid="button-add-uom">
-          <Plus className="h-4 w-4 mr-2" />
-          Add UOM
-        </Button>
+        {canCreate && (
+          <Button onClick={handleAdd} data-testid="button-add-uom">
+            <Plus className="h-4 w-4 mr-2" />
+            Add UOM
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -283,22 +293,26 @@ function UOMTab({ searchTerm, onSearchChange }: { searchTerm: string; onSearchCh
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(item)}
-                          data-testid={`button-edit-${item.id}`}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(item.id)}
-                          data-testid={`button-delete-${item.id}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {canEdit && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(item)}
+                            data-testid={`button-edit-${item.id}`}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {canDelete && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(item.id)}
+                            data-testid={`button-delete-${item.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -505,11 +519,19 @@ interface PaginatedProductResponse {
 
 function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSearchChange: (value: string) => void }) {
   const { toast } = useToast();
+  const { role, hasPermission } = usePermissions();
   const [location, setLocation] = useLocation();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Product | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+  
+  // Permission checks for granular access control
+  const roleLower = role.toLowerCase();
+  const isAdminOrManager = roleLower === 'admin' || roleLower === 'manager';
+  const canCreate = isAdminOrManager || hasPermission('products', 'create');
+  const canEdit = isAdminOrManager || hasPermission('products', 'edit');
+  const canDelete = isAdminOrManager || hasPermission('products', 'delete');
 
   // Get pathname and search params separately
   const pathname = location.split('?')[0];
@@ -758,10 +780,12 @@ function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSea
             data-testid="input-search-product"
           />
         </div>
-        <Button onClick={handleAdd} data-testid="button-add-product">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Product
-        </Button>
+        {canCreate && (
+          <Button onClick={handleAdd} data-testid="button-add-product">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Product
+          </Button>
+        )}
       </div>
 
       {/* Filters */}
@@ -898,22 +922,26 @@ function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSea
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(item)}
-                          data-testid={`button-edit-${item.id}`}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(item.id)}
-                          data-testid={`button-delete-${item.id}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {canEdit && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(item)}
+                            data-testid={`button-edit-${item.id}`}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {canDelete && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(item.id)}
+                            data-testid={`button-delete-${item.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -2226,6 +2254,7 @@ function ProductDialog({
 
 function RawMaterialsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSearchChange: (value: string) => void }) {
   const { toast } = useToast();
+  const { role, hasPermission } = usePermissions();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<RawMaterial | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -2235,6 +2264,13 @@ function RawMaterialsTab({ searchTerm, onSearchChange }: { searchTerm: string; o
   const [printItem, setPrintItem] = useState<RawMaterial | null>(null);
   const [labelQuantity, setLabelQuantity] = useState(1);
   const itemsPerPage = 10;
+  
+  // Permission checks for granular access control
+  const roleLower = role.toLowerCase();
+  const isAdminOrManager = roleLower === 'admin' || roleLower === 'manager';
+  const canCreate = isAdminOrManager || hasPermission('raw_materials', 'create');
+  const canEdit = isAdminOrManager || hasPermission('raw_materials', 'edit');
+  const canDelete = isAdminOrManager || hasPermission('raw_materials', 'delete');
 
   // Filter states
   const [typeFilter, setTypeFilter] = useState<string>('all');
@@ -2515,10 +2551,12 @@ function RawMaterialsTab({ searchTerm, onSearchChange }: { searchTerm: string; o
             data-testid="input-search-material"
           />
         </div>
-        <Button onClick={handleAdd} data-testid="button-add-material">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Raw Material
-        </Button>
+        {canCreate && (
+          <Button onClick={handleAdd} data-testid="button-add-material">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Raw Material
+          </Button>
+        )}
       </div>
 
       {/* Filters */}
@@ -2687,22 +2725,26 @@ function RawMaterialsTab({ searchTerm, onSearchChange }: { searchTerm: string; o
                         >
                           <Printer className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(item)}
-                          data-testid={`button-edit-${item.id}`}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(item.id)}
-                          data-testid={`button-delete-${item.id}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {canEdit && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(item)}
+                            data-testid={`button-edit-${item.id}`}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {canDelete && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(item.id)}
+                            data-testid={`button-delete-${item.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
