@@ -3632,12 +3632,20 @@ function RawMaterialDialog({
 
 function FinishedGoodsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSearchChange: (value: string) => void }) {
   const { toast } = useToast();
+  const { role, hasPermission } = usePermissions();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<FinishedGood | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const itemsPerPage = 10;
+  
+  // Permission checks for granular access control
+  const roleLower = role.toLowerCase();
+  const isAdminOrManager = roleLower === 'admin' || roleLower === 'manager';
+  const canCreate = isAdminOrManager || hasPermission('finished_goods', 'create');
+  const canEdit = isAdminOrManager || hasPermission('finished_goods', 'edit');
+  const canDelete = isAdminOrManager || hasPermission('finished_goods', 'delete');
 
   // Filter states
   const [qualityStatusFilter, setQualityStatusFilter] = useState<string>('all');
@@ -3868,10 +3876,12 @@ function FinishedGoodsTab({ searchTerm, onSearchChange }: { searchTerm: string; 
             data-testid="input-search-good"
           />
         </div>
-        <Button onClick={handleAdd} data-testid="button-add-good">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Finished Good
-        </Button>
+        {canCreate && (
+          <Button onClick={handleAdd} data-testid="button-add-good">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Finished Good
+          </Button>
+        )}
       </div>
 
       {/* Filters */}
@@ -4103,22 +4113,26 @@ function FinishedGoodsTab({ searchTerm, onSearchChange }: { searchTerm: string; 
                             </Button>
                           </>
                         )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(item)}
-                          data-testid={`button-edit-${item.id}`}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(item.id)}
-                          data-testid={`button-delete-${item.id}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {canEdit && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(item)}
+                            data-testid={`button-edit-${item.id}`}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {canDelete && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(item.id)}
+                            data-testid={`button-delete-${item.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

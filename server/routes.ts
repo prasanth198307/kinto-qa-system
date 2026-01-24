@@ -269,7 +269,7 @@ function requireRole(...allowedRoles: string[]) {
         }
         
         if (screenKey) {
-          // Check if the custom role has can_view permission for this screen
+          // Check if the custom role has the appropriate permission for this action
           const permission = await db.select()
             .from(rolePermissions)
             .where(and(
@@ -279,10 +279,35 @@ function requireRole(...allowedRoles: string[]) {
             ))
             .limit(1);
           
-          if (permission.length > 0 && permission[0].canView === 1) {
-            console.log(`[AUDIT] Custom role ${role.name} granted access to ${req.path} via screen permission ${screenKey}`);
-            req.userRole = role.name;
-            return next();
+          if (permission.length > 0) {
+            const perm = permission[0];
+            const method = req.method.toUpperCase();
+            
+            // Check the appropriate permission based on HTTP method
+            let hasRequiredPermission = false;
+            let requiredAction = 'view';
+            
+            if (method === 'GET') {
+              hasRequiredPermission = perm.canView === 1;
+              requiredAction = 'view';
+            } else if (method === 'POST') {
+              hasRequiredPermission = perm.canCreate === 1;
+              requiredAction = 'create';
+            } else if (method === 'PUT' || method === 'PATCH') {
+              hasRequiredPermission = perm.canEdit === 1;
+              requiredAction = 'edit';
+            } else if (method === 'DELETE') {
+              hasRequiredPermission = perm.canDelete === 1;
+              requiredAction = 'delete';
+            }
+            
+            if (hasRequiredPermission) {
+              console.log(`[AUDIT] Custom role ${role.name} granted ${requiredAction} access to ${req.path} via screen permission ${screenKey}`);
+              req.userRole = role.name;
+              return next();
+            } else {
+              console.log(`[AUDIT] Custom role ${role.name} denied ${requiredAction} access to ${req.path} - missing ${requiredAction} permission for ${screenKey}`);
+            }
           }
         }
       }
