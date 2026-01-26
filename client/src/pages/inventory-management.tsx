@@ -49,7 +49,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Pencil, Trash2, Search, Package, Layers, Box, CheckCircle, Users, Minus, Check, X, Printer, CalendarIcon } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Package, Layers, Box, CheckCircle, Users, Minus, Check, X, Printer, CalendarIcon, AlertTriangle } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format, parseISO, isWithinInterval } from "date-fns";
@@ -4259,6 +4259,11 @@ function FinishedGoodDialog({
   onSubmit: (data: z.infer<typeof insertFinishedGoodSchema>) => void;
   isLoading: boolean;
 }) {
+  const [duplicateWarningOpen, setDuplicateWarningOpen] = useState(false);
+  const [pendingData, setPendingData] = useState<z.infer<typeof insertFinishedGoodSchema> | null>(null);
+  const [duplicateInfo, setDuplicateInfo] = useState<{ batchNumber: string; quantity: number; productionDate: string } | null>(null);
+  const [isChecking, setIsChecking] = useState(false);
+
   const form = useForm<z.infer<typeof insertFinishedGoodSchema>>({
     resolver: zodResolver(insertFinishedGoodSchema),
     defaultValues: {
@@ -4330,8 +4335,50 @@ function FinishedGoodDialog({
     }
   }, [item, open, form]);
 
-  const handleSubmit = (data: z.infer<typeof insertFinishedGoodSchema>) => {
-    onSubmit(data);
+  const handleSubmit = async (data: z.infer<typeof insertFinishedGoodSchema>) => {
+    // Skip duplicate check when editing existing item
+    if (item) {
+      onSubmit(data);
+      return;
+    }
+
+    // Check if batch number already exists for new entries
+    setIsChecking(true);
+    try {
+      const response = await fetch(`/api/finished-goods/check-batch/${encodeURIComponent(data.batchNumber)}`);
+      const result = await response.json();
+      
+      if (result.exists) {
+        // Show warning dialog
+        setDuplicateInfo(result.existingItem);
+        setPendingData(data);
+        setDuplicateWarningOpen(true);
+      } else {
+        // No duplicate, proceed with creation
+        onSubmit(data);
+      }
+    } catch (error) {
+      console.error("Error checking batch number:", error);
+      // On error, proceed anyway (backend will handle final validation)
+      onSubmit(data);
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
+  const handleConfirmDuplicate = () => {
+    if (pendingData) {
+      onSubmit(pendingData);
+    }
+    setDuplicateWarningOpen(false);
+    setPendingData(null);
+    setDuplicateInfo(null);
+  };
+
+  const handleCancelDuplicate = () => {
+    setDuplicateWarningOpen(false);
+    setPendingData(null);
+    setDuplicateInfo(null);
   };
 
   return (
@@ -4527,16 +4574,46 @@ function FinishedGoodDialog({
               )}
             />
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} data-testid="button-cancel">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} data-testid="button-cancel-finished-good">
                 Cancel
               </Button>
-              <Button type="submit" disabled={isLoading} data-testid="button-submit">
-                {isLoading ? 'Saving...' : (item ? 'Update' : 'Create')}
+              <Button type="submit" disabled={isLoading || isChecking} data-testid="button-submit-finished-good">
+                {isChecking ? 'Checking...' : isLoading ? 'Saving...' : (item ? 'Update' : 'Create')}
               </Button>
             </DialogFooter>
           </form>
         </Form>
       </DialogContent>
+
+      {/* Duplicate Batch Warning Dialog */}
+      <AlertDialog open={duplicateWarningOpen} onOpenChange={setDuplicateWarningOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Duplicate Batch Code Detected
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>A finished good with batch code <strong>{duplicateInfo?.batchNumber}</strong> already exists:</p>
+                <div className="bg-muted p-3 rounded-md text-sm">
+                  <p><strong>Existing Quantity:</strong> {duplicateInfo?.quantity}</p>
+                  <p><strong>Production Date:</strong> {duplicateInfo?.productionDate ? new Date(duplicateInfo.productionDate).toLocaleDateString() : 'N/A'}</p>
+                </div>
+                <p className="text-amber-600 font-medium">Do you still want to create a new entry with the same batch code?</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancelDuplicate} data-testid="button-cancel-duplicate">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDuplicate} data-testid="button-confirm-duplicate">
+              Yes, Create Anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

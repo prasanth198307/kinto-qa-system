@@ -3804,6 +3804,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Check if batch number already exists
+  app.get('/api/finished-goods/check-batch/:batchNumber', isAuthenticated, async (req: any, res) => {
+    try {
+      const { batchNumber } = req.params;
+      const goods = await storage.getAllFinishedGoods();
+      const existing = goods.find(g => 
+        g.batchNumber.toLowerCase() === batchNumber.toLowerCase() && 
+        g.recordStatus === 1
+      );
+      res.json({ 
+        exists: !!existing,
+        existingItem: existing ? {
+          id: existing.id,
+          batchNumber: existing.batchNumber,
+          quantity: existing.quantity,
+          productionDate: existing.productionDate
+        } : null
+      });
+    } catch (error) {
+      console.error("Error checking batch number:", error);
+      res.status(500).json({ message: "Failed to check batch number" });
+    }
+  });
+
   app.post('/api/finished-goods', requireRole('admin', 'manager', 'operator'), async (req: any, res) => {
     try {
       const userId = req.user?.id;
