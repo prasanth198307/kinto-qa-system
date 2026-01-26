@@ -7444,8 +7444,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update invoice status (for dispatch workflow)
-  app.patch('/api/invoices/:id/status', requireRole('admin', 'manager'), async (req: any, res) => {
+  // Allow admin, manager, or custom roles with create OR edit permission on invoices
+  app.patch('/api/invoices/:id/status', async (req: any, res) => {
     try {
+      // Manual permission check - allow create OR edit for workflow progression
+      if (!req.isAuthenticated() || !req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const user = await storage.getUser(req.user.id);
+      if (!user || !user.roleId) {
+        return res.status(403).json({ message: "Forbidden: No role assigned" });
+      }
+      
+      const role = await storage.getUserRole(user.roleId);
+      if (!role) {
+        return res.status(403).json({ message: "Forbidden: Invalid role" });
+      }
+      
+      const roleLower = role.name.toLowerCase();
+      const isAdminOrManager = roleLower === 'admin' || roleLower === 'manager';
+      
+      if (!isAdminOrManager) {
+        // Check custom role permissions - allow create OR edit for invoice status updates
+        const permission = await db.select()
+          .from(rolePermissions)
+          .where(and(
+            eq(rolePermissions.roleId, user.roleId),
+            eq(rolePermissions.screenKey, 'invoices'),
+            eq(rolePermissions.recordStatus, 1)
+          ))
+          .limit(1);
+        
+        if (permission.length === 0) {
+          return res.status(403).json({ message: "Forbidden: No invoice permissions" });
+        }
+        
+        const perm = permission[0];
+        // Allow either create or edit permission for workflow progression
+        if (perm.canCreate !== 1 && perm.canEdit !== 1) {
+          return res.status(403).json({ message: "Forbidden: Requires create or edit permission" });
+        }
+      }
+      
       const { id } = req.params;
       const { status, dispatchDate, deliveryDate, receivedBy, podRemarks } = req.body;
       
