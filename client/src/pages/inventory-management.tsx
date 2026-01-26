@@ -75,11 +75,9 @@ export default function InventoryManagement({ activeTab: externalActiveTab }: In
     }
   }, [externalActiveTab]);
 
-  // Check access using database permissions
+  // Check access using database permissions only
   // Allow access if user has permission to any inventory-related screen
-  const roleLower = (role || (user as any)?.role || '').toLowerCase();
-  const hasAccess = roleLower === 'admin' || roleLower === 'manager' || 
-    canAccessScreen('inventory_management') || 
+  const hasAccess = canAccessScreen('inventory_management') || 
     canAccessScreen('finished_goods') ||
     canAccessScreen('products') ||
     canAccessScreen('raw_materials') ||
@@ -151,12 +149,10 @@ function UOMTab({ searchTerm, onSearchChange }: { searchTerm: string; onSearchCh
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   
-  // Permission checks for granular access control
-  const roleLower = role.toLowerCase();
-  const isAdminOrManager = roleLower === 'admin' || roleLower === 'manager';
-  const canCreate = isAdminOrManager || hasPermission('uom', 'create');
-  const canEdit = isAdminOrManager || hasPermission('uom', 'edit');
-  const canDelete = isAdminOrManager || hasPermission('uom', 'delete');
+  // Permission checks - 100% database driven
+  const canCreate = hasPermission('uom', 'create');
+  const canEdit = hasPermission('uom', 'edit');
+  const canDelete = hasPermission('uom', 'delete');
 
   const { data: uoms = [], isLoading } = useQuery<Uom[]>({
     queryKey: ['/api/uom'],
@@ -526,12 +522,10 @@ function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSea
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   
-  // Permission checks for granular access control
-  const roleLower = role.toLowerCase();
-  const isAdminOrManager = roleLower === 'admin' || roleLower === 'manager';
-  const canCreate = isAdminOrManager || hasPermission('products', 'create');
-  const canEdit = isAdminOrManager || hasPermission('products', 'edit');
-  const canDelete = isAdminOrManager || hasPermission('products', 'delete');
+  // Permission checks - 100% database driven
+  const canCreate = hasPermission('products', 'create');
+  const canEdit = hasPermission('products', 'edit');
+  const canDelete = hasPermission('products', 'delete');
 
   // Get pathname and search params separately
   const pathname = location.split('?')[0];
@@ -2265,12 +2259,10 @@ function RawMaterialsTab({ searchTerm, onSearchChange }: { searchTerm: string; o
   const [labelQuantity, setLabelQuantity] = useState(1);
   const itemsPerPage = 10;
   
-  // Permission checks for granular access control
-  const roleLower = role.toLowerCase();
-  const isAdminOrManager = roleLower === 'admin' || roleLower === 'manager';
-  const canCreate = isAdminOrManager || hasPermission('raw_materials', 'create');
-  const canEdit = isAdminOrManager || hasPermission('raw_materials', 'edit');
-  const canDelete = isAdminOrManager || hasPermission('raw_materials', 'delete');
+  // Permission checks - 100% database driven
+  const canCreate = hasPermission('raw_materials', 'create');
+  const canEdit = hasPermission('raw_materials', 'edit');
+  const canDelete = hasPermission('raw_materials', 'delete');
 
   // Filter states
   const [typeFilter, setTypeFilter] = useState<string>('all');
@@ -3682,12 +3674,10 @@ function FinishedGoodsTab({ searchTerm, onSearchChange }: { searchTerm: string; 
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const itemsPerPage = 10;
   
-  // Permission checks for granular access control
-  const roleLower = role.toLowerCase();
-  const isAdminOrManager = roleLower === 'admin' || roleLower === 'manager';
-  const canCreate = isAdminOrManager || hasPermission('finished_goods', 'create');
-  const canEdit = isAdminOrManager || hasPermission('finished_goods', 'edit');
-  const canDelete = isAdminOrManager || hasPermission('finished_goods', 'delete');
+  // Permission checks - 100% database driven
+  const canCreate = hasPermission('finished_goods', 'create');
+  const canEdit = hasPermission('finished_goods', 'edit');
+  const canDelete = hasPermission('finished_goods', 'delete');
 
   // Filter states
   const [qualityStatusFilter, setQualityStatusFilter] = useState<string>('all');

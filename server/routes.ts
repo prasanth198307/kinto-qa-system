@@ -4807,14 +4807,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Production reconciliation not found" });
       }
       
-      // Enforce edit limits: admin = unlimited, others = max 3 edits
-      const isAdmin = req.user?.roleId === 'admin';
+      // Enforce edit limits: users with delete permission = unlimited, others = max 3 edits
+      // Check if user has delete permission (which indicates admin-level access)
+      const editPermission = await db.select()
+        .from(rolePermissions)
+        .where(and(
+          eq(rolePermissions.roleId, req.user.roleId),
+          eq(rolePermissions.screenKey, 'production_reconciliation'),
+          eq(rolePermissions.recordStatus, 1)
+        ))
+        .limit(1);
+      const hasUnlimitedEdits = editPermission.length > 0 && editPermission[0].canDelete === 1;
       const currentEditCount = existing.editCount || 0;
       const maxEdits = 3;
       
-      if (!isAdmin && currentEditCount >= maxEdits) {
+      if (!hasUnlimitedEdits && currentEditCount >= maxEdits) {
         return res.status(403).json({ 
-          message: `Edit limit reached. Non-admin users can only edit this reconciliation ${maxEdits} times. Contact an administrator for further changes.` 
+          message: `Edit limit reached. Users without delete permission can only edit this reconciliation ${maxEdits} times. Contact an administrator for further changes.` 
         });
       }
       
@@ -4898,7 +4907,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json({ 
         reconciliation: result, 
-        message: `Reconciliation updated successfully (Edit ${newEditCount}/${isAdmin ? '∞' : maxEdits})` 
+        message: `Reconciliation updated successfully (Edit ${newEditCount}/${hasUnlimitedEdits ? '∞' : maxEdits})` 
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -7453,29 +7462,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Forbidden: Invalid role" });
       }
       
-      const roleLower = role.name.toLowerCase();
-      const isAdminOrManager = roleLower === 'admin' || roleLower === 'manager';
+      // Check database permissions - allow create OR edit for workflow progression
+      const permission = await db.select()
+        .from(rolePermissions)
+        .where(and(
+          eq(rolePermissions.roleId, user.roleId),
+          eq(rolePermissions.screenKey, 'invoices'),
+          eq(rolePermissions.recordStatus, 1)
+        ))
+        .limit(1);
       
-      if (!isAdminOrManager) {
-        // Check custom role permissions - allow create OR edit for invoice status updates
-        const permission = await db.select()
-          .from(rolePermissions)
-          .where(and(
-            eq(rolePermissions.roleId, user.roleId),
-            eq(rolePermissions.screenKey, 'invoices'),
-            eq(rolePermissions.recordStatus, 1)
-          ))
-          .limit(1);
-        
-        if (permission.length === 0) {
-          return res.status(403).json({ message: "Forbidden: No invoice permissions" });
-        }
-        
-        const perm = permission[0];
-        // Allow either create or edit permission for workflow progression
-        if (perm.canCreate !== 1 && perm.canEdit !== 1) {
-          return res.status(403).json({ message: "Forbidden: Requires create or edit permission" });
-        }
+      if (permission.length === 0) {
+        return res.status(403).json({ message: "Forbidden: No invoice permissions" });
+      }
+      
+      const perm = permission[0];
+      // Allow either create or edit permission for workflow progression
+      if (perm.canCreate !== 1 && perm.canEdit !== 1) {
+        return res.status(403).json({ message: "Forbidden: Requires create or edit permission" });
       }
       
       const { id } = req.params;
@@ -8698,22 +8702,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Forbidden: Invalid role" });
       }
       
-      const roleLower = role.name.toLowerCase();
-      const isAdminOrManager = roleLower === 'admin' || roleLower === 'manager';
+      // Check database permissions - allow create OR edit for workflow progression
+      const permission = await db.select()
+        .from(rolePermissions)
+        .where(and(
+          eq(rolePermissions.roleId, user.roleId),
+          eq(rolePermissions.screenKey, 'sales_returns'),
+          eq(rolePermissions.recordStatus, 1)
+        ))
+        .limit(1);
       
-      if (!isAdminOrManager) {
-        const permission = await db.select()
-          .from(rolePermissions)
-          .where(and(
-            eq(rolePermissions.roleId, user.roleId),
-            eq(rolePermissions.screenKey, 'sales_returns'),
-            eq(rolePermissions.recordStatus, 1)
-          ))
-          .limit(1);
-        
-        if (permission.length === 0 || (permission[0].canCreate !== 1 && permission[0].canEdit !== 1)) {
-          return res.status(403).json({ message: "Forbidden: Requires create or edit permission" });
-        }
+      if (permission.length === 0 || (permission[0].canCreate !== 1 && permission[0].canEdit !== 1)) {
+        return res.status(403).json({ message: "Forbidden: Requires create or edit permission" });
       }
       
       const { id } = req.params;
@@ -8754,22 +8754,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Forbidden: Invalid role" });
       }
       
-      const roleLower = role.name.toLowerCase();
-      const isAdminOrManager = roleLower === 'admin' || roleLower === 'manager';
+      // Check database permissions - allow create OR edit for workflow progression
+      const permission = await db.select()
+        .from(rolePermissions)
+        .where(and(
+          eq(rolePermissions.roleId, user.roleId),
+          eq(rolePermissions.screenKey, 'sales_returns'),
+          eq(rolePermissions.recordStatus, 1)
+        ))
+        .limit(1);
       
-      if (!isAdminOrManager) {
-        const permission = await db.select()
-          .from(rolePermissions)
-          .where(and(
-            eq(rolePermissions.roleId, user.roleId),
-            eq(rolePermissions.screenKey, 'sales_returns'),
-            eq(rolePermissions.recordStatus, 1)
-          ))
-          .limit(1);
-        
-        if (permission.length === 0 || (permission[0].canCreate !== 1 && permission[0].canEdit !== 1)) {
-          return res.status(403).json({ message: "Forbidden: Requires create or edit permission" });
-        }
+      if (permission.length === 0 || (permission[0].canCreate !== 1 && permission[0].canEdit !== 1)) {
+        return res.status(403).json({ message: "Forbidden: Requires create or edit permission" });
       }
       
       const { id } = req.params;
@@ -11743,22 +11739,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Forbidden: Invalid role" });
       }
       
-      const roleLower = role.name.toLowerCase();
-      const isAdminOrManager = roleLower === 'admin' || roleLower === 'manager' || roleLower === 'accountsmanager';
+      // Check database permissions - allow create OR edit for workflow progression
+      const permission = await db.select()
+        .from(rolePermissions)
+        .where(and(
+          eq(rolePermissions.roleId, user.roleId),
+          eq(rolePermissions.screenKey, 'vendor_debit_notes'),
+          eq(rolePermissions.recordStatus, 1)
+        ))
+        .limit(1);
       
-      if (!isAdminOrManager) {
-        const permission = await db.select()
-          .from(rolePermissions)
-          .where(and(
-            eq(rolePermissions.roleId, user.roleId),
-            eq(rolePermissions.screenKey, 'vendor_debit_notes'),
-            eq(rolePermissions.recordStatus, 1)
-          ))
-          .limit(1);
-        
-        if (permission.length === 0 || (permission[0].canCreate !== 1 && permission[0].canEdit !== 1)) {
-          return res.status(403).json({ message: "Forbidden: Requires create or edit permission" });
-        }
+      if (permission.length === 0 || (permission[0].canCreate !== 1 && permission[0].canEdit !== 1)) {
+        return res.status(403).json({ message: "Forbidden: Requires create or edit permission" });
       }
       
       const { id } = req.params;

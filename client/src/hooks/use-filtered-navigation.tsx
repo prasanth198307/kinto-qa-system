@@ -213,24 +213,13 @@ function filterNavSectionsWithDbPermissions(sections: NavSection[], dbPermission
 }
 
 export function useFilteredNavigation(allNavSections: NavSection[]) {
-  const { user } = useAuth();
-  const { permissions, isLoading: permissionsLoading, role: dbRole } = usePermissions();
-  
-  const userRole = (user as any)?.role || '';
-  const roleLower = userRole.toLowerCase();
-  const isDefaultRole = ['admin', 'manager', 'operator', 'reviewer'].includes(roleLower);
+  const { permissions, isLoading: permissionsLoading } = usePermissions();
   
   if (permissionsLoading) {
     return { navSections: [], isLoading: true };
   }
   
-  if (isDefaultRole) {
-    return { 
-      navSections: filterNavSectionsForDefaultRole(allNavSections, userRole),
-      isLoading: false 
-    };
-  }
-  
+  // 100% database driven - always use database permissions for all roles
   return { 
     navSections: filterNavSectionsWithDbPermissions(allNavSections, permissions),
     isLoading: false 

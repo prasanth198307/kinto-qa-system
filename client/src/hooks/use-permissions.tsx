@@ -48,9 +48,7 @@ export function usePermissions() {
   const canAccessScreen = (screenKey: string): boolean => {
     if (!data) return false;
     
-    const roleLower = data.role.toLowerCase();
-    if (roleLower === 'admin') return true;
-    
+    // 100% database driven - check database permissions only
     return hasPermission(screenKey, 'view');
   };
 

@@ -399,11 +399,7 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
 
   // hasPermission and permissionRole moved to top to avoid hooks ordering violation
   
-  // Check permissions - support both default roles AND custom roles with appropriate permissions
-  // Use permissionRole from usePermissions hook (user object only has roleId, not role name)
-  const userRole = (permissionRole || '').toLowerCase();
-  const isDefaultAdminOrManager = user && (userRole === 'admin' || userRole === 'manager');
-  
+  // Check permissions - 100% database driven, no role name checking
   // Check if user has invoice permissions
   const hasInvoiceCreatePermission = hasPermission('invoices', 'create');
   const hasInvoiceEditPermission = hasPermission('invoices', 'edit');
@@ -412,12 +408,12 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
   // Check if user has vendor debit note create permissions (for debit notes)
   const hasDebitNotePermission = hasPermission('vendor_debit_notes', 'create') || hasPermission('credit_notes', 'create');
   
-  // Combined check: either default admin/manager role OR has specific permissions
-  const canManageInvoices = isDefaultAdminOrManager || hasInvoiceEditPermission;
+  // All permission checks are based on database permissions only
+  const canManageInvoices = hasInvoiceEditPermission;
   // For workflow progression (mark ready for dispatch), allow create OR edit permission
-  const canProgressInvoiceWorkflow = isDefaultAdminOrManager || hasInvoiceCreatePermission || hasInvoiceEditPermission;
-  const canManageCreditNotes = isDefaultAdminOrManager || hasCreditNotePermission;
-  const canManageDebitNotes = isDefaultAdminOrManager || hasDebitNotePermission;
+  const canProgressInvoiceWorkflow = hasInvoiceCreatePermission || hasInvoiceEditPermission;
+  const canManageCreditNotes = hasCreditNotePermission;
+  const canManageDebitNotes = hasDebitNotePermission;
   
   // Check if invoice is in current month
   // IMPORTANT: Must have invoice loaded to determine this correctly

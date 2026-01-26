@@ -1499,26 +1499,9 @@ function canAccessNavItemWithDbPermissions(itemId: string, dbPermissions: Permis
   return permission?.canView === true;
 }
 
-// Filter nav sections based on user's role
+// Filter nav sections - this is now a stub, actual filtering done by filterNavSectionsWithDbPermissions
 function filterNavSectionsByRole(sections: NavSection[], role: string): NavSection[] {
-  if (!sections || !Array.isArray(sections)) return [];
-  
-  const roleLower = role.toLowerCase();
-  const isDefaultRole = ['admin', 'manager', 'operator', 'reviewer'].includes(roleLower);
-  
-  // For default roles, use the hardcoded permission matrix
-  if (isDefaultRole) {
-    const filtered = sections
-      .map(section => ({
-        ...section,
-        items: section.items.filter(item => canAccessNavItem(item.id, role))
-      }))
-      .filter(section => section.items.length > 0);
-      
-    return filtered.length > 0 ? filtered : sections;
-  }
-  
-  // For custom roles, return empty (will be filtered by filterNavSectionsWithDbPermissions)
+  // 100% database driven - return empty so filterNavSectionsWithDbPermissions handles all filtering
   return [];
 }
 
