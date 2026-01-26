@@ -396,7 +396,7 @@ export default function MachineStartupReminders() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {users.filter(u => u.role === 'operator').map((user) => (
+                        {users.filter(u => (u.role || '').toLowerCase() === 'operator').map((user) => (
                           <SelectItem key={user.id} value={user.id}>
                             {user.firstName} {user.lastName} ({user.username})
                           </SelectItem>

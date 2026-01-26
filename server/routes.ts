@@ -13356,12 +13356,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!user || !user.roleId) {
           return res.status(401).json({ message: "User not found" });
         }
-        const userRoleData = await storage.getUserRole(user.roleId);
-        const userRole = userRoleData?.name || '';
 
-        // SECURITY: Only assigned reviewer can view (unless admin/manager)
-        if (userRole === 'reviewer' && submission.reviewerId !== req.user.id) {
-          console.log(`[AUDIT] Reviewer ${req.user.id} attempted to access assignment ${id} not assigned to them`);
+        // SECURITY: Users without edit permission can only view their own submissions
+        const checklistPermission = await db.select()
+          .from(rolePermissions)
+          .where(and(
+            eq(rolePermissions.roleId, user.roleId),
+            eq(rolePermissions.screenKey, 'checklist_submissions'),
+            eq(rolePermissions.recordStatus, 1)
+          ))
+          .limit(1);
+        const hasFullAccess = checklistPermission.length > 0 && checklistPermission[0].canEdit === 1;
+        
+        if (!hasFullAccess && submission.reviewerId !== req.user.id) {
+          console.log(`[AUDIT] User ${req.user.id} attempted to access assignment ${id} not assigned to them`);
           return res.status(403).json({ message: "You can only view submissions assigned to you" });
         }
       }
@@ -13436,16 +13444,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Checklist submission not found" });
       }
       
-      // SECURITY: Only assigned reviewer can approve/reject (unless admin/manager)
+      // SECURITY: Users without edit permission can only modify their own submissions
       const user = await storage.getUser(req.user.id);
       if (!user || !user.roleId) {
         return res.status(401).json({ message: "User not found" });
       }
-      const userRoleData = await storage.getUserRole(user.roleId);
-      const userRole = userRoleData?.name || '';
       
-      if (userRole === 'reviewer' && submission.reviewerId !== req.user.id) {
-        console.log(`[AUDIT] Reviewer ${req.user.id} attempted to modify submission ${id} not assigned to them`);
+      const checklistPermission = await db.select()
+        .from(rolePermissions)
+        .where(and(
+          eq(rolePermissions.roleId, user.roleId),
+          eq(rolePermissions.screenKey, 'checklist_submissions'),
+          eq(rolePermissions.recordStatus, 1)
+        ))
+        .limit(1);
+      const hasFullAccess = checklistPermission.length > 0 && checklistPermission[0].canDelete === 1;
+      
+      if (!hasFullAccess && submission.reviewerId !== req.user.id) {
+        console.log(`[AUDIT] User ${req.user.id} attempted to modify submission ${id} not assigned to them`);
         return res.status(403).json({ message: "You can only approve/reject submissions assigned to you" });
       }
       
@@ -13499,15 +13515,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         tasks = await storage.getAllMachineStartupTasks();
       }
 
-      // If user is operator, filter to only their tasks
+      // Users without edit permission can only see their own tasks
       const user = await storage.getUser(req.user.id);
       if (!user || !user.roleId) {
         return res.status(401).json({ message: "User not found" });
       }
-      const userRoleData = await storage.getUserRole(user.roleId);
-      const userRole = userRoleData?.name || 'operator';
       
-      if (userRole === 'operator') {
+      const taskPermission = await db.select()
+        .from(rolePermissions)
+        .where(and(
+          eq(rolePermissions.roleId, user.roleId),
+          eq(rolePermissions.screenKey, 'machine_startup_tasks'),
+          eq(rolePermissions.recordStatus, 1)
+        ))
+        .limit(1);
+      const hasFullAccess = taskPermission.length > 0 && taskPermission[0].canEdit === 1;
+      
+      if (!hasFullAccess) {
         tasks = tasks.filter(t => t.assignedUserId === req.user.id);
       }
 
@@ -13527,15 +13551,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Startup task not found" });
       }
 
-      // If user is operator, only allow viewing their own tasks
+      // Users without edit permission can only view their own tasks
       const user = await storage.getUser(req.user.id);
       if (!user || !user.roleId) {
         return res.status(401).json({ message: "User not found" });
       }
-      const userRoleData = await storage.getUserRole(user.roleId);
-      const userRole = userRoleData?.name || 'operator';
       
-      if (userRole === 'operator' && task.assignedUserId !== req.user.id) {
+      const taskPermission = await db.select()
+        .from(rolePermissions)
+        .where(and(
+          eq(rolePermissions.roleId, user.roleId),
+          eq(rolePermissions.screenKey, 'machine_startup_tasks'),
+          eq(rolePermissions.recordStatus, 1)
+        ))
+        .limit(1);
+      const hasFullAccess = taskPermission.length > 0 && taskPermission[0].canEdit === 1;
+      
+      if (!hasFullAccess && task.assignedUserId !== req.user.id) {
         return res.status(403).json({ message: "Access denied" });
       }
 
@@ -13555,32 +13587,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Startup task not found" });
       }
 
-      // Operators can only mark their own tasks as completed
+      // Users without full edit permission can only mark their own tasks as completed with limited fields
       const user = await storage.getUser(req.user.id);
       if (!user || !user.roleId) {
         return res.status(401).json({ message: "User not found" });
       }
-      const userRoleData = await storage.getUserRole(user.roleId);
-      const userRole = userRoleData?.name || 'operator';
       
-      if (userRole === 'operator') {
+      const taskPermission = await db.select()
+        .from(rolePermissions)
+        .where(and(
+          eq(rolePermissions.roleId, user.roleId),
+          eq(rolePermissions.screenKey, 'machine_startup_tasks'),
+          eq(rolePermissions.recordStatus, 1)
+        ))
+        .limit(1);
+      const hasFullAccess = taskPermission.length > 0 && taskPermission[0].canDelete === 1;
+      
+      if (!hasFullAccess) {
         if (task.assignedUserId !== req.user.id) {
           return res.status(403).json({ message: "Access denied" });
         }
-        // Operators can only update status and machineStartedAt
+        // Users without full access can only update status and machineStartedAt
         const { status, machineStartedAt } = req.body;
         const updateData: any = {};
         if (status) updateData.status = status;
         if (machineStartedAt) updateData.machineStartedAt = new Date(machineStartedAt);
         
         const updated = await storage.updateMachineStartupTask(id, updateData);
-        console.log(`[AUDIT] Operator ${req.user.username} updated startup task ${id} status to ${status}`);
+        console.log(`[AUDIT] User ${req.user.username} updated startup task ${id} status to ${status}`);
         return res.json(updated);
       }
 
-      // Managers and admins can update any field
+      // Users with full access can update any field
       const updated = await storage.updateMachineStartupTask(id, req.body);
-      console.log(`[AUDIT] ${userRole} ${req.user.username} updated startup task ${id}`);
+      console.log(`[AUDIT] User ${req.user.username} (full access) updated startup task ${id}`);
       res.json(updated);
     } catch (error) {
       if (error instanceof z.ZodError) {

@@ -4483,7 +4483,7 @@ function FinishedGoodDialog({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {users.filter(u => ['reviewer', 'manager', 'admin'].includes(u.role || '')).map(user => (
+                        {users.filter(u => ['reviewer', 'manager', 'admin'].includes((u.role || '').toLowerCase())).map(user => (
                           <SelectItem key={user.id} value={user.id}>
                             {user.firstName || user.lastName ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : user.username}
                           </SelectItem>

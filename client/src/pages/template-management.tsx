@@ -24,6 +24,7 @@ interface TemplateManagementProps {
 
 export default function TemplateManagement({ activeTab: externalActiveTab }: TemplateManagementProps = {}) {
   const { user, logoutMutation } = useAuth();
+  const { canAccessScreen } = usePermissions();
   const [activeTab, setActiveTab] = useState(externalActiveTab || "invoice-templates");
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -33,13 +34,14 @@ export default function TemplateManagement({ activeTab: externalActiveTab }: Tem
     }
   }, [externalActiveTab]);
 
-  if (!user || (user as any).role !== 'admin') {
+  // Use database permissions for access control
+  if (!user || !canAccessScreen('template_management')) {
     return (
       <>
         <div className="min-h-screen flex items-center justify-center p-4">
           <Card className="p-8 max-w-md text-center space-y-4">
             <h2 className="text-2xl font-bold text-destructive">Access Denied</h2>
-            <p className="text-muted-foreground">You do not have permission to access Template Management. This feature is only available to Admin users.</p>
+            <p className="text-muted-foreground">You do not have permission to access Template Management.</p>
           </Card>
         </div>
       </>

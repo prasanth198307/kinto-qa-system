@@ -55,8 +55,9 @@ export function ManagerChecklistAssignment() {
     queryKey: ['/api/users'],
   });
 
-  const operators = usersData.filter((u: any) => u.role?.name === 'operator');
-  const reviewers = usersData.filter((u: any) => u.role?.name === 'reviewer');
+  // Filter users by role name - includes both default roles and custom roles with matching names
+  const operators = usersData.filter((u: any) => u.role?.name?.toLowerCase() === 'operator');
+  const reviewers = usersData.filter((u: any) => u.role?.name?.toLowerCase() === 'reviewer' || u.role?.name?.toLowerCase() === 'manager' || u.role?.name?.toLowerCase() === 'admin');
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
