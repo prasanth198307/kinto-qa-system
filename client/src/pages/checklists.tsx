@@ -4,6 +4,7 @@ import ChecklistHistoryTable from "@/components/ChecklistHistoryTable";
 import AdminChecklistBuilder from "@/components/AdminChecklistBuilder";
 import { ManagerChecklistAssignment } from "@/components/ManagerChecklistAssignment";
 import { useAuth } from "@/hooks/use-auth";
+import { usePermissions } from "@/hooks/use-permissions";
 import { GlobalHeader } from "@/components/GlobalHeader";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -15,7 +16,10 @@ interface ChecklistsPageProps {
 
 export default function ChecklistsPage({ showHeader = true }: ChecklistsPageProps = {}) {
   const { user, logoutMutation } = useAuth();
-  const role = (user as any)?.role;
+  const { hasPermission } = usePermissions();
+  // Use database permissions for checklist access
+  const canManageTemplates = hasPermission('checklist_templates', 'create');
+  const canManageAssignments = hasPermission('checklist_templates', 'create') || hasPermission('checklist_templates', 'edit');
 
   // Fetch checklist submissions for history
   const { data: submissions = [] } = useQuery<ChecklistSubmission[]>({
@@ -42,16 +46,16 @@ export default function ChecklistsPage({ showHeader = true }: ChecklistsPageProp
 
       <Tabs defaultValue="templates" className="space-y-4">
         <TabsList>
-          {(role === 'admin') && (
+          {canManageTemplates && (
             <TabsTrigger value="templates" data-testid="tab-templates">Templates</TabsTrigger>
           )}
-          {(role === 'admin' || role === 'manager') && (
+          {canManageAssignments && (
             <TabsTrigger value="assignments" data-testid="tab-assignments">Assignments</TabsTrigger>
           )}
           <TabsTrigger value="history" data-testid="tab-history">History</TabsTrigger>
         </TabsList>
 
-        {(role === 'admin') && (
+        {canManageTemplates && (
           <TabsContent value="templates" className="space-y-4">
             <Card>
               <CardHeader>
@@ -67,7 +71,7 @@ export default function ChecklistsPage({ showHeader = true }: ChecklistsPageProp
           </TabsContent>
         )}
 
-        {(role === 'admin' || role === 'manager') && (
+        {canManageAssignments && (
           <TabsContent value="assignments" className="space-y-4">
             <Card>
               <CardHeader>

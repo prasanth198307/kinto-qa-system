@@ -85,12 +85,12 @@ function formatCurrency(rupees: number): string {
 
 export default function CashRegisterPage() {
   const { toast } = useToast();
-  const { user } = useAuth();
-  const isAdmin = (user as any)?.role?.toLowerCase() === 'admin';
   const { hasPermission } = usePermissions();
   const canCreate = hasPermission('cash_register', 'create');
   const canEdit = hasPermission('cash_register', 'edit');
   const canDelete = hasPermission('cash_register', 'delete');
+  // Use delete permission as indicator for admin-level access
+  const hasAdminAccess = canDelete;
   
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -669,7 +669,7 @@ export default function CashRegisterPage() {
                   <AlertTriangle className="w-4 h-4" />
                   Import Discrepancy Detected
                 </CardTitle>
-                {isAdmin && (
+                {hasAdminAccess && (
                   <Button 
                     size="sm" 
                     variant="outline"
@@ -1415,7 +1415,7 @@ export default function CashRegisterPage() {
           <p className="text-muted-foreground">Track daily cash flow - receipts, expenses, and transfers</p>
         </div>
         <div className="flex gap-2">
-          {isAdmin && days.length > 0 && (
+          {hasAdminAccess && days.length > 0 && (
             <AlertDialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
               <AlertDialogTrigger asChild>
                 <Button variant="destructive" data-testid="button-clear-data">
@@ -1445,7 +1445,7 @@ export default function CashRegisterPage() {
             </AlertDialog>
           )}
           
-          {isAdmin && (
+          {hasAdminAccess && (
           <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" data-testid="button-import">

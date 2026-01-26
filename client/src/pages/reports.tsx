@@ -860,14 +860,12 @@ interface ReportsProps {
 export default function Reports({ showHeader = true }: ReportsProps = {}) {
   const { toast } = useToast();
   const { logoutMutation } = useAuth();
-  const { role, canAccessScreen } = usePermissions();
-  const isAdmin = role.toLowerCase() === 'admin';
+  const { canAccessScreen } = usePermissions();
   
-  // Check individual report tab permissions
+  // Check individual report tab permissions - 100% database driven
   // If user has "reports" permission, they can see all tabs
   // Otherwise check individual report_* permissions
   const canAccessReportTab = (tabKey: string): boolean => {
-    if (isAdmin) return true;
     if (canAccessScreen('reports')) return true;
     return canAccessScreen(tabKey);
   };
