@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Bell, LogOut } from "lucide-react";
+import { Bell, LogOut, User } from "lucide-react";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
+import { useAuth } from "@/hooks/use-auth";
 
 interface TopRightHeaderProps {
   notificationCount?: number;
@@ -16,6 +17,7 @@ export function TopRightHeader({
   onNotificationClick,
 }: TopRightHeaderProps) {
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
+  const { user } = useAuth();
 
   const handleLogoutClick = () => {
     setIsLogoutDialogOpen(true);
@@ -32,6 +34,14 @@ export function TopRightHeader({
 
   return (
     <div className="flex items-center gap-2">
+      {user && (
+        <div className="hidden sm:flex items-center gap-2 px-2 py-1 rounded-md bg-muted/50" data-testid="user-display">
+          <User className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm font-medium text-foreground" data-testid="text-username">
+            {user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username || user.email}
+          </span>
+        </div>
+      )}
       <div className="relative">
         <Button
           size="icon"
