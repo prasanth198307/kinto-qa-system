@@ -8689,9 +8689,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Mark return as received
-  app.patch('/api/sales-returns/:id/receive', requireRole('admin', 'manager'), async (req: any, res) => {
+  // Mark return as received - allow create OR edit for workflow progression
+  app.patch('/api/sales-returns/:id/receive', async (req: any, res) => {
     try {
+      // Manual permission check - allow create OR edit for workflow progression
+      if (!req.isAuthenticated() || !req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const user = await storage.getUser(req.user.id);
+      if (!user || !user.roleId) {
+        return res.status(403).json({ message: "Forbidden: No role assigned" });
+      }
+      
+      const role = await storage.getUserRole(user.roleId);
+      if (!role) {
+        return res.status(403).json({ message: "Forbidden: Invalid role" });
+      }
+      
+      const roleLower = role.name.toLowerCase();
+      const isAdminOrManager = roleLower === 'admin' || roleLower === 'manager';
+      
+      if (!isAdminOrManager) {
+        const permission = await db.select()
+          .from(rolePermissions)
+          .where(and(
+            eq(rolePermissions.roleId, user.roleId),
+            eq(rolePermissions.screenKey, 'sales_returns'),
+            eq(rolePermissions.recordStatus, 1)
+          ))
+          .limit(1);
+        
+        if (permission.length === 0 || (permission[0].canCreate !== 1 && permission[0].canEdit !== 1)) {
+          return res.status(403).json({ message: "Forbidden: Requires create or edit permission" });
+        }
+      }
+      
       const { id } = req.params;
       const { receivedDate } = req.body;
       
@@ -8712,9 +8745,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Inspect return and update inventory
-  app.patch('/api/sales-returns/:id/inspect', requireRole('admin', 'manager'), async (req: any, res) => {
+  // Inspect return and update inventory - allow create OR edit for workflow progression
+  app.patch('/api/sales-returns/:id/inspect', async (req: any, res) => {
     try {
+      // Manual permission check - allow create OR edit for workflow progression
+      if (!req.isAuthenticated() || !req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const user = await storage.getUser(req.user.id);
+      if (!user || !user.roleId) {
+        return res.status(403).json({ message: "Forbidden: No role assigned" });
+      }
+      
+      const role = await storage.getUserRole(user.roleId);
+      if (!role) {
+        return res.status(403).json({ message: "Forbidden: Invalid role" });
+      }
+      
+      const roleLower = role.name.toLowerCase();
+      const isAdminOrManager = roleLower === 'admin' || roleLower === 'manager';
+      
+      if (!isAdminOrManager) {
+        const permission = await db.select()
+          .from(rolePermissions)
+          .where(and(
+            eq(rolePermissions.roleId, user.roleId),
+            eq(rolePermissions.screenKey, 'sales_returns'),
+            eq(rolePermissions.recordStatus, 1)
+          ))
+          .limit(1);
+        
+        if (permission.length === 0 || (permission[0].canCreate !== 1 && permission[0].canEdit !== 1)) {
+          return res.status(403).json({ message: "Forbidden: Requires create or edit permission" });
+        }
+      }
+      
       const { id } = req.params;
       const { inspections } = req.body; // Array of {itemId, condition, disposition}
       
@@ -11668,9 +11734,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update vendor debit note status
-  app.patch('/api/vendor-debit-notes/:id/status', requireRole('admin', 'manager', 'AccountsManager'), async (req: any, res) => {
+  // Update vendor debit note status - allow create OR edit for workflow progression
+  app.patch('/api/vendor-debit-notes/:id/status', async (req: any, res) => {
     try {
+      // Manual permission check - allow create OR edit for workflow progression
+      if (!req.isAuthenticated() || !req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const user = await storage.getUser(req.user.id);
+      if (!user || !user.roleId) {
+        return res.status(403).json({ message: "Forbidden: No role assigned" });
+      }
+      
+      const role = await storage.getUserRole(user.roleId);
+      if (!role) {
+        return res.status(403).json({ message: "Forbidden: Invalid role" });
+      }
+      
+      const roleLower = role.name.toLowerCase();
+      const isAdminOrManager = roleLower === 'admin' || roleLower === 'manager' || roleLower === 'accountsmanager';
+      
+      if (!isAdminOrManager) {
+        const permission = await db.select()
+          .from(rolePermissions)
+          .where(and(
+            eq(rolePermissions.roleId, user.roleId),
+            eq(rolePermissions.screenKey, 'vendor_debit_notes'),
+            eq(rolePermissions.recordStatus, 1)
+          ))
+          .limit(1);
+        
+        if (permission.length === 0 || (permission[0].canCreate !== 1 && permission[0].canEdit !== 1)) {
+          return res.status(403).json({ message: "Forbidden: Requires create or edit permission" });
+        }
+      }
+      
       const { id } = req.params;
       const { status, settlementDate, settlementReference, settledAmount } = req.body;
 
