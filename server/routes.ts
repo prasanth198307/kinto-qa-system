@@ -252,73 +252,68 @@ function requireRole(...allowedRoles: string[]) {
         return next();
       }
 
-      // Check if this is a custom role (not a standard role)
-      const isCustomRole = !STANDARD_ROLES.includes(userRoleLower);
+      // For ANY role not in allowed list (both custom and standard roles), check database permissions
+      // This allows custom roles with proper permissions to access any endpoint
+      const pathBase = req.path.split('?')[0]; // Remove query params
+      let screenKey: string | undefined;
       
-      if (isCustomRole) {
-        // For custom roles, check database permissions
-        // Find the screen key for this endpoint
-        const pathBase = req.path.split('?')[0]; // Remove query params
-        let screenKey: string | undefined;
-        
-        // Try exact match first
-        screenKey = endpointToScreenKey[pathBase];
-        
-        // If no exact match, try prefix matching (e.g., /api/invoices/123 -> /api/invoices)
-        if (!screenKey) {
-          for (const [endpoint, key] of Object.entries(endpointToScreenKey)) {
-            if (pathBase.startsWith(endpoint)) {
-              screenKey = key;
-              break;
-            }
-          }
-        }
-        
-        if (screenKey) {
-          // Check if the custom role has the appropriate permission for this action
-          const permission = await db.select()
-            .from(rolePermissions)
-            .where(and(
-              eq(rolePermissions.roleId, user.roleId),
-              eq(rolePermissions.screenKey, screenKey),
-              eq(rolePermissions.recordStatus, 1)
-            ))
-            .limit(1);
-          
-          if (permission.length > 0) {
-            const perm = permission[0];
-            const method = req.method.toUpperCase();
-            
-            // Check the appropriate permission based on HTTP method
-            let hasRequiredPermission = false;
-            let requiredAction = 'view';
-            
-            if (method === 'GET') {
-              hasRequiredPermission = perm.canView === 1;
-              requiredAction = 'view';
-            } else if (method === 'POST') {
-              hasRequiredPermission = perm.canCreate === 1;
-              requiredAction = 'create';
-            } else if (method === 'PUT' || method === 'PATCH') {
-              hasRequiredPermission = perm.canEdit === 1;
-              requiredAction = 'edit';
-            } else if (method === 'DELETE') {
-              hasRequiredPermission = perm.canDelete === 1;
-              requiredAction = 'delete';
-            }
-            
-            if (hasRequiredPermission) {
-              console.log(`[AUDIT] Custom role ${role.name} granted ${requiredAction} access to ${req.path} via screen permission ${screenKey}`);
-              req.userRole = role.name;
-              return next();
-            } else {
-              console.log(`[AUDIT] Custom role ${role.name} denied ${requiredAction} access to ${req.path} - missing ${requiredAction} permission for ${screenKey}`);
-            }
+      // Try exact match first
+      screenKey = endpointToScreenKey[pathBase];
+      
+      // If no exact match, try prefix matching (e.g., /api/invoices/123 -> /api/invoices)
+      if (!screenKey) {
+        for (const [endpoint, key] of Object.entries(endpointToScreenKey)) {
+          if (pathBase.startsWith(endpoint)) {
+            screenKey = key;
+            break;
           }
         }
       }
       
-      console.log(`[AUDIT] User ${user.id} with role ${role.name} denied access to ${req.path} (requires: ${allowedRoles.join(', ')})`);
+      if (screenKey) {
+        // Check if the role has the appropriate permission for this action
+        const permission = await db.select()
+          .from(rolePermissions)
+          .where(and(
+            eq(rolePermissions.roleId, user.roleId),
+            eq(rolePermissions.screenKey, screenKey),
+            eq(rolePermissions.recordStatus, 1)
+          ))
+          .limit(1);
+        
+        if (permission.length > 0) {
+          const perm = permission[0];
+          const method = req.method.toUpperCase();
+          
+          // Check the appropriate permission based on HTTP method
+          let hasRequiredPermission = false;
+          let requiredAction = 'view';
+          
+          if (method === 'GET') {
+            hasRequiredPermission = perm.canView === 1;
+            requiredAction = 'view';
+          } else if (method === 'POST') {
+            hasRequiredPermission = perm.canCreate === 1;
+            requiredAction = 'create';
+          } else if (method === 'PUT' || method === 'PATCH') {
+            hasRequiredPermission = perm.canEdit === 1;
+            requiredAction = 'edit';
+          } else if (method === 'DELETE') {
+            hasRequiredPermission = perm.canDelete === 1;
+            requiredAction = 'delete';
+          }
+          
+          if (hasRequiredPermission) {
+            console.log(`[AUDIT] Role ${role.name} granted ${requiredAction} access to ${req.path} via screen permission ${screenKey}`);
+            req.userRole = role.name;
+            return next();
+          } else {
+            console.log(`[AUDIT] Role ${role.name} denied ${requiredAction} access to ${req.path} - missing ${requiredAction} permission for ${screenKey}`);
+          }
+        }
+      }
+      
+      console.log(`[AUDIT] User ${user.id} with role ${role.name} denied access to ${req.path} (requires: ${allowedRoles.join(', ')} or database permissions)`);
       return res.status(403).json({ message: "Forbidden: Insufficient permissions" });
 
     } catch (error) {
