@@ -242,18 +242,8 @@ function requireRole(...allowedRoles: string[]) {
         return res.status(403).json({ message: "Forbidden: Invalid role" });
       }
 
-      // Case-insensitive role comparison for standard roles
-      const userRoleLower = role.name.toLowerCase();
-      const hasStandardRoleAccess = allowedRoles.some(r => r.toLowerCase() === userRoleLower);
-      
-      if (hasStandardRoleAccess) {
-        // Standard role match - allow access
-        req.userRole = role.name;
-        return next();
-      }
-
-      // For ANY role not in allowed list (both custom and standard roles), check database permissions
-      // This allows custom roles with proper permissions to access any endpoint
+      // ALL access is controlled by database permissions - no role name matching
+      // This ensures custom roles with proper permissions can access any endpoint
       const pathBase = req.path.split('?')[0]; // Remove query params
       let screenKey: string | undefined;
       
