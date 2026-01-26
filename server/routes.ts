@@ -177,6 +177,12 @@ const endpointToScreenKey: Record<string, string> = {
   '/api/machines': 'machines',
   '/api/machine-types': 'machine_types',
   '/api/spare-parts': 'spare_parts',
+  '/api/banks': 'banks',
+  '/api/scrap-inventory': 'scrap_inventory',
+  '/api/machine-startup-tasks': 'machine_startup_reminders',
+  '/api/checklist-submissions': 'checklists',
+  '/api/payment-evidence': 'payments',
+  '/api/terms-conditions': 'template_management',
   
   // Administration
   '/api/users': 'users',
