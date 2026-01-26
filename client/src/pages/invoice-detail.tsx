@@ -400,7 +400,8 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
   // hasPermission and permissionRole moved to top to avoid hooks ordering violation
   
   // Check permissions - support both default roles AND custom roles with appropriate permissions
-  const userRole = ((user as any)?.role || '').toLowerCase();
+  // Use permissionRole from usePermissions hook (user object only has roleId, not role name)
+  const userRole = (permissionRole || '').toLowerCase();
   const isDefaultAdminOrManager = user && (userRole === 'admin' || userRole === 'manager');
   
   // Check if user has invoice permissions
