@@ -2889,31 +2889,6 @@ function RawMaterialDialog({
   const [manualConversionFactor, setManualConversionFactor] = useState<number | undefined>(undefined);
   const [customPricingUnitName, setCustomPricingUnitName] = useState<string>('');
 
-  const selectedUomId = form.watch('uomId');
-  const selectedUom = useMemo(() => uoms.find(u => u.id === selectedUomId), [uoms, selectedUomId]);
-  
-  // Get conversion factor based on pricing mode and Material Type data
-  const getConversionFactor = useMemo(() => {
-    if (vendorPricingMode === 'per_kg' && selectedTypeDetails?.baseUnitWeight) {
-      return selectedTypeDetails.baseUnitWeight;
-    }
-    if (vendorPricingMode === 'per_piece' && selectedTypeDetails?.usableUnits) {
-      return selectedTypeDetails.usableUnits;
-    }
-    if (vendorPricingMode === 'other') {
-      return manualConversionFactor;
-    }
-    return undefined;
-  }, [vendorPricingMode, selectedTypeDetails, manualConversionFactor]);
-  
-  // Get the unit name for vendor pricing
-  const vendorPricingUnitLabel = useMemo(() => {
-    if (vendorPricingMode === 'per_kg') return 'KG';
-    if (vendorPricingMode === 'per_piece') return selectedTypeDetails?.derivedUnit || 'Piece';
-    if (vendorPricingMode === 'other') return customPricingUnitName || 'Unit';
-    return selectedUom?.name || 'Base Unit';
-  }, [vendorPricingMode, selectedTypeDetails, customPricingUnitName, selectedUom]);
-
   // Fetch all Purchase Orders (we'll filter client-side for approved/ordered/partially_received)
   const { data: allPOs = [] } = useQuery<any[]>({
     queryKey: ['/api/purchase-orders'],
@@ -3005,6 +2980,32 @@ function RawMaterialDialog({
   const adjustments = form.watch('adjustments');
   const unitCost = form.watch('unitCost');
   const gstRate = form.watch('gstRate');
+  const selectedUomId = form.watch('uomId');
+  
+  // Derive UOM from form watch
+  const selectedUom = useMemo(() => uoms.find(u => u.id === selectedUomId), [uoms, selectedUomId]);
+  
+  // Get conversion factor based on pricing mode and Material Type data
+  const getConversionFactor = useMemo(() => {
+    if (vendorPricingMode === 'per_kg' && selectedTypeDetails?.baseUnitWeight) {
+      return selectedTypeDetails.baseUnitWeight;
+    }
+    if (vendorPricingMode === 'per_piece' && selectedTypeDetails?.usableUnits) {
+      return selectedTypeDetails.usableUnits;
+    }
+    if (vendorPricingMode === 'other') {
+      return manualConversionFactor;
+    }
+    return undefined;
+  }, [vendorPricingMode, selectedTypeDetails, manualConversionFactor]);
+  
+  // Get the unit name for vendor pricing
+  const vendorPricingUnitLabel = useMemo(() => {
+    if (vendorPricingMode === 'per_kg') return 'KG';
+    if (vendorPricingMode === 'per_piece') return selectedTypeDetails?.derivedUnit || 'Piece';
+    if (vendorPricingMode === 'other') return customPricingUnitName || 'Unit';
+    return selectedUom?.name || 'Base Unit';
+  }, [vendorPricingMode, selectedTypeDetails, customPricingUnitName, selectedUom]);
 
   // Check if conversion data is available for selected pricing unit
   const canConvertToKg = selectedTypeDetails?.baseUnitWeight && selectedTypeDetails.baseUnitWeight > 0;
