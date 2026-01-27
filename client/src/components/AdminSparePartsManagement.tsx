@@ -13,6 +13,8 @@ import type { SparePartCatalog, Machine, MachineSpare } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import MachineSpareEntryView from "@/components/MachineSpareEntryView";
 
 export default function AdminSparePartsManagement() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -332,22 +334,31 @@ export default function AdminSparePartsManagement() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold" data-testid="text-title">Spare Parts Management</h2>
-        <Button onClick={handleAddClick} data-testid="button-add-spare-part">
-          <Plus className="h-4 w-4 mr-1" />
-          Add Spare Part
-        </Button>
       </div>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search spare parts..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10"
-          data-testid="input-search"
-        />
-      </div>
+      <Tabs defaultValue="all-parts" className="w-full">
+        <TabsList>
+          <TabsTrigger value="all-parts" data-testid="tab-all-parts">All Parts</TabsTrigger>
+          <TabsTrigger value="by-machine" data-testid="tab-by-machine">By Machine</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="all-parts" className="space-y-4 mt-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search spare parts..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+                data-testid="input-search"
+              />
+            </div>
+            <Button onClick={handleAddClick} data-testid="button-add-spare-part">
+              <Plus className="h-4 w-4 mr-1" />
+              Add Spare Part
+            </Button>
+          </div>
 
       {filteredSpareParts.length === 0 ? (
         <Card className="p-8 text-center">
@@ -414,6 +425,12 @@ export default function AdminSparePartsManagement() {
           })}
         </div>
       )}
+        </TabsContent>
+        
+        <TabsContent value="by-machine" className="mt-4">
+          <MachineSpareEntryView />
+        </TabsContent>
+      </Tabs>
 
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent data-testid="dialog-add-spare-part">

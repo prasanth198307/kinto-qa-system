@@ -255,12 +255,7 @@ export default function MachineSpareEntryView() {
   const categories = ['Bearing', 'Belt', 'Motor', 'Sensor', 'Valve', 'Filter', 'Seal', 'Electrical', 'Pneumatic', 'Other'];
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold" data-testid="text-title">Machine Spare Parts Entry</h2>
-      </div>
-
-      <div className="space-y-3">
+    <div className="space-y-3">
         {machines.map(machine => {
           const machineSparesList = getMachineSpares(machine.id);
           const isExpanded = expandedMachines.has(machine.id);
@@ -426,7 +421,6 @@ export default function MachineSpareEntryView() {
             </CardContent>
           </Card>
         )}
-      </div>
 
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent>
