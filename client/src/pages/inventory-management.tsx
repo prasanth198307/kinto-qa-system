@@ -3340,6 +3340,35 @@ function RawMaterialDialog({
                 />
               </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="unitCost"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Unit Cost (₹)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          step="0.01"
+                          min="0"
+                          placeholder="0.00" 
+                          {...field}
+                          value={field.value ?? ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            field.onChange(val === '' ? undefined : parseFloat(val));
+                          }}
+                          data-testid="input-material-unit-cost"
+                        />
+                      </FormControl>
+                      <FormDescription className="text-xs">Base cost per unit</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
               <FormField
                 control={form.control}
                 name="description"
