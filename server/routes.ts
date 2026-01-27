@@ -4211,11 +4211,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
             throw new Error(`Insufficient stock for material ${material.materialName}. Available: ${currentStock}, Required: ${validatedItem.quantityIssued}`);
           }
           
+          // Recalculate total valuation based on remaining stock
+          // Total Valuation = (Unit Cost + GST) × Remaining Stock
+          const unitCost = Number(material.unitCost) || 0;
+          const gstRate = Number(material.gstRate) || 0;
+          const unitCostWithGst = unitCost + (unitCost * gstRate / 100);
+          const newTotalValuation = unitCostWithGst * newQuantity;
+          
           // Deduct from inventory (update both currentStock and quantity for compatibility)
           await tx.update(rawMaterials)
             .set({ 
               currentStock: newQuantity, 
               quantity: newQuantity,
+              totalValuation: newTotalValuation.toFixed(2),
               updatedAt: new Date().toISOString() 
             })
             .where(eq(rawMaterials.id, validatedItem.rawMaterialId));
