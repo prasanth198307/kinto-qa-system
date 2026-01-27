@@ -3657,7 +3657,17 @@ function RawMaterialDialog({
                     />
                   </FormControl>
                   <FormDescription className="text-xs">
-                    (Base Price + GST) × Qty in {selectedTypeDetails?.baseUnit || 'Units'}
+                    {(() => {
+                      const base = Number(unitCost) || 0;
+                      const gst = Number(gstRate) || 0;
+                      const qty = Number(receivedQuantity) || Number(openingStock) || 0;
+                      const unitWithGst = base + (base * gst / 100);
+                      const total = unitWithGst * qty;
+                      if (qty > 0 && unitWithGst > 0) {
+                        return `₹${unitWithGst.toLocaleString('en-IN')} × ${qty} ${selectedTypeDetails?.baseUnit || 'Units'} = ₹${total.toLocaleString('en-IN')}`;
+                      }
+                      return `(Unit Cost incl. GST) × Qty in ${selectedTypeDetails?.baseUnit || 'Units'}`;
+                    })()}
                   </FormDescription>
                 </FormItem>
               </div>
