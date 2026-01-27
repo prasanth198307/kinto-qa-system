@@ -1093,7 +1093,8 @@ export const rawMaterials = pgTable("raw_materials", {
   maxStockLevel: integer("max_stock_level"),
   unitCost: integer("unit_cost"), // Base Price in rupees * 100
   gstRate: integer("gst_rate").default(0), // Percentage (e.g., 18)
-  totalCost: integer("total_cost"), // Calculated Total Cost in rupees * 100
+  totalCost: integer("total_cost"), // Calculated Unit Cost (Incl. GST)
+  totalValuation: integer("total_valuation"), // Calculated Total Valuation (Total Cost * Quantity)
   location: varchar("location", { length: 255 }),
   supplier: varchar("supplier", { length: 255 }),
   isOpeningStockOnly: integer("is_opening_stock_only").default(1), // 1 = Opening Stock Entry Only, 0 = Ongoing Inventory
