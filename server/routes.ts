@@ -3235,9 +3235,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         typeCode = `RMT-${(maxNumber + 1).toString().padStart(3, '0')}`;
       }
       
-      // Check if typeCode already exists to prevent duplicate key error
+      // Check if typeCode already exists (including soft-deleted records)
       const existingWithType = await storage.getRawMaterialTypeByCode(typeCode);
       if (existingWithType) {
+        if (existingWithType.recordStatus === 0) {
+          // If it exists but is deleted, we should warn the user they can't reuse it
+          // OR we could suggest restoring it. For now, strict uniqueness is safer for audit trails.
+          return res.status(400).json({ 
+            message: "Duplicate Type Code (Deleted)", 
+            error: `The code '${typeCode}' was previously used for '${existingWithType.typeName}' and is now inactive. Please use a different code or contact admin to restore the previous record.` 
+          });
+        }
         return res.status(400).json({ 
           message: "Duplicate Type Code", 
           error: `The code '${typeCode}' is already assigned to '${existingWithType.typeName}'. Please use a different code.` 
