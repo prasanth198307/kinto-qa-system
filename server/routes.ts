@@ -3238,13 +3238,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if typeCode already exists to prevent duplicate key error
       const existingWithType = await storage.getRawMaterialTypeByCode(typeCode);
       if (existingWithType) {
-        const allTypes = await storage.getAllRawMaterialTypes();
-        const existingCodes = allTypes
-          .map(t => t.typeCode)
-          .filter(code => code && code.startsWith('RMT-'))
-          .map(code => parseInt(code.replace('RMT-', '')) || 0);
-        const nextNumber = Math.max(...existingCodes, 0) + 1;
-        typeCode = `RMT-${nextNumber.toString().padStart(3, '0')}`;
+        return res.status(400).json({ 
+          message: "Duplicate Type Code", 
+          error: `The code '${typeCode}' is already assigned to '${existingWithType.typeName}'. Please use a different code.` 
+        });
       }
       
       // VALIDATE FIRST with discriminated union schema - this ensures method-specific fields are present

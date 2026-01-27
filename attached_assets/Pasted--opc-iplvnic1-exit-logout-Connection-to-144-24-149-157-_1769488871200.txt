@@ -1,0 +1,58 @@
+[opc@iplvnic1 ~]$ exit
+logout
+Connection to 144.24.149.157 closed.
+prasanthdusi@Prasanths-MacBook-Pro ~ % ssh -i ~/.ssh/oci-key.pem opc@144.24.149.157
+Last login: Tue Jan 27 04:37:44 2026 from 49.204.225.92
+[opc@iplvnic1 ~]$ sudo su - kinto
+Last login: Tue Jan 27 04:37:50 GMT 2026 on pts/1
+[kinto@iplvnic1 ~]$ sudo journalctl -u kinto.service -n 50 --no-pager
+Jan 27 04:40:05 iplvnic1 npm[1779632]: 🔹 Request: GET /api/my-permissions
+Jan 27 04:40:05 iplvnic1 npm[1779632]:    Cookie header: connect.sid=s%3AyQRDoEfPkaEEBwevObuWHHd6P-tDxbLE.uI1lcbG%2FoqMYTylhxAfXD58s6Cj3OhhmUm3zuJXHjok
+Jan 27 04:40:05 iplvnic1 npm[1779632]:    Session ID: yQRDoEfPkaEEBwevObuWHHd6P-tDxbLE
+Jan 27 04:40:05 iplvnic1 npm[1779632]:    Authenticated: true
+Jan 27 04:40:05 iplvnic1 npm[1779632]: 🔹 Request: GET /api/raw-material-types
+Jan 27 04:40:05 iplvnic1 npm[1779632]:    Cookie header: connect.sid=s%3AyQRDoEfPkaEEBwevObuWHHd6P-tDxbLE.uI1lcbG%2FoqMYTylhxAfXD58s6Cj3OhhmUm3zuJXHjok
+Jan 27 04:40:05 iplvnic1 npm[1779632]:    Session ID: yQRDoEfPkaEEBwevObuWHHd6P-tDxbLE
+Jan 27 04:40:05 iplvnic1 npm[1779632]:    Authenticated: true
+Jan 27 04:40:05 iplvnic1 npm[1779632]: 4:40:05 AM [express] GET /api/raw-material-types 304 in 8ms :: [{"id":"1679e477-34b8-4556-ad00-5f21b…
+Jan 27 04:40:05 iplvnic1 npm[1779632]: 4:40:05 AM [express] GET /api/my-permissions 304 in 12ms :: {"role":"admin","roleId":"role-admin","p…
+Jan 27 04:40:27 iplvnic1 npm[1779632]: 🔹 Request: POST /api/raw-material-types
+Jan 27 04:40:27 iplvnic1 npm[1779632]:    Cookie header: connect.sid=s%3AyQRDoEfPkaEEBwevObuWHHd6P-tDxbLE.uI1lcbG%2FoqMYTylhxAfXD58s6Cj3OhhmUm3zuJXHjok
+Jan 27 04:40:27 iplvnic1 npm[1779632]:    Session ID: yQRDoEfPkaEEBwevObuWHHd6P-tDxbLE
+Jan 27 04:40:27 iplvnic1 npm[1779632]:    Authenticated: true
+Jan 27 04:40:27 iplvnic1 npm[1779632]: [AUDIT] Role admin granted create access to /api/raw-material-types via screen permission raw_material_types
+Jan 27 04:40:27 iplvnic1 npm[1779632]: Validating RMT Input: {
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   "conversionMethod": "direct-value",
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   "typeName": "C",
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   "baseUnit": "Box",
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   "derivedUnit": "Piece",
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   "derivedValuePerBase": 6000,
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   "lossPercent": 0,
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   "description": "",
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   "typeCode": "RMT-002"
+Jan 27 04:40:27 iplvnic1 npm[1779632]: }
+Jan 27 04:40:27 iplvnic1 npm[1779632]: Error creating raw material type: error: duplicate key value violates unique constraint "raw_material_types_type_code_key"
+Jan 27 04:40:27 iplvnic1 npm[1779632]:     at /home/kinto/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+Jan 27 04:40:27 iplvnic1 npm[1779632]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+Jan 27 04:40:27 iplvnic1 npm[1779632]:     at async file:///home/kinto/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+Jan 27 04:40:27 iplvnic1 npm[1779632]:     at async DatabaseStorage.createRawMaterialType (file:///home/kinto/kinto-qa-system/dist/index.js:3967:27)
+Jan 27 04:40:27 iplvnic1 npm[1779632]:     at async file:///home/kinto/kinto-qa-system/dist/index.js:12435:23 {
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   length: 250,
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   severity: 'ERROR',
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   code: '23505',
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   detail: 'Key (type_code)=(RMT-002) already exists.',
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   hint: undefined,
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   position: undefined,
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   internalPosition: undefined,
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   internalQuery: undefined,
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   where: undefined,
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   schema: 'public',
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   table: 'raw_material_types',
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   column: undefined,
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   dataType: undefined,
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   constraint: 'raw_material_types_type_code_key',
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   file: 'nbtinsert.c',
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   line: '666',
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   routine: '_bt_check_unique'
+Jan 27 04:40:27 iplvnic1 npm[1779632]: }
+Jan 27 04:40:27 iplvnic1 npm[1779632]: 4:40:27 AM [express] POST /api/raw-material-types 500 in 47ms :: {"message":"Failed to create raw ma…
