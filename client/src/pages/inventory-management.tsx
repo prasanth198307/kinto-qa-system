@@ -3084,6 +3084,14 @@ function RawMaterialDialog({
       if (typeDetails) {
         setSelectedTypeDetails(typeDetails);
         
+        // Auto-populate Material Name from Material Type (only for new entries and if name is empty)
+        if (!item && userChangedType) {
+          const currentName = form.getValues('materialName');
+          if (!currentName || currentName === '') {
+            form.setValue('materialName', typeDetails.typeName);
+          }
+        }
+        
         // Auto-populate UOM from Material Type's baseUnit
         if (typeDetails.baseUnit && uoms.length > 0) {
           const matchingUom = uoms.find(u => 
