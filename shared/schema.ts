@@ -970,7 +970,8 @@ export type VendorVendorType = typeof vendorVendorTypes.$inferSelect;
 export const rawMaterialTypes = pgTable("raw_material_types", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   typeCode: varchar("type_code", { length: 100 }).notNull().unique(), // Auto-generated: RMT-001, RMT-002, etc.
-  typeName: varchar("type_name", { length: 255 }).notNull(), // Preform, Cap, Label, Shrink, Adhesive
+  typeName: varchar("type_name", { length: 255 }).notNull(), // Preform 19.5g, Cap 28mm, etc.
+  category: varchar("category", { length: 100 }), // Preform, Cap, Label, Shrink, Adhesive, Other
   
   // Conversion Method: formula-based | direct-value | output-coverage
   conversionMethod: varchar("conversion_method", { length: 50 }),

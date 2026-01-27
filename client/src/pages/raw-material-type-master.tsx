@@ -38,6 +38,7 @@ type RawMaterialType = {
   id: string;
   typeCode: string;
   typeName: string;
+  category?: string;
   conversionMethod: string;
   baseUnit: string;
   baseUnitWeight?: number;
@@ -58,6 +59,7 @@ const formSchema = z.discriminatedUnion("conversionMethod", [
   z.object({
     conversionMethod: z.literal("formula-based"),
     typeName: z.string().min(1, "Type name is required"),
+    category: z.string().min(1, "Category is required"),
     baseUnit: z.string().min(1, "Base unit is required"),
     baseUnitWeight: z.number().positive("Base unit weight must be greater than 0"),
     derivedUnit: z.string().min(1, "Derived unit is required"),
@@ -71,6 +73,7 @@ const formSchema = z.discriminatedUnion("conversionMethod", [
   z.object({
     conversionMethod: z.literal("direct-value"),
     typeName: z.string().min(1, "Type name is required"),
+    category: z.string().min(1, "Category is required"),
     baseUnit: z.string().min(1, "Base unit is required"),
     baseUnitWeight: z.number().positive("Base unit weight must be greater than 0").optional(),
     derivedUnit: z.string().min(1, "Derived unit is required"),
@@ -84,6 +87,7 @@ const formSchema = z.discriminatedUnion("conversionMethod", [
   z.object({
     conversionMethod: z.literal("output-coverage"),
     typeName: z.string().min(1, "Type name is required"),
+    category: z.string().min(1, "Category is required"),
     baseUnit: z.string().min(1, "Base unit is required"),
     baseUnitWeight: z.number().positive("Base unit weight must be greater than 0").optional(),
     outputType: z.string().min(1, "Output type is required"),
@@ -119,6 +123,7 @@ export default function RawMaterialTypeMaster() {
     defaultValues: {
       conversionMethod: "formula-based",
       typeName: "",
+      category: "",
       baseUnit: "",
       derivedUnit: "",
       lossPercent: 0,
@@ -234,6 +239,7 @@ export default function RawMaterialTypeMaster() {
     form.reset({
       conversionMethod: type.conversionMethod as any,
       typeName: type.typeName,
+      category: type.category || '',
       baseUnit: type.baseUnit,
       baseUnitWeight: type.baseUnitWeight || undefined,
       derivedUnit: type.derivedUnit || undefined,
@@ -259,6 +265,7 @@ export default function RawMaterialTypeMaster() {
     form.reset({
       conversionMethod: "formula-based",
       typeName: "",
+      category: "",
       baseUnit: "",
       derivedUnit: "",
       lossPercent: 0,
@@ -307,6 +314,7 @@ export default function RawMaterialTypeMaster() {
                 <TableRow>
                   <TableHead>Type Code</TableHead>
                   <TableHead>Type Name</TableHead>
+                  <TableHead>Category</TableHead>
                   <TableHead>Conversion Method</TableHead>
                   <TableHead>Base Unit</TableHead>
                   <TableHead>Conversion Details</TableHead>
@@ -320,6 +328,9 @@ export default function RawMaterialTypeMaster() {
                   <TableRow key={type.id} data-testid={`row-type-${type.id}`}>
                     <TableCell className="font-medium">{type.typeCode}</TableCell>
                     <TableCell>{type.typeName}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{type.category || '-'}</Badge>
+                    </TableCell>
                     <TableCell>
                       <Badge variant="outline">
                         {type.conversionMethod === "formula-based" && "Formula-Based"}
@@ -405,19 +416,47 @@ export default function RawMaterialTypeMaster() {
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="typeName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Type Name</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="e.g., Preform, Cap, Label" data-testid="input-type-name" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="typeName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Type Name</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="e.g., Preform 19.5g, Cap 28mm" data-testid="input-type-name" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="category"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Category *</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value || ''} data-testid="select-category">
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select Category" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="Preform">Preform</SelectItem>
+                          <SelectItem value="Cap">Cap</SelectItem>
+                          <SelectItem value="Label">Label</SelectItem>
+                          <SelectItem value="Shrink">Shrink</SelectItem>
+                          <SelectItem value="Adhesive">Adhesive</SelectItem>
+                          <SelectItem value="Other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
               <FormField
                 control={form.control}

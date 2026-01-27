@@ -2988,10 +2988,9 @@ function RawMaterialDialog({
     if (!selectedCategory || selectedCategory === '') {
       return materialTypes;
     }
-    // Filter types where typeName starts with or contains the category (case insensitive)
+    // Filter types by category field (exact match, case insensitive)
     return materialTypes.filter(type => 
-      type.typeName.toLowerCase().startsWith(selectedCategory.toLowerCase()) ||
-      type.typeName.toLowerCase().includes(selectedCategory.toLowerCase())
+      type.category?.toLowerCase() === selectedCategory.toLowerCase()
     );
   }, [materialTypes, selectedCategory]);
   
@@ -3069,9 +3068,7 @@ function RawMaterialDialog({
     if (selectedCategory && selectedTypeId) {
       const currentType = materialTypes.find(t => t.id === selectedTypeId);
       if (currentType) {
-        const typeMatchesCategory = 
-          currentType.typeName.toLowerCase().startsWith(selectedCategory.toLowerCase()) ||
-          currentType.typeName.toLowerCase().includes(selectedCategory.toLowerCase());
+        const typeMatchesCategory = currentType.category?.toLowerCase() === selectedCategory.toLowerCase();
         if (!typeMatchesCategory) {
           form.setValue('typeId', '');
           setSelectedTypeDetails(null);
