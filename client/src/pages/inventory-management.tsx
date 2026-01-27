@@ -3384,23 +3384,20 @@ function RawMaterialDialog({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>GST %</FormLabel>
-                      <Select 
-                        onValueChange={(val) => field.onChange(parseInt(val))} 
-                        value={field.value?.toString() || '0'}
-                      >
-                        <FormControl>
-                          <SelectTrigger data-testid="select-material-gst">
-                            <SelectValue placeholder="Select GST" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="0">0%</SelectItem>
-                          <SelectItem value="5">5%</SelectItem>
-                          <SelectItem value="12">12%</SelectItem>
-                          <SelectItem value="18">18%</SelectItem>
-                          <SelectItem value="28">28%</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          placeholder="e.g. 18" 
+                          {...field}
+                          value={field.value ?? 0}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            field.onChange(val === '' ? 0 : parseInt(val));
+                          }}
+                          data-testid="input-material-gst"
+                        />
+                      </FormControl>
+                      <FormDescription className="text-xs">Tax percentage</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
