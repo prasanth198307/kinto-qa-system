@@ -2246,6 +2246,48 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                     Machine overview with checklists, PM schedules, and spare parts information
                   </CardDescription>
                 </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    if (!machines || machines.length === 0) return;
+                    await exportToExcel({
+                      filename: `machine-report-${format(new Date(), 'yyyy-MM-dd')}.xlsx`,
+                      sheets: [
+                        {
+                          name: 'Machines',
+                          data: [
+                            ['Machine Name', 'Code', 'Type', 'Status', 'Location', 'Description', 'Spare Parts Count'],
+                            ...machines.map((m: any) => [
+                              m.name || '',
+                              m.code || '',
+                              m.type || '',
+                              m.status || '',
+                              m.location || '',
+                              m.description || '',
+                              m.sparePartCount || 0,
+                            ]),
+                          ],
+                        },
+                        {
+                          name: 'Summary',
+                          data: [
+                            ['Metric', 'Count'],
+                            ['Total Machines', machines.length],
+                            ['Active', machines.filter((m: any) => m.status === 'active').length],
+                            ['Under Maintenance', machines.filter((m: any) => m.status === 'maintenance').length],
+                            ['Inactive', machines.filter((m: any) => m.status === 'inactive').length],
+                          ],
+                        },
+                      ],
+                    });
+                  }}
+                  disabled={!machines || machines.length === 0}
+                  data-testid="button-download-machine-report"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Download Excel
+                </Button>
               </div>
             </CardHeader>
             <CardContent>
