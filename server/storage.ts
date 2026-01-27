@@ -363,6 +363,7 @@ export interface IStorage {
   removeVendorType(vendorId: string, vendorTypeId: string): Promise<void>;
   
   // Raw Material Type Master
+  getRawMaterialTypeByCode(code: string): Promise<RawMaterialType | undefined>;
   createRawMaterialType(type: InsertRawMaterialType): Promise<RawMaterialType>;
   getAllRawMaterialTypes(): Promise<RawMaterialType[]>;
   getRawMaterialType(id: string): Promise<RawMaterialType | undefined>;
@@ -1967,8 +1968,18 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(rawMaterialTypes).where(eq(rawMaterialTypes.recordStatus, 1));
   }
 
+  async getRawMaterialTypeByCode(code: string): Promise<RawMaterialType | undefined> {
+    const [type] = await db.select().from(rawMaterialTypes).where(and(eq(rawMaterialTypes.typeCode, code), eq(rawMaterialTypes.recordStatus, 1)));
+    return type;
+  }
+
   async getRawMaterialType(id: string): Promise<RawMaterialType | undefined> {
     const [type] = await db.select().from(rawMaterialTypes).where(and(eq(rawMaterialTypes.id, id), eq(rawMaterialTypes.recordStatus, 1)));
+    return type;
+  }
+
+  async getRawMaterialTypeByCode(code: string): Promise<RawMaterialType | undefined> {
+    const [type] = await db.select().from(rawMaterialTypes).where(and(eq(rawMaterialTypes.typeCode, code), eq(rawMaterialTypes.recordStatus, 1)));
     return type;
   }
 

@@ -3228,10 +3228,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const allTypes = await storage.getAllRawMaterialTypes();
         const existingCodes = allTypes
           .map(t => t.typeCode)
-          .filter(code => code.startsWith('RMT-'))
+          .filter(code => code && code.startsWith('RMT-'))
           .map(code => parseInt(code.replace('RMT-', '')) || 0);
         
-        const nextNumber = existingCodes.length > 0 ? Math.max(...existingCodes) + 1 : 1;
+        const maxNumber = existingCodes.length > 0 ? Math.max(...existingCodes) : 0;
+        typeCode = `RMT-${(maxNumber + 1).toString().padStart(3, '0')}`;
+      }
+      
+      // Check if typeCode already exists to prevent duplicate key error
+      const existingWithType = await storage.getRawMaterialTypeByCode(typeCode);
+      if (existingWithType) {
+        const allTypes = await storage.getAllRawMaterialTypes();
+        const existingCodes = allTypes
+          .map(t => t.typeCode)
+          .filter(code => code && code.startsWith('RMT-'))
+          .map(code => parseInt(code.replace('RMT-', '')) || 0);
+        const nextNumber = Math.max(...existingCodes, 0) + 1;
         typeCode = `RMT-${nextNumber.toString().padStart(3, '0')}`;
       }
       
