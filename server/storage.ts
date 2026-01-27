@@ -2025,6 +2025,11 @@ export class DatabaseStorage implements IStorage {
       .where(eq(rawMaterials.id, id));
   }
 
+  async getRawMaterialByCode(code: string): Promise<RawMaterial | undefined> {
+    const [material] = await db.select().from(rawMaterials).where(eq(rawMaterials.materialCode, code));
+    return material;
+  }
+
   // Raw Material Transactions
   async createRawMaterialTransaction(transaction: InsertRawMaterialTransaction): Promise<RawMaterialTransaction> {
     const [created] = await db.insert(rawMaterialTransactions).values(transaction).returning();

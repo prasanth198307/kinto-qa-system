@@ -3487,6 +3487,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         console.log(`[BATCH] Auto-generated batch code: ${batchCode} for received date: ${req.body.receivedDate}`);
       }
+
+      // Check for duplicate Material Code (including soft-deleted records)
+      const existingMaterial = await storage.getRawMaterialByCode(materialCode);
+      if (existingMaterial) {
+        if (existingMaterial.recordStatus === 0) {
+          return res.status(400).json({ 
+            message: "Duplicate Material Code (Deleted)", 
+            error: `The code '${materialCode}' was previously used for '${existingMaterial.materialName}' and is now inactive. Please use a different code or contact admin to restore the previous record.` 
+          });
+        }
+        return res.status(400).json({ 
+          message: "Duplicate Material Code", 
+          error: `The code '${materialCode}' is already assigned to '${existingMaterial.materialName}'. Please use a different code.` 
+        });
+      }
       
       const materialData = { 
         ...req.body, 
