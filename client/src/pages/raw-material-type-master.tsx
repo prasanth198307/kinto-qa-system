@@ -109,6 +109,10 @@ export default function RawMaterialTypeMaster() {
   const [editingType, setEditingType] = useState<RawMaterialType | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [typeToDelete, setTypeToDelete] = useState<RawMaterialType | null>(null);
+  
+  // For Direct-Value method: track if user enters "per KG" or "per Base Unit"
+  const [directValueMode, setDirectValueMode] = useState<'per_base' | 'per_kg'>('per_base');
+  const [derivedUnitsPerKg, setDerivedUnitsPerKg] = useState<number | undefined>(undefined);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -129,12 +133,18 @@ export default function RawMaterialTypeMaster() {
   const outputUnitsCovered = form.watch("outputUnitsCovered");
   const lossPercent = form.watch("lossPercent") || 0;
 
+  // Calculate derived value per base when using "per kg" mode
+  const calculatedDerivedValuePerBase = directValueMode === 'per_kg' && derivedUnitsPerKg && baseUnitWeight
+    ? Math.round(derivedUnitsPerKg * baseUnitWeight)
+    : derivedValuePerBase;
+
   // Calculate conversion value based on method
   const calculateConversionValue = () => {
     if (conversionMethod === "formula-based" && baseUnitWeight && weightPerDerivedUnit) {
       return Math.round((baseUnitWeight * 1000) / weightPerDerivedUnit);
-    } else if (conversionMethod === "direct-value" && derivedValuePerBase) {
-      return derivedValuePerBase;
+    } else if (conversionMethod === "direct-value") {
+      // Use calculated value from "per kg" mode, or direct entry
+      return calculatedDerivedValuePerBase || 0;
     } else if (conversionMethod === "output-coverage" && outputUnitsCovered) {
       return outputUnitsCovered;
     }
@@ -156,6 +166,8 @@ export default function RawMaterialTypeMaster() {
       queryClient.invalidateQueries({ queryKey: ["/api/raw-material-types"] });
       toast({ title: "Success", description: "Raw material type created successfully" });
       setDialogOpen(false);
+      setDirectValueMode('per_base');
+      setDerivedUnitsPerKg(undefined);
       form.reset();
     },
     onError: (error: any) => {
@@ -176,6 +188,8 @@ export default function RawMaterialTypeMaster() {
       toast({ title: "Success", description: "Raw material type updated successfully" });
       setDialogOpen(false);
       setEditingType(null);
+      setDirectValueMode('per_base');
+      setDerivedUnitsPerKg(undefined);
       form.reset();
     },
     onError: (error: any) => {
@@ -240,6 +254,8 @@ export default function RawMaterialTypeMaster() {
 
   const handleAddNew = () => {
     setEditingType(null);
+    setDirectValueMode('per_base');
+    setDerivedUnitsPerKg(undefined);
     form.reset({
       conversionMethod: "formula-based",
       typeName: "",
@@ -535,8 +551,39 @@ export default function RawMaterialTypeMaster() {
               {conversionMethod === "direct-value" && (
                 <div className="space-y-4 p-4 border rounded-md bg-muted/20">
                   <div className="text-sm font-medium text-muted-foreground">
-                    Enter the number of derived units per base unit directly
+                    Choose how to enter the derived units
                   </div>
+                  
+                  {/* Mode Selection */}
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="directValueMode"
+                        checked={directValueMode === 'per_base'}
+                        onChange={() => {
+                          setDirectValueMode('per_base');
+                          setDerivedUnitsPerKg(undefined);
+                        }}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-sm">Per Base Unit</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="directValueMode"
+                        checked={directValueMode === 'per_kg'}
+                        onChange={() => {
+                          setDirectValueMode('per_kg');
+                          form.setValue('derivedValuePerBase', undefined);
+                        }}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-sm">Per KG (auto-calculate)</span>
+                    </label>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
@@ -561,25 +608,57 @@ export default function RawMaterialTypeMaster() {
                       )}
                     />
 
-                    <FormField
-                      control={form.control}
-                      name="derivedValuePerBase"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Derived Units Per Base</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              placeholder="e.g., 7000"
-                              data-testid="input-derived-value"
-                              value={field.value || ""}
-                              onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    {directValueMode === 'per_base' ? (
+                      <FormField
+                        control={form.control}
+                        name="derivedValuePerBase"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Derived Units Per {form.watch('baseUnit') || 'Base Unit'}</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                placeholder="e.g., 7000"
+                                data-testid="input-derived-value"
+                                value={field.value || ""}
+                                onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    ) : (
+                      <FormItem>
+                        <FormLabel>Derived Units Per KG</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="e.g., 15"
+                            data-testid="input-derived-per-kg"
+                            value={derivedUnitsPerKg || ""}
+                            onChange={(e) => {
+                              const val = e.target.value ? parseFloat(e.target.value) : undefined;
+                              setDerivedUnitsPerKg(val);
+                              // Auto-calculate and set derivedValuePerBase for form submission
+                              if (val && baseUnitWeight) {
+                                form.setValue('derivedValuePerBase', Math.round(val * baseUnitWeight));
+                              }
+                            }}
+                          />
+                        </FormControl>
+                        {derivedUnitsPerKg && baseUnitWeight && (
+                          <p className="text-xs text-green-600 mt-1">
+                            = {derivedUnitsPerKg} × {baseUnitWeight} kg = {Math.round(derivedUnitsPerKg * baseUnitWeight)} per {form.watch('baseUnit') || 'Base Unit'}
+                          </p>
+                        )}
+                        {!baseUnitWeight && (
+                          <p className="text-xs text-amber-600 mt-1">
+                            Enter Base Unit Weight above to calculate
+                          </p>
+                        )}
+                      </FormItem>
+                    )}
                   </div>
                 </div>
               )}
