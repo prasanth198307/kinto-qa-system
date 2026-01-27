@@ -1,0 +1,51 @@
+05:18:25 iplvnic1 npm[1782402]:    Session ID: yQRDoEfPkaEEBwevObuWHHd6P-tDxbLE
+Jan 27 05:18:25 iplvnic1 npm[1782402]:    Authenticated: true
+Jan 27 05:18:25 iplvnic1 npm[1782402]: 🔹 Request: GET /api/machines
+Jan 27 05:18:25 iplvnic1 npm[1782402]:    Cookie header: connect.sid=s%3AyQRDoEfPkaEEBwevObuWHHd6P-tDxbLE.uI1lcbG%2FoqMYTylhxAfXD58s6Cj3OhhmUm3zuJXHjok
+Jan 27 05:18:25 iplvnic1 npm[1782402]:    Session ID: yQRDoEfPkaEEBwevObuWHHd6P-tDxbLE
+Jan 27 05:18:25 iplvnic1 npm[1782402]:    Authenticated: true
+Jan 27 05:18:25 iplvnic1 npm[1782402]: 🔹 Request: GET /api/raw-materials
+Jan 27 05:18:25 iplvnic1 npm[1782402]:    Cookie header: connect.sid=s%3AyQRDoEfPkaEEBwevObuWHHd6P-tDxbLE.uI1lcbG%2FoqMYTylhxAfXD58s6Cj3OhhmUm3zuJXHjok
+Jan 27 05:18:25 iplvnic1 npm[1782402]:    Session ID: yQRDoEfPkaEEBwevObuWHHd6P-tDxbLE
+Jan 27 05:18:25 iplvnic1 npm[1782402]:    Authenticated: true
+Jan 27 05:18:25 iplvnic1 npm[1782402]: Error fetching raw materials: error: column "total_valuation" does not exist
+Jan 27 05:18:25 iplvnic1 npm[1782402]:     at /home/kinto/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+Jan 27 05:18:25 iplvnic1 npm[1782402]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+Jan 27 05:18:25 iplvnic1 npm[1782402]:     at async file:///home/kinto/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+Jan 27 05:18:25 iplvnic1 npm[1782402]:     at async DatabaseStorage.getAllRawMaterials (file:///home/kinto/kinto-qa-system/dist/index.js:3994:16)
+Jan 27 05:18:25 iplvnic1 npm[1782402]:     at async file:///home/kinto/kinto-qa-system/dist/index.js:12531:25 {
+Jan 27 05:18:25 iplvnic1 npm[1782402]:   length: 116,
+Jan 27 05:18:25 iplvnic1 npm[1782402]:   severity: 'ERROR',
+Jan 27 05:18:25 iplvnic1 npm[1782402]:   code: '42703',
+Jan 27 05:18:25 iplvnic1 npm[1782402]:   detail: undefined,
+Jan 27 05:18:25 iplvnic1 npm[1782402]:   hint: undefined,
+Jan 27 05:18:25 iplvnic1 npm[1782402]:   position: '295',
+Jan 27 05:18:25 iplvnic1 npm[1782402]:   internalPosition: undefined,
+Jan 27 05:18:25 iplvnic1 npm[1782402]:   internalQuery: undefined,
+Jan 27 05:18:25 iplvnic1 npm[1782402]:   where: undefined,
+Jan 27 05:18:25 iplvnic1 npm[1782402]:   schema: undefined,
+Jan 27 05:18:25 iplvnic1 npm[1782402]:   table: undefined,
+Jan 27 05:18:25 iplvnic1 npm[1782402]:   column: undefined,
+Jan 27 05:18:25 iplvnic1 npm[1782402]:   dataType: undefined,
+Jan 27 05:18:25 iplvnic1 npm[1782402]:   constraint: undefined,
+Jan 27 05:18:25 iplvnic1 npm[1782402]:   file: 'parse_relation.c',
+Jan 27 05:18:25 iplvnic1 npm[1782402]:   line: '3722',
+Jan 27 05:18:25 iplvnic1 npm[1782402]:   routine: 'errorMissingColumn'
+Jan 27 05:18:25 iplvnic1 npm[1782402]: }
+Jan 27 05:18:25 iplvnic1 npm[1782402]: 🔹 Request: GET /api/pending-payments
+Jan 27 05:18:25 iplvnic1 npm[1782402]:    Cookie header: connect.sid=s%3AyQRDoEfPkaEEBwevObuWHHd6P-tDxbLE.uI1lcbG%2FoqMYTylhxAfXD58s6Cj3OhhmUm3zuJXHjok
+Jan 27 05:18:25 iplvnic1 npm[1782402]:    Session ID: yQRDoEfPkaEEBwevObuWHHd6P-tDxbLE
+Jan 27 05:18:25 iplvnic1 npm[1782402]:    Authenticated: true
+Jan 27 05:18:25 iplvnic1 npm[1782402]: 5:18:25 AM [express] GET /api/finished-goods 304 in 139ms :: [{"id":"832bd731-55e7-41bf-b88d-9389bbe…
+Jan 27 05:18:25 iplvnic1 npm[1782402]: 5:18:25 AM [express] GET /api/checklist-templates 304 in 150ms :: []
+Jan 27 05:18:25 iplvnic1 npm[1782402]: 5:18:25 AM [express] GET /api/machines 304 in 156ms :: [{"id":"80649cc4-2677-493d-a712-63f0833ae39d"…
+Jan 27 05:18:25 iplvnic1 npm[1782402]: 5:18:25 AM [express] GET /api/raw-materials 500 in 158ms :: {"message":"Failed to fetch raw material…
+Jan 27 05:18:25 iplvnic1 npm[1782402]: 5:18:25 AM [express] GET /api/stats/today 304 in 156ms :: {"rawMaterialIssuancesCount":0,"gatepasses…
+Jan 27 05:18:25 iplvnic1 npm[1782402]: 5:18:25 AM [express] GET /api/invoices 304 in 205ms :: [{"id":"06b0305e-5ad0-488d-8f18-0986052de249"…
+Jan 27 05:18:25 iplvnic1 npm[1782402]: 5:18:25 AM [express] GET /api/pending-payments 304 in 312ms :: {"data":[{"id":"f850b069-5fb5-4ab6-8a…
+Jan 27 05:18:37 iplvnic1 npm[1782402]: 🔹 Request: GET /api/my-permissions
+Jan 27 05:18:37 iplvnic1 npm[1782402]:    Cookie header: connect.sid=s%3AyQRDoEfPkaEEBwevObuWHHd6P-tDxbLE.uI1lcbG%2FoqMYTylhxAfXD58s6Cj3OhhmUm3zuJXHjok
+Jan 27 05:18:37 iplvnic1 npm[1782402]:    Session ID: yQRDoEfPkaEEBwevObuWHHd6P-tDxbLE
+Jan 27 05:18:37 iplvnic1 npm[1782402]:    Authenticated: true
+Jan 27 05:18:37 iplvnic1 npm[1782402]: 5:18:37 AM [express] GET /api/my-permissions 304 in 27ms :: {"role":"admin","roleId":"role-admin","p…
+[kinto@iplvnic1 ~]$ 
