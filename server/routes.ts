@@ -3239,13 +3239,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const inputToValidate = {
         ...req.body,
         typeCode,
-        baseUnitWeight: req.body.baseUnitWeight ? parseFloat(req.body.baseUnitWeight.toString()) : undefined,
-        weightPerDerivedUnit: req.body.weightPerDerivedUnit ? parseFloat(req.body.weightPerDerivedUnit.toString()) : undefined,
-        derivedValuePerBase: req.body.derivedValuePerBase ? parseFloat(req.body.derivedValuePerBase.toString()) : undefined,
-        outputUnitsCovered: req.body.outputUnitsCovered ? parseFloat(req.body.outputUnitsCovered.toString()) : undefined,
-        lossPercent: req.body.lossPercent ? parseFloat(req.body.lossPercent.toString()) : 0,
+        baseUnitWeight: req.body.baseUnitWeight != null && req.body.baseUnitWeight !== "" ? parseFloat(req.body.baseUnitWeight.toString()) : undefined,
+        weightPerDerivedUnit: req.body.weightPerDerivedUnit != null && req.body.weightPerDerivedUnit !== "" ? parseFloat(req.body.weightPerDerivedUnit.toString()) : undefined,
+        derivedValuePerBase: req.body.derivedValuePerBase != null && req.body.derivedValuePerBase !== "" ? parseFloat(req.body.derivedValuePerBase.toString()) : undefined,
+        outputUnitsCovered: req.body.outputUnitsCovered != null && req.body.outputUnitsCovered !== "" ? parseFloat(req.body.outputUnitsCovered.toString()) : undefined,
+        lossPercent: req.body.lossPercent != null && req.body.lossPercent !== "" ? parseFloat(req.body.lossPercent.toString()) : 0,
       };
 
+      console.log("Validating RMT Input:", JSON.stringify(inputToValidate, null, 2));
       const validatedInput = insertRawMaterialTypeSchema.parse(inputToValidate);
       
       // NOW calculate conversion value and usable units based on validated data
@@ -3279,10 +3280,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(created);
     } catch (error) {
       if (error instanceof z.ZodError) {
+        console.error("RMT Validation Error:", JSON.stringify(error.errors, null, 2));
         return res.status(400).json({ message: "Validation error", errors: error.errors });
       }
       console.error("Error creating raw material type:", error);
-      res.status(500).json({ message: "Failed to create raw material type" });
+      res.status(500).json({ message: "Failed to create raw material type", error: error instanceof Error ? error.message : String(error) });
     }
   });
 
@@ -3321,13 +3323,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // VALIDATE the merged data with discriminated union schema
       const inputToValidate = {
         ...sanitized,
-        baseUnitWeight: sanitized.baseUnitWeight ? parseFloat(sanitized.baseUnitWeight.toString()) : undefined,
-        weightPerDerivedUnit: sanitized.weightPerDerivedUnit ? parseFloat(sanitized.weightPerDerivedUnit.toString()) : undefined,
-        derivedValuePerBase: sanitized.derivedValuePerBase ? parseFloat(sanitized.derivedValuePerBase.toString()) : undefined,
-        outputUnitsCovered: sanitized.outputUnitsCovered ? parseFloat(sanitized.outputUnitsCovered.toString()) : undefined,
-        lossPercent: sanitized.lossPercent ? parseFloat(sanitized.lossPercent.toString()) : 0,
+        baseUnitWeight: sanitized.baseUnitWeight != null && sanitized.baseUnitWeight !== "" ? parseFloat(sanitized.baseUnitWeight.toString()) : undefined,
+        weightPerDerivedUnit: sanitized.weightPerDerivedUnit != null && sanitized.weightPerDerivedUnit !== "" ? parseFloat(sanitized.weightPerDerivedUnit.toString()) : undefined,
+        derivedValuePerBase: sanitized.derivedValuePerBase != null && sanitized.derivedValuePerBase !== "" ? parseFloat(sanitized.derivedValuePerBase.toString()) : undefined,
+        outputUnitsCovered: sanitized.outputUnitsCovered != null && sanitized.outputUnitsCovered !== "" ? parseFloat(sanitized.outputUnitsCovered.toString()) : undefined,
+        lossPercent: sanitized.lossPercent != null && sanitized.lossPercent !== "" ? parseFloat(sanitized.lossPercent.toString()) : 0,
       };
 
+      console.log("Validating RMT Update Input:", JSON.stringify(inputToValidate, null, 2));
       const validatedMerged = insertRawMaterialTypeSchema.parse(inputToValidate);
       
       // Recalculate conversion value and usable units based on validated data
