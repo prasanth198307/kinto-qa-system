@@ -1092,9 +1092,9 @@ export const rawMaterials = pgTable("raw_materials", {
   currentStock: integer("current_stock").default(0),
   reorderLevel: integer("reorder_level"),
   maxStockLevel: integer("max_stock_level"),
-  unitCost: integer("unit_cost"), // Base Price in rupees * 100
+  unitCost: numeric("unit_cost", { precision: 12, scale: 2 }), // Base Price in rupees
   gstRate: integer("gst_rate").default(0), // Percentage (e.g., 18)
-  totalCost: integer("total_cost"), // Calculated Unit Cost (Incl. GST)
+  totalCost: numeric("total_cost", { precision: 12, scale: 2 }), // Calculated Unit Cost (Incl. GST)
   totalValuation: numeric("total_valuation", { precision: 14, scale: 2 }), // Calculated Total Valuation (Total Cost * Quantity)
   location: varchar("location", { length: 255 }),
   supplier: varchar("supplier", { length: 255 }),
@@ -1136,6 +1136,10 @@ export const insertRawMaterialSchema = createInsertSchema(rawMaterials, {
   batchCode: z.string().optional(), // Auto-generated lot code
   purchaseOrderId: z.string().optional(), // Link to PO
   purchaseOrderItemId: z.string().optional(), // Link to specific PO line item
+  unitCost: z.number().optional(), // Allow decimal prices
+  totalCost: z.number().optional(), // Allow decimal prices
+  totalValuation: z.number().optional(), // Allow decimal values
+  gstRate: z.number().optional(), // GST percentage
 }).omit({
   id: true,
   recordStatus: true,
