@@ -2996,6 +2996,10 @@ function RawMaterialDialog({
     let basePrice = vendorQuotedPrice;
     let conversionFactor = 1;
     
+    // Use the override value if provided, otherwise fallback to the type default
+    const usableUnitsOverride = form.watch('usableDerivedUnits');
+    const effectiveUsableUnits = Number(usableUnitsOverride) || Number(selectedTypeDetails.usableUnits) || 1;
+
     if (pricingUnit === 'per_kg') {
       if (canConvertToKg) {
         // Vendor quotes per KG, convert to base unit (e.g., Bag)
@@ -3007,15 +3011,10 @@ function RawMaterialDialog({
         return;
       }
     } else if (pricingUnit === 'per_piece') {
-      if (canConvertToPiece) {
-        // Vendor quotes per Piece, convert to base unit
-        // Example: ₹5/piece × 1282 pieces/Bag = ₹6,410/Bag
-        conversionFactor = selectedTypeDetails!.usableUnits!;
-        basePrice = vendorQuotedPrice * conversionFactor;
-      } else {
-        // No conversion data - allow manual entry
-        return;
-      }
+      // Vendor quotes per Piece, convert to base unit
+      // Example: ₹5/piece × 6000 pieces/Box = ₹30,000/Box
+      conversionFactor = effectiveUsableUnits;
+      basePrice = vendorQuotedPrice * conversionFactor;
     }
     
     // Update the base price field
@@ -3077,7 +3076,9 @@ function RawMaterialDialog({
   // Auto-calculate closing stock when relevant fields change
   useEffect(() => {
     if (selectedTypeDetails) {
-      const usableMultiplier = Number(selectedTypeDetails.usableUnits) || 0;
+      // Use the override value if provided, otherwise fallback to the type default
+      const usableUnitsOverride = form.watch('usableDerivedUnits');
+      const usableMultiplier = Number(usableUnitsOverride) || Number(selectedTypeDetails.usableUnits) || 0;
       
       if (isOpeningStockOnly === 1) {
         // Opening Stock Only mode
@@ -3095,7 +3096,7 @@ function RawMaterialDialog({
         form.setValue('closingStockUsable', Math.round(closing * usableMultiplier));
       }
     }
-  }, [selectedTypeDetails, isOpeningStockOnly, openingStock, receivedQuantity, returnedQuantity, adjustments, form]);
+  }, [selectedTypeDetails, isOpeningStockOnly, openingStock, receivedQuantity, returnedQuantity, adjustments, form.watch('usableDerivedUnits'), form]);
 
   // Auto-fill from PO item when selected
   useEffect(() => {
@@ -3452,7 +3453,11 @@ function RawMaterialDialog({
                         value={vendorQuotedPrice ?? ''}
                         onChange={(e) => {
                           const val = e.target.value;
-                          setVendorQuotedPrice(val === '' ? undefined : parseFloat(val));
+                          const numericVal = val === '' ? undefined : parseFloat(val);
+                          setVendorQuotedPrice(numericVal);
+                          
+                          // If pricing in pieces, and user entered a price, we can suggest updating the derived value per base
+                          // BUT for caps, if they say "6000 pieces per box", we should probably allow them to adjust the quantity or derived value
                         }}
                         data-testid="input-vendor-quoted-price"
                       />
@@ -3632,6 +3637,36 @@ function RawMaterialDialog({
                     <p className="text-muted-foreground text-xs">Loss %</p>
                     <p className="font-medium" data-testid="text-loss-percent">{selectedTypeDetails.lossPercent || 0}%</p>
                   </div>
+                </div>
+
+                <div className="pt-2 border-t mt-2">
+                  <FormField
+                    control={form.control}
+                    name="usableDerivedUnits"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">Actual Pieces per {selectedTypeDetails?.baseUnit || 'Box'} (Entry Override)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number"
+                            className="h-8 text-xs"
+                            placeholder={selectedTypeDetails?.usableUnits?.toString() || "e.g., 6000"}
+                            {...field}
+                            value={field.value || ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              field.onChange(val === '' ? undefined : parseFloat(val));
+                            }}
+                            data-testid="input-material-usable-units-override"
+                          />
+                        </FormControl>
+                        <FormDescription className="text-[10px]">
+                          Enter actual pieces if different from type default ({selectedTypeDetails?.usableUnits || 0})
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
               </div>
             )}

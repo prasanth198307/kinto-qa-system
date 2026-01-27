@@ -134,14 +134,14 @@ export default function RawMaterialTypeMaster() {
   const lossPercent = form.watch("lossPercent") || 0;
 
   // Calculate derived value per base when using "per kg" mode
-  const calculatedDerivedValuePerBase = directValueMode === 'per_kg' && derivedUnitsPerKg && baseUnitWeight
-    ? Math.round(derivedUnitsPerKg * baseUnitWeight)
+  const calculatedDerivedValuePerBase = directValueMode === 'per_kg' && derivedUnitsPerKg !== undefined && baseUnitWeight
+    ? parseFloat((derivedUnitsPerKg * baseUnitWeight).toFixed(4))
     : derivedValuePerBase;
 
   // Calculate conversion value based on method
   const calculateConversionValue = () => {
     if (conversionMethod === "formula-based" && baseUnitWeight && weightPerDerivedUnit) {
-      return Math.round((baseUnitWeight * 1000) / weightPerDerivedUnit);
+      return parseFloat(((baseUnitWeight * 1000) / weightPerDerivedUnit).toFixed(4));
     } else if (conversionMethod === "direct-value") {
       // Use calculated value from "per kg" mode, or direct entry
       return calculatedDerivedValuePerBase || 0;
@@ -152,7 +152,7 @@ export default function RawMaterialTypeMaster() {
   };
 
   const conversionValue = calculateConversionValue();
-  const usableUnits = Math.round(conversionValue * (1 - (lossPercent / 100)));
+  const usableUnits = parseFloat((conversionValue * (1 - (lossPercent / 100))).toFixed(4));
 
   const { data: types = [], isLoading } = useQuery<RawMaterialType[]>({
     queryKey: ["/api/raw-material-types"],
@@ -634,6 +634,7 @@ export default function RawMaterialTypeMaster() {
                         <FormControl>
                           <Input
                             type="number"
+                            step="0.01"
                             placeholder="e.g., 15"
                             data-testid="input-derived-per-kg"
                             value={derivedUnitsPerKg || ""}
@@ -641,15 +642,15 @@ export default function RawMaterialTypeMaster() {
                               const val = e.target.value ? parseFloat(e.target.value) : undefined;
                               setDerivedUnitsPerKg(val);
                               // Auto-calculate and set derivedValuePerBase for form submission
-                              if (val && baseUnitWeight) {
-                                form.setValue('derivedValuePerBase', Math.round(val * baseUnitWeight));
+                              if (val !== undefined && baseUnitWeight) {
+                                form.setValue('derivedValuePerBase', parseFloat((val * baseUnitWeight).toFixed(4)));
                               }
                             }}
                           />
                         </FormControl>
-                        {derivedUnitsPerKg && baseUnitWeight && (
+                        {derivedUnitsPerKg !== undefined && baseUnitWeight && (
                           <p className="text-xs text-green-600 mt-1">
-                            = {derivedUnitsPerKg} × {baseUnitWeight} kg = {Math.round(derivedUnitsPerKg * baseUnitWeight)} per {form.watch('baseUnit') || 'Base Unit'}
+                            = {derivedUnitsPerKg} × {baseUnitWeight} kg = {parseFloat((derivedUnitsPerKg * baseUnitWeight).toFixed(4))} per {form.watch('baseUnit') || 'Base Unit'}
                           </p>
                         )}
                         {!baseUnitWeight && (
