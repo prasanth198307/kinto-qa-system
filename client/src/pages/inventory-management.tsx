@@ -2886,6 +2886,9 @@ function RawMaterialDialog({
   const [pricingUnit, setPricingUnit] = useState<'same_as_base' | 'per_kg' | 'per_piece'>('same_as_base');
   const [vendorQuotedPrice, setVendorQuotedPrice] = useState<number | undefined>(undefined);
 
+  const selectedUomId = form.watch('uomId');
+  const selectedUom = useMemo(() => uoms.find(u => u.id === selectedUomId), [uoms, selectedUomId]);
+
   // Fetch all Purchase Orders (we'll filter client-side for approved/ordered/partially_received)
   const { data: allPOs = [] } = useQuery<any[]>({
     queryKey: ['/api/purchase-orders'],
@@ -3453,7 +3456,7 @@ function RawMaterialDialog({
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="same_as_base">
-                        Per {selectedTypeDetails?.baseUnit || 'Base Unit'}
+                        Per {selectedUom?.name || selectedTypeDetails?.baseUnit || 'Base Unit'}
                       </SelectItem>
                       <SelectItem value="per_kg">Per KG</SelectItem>
                       <SelectItem value="per_piece">Per Piece</SelectItem>
