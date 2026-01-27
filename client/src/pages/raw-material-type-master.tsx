@@ -101,9 +101,9 @@ type FormValues = z.infer<typeof formSchema>;
 export default function RawMaterialTypeMaster() {
   const { toast } = useToast();
   const { hasPermission } = usePermissions();
-  const canCreate = hasPermission('raw_material_type_master', 'create');
-  const canEdit = hasPermission('raw_material_type_master', 'edit');
-  const canDelete = hasPermission('raw_material_type_master', 'delete');
+  const canCreate = hasPermission('raw_material_types', 'create');
+  const canEdit = hasPermission('raw_material_types', 'edit');
+  const canDelete = hasPermission('raw_material_types', 'delete');
   
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingType, setEditingType] = useState<RawMaterialType | null>(null);
