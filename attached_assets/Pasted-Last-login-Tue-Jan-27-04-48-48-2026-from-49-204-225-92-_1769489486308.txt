@@ -1,0 +1,54 @@
+Last login: Tue Jan 27 04:48:48 2026 from 49.204.225.92
+[opc@iplvnic1 ~]$ sudo su - kinto
+Last login: Tue Jan 27 04:48:50 GMT 2026 on pts/2
+[kinto@iplvnic1 ~]$ sudo journalctl -u kinto.service -n 50 --no-pager
+Jan 27 04:40:27 iplvnic1 npm[1779632]:     at /home/kinto/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+Jan 27 04:40:27 iplvnic1 npm[1779632]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+Jan 27 04:40:27 iplvnic1 npm[1779632]:     at async file:///home/kinto/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+Jan 27 04:40:27 iplvnic1 npm[1779632]:     at async DatabaseStorage.createRawMaterialType (file:///home/kinto/kinto-qa-system/dist/index.js:3967:27)
+Jan 27 04:40:27 iplvnic1 npm[1779632]:     at async file:///home/kinto/kinto-qa-system/dist/index.js:12435:23 {
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   length: 250,
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   severity: 'ERROR',
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   code: '23505',
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   detail: 'Key (type_code)=(RMT-002) already exists.',
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   hint: undefined,
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   position: undefined,
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   internalPosition: undefined,
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   internalQuery: undefined,
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   where: undefined,
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   schema: 'public',
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   table: 'raw_material_types',
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   column: undefined,
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   dataType: undefined,
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   constraint: 'raw_material_types_type_code_key',
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   file: 'nbtinsert.c',
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   line: '666',
+Jan 27 04:40:27 iplvnic1 npm[1779632]:   routine: '_bt_check_unique'
+Jan 27 04:40:27 iplvnic1 npm[1779632]: }
+Jan 27 04:40:27 iplvnic1 npm[1779632]: 4:40:27 AM [express] POST /api/raw-material-types 500 in 47ms :: {"message":"Failed to create raw ma…
+Jan 27 04:49:48 iplvnic1 systemd[1]: Stopping KINTO Smart Ops Application...
+Jan 27 04:49:48 iplvnic1 systemd[1]: kinto.service: Deactivated successfully.
+Jan 27 04:49:48 iplvnic1 systemd[1]: Stopped KINTO Smart Ops Application.
+Jan 27 04:49:48 iplvnic1 systemd[1]: kinto.service: Consumed 3.995s CPU time.
+Jan 27 04:49:48 iplvnic1 systemd[1]: Started KINTO Smart Ops Application.
+Jan 27 04:49:48 iplvnic1 npm[1780258]: > rest-express@1.0.0 start
+Jan 27 04:49:48 iplvnic1 npm[1780258]: > NODE_ENV=production node dist/index.js
+Jan 27 04:49:49 iplvnic1 npm[1780270]: [dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+Jan 27 04:49:49 iplvnic1 npm[1780270]: ✅ Environment loaded
+Jan 27 04:49:49 iplvnic1 npm[1780270]: ✅ DATABASE_URL: Set
+Jan 27 04:49:49 iplvnic1 npm[1780270]: ✅ Colloki Flow AI service initialized
+Jan 27 04:49:49 iplvnic1 npm[1780270]: ✅ Session persistence enabled - sessions expire after 7 days of inactivity
+Jan 27 04:49:49 iplvnic1 npm[1780270]: 🔧 Session configured — Secure: false, SameSite: Lax, Dev Mode: false
+Jan 27 04:49:49 iplvnic1 npm[1780270]: 4:49:49 AM [express] 🚀 Server running on port 5050
+Jan 27 04:49:49 iplvnic1 npm[1780270]: 4:49:49 AM [express] ✅ Machine startup reminder system initialized
+Jan 27 04:49:49 iplvnic1 npm[1780270]: 4:49:49 AM [express] ✅ Missed checklist notification system initialized
+Jan 27 04:49:49 iplvnic1 npm[1780270]: 4:49:49 AM [express] ✅ Document expiry alert system initialized
+Jan 27 04:49:50 iplvnic1 npm[1780270]: 4:49:49 AM [express] ✅ WhatsApp secrets sync checked
+Jan 27 04:49:50 iplvnic1 npm[1780270]: ✅ Connected to local PostgreSQL successfully
+Jan 27 04:49:50 iplvnic1 npm[1780270]: [SYNC] WhatsApp secrets already in database or no env vars to sync
+Jan 27 04:49:56 iplvnic1 npm[1780270]: 🔹 Request: POST /api/raw-material-types
+Jan 27 04:49:56 iplvnic1 npm[1780270]:    Cookie header: connect.sid=s%3AyQRDoEfPkaEEBwevObuWHHd6P-tDxbLE.uI1lcbG%2FoqMYTylhxAfXD58s6Cj3OhhmUm3zuJXHjok
+Jan 27 04:49:56 iplvnic1 npm[1780270]:    Session ID: yQRDoEfPkaEEBwevObuWHHd6P-tDxbLE
+Jan 27 04:49:56 iplvnic1 npm[1780270]:    Authenticated: true
+Jan 27 04:49:56 iplvnic1 npm[1780270]: [AUDIT] Role admin granted create access to /api/raw-material-types via screen permission raw_material_types
+Jan 27 04:49:56 iplvnic1 npm[1780270]: 4:49:56 AM [express] POST /api/raw-material-types 400 in 33ms :: {"message":"Duplicate Type Code (De…
