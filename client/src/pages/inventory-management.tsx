@@ -2883,11 +2883,13 @@ function RawMaterialDialog({
   const [selectedPOItemId, setSelectedPOItemId] = useState<string>('');
   
   // Pricing unit state - allows vendor to quote in different units
-  const [pricingUnit, setPricingUnit] = useState<'same_as_base' | 'per_kg' | 'per_piece'>('same_as_base');
+  const [vendorPricingUomId, setVendorPricingUomId] = useState<string>('same_as_base');
   const [vendorQuotedPrice, setVendorQuotedPrice] = useState<number | undefined>(undefined);
+  const [conversionFactor, setConversionFactor] = useState<number | undefined>(undefined);
 
   const selectedUomId = form.watch('uomId');
   const selectedUom = useMemo(() => uoms.find(u => u.id === selectedUomId), [uoms, selectedUomId]);
+  const vendorPricingUom = useMemo(() => uoms.find(u => u.id === vendorPricingUomId), [uoms, vendorPricingUomId]);
 
   // Fetch all Purchase Orders (we'll filter client-side for approved/ordered/partially_received)
   const { data: allPOs = [] } = useQuery<any[]>({
@@ -2987,7 +2989,7 @@ function RawMaterialDialog({
   
   // Auto-convert vendor quoted price to base unit price when pricing unit or vendor price changes
   useEffect(() => {
-    if (pricingUnit === 'same_as_base') {
+    if (vendorPricingUomId === 'same_as_base') {
       // No conversion needed - vendor quotes in base unit
       return;
     }
@@ -2996,33 +2998,17 @@ function RawMaterialDialog({
       return;
     }
     
-    let basePrice = vendorQuotedPrice;
-    let conversionFactor = 1;
-    
-    // Use the override value if provided, otherwise fallback to the type default
-    const usableUnitsOverride = form.watch('usableDerivedUnits');
-    const effectiveUsableUnits = Number(usableUnitsOverride) || Number(selectedTypeDetails.usableUnits) || 1;
-
-    if (pricingUnit === 'per_kg') {
-      if (canConvertToKg) {
-        // Vendor quotes per KG, convert to base unit (e.g., Bag)
-        // Example: ₹200/KG × 25kg/Bag = ₹5,000/Bag
-        conversionFactor = selectedTypeDetails!.baseUnitWeight!;
-        basePrice = vendorQuotedPrice * conversionFactor;
-      } else {
-        // No conversion data - allow manual entry
-        return;
-      }
-    } else if (pricingUnit === 'per_piece') {
-      // Vendor quotes per Piece, convert to base unit
-      // Example: ₹5/piece × 6000 pieces/Box = ₹30,000/Box
-      conversionFactor = effectiveUsableUnits;
-      basePrice = vendorQuotedPrice * conversionFactor;
+    if (conversionFactor === undefined || conversionFactor === 0) {
+      return;
     }
+    
+    // Calculate base price: vendorPrice × conversionFactor
+    // Example: ₹200/KG × 25 KG/Bag = ₹5,000/Bag
+    const basePrice = vendorQuotedPrice * conversionFactor;
     
     // Update the base price field
     form.setValue('unitCost', parseFloat(basePrice.toFixed(2)));
-  }, [vendorQuotedPrice, pricingUnit, selectedTypeDetails, canConvertToKg, canConvertToPiece, form]);
+  }, [vendorQuotedPrice, vendorPricingUomId, conversionFactor, form]);
 
   // Auto-calculate Total Cost and Total Valuation when Pricing or Quantity changes
   useEffect(() => {
@@ -3215,8 +3201,9 @@ function RawMaterialDialog({
         setUserChangedType(false);
         setSelectedPOId('');
         setSelectedPOItemId('');
-        setPricingUnit('same_as_base');
+        setVendorPricingUomId('same_as_base');
         setVendorQuotedPrice(undefined);
+        setConversionFactor(undefined);
       }
     }
   }, [item, open, form, materialTypes]);
@@ -3437,17 +3424,18 @@ function RawMaterialDialog({
               </div>
 
               {/* Pricing Unit Selection */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <FormItem>
                   <FormLabel>Vendor Quotes In</FormLabel>
                   <Select 
                     onValueChange={(val) => {
-                      setPricingUnit(val as 'same_as_base' | 'per_kg' | 'per_piece');
+                      setVendorPricingUomId(val);
                       if (val === 'same_as_base') {
                         setVendorQuotedPrice(undefined);
+                        setConversionFactor(undefined);
                       }
                     }} 
-                    value={pricingUnit}
+                    value={vendorPricingUomId}
                   >
                     <FormControl>
                       <SelectTrigger data-testid="select-pricing-unit">
@@ -3456,10 +3444,13 @@ function RawMaterialDialog({
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="same_as_base">
-                        Per {selectedUom?.name || selectedTypeDetails?.baseUnit || 'Base Unit'}
+                        Same as Purchase Unit ({selectedUom?.name || 'Select above'})
                       </SelectItem>
-                      <SelectItem value="per_kg">Per KG</SelectItem>
-                      <SelectItem value="per_piece">Per Piece</SelectItem>
+                      {uoms.filter(u => u.id !== selectedUomId).map((uom) => (
+                        <SelectItem key={uom.id} value={uom.id}>
+                          Per {uom.name} ({uom.code})
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormDescription className="text-xs">
@@ -3467,65 +3458,70 @@ function RawMaterialDialog({
                   </FormDescription>
                 </FormItem>
 
-                {pricingUnit !== 'same_as_base' && (
-                  <FormItem>
-                    <FormLabel>
-                      Vendor Price (₹ per {pricingUnit === 'per_kg' ? 'KG' : 'Piece'})
-                    </FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number" 
-                        step="0.01"
-                        min="0"
-                        placeholder="0.00" 
-                        value={vendorQuotedPrice ?? ''}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          const numericVal = val === '' ? undefined : parseFloat(val);
-                          setVendorQuotedPrice(numericVal);
-                          
-                          // If pricing in pieces, and user entered a price, we can suggest updating the derived value per base
-                          // BUT for caps, if they say "6000 pieces per box", we should probably allow them to adjust the quantity or derived value
-                        }}
-                        data-testid="input-vendor-quoted-price"
-                      />
-                    </FormControl>
-                    <FormDescription className="text-xs">
-                      {pricingUnit === 'per_kg' && selectedTypeDetails?.baseUnitWeight
-                        ? `× ${selectedTypeDetails.baseUnitWeight} kg/${selectedTypeDetails.baseUnit || 'unit'} = Base Price`
-                        : pricingUnit === 'per_piece' && selectedTypeDetails?.usableUnits
-                        ? `× ${selectedTypeDetails.usableUnits} pcs/${selectedTypeDetails.baseUnit || 'unit'} = Base Price`
-                        : 'Will convert to base unit price'}
-                    </FormDescription>
-                  </FormItem>
+                {vendorPricingUomId !== 'same_as_base' && (
+                  <>
+                    <FormItem>
+                      <FormLabel>
+                        Conversion Factor
+                      </FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          step="0.01"
+                          min="0"
+                          placeholder="e.g., 25" 
+                          value={conversionFactor ?? ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setConversionFactor(val === '' ? undefined : parseFloat(val));
+                          }}
+                          data-testid="input-conversion-factor"
+                        />
+                      </FormControl>
+                      <FormDescription className="text-xs">
+                        How many {vendorPricingUom?.name || 'units'} per {selectedUom?.name || 'Base Unit'}?
+                      </FormDescription>
+                    </FormItem>
+                    <FormItem>
+                      <FormLabel>
+                        Vendor Price (₹ per {vendorPricingUom?.name || 'Unit'})
+                      </FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          step="0.01"
+                          min="0"
+                          placeholder="0.00" 
+                          value={vendorQuotedPrice ?? ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setVendorQuotedPrice(val === '' ? undefined : parseFloat(val));
+                          }}
+                          data-testid="input-vendor-quoted-price"
+                        />
+                      </FormControl>
+                      <FormDescription className="text-xs">
+                        {conversionFactor && vendorQuotedPrice
+                          ? `₹${vendorQuotedPrice} × ${conversionFactor} = ₹${(vendorQuotedPrice * conversionFactor).toFixed(2)}/${selectedUom?.name || 'Unit'}`
+                          : 'Enter conversion factor and price'}
+                      </FormDescription>
+                    </FormItem>
+                  </>
                 )}
               </div>
-
-              {/* Warning when conversion data is missing */}
-              {pricingUnit === 'per_kg' && !canConvertToKg && selectedTypeDetails && (
-                <div className="text-sm text-amber-600 bg-amber-50 dark:bg-amber-950/30 p-3 rounded-md border border-amber-200 dark:border-amber-900">
-                  The selected type doesn't have weight per base unit defined. Please enter the base price manually or update the type's "Base Unit Weight" in Raw Material Type Master.
-                </div>
-              )}
-              {pricingUnit === 'per_piece' && !canConvertToPiece && selectedTypeDetails && (
-                <div className="text-sm text-amber-600 bg-amber-50 dark:bg-amber-950/30 p-3 rounded-md border border-amber-200 dark:border-amber-900">
-                  The selected type doesn't have usable units defined. Please enter the base price manually or update the type's conversion formula in Raw Material Type Master.
-                </div>
-              )}
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <FormField
                   control={form.control}
                   name="unitCost"
                   render={({ field }) => {
-                    // Only disable if conversion is possible, otherwise allow manual entry
-                    const shouldDisable = pricingUnit !== 'same_as_base' && 
-                      ((pricingUnit === 'per_kg' && canConvertToKg) || 
-                       (pricingUnit === 'per_piece' && canConvertToPiece));
+                    // Only disable if vendor pricing unit selected AND conversion factor provided
+                    const shouldDisable = vendorPricingUomId !== 'same_as_base' && 
+                      conversionFactor !== undefined && conversionFactor > 0;
                     
                     return (
                       <FormItem>
-                        <FormLabel>Base Price (₹ per {selectedTypeDetails?.baseUnit || 'Unit'})</FormLabel>
+                        <FormLabel>Base Price (₹ per {selectedUom?.name || 'Unit'})</FormLabel>
                         <FormControl>
                           <Input 
                             type="number" 
@@ -3547,9 +3543,9 @@ function RawMaterialDialog({
                             Auto-calculated from vendor price
                           </FormDescription>
                         )}
-                        {pricingUnit !== 'same_as_base' && !shouldDisable && (
+                        {vendorPricingUomId !== 'same_as_base' && !shouldDisable && (
                           <FormDescription className="text-xs text-amber-600">
-                            Enter manually (no auto-conversion available)
+                            Enter conversion factor to auto-calculate
                           </FormDescription>
                         )}
                         <FormMessage />
