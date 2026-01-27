@@ -27,6 +27,7 @@ import AdminUserManagement from "@/components/AdminUserManagement";
 import AdminMachineConfig from "@/components/AdminMachineConfig";
 import AdminChecklistBuilder from "@/components/AdminChecklistBuilder";
 import AdminSparePartsManagement from "@/components/AdminSparePartsManagement";
+import MachineSpareEntryView from "@/components/MachineSpareEntryView";
 import AdminMachineTypeConfig from "@/components/AdminMachineTypeConfig";
 import AdminPMTaskListTemplates from "@/components/AdminPMTaskListTemplates";
 import AdminHPCLMigration from "@/components/AdminHPCLMigration";
@@ -532,6 +533,12 @@ function CustomRoleDashboard({ roleName }: { roleName: string }) {
             <AdminSparePartsManagement />
           </div>
         );
+      case 'machine-spare-entry':
+        return (
+          <div className="p-4">
+            <MachineSpareEntryView />
+          </div>
+        );
       case 'machine-types':
         return (
           <div className="p-4">
@@ -840,6 +847,7 @@ function AdminDashboard() {
         { id: "machines", label: "Machines", icon: Settings },
         { id: "machine-types", label: "Machine Types", icon: Layers },
         { id: "spare-parts", label: "Spare Parts", icon: Package },
+        { id: "machine-spare-entry", label: "Machine Spares", icon: Settings },
         { id: "pm-templates", label: "PM Templates", icon: ListChecks },
         { id: "uom", label: "Unit of Measurement", icon: Layers },
         { id: "raw-material-types", label: "Raw Material Types", icon: Archive },
@@ -906,6 +914,12 @@ function AdminDashboard() {
         return (
           <div className="p-4">
             <AdminSparePartsManagement />
+          </div>
+        );
+      case 'machine-spare-entry':
+        return (
+          <div className="p-4">
+            <MachineSpareEntryView />
           </div>
         );
       case 'machine-types':
@@ -1351,6 +1365,7 @@ const navItemToScreenKey: Record<string, string> = {
   'machines': 'machines',
   'machine-types': 'machine_types',
   'spare-parts': 'spare_parts',
+  'machine-spare-entry': 'spare_parts',
   'pm-templates': 'pm_templates',
   'uom': 'uom',
   'raw-material-types': 'raw_material_types',
@@ -1419,6 +1434,7 @@ const navItemToScreen: Record<string, string> = {
   'machines': 'Machines',
   'machine-types': 'Machine Types',
   'spare-parts': 'Spare Parts',
+  'machine-spare-entry': 'Machine Spares',
   'pm-templates': 'PM Templates',
   'uom': 'Inventory Management',
   'raw-material-types': 'Inventory Management',
@@ -1632,6 +1648,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "machines", label: "Machines", icon: Settings, onClick: () => setLocation('/') },
         { id: "machine-types", label: "Machine Types", icon: Layers, onClick: () => setLocation('/') },
         { id: "spare-parts", label: "Spare Parts", icon: Package, onClick: () => setLocation('/') },
+        { id: "machine-spare-entry", label: "Machine Spares", icon: Settings, onClick: () => setLocation('/') },
         { id: "pm-templates", label: "PM Templates", icon: ListChecks, onClick: () => setLocation('/') },
         { id: "uom", label: "Unit of Measurement", icon: Layers, onClick: () => setLocation('/') },
         { id: "raw-material-types", label: "Raw Material Types", icon: Archive, onClick: () => setLocation('/') },
