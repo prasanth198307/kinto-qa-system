@@ -276,8 +276,14 @@ export default function RawMaterialTypeMaster() {
           {isLoading ? (
             <div className="p-8 text-center text-muted-foreground">Loading types...</div>
           ) : types.length === 0 ? (
-            <div className="p-8 text-center text-muted-foreground">
-              No raw material types found. Create one to get started.
+            <div className="p-8 text-center space-y-4">
+              <p className="text-muted-foreground">No raw material types found. Create one to get started.</p>
+              {canCreate && (
+                <Button onClick={handleAddNew} data-testid="button-add-type-empty">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Your First Type
+                </Button>
+              )}
             </div>
           ) : (
             <Table>
