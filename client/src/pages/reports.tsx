@@ -26,7 +26,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { FileText, Package, Receipt, ShoppingCart, Wrench, Filter, FileCheck2, Download, Wallet, Banknote, CreditCard, Check, ChevronsUpDown, Boxes } from "lucide-react";
+import { FileText, Package, Receipt, ShoppingCart, Wrench, Filter, FileCheck2, Download, Wallet, Banknote, CreditCard, Check, ChevronsUpDown, Boxes, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import type { Gatepass, Invoice, RawMaterialIssuance, PurchaseOrder, PMExecution, InvoicePayment } from "@shared/schema";
@@ -876,6 +876,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
     issuances: canAccessReportTab('report_issuances'),
     'purchase-orders': canAccessReportTab('report_purchase_orders'),
     maintenance: canAccessReportTab('report_maintenance'),
+    machines: canAccessReportTab('report_machines'),
     expenses: canAccessReportTab('report_expenses'),
     'cash-register': canAccessReportTab('report_cash_register'),
     'gst-reports': canAccessReportTab('report_gst'),
@@ -886,7 +887,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
   
   // Find first accessible tab for default
   const getFirstAccessibleTab = () => {
-    const tabs = ['gatepasses', 'invoices', 'issuances', 'purchase-orders', 'maintenance', 'expenses', 'cash-register', 'gst-reports', 'payments', 'finished-goods', 'monthly-sales'];
+    const tabs = ['gatepasses', 'invoices', 'issuances', 'purchase-orders', 'maintenance', 'machines', 'expenses', 'cash-register', 'gst-reports', 'payments', 'finished-goods', 'monthly-sales'];
     for (const tab of tabs) {
       if (tabPermissions[tab as keyof typeof tabPermissions]) return tab;
     }
@@ -1092,6 +1093,11 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
     queryKey: ['/api/pm-executions'],
   });
 
+  // Machines query for machine reports
+  const { data: machines = [], isLoading: machinesLoading } = useQuery<any[]>({
+    queryKey: ['/api/machines'],
+  });
+
   // Payments query - includes invoice info via history endpoint
   interface PaymentWithInvoice {
     id: string;
@@ -1114,7 +1120,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
     queryKey: ['/api/invoice-payments/history'],
   });
 
-  const isLoading = gatepassesLoading || invoicesLoading || issuancesLoading || purchaseOrdersLoading || pmExecutionsLoading || paymentsLoading;
+  const isLoading = gatepassesLoading || invoicesLoading || issuancesLoading || purchaseOrdersLoading || pmExecutionsLoading || paymentsLoading || machinesLoading;
 
   // Extract unique customers from gatepasses and invoices - use Array.isArray for safety
   const uniqueCustomers = Array.from(new Set([
@@ -1667,6 +1673,12 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
               Maintenance
             </TabsTrigger>
           )}
+          {tabPermissions.machines && (
+            <TabsTrigger value="machines" data-testid="tab-machines">
+              <Settings className="w-4 h-4 mr-2" />
+              Machine Reports
+            </TabsTrigger>
+          )}
           {tabPermissions.expenses && (
             <TabsTrigger value="expenses" data-testid="tab-expenses">
               <Banknote className="w-4 h-4 mr-2" />
@@ -2217,6 +2229,105 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                       ))}
                     </TableBody>
                   </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Machine Reports Tab */}
+        <TabsContent value="machines">
+          <Card>
+            <CardHeader>
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <CardTitle>Machine Reports</CardTitle>
+                  <CardDescription>
+                    Machine overview with checklists, PM schedules, and spare parts information
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {/* Machine List */}
+              {machinesLoading ? (
+                <p className="text-muted-foreground text-center py-4">Loading machines...</p>
+              ) : !machines || machines.length === 0 ? (
+                <p className="text-muted-foreground text-center py-4">No machines found.</p>
+              ) : (
+                <div className="space-y-6">
+                  {/* Summary Stats */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <Card>
+                      <CardContent className="p-4">
+                        <p className="text-sm text-muted-foreground">Total Machines</p>
+                        <p className="text-2xl font-bold">{machines.length}</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4">
+                        <p className="text-sm text-muted-foreground">Active</p>
+                        <p className="text-2xl font-bold text-green-600">
+                          {machines.filter((m: any) => m.status === 'active').length}
+                        </p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4">
+                        <p className="text-sm text-muted-foreground">Under Maintenance</p>
+                        <p className="text-2xl font-bold text-yellow-600">
+                          {machines.filter((m: any) => m.status === 'maintenance').length}
+                        </p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4">
+                        <p className="text-sm text-muted-foreground">Inactive</p>
+                        <p className="text-2xl font-bold text-muted-foreground">
+                          {machines.filter((m: any) => m.status === 'inactive').length}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Machine Details Table */}
+                  <div className="rounded-md border overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Machine Name</TableHead>
+                          <TableHead>Code</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Location</TableHead>
+                          <TableHead>Spare Parts</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {machines.map((machine: any) => (
+                          <TableRow key={machine.id}>
+                            <TableCell className="font-medium">{machine.name}</TableCell>
+                            <TableCell>{machine.code || '-'}</TableCell>
+                            <TableCell>{machine.type || '-'}</TableCell>
+                            <TableCell>
+                              <span className={cn(
+                                "inline-flex items-center px-2 py-1 rounded-full text-xs font-medium",
+                                machine.status === 'active' && "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
+                                machine.status === 'maintenance' && "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
+                                machine.status === 'inactive' && "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300"
+                              )}>
+                                {machine.status || 'unknown'}
+                              </span>
+                            </TableCell>
+                            <TableCell>{machine.location || '-'}</TableCell>
+                            <TableCell>
+                              {machine.sparePartCount || 0} parts
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
               )}
             </CardContent>
