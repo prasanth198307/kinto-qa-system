@@ -3236,7 +3236,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // VALIDATE FIRST with discriminated union schema - this ensures method-specific fields are present
-      const validatedInput = insertRawMaterialTypeSchema.parse({ ...req.body, typeCode });
+      const inputToValidate = {
+        ...req.body,
+        typeCode,
+        baseUnitWeight: req.body.baseUnitWeight ? parseFloat(req.body.baseUnitWeight.toString()) : undefined,
+        weightPerDerivedUnit: req.body.weightPerDerivedUnit ? parseFloat(req.body.weightPerDerivedUnit.toString()) : undefined,
+        derivedValuePerBase: req.body.derivedValuePerBase ? parseFloat(req.body.derivedValuePerBase.toString()) : undefined,
+        outputUnitsCovered: req.body.outputUnitsCovered ? parseFloat(req.body.outputUnitsCovered.toString()) : undefined,
+        lossPercent: req.body.lossPercent ? parseFloat(req.body.lossPercent.toString()) : 0,
+      };
+
+      const validatedInput = insertRawMaterialTypeSchema.parse(inputToValidate);
       
       // NOW calculate conversion value and usable units based on validated data
       let conversionValue = 0;
@@ -3309,7 +3319,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       
       // VALIDATE the merged data with discriminated union schema
-      const validatedMerged = insertRawMaterialTypeSchema.parse(sanitized);
+      const inputToValidate = {
+        ...sanitized,
+        baseUnitWeight: sanitized.baseUnitWeight ? parseFloat(sanitized.baseUnitWeight.toString()) : undefined,
+        weightPerDerivedUnit: sanitized.weightPerDerivedUnit ? parseFloat(sanitized.weightPerDerivedUnit.toString()) : undefined,
+        derivedValuePerBase: sanitized.derivedValuePerBase ? parseFloat(sanitized.derivedValuePerBase.toString()) : undefined,
+        outputUnitsCovered: sanitized.outputUnitsCovered ? parseFloat(sanitized.outputUnitsCovered.toString()) : undefined,
+        lossPercent: sanitized.lossPercent ? parseFloat(sanitized.lossPercent.toString()) : 0,
+      };
+
+      const validatedMerged = insertRawMaterialTypeSchema.parse(inputToValidate);
       
       // Recalculate conversion value and usable units based on validated data
       let conversionValue = 0;
