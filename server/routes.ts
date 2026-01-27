@@ -3470,7 +3470,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!batchCode) {
         const receivedDate = new Date(dateForBatch);
         const dateStr = receivedDate.toISOString().slice(0, 10).replace(/-/g, '');
-        const baseBatchCode = `LOT-${dateStr}`;
+        // Include type category in batch code for uniqueness (e.g., LOT-PREFORM-20260127)
+        const typeCategory = typeDetails?.category?.toUpperCase().replace(/\s+/g, '') || 'MATERIAL';
+        const baseBatchCode = `LOT-${typeCategory}-${dateStr}`;
         
         // Check for existing materials with same TYPE and same date to determine sequence
         const allMaterials = await storage.getAllRawMaterials();
@@ -3490,7 +3492,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const nextSeq = Math.max(0, ...sequences) + 1;
           batchCode = `${baseBatchCode}-${String(nextSeq).padStart(3, '0')}`;
         }
-        console.log(`[BATCH] Auto-generated batch code: ${batchCode} for received date: ${req.body.receivedDate}`);
+        console.log(`[BATCH] Auto-generated batch code: ${batchCode} for type: ${typeCategory}, date: ${dateForBatch}`);
       }
 
       // Check for duplicate Material Code (including soft-deleted records)
@@ -3587,7 +3589,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!sanitized.batchCode && (!existing.batchCode || existingDateForBatch !== dateForBatch)) {
         const receivedDate = new Date(dateForBatch);
         const dateStr = receivedDate.toISOString().slice(0, 10).replace(/-/g, '');
-        const baseBatchCode = `LOT-${dateStr}`;
+        // Include type category in batch code for uniqueness (e.g., LOT-PREFORM-20260127)
+        const typeCategory = typeDetails?.category?.toUpperCase().replace(/\s+/g, '') || 'MATERIAL';
+        const baseBatchCode = `LOT-${typeCategory}-${dateStr}`;
         
         // Check for existing materials with same TYPE and same date to determine sequence
         const allMaterials = await storage.getAllRawMaterials();
@@ -3606,7 +3610,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const nextSeq = Math.max(0, ...sequences) + 1;
           updates.batchCode = `${baseBatchCode}-${String(nextSeq).padStart(3, '0')}`;
         }
-        console.log(`[BATCH] Auto-generated batch code: ${updates.batchCode} for received date: ${sanitized.receivedDate}`);
+        console.log(`[BATCH] Auto-generated batch code: ${updates.batchCode} for type: ${typeCategory}, date: ${dateForBatch}`);
       }
       
       // Recalculate closing stock if type details exist and stock fields changed
