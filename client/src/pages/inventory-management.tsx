@@ -3408,6 +3408,31 @@ function RawMaterialDialog({
                 />
               </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="uomId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Purchase Unit (Base Unit) *</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value || ''}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-uom">
+                            <SelectValue placeholder="Select Purchase Unit" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {uoms.map((uom) => (
+                            <SelectItem key={uom.id} value={uom.id}>{uom.name} ({uom.code})</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
               {/* Pricing Unit Selection */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormItem>
