@@ -3646,7 +3646,16 @@ function RawMaterialDialog({
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormItem>
-                  <FormLabel>Total Valuation (₹)</FormLabel>
+                  <FormLabel>
+                    {(() => {
+                      const qty = Number(receivedQuantity) || Number(openingStock) || 0;
+                      const unit = selectedTypeDetails?.baseUnit || 'Units';
+                      if (qty > 0) {
+                        return `Total Value for ${qty} ${unit}${qty > 1 ? 's' : ''} (₹)`;
+                      }
+                      return `Total Valuation (₹)`;
+                    })()}
+                  </FormLabel>
                   <FormControl>
                     <Input 
                       type="number" 
@@ -3664,9 +3673,9 @@ function RawMaterialDialog({
                       const unitWithGst = base + (base * gst / 100);
                       const total = unitWithGst * qty;
                       if (qty > 0 && unitWithGst > 0) {
-                        return `₹${unitWithGst.toLocaleString('en-IN')} × ${qty} ${selectedTypeDetails?.baseUnit || 'Units'} = ₹${total.toLocaleString('en-IN')}`;
+                        return `₹${unitWithGst.toLocaleString('en-IN')} × ${qty} = ₹${total.toLocaleString('en-IN')}`;
                       }
-                      return `(Unit Cost incl. GST) × Qty in ${selectedTypeDetails?.baseUnit || 'Units'}`;
+                      return `(Unit Cost incl. GST) × Quantity`;
                     })()}
                   </FormDescription>
                 </FormItem>
