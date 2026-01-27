@@ -1978,11 +1978,6 @@ export class DatabaseStorage implements IStorage {
     return type;
   }
 
-  async getRawMaterialTypeByCode(code: string): Promise<RawMaterialType | undefined> {
-    const [type] = await db.select().from(rawMaterialTypes).where(and(eq(rawMaterialTypes.typeCode, code), eq(rawMaterialTypes.recordStatus, 1)));
-    return type;
-  }
-
   async updateRawMaterialType(id: string, typeData: Partial<InsertRawMaterialType>): Promise<RawMaterialType | undefined> {
     const [updated] = await db
       .update(rawMaterialTypes)
