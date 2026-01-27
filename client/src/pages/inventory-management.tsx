@@ -3363,7 +3363,7 @@ function RawMaterialDialog({
                   name="unitCost"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Base Price (₹)</FormLabel>
+                      <FormLabel>Base Price (₹ per {selectedTypeDetails?.baseUnit || 'Unit'})</FormLabel>
                       <FormControl>
                         <Input 
                           type="number" 
@@ -3415,7 +3415,7 @@ function RawMaterialDialog({
                   name="totalCost"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Unit Cost (Incl. GST)</FormLabel>
+                      <FormLabel>Unit Cost per {selectedTypeDetails?.baseUnit || 'Unit'} (Incl. GST)</FormLabel>
                       <FormControl>
                         <Input 
                           type="number" 
@@ -3444,7 +3444,9 @@ function RawMaterialDialog({
                       data-testid="input-material-total-valuation"
                     />
                   </FormControl>
-                  <FormDescription className="text-xs">Base Price + GST × Received Qty</FormDescription>
+                  <FormDescription className="text-xs">
+                    (Base Price + GST) × Qty in {selectedTypeDetails?.baseUnit || 'Units'}
+                  </FormDescription>
                 </FormItem>
               </div>
 
