@@ -3475,6 +3475,249 @@ function RawMaterialDialog({
                 />
               </div>
 
+            {/* Stock Management Section */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-medium text-foreground">Stock Management</h3>
+                  {!item && existingTypeStock > 0 && (
+                    <Badge variant="secondary" className="text-xs">
+                      Existing: {existingTypeStock} {selectedTypeDetails?.baseUnit || 'units'}
+                    </Badge>
+                  )}
+                </div>
+                <FormField
+                  control={form.control}
+                  name="isOpeningStockOnly"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center gap-2">
+                      <FormLabel className="text-xs text-muted-foreground mb-0">
+                        {field.value === 1 ? 'Opening Stock Only' : 'Ongoing Inventory'}
+                      </FormLabel>
+                      <FormControl>
+                        <Switch
+                          checked={field.value === 0}
+                          onCheckedChange={(checked) => field.onChange(checked ? 0 : 1)}
+                          data-testid="switch-stock-mode"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Info message for existing stock */}
+              {!item && existingTypeStock > 0 && (
+                <div className="text-sm text-muted-foreground bg-blue-50 dark:bg-blue-950/30 p-3 rounded-md border border-blue-200 dark:border-blue-900">
+                  This material type already has <strong>{existingTypeStock} {selectedTypeDetails?.baseUnit || 'units'}</strong> in inventory. 
+                  The Opening Stock is prefilled with the current balance. Add received quantities to update inventory.
+                </div>
+              )}
+
+              {isOpeningStockOnly === 1 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="openingStock"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Opening Stock *</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            placeholder="0" 
+                            {...field} 
+                            value={field.value || 0} 
+                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
+                            data-testid="input-opening-stock"
+                          />
+                        </FormControl>
+                        <FormDescription className="text-xs">
+                          Initial stock quantity
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="openingDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Opening Date</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="date" 
+                            {...field} 
+                            value={field.value || ''} 
+                            data-testid="input-opening-date"
+                          />
+                        </FormControl>
+                        <FormDescription className="text-xs">
+                          Date of opening stock entry (used for batch code)
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  {/* Show auto-generated batch code preview */}
+                  {form.watch('openingDate') && (
+                    <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg border">
+                      <span className="text-sm text-muted-foreground">Batch Code:</span>
+                      <Badge variant="outline" className="font-mono">
+                        LOT-{form.watch('openingDate')?.replace(/-/g, '') || 'YYYYMMDD'}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">(auto-generated on save)</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="openingStock"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Opening Stock *</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            placeholder="0" 
+                            {...field} 
+                            value={field.value || 0} 
+                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
+                            data-testid="input-opening-stock"
+                          />
+                        </FormControl>
+                        <FormDescription className="text-xs">
+                          Starting balance
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="receivedQuantity"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Received Quantity</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            placeholder="0" 
+                            {...field} 
+                            value={field.value || 0} 
+                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
+                            data-testid="input-received-quantity"
+                          />
+                        </FormControl>
+                        <FormDescription className="text-xs">
+                          Quantity received
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="receivedDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Received Date</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="date" 
+                            {...field} 
+                            value={field.value || ''} 
+                            data-testid="input-received-date"
+                          />
+                        </FormControl>
+                        <FormDescription className="text-xs">
+                          Date material was received (used for batch code & FIFO)
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  {/* Show auto-generated batch code preview */}
+                  {form.watch('receivedDate') && (
+                    <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg border col-span-2">
+                      <span className="text-sm text-muted-foreground">Batch Code:</span>
+                      <Badge variant="outline" className="font-mono">
+                        LOT-{form.watch('receivedDate')?.replace(/-/g, '') || 'YYYYMMDD'}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">(auto-generated on save, used for FIFO)</span>
+                    </div>
+                  )}
+                  <FormField
+                    control={form.control}
+                    name="returnedQuantity"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Returned Quantity</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            placeholder="0" 
+                            {...field} 
+                            value={field.value || 0} 
+                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
+                            data-testid="input-returned-quantity"
+                          />
+                        </FormControl>
+                        <FormDescription className="text-xs">
+                          Quantity returned
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="adjustments"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Adjustments</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            placeholder="0" 
+                            {...field} 
+                            value={field.value || 0} 
+                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
+                            data-testid="input-adjustments"
+                          />
+                        </FormControl>
+                        <FormDescription className="text-xs">
+                          Plus/minus adjustments
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
+
+              {/* Calculated Closing Stock Display */}
+              {selectedTypeDetails && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-lg border bg-muted/30 p-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Closing Stock (Base Units)</p>
+                    <p className="text-lg font-semibold text-foreground" data-testid="text-closing-stock">
+                      {form.watch('closingStock') !== undefined ? form.watch('closingStock')?.toFixed(2) : '-'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Closing Stock (Usable Units)</p>
+                    <p className="text-lg font-semibold text-foreground" data-testid="text-closing-stock-usable">
+                      {form.watch('closingStockUsable') !== undefined ? Math.round(form.watch('closingStockUsable') || 0) : '-'}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormItem>
                   <FormLabel>Purchase Unit (Base Unit)</FormLabel>
@@ -3799,249 +4042,6 @@ function RawMaterialDialog({
                 </div>
               </div>
             )}
-
-            {/* Stock Management Section */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-medium text-foreground">Stock Management</h3>
-                  {!item && existingTypeStock > 0 && (
-                    <Badge variant="secondary" className="text-xs">
-                      Existing: {existingTypeStock} {selectedTypeDetails?.baseUnit || 'units'}
-                    </Badge>
-                  )}
-                </div>
-                <FormField
-                  control={form.control}
-                  name="isOpeningStockOnly"
-                  render={({ field }) => (
-                    <FormItem className="flex items-center gap-2">
-                      <FormLabel className="text-xs text-muted-foreground mb-0">
-                        {field.value === 1 ? 'Opening Stock Only' : 'Ongoing Inventory'}
-                      </FormLabel>
-                      <FormControl>
-                        <Switch
-                          checked={field.value === 0}
-                          onCheckedChange={(checked) => field.onChange(checked ? 0 : 1)}
-                          data-testid="switch-stock-mode"
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {/* Info message for existing stock */}
-              {!item && existingTypeStock > 0 && (
-                <div className="text-sm text-muted-foreground bg-blue-50 dark:bg-blue-950/30 p-3 rounded-md border border-blue-200 dark:border-blue-900">
-                  This material type already has <strong>{existingTypeStock} {selectedTypeDetails?.baseUnit || 'units'}</strong> in inventory. 
-                  The Opening Stock is prefilled with the current balance. Add received quantities to update inventory.
-                </div>
-              )}
-
-              {isOpeningStockOnly === 1 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="openingStock"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Opening Stock *</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="0" 
-                            {...field} 
-                            value={field.value || 0} 
-                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
-                            data-testid="input-opening-stock"
-                          />
-                        </FormControl>
-                        <FormDescription className="text-xs">
-                          Initial stock quantity
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="openingDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Opening Date</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="date" 
-                            {...field} 
-                            value={field.value || ''} 
-                            data-testid="input-opening-date"
-                          />
-                        </FormControl>
-                        <FormDescription className="text-xs">
-                          Date of opening stock entry (used for batch code)
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  {/* Show auto-generated batch code preview */}
-                  {form.watch('openingDate') && (
-                    <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg border">
-                      <span className="text-sm text-muted-foreground">Batch Code:</span>
-                      <Badge variant="outline" className="font-mono">
-                        LOT-{form.watch('openingDate')?.replace(/-/g, '') || 'YYYYMMDD'}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">(auto-generated on save)</span>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="openingStock"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Opening Stock *</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="0" 
-                            {...field} 
-                            value={field.value || 0} 
-                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
-                            data-testid="input-opening-stock"
-                          />
-                        </FormControl>
-                        <FormDescription className="text-xs">
-                          Starting balance
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="receivedQuantity"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Received Quantity</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="0" 
-                            {...field} 
-                            value={field.value || 0} 
-                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
-                            data-testid="input-received-quantity"
-                          />
-                        </FormControl>
-                        <FormDescription className="text-xs">
-                          Quantity received
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="receivedDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Received Date</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="date" 
-                            {...field} 
-                            value={field.value || ''} 
-                            data-testid="input-received-date"
-                          />
-                        </FormControl>
-                        <FormDescription className="text-xs">
-                          Date material was received (used for batch code & FIFO)
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  {/* Show auto-generated batch code preview */}
-                  {form.watch('receivedDate') && (
-                    <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg border col-span-2">
-                      <span className="text-sm text-muted-foreground">Batch Code:</span>
-                      <Badge variant="outline" className="font-mono">
-                        LOT-{form.watch('receivedDate')?.replace(/-/g, '') || 'YYYYMMDD'}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">(auto-generated on save, used for FIFO)</span>
-                    </div>
-                  )}
-                  <FormField
-                    control={form.control}
-                    name="returnedQuantity"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Returned Quantity</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="0" 
-                            {...field} 
-                            value={field.value || 0} 
-                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
-                            data-testid="input-returned-quantity"
-                          />
-                        </FormControl>
-                        <FormDescription className="text-xs">
-                          Quantity returned
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="adjustments"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Adjustments</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="0" 
-                            {...field} 
-                            value={field.value || 0} 
-                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
-                            data-testid="input-adjustments"
-                          />
-                        </FormControl>
-                        <FormDescription className="text-xs">
-                          Plus/minus adjustments
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              )}
-
-              {/* Calculated Closing Stock Display */}
-              {selectedTypeDetails && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-lg border bg-muted/30 p-4">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Closing Stock (Base Units)</p>
-                    <p className="text-lg font-semibold text-foreground" data-testid="text-closing-stock">
-                      {form.watch('closingStock') !== undefined ? form.watch('closingStock')?.toFixed(2) : '-'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Closing Stock (Usable Units)</p>
-                    <p className="text-lg font-semibold text-foreground" data-testid="text-closing-stock-usable">
-                      {form.watch('closingStockUsable') !== undefined ? Math.round(form.watch('closingStockUsable') || 0) : '-'}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
 
             {/* Active Status */}
             <FormField
