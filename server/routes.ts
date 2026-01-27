@@ -3403,9 +3403,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const materials = await storage.getAllRawMaterials();
       res.json(materials);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching raw materials:", error);
-      res.status(500).json({ message: "Failed to fetch raw materials" });
+      console.error("Error stack:", error?.stack);
+      res.status(500).json({ message: "Failed to fetch raw materials", error: error?.message || String(error) });
     }
   });
 
