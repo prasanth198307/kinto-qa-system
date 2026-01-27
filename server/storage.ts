@@ -872,7 +872,26 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createMachine(machine: InsertMachine): Promise<Machine> {
-    const [created] = await db.insert(machines).values(machine).returning();
+    // Auto-generate machine code if not provided
+    let machineCode = (machine as any).code;
+    if (!machineCode) {
+      // Create code from machine type: MCH-{TYPE_PREFIX}-{SEQ}
+      const typePrefix = machine.type
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, '')
+        .substring(0, 6);
+      
+      // Get count of existing machines with similar type prefix
+      const existingMachines = await db.select().from(machines)
+        .where(sql`code LIKE ${'MCH-' + typePrefix + '-%'}`);
+      const seq = (existingMachines.length + 1).toString().padStart(3, '0');
+      machineCode = `MCH-${typePrefix}-${seq}`;
+    }
+    
+    const [created] = await db.insert(machines).values({
+      ...machine,
+      code: machineCode,
+    } as any).returning();
     return created;
   }
 
