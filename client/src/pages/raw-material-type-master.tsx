@@ -345,7 +345,7 @@ export default function RawMaterialTypeMaster() {
                     <TableCell className="text-sm">
                       {type.conversionMethod === "formula-based" && (
                         <div>
-                          <div>{type.derivedUnit}: {type.conversionValue} pcs</div>
+                          <div>{type.derivedUnit}: {Math.round(type.conversionValue || 0)} pcs</div>
                           <div className="text-muted-foreground text-xs">
                             {type.baseUnitWeight}kg × 1000 ÷ {type.weightPerDerivedUnit}g
                           </div>
@@ -353,17 +353,17 @@ export default function RawMaterialTypeMaster() {
                       )}
                       {type.conversionMethod === "direct-value" && (
                         <div>
-                          {type.derivedUnit}: {type.conversionValue} pcs
+                          {type.derivedUnit}: {Math.round(type.conversionValue || 0)} pcs
                         </div>
                       )}
                       {type.conversionMethod === "output-coverage" && (
                         <div>
-                          {type.outputType}: {type.conversionValue} units
+                          {type.outputType}: {Math.round(type.conversionValue || 0)} units
                         </div>
                       )}
                     </TableCell>
                     <TableCell>
-                      {type.usableUnits} ({100 - (type.lossPercent || 0)}%)
+                      {Math.round(type.usableUnits || 0)} ({100 - (type.lossPercent || 0)}%)
                     </TableCell>
                     <TableCell>
                       <Badge variant={type.isActive === 1 ? "default" : "secondary"}>
@@ -808,11 +808,11 @@ export default function RawMaterialTypeMaster() {
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <div className="text-muted-foreground">Conversion Value:</div>
-                    <div className="font-medium" data-testid="display-conversion-value">{conversionValue}</div>
+                    <div className="font-medium" data-testid="display-conversion-value">{Math.round(conversionValue)}</div>
                   </div>
                   <div>
                     <div className="text-muted-foreground">Usable Units ({100 - lossPercent}%):</div>
-                    <div className="font-medium" data-testid="display-usable-units">{usableUnits}</div>
+                    <div className="font-medium" data-testid="display-usable-units">{Math.round(usableUnits)}</div>
                   </div>
                 </div>
               </div>
