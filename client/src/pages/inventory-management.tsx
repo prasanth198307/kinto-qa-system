@@ -2971,6 +2971,16 @@ function RawMaterialDialog({
   const receivedQuantity = form.watch('receivedQuantity');
   const returnedQuantity = form.watch('returnedQuantity');
   const adjustments = form.watch('adjustments');
+  const unitCost = form.watch('unitCost');
+  const gstRate = form.watch('gstRate');
+
+  // Auto-calculate Total Cost when Unit Cost or GST Rate changes
+  useEffect(() => {
+    const base = Number(unitCost) || 0;
+    const gst = Number(gstRate) || 0;
+    const total = base + (base * gst / 100);
+    form.setValue('totalCost', parseFloat(total.toFixed(2)));
+  }, [unitCost, gstRate, form]);
 
   // Track if user manually selected a type (vs loaded from editing)
   const [userChangedType, setUserChangedType] = useState(false);
@@ -3096,6 +3106,8 @@ function RawMaterialDialog({
           reorderLevel: item.reorderLevel !== undefined ? Number(item.reorderLevel) : undefined,
           maxStockLevel: item.maxStockLevel !== undefined ? Number(item.maxStockLevel) : undefined,
           unitCost: item.unitCost !== undefined ? Number(item.unitCost) : undefined,
+          gstRate: (item as any).gstRate !== undefined ? Number((item as any).gstRate) : 0,
+          totalCost: (item as any).totalCost !== undefined ? Number((item as any).totalCost) : undefined,
           location: item.location || '',
           supplier: item.supplier || '',
           isActive: item.isActive || 'true',
@@ -3340,13 +3352,13 @@ function RawMaterialDialog({
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <FormField
                   control={form.control}
                   name="unitCost"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Unit Cost (₹)</FormLabel>
+                      <FormLabel>Base Price (₹)</FormLabel>
                       <FormControl>
                         <Input 
                           type="number" 
@@ -3362,7 +3374,54 @@ function RawMaterialDialog({
                           data-testid="input-material-unit-cost"
                         />
                       </FormControl>
-                      <FormDescription className="text-xs">Base cost per unit</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="gstRate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>GST %</FormLabel>
+                      <Select 
+                        onValueChange={(val) => field.onChange(parseInt(val))} 
+                        value={field.value?.toString() || '0'}
+                      >
+                        <FormControl>
+                          <SelectTrigger data-testid="select-material-gst">
+                            <SelectValue placeholder="Select GST" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="0">0%</SelectItem>
+                          <SelectItem value="5">5%</SelectItem>
+                          <SelectItem value="12">12%</SelectItem>
+                          <SelectItem value="18">18%</SelectItem>
+                          <SelectItem value="28">28%</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="totalCost"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Total Cost (₹)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          disabled
+                          placeholder="0.00" 
+                          {...field}
+                          value={field.value ?? ''}
+                          data-testid="input-material-total-cost"
+                        />
+                      </FormControl>
+                      <FormDescription className="text-xs">Incl. GST</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
