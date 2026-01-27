@@ -660,7 +660,7 @@ function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSea
       if (bomItems && bomItems.length > 0) {
         try {
           const bomPayload = bomItems.map(item => ({
-            materialTypeId: item.materialTypeId.trim(),
+            materialTypeId: item.materialTypeId?.trim() || '',
             quantityRequired: String(item.quantityRequired),  // Must be string for Drizzle-Zod numeric schema
             uom: item.uom?.trim() || null,  // Send null instead of empty string for nullable fields
             notes: item.notes?.trim() || null,  // Send null instead of empty string for nullable fields
