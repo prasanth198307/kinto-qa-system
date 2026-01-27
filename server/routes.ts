@@ -3225,8 +3225,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Auto-generate Type Code if not provided
       let typeCode = req.body.typeCode;
       if (!typeCode) {
-        const allTypes = await storage.getAllRawMaterialTypes();
-        const existingCodes = allTypes
+        // Find ALL records including deleted ones to ensure truly next number
+        const allTypesRaw = await db.select({ typeCode: rawMaterialTypes.typeCode }).from(rawMaterialTypes);
+        const existingCodes = allTypesRaw
           .map(t => t.typeCode)
           .filter(code => code && code.startsWith('RMT-'))
           .map(code => parseInt(code.replace('RMT-', '')) || 0);
@@ -3415,10 +3416,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Auto-generate Material Code if not provided
       let materialCode = req.body.materialCode;
       if (!materialCode) {
-        const allMaterials = await storage.getAllRawMaterials();
-        const existingCodes = allMaterials
+        // Find ALL records including deleted ones to ensure truly next number
+        const allMaterialsRaw = await db.select({ materialCode: rawMaterials.materialCode }).from(rawMaterials);
+        const existingCodes = allMaterialsRaw
           .map(m => m.materialCode)
-          .filter(code => code.startsWith('RM-'))
+          .filter(code => code && code.startsWith('RM-'))
           .map(code => parseInt(code.replace('RM-', '')) || 0);
         
         const nextNumber = existingCodes.length > 0 ? Math.max(...existingCodes) + 1 : 1;
