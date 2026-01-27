@@ -3472,10 +3472,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const dateStr = receivedDate.toISOString().slice(0, 10).replace(/-/g, '');
         const baseBatchCode = `LOT-${dateStr}`;
         
-        // Check for existing materials with same date to determine sequence
+        // Check for existing materials with same TYPE and same date to determine sequence
         const allMaterials = await storage.getAllRawMaterials();
+        const typeId = req.body.typeId;
         const sameDateBatches = allMaterials
-          .filter(m => m.batchCode && m.batchCode.startsWith(baseBatchCode))
+          .filter(m => m.typeId === typeId && m.batchCode && m.batchCode.startsWith(baseBatchCode))
           .map(m => m.batchCode);
         
         if (sameDateBatches.length === 0) {
@@ -3588,10 +3589,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const dateStr = receivedDate.toISOString().slice(0, 10).replace(/-/g, '');
         const baseBatchCode = `LOT-${dateStr}`;
         
-        // Check for existing materials with same date to determine sequence
+        // Check for existing materials with same TYPE and same date to determine sequence
         const allMaterials = await storage.getAllRawMaterials();
+        const typeId = sanitized.typeId || existing.typeId;
         const sameDateBatches = allMaterials
-          .filter(m => m.id !== id && m.batchCode && m.batchCode.startsWith(baseBatchCode))
+          .filter(m => m.id !== id && m.typeId === typeId && m.batchCode && m.batchCode.startsWith(baseBatchCode))
           .map(m => m.batchCode);
         
         if (sameDateBatches.length === 0) {
