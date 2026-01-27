@@ -2881,6 +2881,10 @@ function RawMaterialDialog({
   const [existingTypeStock, setExistingTypeStock] = useState<number>(0);
   const [selectedPOId, setSelectedPOId] = useState<string>('');
   const [selectedPOItemId, setSelectedPOItemId] = useState<string>('');
+  
+  // Pricing unit state - allows vendor to quote in different units
+  const [pricingUnit, setPricingUnit] = useState<'same_as_base' | 'per_kg' | 'per_piece'>('same_as_base');
+  const [vendorQuotedPrice, setVendorQuotedPrice] = useState<number | undefined>(undefined);
 
   // Fetch all Purchase Orders (we'll filter client-side for approved/ordered/partially_received)
   const { data: allPOs = [] } = useQuery<any[]>({
@@ -2973,6 +2977,50 @@ function RawMaterialDialog({
   const adjustments = form.watch('adjustments');
   const unitCost = form.watch('unitCost');
   const gstRate = form.watch('gstRate');
+
+  // Check if conversion data is available for selected pricing unit
+  const canConvertToKg = selectedTypeDetails?.baseUnitWeight && selectedTypeDetails.baseUnitWeight > 0;
+  const canConvertToPiece = selectedTypeDetails?.usableUnits && selectedTypeDetails.usableUnits > 0;
+  
+  // Auto-convert vendor quoted price to base unit price when pricing unit or vendor price changes
+  useEffect(() => {
+    if (pricingUnit === 'same_as_base') {
+      // No conversion needed - vendor quotes in base unit
+      return;
+    }
+    
+    if (vendorQuotedPrice === undefined || vendorQuotedPrice === 0) {
+      return;
+    }
+    
+    let basePrice = vendorQuotedPrice;
+    let conversionFactor = 1;
+    
+    if (pricingUnit === 'per_kg') {
+      if (canConvertToKg) {
+        // Vendor quotes per KG, convert to base unit (e.g., Bag)
+        // Example: ₹200/KG × 25kg/Bag = ₹5,000/Bag
+        conversionFactor = selectedTypeDetails!.baseUnitWeight!;
+        basePrice = vendorQuotedPrice * conversionFactor;
+      } else {
+        // No conversion data - allow manual entry
+        return;
+      }
+    } else if (pricingUnit === 'per_piece') {
+      if (canConvertToPiece) {
+        // Vendor quotes per Piece, convert to base unit
+        // Example: ₹5/piece × 1282 pieces/Bag = ₹6,410/Bag
+        conversionFactor = selectedTypeDetails!.usableUnits!;
+        basePrice = vendorQuotedPrice * conversionFactor;
+      } else {
+        // No conversion data - allow manual entry
+        return;
+      }
+    }
+    
+    // Update the base price field
+    form.setValue('unitCost', parseFloat(basePrice.toFixed(2)));
+  }, [vendorQuotedPrice, pricingUnit, selectedTypeDetails, canConvertToKg, canConvertToPiece, form]);
 
   // Auto-calculate Total Cost and Total Valuation when Pricing or Quantity changes
   useEffect(() => {
@@ -3163,6 +3211,8 @@ function RawMaterialDialog({
         setUserChangedType(false);
         setSelectedPOId('');
         setSelectedPOItemId('');
+        setPricingUnit('same_as_base');
+        setVendorQuotedPrice(undefined);
       }
     }
   }, [item, open, form, materialTypes]);
@@ -3357,31 +3407,122 @@ function RawMaterialDialog({
                 />
               </div>
 
+              {/* Pricing Unit Selection */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormItem>
+                  <FormLabel>Vendor Quotes In</FormLabel>
+                  <Select 
+                    onValueChange={(val) => {
+                      setPricingUnit(val as 'same_as_base' | 'per_kg' | 'per_piece');
+                      if (val === 'same_as_base') {
+                        setVendorQuotedPrice(undefined);
+                      }
+                    }} 
+                    value={pricingUnit}
+                  >
+                    <FormControl>
+                      <SelectTrigger data-testid="select-pricing-unit">
+                        <SelectValue placeholder="Select pricing unit" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="same_as_base">
+                        Per {selectedTypeDetails?.baseUnit || 'Base Unit'}
+                      </SelectItem>
+                      <SelectItem value="per_kg">Per KG</SelectItem>
+                      <SelectItem value="per_piece">Per Piece</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormDescription className="text-xs">
+                    How does vendor quote the price?
+                  </FormDescription>
+                </FormItem>
+
+                {pricingUnit !== 'same_as_base' && (
+                  <FormItem>
+                    <FormLabel>
+                      Vendor Price (₹ per {pricingUnit === 'per_kg' ? 'KG' : 'Piece'})
+                    </FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00" 
+                        value={vendorQuotedPrice ?? ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setVendorQuotedPrice(val === '' ? undefined : parseFloat(val));
+                        }}
+                        data-testid="input-vendor-quoted-price"
+                      />
+                    </FormControl>
+                    <FormDescription className="text-xs">
+                      {pricingUnit === 'per_kg' && selectedTypeDetails?.baseUnitWeight
+                        ? `× ${selectedTypeDetails.baseUnitWeight} kg/${selectedTypeDetails.baseUnit || 'unit'} = Base Price`
+                        : pricingUnit === 'per_piece' && selectedTypeDetails?.usableUnits
+                        ? `× ${selectedTypeDetails.usableUnits} pcs/${selectedTypeDetails.baseUnit || 'unit'} = Base Price`
+                        : 'Will convert to base unit price'}
+                    </FormDescription>
+                  </FormItem>
+                )}
+              </div>
+
+              {/* Warning when conversion data is missing */}
+              {pricingUnit === 'per_kg' && !canConvertToKg && selectedTypeDetails && (
+                <div className="text-sm text-amber-600 bg-amber-50 dark:bg-amber-950/30 p-3 rounded-md border border-amber-200 dark:border-amber-900">
+                  The selected type doesn't have weight per base unit defined. Please enter the base price manually or update the type's "Base Unit Weight" in Raw Material Type Master.
+                </div>
+              )}
+              {pricingUnit === 'per_piece' && !canConvertToPiece && selectedTypeDetails && (
+                <div className="text-sm text-amber-600 bg-amber-50 dark:bg-amber-950/30 p-3 rounded-md border border-amber-200 dark:border-amber-900">
+                  The selected type doesn't have usable units defined. Please enter the base price manually or update the type's conversion formula in Raw Material Type Master.
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <FormField
                   control={form.control}
                   name="unitCost"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Base Price (₹ per {selectedTypeDetails?.baseUnit || 'Unit'})</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="number" 
-                          step="0.01"
-                          min="0"
-                          placeholder="0.00" 
-                          {...field}
-                          value={field.value ?? ''}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            field.onChange(val === '' ? undefined : parseFloat(val));
-                          }}
-                          data-testid="input-material-unit-cost"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  render={({ field }) => {
+                    // Only disable if conversion is possible, otherwise allow manual entry
+                    const shouldDisable = pricingUnit !== 'same_as_base' && 
+                      ((pricingUnit === 'per_kg' && canConvertToKg) || 
+                       (pricingUnit === 'per_piece' && canConvertToPiece));
+                    
+                    return (
+                      <FormItem>
+                        <FormLabel>Base Price (₹ per {selectedTypeDetails?.baseUnit || 'Unit'})</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            step="0.01"
+                            min="0"
+                            placeholder="0.00" 
+                            disabled={shouldDisable}
+                            {...field}
+                            value={field.value ?? ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              field.onChange(val === '' ? undefined : parseFloat(val));
+                            }}
+                            data-testid="input-material-unit-cost"
+                          />
+                        </FormControl>
+                        {shouldDisable && (
+                          <FormDescription className="text-xs text-green-600">
+                            Auto-calculated from vendor price
+                          </FormDescription>
+                        )}
+                        {pricingUnit !== 'same_as_base' && !shouldDisable && (
+                          <FormDescription className="text-xs text-amber-600">
+                            Enter manually (no auto-conversion available)
+                          </FormDescription>
+                        )}
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
                 />
                 <FormField
                   control={form.control}
