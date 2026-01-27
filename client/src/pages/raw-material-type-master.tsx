@@ -432,11 +432,14 @@ export default function RawMaterialTypeMaster() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="formula-based">Formula-Based (Weight Calculation)</SelectItem>
-                        <SelectItem value="direct-value">Direct-Value (Manual Entry)</SelectItem>
-                        <SelectItem value="output-coverage">Output-Coverage (Coverage Ratio)</SelectItem>
+                        <SelectItem value="formula-based">Formula-Based (Weight Calculation - e.g. Preforms)</SelectItem>
+                        <SelectItem value="direct-value">Direct-Value (Fixed Counts - e.g. Caps, Rolls)</SelectItem>
+                        <SelectItem value="output-coverage">Output-Coverage (Coverage Ratio - e.g. Glue)</SelectItem>
                       </SelectContent>
                     </Select>
+                    <FormDescription className="text-[10px]">
+                      Formula-Based: uses weight per piece. Direct-Value: uses fixed counts per unit or per kg.
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -614,23 +617,26 @@ export default function RawMaterialTypeMaster() {
                         name="derivedValuePerBase"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Derived Units Per {form.watch('baseUnit') || 'Base Unit'}</FormLabel>
+                            <FormLabel>Pieces/Units Per {form.watch('baseUnit') || 'Box'}</FormLabel>
                             <FormControl>
                               <Input
                                 type="number"
-                                placeholder="e.g., 7000"
+                                placeholder="e.g., 6000"
                                 data-testid="input-derived-value"
                                 value={field.value || ""}
                                 onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
                               />
                             </FormControl>
+                            <FormDescription className="text-[10px]">
+                              For Caps: enter default count per box (can override during entry)
+                            </FormDescription>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
                     ) : (
                       <FormItem>
-                        <FormLabel>Derived Units Per KG</FormLabel>
+                        <FormLabel>Pieces/Units Per KG</FormLabel>
                         <FormControl>
                           <Input
                             type="number"
@@ -648,6 +654,9 @@ export default function RawMaterialTypeMaster() {
                             }}
                           />
                         </FormControl>
+                        <FormDescription className="text-[10px]">
+                          For Shrink Rolls: enter cases produced per 1 KG
+                        </FormDescription>
                         {derivedUnitsPerKg !== undefined && baseUnitWeight && (
                           <p className="text-xs text-green-600 mt-1">
                             = {derivedUnitsPerKg} × {baseUnitWeight} kg = {parseFloat((derivedUnitsPerKg * baseUnitWeight).toFixed(4))} per {form.watch('baseUnit') || 'Base Unit'}
