@@ -2973,6 +2973,7 @@ function RawMaterialDialog({
 
   // Watch for Material Type selection and stock mode changes
   const selectedTypeId = form.watch('typeId');
+  const selectedCategory = form.watch('category');
   const isOpeningStockOnly = form.watch('isOpeningStockOnly');
   const openingStock = form.watch('openingStock');
   const receivedQuantity = form.watch('receivedQuantity');
@@ -2981,6 +2982,18 @@ function RawMaterialDialog({
   const unitCost = form.watch('unitCost');
   const gstRate = form.watch('gstRate');
   const selectedUomId = form.watch('uomId');
+  
+  // Filter Material Types by selected Category
+  const filteredMaterialTypes = useMemo(() => {
+    if (!selectedCategory || selectedCategory === '') {
+      return materialTypes;
+    }
+    // Filter types where typeName starts with or contains the category (case insensitive)
+    return materialTypes.filter(type => 
+      type.typeName.toLowerCase().startsWith(selectedCategory.toLowerCase()) ||
+      type.typeName.toLowerCase().includes(selectedCategory.toLowerCase())
+    );
+  }, [materialTypes, selectedCategory]);
   
   // Derive UOM from form watch
   const selectedUom = useMemo(() => uoms.find(u => u.id === selectedUomId), [uoms, selectedUomId]);
@@ -3051,12 +3064,39 @@ function RawMaterialDialog({
   // Track if user manually selected a type (vs loaded from editing)
   const [userChangedType, setUserChangedType] = useState(false);
   
+  // Clear typeId when category changes if current type doesn't match
+  useEffect(() => {
+    if (selectedCategory && selectedTypeId) {
+      const currentType = materialTypes.find(t => t.id === selectedTypeId);
+      if (currentType) {
+        const typeMatchesCategory = 
+          currentType.typeName.toLowerCase().startsWith(selectedCategory.toLowerCase()) ||
+          currentType.typeName.toLowerCase().includes(selectedCategory.toLowerCase());
+        if (!typeMatchesCategory) {
+          form.setValue('typeId', '');
+          setSelectedTypeDetails(null);
+        }
+      }
+    }
+  }, [selectedCategory, materialTypes]);
+  
   // Auto-fetch Material Type details and existing stock when type is selected
   useEffect(() => {
     if (selectedTypeId && selectedTypeId !== '') {
       const typeDetails = materialTypes.find(t => t.id === selectedTypeId);
       if (typeDetails) {
         setSelectedTypeDetails(typeDetails);
+        
+        // Auto-populate UOM from Material Type's baseUnit
+        if (typeDetails.baseUnit && uoms.length > 0) {
+          const matchingUom = uoms.find(u => 
+            u.name.toLowerCase() === typeDetails.baseUnit?.toLowerCase() ||
+            u.code.toLowerCase() === typeDetails.baseUnit?.toLowerCase()
+          );
+          if (matchingUom) {
+            form.setValue('uomId', matchingUom.id);
+          }
+        }
       }
       
       // Only check for existing stock when adding new material (not editing)
@@ -3085,7 +3125,7 @@ function RawMaterialDialog({
       setSelectedTypeDetails(null);
       setExistingTypeStock(0);
     }
-  }, [selectedTypeId, materialTypes, materials, item, form, userChangedType]);
+  }, [selectedTypeId, materialTypes, materials, item, form, userChangedType, uoms]);
 
   // Auto-calculate closing stock when relevant fields change
   useEffect(() => {
@@ -3408,11 +3448,17 @@ function RawMaterialDialog({
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {materialTypes.map((type) => (
-                            <SelectItem key={type.id} value={type.id}>
-                              {type.typeName}
+                          {filteredMaterialTypes.length === 0 ? (
+                            <SelectItem value="_none" disabled>
+                              No types found for {selectedCategory || 'this category'}
                             </SelectItem>
-                          ))}
+                          ) : (
+                            filteredMaterialTypes.map((type) => (
+                              <SelectItem key={type.id} value={type.id}>
+                                {type.typeName}
+                              </SelectItem>
+                            ))
+                          )}
                         </SelectContent>
                       </Select>
                       <FormDescription className="text-xs">
@@ -3425,28 +3471,21 @@ function RawMaterialDialog({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="uomId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Purchase Unit (Base Unit) *</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value || ''}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-uom">
-                            <SelectValue placeholder="Select Purchase Unit" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {uoms.map((uom) => (
-                            <SelectItem key={uom.id} value={uom.id}>{uom.name} ({uom.code})</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <FormItem>
+                  <FormLabel>Purchase Unit (Base Unit)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="text" 
+                      disabled
+                      value={selectedTypeDetails?.baseUnit || 'Select Material Type first'}
+                      className="bg-muted"
+                      data-testid="input-purchase-unit"
+                    />
+                  </FormControl>
+                  <FormDescription className="text-xs text-green-600">
+                    Auto-populated from Material Type
+                  </FormDescription>
+                </FormItem>
               </div>
 
               {/* Pricing Unit Selection - uses conversion data from Material Type */}
