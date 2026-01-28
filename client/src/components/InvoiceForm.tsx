@@ -599,23 +599,22 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
   // Clear selected vendor when filter changes if vendor is no longer in filtered list
   // BUT keep the vendor if it was selected via Ship-To search (exists in vendorsWithShipTo)
   useEffect(() => {
-    if (selectedVendorId && !filteredVendors.find(v => v.id === selectedVendorId)) {
-      // Don't clear if vendor was selected via Ship-To search
+    if (selectedVendorId) {
+      const isFilteredVendor = filteredVendors.find(v => v.id === selectedVendorId);
       const isShipToVendor = vendorsWithShipTo.find(v => v.id === selectedVendorId);
-      if (isShipToVendor) {
-        // Vendor was selected via Ship-To, keep the selection
-        return;
-      }
       
-      setSelectedVendorId('');
-      // Only clear buyer details if not in edit/reissue mode (no invoice prop)
-      if (!invoice) {
-        form.setValue("buyerName", "");
-        form.setValue("buyerGstin", "");
-        form.setValue("buyerAddress", "");
-        form.setValue("buyerState", "Andhra Pradesh");
-        form.setValue("buyerStateCode", "37");
-        form.setValue("isCluster", 0);
+      // If vendor is not in current filter AND not a ship-to vendor, clear it
+      if (!isFilteredVendor && !isShipToVendor) {
+        setSelectedVendorId('');
+        // Only clear buyer details if not in edit/reissue mode (no invoice prop)
+        if (!invoice) {
+          form.setValue("buyerName", "");
+          form.setValue("buyerGstin", "");
+          form.setValue("buyerAddress", "");
+          form.setValue("buyerState", "Andhra Pradesh");
+          form.setValue("buyerStateCode", "37");
+          form.setValue("isCluster", 0);
+        }
       }
     }
   }, [vendorTypeFilter, filteredVendors, selectedVendorId, form, invoice, vendorsWithShipTo]);
