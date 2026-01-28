@@ -597,8 +597,16 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
   }, [invoice, vendors, selectedVendorId]);
 
   // Clear selected vendor when filter changes if vendor is no longer in filtered list
+  // BUT keep the vendor if it was selected via Ship-To search (exists in vendorsWithShipTo)
   useEffect(() => {
     if (selectedVendorId && !filteredVendors.find(v => v.id === selectedVendorId)) {
+      // Don't clear if vendor was selected via Ship-To search
+      const isShipToVendor = vendorsWithShipTo.find(v => v.id === selectedVendorId);
+      if (isShipToVendor) {
+        // Vendor was selected via Ship-To, keep the selection
+        return;
+      }
+      
       setSelectedVendorId('');
       // Only clear buyer details if not in edit/reissue mode (no invoice prop)
       if (!invoice) {
@@ -610,7 +618,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         form.setValue("isCluster", 0);
       }
     }
-  }, [vendorTypeFilter, filteredVendors, selectedVendorId, form, invoice]);
+  }, [vendorTypeFilter, filteredVendors, selectedVendorId, form, invoice, vendorsWithShipTo]);
 
   // Pre-populate invoice items from gatepass items (create mode only)
   // NOTE: Reissue/edit mode items are handled by the earlier form.reset() useEffect
