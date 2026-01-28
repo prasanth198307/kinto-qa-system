@@ -283,13 +283,16 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
   const filteredInvoices = useMemo(() => {
     let filtered = [...invoices];
 
-    // Search by invoice number or buyer name
+    // Search by invoice number, buyer name, or ship-to details
     if (invoiceSearchQuery.trim()) {
       const query = invoiceSearchQuery.toLowerCase();
       filtered = filtered.filter(
         (inv) =>
           inv.invoiceNumber.toLowerCase().includes(query) ||
-          inv.buyerName.toLowerCase().includes(query)
+          inv.buyerName.toLowerCase().includes(query) ||
+          (inv.shipToName && inv.shipToName.toLowerCase().includes(query)) ||
+          (inv.shipToAddress && inv.shipToAddress.toLowerCase().includes(query)) ||
+          (inv.shipToGstin && inv.shipToGstin.toLowerCase().includes(query))
       );
     }
 
