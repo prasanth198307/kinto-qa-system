@@ -1306,7 +1306,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                           <CommandItem
                             key={vendor.id}
                             value={vendor.shipToName || ''}
-                            keywords={[vendor.vendorName, vendor.shipToCity || '', vendor.shipToAddress || '']}
+                            keywords={[vendor.vendorName, vendor.shipToCity || '', vendor.shipToAddress || '', vendor.shipToGstin || '']}
                             onSelect={() => handleShipToSelect(vendor.id)}
                             data-testid={`ship-to-option-${vendor.id}`}
                             className="flex items-center gap-2 px-2 py-1.5"
