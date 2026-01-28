@@ -1344,10 +1344,16 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
       <div className="bg-background">
         <div className="border-b bg-card">
           <div className="max-w-7xl mx-auto px-4 py-4">
-            <h1 className="text-2xl font-bold text-foreground">Production Management</h1>
-            <p className="text-sm text-muted-foreground mt-1">Manage raw material issuance and gatepasses</p>
+          <div className="flex flex-col gap-1">
+            <h1 className="text-2xl font-bold text-foreground">
+              {activeTab === 'invoices' ? "Finance & Sales" : "Production Management"}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {activeTab === 'invoices' ? "Manage sales invoices and payments" : "Manage raw material issuance and gatepasses"}
+            </p>
           </div>
         </div>
+      </div>
 
         <div className="p-4 pb-20">
           {renderContent()}
