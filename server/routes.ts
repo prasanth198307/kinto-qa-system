@@ -6496,33 +6496,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: 'Internal server error' });
     }
   });
-            totalItems,
-            totalPages,
-            hasNextPage: paginationParams.page < totalPages,
-            hasPreviousPage: paginationParams.page > 1,
-            aggregateStats, // Include aggregate statistics for dashboard cards
-          },
-        });
-      }
-      
-      // No pagination - return all invoices sorted by date descending (for backwards compatibility)
-      let allInvoicesRaw = await storage.getAllInvoices();
-      
-      // Add hasGatepass flag to each invoice
-      let allInvoices = allInvoicesRaw.map(inv => ({
-        ...inv,
-        hasGatepass: invoiceIdsWithGatepass.has(inv.id)
-      }));
-      
-      // Sort by date descending (newest first)
-      allInvoices.sort((a, b) => new Date(b.invoiceDate).getTime() - new Date(a.invoiceDate).getTime());
-      
-      res.json(allInvoices);
-    } catch (error) {
-      console.error("Error fetching invoices:", error);
-      res.status(500).json({ message: "Failed to fetch invoices" });
-    }
-  });
 
   // Get available invoices (not yet linked to any gatepass)
   app.get('/api/invoices/available', isAuthenticated, async (req: any, res) => {
