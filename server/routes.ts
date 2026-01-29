@@ -6394,20 +6394,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ));
       const invoiceIdsWithGatepass = new Set(invoicesWithGatepasses.map(g => g.invoiceId));
       
-      // If pagination params exist, use paginated endpoint
+      // Get all invoices
+      let allInvoicesRaw = await storage.getAllInvoices();
+      
+      // Add hasGatepass flag to each invoice
+      let allInvoices = allInvoicesRaw.map(inv => ({
+        ...inv,
+        hasGatepass: invoiceIdsWithGatepass.has(inv.id)
+      }));
+
+      // If pagination params exist, use paginated response logic
       if (page !== undefined && pageSize !== undefined) {
         const { paginationRequestSchema } = await import('@shared/schema');
         const paginationParams = paginationRequestSchema.parse({ page, pageSize, sortBy, sortOrder });
-        
-        // TODO: Optimize with database-level LIMIT/OFFSET for better scalability
-        // Get all invoices first (loads all data into memory)
-        let allInvoicesRaw = await storage.getAllInvoices();
-        
-        // Add hasGatepass flag to each invoice
-        let allInvoices = allInvoicesRaw.map(inv => ({
-          ...inv,
-          hasGatepass: invoiceIdsWithGatepass.has(inv.id)
-        }));
         
         // Apply filters if any
         if (filters.status) {
@@ -6481,6 +6480,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           meta: {
             page: paginationParams.page,
             pageSize: paginationParams.pageSize,
+            totalItems,
+            totalPages,
+            hasNextPage: paginationParams.page < totalPages,
+            hasPreviousPage: paginationParams.page > 1,
+            stats: aggregateStats
+          }
+        });
+      }
+      
+      // Default non-paginated return (for compatibility with existing components)
+      return res.json(allInvoices);
+    } catch (error) {
+      console.error('[API] Error fetching invoices:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
             totalItems,
             totalPages,
             hasNextPage: paginationParams.page < totalPages,
