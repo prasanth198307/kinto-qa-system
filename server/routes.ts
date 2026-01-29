@@ -3781,11 +3781,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let reservedByProduct: Record<string, number> = {};
       
       if (pendingInvoiceIds.length > 0) {
+        // IMPORTANT: Only count active (non-soft-deleted) invoice items
+        // record_status = 1 means active, record_status = 0 means soft-deleted
         const reservedItems = await db.select({
           productId: invoiceItems.productId,
           quantity: invoiceItems.quantity
         }).from(invoiceItems).where(
-          sql`${invoiceItems.invoiceId} IN (${sql.join(pendingInvoiceIds.map(id => sql`${id}`), sql`, `)})`
+          and(
+            sql`${invoiceItems.invoiceId} IN (${sql.join(pendingInvoiceIds.map(id => sql`${id}`), sql`, `)})`,
+            eq(invoiceItems.recordStatus, 1)
+          )
         );
         
         // Aggregate reserved quantities by product
