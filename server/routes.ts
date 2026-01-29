@@ -7014,14 +7014,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .set({ ...validatedData, updatedAt: new Date().toISOString() })
             .where(eq(invoices.id, id));
           
-          // Soft delete existing items
+          // Soft delete existing ACTIVE items only (prevents re-deleting already deleted items)
           await tx.update(invoiceItems)
             .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
-            .where(eq(invoiceItems.invoiceId, id));
+            .where(and(
+              eq(invoiceItems.invoiceId, id),
+              eq(invoiceItems.recordStatus, 1)
+            ));
           
-          // Insert new items
+          // Insert new items with explicit recordStatus = 1
           for (const validatedItem of validatedItems) {
-            await tx.insert(invoiceItems).values(validatedItem);
+            await tx.insert(invoiceItems).values({
+              ...validatedItem,
+              recordStatus: 1,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            });
           }
         });
         console.log(`[AUDIT] Invoice ${id} updated with ${itemsData.length} items (atomic transaction)`);

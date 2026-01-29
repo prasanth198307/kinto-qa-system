@@ -193,6 +193,8 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
   const { data: invoiceItems = [] } = useQuery<any[]>({
     queryKey: invoice?.id ? [`/api/invoice-items/${invoice.id}`] : [],
     enabled: !!invoice?.id, // Only fetch items when editing an existing invoice (not for reissue mode)
+    staleTime: 0, // Always refetch when the form opens to ensure fresh data after edits
+    refetchOnMount: 'always', // Force refetch every time component mounts
   });
 
   // Filter vendors based on vendor type
@@ -900,6 +902,15 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       // Force clear cache and refetch of invoices list
       // Use invalidateQueries to mark as stale, then refetch to get fresh data
       await queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
+      
+      // Also invalidate and refetch invoice items cache for this specific invoice
+      // This is critical for subsequent edits to load the latest items
+      if (invoice?.id) {
+        await queryClient.invalidateQueries({ queryKey: [`/api/invoice-items/${invoice.id}`] });
+        await queryClient.refetchQueries({ queryKey: [`/api/invoice-items/${invoice.id}`] });
+        console.log('[InvoiceForm] Invoice items cache invalidated and refetched for:', invoice.id);
+      }
+      
       console.log('[InvoiceForm] Cache invalidated, now refetching...');
       await queryClient.refetchQueries({ queryKey: ['/api/invoices'] });
       console.log('[InvoiceForm] Refetch complete');
