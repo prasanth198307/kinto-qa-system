@@ -741,12 +741,24 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
                   const totalGst = item.cgstAmount + item.sgstAmount + item.igstAmount;
                   const gstRate = (item.cgstRate + item.sgstRate + item.igstRate) / 100;
                   
+                  // Find batch numbers for this product from gatepass items
+                  const productBatchItems = gatepassItems.filter(gi => gi.productId === item.productId);
+                  const batchNumbers = productBatchItems
+                    .map(gi => gi.batchNumber)
+                    .filter(Boolean)
+                    .join(', ');
+
                   return (
                     <tr key={item.id} className="border-b" data-testid={`row-item-${index + 1}`}>
                       <td className="p-3">{index + 1}</td>
                       <td className="p-3">
                         <div className="font-medium">{item.description}</div>
                         <div className="text-sm text-muted-foreground">{getProductName(item.productId)}</div>
+                        {batchNumbers && (
+                          <div className="text-xs font-mono text-primary mt-1">
+                            Batch: {batchNumbers}
+                          </div>
+                        )}
                       </td>
                       <td className="p-3">{item.hsnCode || item.sacCode || '-'}</td>
                       <td className="p-3 text-right">{item.quantity}</td>
