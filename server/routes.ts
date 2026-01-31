@@ -6739,7 +6739,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // AND deduct inventory (to balance what was returned during cancellation)
         // AND auto-create a gatepass since the original had one
         let autoCreatedGatepass: any = null;
-        const batchAllocations: { productId: string; finishedGoodId: string; quantity: number; uomId: string | null }[] = [];
+        const batchAllocations: { productId: string; finishedGoodId: string; quantity: number; uomId: string | null; batchNumber: string | null }[] = [];
         
         if (originalInvoiceId) {
           await tx.update(invoices)
@@ -6771,12 +6771,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 const deductFromThisBatch = Math.min(batch.quantity, remainingToDeduct);
                 const newQuantity = batch.quantity - deductFromThisBatch;
                 
-                // Track this allocation for gatepass item creation (include UOM from invoice item)
+                // Track this allocation for gatepass item creation (include UOM from invoice item and batch number)
                 batchAllocations.push({
                   productId: item.productId,
                   finishedGoodId: batch.id,
                   quantity: deductFromThisBatch,
-                  uomId: item.uomId || null
+                  uomId: item.uomId || null,
+                  batchNumber: batch.originalBatchNumber || batch.batchNumber // Preserve original batch number
                 });
                 
                 // If quantity becomes 0, soft-delete the batch to keep inventory clean
@@ -6844,7 +6845,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               recordStatus: 1,
             }).returning();
             
-            // Create gatepass items for each batch allocation (with UOM from invoice)
+            // Create gatepass items for each batch allocation (with UOM from invoice and batch number)
             for (const allocation of batchAllocations) {
               await tx.insert(gatepassItems).values({
                 gatepassId: newGatepass.id,
@@ -6852,6 +6853,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 finishedGoodId: allocation.finishedGoodId,
                 quantityDispatched: allocation.quantity,
                 uomId: allocation.uomId, // Copy UOM from invoice item
+                batchNumber: allocation.batchNumber, // Preserve batch number for display
                 recordStatus: 1,
               });
             }
@@ -7422,6 +7424,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Only return finished goods inventory if there was a gatepass
         // Inventory is only deducted when gatepass is created, not when invoice is created
         // So if there's no gatepass, there's no inventory to return
+        
+        // Define itemsWithBatch at transaction scope so it's available for return
+        let itemsWithBatch: Array<typeof items[0] & { batchNumber: string | null }> = items.map(item => ({
+          ...item,
+          batchNumber: null
+        }));
+        
         if (cancelledGatepassNumbers.length > 0) {
           // Get the original batch numbers from the cancelled gatepass items
           const originalBatchMap = new Map<string, string>(); // productId -> original batch number
@@ -7448,30 +7457,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
           
-                for (const item of itemsWithBatch) {
-                  if (item.productId && item.quantity > 0) {
-                    const [existingProduct] = await tx.select({ id: products.id })
-                      .from(products)
-                      .where(eq(products.id, item.productId))
-                      .limit(1);
-                    
-                    if (existingProduct) {
-                      const batchNumber = `CANCEL-${invoice.invoiceNumber}-${format(new Date(), 'yyyyMMdd-HHmmss')}`;
-                      const originalBatchNumber = item.batchNumber || null;
-                      
-                      await tx.insert(finishedGoods).values({
-                        productId: item.productId,
-                        batchNumber,
-                        originalBatchNumber, // Store the original batch number for display
-                        productionDate: new Date().toISOString(),
-                        quantity: item.quantity,
-                        qualityStatus: 'approved',
-                        remarks: `Inventory returned - Invoice ${invoice.invoiceNumber} cancelled & reissued. Gatepass(es): ${cancelledGatepassNumbers.join(', ')}${originalBatchNumber ? `. Original batch: ${originalBatchNumber}` : ''}`,
-                        createdBy: req.user?.id,
-                      });
-                    }
-                  }
-                }
+          // Update itemsWithBatch with original batch numbers
+          itemsWithBatch = items.map(item => ({
+            ...item,
+            batchNumber: originalBatchMap.get(item.productId) || null
+          }));
+
+          for (const item of itemsWithBatch) {
+            if (item.productId && item.quantity > 0) {
+              const [existingProduct] = await tx.select({ id: products.id })
+                .from(products)
+                .where(eq(products.id, item.productId))
+                .limit(1);
+              
+              if (existingProduct) {
+                const originalBatchNumber = item.batchNumber || null;
+                // Preserve the original batch number as the new batchNumber for FIFO continuity
+                const batchNumber = originalBatchNumber || `CANCEL-${invoice.invoiceNumber}-${format(new Date(), 'yyyyMMdd-HHmmss')}`;
+                
+                await tx.insert(finishedGoods).values({
+                  productId: item.productId,
+                  batchNumber,
+                  originalBatchNumber, // Store the original batch number for display
+                  productionDate: new Date().toISOString(),
+                  quantity: item.quantity,
+                  qualityStatus: 'approved',
+                  remarks: `Inventory returned - Invoice ${invoice.invoiceNumber} cancelled & reissued. Gatepass(es): ${cancelledGatepassNumbers.join(', ')}${originalBatchNumber ? `. Original batch: ${originalBatchNumber}` : ''}`,
+                  createdBy: req.user?.id,
+                });
+              }
+            }
+          }
           console.log(`[CANCEL_REISSUE] Returned inventory for ${items.length} items from cancelled gatepass(es)`);
         } else {
           console.log(`[CANCEL_REISSUE] No gatepass found - skipping inventory return (inventory was never deducted)`);

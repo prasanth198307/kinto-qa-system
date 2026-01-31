@@ -1649,6 +1649,7 @@ export const gatepassItems = pgTable("gatepass_items", {
   productId: varchar("product_id").references(() => products.id).notNull(),
   quantityDispatched: integer("quantity_dispatched").notNull(),
   uomId: varchar("uom_id").references(() => uom.id),
+  batchNumber: varchar("batch_number", { length: 100 }), // Batch number for display in invoice detail
   remarks: text("remarks"),
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
