@@ -79,6 +79,9 @@ const invoiceFormSchema = z.object({
   includeSignature: z.number().optional(),
   signatureType: z.string().optional(), // 'default', 'hpcl', 'alternate'
   
+  // Invoice status
+  status: z.string().optional(),
+  
   items: z.array(z.object({
     productId: z.string().min(1, "Product is required"),
     description: z.string().min(1, "Description is required"),
