@@ -752,15 +752,15 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
                   const gstRate = (item.cgstRate + item.sgstRate + item.igstRate) / 100;
                   
                   // Find batch numbers for this product from gatepass items
-                  // Fallback to finished goods batch number for legacy data
+                  // Fallback to finished goods batch number or originalBatchNumber for legacy/reissue data
                   const productBatchItems = gatepassItems.filter(gi => gi.productId === item.productId);
                   const batchNumbers = productBatchItems
                     .map(gi => {
                       // Use gatepass item's batchNumber if available (new records)
-                      // Fallback to finished goods batchNumber for legacy records
                       if (gi.batchNumber) return gi.batchNumber;
+                      // Fallback to finished goods batchNumber or originalBatchNumber (for cancel & reissue)
                       const fg = finishedGoods.find(f => f.id === gi.finishedGoodId);
-                      return fg?.batchNumber;
+                      return fg?.batchNumber || (fg as any)?.originalBatchNumber;
                     })
                     .filter(Boolean)
                     .join(', ');
@@ -821,9 +821,12 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
                 <tbody>
                   {gatepassItems.map((gpItem, index) => {
                     const product = safeProducts.find(p => p.id === gpItem.productId);
-                    // Get batch number: first from gatepass item (new records), then from finished goods (old records)
+                    const fg = finishedGoods.find(f => f.id === gpItem.finishedGoodId);
+                    // Get batch number: first from gatepass item (new records), 
+                    // then from finished goods batchNumber or originalBatchNumber (for cancel & reissue)
                     const batchNumber = gpItem.batchNumber || 
-                      finishedGoods.find(fg => fg.id === gpItem.finishedGoodId)?.batchNumber || 
+                      fg?.batchNumber || 
+                      (fg as any)?.originalBatchNumber || 
                       '-';
                     return (
                       <tr key={gpItem.id} className="border-b" data-testid={`row-batch-${index + 1}`}>
