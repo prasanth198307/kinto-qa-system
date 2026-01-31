@@ -148,8 +148,21 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
     enabled: !!relatedGatepassId,
   });
 
-  // Get finished good IDs from gatepass items for targeted fetch
-  const finishedGoodIds = gatepassItems.map(gi => gi.finishedGoodId).filter(Boolean);
+  // For reissued invoices, also fetch original invoice's gatepass items (for old data fallback)
+  const originalInvoiceId = (invoice as any)?.originalInvoiceId;
+  const originalGatepassId = originalInvoiceId 
+    ? safeGatepassesEarly.find(g => g.invoiceId === originalInvoiceId)?.id 
+    : null;
+  
+  const { data: originalGatepassItems = [] } = useQuery<GatepassItem[]>({
+    queryKey: ['/api/gatepass-items', originalGatepassId],
+    enabled: !!originalGatepassId,
+  });
+
+  // Get finished good IDs from both current and original gatepass items
+  const currentFinishedGoodIds = gatepassItems.map(gi => gi.finishedGoodId).filter(Boolean);
+  const originalFinishedGoodIds = originalGatepassItems.map(gi => gi.finishedGoodId).filter(Boolean);
+  const finishedGoodIds = Array.from(new Set([...currentFinishedGoodIds, ...originalFinishedGoodIds]));
 
   // Fetch only the specific finished goods needed (for batch number fallback on old data)
   const { data: finishedGoods = [] } = useQuery<FinishedGood[]>({
@@ -752,15 +765,24 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
                   const gstRate = (item.cgstRate + item.sgstRate + item.igstRate) / 100;
                   
                   // Find batch numbers for this product from gatepass items
-                  // Fallback to finished goods batch number or originalBatchNumber for legacy/reissue data
+                  // Fallback chain: gatepass item -> finished goods -> original gatepass items (for old cancel & reissue)
                   const productBatchItems = gatepassItems.filter(gi => gi.productId === item.productId);
                   const batchNumbers = productBatchItems
                     .map(gi => {
-                      // Use gatepass item's batchNumber if available (new records)
+                      // 1. Use gatepass item's batchNumber if available (new records)
                       if (gi.batchNumber) return gi.batchNumber;
-                      // Fallback to finished goods batchNumber or originalBatchNumber (for cancel & reissue)
+                      // 2. Fallback to finished goods batchNumber or originalBatchNumber
                       const fg = finishedGoods.find(f => f.id === gi.finishedGoodId);
-                      return fg?.batchNumber || (fg as any)?.originalBatchNumber;
+                      if (fg?.batchNumber && !fg.batchNumber.startsWith('CANCEL-')) return fg.batchNumber;
+                      if ((fg as any)?.originalBatchNumber) return (fg as any).originalBatchNumber;
+                      // 3. For old cancel & reissue, check original gatepass items
+                      const originalItem = originalGatepassItems.find(ogi => ogi.productId === item.productId);
+                      if (originalItem) {
+                        if (originalItem.batchNumber) return originalItem.batchNumber;
+                        const origFg = finishedGoods.find(f => f.id === originalItem.finishedGoodId);
+                        return origFg?.batchNumber || (origFg as any)?.originalBatchNumber;
+                      }
+                      return null;
                     })
                     .filter(Boolean)
                     .join(', ');
@@ -822,12 +844,33 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
                   {gatepassItems.map((gpItem, index) => {
                     const product = safeProducts.find(p => p.id === gpItem.productId);
                     const fg = finishedGoods.find(f => f.id === gpItem.finishedGoodId);
-                    // Get batch number: first from gatepass item (new records), 
-                    // then from finished goods batchNumber or originalBatchNumber (for cancel & reissue)
-                    const batchNumber = gpItem.batchNumber || 
-                      fg?.batchNumber || 
-                      (fg as any)?.originalBatchNumber || 
-                      '-';
+                    
+                    // Get batch number with fallback chain for old cancel & reissue
+                    let batchNumber = '-';
+                    // 1. Use gatepass item's batchNumber if available (new records)
+                    if (gpItem.batchNumber) {
+                      batchNumber = gpItem.batchNumber;
+                    }
+                    // 2. Fallback to finished goods (skip CANCEL- prefixed batches)
+                    else if (fg?.batchNumber && !fg.batchNumber.startsWith('CANCEL-')) {
+                      batchNumber = fg.batchNumber;
+                    }
+                    // 3. Check originalBatchNumber on finished goods
+                    else if ((fg as any)?.originalBatchNumber) {
+                      batchNumber = (fg as any).originalBatchNumber;
+                    }
+                    // 4. For old cancel & reissue, check original invoice's gatepass items
+                    else {
+                      const originalItem = originalGatepassItems.find(ogi => ogi.productId === gpItem.productId);
+                      if (originalItem) {
+                        if (originalItem.batchNumber) {
+                          batchNumber = originalItem.batchNumber;
+                        } else {
+                          const origFg = finishedGoods.find(f => f.id === originalItem.finishedGoodId);
+                          batchNumber = origFg?.batchNumber || (origFg as any)?.originalBatchNumber || '-';
+                        }
+                      }
+                    }
                     return (
                       <tr key={gpItem.id} className="border-b" data-testid={`row-batch-${index + 1}`}>
                         <td className="p-3">{index + 1}</td>
