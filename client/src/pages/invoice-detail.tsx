@@ -742,9 +742,16 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
                   const gstRate = (item.cgstRate + item.sgstRate + item.igstRate) / 100;
                   
                   // Find batch numbers for this product from gatepass items
+                  // Fallback to finished goods batch number for legacy data
                   const productBatchItems = gatepassItems.filter(gi => gi.productId === item.productId);
                   const batchNumbers = productBatchItems
-                    .map(gi => gi.batchNumber)
+                    .map(gi => {
+                      // Use gatepass item's batchNumber if available (new records)
+                      // Fallback to finished goods batchNumber for legacy records
+                      if (gi.batchNumber) return gi.batchNumber;
+                      const fg = finishedGoods.find(f => f.id === gi.finishedGoodId);
+                      return fg?.batchNumber;
+                    })
                     .filter(Boolean)
                     .join(', ');
 

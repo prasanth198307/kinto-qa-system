@@ -5753,8 +5753,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             throw new Error(`Insufficient finished goods quantity. Available: ${finishedGood.quantity}, Required: ${validatedItem.quantityDispatched}`);
           }
           
-          // Create gatepass item
-          await tx.insert(gatepassItems).values(validatedItem);
+          // Create gatepass item with batch number from finished good
+          await tx.insert(gatepassItems).values({
+            ...validatedItem,
+            batchNumber: finishedGood.batchNumber, // Automatically get batch number from finished good
+          });
           
           // Deduct from inventory
           await tx.update(finishedGoods)
