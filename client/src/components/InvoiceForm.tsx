@@ -1816,7 +1816,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                             <Input
                               {...form.register(`items.${index}.batchNumber`)}
                               placeholder="Batch #"
-                              className="h-9 text-sm"
+                              className="h-9 text-sm border-primary/50 focus-visible:ring-primary"
                               data-testid={`input-batch-${index}`}
                             />
                           </div>
