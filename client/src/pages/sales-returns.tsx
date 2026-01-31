@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/hooks/use-permissions";
@@ -15,7 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Package, CheckCircle, AlertCircle, Trash2, Search, Loader2, Camera, Image, Upload, X, Printer } from "lucide-react";
+import { Plus, Package, CheckCircle, AlertCircle, Trash2, Search, Loader2, Camera, Image, Upload, X, Printer, ArrowLeft } from "lucide-react";
 import PrintableSalesReturn from "@/components/PrintableSalesReturn";
 import PrintableScrapInventory from "@/components/PrintableScrapInventory";
 import { format } from "date-fns";
@@ -61,6 +62,7 @@ const inspectSchema = z.object({
 
 export default function SalesReturnsPage() {
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   const { hasPermission } = usePermissions();
   const canCreate = hasPermission('sales_returns', 'create');
   const canDelete = hasPermission('sales_returns', 'delete');
@@ -274,11 +276,22 @@ export default function SalesReturnsPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center gap-4">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => navigate('/?tab=invoices')}
+          data-testid="button-back"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </Button>
         <div>
           <h1 className="text-3xl font-bold" data-testid="text-page-title">Sales Returns & Damage Handling</h1>
           <p className="text-muted-foreground">Manage post-delivery returns and damaged goods</p>
         </div>
+      </div>
+      <div className="flex items-center justify-between">
+        <div className="flex-1"></div>
         <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
           {canCreate && (
             <DialogTrigger asChild>

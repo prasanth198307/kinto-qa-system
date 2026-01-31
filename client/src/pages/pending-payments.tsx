@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { useSearch } from "wouter";
+import { useSearch, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import PendingPaymentsDashboard from "@/components/PendingPaymentsDashboard";
 
 export default function PendingPayments() {
   const search = useSearch();
+  const [, navigate] = useLocation();
   const [customerFilter, setCustomerFilter] = useState<string | null>(null);
 
   useEffect(() => {
@@ -16,7 +17,7 @@ export default function PendingPayments() {
   }, [search]);
 
   const handleBack = () => {
-    window.history.back();
+    navigate("/?tab=invoices");
   };
 
   return (

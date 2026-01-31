@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, Package, Truck, CheckCircle, Clock, Search, X, LogOut } from "lucide-react";
+import { FileText, Package, Truck, CheckCircle, Clock, Search, X, LogOut, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import type { Invoice, Gatepass, PaginatedResponse } from "@shared/schema";
@@ -265,9 +265,19 @@ export default function DispatchTracking({ showHeader = true }: DispatchTracking
     <>
       {showHeader && <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />}
       <div className={showHeader ? "p-6 mt-16 space-y-6" : "p-6 space-y-6"}>
-        <div>
-          <h2 className="text-2xl font-semibold">Dispatch Tracking Dashboard</h2>
-          <p className="text-muted-foreground">Monitor the complete dispatch workflow from invoice to delivery</p>
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setLocation('/?tab=invoices')}
+            data-testid="button-back"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div>
+            <h2 className="text-2xl font-semibold">Dispatch Tracking Dashboard</h2>
+            <p className="text-muted-foreground">Monitor the complete dispatch workflow from invoice to delivery</p>
+          </div>
         </div>
 
       {/* Statistics Cards */}
