@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -84,6 +85,7 @@ function formatCurrency(rupees: number): string {
 }
 
 export default function CashRegisterPage() {
+  const [, navigate] = useLocation();
   const { toast } = useToast();
   const { hasPermission } = usePermissions();
   const canCreate = hasPermission('cash_register', 'create');
@@ -1410,9 +1412,19 @@ export default function CashRegisterPage() {
   return (
     <div className="p-4 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold" data-testid="text-page-title">Daily Cash Register</h1>
-          <p className="text-muted-foreground">Track daily cash flow - receipts, expenses, and transfers</p>
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate('/?tab=overview')}
+            data-testid="button-back-main"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold" data-testid="text-page-title">Daily Cash Register</h1>
+            <p className="text-muted-foreground">Track daily cash flow - receipts, expenses, and transfers</p>
+          </div>
         </div>
         <div className="flex gap-2">
           {hasAdminAccess && days.length > 0 && (

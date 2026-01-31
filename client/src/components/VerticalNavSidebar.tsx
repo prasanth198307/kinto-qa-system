@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Menu, X, Plus, ChevronDown, ChevronRight } from "lucide-react";
 import { type LucideIcon } from "lucide-react";
@@ -55,6 +56,7 @@ export function VerticalNavSidebar({
   isMobileOpen = false,
   onMobileClose,
 }: VerticalNavSidebarProps) {
+  const [, navigate] = useLocation();
   // Guard against undefined sections
   const safeSections = sections || [];
   

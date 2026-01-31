@@ -1,14 +1,16 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Eye } from "lucide-react";
+import { Plus, Eye, ArrowLeft } from "lucide-react";
 import ProductionEntryForm from "@/components/ProductionEntryForm";
 
 export default function ProductionEntries() {
+  const [, navigate] = useLocation();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<any>(null);
 
@@ -59,11 +61,21 @@ export default function ProductionEntries() {
     <div className="p-8 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Production Entries</h1>
-          <p className="text-muted-foreground mt-1">
-            Track actual production output and compare against raw material issuances
-          </p>
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate('/?tab=production')}
+            data-testid="button-back"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold">Production Entries</h1>
+            <p className="text-muted-foreground mt-1">
+              Track actual production output and compare against raw material issuances
+            </p>
+          </div>
         </div>
         <Button onClick={handleCreate} data-testid="button-create-production-entry">
           <Plus className="mr-2 h-4 w-4" />

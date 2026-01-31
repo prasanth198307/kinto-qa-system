@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,7 +29,7 @@ import { usePermissions } from "@/hooks/use-permissions";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { 
   Plus, Search, IndianRupee, Calendar, User, FileText, 
-  CheckCircle, XCircle, ArrowRightLeft, Eye, ChevronsUpDown, Check
+  CheckCircle, XCircle, ArrowRightLeft, Eye, ChevronsUpDown, Check, ArrowLeft
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Vendor, CustomerAdvance } from "@shared/schema";
@@ -39,6 +40,7 @@ interface AdvanceWithBalance extends CustomerAdvance {
 }
 
 export default function CustomerAdvancesPage() {
+  const [, navigate] = useLocation();
   const { toast } = useToast();
   const { hasPermission } = usePermissions();
   const canCreate = hasPermission('customer_advances', 'create');
@@ -244,11 +246,21 @@ export default function CustomerAdvancesPage() {
     <div className="space-y-4 p-4" data-testid="customer-advances-page">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold" data-testid="page-title">Customer Advances</h1>
-          <p className="text-sm text-muted-foreground">
-            Track advance payments received from customers before invoicing
-          </p>
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate('/?tab=invoices')}
+            data-testid="button-back"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div>
+            <h1 className="text-xl font-semibold" data-testid="page-title">Customer Advances</h1>
+            <p className="text-sm text-muted-foreground">
+              Track advance payments received from customers before invoicing
+            </p>
+          </div>
         </div>
         {canCreate && (
           <Button onClick={() => setShowCreateDialog(true)} data-testid="button-record-advance">

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +9,7 @@ import { usePermissions } from "@/hooks/use-permissions";
 import { queryClient } from "@/lib/queryClient";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Eye, Edit, Calculator, Package, AlertCircle, Trash2 } from "lucide-react";
+import { Plus, Eye, Edit, Calculator, Package, AlertCircle, Trash2, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 import ProductionReconciliationForm from "@/components/ProductionReconciliationForm";
 import {
@@ -37,6 +37,7 @@ interface ProductionReconciliation {
 }
 
 export default function ProductionReconciliations() {
+  const [, navigate] = useLocation();
   const { toast } = useToast();
   const { hasPermission } = usePermissions();
   const canCreate = hasPermission('production_reconciliations', 'create');
@@ -162,11 +163,21 @@ export default function ProductionReconciliations() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Production Reconciliation</h1>
-          <p className="text-muted-foreground mt-1">
-            End-of-day material usage reconciliation tracking
-          </p>
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate('/?tab=production')}
+            data-testid="button-back"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold">Production Reconciliation</h1>
+            <p className="text-muted-foreground mt-1">
+              End-of-day material usage reconciliation tracking
+            </p>
+          </div>
         </div>
         {canCreate && (
           <Button onClick={handleCreate} data-testid="button-create-reconciliation">

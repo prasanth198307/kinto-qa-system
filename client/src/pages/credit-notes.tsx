@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,7 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
-import { FileText, Eye, IndianRupee, Download } from "lucide-react";
+import { FileText, Eye, IndianRupee, Download, ArrowLeft } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -57,6 +58,7 @@ interface CreditNoteItem {
 }
 
 export default function CreditNotes() {
+  const [, navigate] = useLocation();
   const [selectedCreditNote, setSelectedCreditNote] = useState<CreditNote | null>(null);
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -123,11 +125,21 @@ export default function CreditNotes() {
 
   return (
     <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight">Credit Notes</h1>
-        <p className="text-muted-foreground mt-2">
-          View credit notes issued for sales returns and adjustments
-        </p>
+      <div className="mb-6 flex items-center gap-4">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => navigate('/?tab=invoices')}
+          data-testid="button-back"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </Button>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Credit Notes</h1>
+          <p className="text-muted-foreground mt-2">
+            View credit notes issued for sales returns and adjustments
+          </p>
+        </div>
       </div>
 
       <Card>

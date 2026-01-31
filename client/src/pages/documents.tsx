@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/hooks/use-permissions";
@@ -15,7 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
-import { Upload, FileText, Download, Trash2, Search, Filter, Eye, Plus, Folder, File, FileImage, FileSpreadsheet, AlertCircle, Archive, Clock, AlertTriangle } from "lucide-react";
+import { Upload, FileText, Download, Trash2, Search, Filter, Eye, Plus, Folder, File, FileImage, FileSpreadsheet, AlertCircle, Archive, Clock, AlertTriangle, ArrowLeft } from "lucide-react";
 import type { DocumentCategory, Document, PaginationMeta } from "@shared/schema";
 import { DataTablePagination } from "@/components/DataTablePagination";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -48,6 +49,7 @@ function getExpiryStatus(expiryDate: string | null | undefined): {
 }
 
 export default function DocumentsPage() {
+  const [, navigate] = useLocation();
   const { toast } = useToast();
   const { hasPermission } = usePermissions();
   const canCreate = hasPermission('documents', 'create');
@@ -248,9 +250,19 @@ export default function DocumentsPage() {
   return (
     <div className="p-4 space-y-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold" data-testid="text-page-title">Document Management</h1>
-          <p className="text-muted-foreground text-sm">Store and organize contracts, invoices, certificates</p>
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate('/?tab=overview')}
+            data-testid="button-back"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold" data-testid="text-page-title">Document Management</h1>
+            <p className="text-muted-foreground text-sm">Store and organize contracts, invoices, certificates</p>
+          </div>
         </div>
         
         <div className="flex gap-2">

@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import { TrendingUp, TrendingDown, Activity, CheckCircle, AlertTriangle, XCircle, Package, ArrowUpCircle, ArrowDownCircle, Download } from "lucide-react";
+import { TrendingUp, TrendingDown, Activity, CheckCircle, AlertTriangle, XCircle, Package, ArrowUpCircle, ArrowDownCircle, Download, ArrowLeft } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { exportToExcel } from "@/lib/excel-export";
 import { format } from "date-fns";
@@ -62,6 +63,7 @@ interface AnalyticsResponse {
 }
 
 export default function VarianceAnalytics() {
+  const [, navigate] = useLocation();
   const [selectedPeriod, setSelectedPeriod] = useState("monthly");
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
   const [isExporting, setIsExporting] = useState(false);
@@ -150,11 +152,21 @@ export default function VarianceAnalytics() {
       <div className="p-6 space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold">Variance Analytics</h1>
-            <p className="text-muted-foreground mt-1">
-              Analyze production variance trends and efficiency metrics over time
-            </p>
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate('/?tab=production')}
+              data-testid="button-back"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold">Variance Analytics</h1>
+              <p className="text-muted-foreground mt-1">
+                Analyze production variance trends and efficiency metrics over time
+              </p>
+            </div>
           </div>
           <Button
             variant="outline"

@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -60,7 +61,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2, Plus, X, FileText, Search, Filter, Check, ChevronsUpDown, Pencil, ChevronDown, ChevronRight, Link2, CircleCheck, AlertTriangle, CircleDashed, AlertCircle } from "lucide-react";
+import { Loader2, Plus, X, FileText, Search, Filter, Check, ChevronsUpDown, Pencil, ChevronDown, ChevronRight, Link2, CircleCheck, AlertTriangle, CircleDashed, AlertCircle, ArrowLeft } from "lucide-react";
 import { usePermissions } from "@/hooks/use-permissions";
 import { cn } from "@/lib/utils";
 
@@ -183,6 +184,7 @@ function PaymentEvidenceRow({ paymentId }: { paymentId: string }) {
 }
 
 export default function PaymentManagement() {
+  const [, navigate] = useLocation();
   const { toast } = useToast();
   const { hasPermission } = usePermissions();
   const canCreate = hasPermission('payment_management', 'create');
@@ -444,11 +446,21 @@ export default function PaymentManagement() {
   return (
     <div className="space-y-4 p-4">
       <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-lg font-semibold">Payment Management</h1>
-          <p className="text-sm text-muted-foreground">
-            FIFO payment entry and payment history
-          </p>
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate('/?tab=invoices')}
+            data-testid="button-back"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div>
+            <h1 className="text-lg font-semibold">Payment Management</h1>
+            <p className="text-sm text-muted-foreground">
+              FIFO payment entry and payment history
+            </p>
+          </div>
         </div>
         {canCreate && (
           <Button onClick={() => setShowPaymentDialog(true)} data-testid="button-add-payment">

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { usePermissions } from "@/hooks/use-permissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,7 +32,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, FileText, CheckCircle, Clock, XCircle, DollarSign, ArrowRightLeft, Trash2, Loader2 } from "lucide-react";
+import { Plus, Search, FileText, CheckCircle, Clock, XCircle, DollarSign, ArrowRightLeft, Trash2, Loader2, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 import { VendorDebitNoteDialog } from "@/components/VendorDebitNoteDialog";
 import { DebitNoteAdjustmentDialog } from "@/components/DebitNoteAdjustmentDialog";
@@ -82,6 +83,7 @@ const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secon
 };
 
 export default function VendorDebitNotesPage() {
+  const [, navigate] = useLocation();
   const { toast } = useToast();
   const { hasPermission } = usePermissions();
   const canCreate = hasPermission('vendor_debit_notes', 'create');
@@ -144,11 +146,21 @@ export default function VendorDebitNotesPage() {
   return (
     <div className="container mx-auto p-4 space-y-4">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold" data-testid="text-page-title">Vendor Debit Notes</h1>
-          <p className="text-muted-foreground text-sm">
-            Create and manage debit notes against vendors for claims
-          </p>
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate('/?tab=invoices')}
+            data-testid="button-back"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold" data-testid="text-page-title">Vendor Debit Notes</h1>
+            <p className="text-muted-foreground text-sm">
+              Create and manage debit notes against vendors for claims
+            </p>
+          </div>
         </div>
         {canCreate && (
           <Button onClick={() => setIsCreateDialogOpen(true)} data-testid="button-create-debit-note">

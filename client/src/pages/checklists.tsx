@@ -1,4 +1,6 @@
+import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ChecklistHistoryTable from "@/components/ChecklistHistoryTable";
 import AdminChecklistBuilder from "@/components/AdminChecklistBuilder";
@@ -6,6 +8,7 @@ import { ManagerChecklistAssignment } from "@/components/ManagerChecklistAssignm
 import { useAuth } from "@/hooks/use-auth";
 import { usePermissions } from "@/hooks/use-permissions";
 import { GlobalHeader } from "@/components/GlobalHeader";
+import { ArrowLeft } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import type { ChecklistSubmission } from "@shared/schema";
@@ -15,6 +18,7 @@ interface ChecklistsPageProps {
 }
 
 export default function ChecklistsPage({ showHeader = true }: ChecklistsPageProps = {}) {
+  const [, navigate] = useLocation();
   const { user, logoutMutation } = useAuth();
   const { hasPermission } = usePermissions();
   // Use database permissions for checklist access
@@ -41,7 +45,17 @@ export default function ChecklistsPage({ showHeader = true }: ChecklistsPageProp
       {showHeader && <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />}
       <div className={showHeader ? "flex-1 space-y-4 p-4 md:p-8 pt-6 mt-16" : "flex-1 space-y-4 p-4 md:p-8 pt-6"}>
       <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">Checklists</h2>
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate('/?tab=overview')}
+            data-testid="button-back"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <h2 className="text-3xl font-bold tracking-tight">Checklists</h2>
+        </div>
       </div>
 
       <Tabs defaultValue="templates" className="space-y-4">

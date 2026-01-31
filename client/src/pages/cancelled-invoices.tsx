@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { FileX, Search, ChevronLeft, ChevronRight, ExternalLink, Filter, X, IndianRupee, ArrowLeft, Download } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { GlobalHeader } from "@/components/GlobalHeader";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -53,6 +53,7 @@ interface PaginatedResponse {
 }
 
 export default function CancelledInvoices({ showHeader = true }: CancelledInvoicesProps = {}) {
+  const [, navigate] = useLocation();
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
   const [buyerNameFilter, setBuyerNameFilter] = useState("");
@@ -160,7 +161,15 @@ export default function CancelledInvoices({ showHeader = true }: CancelledInvoic
     <>
       {showHeader && <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />}
       <div className={showHeader ? "p-6 mt-16" : "p-6"}>
-        <div className="mb-6">
+        <div className="mb-6 flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate('/?tab=invoices')}
+            data-testid="button-back"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
           {showHeader && (
             <div className="flex items-center gap-2 mb-4">
               <Button variant="ghost" size="sm" asChild>

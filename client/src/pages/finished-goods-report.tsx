@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { FileSpreadsheet, FileDown, FileText, Calendar, Package, CheckCircle, XCircle, Clock } from "lucide-react";
+import { FileSpreadsheet, FileDown, FileText, Calendar, Package, CheckCircle, XCircle, Clock, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 
 interface FinishedGoodItem {
@@ -51,6 +52,7 @@ interface ReportResponse {
 }
 
 export default function FinishedGoodsReport() {
+  const [, navigate] = useLocation();
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [selectedProduct, setSelectedProduct] = useState("all");
@@ -283,9 +285,19 @@ export default function FinishedGoodsReport() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold" data-testid="text-page-title">Finished Goods Inventory Report</h1>
-          <p className="text-muted-foreground">Product-wise inventory with batch details and subtotals</p>
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate('/?tab=inventory')}
+            data-testid="button-back"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold" data-testid="text-page-title">Finished Goods Inventory Report</h1>
+            <p className="text-muted-foreground">Product-wise inventory with batch details and subtotals</p>
+          </div>
         </div>
       </div>
 

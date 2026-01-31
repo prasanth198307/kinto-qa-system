@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/hooks/use-permissions";
@@ -14,7 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
-import { Plus, FileText, Trash2, Search, Eye, Check, X, Receipt, Send, IndianRupee, Calendar, User, Building2, Printer } from "lucide-react";
+import { Plus, FileText, Trash2, Search, Eye, Check, X, Receipt, Send, IndianRupee, Calendar, User, Building2, Printer, ArrowLeft } from "lucide-react";
 import PrintableExpenseVoucher from "@/components/PrintableExpenseVoucher";
 import type { ExpenseCategory, ExpenseVoucher, ExpenseItem, PaginationMeta } from "@shared/schema";
 import { DataTablePagination } from "@/components/DataTablePagination";
@@ -34,6 +35,7 @@ interface VoucherWithDetails extends ExpenseVoucher {
 }
 
 export default function ExpensesPage() {
+  const [, navigate] = useLocation();
   const { toast } = useToast();
   const { hasPermission } = usePermissions();
   const canCreate = hasPermission('expenses', 'create');
@@ -276,9 +278,19 @@ export default function ExpensesPage() {
   return (
     <div className="p-4 space-y-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold" data-testid="text-page-title">Expense Tracking</h1>
-          <p className="text-muted-foreground text-sm">Record and manage daily expenses with voucher issuance</p>
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate('/?tab=overview')}
+            data-testid="button-back"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold" data-testid="text-page-title">Expense Tracking</h1>
+            <p className="text-muted-foreground text-sm">Record and manage daily expenses with voucher issuance</p>
+          </div>
         </div>
         
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>

@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -22,7 +23,8 @@ import {
   FileWarning,
   ChevronRight,
   Activity,
-  Download
+  Download,
+  ArrowLeft
 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
@@ -188,6 +190,7 @@ function AlertItem({ alert }: { alert: Alert }) {
 }
 
 export default function MISDashboard() {
+  const [, navigate] = useLocation();
   const [period, setPeriod] = useState('30');
   const [isExporting, setIsExporting] = useState(false);
 
@@ -271,9 +274,19 @@ export default function MISDashboard() {
   return (
     <div className="p-4 md:p-6 space-y-6" data-testid="mis-dashboard-page">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold" data-testid="text-page-title">Executive Dashboard</h1>
-          <p className="text-muted-foreground">Key performance indicators and business health overview</p>
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate('/?tab=overview')}
+            data-testid="button-back"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold" data-testid="text-page-title">Executive Dashboard</h1>
+            <p className="text-muted-foreground">Key performance indicators and business health overview</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Button
