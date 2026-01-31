@@ -108,7 +108,15 @@ export function VerticalNavSidebar({
   };
 
   const handleItemClick = (item: NavItem) => {
-    onItemClick(item.id);
+    // If we're already on the dashboard/root and clicking a tab, just update activeView
+    // If we're on a detail page (like /invoice/:id), we need to navigate back to root with the tab param
+    const currentPath = window.location.pathname;
+    if (currentPath !== "/") {
+      navigate(`/?tab=${item.id}`);
+    } else {
+      onItemClick(item.id);
+    }
+    
     if (item.onClick) {
       item.onClick();
     }

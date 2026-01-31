@@ -355,9 +355,9 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
           <Card className="max-w-md mx-auto p-8 text-center">
             <h2 className="text-2xl font-bold text-destructive mb-4">Invoice Not Found</h2>
             <p className="text-muted-foreground mb-6">The requested invoice could not be found.</p>
-            <Button onClick={() => navigate('/')} data-testid="button-back">
+            <Button onClick={() => navigate('/?tab=invoices')} data-testid="button-back">
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Dashboard
+              Back to Invoices
             </Button>
           </Card>
         </div>
@@ -478,7 +478,7 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/?tab=invoices')}
             data-testid="button-back-to-dashboard"
           >
             <ArrowLeft className="w-5 h-5" />
