@@ -1811,16 +1811,15 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                 />
               </div>
 
-              {/* Batch # */}
-              <div className="md:col-span-1">
-                <Label className="md:hidden text-xs text-muted-foreground mb-1">Batch #</Label>
-                <Input
-                  {...form.register(`items.${index}.batchNumber`)}
-                  placeholder="Batch #"
-                  className="h-9 text-sm"
-                  data-testid={`input-batch-${index}`}
-                />
-              </div>
+                          <div className="md:col-span-1">
+                            <Label className="md:hidden text-xs text-muted-foreground mb-1">Batch #</Label>
+                            <Input
+                              {...form.register(`items.${index}.batchNumber`)}
+                              placeholder="Batch #"
+                              className="h-9 text-sm"
+                              data-testid={`input-batch-${index}`}
+                            />
+                          </div>
 
               <div className="md:col-span-1">
                 <Label className="md:hidden text-xs text-muted-foreground mb-1">{gstInclusiveMode ? 'Base ₹' : 'Price ₹'}</Label>
