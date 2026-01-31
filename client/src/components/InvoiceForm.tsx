@@ -90,6 +90,7 @@ const invoiceFormSchema = z.object({
     unitPrice: z.number().min(0, "Price must be positive"),
     gstRate: z.number().min(0).max(100, "GST rate must be 0-100%"),
     transportRatePerCase: z.number().min(0).optional(), // Transport rate per case (rupees)
+    batchNumber: z.string().optional(),
   })).min(1, "At least one item is required"),
   
   remarks: z.string().optional(),
@@ -257,6 +258,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         unitPrice: 0,
         gstRate: 18,
         transportRatePerCase: 0,
+        batchNumber: "",
       }],
       bankName: invoice.bankName || "",
       bankAccountNumber: invoice.bankAccountNumber || "",
@@ -297,6 +299,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         unitPrice: 0,
         gstRate: 18,
         transportRatePerCase: 0,
+        batchNumber: "",
       }],
       bankName: "",
       bankAccountNumber: "",
@@ -355,6 +358,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
               unitPrice: (item.unitPrice || 0) / 100, // Convert from paise to rupees
               gstRate,
               transportRatePerCase: (item.transportRatePerCase || 0) / 100, // Convert from paise to rupees
+              batchNumber: item.batchNumber || "", // Restore batch number
             };
           })
         : [{
@@ -365,6 +369,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
             unitPrice: 0,
             gstRate: 18,
             transportRatePerCase: 0,
+            batchNumber: "", // Default empty batch
           }];
       
       console.log('[InvoiceForm] Resetting form with invoice data, items:', normalizedItems);
@@ -1637,6 +1642,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
             <div className="col-span-1">HSN</div>
             <div className={gstInclusiveMode ? "col-span-1" : "col-span-2"}>Description *</div>
             <div className="col-span-1">Qty *</div>
+            <div className="col-span-1">Batch #</div>
             <div className="col-span-1">{gstInclusiveMode ? 'Base ₹' : 'Price ₹'}</div>
             <div className="col-span-1">GST %</div>
             {gstInclusiveMode && <div className="col-span-2">Price/Case (incl. GST)</div>}
@@ -1805,17 +1811,28 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                 />
               </div>
 
-            <div className="md:col-span-1">
-              <Label className="md:hidden text-xs text-muted-foreground mb-1">{gstInclusiveMode ? 'Base ₹' : 'Price ₹'}</Label>
-              <Input
-                type="number"
-                step="0.01"
-                {...form.register(`items.${index}.unitPrice`, { valueAsNumber: true })}
-                placeholder="0.00"
-                className={`h-9 text-sm ${gstInclusiveMode ? 'bg-muted/50' : ''}`}
-                data-testid={`input-unit-price-${index}`}
-              />
-            </div>
+              {/* Batch # */}
+              <div className="md:col-span-1">
+                <Label className="md:hidden text-xs text-muted-foreground mb-1">Batch #</Label>
+                <Input
+                  {...form.register(`items.${index}.batchNumber`)}
+                  placeholder="Batch #"
+                  className="h-9 text-sm"
+                  data-testid={`input-batch-${index}`}
+                />
+              </div>
+
+              <div className="md:col-span-1">
+                <Label className="md:hidden text-xs text-muted-foreground mb-1">{gstInclusiveMode ? 'Base ₹' : 'Price ₹'}</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  {...form.register(`items.${index}.unitPrice`, { valueAsNumber: true })}
+                  placeholder="0.00"
+                  className={`h-9 text-sm ${gstInclusiveMode ? 'bg-muted/50' : ''}`}
+                  data-testid={`input-unit-price-${index}`}
+                />
+              </div>
 
               {/* GST Rate */}
               <div className="md:col-span-1">

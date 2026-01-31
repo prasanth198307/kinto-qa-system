@@ -7448,30 +7448,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
           
-          for (const item of items) {
-            if (item.productId && item.quantity > 0) {
-              const [existingProduct] = await tx.select({ id: products.id })
-                .from(products)
-                .where(eq(products.id, item.productId))
-                .limit(1);
-              
-              if (existingProduct) {
-                const batchNumber = `CANCEL-${invoice.invoiceNumber}-${format(new Date(), 'yyyyMMdd-HHmmss')}`;
-                const originalBatchNumber = originalBatchMap.get(item.productId) || null;
-                
-                await tx.insert(finishedGoods).values({
-                  productId: item.productId,
-                  batchNumber,
-                  originalBatchNumber, // Store the original batch number for display
-                  productionDate: new Date().toISOString(),
-                  quantity: item.quantity,
-                  qualityStatus: 'approved',
-                  remarks: `Inventory returned - Invoice ${invoice.invoiceNumber} cancelled & reissued. Gatepass(es): ${cancelledGatepassNumbers.join(', ')}${originalBatchNumber ? `. Original batch: ${originalBatchNumber}` : ''}`,
-                  createdBy: req.user?.id,
-                });
-              }
-            }
-          }
+                for (const item of itemsWithBatch) {
+                  if (item.productId && item.quantity > 0) {
+                    const [existingProduct] = await tx.select({ id: products.id })
+                      .from(products)
+                      .where(eq(products.id, item.productId))
+                      .limit(1);
+                    
+                    if (existingProduct) {
+                      const batchNumber = `CANCEL-${invoice.invoiceNumber}-${format(new Date(), 'yyyyMMdd-HHmmss')}`;
+                      const originalBatchNumber = item.batchNumber || null;
+                      
+                      await tx.insert(finishedGoods).values({
+                        productId: item.productId,
+                        batchNumber,
+                        originalBatchNumber, // Store the original batch number for display
+                        productionDate: new Date().toISOString(),
+                        quantity: item.quantity,
+                        qualityStatus: 'approved',
+                        remarks: `Inventory returned - Invoice ${invoice.invoiceNumber} cancelled & reissued. Gatepass(es): ${cancelledGatepassNumbers.join(', ')}${originalBatchNumber ? `. Original batch: ${originalBatchNumber}` : ''}`,
+                        createdBy: req.user?.id,
+                      });
+                    }
+                  }
+                }
           console.log(`[CANCEL_REISSUE] Returned inventory for ${items.length} items from cancelled gatepass(es)`);
         } else {
           console.log(`[CANCEL_REISSUE] No gatepass found - skipping inventory return (inventory was never deducted)`);
@@ -7487,7 +7487,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .where(eq(invoices.id, id));
 
         // Return the invoice and items data for the frontend to populate the form
-        return { invoice, items };
+        return { invoice, items: itemsWithBatch };
       });
       
       // Return invoice data so frontend can open a popup form with it pre-filled
