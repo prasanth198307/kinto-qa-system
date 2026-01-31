@@ -59,18 +59,6 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
     return acc;
   }, {});
 
-  // Watch the selected shift to filter issuances dynamically
-  const selectedShift = form.watch('shift');
-
-  // Filter issuances: hide those that already have a production entry for the selected shift
-  const availableIssuances = issuances.filter(iss => {
-    const completedShifts = issuanceProductionStatus[iss.id!] || [];
-    // If editing, always show the current entry's issuance
-    if (entry && entry.issuanceId === iss.id) return true;
-    // Hide if the selected shift already has a production entry for this issuance
-    return !completedShifts.includes(selectedShift);
-  });
-
   // Fetch UOMs for finished goods UOM selection
   const { data: uomList = [] } = useQuery<{ id: string; name: string; abbreviation?: string }[]>({
     queryKey: ['/api/uoms'],
@@ -109,6 +97,18 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
   const emptyBottlesOpening = form.watch('emptyBottlesOpening');
   const emptyBottlesProduced = form.watch('emptyBottlesProduced');
   const emptyBottlesUsed = form.watch('emptyBottlesUsed');
+  
+  // Watch the selected shift to filter issuances dynamically
+  const selectedShift = form.watch('shift');
+
+  // Filter issuances: hide those that already have a production entry for the selected shift
+  const availableIssuances = issuances.filter(iss => {
+    const completedShifts = issuanceProductionStatus[iss.id!] || [];
+    // If editing, always show the current entry's issuance
+    if (entry && entry.issuanceId === iss.id) return true;
+    // Hide if the selected shift already has a production entry for this issuance
+    return !completedShifts.includes(selectedShift);
+  });
   
   // State for additional produced bottles (from other sources, not from preform blow molding)
   const [additionalProduced, setAdditionalProduced] = useState<number>(0);
