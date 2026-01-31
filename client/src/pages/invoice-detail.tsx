@@ -778,53 +778,6 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
         </CardContent>
       </Card>
 
-      {/* Dispatch Batch Numbers - Show when gatepass exists */}
-      {relatedGatepass && gatepassItems.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5" />
-              Loaded Batch Numbers
-            </CardTitle>
-            <CardDescription>
-              Batch numbers loaded in vehicle for Gatepass {relatedGatepass.gatepassNumber}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left p-3 font-semibold">#</th>
-                    <th className="text-left p-3 font-semibold">Product</th>
-                    <th className="text-left p-3 font-semibold">Batch Number</th>
-                    <th className="text-right p-3 font-semibold">Quantity Dispatched</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {gatepassItems.map((gpItem, index) => {
-                    const finishedGood = finishedGoods.find(fg => fg.id === gpItem.finishedGoodId);
-                    const product = safeProducts.find(p => p.id === finishedGood?.productId || p.id === gpItem.productId);
-                    return (
-                      <tr key={gpItem.id} className="border-b" data-testid={`row-batch-${index + 1}`}>
-                        <td className="p-3">{index + 1}</td>
-                        <td className="p-3">{product?.productName || 'Unknown Product'}</td>
-                        <td className="p-3">
-                          <Badge variant="outline" className="font-mono">
-                            {finishedGood?.batchNumber || '-'}
-                          </Badge>
-                        </td>
-                        <td className="p-3 text-right">{gpItem.quantityDispatched}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Tax Summary */}
       <div className="grid gap-6 md:grid-cols-2">
         {/* Tax Breakdown */}
