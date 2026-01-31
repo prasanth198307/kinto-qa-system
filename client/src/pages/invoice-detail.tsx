@@ -148,9 +148,19 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
     enabled: !!relatedGatepassId,
   });
 
-  // Fetch finished goods to get batch numbers
+  // Get finished good IDs from gatepass items for targeted fetch
+  const finishedGoodIds = gatepassItems.map(gi => gi.finishedGoodId).filter(Boolean);
+
+  // Fetch only the specific finished goods needed (for batch number fallback on old data)
   const { data: finishedGoods = [] } = useQuery<FinishedGood[]>({
-    queryKey: ['/api/finished-goods'],
+    queryKey: ['/api/finished-goods/by-ids', ...finishedGoodIds],
+    queryFn: async () => {
+      if (finishedGoodIds.length === 0) return [];
+      const res = await fetch(`/api/finished-goods/by-ids/${finishedGoodIds.join(',')}`, { credentials: 'include' });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: finishedGoodIds.length > 0,
   });
 
   // Fetch all vendors to find the one matching this invoice's buyer
