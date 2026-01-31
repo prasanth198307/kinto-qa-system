@@ -1,0 +1,39 @@
+1 14:27:19 iplvnic1 npm[1962892]:    Authenticated: true
+Jan 31 14:27:19 iplvnic1 npm[1962892]: [AUDIT] Role admin granted create access to /api/invoices via screen permission invoices
+Jan 31 14:27:19 iplvnic1 npm[1962892]: [CREATE_INVOICE] Incoming ship-to fields: {"shipToName":"K L L Mahalakshmi","shipToAddress":"3-2-86,Durga Lodge Steet,Narasing Rao Peta Area,Near Ramachandra Theater,Anakapalli,Andhra Pradesh","shipToCity":"Anakapalli","shipToState":"Andhra Pradesh","shipToPincode":"535183"}
+Jan 31 14:27:19 iplvnic1 npm[1962892]: [CREATE_INVOICE] Validated ship-to fields: {"shipToName":"K L L Mahalakshmi","shipToAddress":"3-2-86,Durga Lodge Steet,Narasing Rao Peta Area,Near Ramachandra Theater,Anakapalli,Andhra Pradesh","shipToCity":"Anakapalli","shipToState":"Andhra Pradesh","shipToPincode":"535183"}
+Jan 31 14:27:19 iplvnic1 npm[1962892]: [REISSUE] Inventory check passed for all 2 items
+Jan 31 14:27:19 iplvnic1 npm[1962892]: [CREATE_INVOICE] Creating invoice for K L L MAHALAKSHMI, originalInvoiceId=42568cb8-569a-4ad0-bc95-7553ba362a7a, recordStatus=1
+Jan 31 14:27:19 iplvnic1 npm[1962892]: [CREATE_INVOICE] Inserting with data: {"recordStatus":1,"buyerName":"K L L MAHALAKSHMI","originalInvoiceId":"42568cb8-569a-4ad0-bc95-7553ba362a7a"}
+Jan 31 14:27:19 iplvnic1 npm[1962892]: [CREATE_INVOICE] Created invoice: {"id":"f66cea1c-60bf-4009-9ee4-353c8b35f4eb","invoiceNumber":"INV-1769869639835","recordStatus":1,"originalInvoiceId":"42568cb8-569a-4ad0-bc95-7553ba362a7a"}
+Jan 31 14:27:19 iplvnic1 npm[1962892]: [REISSUE] Linked cancelled invoice 42568cb8-569a-4ad0-bc95-7553ba362a7a → new invoice f66cea1c-60bf-4009-9ee4-353c8b35f4eb
+Jan 31 14:27:19 iplvnic1 npm[1962892]: [REISSUE_INVENTORY] Batch CANCEL-INV-1768901153590-20260131-142656 fully consumed and removed (deducted 200 units)
+Jan 31 14:27:19 iplvnic1 npm[1962892]: [REISSUE_INVENTORY] Successfully deducted 200 units of product c10dbc46-dfc2-470e-8ee0-096ff424c265 for reissued invoice
+Jan 31 14:27:19 iplvnic1 npm[1962892]: [REISSUE_INVENTORY] Batch CANCEL-INV-1768901153590-20260131-142656 fully consumed and removed (deducted 100 units)
+Jan 31 14:27:19 iplvnic1 npm[1962892]: [REISSUE_INVENTORY] Successfully deducted 100 units of product a4de2b77-b570-4f77-b537-2174e9f2caf7 for reissued invoice
+Jan 31 14:27:19 iplvnic1 npm[1962892]: Error creating invoice: error: null value in column "destination" of relation "gatepasses" violates not-null constraint
+Jan 31 14:27:19 iplvnic1 npm[1962892]:     at /home/kinto/kinto-qa-system/node_modules/pg/lib/client.js:545:17
+Jan 31 14:27:19 iplvnic1 npm[1962892]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+Jan 31 14:27:19 iplvnic1 npm[1962892]:     at async file:///home/kinto/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+Jan 31 14:27:19 iplvnic1 npm[1962892]:     at async file:///home/kinto/kinto-qa-system/dist/index.js:14973:35
+Jan 31 14:27:19 iplvnic1 npm[1962892]:     at async NodePgSession.transaction (file:///home/kinto/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:142:22)
+Jan 31 14:27:19 iplvnic1 npm[1962892]:     at async file:///home/kinto/kinto-qa-system/dist/index.js:14901:22 {
+Jan 31 14:27:19 iplvnic1 npm[1962892]:   length: 637,
+Jan 31 14:27:19 iplvnic1 npm[1962892]:   severity: 'ERROR',
+Jan 31 14:27:19 iplvnic1 npm[1962892]:   code: '23502',
+Jan 31 14:27:19 iplvnic1 npm[1962892]:   detail: 'Failing row contains (29769361-30fa-450c-abfa-ddcb0d96a513, GP-1769869639855, null, null, null, AP39TC2445, L Pathrudu, null, null, null, null, Auto-generated gatepass for reissued invoice INV-1769869639835 (..., null, 1, 2026-01-31 14:27:19.836439, 2026-01-31 14:27:19.836439, 2026-01-31 14:27:19.856, null, 0, f66cea1c-60bf-4009-9ee4-353c8b35f4eb, 7893935100, null, null, null, delivered, null, null, null, null, null, null, null, null, null, null).',
+Jan 31 14:27:19 iplvnic1 npm[1962892]:   hint: undefined,
+Jan 31 14:27:19 iplvnic1 npm[1962892]:   position: undefined,
+Jan 31 14:27:19 iplvnic1 npm[1962892]:   internalPosition: undefined,
+Jan 31 14:27:19 iplvnic1 npm[1962892]:   internalQuery: undefined,
+Jan 31 14:27:19 iplvnic1 npm[1962892]:   where: undefined,
+Jan 31 14:27:19 iplvnic1 npm[1962892]:   schema: 'public',
+Jan 31 14:27:19 iplvnic1 npm[1962892]:   table: 'gatepasses',
+Jan 31 14:27:19 iplvnic1 npm[1962892]:   column: 'destination',
+Jan 31 14:27:19 iplvnic1 npm[1962892]:   dataType: undefined,
+Jan 31 14:27:19 iplvnic1 npm[1962892]:   constraint: undefined,
+Jan 31 14:27:19 iplvnic1 npm[1962892]:   file: 'execMain.c',
+Jan 31 14:27:19 iplvnic1 npm[1962892]:   line: '2005',
+Jan 31 14:27:19 iplvnic1 npm[1962892]:   routine: 'ExecConstraints'
+Jan 31 14:27:19 iplvnic1 npm[1962892]: }
+Jan 31 14:27:19 iplvnic1 npm[1962892]: 2:27:19 PM [express] POST /api/invoices 500 in 51ms :: {"message":"null value in column \"destinatio…

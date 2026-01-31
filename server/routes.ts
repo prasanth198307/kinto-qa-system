@@ -6835,6 +6835,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               vehicleNumber: oldGatepass?.vehicleNumber || 'PENDING',
               driverName: oldGatepass?.driverName || 'PENDING',
               driverContact: oldGatepass?.driverContact || null,
+              destination: oldGatepass?.destination || invoice.shipToCity || invoice.buyerName || 'PENDING',
+              customerName: oldGatepass?.customerName || invoice.buyerName,
+              transporterName: oldGatepass?.transporterName || null,
               dispatchedBy: req.user?.id,
               remarks: `Auto-generated gatepass for reissued invoice ${invoice.invoiceNumber} (replaces ${oldGatepass?.gatepassNumber || 'unknown'})`,
               status: oldGatepass?.status || 'generated', // Copy status from old gatepass, default to 'generated'
