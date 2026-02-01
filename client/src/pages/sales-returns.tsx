@@ -263,17 +263,18 @@ export default function SalesReturnsPage() {
   };
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, { variant: any; icon: any }> = {
-      pending: { variant: "secondary", icon: AlertCircle },
-      received: { variant: "default", icon: Package },
-      inspected: { variant: "default", icon: CheckCircle },
+    const variants: Record<string, { variant: any; icon: any; label: string }> = {
+      pending: { variant: "secondary", icon: AlertCircle, label: "Pending" },
+      pending_receipt: { variant: "secondary", icon: AlertCircle, label: "Pending Receipt" },
+      received: { variant: "default", icon: Package, label: "Received" },
+      inspected: { variant: "default", icon: CheckCircle, label: "Inspected" },
     };
     const config = variants[status] || variants.pending;
     const Icon = config.icon;
     return (
       <Badge variant={config.variant} className="gap-1" data-testid={`badge-status-${status}`}>
         <Icon className="h-3 w-3" />
-        {status.charAt(0).toUpperCase() + status.slice(1)}
+        {config.label}
       </Badge>
     );
   };
@@ -682,7 +683,7 @@ export default function SalesReturnsPage() {
                     <TableCell>
                       <div className="flex gap-2">
                         <PrintableSalesReturn salesReturn={returnRecord} />
-                        {returnRecord.status === 'pending' && (
+                        {(returnRecord.status === 'pending' || returnRecord.status === 'pending_receipt') && (
                           <Button
                             size="sm"
                             variant="outline"
