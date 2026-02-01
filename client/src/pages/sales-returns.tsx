@@ -89,7 +89,7 @@ export default function SalesReturnsPage() {
 
   // Filter to only delivered invoices for returns
   const deliveredInvoices = invoices.filter((inv: any) => 
-    inv.status === 'delivered' || inv.dispatchStatus === 'pod_confirmed'
+    inv.status === 'delivered' || inv.status === 'pod_confirmed'
   );
 
   // Filter invoices based on search
@@ -97,8 +97,7 @@ export default function SalesReturnsPage() {
     const searchLower = invoiceSearch.toLowerCase();
     return (
       inv.invoiceNumber?.toLowerCase().includes(searchLower) ||
-      inv.customerName?.toLowerCase().includes(searchLower) ||
-      inv.vendorName?.toLowerCase().includes(searchLower)
+      inv.buyerName?.toLowerCase().includes(searchLower)
     );
   });
 
