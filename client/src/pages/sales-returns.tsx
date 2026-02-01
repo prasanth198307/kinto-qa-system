@@ -55,8 +55,11 @@ interface InvoiceItem {
 const inspectSchema = z.object({
   inspections: z.array(z.object({
     itemId: z.string(),
-    condition: z.enum(['good', 'damaged']),
-    disposition: z.enum(['restock', 'scrap']),
+    productId: z.string().optional(),
+    condition: z.enum(['good', 'damaged', 'mixed']),
+    disposition: z.enum(['restock', 'scrap', 'repack', 'mixed']),
+    quantity: z.number().optional(), // For split dispositions
+    damageReason: z.string().optional(),
   })),
 });
 
@@ -280,7 +283,13 @@ export default function SalesReturnsPage() {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => navigate('/?tab=invoices')}
+          onClick={() => {
+            if (window.history.length > 2) {
+              window.history.back();
+            } else {
+              navigate('/?tab=invoices');
+            }
+          }}
           data-testid="button-back"
         >
           <ArrowLeft className="w-5 h-5" />
@@ -736,83 +745,238 @@ export default function SalesReturnsPage() {
 }
 
 function InspectionForm({ returnRecord, onSubmit, isPending }: { returnRecord: any; onSubmit: (inspections: any[]) => void; isPending: boolean }) {
+  const { toast } = useToast();
+  
   const [inspections, setInspections] = useState(
     returnRecord.items.map((item: any) => ({
       itemId: item.id,
-      condition: 'good' as const,
-      disposition: 'restock' as const,
+      productId: item.productId,
+      totalQuantity: item.quantityReturned,
+      restockQty: item.quantityReturned, // Default all to restock
+      scrapQty: 0,
+      repackQty: 0,
+      condition: 'good' as 'good' | 'damaged' | 'mixed',
+      damageReason: '',
     }))
   );
 
+  const updateQuantity = (index: number, field: 'restockQty' | 'scrapQty' | 'repackQty', value: number) => {
+    const updated = [...inspections];
+    const item = updated[index];
+    const total = item.totalQuantity;
+    
+    // Update the specified field
+    item[field] = Math.max(0, Math.min(value, total));
+    
+    // Calculate remaining after this field
+    const otherFields = (['restockQty', 'scrapQty', 'repackQty'] as const).filter(f => f !== field);
+    const remaining = total - item[field];
+    
+    // If only one other field has value, adjust it; otherwise distribute to first field
+    const otherSum = otherFields.reduce((sum, f) => sum + item[f], 0);
+    if (otherSum > remaining) {
+      // Need to reduce other fields
+      let excess = otherSum - remaining;
+      for (const f of otherFields) {
+        if (item[f] > 0 && excess > 0) {
+          const reduction = Math.min(item[f], excess);
+          item[f] -= reduction;
+          excess -= reduction;
+        }
+      }
+    }
+    
+    // Update condition based on quantities
+    if (item.scrapQty > 0 && item.restockQty > 0) {
+      item.condition = 'mixed';
+    } else if (item.scrapQty > 0 || item.repackQty > 0) {
+      item.condition = 'damaged';
+    } else {
+      item.condition = 'good';
+    }
+    
+    setInspections(updated);
+  };
+
+  const getRowValidation = (item: any) => {
+    const total = item.restockQty + item.scrapQty + item.repackQty;
+    const expected = item.totalQuantity;
+    if (total !== expected) {
+      return { valid: false, message: `Total (${total}) must equal ${expected}` };
+    }
+    return { valid: true, message: '' };
+  };
+
   const handleSubmit = () => {
-    onSubmit(inspections);
+    // Validate all rows
+    for (let i = 0; i < inspections.length; i++) {
+      const validation = getRowValidation(inspections[i]);
+      if (!validation.valid) {
+        toast({
+          title: "Validation Error",
+          description: `Row ${i + 1}: ${validation.message}`,
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+    
+    // Convert to the format expected by the backend
+    // Create multiple inspection entries for split quantities
+    const flatInspections: any[] = [];
+    
+    for (const item of inspections) {
+      if (item.restockQty > 0) {
+        flatInspections.push({
+          itemId: item.itemId,
+          productId: item.productId,
+          condition: 'good',
+          disposition: 'restock',
+          quantity: item.restockQty,
+        });
+      }
+      if (item.scrapQty > 0) {
+        flatInspections.push({
+          itemId: item.itemId,
+          productId: item.productId,
+          condition: 'damaged',
+          disposition: 'scrap',
+          quantity: item.scrapQty,
+          damageReason: item.damageReason || 'other',
+        });
+      }
+      if (item.repackQty > 0) {
+        flatInspections.push({
+          itemId: item.itemId,
+          productId: item.productId,
+          condition: 'good',
+          disposition: 'repack',
+          quantity: item.repackQty,
+        });
+      }
+    }
+    
+    onSubmit(flatInspections);
   };
 
   return (
     <div className="space-y-4">
+      <div className="bg-muted/50 p-3 rounded-lg text-sm">
+        <p className="font-medium mb-1">Split Disposition</p>
+        <p className="text-muted-foreground">
+          For each returned item, specify how many units should go to each category.
+          The total must equal the returned quantity.
+        </p>
+      </div>
+      
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead>Product</TableHead>
             <TableHead>Batch</TableHead>
-            <TableHead>Quantity</TableHead>
-            <TableHead>Condition</TableHead>
-            <TableHead>Disposition</TableHead>
+            <TableHead className="text-center">Total Qty</TableHead>
+            <TableHead className="text-center bg-green-50 dark:bg-green-950/30">
+              <div className="flex flex-col items-center">
+                <Package className="h-4 w-4 text-green-600 mb-1" />
+                <span>Restock</span>
+              </div>
+            </TableHead>
+            <TableHead className="text-center bg-red-50 dark:bg-red-950/30">
+              <div className="flex flex-col items-center">
+                <Trash2 className="h-4 w-4 text-red-600 mb-1" />
+                <span>Scrap</span>
+              </div>
+            </TableHead>
+            <TableHead className="text-center bg-amber-50 dark:bg-amber-950/30">
+              <div className="flex flex-col items-center">
+                <Package className="h-4 w-4 text-amber-600 mb-1" />
+                <span>Repack</span>
+              </div>
+            </TableHead>
+            <TableHead>Status</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {returnRecord.items.map((item: any, index: number) => (
-            <TableRow key={item.id}>
-              <TableCell>{item.productName}</TableCell>
-              <TableCell>{item.batchNumber}</TableCell>
-              <TableCell>{item.quantityReturned}</TableCell>
-              <TableCell>
-                <Select
-                  value={inspections[index].condition}
-                  onValueChange={(value) => {
-                    const updated = [...inspections];
-                    updated[index].condition = value as 'good' | 'damaged';
-                    setInspections(updated);
-                  }}
-                >
-                  <SelectTrigger data-testid={`select-condition-${index}`}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="good">Good</SelectItem>
-                    <SelectItem value="damaged">Damaged</SelectItem>
-                  </SelectContent>
-                </Select>
-              </TableCell>
-              <TableCell>
-                <Select
-                  value={inspections[index].disposition}
-                  onValueChange={(value) => {
-                    const updated = [...inspections];
-                    updated[index].disposition = value as 'restock' | 'scrap';
-                    setInspections(updated);
-                  }}
-                >
-                  <SelectTrigger data-testid={`select-disposition-${index}`}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="restock">Restock</SelectItem>
-                    <SelectItem value="scrap">Scrap/Damage</SelectItem>
-                  </SelectContent>
-                </Select>
-              </TableCell>
-            </TableRow>
-          ))}
+          {returnRecord.items.map((item: any, index: number) => {
+            const inspection = inspections[index];
+            const validation = getRowValidation(inspection);
+            
+            return (
+              <TableRow key={item.id} className={!validation.valid ? "bg-red-50 dark:bg-red-950/20" : ""}>
+                <TableCell className="font-medium">{item.productName}</TableCell>
+                <TableCell className="text-muted-foreground">{item.batchNumber || '-'}</TableCell>
+                <TableCell className="text-center font-bold">{item.quantityReturned}</TableCell>
+                <TableCell className="bg-green-50/50 dark:bg-green-950/20">
+                  <Input
+                    type="number"
+                    min={0}
+                    max={item.quantityReturned}
+                    value={inspection.restockQty}
+                    onChange={(e) => updateQuantity(index, 'restockQty', parseInt(e.target.value) || 0)}
+                    className="w-20 text-center mx-auto"
+                    data-testid={`input-restock-qty-${index}`}
+                  />
+                </TableCell>
+                <TableCell className="bg-red-50/50 dark:bg-red-950/20">
+                  <Input
+                    type="number"
+                    min={0}
+                    max={item.quantityReturned}
+                    value={inspection.scrapQty}
+                    onChange={(e) => updateQuantity(index, 'scrapQty', parseInt(e.target.value) || 0)}
+                    className="w-20 text-center mx-auto"
+                    data-testid={`input-scrap-qty-${index}`}
+                  />
+                </TableCell>
+                <TableCell className="bg-amber-50/50 dark:bg-amber-950/20">
+                  <Input
+                    type="number"
+                    min={0}
+                    max={item.quantityReturned}
+                    value={inspection.repackQty}
+                    onChange={(e) => updateQuantity(index, 'repackQty', parseInt(e.target.value) || 0)}
+                    className="w-20 text-center mx-auto"
+                    data-testid={`input-repack-qty-${index}`}
+                  />
+                </TableCell>
+                <TableCell>
+                  {validation.valid ? (
+                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Valid
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      {validation.message}
+                    </Badge>
+                  )}
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" onClick={() => {}} data-testid="button-cancel-inspect">
-          Cancel
-        </Button>
-        <Button onClick={handleSubmit} disabled={isPending} data-testid="button-submit-inspection">
-          {isPending ? "Processing..." : "Complete Inspection"}
-        </Button>
+      
+      <div className="flex items-center justify-between pt-4 border-t">
+        <div className="text-sm text-muted-foreground">
+          <span className="font-medium">Legend:</span>{' '}
+          <span className="text-green-600">Restock</span> = Good condition, return to finished goods |{' '}
+          <span className="text-red-600">Scrap</span> = Damaged, create scrap record |{' '}
+          <span className="text-amber-600">Repack</span> = Needs repacking before sale
+        </div>
+        <div className="flex gap-2">
+          <Button onClick={handleSubmit} disabled={isPending} data-testid="button-submit-inspection">
+            {isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              "Complete Inspection"
+            )}
+          </Button>
+        </div>
       </div>
     </div>
   );

@@ -8925,15 +8925,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let manualProcessingRequired = false;
       
       await db.transaction(async (tx) => {
-        // Update each return item with inspection results
+        // Group inspections by itemId to track overall disposition per item
+        const itemDispositions: Record<string, string[]> = {};
+        
+        // Process each inspection entry (supports split quantities across dispositions)
         for (const inspection of inspections) {
-          await tx.update(salesReturnItems)
-            .set({
-              conditionOnReceipt: inspection.condition,
-              disposition: inspection.disposition,
-              updatedAt: new Date().toISOString(),
-            })
-            .where(eq(salesReturnItems.id, inspection.itemId));
+          // Track dispositions per item for updating the salesReturnItems record
+          if (!itemDispositions[inspection.itemId]) {
+            itemDispositions[inspection.itemId] = [];
+          }
+          itemDispositions[inspection.itemId].push(inspection.disposition);
           
           // Get the return item details
           const [item] = await tx.select().from(salesReturnItems)
@@ -8941,45 +8942,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           if (!item) continue;
           
+          // Use the quantity from the inspection (for split dispositions) or fall back to item quantity
+          const processQty = inspection.quantity || item.quantityReturned;
+          
+          // Get product details
+          const [product] = await tx.select().from(products)
+            .where(eq(products.id, item.productId));
+          
           // Update inventory based on disposition
           if (inspection.disposition === 'restock' && inspection.condition === 'good') {
             // Return good items to finished goods inventory
-            const [product] = await tx.select().from(products)
-              .where(eq(products.id, item.productId));
-            
             if (product) {
-              // Create new finished good record for returned items
               await tx.insert(finishedGoods).values([{
                 productId: item.productId,
                 batchNumber: `${item.batchNumber || 'RETURN'}-RETURNED`,
                 productionDate: new Date().toISOString(),
-                quantity: item.quantityReturned,
+                quantity: processQty,
                 qualityStatus: 'approved',
                 remarks: `Returned goods from sales return - Good condition`,
                 createdBy: req.user?.id,
               }]);
-              console.log(`[INVENTORY] Restocked ${item.quantityReturned} units of product ${item.productId} (Sales Return - Good condition)`);
+              console.log(`[INVENTORY] Restocked ${processQty} units of product ${item.productId} (Sales Return - Good condition)`);
             } else {
-              console.warn(`[INVENTORY] Skipping restock for product ${item.productId} - product not found in master data (Vyapaar import or deleted product)`);
+              console.warn(`[INVENTORY] Skipping restock for product ${item.productId} - product not found in master data`);
+            }
+          } else if (inspection.disposition === 'repack') {
+            // Items needing repacking - add to finished goods with 'pending' quality status
+            if (product) {
+              await tx.insert(finishedGoods).values([{
+                productId: item.productId,
+                batchNumber: `${item.batchNumber || 'RETURN'}-REPACK`,
+                productionDate: new Date().toISOString(),
+                quantity: processQty,
+                qualityStatus: 'pending', // Pending until repacked
+                remarks: `Returned goods - Needs repacking before sale`,
+                createdBy: req.user?.id,
+              }]);
+              console.log(`[INVENTORY] Added ${processQty} units of product ${item.productId} for repacking (Sales Return)`);
+            } else {
+              console.warn(`[INVENTORY] Skipping repack for product ${item.productId} - product not found in master data`);
             }
           } else if (inspection.disposition === 'scrap' || inspection.condition === 'damaged') {
             // Create damaged inventory record AND scrap inventory record for loss tracking
-            const [product] = await tx.select().from(products)
-              .where(eq(products.id, item.productId));
-            
             if (product) {
               // Create rejected finished goods record
               await tx.insert(finishedGoods).values([{
                 productId: item.productId,
                 batchNumber: `${item.batchNumber || 'RETURN'}-DAMAGED`,
                 productionDate: new Date().toISOString(),
-                quantity: item.quantityReturned,
+                quantity: processQty,
                 qualityStatus: 'rejected',
                 remarks: `Returned goods - Damaged/Scrapped`,
                 createdBy: req.user?.id,
               }]);
               
-              // Generate scrap number with atomic sequence (use COALESCE + MAX + FOR UPDATE pattern)
+              // Generate scrap number with atomic sequence
               const today = format(new Date(), 'yyyyMMdd');
               const scrapCountResult = await tx.execute(sql`
                 SELECT COALESCE(MAX(CAST(SUBSTRING(scrap_number FROM 15 FOR 3) AS INTEGER)), 0) + 1 as next_seq
@@ -8991,7 +9008,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const scrapNumber = `SCRAP-${today}-${String(seq).padStart(3, '0')}`;
               
               // Calculate costs with robust fallback to prevent NaN
-              // Priority: item.unitCost > 60% of selling price > product cost (if exists) > 0
               let unitCost = 0;
               const sellingPrice = item.unitPrice || 0;
               
@@ -9003,8 +9019,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 unitCost = product.costPrice;
               }
               
-              const totalCostValue = unitCost * item.quantityReturned;
-              const totalSellingValue = sellingPrice * item.quantityReturned;
+              const totalCostValue = unitCost * processQty;
+              const totalSellingValue = sellingPrice * processQty;
               
               // Create scrap inventory record for loss tracking
               await tx.insert(scrapInventory).values({
@@ -9016,25 +9032,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 productId: item.productId,
                 productName: product.name,
                 batchNumber: item.batchNumber,
-                quantity: item.quantityReturned,
+                quantity: processQty,
                 unitCost,
                 sellingPrice,
                 totalCostValue,
                 totalSellingValue,
-                lossAmount: totalCostValue, // Loss is the cost value
+                lossAmount: totalCostValue,
                 damageReason: inspection.damageReason || item.damageReason || 'other',
                 conditionDescription: inspection.conditionDescription || item.remarks,
                 damageEvidenceUrl: item.damageEvidenceUrl,
-                approvalStatus: 'pending', // Requires approval
+                approvalStatus: 'pending',
                 createdBy: req.user?.id,
               });
               
-              console.log(`[INVENTORY] Recorded ${item.quantityReturned} damaged units of product ${item.productId} (Sales Return)`);
+              console.log(`[INVENTORY] Recorded ${processQty} damaged units of product ${item.productId} (Sales Return)`);
               console.log(`[SCRAP] Created scrap record ${scrapNumber} with loss amount ${totalCostValue / 100} INR`);
             } else {
-              console.warn(`[INVENTORY] Skipping damaged goods record for product ${item.productId} - product not found in master data (Vyapaar import or deleted product)`);
+              console.warn(`[INVENTORY] Skipping damaged goods record for product ${item.productId} - product not found in master data`);
             }
           }
+        }
+        
+        // Update salesReturnItems with the primary disposition (or 'mixed' if multiple)
+        for (const [itemId, dispositions] of Object.entries(itemDispositions)) {
+          const uniqueDispositions = [...new Set(dispositions)];
+          const primaryDisposition = uniqueDispositions.length > 1 ? 'mixed' : uniqueDispositions[0];
+          const hasScrap = dispositions.includes('scrap');
+          const hasGood = dispositions.includes('restock');
+          const condition = hasScrap && hasGood ? 'mixed' : (hasScrap ? 'damaged' : 'good');
+          
+          await tx.update(salesReturnItems)
+            .set({
+              conditionOnReceipt: condition,
+              disposition: primaryDisposition,
+              updatedAt: new Date().toISOString(),
+            })
+            .where(eq(salesReturnItems.id, itemId));
         }
         
         // Determine credit note handling: BOTH same month AND within 30 days required for auto
