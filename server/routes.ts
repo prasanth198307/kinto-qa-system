@@ -9063,18 +9063,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               console.warn(`[INVENTORY] Skipping repack for product ${item.productId} - product not found in master data`);
             }
           } else if (inspection.disposition === 'scrap' || inspection.condition === 'damaged') {
-            // Create damaged inventory record AND scrap inventory record for loss tracking
+            // Create scrap inventory record ONLY - damaged items should NOT go to finished goods
             if (product) {
-              // Create rejected finished goods record
-              await tx.insert(finishedGoods).values([{
-                productId: item.productId,
-                batchNumber: `${item.batchNumber || 'RETURN'}-DAMAGED`,
-                productionDate: new Date().toISOString(),
-                quantity: processQty,
-                qualityStatus: 'rejected',
-                remarks: `Returned goods - Damaged/Scrapped`,
-                createdBy: req.user?.id,
-              }]);
+              console.log(`[INVENTORY] Recorded ${processQty} damaged units of product ${item.productId} (Sales Return)`);
               
               // Generate scrap number with atomic sequence
               const today = format(new Date(), 'yyyyMMdd');
