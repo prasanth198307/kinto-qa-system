@@ -478,7 +478,15 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate('/?tab=invoices')}
+            onClick={() => {
+              // Check if we came from cancelled invoices
+              const params = new URLSearchParams(window.location.search);
+              if (params.get('from') === 'cancelled') {
+                navigate('/cancelled-invoices');
+              } else {
+                navigate('/?tab=invoices');
+              }
+            }}
             data-testid="button-back-to-dashboard"
           >
             <ArrowLeft className="w-5 h-5" />
