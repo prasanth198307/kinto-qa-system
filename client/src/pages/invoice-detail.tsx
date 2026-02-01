@@ -480,8 +480,8 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
             size="icon"
             onClick={() => {
               // Get current location/URL to check for tab param
-              const params = new URLSearchParams(window.location.search);
-              const from = params.get('from');
+              const searchParams = new URLSearchParams(window.location.search);
+              const from = searchParams.get('from');
               
               if (from === 'cancelled') {
                 navigate('/cancelled-invoices');
@@ -492,7 +492,7 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
               } else if (from === 'vendor_history') {
                 navigate('/vendor-history');
               } else {
-                // Return to dashboard with invoices tab active
+                // Standard return to dashboard with invoices tab
                 navigate('/?tab=invoices');
               }
             }}
