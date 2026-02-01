@@ -101,6 +101,8 @@ const endpointToScreenKey: Record<string, string> = {
   '/api/reports': 'reports',
   '/api/reports/finished-goods': 'report_finished_goods',
   '/api/reports/monthly-sales': 'report_monthly_sales',
+  '/api/reports/sales-returns-summary': 'report_sales_returns',
+  '/api/scrap-inventory/report': 'report_scrap',
   '/api/gst-reports': 'report_gst',
   
   // Quality & Checklists
@@ -8020,10 +8022,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let batchMap: Record<string, string[]> = {};
       if (gatepass) {
         // Use LEFT JOIN to include items even if finished_goods record is missing
+        // For cancelled/reissued invoices, originalBatchNumber contains the actual batch on the bottle
         const gatepassItemsData = await db.select({
           productId: gatepassItems.productId,
           finishedGoodId: gatepassItems.finishedGoodId,
-          batchNumber: finishedGoods.batchNumber
+          batchNumber: finishedGoods.batchNumber,
+          originalBatchNumber: finishedGoods.originalBatchNumber
         })
         .from(gatepassItems)
         .leftJoin(finishedGoods, eq(gatepassItems.finishedGoodId, finishedGoods.id))
@@ -8034,18 +8038,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         console.log(`[BATCH] Gatepass ${gatepass.id}: Found ${gatepassItemsData.length} gatepass items`);
         gatepassItemsData.forEach((item, i) => {
-          console.log(`[BATCH] Item ${i}: productId=${item.productId}, finishedGoodId=${item.finishedGoodId}, batchNumber=${item.batchNumber}`);
+          // Use originalBatchNumber if available (for cancelled/reissued items), otherwise use batchNumber
+          const effectiveBatch = item.originalBatchNumber || item.batchNumber;
+          console.log(`[BATCH] Item ${i}: productId=${item.productId}, finishedGoodId=${item.finishedGoodId}, batchNumber=${item.batchNumber}, originalBatchNumber=${item.originalBatchNumber}, effective=${effectiveBatch}`);
         });
         
         // Create a map of productId to array of unique batchNumbers
+        // Prefer originalBatchNumber for cancelled/reissued invoice items
         for (const item of gatepassItemsData) {
-          if (item.productId && item.batchNumber) {
+          const effectiveBatch = item.originalBatchNumber || item.batchNumber;
+          if (item.productId && effectiveBatch) {
             if (!batchMap[item.productId]) {
               batchMap[item.productId] = [];
             }
             // Only add if not already in array (unique batches)
-            if (!batchMap[item.productId].includes(item.batchNumber)) {
-              batchMap[item.productId].push(item.batchNumber);
+            if (!batchMap[item.productId].includes(effectiveBatch)) {
+              batchMap[item.productId].push(effectiveBatch);
             }
           }
         }
@@ -9552,6 +9560,121 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error generating scrap report:", error);
       res.status(500).json({ message: "Failed to generate scrap report" });
+    }
+  });
+
+  // Get sales returns summary report with disposition breakdown
+  app.get('/api/reports/sales-returns-summary', requireRole('admin', 'Admin', 'manager', 'Manager', 'AccountsManager'), async (req: any, res) => {
+    try {
+      const { month, year, dateFrom, dateTo } = req.query;
+      
+      let startDate: Date;
+      let endDate: Date;
+      
+      if (dateFrom && dateTo) {
+        startDate = new Date(dateFrom as string);
+        endDate = new Date(dateTo as string);
+        endDate.setHours(23, 59, 59, 999);
+      } else {
+        const targetMonth = month ? parseInt(month as string) : new Date().getMonth() + 1;
+        const targetYear = year ? parseInt(year as string) : new Date().getFullYear();
+        startDate = new Date(targetYear, targetMonth - 1, 1);
+        endDate = new Date(targetYear, targetMonth, 0, 23, 59, 59);
+      }
+      
+      // Get all sales returns in the date range
+      const returns = await db.select()
+        .from(salesReturns)
+        .where(and(
+          eq(salesReturns.recordStatus, 1),
+          gte(salesReturns.returnDate, startDate.toISOString()),
+          lte(salesReturns.returnDate, endDate.toISOString())
+        ))
+        .orderBy(desc(salesReturns.returnDate));
+      
+      // Get all return items for these returns
+      const returnIds = returns.map(r => r.id);
+      let allItems: any[] = [];
+      
+      if (returnIds.length > 0) {
+        allItems = await db.select({
+          item: salesReturnItems,
+          productName: products.name,
+        })
+        .from(salesReturnItems)
+        .leftJoin(products, eq(salesReturnItems.productId, products.id))
+        .where(inArray(salesReturnItems.returnId, returnIds));
+      }
+      
+      // Calculate summary
+      const summary = {
+        totalReturns: returns.length,
+        totalItems: allItems.length,
+        totalQuantityReturned: allItems.reduce((sum, r) => sum + (r.item.quantityReturned || 0), 0),
+        totalCreditAmount: allItems.reduce((sum, r) => sum + (r.item.creditAmount || 0), 0),
+        byStatus: {
+          pending: returns.filter(r => r.status === 'pending').length,
+          received: returns.filter(r => r.status === 'received').length,
+          inspected: returns.filter(r => r.status === 'inspected').length,
+          completed: returns.filter(r => r.status === 'completed').length,
+        },
+        byDisposition: {
+          restock: { count: 0, quantity: 0 },
+          scrap: { count: 0, quantity: 0 },
+          repack: { count: 0, quantity: 0 },
+          pending: { count: 0, quantity: 0 },
+        } as Record<string, { count: number; quantity: number }>,
+        byProduct: {} as Record<string, { productName: string; quantity: number; creditAmount: number }>,
+      };
+      
+      // Group by disposition
+      allItems.forEach(r => {
+        const item = r.item;
+        const disposition = item.disposition || 'pending';
+        if (!summary.byDisposition[disposition]) {
+          summary.byDisposition[disposition] = { count: 0, quantity: 0 };
+        }
+        summary.byDisposition[disposition].count++;
+        summary.byDisposition[disposition].quantity += item.quantityReturned || 0;
+        
+        // Group by product
+        const productId = item.productId;
+        if (!summary.byProduct[productId]) {
+          summary.byProduct[productId] = { productName: r.productName || 'Unknown', quantity: 0, creditAmount: 0 };
+        }
+        summary.byProduct[productId].quantity += item.quantityReturned || 0;
+        summary.byProduct[productId].creditAmount += item.creditAmount || 0;
+      });
+      
+      // Get customer names for returns
+      const vendorIds = [...new Set(returns.map(r => r.vendorId).filter(Boolean))];
+      let vendorMap: Record<string, string> = {};
+      if (vendorIds.length > 0) {
+        const vendorData = await db.select({ id: vendors.id, name: vendors.name })
+          .from(vendors)
+          .where(inArray(vendors.id, vendorIds as string[]));
+        vendorData.forEach(v => { vendorMap[v.id] = v.name; });
+      }
+      
+      // Enhance return records with customer name
+      const returnsWithDetails = returns.map(r => ({
+        ...r,
+        customerName: r.vendorId ? vendorMap[r.vendorId] || 'Unknown' : 'Unknown',
+        items: allItems.filter(item => item.item.returnId === r.id).map(item => ({
+          ...item.item,
+          productName: item.productName,
+        })),
+      }));
+      
+      res.json({
+        dateFrom: startDate.toISOString(),
+        dateTo: endDate.toISOString(),
+        summary,
+        records: returnsWithDetails,
+      });
+    } catch (error) {
+      console.error("Error generating sales returns summary:", error);
+      res.status(500).json({ message: "Failed to generate sales returns summary" });
     }
   });
 

@@ -26,7 +26,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { FileText, Package, Receipt, ShoppingCart, Wrench, Filter, FileCheck2, Download, Wallet, Banknote, CreditCard, Check, ChevronsUpDown, Boxes, Settings } from "lucide-react";
+import { FileText, Package, Receipt, ShoppingCart, Wrench, Filter, FileCheck2, Download, Wallet, Banknote, CreditCard, Check, ChevronsUpDown, Boxes, Settings, Trash2, Undo2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import type { Gatepass, Invoice, RawMaterialIssuance, PurchaseOrder, PMExecution, InvoicePayment } from "@shared/schema";
@@ -883,11 +883,13 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
     payments: canAccessReportTab('report_payments'),
     'finished-goods': canAccessReportTab('report_finished_goods'),
     'monthly-sales': canAccessReportTab('report_monthly_sales'),
+    'scrap': canAccessReportTab('report_scrap'),
+    'sales-returns': canAccessReportTab('report_sales_returns'),
   };
   
   // Find first accessible tab for default
   const getFirstAccessibleTab = () => {
-    const tabs = ['gatepasses', 'invoices', 'issuances', 'purchase-orders', 'maintenance', 'machines', 'expenses', 'cash-register', 'gst-reports', 'payments', 'finished-goods', 'monthly-sales'];
+    const tabs = ['gatepasses', 'invoices', 'issuances', 'purchase-orders', 'maintenance', 'machines', 'expenses', 'cash-register', 'gst-reports', 'payments', 'finished-goods', 'monthly-sales', 'scrap', 'sales-returns'];
     for (const tab of tabs) {
       if (tabPermissions[tab as keyof typeof tabPermissions]) return tab;
     }
@@ -1713,6 +1715,18 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
             <TabsTrigger value="monthly-sales" data-testid="tab-monthly-sales">
               <Receipt className="w-4 h-4 mr-2" />
               Monthly Sales
+            </TabsTrigger>
+          )}
+          {tabPermissions.scrap && (
+            <TabsTrigger value="scrap" data-testid="tab-scrap">
+              <Trash2 className="w-4 h-4 mr-2" />
+              Scrap Report
+            </TabsTrigger>
+          )}
+          {tabPermissions['sales-returns'] && (
+            <TabsTrigger value="sales-returns" data-testid="tab-sales-returns">
+              <Undo2 className="w-4 h-4 mr-2" />
+              Sales Returns
             </TabsTrigger>
           )}
         </TabsList>
@@ -3273,8 +3287,738 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
         <TabsContent value="monthly-sales">
           <MonthlySalesReportContent />
         </TabsContent>
+
+        {/* Scrap Report Tab */}
+        <TabsContent value="scrap">
+          <ScrapReportContent />
+        </TabsContent>
+
+        {/* Sales Returns Report Tab */}
+        <TabsContent value="sales-returns">
+          <SalesReturnsReportContent />
+        </TabsContent>
       </Tabs>
       </div>
     </>
+  );
+}
+
+// Scrap Report Content Component
+function ScrapReportContent() {
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [reportGenerated, setReportGenerated] = useState(false);
+
+  const { data: reportData, isLoading, refetch, isFetching } = useQuery<{
+    month: number;
+    year: number;
+    summary: {
+      totalRecords: number;
+      totalQuantity: number;
+      totalCostValue: number;
+      totalSellingValue: number;
+      totalLossAmount: number;
+      totalGstReversal: number;
+      totalDisposalValue: number;
+      netLoss: number;
+      byApprovalStatus: { pending: number; approved: number; rejected: number };
+      byDamageReason: Record<string, { count: number; lossAmount: number }>;
+      byProduct: Record<string, { productName: string; count: number; quantity: number; lossAmount: number }>;
+    };
+    records: any[];
+  }>({
+    queryKey: ['/api/scrap-inventory/report', { month: selectedMonth, year: selectedYear }],
+    enabled: false,
+  });
+
+  const handleGenerateReport = () => {
+    refetch();
+    setReportGenerated(true);
+  };
+
+  const handleExportExcel = async () => {
+    if (!reportData) return;
+    const XLSX = await import('xlsx');
+    const wb = XLSX.utils.book_new();
+    
+    const excelData: any[][] = [
+      ['Scrap Inventory Report'],
+      [`Period: ${format(new Date(selectedYear, selectedMonth - 1, 1), 'MMMM yyyy')}`],
+      ['Generated:', format(new Date(), 'dd MMM yyyy HH:mm')],
+      [''],
+      ['Summary'],
+      ['Total Records:', reportData.summary.totalRecords],
+      ['Total Quantity:', reportData.summary.totalQuantity],
+      ['Total Cost Value:', `₹${(reportData.summary.totalCostValue / 100).toFixed(2)}`],
+      ['Total Loss Amount:', `₹${(reportData.summary.totalLossAmount / 100).toFixed(2)}`],
+      ['GST Reversal:', `₹${(reportData.summary.totalGstReversal / 100).toFixed(2)}`],
+      ['Disposal Recovery:', `₹${(reportData.summary.totalDisposalValue / 100).toFixed(2)}`],
+      ['Net Loss:', `₹${(reportData.summary.netLoss / 100).toFixed(2)}`],
+      [''],
+      ['Breakdown by Damage Reason'],
+      ['Reason', 'Count', 'Loss Amount'],
+    ];
+    
+    Object.entries(reportData.summary.byDamageReason).forEach(([reason, data]) => {
+      excelData.push([reason, data.count, `₹${(data.lossAmount / 100).toFixed(2)}`]);
+    });
+    
+    excelData.push(['']);
+    excelData.push(['Breakdown by Product']);
+    excelData.push(['Product', 'Count', 'Quantity', 'Loss Amount']);
+    
+    Object.entries(reportData.summary.byProduct).forEach(([_, data]) => {
+      excelData.push([data.productName, data.count, data.quantity, `₹${(data.lossAmount / 100).toFixed(2)}`]);
+    });
+    
+    excelData.push(['']);
+    excelData.push(['Detailed Records']);
+    excelData.push(['Scrap #', 'Date', 'Product', 'Batch', 'Qty', 'Reason', 'Status', 'Loss Amount']);
+    
+    reportData.records.forEach(r => {
+      excelData.push([
+        r.scrapNumber,
+        format(new Date(r.scrapDate), 'dd MMM yyyy'),
+        r.productName,
+        r.batchNumber || '-',
+        r.quantity,
+        r.damageReason || '-',
+        r.approvalStatus,
+        `₹${((r.lossAmount || 0) / 100).toFixed(2)}`,
+      ]);
+    });
+    
+    const ws = XLSX.utils.aoa_to_sheet(excelData);
+    XLSX.utils.book_append_sheet(wb, ws, 'Scrap Report');
+    XLSX.writeFile(wb, `scrap-report-${selectedMonth}-${selectedYear}.xlsx`);
+  };
+
+  const handlePrint = () => {
+    if (!reportData) return;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Scrap Report - ${format(new Date(selectedYear, selectedMonth - 1, 1), 'MMMM yyyy')}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; }
+          h1 { text-align: center; }
+          .summary { background: #f5f5f5; padding: 15px; margin: 20px 0; border-radius: 8px; }
+          .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+          .summary-item { text-align: center; }
+          .summary-value { font-size: 1.5em; font-weight: bold; }
+          .summary-label { color: #666; font-size: 0.9em; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+          th { background: #f0f0f0; }
+          .text-right { text-align: right; }
+          @media print { .no-print { display: none; } }
+        </style>
+      </head>
+      <body>
+        <h1>Scrap Inventory Report</h1>
+        <p style="text-align: center;">${format(new Date(selectedYear, selectedMonth - 1, 1), 'MMMM yyyy')}</p>
+        
+        <div class="summary">
+          <div class="summary-grid">
+            <div class="summary-item">
+              <div class="summary-value">${reportData.summary.totalRecords}</div>
+              <div class="summary-label">Total Records</div>
+            </div>
+            <div class="summary-item">
+              <div class="summary-value">${reportData.summary.totalQuantity}</div>
+              <div class="summary-label">Total Quantity</div>
+            </div>
+            <div class="summary-item">
+              <div class="summary-value">₹${(reportData.summary.netLoss / 100).toFixed(2)}</div>
+              <div class="summary-label">Net Loss</div>
+            </div>
+          </div>
+        </div>
+        
+        <h3>Breakdown by Damage Reason</h3>
+        <table>
+          <tr><th>Reason</th><th class="text-right">Count</th><th class="text-right">Loss Amount</th></tr>
+          ${Object.entries(reportData.summary.byDamageReason).map(([reason, data]) => 
+            `<tr><td>${reason}</td><td class="text-right">${data.count}</td><td class="text-right">₹${(data.lossAmount / 100).toFixed(2)}</td></tr>`
+          ).join('')}
+        </table>
+        
+        <h3>Breakdown by Product</h3>
+        <table>
+          <tr><th>Product</th><th class="text-right">Count</th><th class="text-right">Quantity</th><th class="text-right">Loss Amount</th></tr>
+          ${Object.entries(reportData.summary.byProduct).map(([_, data]) => 
+            `<tr><td>${data.productName}</td><td class="text-right">${data.count}</td><td class="text-right">${data.quantity}</td><td class="text-right">₹${(data.lossAmount / 100).toFixed(2)}</td></tr>`
+          ).join('')}
+        </table>
+        
+        <button class="no-print" onclick="window.print()" style="margin-top: 20px; padding: 10px 20px;">Print Report</button>
+      </body>
+      </html>
+    `;
+    
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
+
+  const months = [
+    { value: 1, label: 'January' }, { value: 2, label: 'February' },
+    { value: 3, label: 'March' }, { value: 4, label: 'April' },
+    { value: 5, label: 'May' }, { value: 6, label: 'June' },
+    { value: 7, label: 'July' }, { value: 8, label: 'August' },
+    { value: 9, label: 'September' }, { value: 10, label: 'October' },
+    { value: 11, label: 'November' }, { value: 12, label: 'December' },
+  ];
+
+  const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Scrap Inventory Report</CardTitle>
+        <CardDescription>Monthly loss calculation from damaged/scrapped goods</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex flex-wrap items-end gap-4">
+          <div className="space-y-1">
+            <Label>Month</Label>
+            <Select value={selectedMonth.toString()} onValueChange={(v) => setSelectedMonth(parseInt(v))}>
+              <SelectTrigger className="w-[140px]" data-testid="select-scrap-month">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {months.map((m) => (
+                  <SelectItem key={m.value} value={m.value.toString()}>{m.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label>Year</Label>
+            <Select value={selectedYear.toString()} onValueChange={(v) => setSelectedYear(parseInt(v))}>
+              <SelectTrigger className="w-[100px]" data-testid="select-scrap-year">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {years.map((y) => (
+                  <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button onClick={handleGenerateReport} disabled={isLoading || isFetching} data-testid="button-generate-scrap-report">
+            {isFetching ? 'Loading...' : 'Generate Report'}
+          </Button>
+          {reportData && (
+            <>
+              <Button variant="outline" onClick={handleExportExcel} data-testid="button-export-scrap-excel">
+                <Download className="w-4 h-4 mr-2" />
+                Export Excel
+              </Button>
+              <Button variant="outline" onClick={handlePrint} data-testid="button-print-scrap">
+                <FileText className="w-4 h-4 mr-2" />
+                Print
+              </Button>
+            </>
+          )}
+        </div>
+
+        {reportGenerated && reportData && (
+          <div className="space-y-6">
+            {/* Summary Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Card>
+                <CardContent className="pt-4">
+                  <div className="text-2xl font-bold">{reportData.summary.totalRecords}</div>
+                  <div className="text-sm text-muted-foreground">Total Records</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4">
+                  <div className="text-2xl font-bold">{reportData.summary.totalQuantity}</div>
+                  <div className="text-sm text-muted-foreground">Total Quantity</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4">
+                  <div className="text-2xl font-bold text-red-600">₹{(reportData.summary.totalLossAmount / 100).toFixed(2)}</div>
+                  <div className="text-sm text-muted-foreground">Total Loss</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4">
+                  <div className="text-2xl font-bold text-orange-600">₹{(reportData.summary.netLoss / 100).toFixed(2)}</div>
+                  <div className="text-sm text-muted-foreground">Net Loss</div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* By Approval Status */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Approval Status Breakdown</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-4">
+                  <Badge variant="secondary">Pending: {reportData.summary.byApprovalStatus.pending}</Badge>
+                  <Badge variant="default">Approved: {reportData.summary.byApprovalStatus.approved}</Badge>
+                  <Badge variant="destructive">Rejected: {reportData.summary.byApprovalStatus.rejected}</Badge>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* By Damage Reason */}
+            {Object.keys(reportData.summary.byDamageReason).length > 0 && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Breakdown by Damage Reason</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Reason</TableHead>
+                        <TableHead className="text-right">Count</TableHead>
+                        <TableHead className="text-right">Loss Amount</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {Object.entries(reportData.summary.byDamageReason).map(([reason, data]) => (
+                        <TableRow key={reason}>
+                          <TableCell className="capitalize">{reason.replace(/_/g, ' ')}</TableCell>
+                          <TableCell className="text-right">{data.count}</TableCell>
+                          <TableCell className="text-right text-red-600">₹{(data.lossAmount / 100).toFixed(2)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* By Product */}
+            {Object.keys(reportData.summary.byProduct).length > 0 && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Breakdown by Product</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Product</TableHead>
+                        <TableHead className="text-right">Count</TableHead>
+                        <TableHead className="text-right">Quantity</TableHead>
+                        <TableHead className="text-right">Loss Amount</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {Object.entries(reportData.summary.byProduct).map(([id, data]) => (
+                        <TableRow key={id}>
+                          <TableCell>{data.productName}</TableCell>
+                          <TableCell className="text-right">{data.count}</TableCell>
+                          <TableCell className="text-right">{data.quantity}</TableCell>
+                          <TableCell className="text-right text-red-600">₹{(data.lossAmount / 100).toFixed(2)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Detailed Records */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Detailed Records ({reportData.records.length})</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Scrap #</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Product</TableHead>
+                      <TableHead>Batch</TableHead>
+                      <TableHead className="text-right">Qty</TableHead>
+                      <TableHead>Reason</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Loss</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {reportData.records.map((r) => (
+                      <TableRow key={r.id}>
+                        <TableCell className="font-mono text-sm">{r.scrapNumber}</TableCell>
+                        <TableCell>{format(new Date(r.scrapDate), 'dd MMM yyyy')}</TableCell>
+                        <TableCell>{r.productName}</TableCell>
+                        <TableCell><Badge variant="outline">{r.batchNumber || '-'}</Badge></TableCell>
+                        <TableCell className="text-right">{r.quantity}</TableCell>
+                        <TableCell className="capitalize">{(r.damageReason || '-').replace(/_/g, ' ')}</TableCell>
+                        <TableCell>
+                          <Badge variant={r.approvalStatus === 'approved' ? 'default' : r.approvalStatus === 'rejected' ? 'destructive' : 'secondary'}>
+                            {r.approvalStatus}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right text-red-600">₹{((r.lossAmount || 0) / 100).toFixed(2)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// Sales Returns Report Content Component
+function SalesReturnsReportContent() {
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [reportGenerated, setReportGenerated] = useState(false);
+  
+  const { data: reportData, isLoading, refetch, isFetching } = useQuery<{
+    dateFrom: string;
+    dateTo: string;
+    summary: {
+      totalReturns: number;
+      totalItems: number;
+      totalQuantityReturned: number;
+      totalCreditAmount: number;
+      byStatus: { pending: number; received: number; inspected: number; completed: number };
+      byDisposition: Record<string, { count: number; quantity: number }>;
+      byProduct: Record<string, { productName: string; quantity: number; creditAmount: number }>;
+    };
+    records: any[];
+  }>({
+    queryKey: ['/api/reports/sales-returns-summary', { dateFrom, dateTo }],
+    enabled: false,
+  });
+
+  const handleGenerateReport = () => {
+    if (!dateFrom || !dateTo) return;
+    refetch();
+    setReportGenerated(true);
+  };
+
+  const handleExportExcel = async () => {
+    if (!reportData) return;
+    const XLSX = await import('xlsx');
+    const wb = XLSX.utils.book_new();
+    
+    const excelData: any[][] = [
+      ['Sales Returns Summary Report'],
+      [`Period: ${format(new Date(dateFrom), 'dd MMM yyyy')} - ${format(new Date(dateTo), 'dd MMM yyyy')}`],
+      ['Generated:', format(new Date(), 'dd MMM yyyy HH:mm')],
+      [''],
+      ['Summary'],
+      ['Total Returns:', reportData.summary.totalReturns],
+      ['Total Items:', reportData.summary.totalItems],
+      ['Total Quantity:', reportData.summary.totalQuantityReturned],
+      ['Total Credit Amount:', `₹${(reportData.summary.totalCreditAmount / 100).toFixed(2)}`],
+      [''],
+      ['Disposition Breakdown'],
+      ['Disposition', 'Count', 'Quantity'],
+    ];
+    
+    Object.entries(reportData.summary.byDisposition).forEach(([disposition, data]) => {
+      excelData.push([disposition, data.count, data.quantity]);
+    });
+    
+    excelData.push(['']);
+    excelData.push(['Product Breakdown']);
+    excelData.push(['Product', 'Quantity', 'Credit Amount']);
+    
+    Object.entries(reportData.summary.byProduct).forEach(([_, data]) => {
+      excelData.push([data.productName, data.quantity, `₹${(data.creditAmount / 100).toFixed(2)}`]);
+    });
+    
+    excelData.push(['']);
+    excelData.push(['Detailed Records']);
+    excelData.push(['Return #', 'Date', 'Customer', 'Status', 'Items', 'Total Credit']);
+    
+    reportData.records.forEach(r => {
+      const totalCredit = r.items?.reduce((sum: number, item: any) => sum + (item.creditAmount || 0), 0) || 0;
+      excelData.push([
+        r.returnNumber,
+        format(new Date(r.returnDate), 'dd MMM yyyy'),
+        r.customerName,
+        r.status,
+        r.items?.length || 0,
+        `₹${(totalCredit / 100).toFixed(2)}`,
+      ]);
+    });
+    
+    const ws = XLSX.utils.aoa_to_sheet(excelData);
+    XLSX.utils.book_append_sheet(wb, ws, 'Sales Returns Summary');
+    XLSX.writeFile(wb, `sales-returns-summary-${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+  };
+
+  const handlePrint = () => {
+    if (!reportData) return;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Sales Returns Summary</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; }
+          h1 { text-align: center; }
+          .summary { background: #f5f5f5; padding: 15px; margin: 20px 0; border-radius: 8px; }
+          .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+          .summary-item { text-align: center; }
+          .summary-value { font-size: 1.5em; font-weight: bold; }
+          .summary-label { color: #666; font-size: 0.9em; }
+          .disposition-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 20px 0; }
+          .disposition-card { background: #f0f0f0; padding: 15px; border-radius: 8px; text-align: center; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+          th { background: #f0f0f0; }
+          .text-right { text-align: right; }
+          @media print { .no-print { display: none; } }
+        </style>
+      </head>
+      <body>
+        <h1>Sales Returns Summary Report</h1>
+        <p style="text-align: center;">${format(new Date(dateFrom), 'dd MMM yyyy')} - ${format(new Date(dateTo), 'dd MMM yyyy')}</p>
+        
+        <div class="summary">
+          <div class="summary-grid">
+            <div class="summary-item">
+              <div class="summary-value">${reportData.summary.totalReturns}</div>
+              <div class="summary-label">Total Returns</div>
+            </div>
+            <div class="summary-item">
+              <div class="summary-value">${reportData.summary.totalItems}</div>
+              <div class="summary-label">Total Items</div>
+            </div>
+            <div class="summary-item">
+              <div class="summary-value">${reportData.summary.totalQuantityReturned}</div>
+              <div class="summary-label">Total Quantity</div>
+            </div>
+            <div class="summary-item">
+              <div class="summary-value">₹${(reportData.summary.totalCreditAmount / 100).toFixed(2)}</div>
+              <div class="summary-label">Total Credit</div>
+            </div>
+          </div>
+        </div>
+        
+        <h3>Disposition Breakdown</h3>
+        <div class="disposition-grid">
+          ${Object.entries(reportData.summary.byDisposition).map(([disposition, data]) => `
+            <div class="disposition-card">
+              <div style="font-size: 1.5em; font-weight: bold;">${data.quantity}</div>
+              <div style="text-transform: capitalize;">${disposition}</div>
+              <div style="color: #666; font-size: 0.8em;">${data.count} items</div>
+            </div>
+          `).join('')}
+        </div>
+        
+        <h3>By Product</h3>
+        <table>
+          <tr><th>Product</th><th class="text-right">Quantity</th><th class="text-right">Credit Amount</th></tr>
+          ${Object.entries(reportData.summary.byProduct).map(([_, data]) => 
+            `<tr><td>${data.productName}</td><td class="text-right">${data.quantity}</td><td class="text-right">₹${(data.creditAmount / 100).toFixed(2)}</td></tr>`
+          ).join('')}
+        </table>
+        
+        <button class="no-print" onclick="window.print()" style="margin-top: 20px; padding: 10px 20px;">Print Report</button>
+      </body>
+      </html>
+    `;
+    
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Sales Returns Summary Report</CardTitle>
+        <CardDescription>Breakdown of returns by disposition (restock/scrap/repack)</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex flex-wrap items-end gap-4">
+          <div className="space-y-1">
+            <Label>From Date</Label>
+            <Input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="w-[160px]"
+              data-testid="input-returns-date-from"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label>To Date</Label>
+            <Input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="w-[160px]"
+              data-testid="input-returns-date-to"
+            />
+          </div>
+          <Button onClick={handleGenerateReport} disabled={!dateFrom || !dateTo || isLoading || isFetching} data-testid="button-generate-returns-report">
+            {isFetching ? 'Loading...' : 'Generate Report'}
+          </Button>
+          {reportData && (
+            <>
+              <Button variant="outline" onClick={handleExportExcel} data-testid="button-export-returns-excel">
+                <Download className="w-4 h-4 mr-2" />
+                Export Excel
+              </Button>
+              <Button variant="outline" onClick={handlePrint} data-testid="button-print-returns">
+                <FileText className="w-4 h-4 mr-2" />
+                Print
+              </Button>
+            </>
+          )}
+        </div>
+
+        {reportGenerated && reportData && (
+          <div className="space-y-6">
+            {/* Summary Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Card>
+                <CardContent className="pt-4">
+                  <div className="text-2xl font-bold">{reportData.summary.totalReturns}</div>
+                  <div className="text-sm text-muted-foreground">Total Returns</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4">
+                  <div className="text-2xl font-bold">{reportData.summary.totalItems}</div>
+                  <div className="text-sm text-muted-foreground">Total Items</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4">
+                  <div className="text-2xl font-bold">{reportData.summary.totalQuantityReturned}</div>
+                  <div className="text-sm text-muted-foreground">Total Quantity</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4">
+                  <div className="text-2xl font-bold">₹{(reportData.summary.totalCreditAmount / 100).toFixed(2)}</div>
+                  <div className="text-sm text-muted-foreground">Total Credit</div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Status Breakdown */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Return Status Breakdown</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="secondary">Pending: {reportData.summary.byStatus.pending}</Badge>
+                  <Badge variant="outline">Received: {reportData.summary.byStatus.received}</Badge>
+                  <Badge variant="default">Inspected: {reportData.summary.byStatus.inspected}</Badge>
+                  <Badge className="bg-green-600">Completed: {reportData.summary.byStatus.completed}</Badge>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Disposition Breakdown */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Disposition Breakdown</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {Object.entries(reportData.summary.byDisposition).map(([disposition, data]) => (
+                    <div key={disposition} className="text-center p-4 bg-muted rounded-lg">
+                      <div className="text-2xl font-bold">{data.quantity}</div>
+                      <div className="text-sm capitalize">{disposition}</div>
+                      <div className="text-xs text-muted-foreground">{data.count} items</div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* By Product */}
+            {Object.keys(reportData.summary.byProduct).length > 0 && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Breakdown by Product</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Product</TableHead>
+                        <TableHead className="text-right">Quantity</TableHead>
+                        <TableHead className="text-right">Credit Amount</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {Object.entries(reportData.summary.byProduct).map(([id, data]) => (
+                        <TableRow key={id}>
+                          <TableCell>{data.productName}</TableCell>
+                          <TableCell className="text-right">{data.quantity}</TableCell>
+                          <TableCell className="text-right">₹{(data.creditAmount / 100).toFixed(2)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Detailed Records */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Return Records ({reportData.records.length})</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Return #</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Customer</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Items</TableHead>
+                      <TableHead className="text-right">Credit</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {reportData.records.map((r) => {
+                      const totalCredit = r.items?.reduce((sum: number, item: any) => sum + (item.creditAmount || 0), 0) || 0;
+                      return (
+                        <TableRow key={r.id}>
+                          <TableCell className="font-mono text-sm">{r.returnNumber}</TableCell>
+                          <TableCell>{format(new Date(r.returnDate), 'dd MMM yyyy')}</TableCell>
+                          <TableCell>{r.customerName}</TableCell>
+                          <TableCell>
+                            <Badge variant={r.status === 'completed' ? 'default' : 'secondary'}>
+                              {r.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">{r.items?.length || 0}</TableCell>
+                          <TableCell className="text-right">₹{(totalCredit / 100).toFixed(2)}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
