@@ -9603,8 +9603,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (returnIds.length > 0) {
         allItems = await db.select({
-          item: salesReturnItems,
-          productName: products.name,
+          id: salesReturnItems.id,
+          returnId: salesReturnItems.returnId,
+          productId: salesReturnItems.productId,
+          quantityReturned: salesReturnItems.quantityReturned,
+          disposition: salesReturnItems.disposition,
+          creditAmount: salesReturnItems.creditAmount,
+          productName: products.productName,
         })
         .from(salesReturnItems)
         .leftJoin(products, eq(salesReturnItems.productId, products.id))
@@ -9615,8 +9620,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const summary = {
         totalReturns: returns.length,
         totalItems: allItems.length,
-        totalQuantityReturned: allItems.reduce((sum, r) => sum + (r.item.quantityReturned || 0), 0),
-        totalCreditAmount: allItems.reduce((sum, r) => sum + (r.item.creditAmount || 0), 0),
+        totalQuantityReturned: allItems.reduce((sum, r) => sum + (r.quantityReturned || 0), 0),
+        totalCreditAmount: allItems.reduce((sum, r) => sum + (r.creditAmount || 0), 0),
         byStatus: {
           pending: returns.filter(r => r.status === 'pending').length,
           received: returns.filter(r => r.status === 'received').length,
@@ -9633,8 +9638,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       
       // Group by disposition
-      allItems.forEach(r => {
-        const item = r.item;
+      allItems.forEach(item => {
         const disposition = item.disposition || 'pending';
         if (!summary.byDisposition[disposition]) {
           summary.byDisposition[disposition] = { count: 0, quantity: 0 };
@@ -9645,7 +9649,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Group by product
         const productId = item.productId;
         if (!summary.byProduct[productId]) {
-          summary.byProduct[productId] = { productName: r.productName || 'Unknown', quantity: 0, creditAmount: 0 };
+          summary.byProduct[productId] = { productName: item.productName || 'Unknown', quantity: 0, creditAmount: 0 };
         }
         summary.byProduct[productId].quantity += item.quantityReturned || 0;
         summary.byProduct[productId].creditAmount += item.creditAmount || 0;
@@ -9665,10 +9669,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const returnsWithDetails = returns.map(r => ({
         ...r,
         customerName: r.vendorId ? vendorMap[r.vendorId] || 'Unknown' : 'Unknown',
-        items: allItems.filter(item => item.item.returnId === r.id).map(item => ({
-          ...item.item,
-          productName: item.productName,
-        })),
+        items: allItems.filter(item => item.returnId === r.id),
       }));
       
       res.json({
@@ -9704,9 +9705,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get all finished goods from repacking source
       const repackItems = await db.select({
-        fg: finishedGoods,
-        productName: products.name,
-        productCode: products.code,
+        id: finishedGoods.id,
+        productId: finishedGoods.productId,
+        batchNumber: finishedGoods.batchNumber,
+        originalBatchNumber: finishedGoods.originalBatchNumber,
+        quantity: finishedGoods.quantity,
+        qualityStatus: finishedGoods.qualityStatus,
+        productionDate: finishedGoods.productionDate,
+        inspectionDate: finishedGoods.inspectionDate,
+        repackingDate: finishedGoods.repackingDate,
+        remarks: finishedGoods.remarks,
+        salesReturnItemId: finishedGoods.salesReturnItemId,
+        createdAt: finishedGoods.createdAt,
+        productName: products.productName,
+        productCode: products.productCode,
       })
       .from(finishedGoods)
       .leftJoin(products, eq(finishedGoods.productId, products.id))
@@ -9721,23 +9733,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Calculate summary
       const summary = {
         totalRecords: repackItems.length,
-        totalQuantity: repackItems.reduce((sum, r) => sum + (r.fg.quantity || 0), 0),
+        totalQuantity: repackItems.reduce((sum, r) => sum + (r.quantity || 0), 0),
         byStatus: {
-          pending: repackItems.filter(r => r.fg.qualityStatus === 'pending').length,
-          approved: repackItems.filter(r => r.fg.qualityStatus === 'approved').length,
-          rejected: repackItems.filter(r => r.fg.qualityStatus === 'rejected').length,
+          pending: repackItems.filter(r => r.qualityStatus === 'pending').length,
+          approved: repackItems.filter(r => r.qualityStatus === 'approved').length,
+          rejected: repackItems.filter(r => r.qualityStatus === 'rejected').length,
         },
         byQualityStatusQuantity: {
-          pending: repackItems.filter(r => r.fg.qualityStatus === 'pending').reduce((sum, r) => sum + (r.fg.quantity || 0), 0),
-          approved: repackItems.filter(r => r.fg.qualityStatus === 'approved').reduce((sum, r) => sum + (r.fg.quantity || 0), 0),
-          rejected: repackItems.filter(r => r.fg.qualityStatus === 'rejected').reduce((sum, r) => sum + (r.fg.quantity || 0), 0),
+          pending: repackItems.filter(r => r.qualityStatus === 'pending').reduce((sum, r) => sum + (r.quantity || 0), 0),
+          approved: repackItems.filter(r => r.qualityStatus === 'approved').reduce((sum, r) => sum + (r.quantity || 0), 0),
+          rejected: repackItems.filter(r => r.qualityStatus === 'rejected').reduce((sum, r) => sum + (r.quantity || 0), 0),
         },
         byProduct: {} as Record<string, { productName: string; productCode: string; pendingCount: number; approvedCount: number; pendingQty: number; approvedQty: number }>,
       };
       
       // Group by product
       repackItems.forEach(item => {
-        const productId = item.fg.productId;
+        const productId = item.productId;
         if (!summary.byProduct[productId]) {
           summary.byProduct[productId] = {
             productName: item.productName || 'Unknown',
@@ -9748,32 +9760,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             approvedQty: 0,
           };
         }
-        if (item.fg.qualityStatus === 'pending') {
+        if (item.qualityStatus === 'pending') {
           summary.byProduct[productId].pendingCount++;
-          summary.byProduct[productId].pendingQty += item.fg.quantity || 0;
-        } else if (item.fg.qualityStatus === 'approved') {
+          summary.byProduct[productId].pendingQty += item.quantity || 0;
+        } else if (item.qualityStatus === 'approved') {
           summary.byProduct[productId].approvedCount++;
-          summary.byProduct[productId].approvedQty += item.fg.quantity || 0;
+          summary.byProduct[productId].approvedQty += item.quantity || 0;
         }
       });
       
-      // Format records for display
-      const records = repackItems.map(item => ({
-        id: item.fg.id,
-        productId: item.fg.productId,
-        productName: item.productName,
-        productCode: item.productCode,
-        batchNumber: item.fg.batchNumber,
-        originalBatchNumber: item.fg.originalBatchNumber,
-        quantity: item.fg.quantity,
-        qualityStatus: item.fg.qualityStatus,
-        productionDate: item.fg.productionDate,
-        inspectionDate: item.fg.inspectionDate,
-        repackingDate: item.fg.repackingDate,
-        remarks: item.fg.remarks,
-        salesReturnItemId: item.fg.salesReturnItemId,
-        createdAt: item.fg.createdAt,
-      }));
+      // Format records for display - directly map items since columns are already flat
+      const records = repackItems;
       
       res.json({
         dateFrom: startDate.toISOString(),
