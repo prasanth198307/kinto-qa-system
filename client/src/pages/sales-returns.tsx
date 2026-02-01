@@ -1050,6 +1050,23 @@ function ScrapInventorySection() {
     }
   };
 
+  const approveMutation = useMutation({
+    mutationFn: async ({ id, action }: { id: string; action: 'approve' | 'reject' }) => {
+      return apiRequest('PATCH', `/api/scrap-inventory/${id}/approve`, { action });
+    },
+    onSuccess: (_, { action }) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/scrap-inventory'] });
+      toast({ title: action === 'approve' ? "Scrap record approved" : "Scrap record rejected" });
+    },
+    onError: (error: Error) => {
+      toast({ 
+        title: "Failed to update status", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    },
+  });
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'approved':
@@ -1178,7 +1195,21 @@ function ScrapInventorySection() {
                   )}
                 </TableCell>
                 <TableCell>
-                  <PrintableScrapInventory scrap={scrap} />
+                  <div className="flex items-center gap-2">
+                    {scrap.approvalStatus === 'pending' && (
+                      <Button
+                        size="sm"
+                        variant="default"
+                        onClick={() => approveMutation.mutate({ id: scrap.id, action: 'approve' })}
+                        disabled={approveMutation.isPending}
+                        data-testid={`button-approve-scrap-${scrap.id}`}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        Approve
+                      </Button>
+                    )}
+                    <PrintableScrapInventory scrap={scrap} />
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
