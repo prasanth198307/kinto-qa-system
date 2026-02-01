@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Fragment } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -4101,6 +4101,8 @@ function FinishedGoodsTab({ searchTerm, onSearchChange }: { searchTerm: string; 
   const [currentPage, setCurrentPage] = useState(1);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'detail' | 'consolidated'>('detail');
+  const [expandedBatch, setExpandedBatch] = useState<string | null>(null);
   const itemsPerPage = 10;
   
   // Permission checks - 100% database driven
@@ -4118,6 +4120,44 @@ function FinishedGoodsTab({ searchTerm, onSearchChange }: { searchTerm: string; 
 
   const { data: goods = [], isLoading } = useQuery<FinishedGood[]>({
     queryKey: ['/api/finished-goods'],
+  });
+
+  // Consolidated inventory view
+  const { data: consolidatedData, isLoading: isConsolidatedLoading } = useQuery<{
+    consolidated: Array<{
+      productId: string;
+      productName: string;
+      productCode: string;
+      batchNumber: string;
+      totalQuantity: number;
+      approvedQuantity: number;
+      pendingQuantity: number;
+      sourceBreakdown: {
+        production: number;
+        sales_return_restock: number;
+        sales_return_repack: number;
+      };
+      details: Array<{
+        id: string;
+        quantity: number;
+        qualityStatus: string;
+        source: string;
+        salesReturnItemId: string | null;
+        createdAt: string;
+      }>;
+    }>;
+    summary: {
+      totalBatches: number;
+      totalQuantity: number;
+      totalApproved: number;
+      totalPending: number;
+      fromProduction: number;
+      fromRestock: number;
+      fromRepack: number;
+    };
+  }>({
+    queryKey: ['/api/finished-goods/consolidated'],
+    enabled: viewMode === 'consolidated',
   });
 
   const { data: products = [] } = useQuery<Product[]>({
@@ -4337,12 +4377,35 @@ function FinishedGoodsTab({ searchTerm, onSearchChange }: { searchTerm: string; 
             data-testid="input-search-good"
           />
         </div>
-        {canCreate && (
-          <Button onClick={handleAdd} data-testid="button-add-good">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Finished Good
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {/* View Toggle */}
+          <div className="flex rounded-md border">
+            <Button
+              variant={viewMode === 'detail' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('detail')}
+              className="rounded-r-none"
+              data-testid="button-view-detail"
+            >
+              Detail View
+            </Button>
+            <Button
+              variant={viewMode === 'consolidated' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('consolidated')}
+              className="rounded-l-none"
+              data-testid="button-view-consolidated"
+            >
+              Consolidated
+            </Button>
+          </div>
+          {canCreate && (
+            <Button onClick={handleAdd} data-testid="button-add-good">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Finished Good
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Filters */}
@@ -4493,6 +4556,152 @@ function FinishedGoodsTab({ searchTerm, onSearchChange }: { searchTerm: string; 
         </CardContent>
       </Card>
 
+      {/* Consolidated View */}
+      {viewMode === 'consolidated' && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Consolidated Inventory by Batch
+            </CardTitle>
+            {consolidatedData?.summary && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 text-sm">
+                <div className="bg-muted p-3 rounded-md">
+                  <p className="text-muted-foreground">Total Batches</p>
+                  <p className="text-2xl font-bold">{consolidatedData.summary.totalBatches}</p>
+                </div>
+                <div className="bg-muted p-3 rounded-md">
+                  <p className="text-muted-foreground">Total Quantity</p>
+                  <p className="text-2xl font-bold">{consolidatedData.summary.totalQuantity.toLocaleString()}</p>
+                </div>
+                <div className="bg-green-100 dark:bg-green-900/20 p-3 rounded-md">
+                  <p className="text-muted-foreground">Approved</p>
+                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">{consolidatedData.summary.totalApproved.toLocaleString()}</p>
+                </div>
+                <div className="bg-yellow-100 dark:bg-yellow-900/20 p-3 rounded-md">
+                  <p className="text-muted-foreground">Pending</p>
+                  <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{consolidatedData.summary.totalPending.toLocaleString()}</p>
+                </div>
+              </div>
+            )}
+            {consolidatedData?.summary && (
+              <div className="grid grid-cols-3 gap-4 mt-4 text-sm">
+                <div className="border p-3 rounded-md">
+                  <p className="text-muted-foreground">From Production</p>
+                  <p className="text-lg font-semibold">{consolidatedData.summary.fromProduction.toLocaleString()}</p>
+                </div>
+                <div className="border p-3 rounded-md">
+                  <p className="text-muted-foreground">From Restock</p>
+                  <p className="text-lg font-semibold text-blue-600">{consolidatedData.summary.fromRestock.toLocaleString()}</p>
+                </div>
+                <div className="border p-3 rounded-md">
+                  <p className="text-muted-foreground">From Repack</p>
+                  <p className="text-lg font-semibold text-purple-600">{consolidatedData.summary.fromRepack.toLocaleString()}</p>
+                </div>
+              </div>
+            )}
+          </CardHeader>
+          <CardContent>
+            {isConsolidatedLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : consolidatedData?.consolidated.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No inventory data found.
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-8"></TableHead>
+                    <TableHead>Product</TableHead>
+                    <TableHead>Batch Number</TableHead>
+                    <TableHead className="text-right">Total Qty</TableHead>
+                    <TableHead className="text-right">Available</TableHead>
+                    <TableHead className="text-right">Pending</TableHead>
+                    <TableHead>Source Breakdown</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {consolidatedData?.consolidated.map((batch) => (
+                    <Fragment key={`${batch.productId}-${batch.batchNumber}`}>
+                      <TableRow 
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => setExpandedBatch(expandedBatch === `${batch.productId}-${batch.batchNumber}` ? null : `${batch.productId}-${batch.batchNumber}`)}
+                        data-testid={`row-consolidated-${batch.batchNumber}`}
+                      >
+                        <TableCell>
+                          <ChevronRight className={`h-4 w-4 transition-transform ${expandedBatch === `${batch.productId}-${batch.batchNumber}` ? 'rotate-90' : ''}`} />
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{batch.productName}</div>
+                            {batch.productCode && <div className="text-xs text-muted-foreground">{batch.productCode}</div>}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{batch.batchNumber}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right font-bold">{batch.totalQuantity.toLocaleString()}</TableCell>
+                        <TableCell className="text-right text-green-600 font-medium">{batch.approvedQuantity.toLocaleString()}</TableCell>
+                        <TableCell className="text-right text-yellow-600">{batch.pendingQuantity.toLocaleString()}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-1 flex-wrap">
+                            {batch.sourceBreakdown.production > 0 && (
+                              <Badge variant="secondary" className="text-xs">
+                                Prod: {batch.sourceBreakdown.production}
+                              </Badge>
+                            )}
+                            {batch.sourceBreakdown.sales_return_restock > 0 && (
+                              <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">
+                                Restock: {batch.sourceBreakdown.sales_return_restock}
+                              </Badge>
+                            )}
+                            {batch.sourceBreakdown.sales_return_repack > 0 && (
+                              <Badge variant="outline" className="text-xs text-purple-600 border-purple-300">
+                                Repack: {batch.sourceBreakdown.sales_return_repack}
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                      {expandedBatch === `${batch.productId}-${batch.batchNumber}` && (
+                        <TableRow className="bg-muted/30">
+                          <TableCell colSpan={7} className="p-4">
+                            <div className="text-sm font-medium mb-2">Detail Records:</div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                              {batch.details.map((detail: any) => (
+                                <div key={detail.id} className="border rounded-md p-2 text-sm bg-background">
+                                  <div className="flex justify-between">
+                                    <span>Qty: <strong>{detail.quantity}</strong></span>
+                                    <Badge variant={detail.qualityStatus === 'approved' ? 'default' : 'secondary'} className="text-xs">
+                                      {detail.qualityStatus}
+                                    </Badge>
+                                  </div>
+                                  <div className="text-muted-foreground text-xs mt-1">
+                                    Source: {detail.source || 'production'}
+                                    {detail.salesReturnItemId && (
+                                      <span className="ml-2">(Return Ref: {detail.salesReturnItemId.slice(0, 8)}...)</span>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </Fragment>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Detail View */}
+      {viewMode === 'detail' && (
       <Card>
         <div className="overflow-x-auto">
           <Table>
@@ -4603,8 +4812,9 @@ function FinishedGoodsTab({ searchTerm, onSearchChange }: { searchTerm: string; 
           </Table>
         </div>
       </Card>
+      )}
 
-      {totalPages > 1 && (
+      {viewMode === 'detail' && totalPages > 1 && (
         <div className="flex justify-center gap-2">
           <Button
             variant="outline"

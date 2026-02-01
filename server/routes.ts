@@ -117,6 +117,7 @@ const endpointToScreenKey: Record<string, string> = {
   '/api/raw-materials': 'raw_materials',
   '/api/raw-material-types': 'raw_material_types',
   '/api/finished-goods': 'finished_goods',
+  '/api/finished-goods/consolidated': 'finished_goods',
   '/api/inventory': 'inventory',
   '/api/uom': 'uom',
   
@@ -3895,6 +3896,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error checking batch number:", error);
       res.status(500).json({ message: "Failed to check batch number" });
+    }
+  });
+
+  // Consolidated inventory view by batch - shows totals per batch with source breakdown
+  app.get('/api/finished-goods/consolidated', isAuthenticated, async (req: any, res) => {
+    try {
+      // Get all active finished goods with product info
+      const goods = await db.select({
+        id: finishedGoods.id,
+        productId: finishedGoods.productId,
+        batchNumber: finishedGoods.batchNumber,
+        quantity: finishedGoods.quantity,
+        qualityStatus: finishedGoods.qualityStatus,
+        source: finishedGoods.source,
+        salesReturnItemId: finishedGoods.salesReturnItemId,
+        productionDate: finishedGoods.productionDate,
+        createdAt: finishedGoods.createdAt,
+        productName: products.productName,
+        productCode: products.productCode,
+      })
+        .from(finishedGoods)
+        .leftJoin(products, eq(finishedGoods.productId, products.id))
+        .where(and(
+          eq(finishedGoods.recordStatus, 1),
+          sql`${finishedGoods.quantity} > 0`
+        ))
+        .orderBy(desc(finishedGoods.createdAt));
+
+      // Group by product + batch number
+      const consolidatedMap = new Map<string, {
+        productId: string;
+        productName: string;
+        productCode: string;
+        batchNumber: string;
+        totalQuantity: number;
+        approvedQuantity: number;
+        pendingQuantity: number;
+        sourceBreakdown: {
+          production: number;
+          sales_return_restock: number;
+          sales_return_repack: number;
+        };
+        details: typeof goods;
+      }>();
+
+      for (const item of goods) {
+        const key = `${item.productId}-${item.batchNumber}`;
+        
+        if (!consolidatedMap.has(key)) {
+          consolidatedMap.set(key, {
+            productId: item.productId,
+            productName: item.productName || 'Unknown',
+            productCode: item.productCode || '',
+            batchNumber: item.batchNumber,
+            totalQuantity: 0,
+            approvedQuantity: 0,
+            pendingQuantity: 0,
+            sourceBreakdown: {
+              production: 0,
+              sales_return_restock: 0,
+              sales_return_repack: 0,
+            },
+            details: [],
+          });
+        }
+
+        const entry = consolidatedMap.get(key)!;
+        entry.totalQuantity += item.quantity;
+        
+        if (item.qualityStatus === 'approved') {
+          entry.approvedQuantity += item.quantity;
+        } else if (item.qualityStatus === 'pending') {
+          entry.pendingQuantity += item.quantity;
+        }
+
+        // Track source breakdown
+        const source = (item.source || 'production') as keyof typeof entry.sourceBreakdown;
+        if (source in entry.sourceBreakdown) {
+          entry.sourceBreakdown[source] += item.quantity;
+        }
+
+        entry.details.push(item);
+      }
+
+      const consolidated = Array.from(consolidatedMap.values());
+      
+      res.json({
+        consolidated,
+        summary: {
+          totalBatches: consolidated.length,
+          totalQuantity: consolidated.reduce((sum, c) => sum + c.totalQuantity, 0),
+          totalApproved: consolidated.reduce((sum, c) => sum + c.approvedQuantity, 0),
+          totalPending: consolidated.reduce((sum, c) => sum + c.pendingQuantity, 0),
+          fromProduction: consolidated.reduce((sum, c) => sum + c.sourceBreakdown.production, 0),
+          fromRestock: consolidated.reduce((sum, c) => sum + c.sourceBreakdown.sales_return_restock, 0),
+          fromRepack: consolidated.reduce((sum, c) => sum + c.sourceBreakdown.sales_return_repack, 0),
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching consolidated inventory:", error);
+      res.status(500).json({ message: "Failed to fetch consolidated inventory" });
     }
   });
 
