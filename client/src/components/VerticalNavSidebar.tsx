@@ -110,18 +110,19 @@ export function VerticalNavSidebar({
   };
 
   const handleItemClick = (item: NavItem) => {
-    // Navigate to root with the tab parameter
-    // This ensures the dashboard correctly picks up the active tab on mount
-    // and correctly handles cases where we are on a detail page.
-    navigate(`/?tab=${item.id}`);
-    
-    // Always call onItemClick to ensure the local state is updated immediately
-    // if we are already on the dashboard
-    onItemClick(item.id);
-    
+    // If the item has its own onClick handler (i.e., it navigates to a standalone page route),
+    // use that instead of navigating to /?tab=... which is for dashboard tabs only.
     if (item.onClick) {
+      // Just call the onClick handler which will handle navigation
       item.onClick();
+      onItemClick(item.id);
+    } else {
+      // For dashboard tabs, navigate to root with the tab parameter
+      // This ensures the dashboard correctly picks up the active tab on mount
+      navigate(`/?tab=${item.id}`);
+      onItemClick(item.id);
     }
+    
     if (onMobileClose) {
       onMobileClose();
     }

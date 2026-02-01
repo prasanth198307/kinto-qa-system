@@ -150,7 +150,14 @@ export default function VendorDebitNotesPage() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate('/?tab=invoices')}
+            onClick={() => {
+              // Go back to vendor history or use browser history
+              if (window.history.length > 2) {
+                window.history.back();
+              } else {
+                navigate('/vendor-history');
+              }
+            }}
             data-testid="button-back"
           >
             <ArrowLeft className="w-5 h-5" />
