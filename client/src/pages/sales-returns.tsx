@@ -6,8 +6,9 @@ import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/hooks/use-permissions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -1241,19 +1242,25 @@ function ScrapInventorySection() {
 // Repacking Queue Section
 function RepackingQueueSection() {
   const { toast } = useToast();
+  const [selectedItem, setSelectedItem] = useState<any | null>(null);
+  const [repackingDate, setRepackingDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
+  const [repackRemarks, setRepackRemarks] = useState('');
 
   const { data: repackItems = [], isLoading } = useQuery<any[]>({
     queryKey: ['/api/repacking-queue'],
   });
 
   const completeMutation = useMutation({
-    mutationFn: async ({ id, newBatchNumber, remarks }: { id: string; newBatchNumber?: string; remarks?: string }) => {
-      return apiRequest('PATCH', `/api/repacking-queue/${id}/complete`, { newBatchNumber, remarks });
+    mutationFn: async ({ id, repackingDate, remarks }: { id: string; repackingDate?: string; remarks?: string }) => {
+      return apiRequest('PATCH', `/api/repacking-queue/${id}/complete`, { repackingDate, remarks });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/repacking-queue'] });
       queryClient.invalidateQueries({ queryKey: ['/api/finished-goods'] });
       toast({ title: "Item marked as repacked and moved to inventory" });
+      setSelectedItem(null);
+      setRepackingDate(format(new Date(), 'yyyy-MM-dd'));
+      setRepackRemarks('');
     },
     onError: (error: Error) => {
       toast({ 
@@ -1339,7 +1346,11 @@ function RepackingQueueSection() {
                   <TableCell>
                     <Button
                       size="sm"
-                      onClick={() => completeMutation.mutate({ id: item.id })}
+                      onClick={() => {
+                        setSelectedItem(item);
+                        setRepackingDate(format(new Date(), 'yyyy-MM-dd'));
+                        setRepackRemarks('');
+                      }}
                       disabled={completeMutation.isPending}
                       data-testid={`button-complete-repack-${item.id}`}
                     >
@@ -1352,6 +1363,60 @@ function RepackingQueueSection() {
             </TableBody>
           </Table>
         )}
+
+        {/* Repacking Completion Dialog */}
+        <Dialog open={!!selectedItem} onOpenChange={(open) => !open && setSelectedItem(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Complete Repacking</DialogTitle>
+              <DialogDescription>
+                Record the repacking completion for {selectedItem?.productName} (Batch: {selectedItem?.batchNumber})
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="repackingDate">Repacking Date</Label>
+                <Input
+                  id="repackingDate"
+                  type="date"
+                  value={repackingDate}
+                  onChange={(e) => setRepackingDate(e.target.value)}
+                  data-testid="input-repacking-date"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="repackRemarks">Remarks (Optional)</Label>
+                <Input
+                  id="repackRemarks"
+                  placeholder="Any notes about the repacking..."
+                  value={repackRemarks}
+                  onChange={(e) => setRepackRemarks(e.target.value)}
+                  data-testid="input-repack-remarks"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setSelectedItem(null)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (selectedItem) {
+                    completeMutation.mutate({
+                      id: selectedItem.id,
+                      repackingDate,
+                      remarks: repackRemarks || undefined,
+                    });
+                  }
+                }}
+                disabled={completeMutation.isPending}
+                data-testid="button-confirm-repacking"
+              >
+                {completeMutation.isPending ? 'Saving...' : 'Confirm Repacking'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );

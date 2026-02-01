@@ -1239,6 +1239,7 @@ export const finishedGoods = pgTable("finished_goods", {
   // Source tracking for sales returns
   source: varchar("source", { length: 50 }).default('production'), // 'production', 'sales_return_restock', 'sales_return_repack'
   salesReturnItemId: varchar("sales_return_item_id"), // Links to sales_return_items for traceability
+  repackingDate: timestamp("repacking_date", { mode: 'string' }), // Date when repacking was completed
   recordStatus: integer("record_status").default(1).notNull(),
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),

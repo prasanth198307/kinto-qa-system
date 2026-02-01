@@ -4099,7 +4099,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/repacking-queue/:id/complete', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const { remarks } = req.body;
+      const { remarks, repackingDate } = req.body;
       
       // Get the current item
       const [item] = await db.select().from(finishedGoods).where(eq(finishedGoods.id, id));
@@ -4107,19 +4107,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Item not found" });
       }
       
+      // Use provided repacking date or default to now
+      const completionDate = repackingDate ? new Date(repackingDate) : new Date();
+      
       // Update to approved status - keep ORIGINAL batch number (physical label doesn't change)
       await db.update(finishedGoods)
         .set({
           qualityStatus: 'approved',
           // batchNumber stays the same - physical label on bottle unchanged
-          remarks: remarks || `Repacking completed on ${format(new Date(), 'dd MMM yyyy')}`,
+          repackingDate: completionDate,
+          remarks: remarks || `Repacking completed on ${format(completionDate, 'dd MMM yyyy')}`,
           updatedAt: new Date(),
         })
         .where(eq(finishedGoods.id, id));
       
-      console.log(`[REPACKING] Item ${id} batch ${item.batchNumber} marked as repacked and approved for sale`);
+      console.log(`[REPACKING] Item ${id} batch ${item.batchNumber} marked as repacked on ${format(completionDate, 'dd MMM yyyy')} and approved for sale`);
       
-      res.json({ message: "Item marked as repacked successfully", batchNumber: item.batchNumber });
+      res.json({ message: "Item marked as repacked successfully", batchNumber: item.batchNumber, repackingDate: completionDate });
     } catch (error) {
       console.error("Error completing repacking:", error);
       res.status(500).json({ message: "Failed to complete repacking" });
