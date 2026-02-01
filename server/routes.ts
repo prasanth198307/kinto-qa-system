@@ -100,10 +100,10 @@ const endpointToScreenKey: Record<string, string> = {
   '/api/vendor-analytics': 'vendor_analytics',
   '/api/reports': 'reports',
   '/api/reports/finished-goods': 'report_finished_goods',
-  '/api/reports/monthly-sales': 'report_monthly_sales',
-  '/api/reports/sales-returns-summary': 'report_sales_returns',
-  '/api/reports/repacking': 'report_repacking',
-  '/api/scrap-inventory/report': 'report_scrap',
+  '/api/reports/monthly-sales': 'reports',
+  '/api/reports/sales-returns-summary': 'reports',
+  '/api/reports/repacking': 'reports',
+  '/api/scrap-inventory/report': 'reports',
   '/api/gst-reports': 'report_gst',
   
   // Quality & Checklists
