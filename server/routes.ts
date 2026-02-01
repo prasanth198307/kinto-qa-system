@@ -3992,7 +3992,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/repacking-queue/:id/complete', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const { newBatchNumber, remarks } = req.body;
+      const { remarks } = req.body;
       
       // Get the current item
       const [item] = await db.select().from(finishedGoods).where(eq(finishedGoods.id, id));
@@ -4000,21 +4000,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Item not found" });
       }
       
-      // Update to approved status with new batch number
-      const updatedBatch = newBatchNumber || item.batchNumber?.replace('-REPACK', '-REPACKED');
-      
+      // Update to approved status - keep ORIGINAL batch number (physical label doesn't change)
       await db.update(finishedGoods)
         .set({
           qualityStatus: 'approved',
-          batchNumber: updatedBatch,
+          // batchNumber stays the same - physical label on bottle unchanged
           remarks: remarks || `Repacking completed on ${format(new Date(), 'dd MMM yyyy')}`,
           updatedAt: new Date(),
         })
         .where(eq(finishedGoods.id, id));
       
-      console.log(`[REPACKING] Item ${id} marked as repacked and approved for sale`);
+      console.log(`[REPACKING] Item ${id} batch ${item.batchNumber} marked as repacked and approved for sale`);
       
-      res.json({ message: "Item marked as repacked successfully", batchNumber: updatedBatch });
+      res.json({ message: "Item marked as repacked successfully", batchNumber: item.batchNumber });
     } catch (error) {
       console.error("Error completing repacking:", error);
       res.status(500).json({ message: "Failed to complete repacking" });
@@ -9030,35 +9028,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .where(eq(products.id, item.productId));
           
           // Update inventory based on disposition
+          // IMPORTANT: Keep original batch number - physical label on bottle doesn't change
+          const originalBatch = item.batchNumber || 'RETURN';
+          
           if (inspection.disposition === 'restock' && inspection.condition === 'good') {
-            // Return good items to finished goods inventory
+            // Return good items to finished goods inventory with ORIGINAL batch number
             if (product) {
               await tx.insert(finishedGoods).values([{
                 productId: item.productId,
-                batchNumber: `${item.batchNumber || 'RETURN'}-RETURNED`,
+                batchNumber: originalBatch, // Keep original batch - bottle label unchanged
                 productionDate: new Date().toISOString(),
                 quantity: processQty,
                 qualityStatus: 'approved',
                 remarks: `Returned goods from sales return - Good condition`,
                 createdBy: req.user?.id,
               }]);
-              console.log(`[INVENTORY] Restocked ${processQty} units of product ${item.productId} (Sales Return - Good condition)`);
+              console.log(`[INVENTORY] Restocked ${processQty} units of product ${item.productId} batch ${originalBatch} (Sales Return - Good condition)`);
             } else {
               console.warn(`[INVENTORY] Skipping restock for product ${item.productId} - product not found in master data`);
             }
           } else if (inspection.disposition === 'repack') {
             // Items needing repacking - add to finished goods with 'pending' quality status
+            // Keep original batch number - physical label unchanged
             if (product) {
               await tx.insert(finishedGoods).values([{
                 productId: item.productId,
-                batchNumber: `${item.batchNumber || 'RETURN'}-REPACK`,
+                batchNumber: originalBatch, // Keep original batch - bottle label unchanged
                 productionDate: new Date().toISOString(),
                 quantity: processQty,
                 qualityStatus: 'pending', // Pending until repacked
                 remarks: `Returned goods - Needs repacking before sale`,
                 createdBy: req.user?.id,
               }]);
-              console.log(`[INVENTORY] Added ${processQty} units of product ${item.productId} for repacking (Sales Return)`);
+              console.log(`[INVENTORY] Added ${processQty} units of product ${item.productId} batch ${originalBatch} for repacking (Sales Return)`);
             } else {
               console.warn(`[INVENTORY] Skipping repack for product ${item.productId} - product not found in master data`);
             }
