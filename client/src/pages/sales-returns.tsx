@@ -92,7 +92,7 @@ export default function SalesReturnsPage() {
     inv.status === 'delivered' || inv.status === 'pod_confirmed'
   );
 
-  // Filter invoices based on search and sort by date descending (newest first)
+  // Filter invoices based on search and sort by invoice date descending (newest first)
   const filteredInvoices = deliveredInvoices
     .filter((inv: any) => {
       const searchLower = invoiceSearch.toLowerCase();
@@ -102,8 +102,8 @@ export default function SalesReturnsPage() {
       );
     })
     .sort((a: any, b: any) => {
-      const dateA = new Date(a.createdAt || a.invoiceDate || 0).getTime();
-      const dateB = new Date(b.createdAt || b.invoiceDate || 0).getTime();
+      const dateA = new Date(a.invoiceDate || a.createdAt || 0).getTime();
+      const dateB = new Date(b.invoiceDate || b.createdAt || 0).getTime();
       return dateB - dateA; // Descending order (newest first)
     });
 
