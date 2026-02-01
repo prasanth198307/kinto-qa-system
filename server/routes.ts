@@ -9341,7 +9341,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ============ SCRAP INVENTORY API ============
   // Get all scrap inventory records with optional filters (manager+ only)
-  app.get('/api/scrap-inventory', requireRole('admin', 'manager', 'AccountsManager'), async (req: any, res) => {
+  app.get('/api/scrap-inventory', requireRole('admin', 'Admin', 'manager', 'Manager', 'AccountsManager'), async (req: any, res) => {
     try {
       const { startDate, endDate, approvalStatus, productId } = req.query;
       
@@ -9378,7 +9378,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get scrap inventory summary/report for month-end loss calculation (manager+ only)
-  app.get('/api/scrap-inventory/report', requireRole('admin', 'manager', 'AccountsManager'), async (req: any, res) => {
+  app.get('/api/scrap-inventory/report', requireRole('admin', 'Admin', 'manager', 'Manager', 'AccountsManager'), async (req: any, res) => {
     try {
       const { month, year } = req.query;
       
@@ -9455,7 +9455,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get specific scrap record (manager+ only)
-  app.get('/api/scrap-inventory/:id', requireRole('admin', 'manager', 'AccountsManager'), async (req: any, res) => {
+  app.get('/api/scrap-inventory/:id', requireRole('admin', 'Admin', 'manager', 'Manager', 'AccountsManager'), async (req: any, res) => {
     try {
       const { id } = req.params;
       const [scrap] = await db.select()
@@ -9478,7 +9478,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Approve/reject scrap record
-  app.patch('/api/scrap-inventory/:id/approve', requireRole('admin', 'manager'), async (req: any, res) => {
+  app.patch('/api/scrap-inventory/:id/approve', requireRole('admin', 'Admin', 'manager', 'Manager'), async (req: any, res) => {
     try {
       const { id } = req.params;
       const { action, remarks } = req.body; // action: 'approve' or 'reject'
@@ -9524,7 +9524,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update scrap disposal details
-  app.patch('/api/scrap-inventory/:id/dispose', requireRole('admin', 'manager'), async (req: any, res) => {
+  app.patch('/api/scrap-inventory/:id/dispose', requireRole('admin', 'Admin', 'manager', 'Manager'), async (req: any, res) => {
     try {
       const { id } = req.params;
       const { disposalMethod, disposalValue, remarks } = req.body;
@@ -9597,7 +9597,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Upload damage evidence photo for scrap record
-  app.post('/api/scrap-inventory/:id/evidence', requireRole('admin', 'manager'), scrapEvidenceUpload.single('photo'), async (req: any, res) => {
+  app.post('/api/scrap-inventory/:id/evidence', requireRole('admin', 'Admin', 'manager', 'Manager'), scrapEvidenceUpload.single('photo'), async (req: any, res) => {
     try {
       const { id } = req.params;
       
