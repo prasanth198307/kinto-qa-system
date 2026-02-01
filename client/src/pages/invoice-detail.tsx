@@ -479,7 +479,7 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
             variant="ghost"
             size="icon"
             onClick={() => {
-              // Check if we came from cancelled invoices
+              // Get current location/URL to check for tab param
               const params = new URLSearchParams(window.location.search);
               const from = params.get('from');
               
@@ -489,7 +489,10 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
                 navigate('/dispatch-tracking');
               } else if (from === 'customer_advance') {
                 navigate('/customer-advances');
+              } else if (from === 'vendor_history') {
+                navigate('/vendor-history');
               } else {
+                // Force navigate to root with invoices tab
                 navigate('/?tab=invoices');
               }
             }}
