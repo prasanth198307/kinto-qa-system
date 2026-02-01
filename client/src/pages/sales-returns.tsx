@@ -726,6 +726,9 @@ export default function SalesReturnsPage() {
         </CardContent>
       </Card>
 
+      {/* Repacking Queue Section */}
+      <RepackingQueueSection />
+
       {/* Scrap Inventory Section */}
       <ScrapInventorySection />
 
@@ -1197,6 +1200,125 @@ function ScrapInventorySection() {
           )}
         </DialogContent>
       </Dialog>
+    </Card>
+  );
+}
+
+// Repacking Queue Section
+function RepackingQueueSection() {
+  const { toast } = useToast();
+
+  const { data: repackItems = [], isLoading } = useQuery<any[]>({
+    queryKey: ['/api/repacking-queue'],
+  });
+
+  const completeMutation = useMutation({
+    mutationFn: async ({ id, newBatchNumber, remarks }: { id: string; newBatchNumber?: string; remarks?: string }) => {
+      return apiRequest('PATCH', `/api/repacking-queue/${id}/complete`, { newBatchNumber, remarks });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/repacking-queue'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/finished-goods'] });
+      toast({ title: "Item marked as repacked and moved to inventory" });
+    },
+    onError: (error: Error) => {
+      toast({ 
+        title: "Failed to complete repacking", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Package className="h-5 w-5" />
+            Repacking Queue
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="mt-6">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Package className="h-5 w-5" />
+          Repacking Queue
+          {repackItems.length > 0 && (
+            <Badge variant="secondary">{repackItems.length} pending</Badge>
+          )}
+        </CardTitle>
+        <p className="text-sm text-muted-foreground">
+          Items waiting to be repacked before they can be sold
+        </p>
+      </CardHeader>
+      <CardContent>
+        {repackItems.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>No items pending repacking.</p>
+            <p className="text-sm">When items from sales returns are marked for repacking, they will appear here.</p>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Product</TableHead>
+                <TableHead>Batch Number</TableHead>
+                <TableHead className="text-right">Quantity</TableHead>
+                <TableHead>Added On</TableHead>
+                <TableHead>Remarks</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {repackItems.map((item: any) => (
+                <TableRow key={item.id} data-testid={`row-repack-${item.id}`}>
+                  <TableCell>
+                    <div>
+                      <div className="font-medium">{item.productName || 'Unknown Product'}</div>
+                      {item.productCode && (
+                        <div className="text-sm text-muted-foreground">{item.productCode}</div>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{item.batchNumber}</Badge>
+                  </TableCell>
+                  <TableCell className="text-right font-medium">{item.quantity}</TableCell>
+                  <TableCell>
+                    {item.createdAt ? format(new Date(item.createdAt), 'dd MMM yyyy') : '-'}
+                  </TableCell>
+                  <TableCell className="max-w-xs truncate">
+                    {item.remarks || '-'}
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      size="sm"
+                      onClick={() => completeMutation.mutate({ id: item.id })}
+                      disabled={completeMutation.isPending}
+                      data-testid={`button-complete-repack-${item.id}`}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-1" />
+                      Mark Repacked
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
     </Card>
   );
 }

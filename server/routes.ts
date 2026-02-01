@@ -3957,6 +3957,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Repacking Queue - Get items pending repacking
+  app.get('/api/repacking-queue', isAuthenticated, async (req: any, res) => {
+    try {
+      // Get finished goods with pending quality status and REPACK in batch number
+      const pendingRepack = await db.select({
+        id: finishedGoods.id,
+        productId: finishedGoods.productId,
+        batchNumber: finishedGoods.batchNumber,
+        quantity: finishedGoods.quantity,
+        qualityStatus: finishedGoods.qualityStatus,
+        remarks: finishedGoods.remarks,
+        createdAt: finishedGoods.createdAt,
+        productName: products.productName,
+        productCode: products.productCode,
+      })
+        .from(finishedGoods)
+        .leftJoin(products, eq(finishedGoods.productId, products.id))
+        .where(and(
+          eq(finishedGoods.qualityStatus, 'pending'),
+          eq(finishedGoods.recordStatus, 1),
+          sql`${finishedGoods.batchNumber} LIKE '%REPACK%'`
+        ))
+        .orderBy(desc(finishedGoods.createdAt));
+      
+      res.json(pendingRepack);
+    } catch (error) {
+      console.error("Error fetching repacking queue:", error);
+      res.status(500).json({ message: "Failed to fetch repacking queue" });
+    }
+  });
+
+  // Mark item as repacked (move to approved inventory)
+  app.patch('/api/repacking-queue/:id/complete', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { newBatchNumber, remarks } = req.body;
+      
+      // Get the current item
+      const [item] = await db.select().from(finishedGoods).where(eq(finishedGoods.id, id));
+      if (!item) {
+        return res.status(404).json({ message: "Item not found" });
+      }
+      
+      // Update to approved status with new batch number
+      const updatedBatch = newBatchNumber || item.batchNumber?.replace('-REPACK', '-REPACKED');
+      
+      await db.update(finishedGoods)
+        .set({
+          qualityStatus: 'approved',
+          batchNumber: updatedBatch,
+          remarks: remarks || `Repacking completed on ${format(new Date(), 'dd MMM yyyy')}`,
+          updatedAt: new Date(),
+        })
+        .where(eq(finishedGoods.id, id));
+      
+      console.log(`[REPACKING] Item ${id} marked as repacked and approved for sale`);
+      
+      res.json({ message: "Item marked as repacked successfully", batchNumber: updatedBatch });
+    } catch (error) {
+      console.error("Error completing repacking:", error);
+      res.status(500).json({ message: "Failed to complete repacking" });
+    }
+  });
+
   // FIFO Batch Allocation for Gatepass
   // Takes invoice items (product + quantity) and returns FIFO-allocated finished goods batches
   // Now considers reserved quantities from pending invoices (draft/ready_for_gatepass)
