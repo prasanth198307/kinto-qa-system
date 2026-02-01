@@ -9769,6 +9769,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         qualityStatus: item.fg.qualityStatus,
         productionDate: item.fg.productionDate,
         inspectionDate: item.fg.inspectionDate,
+        repackingDate: item.fg.repackingDate,
         remarks: item.fg.remarks,
         salesReturnItemId: item.fg.salesReturnItemId,
         createdAt: item.fg.createdAt,

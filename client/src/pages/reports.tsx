@@ -4106,7 +4106,7 @@ function RepackingReportContent() {
       'Quantity': r.quantity,
       'Quality Status': r.qualityStatus,
       'Created Date': r.createdAt ? format(new Date(r.createdAt), 'dd MMM yyyy') : '',
-      'Inspection Date': r.inspectionDate ? format(new Date(r.inspectionDate), 'dd MMM yyyy') : '',
+      'Repacking Date': r.repackingDate ? format(new Date(r.repackingDate), 'dd MMM yyyy') : '',
       'Remarks': r.remarks || '',
     }));
     const detailsWs = XLSX.utils.json_to_sheet(detailsData);
@@ -4283,7 +4283,8 @@ function RepackingReportContent() {
                       <TableHead>Batch</TableHead>
                       <TableHead className="text-right">Qty</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Date</TableHead>
+                      <TableHead>Created</TableHead>
+                      <TableHead>Repacked On</TableHead>
                       <TableHead>Remarks</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -4311,6 +4312,9 @@ function RepackingReportContent() {
                         </TableCell>
                         <TableCell>
                           {r.createdAt ? format(new Date(r.createdAt), 'dd MMM yyyy') : '-'}
+                        </TableCell>
+                        <TableCell>
+                          {r.repackingDate ? format(new Date(r.repackingDate), 'dd MMM yyyy') : '-'}
                         </TableCell>
                         <TableCell className="max-w-[200px] truncate">{r.remarks || '-'}</TableCell>
                       </TableRow>
