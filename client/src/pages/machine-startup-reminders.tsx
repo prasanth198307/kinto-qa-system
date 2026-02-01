@@ -241,6 +241,7 @@ export default function MachineStartupReminders() {
         <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
+            <CardTitle>Scheduled Tasks</CardTitle>
             <div className="flex gap-2">
               {canCreate && (
                 <Button
