@@ -47,7 +47,8 @@ import { GlobalHeader } from "@/components/GlobalHeader";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Bell, Plus, Clock, CheckCircle2, XCircle, Loader2, AlertCircle, Users } from "lucide-react";
+import { Bell, Plus, Clock, CheckCircle2, XCircle, Loader2, AlertCircle, Users, ArrowLeft } from "lucide-react";
+import { useLocation } from "wouter";
 import BulkMachineStartupAssignment from "@/components/BulkMachineStartupAssignment";
 
 const startupTaskSchema = z.object({
@@ -213,21 +214,33 @@ export default function MachineStartupReminders() {
     return user ? `${user.firstName} ${user.lastName}` : userId;
   };
 
+  const [, setLocation] = useLocation();
+
   return (
     <>
       <div className="p-6 space-y-6">
+        <div className="flex items-center gap-4 mb-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setLocation('/?tab=overview')}
+            data-testid="button-back"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <Bell className="w-6 h-6" />
+              Machine Startup Reminders
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Schedule reminders for operators to start machines before production
+            </p>
+          </div>
+        </div>
         <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
-            <div>
-              <CardTitle className="text-2xl flex items-center gap-2">
-                <Bell className="w-6 h-6" />
-                Machine Startup Reminders
-              </CardTitle>
-              <p className="text-sm text-muted-foreground mt-2">
-                Schedule reminders for operators to start machines before production
-              </p>
-            </div>
             <div className="flex gap-2">
               {canCreate && (
                 <Button

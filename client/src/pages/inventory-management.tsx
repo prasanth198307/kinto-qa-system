@@ -49,7 +49,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Pencil, Trash2, Search, Package, Layers, Box, CheckCircle, Users, Minus, Check, X, Printer, CalendarIcon, AlertTriangle } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Package, Layers, Box, CheckCircle, Users, Minus, Check, X, Printer, CalendarIcon, AlertTriangle, ArrowLeft } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format, parseISO, isWithinInterval } from "date-fns";
@@ -123,13 +123,27 @@ export default function InventoryManagement({ activeTab: externalActiveTab }: In
     }
   };
 
+  const navigate = (path: string) => setLocation(path);
+
   return (
     <>
       <div className="bg-background">
         <div className="border-b bg-card">
           <div className="max-w-7xl mx-auto px-4 py-4">
-            <h1 className="text-2xl font-bold text-foreground">Inventory Management</h1>
-            <p className="text-sm text-muted-foreground mt-1">Manage units, products, raw materials, and finished goods</p>
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate('/?tab=inventory')}
+                data-testid="button-back"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div>
+                <h1 className="text-2xl font-bold text-foreground">Inventory Management</h1>
+                <p className="text-sm text-muted-foreground mt-1">Manage units, products, raw materials, and finished goods</p>
+              </div>
+            </div>
           </div>
         </div>
 

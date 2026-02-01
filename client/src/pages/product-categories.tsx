@@ -8,7 +8,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Plus, Edit, Trash2 } from "lucide-react";
+import { Plus, Edit, Trash2, ArrowLeft } from "lucide-react";
+import { useLocation } from "wouter";
 import { Switch } from "@/components/ui/switch";
 import { usePermissions } from "@/hooks/use-permissions";
 
@@ -25,6 +26,7 @@ interface ProductCategory {
 
 export default function ProductCategories() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const { hasPermission } = usePermissions();
   const canCreate = hasPermission('product_categories', 'create');
   const canEdit = hasPermission('product_categories', 'edit');
@@ -140,11 +142,21 @@ export default function ProductCategories() {
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Product Categories</h1>
-            <p className="text-muted-foreground mt-1">
-              Manage product categories and their organization
-            </p>
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setLocation('/?tab=inventory')}
+              data-testid="button-back"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold">Product Categories</h1>
+              <p className="text-muted-foreground mt-1">
+                Manage product categories and their organization
+              </p>
+            </div>
           </div>
           {canCreate && (
             <Button onClick={() => setIsCreateOpen(true)} data-testid="button-create-category">

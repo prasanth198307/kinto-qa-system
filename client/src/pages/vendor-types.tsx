@@ -9,7 +9,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Plus, Edit, Trash2, Tag, AlertCircle } from "lucide-react";
+import { Plus, Edit, Trash2, Tag, AlertCircle, ArrowLeft } from "lucide-react";
+import { useLocation } from "wouter";
 import { Switch } from "@/components/ui/switch";
 import { usePermissions } from "@/hooks/use-permissions";
 
@@ -27,6 +28,7 @@ interface VendorType {
 
 export default function VendorTypes() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const { hasPermission } = usePermissions();
   const canCreate = hasPermission('vendor_types', 'create');
   const canEdit = hasPermission('vendor_types', 'edit');
@@ -216,14 +218,24 @@ export default function VendorTypes() {
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2">
-              <Tag className="h-8 w-8" />
-              Vendor Types
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Manage vendor classifications based on product brands (Kinto, HPPani, Purejal)
-            </p>
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setLocation('/?tab=overview')}
+              data-testid="button-back"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold flex items-center gap-2">
+                <Tag className="h-8 w-8" />
+                Vendor Types
+              </h1>
+              <p className="text-muted-foreground mt-1">
+                Manage vendor classifications based on product brands (Kinto, HPPani, Purejal)
+              </p>
+            </div>
           </div>
           {canCreate && (
             <Button onClick={() => setIsCreateOpen(true)} data-testid="button-create-vendor-type">

@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Plus, Edit, Trash2, Truck, User, Car, Phone, Mail, MapPin, FileText, Calendar } from "lucide-react";
+import { Plus, Edit, Trash2, Truck, User, Car, Phone, Mail, MapPin, FileText, Calendar, ArrowLeft } from "lucide-react";
+import { useLocation } from "wouter";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -62,12 +63,23 @@ interface Driver {
 
 export default function DispatchMasters() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState("transporters");
 
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold" data-testid="text-page-title">Dispatch Master Data</h1>
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setLocation('/?tab=overview')}
+            data-testid="button-back"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="text-2xl font-bold" data-testid="text-page-title">Dispatch Master Data</h1>
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>

@@ -13,7 +13,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { FileText, Plus, Pencil, Trash2, Star, Package, Shield, X } from "lucide-react";
+import { FileText, Plus, Pencil, Trash2, Star, Package, Shield, X, ArrowLeft } from "lucide-react";
+import { useLocation } from "wouter";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import type { InvoiceTemplate, TermsConditions } from "@shared/schema";
@@ -24,6 +25,7 @@ interface TemplateManagementProps {
 
 export default function TemplateManagement({ activeTab: externalActiveTab }: TemplateManagementProps = {}) {
   const { user, logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
   const { canAccessScreen } = usePermissions();
   const [activeTab, setActiveTab] = useState(externalActiveTab || "invoice-templates");
   const [searchTerm, setSearchTerm] = useState("");
@@ -63,9 +65,19 @@ export default function TemplateManagement({ activeTab: externalActiveTab }: Tem
     <>
       <div className="min-h-screen p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Template Management</h1>
-          <p className="text-muted-foreground mt-1">Manage invoice templates and terms & conditions</p>
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setLocation('/?tab=overview')}
+            data-testid="button-back"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold">Template Management</h1>
+            <p className="text-muted-foreground mt-1">Manage invoice templates and terms & conditions</p>
+          </div>
         </div>
       </div>
 

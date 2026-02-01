@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { GlobalHeader } from "@/components/GlobalHeader";
-import { Bell, Mail, MessageSquare, Save, AlertCircle, Check } from "lucide-react";
+import { Bell, Mail, MessageSquare, Save, AlertCircle, Check, ArrowLeft } from "lucide-react";
+import { useLocation } from "wouter";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface NotificationConfig {
@@ -34,6 +35,7 @@ interface NotificationConfig {
 
 export default function NotificationSettings() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const { logoutMutation } = useAuth();
   
   // Fetch current configuration
@@ -142,14 +144,24 @@ export default function NotificationSettings() {
   return (
     <>
       <div className="p-6 space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold flex items-center gap-2">
-          <Bell className="w-6 h-6" />
-          Notification Settings
-        </h2>
-        <p className="text-sm text-muted-foreground mt-2">
-          Configure email and WhatsApp notifications for machine startup reminders
-        </p>
+      <div className="flex items-center gap-4">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setLocation('/?tab=overview')}
+          data-testid="button-back"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+        <div>
+          <h2 className="text-2xl font-bold flex items-center gap-2">
+            <Bell className="w-6 h-6" />
+            Notification Settings
+          </h2>
+          <p className="text-sm text-muted-foreground mt-2">
+            Configure email and WhatsApp notifications for machine startup reminders
+          </p>
+        </div>
       </div>
 
       <Alert>

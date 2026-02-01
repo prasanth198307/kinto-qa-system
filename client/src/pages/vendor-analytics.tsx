@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Building2, TrendingUp, DollarSign, Users, FileSpreadsheet, ExternalLink, Search, X } from "lucide-react";
+import { Building2, TrendingUp, DollarSign, Users, FileSpreadsheet, ExternalLink, Search, X, ArrowLeft } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { DataTablePagination } from "@/components/DataTablePagination";
@@ -199,9 +199,19 @@ export default function VendorAnalytics() {
     return (
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-3xl font-bold" data-testid="heading-vendor-analytics-loading">Vendor Analytics</h2>
-            <p className="text-muted-foreground" data-testid="description-vendor-analytics-loading">Track vendor performance and sales</p>
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setLocation('/?tab=invoices')}
+              data-testid="button-back"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h2 className="text-3xl font-bold" data-testid="heading-vendor-analytics-loading">Vendor Analytics</h2>
+              <p className="text-muted-foreground" data-testid="description-vendor-analytics-loading">Track vendor performance and sales</p>
+            </div>
           </div>
         </div>
 
@@ -226,11 +236,21 @@ export default function VendorAnalytics() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h2 className="text-3xl font-bold" data-testid="heading-vendor-analytics">Vendor Analytics</h2>
-          <p className="text-muted-foreground" data-testid="description-vendor-analytics">
-            {analyticsData?.meta ? `${analyticsData.meta.totalItems} total vendors` : 'Track vendor performance and sales'}
-          </p>
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setLocation('/?tab=invoices')}
+            data-testid="button-back"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h2 className="text-3xl font-bold" data-testid="heading-vendor-analytics">Vendor Analytics</h2>
+            <p className="text-muted-foreground" data-testid="description-vendor-analytics">
+              {analyticsData?.meta ? `${analyticsData.meta.totalItems} total vendors` : 'Track vendor performance and sales'}
+            </p>
+          </div>
         </div>
 
         <Button 

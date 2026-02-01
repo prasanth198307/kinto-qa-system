@@ -176,12 +176,25 @@ export default function VendorHistoryPage() {
     setLocation(`/vendor-history/${vendorId}`);
   };
 
+  const navigate = (path: string) => setLocation(path);
+
   return (
     <div className="p-4 md:p-6 space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold print:text-xl" data-testid="text-page-title">Vendor History</h1>
-          <p className="text-muted-foreground print:text-sm">View complete transaction history and balances for all vendors</p>
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate('/?tab=invoices')}
+            className="print:hidden"
+            data-testid="button-back"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold print:text-xl" data-testid="text-page-title">Vendor History</h1>
+            <p className="text-muted-foreground print:text-sm">View complete transaction history and balances for all vendors</p>
+          </div>
         </div>
         <div className="flex gap-2">
           <Button

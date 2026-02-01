@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
-import { Upload, FileSpreadsheet, CheckCircle2, AlertCircle, Info, Trash2 } from "lucide-react";
+import { Upload, FileSpreadsheet, CheckCircle2, AlertCircle, Info, Trash2, ArrowLeft } from "lucide-react";
+import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -51,6 +52,7 @@ interface CreditNoteImportResult {
 
 export default function DataImport() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [partyFile, setPartyFile] = useState<File | null>(null);
   const [saleFile, setSaleFile] = useState<File | null>(null);
   const [itemFile, setItemFile] = useState<File | null>(null);
@@ -292,11 +294,21 @@ export default function DataImport() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-start">
-        <div>
-          <h2 className="text-3xl font-bold" data-testid="heading-data-import">Vyapaar Data Import</h2>
-          <p className="text-muted-foreground" data-testid="description-data-import">
-            Upload Excel files from Vyapaar to migrate your data
-          </p>
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setLocation('/?tab=overview')}
+            data-testid="button-back"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h2 className="text-3xl font-bold" data-testid="heading-data-import">Vyapaar Data Import</h2>
+            <p className="text-muted-foreground" data-testid="description-data-import">
+              Upload Excel files from Vyapaar to migrate your data
+            </p>
+          </div>
         </div>
         <div className="flex gap-2">
           <AlertDialog open={showClearInvoicesDialog} onOpenChange={setShowClearInvoicesDialog}>

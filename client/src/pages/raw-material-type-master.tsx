@@ -11,7 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Edit, Trash2, Package } from "lucide-react";
+import { Plus, Edit, Trash2, Package, ArrowLeft } from "lucide-react";
+import { useLocation } from "wouter";
 import { z } from "zod";
 import { usePermissions } from "@/hooks/use-permissions";
 import {
@@ -104,6 +105,7 @@ type FormValues = z.infer<typeof formSchema>;
 
 export default function RawMaterialTypeMaster() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const { hasPermission } = usePermissions();
   const canCreate = hasPermission('raw_material_types', 'create');
   const canEdit = hasPermission('raw_material_types', 'edit');
@@ -277,14 +279,24 @@ export default function RawMaterialTypeMaster() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Package className="h-8 w-8" />
-            Raw Material Type Master
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Define raw material types with conversion methods for inventory management
-          </p>
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setLocation('/?tab=inventory')}
+            data-testid="button-back"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold flex items-center gap-2">
+              <Package className="h-8 w-8" />
+              Raw Material Type Master
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Define raw material types with conversion methods for inventory management
+            </p>
+          </div>
         </div>
         {canCreate && (
           <Button onClick={handleAddNew} data-testid="button-add-type">

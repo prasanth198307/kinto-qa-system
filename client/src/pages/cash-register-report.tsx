@@ -25,8 +25,10 @@ import {
   FileText,
   Eye,
   File,
-  Receipt
+  Receipt,
+  ArrowLeft
 } from 'lucide-react';
+import { useLocation } from "wouter";
 import {
   Collapsible,
   CollapsibleContent,
@@ -249,6 +251,7 @@ const formatPeriodLabel = (period: string, periodType: string) => {
 
 export default function CashRegisterReport() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState('report');
   const [periodType, setPeriodType] = useState('monthly');
   const [selectedMonth, setSelectedMonth] = useState(() => format(new Date(), 'MM'));
@@ -456,9 +459,19 @@ export default function CashRegisterReport() {
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold" data-testid="text-report-title">Cash Register Report</h1>
-          <p className="text-muted-foreground">View cash flow summaries and documents</p>
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setLocation('/?tab=overview')}
+            data-testid="button-back"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold" data-testid="text-report-title">Cash Register Report</h1>
+            <p className="text-muted-foreground">View cash flow summaries and documents</p>
+          </div>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button 

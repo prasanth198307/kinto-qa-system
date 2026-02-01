@@ -15,7 +15,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
-import { XCircle, Search, ChevronLeft, ChevronRight, Filter, X, IndianRupee, Eye, Download } from "lucide-react";
+import { XCircle, Search, ChevronLeft, ChevronRight, Filter, X, IndianRupee, Eye, Download, ArrowLeft } from "lucide-react";
+import { useLocation } from "wouter";
 import { Link } from "wouter";
 import { GlobalHeader } from "@/components/GlobalHeader";
 import { useMutation } from "@tanstack/react-query";
@@ -56,6 +57,7 @@ interface WriteOffReportProps {
 }
 
 export default function WriteOffReport({ showHeader = true }: WriteOffReportProps = {}) {
+  const [, setLocation] = useLocation();
   const [page, setPage] = useState(1);
   const [pageSize] = useState(25);
   const [buyerNameFilter, setBuyerNameFilter] = useState("");
@@ -177,22 +179,25 @@ export default function WriteOffReport({ showHeader = true }: WriteOffReportProp
       {showHeader && <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />}
       <div className={showHeader ? "p-6 mt-16" : "p-6"}>
         <div className="mb-6">
-          <div className="flex items-center gap-2 mb-2">
-            <Link href="/" className="text-muted-foreground hover:text-foreground">
-              Dashboard
-            </Link>
-            <span className="text-muted-foreground">/</span>
-            <span>Write-Off Report</span>
-          </div>
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-                <XCircle className="h-8 w-8 text-destructive" />
-                Write-Off Report
-              </h1>
-              <p className="text-muted-foreground mt-2">
-                View history of outstanding balances written off for audit trail and reconciliation
-              </p>
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setLocation('/?tab=invoices')}
+                data-testid="button-back"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+                  <XCircle className="h-8 w-8 text-destructive" />
+                  Write-Off Report
+                </h1>
+                <p className="text-muted-foreground mt-2">
+                  View history of outstanding balances written off for audit trail and reconciliation
+                </p>
+              </div>
             </div>
             {writeOffs.length > 0 && (
               <Button 
