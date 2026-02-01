@@ -92,14 +92,20 @@ export default function SalesReturnsPage() {
     inv.status === 'delivered' || inv.status === 'pod_confirmed'
   );
 
-  // Filter invoices based on search
-  const filteredInvoices = deliveredInvoices.filter((inv: any) => {
-    const searchLower = invoiceSearch.toLowerCase();
-    return (
-      inv.invoiceNumber?.toLowerCase().includes(searchLower) ||
-      inv.buyerName?.toLowerCase().includes(searchLower)
-    );
-  });
+  // Filter invoices based on search and sort by date descending (newest first)
+  const filteredInvoices = deliveredInvoices
+    .filter((inv: any) => {
+      const searchLower = invoiceSearch.toLowerCase();
+      return (
+        inv.invoiceNumber?.toLowerCase().includes(searchLower) ||
+        inv.buyerName?.toLowerCase().includes(searchLower)
+      );
+    })
+    .sort((a: any, b: any) => {
+      const dateA = new Date(a.createdAt || a.invoiceDate || 0).getTime();
+      const dateB = new Date(b.createdAt || b.invoiceDate || 0).getTime();
+      return dateB - dateA; // Descending order (newest first)
+    });
 
   const { data: products = [] } = useQuery<any[]>({
     queryKey: ['/api/products'],
