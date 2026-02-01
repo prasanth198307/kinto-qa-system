@@ -479,16 +479,21 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
             variant="ghost"
             size="icon"
             onClick={() => {
+              console.log('Back button clicked. Current window.location:', window.location.href);
+              console.log('window.history.length:', window.history.length);
+              
+              const params = new URLSearchParams(window.location.search);
+              const from = params.get('from');
+              console.log('URL "from" parameter:', from);
+
               // Try to use browser history first if possible, otherwise fallback to smart routing
               if (window.history.length > 2) {
+                console.log('Navigating back using window.history.back()');
                 window.history.back();
                 return;
               }
 
-              // Get current location/URL to check for tab param
-              const params = new URLSearchParams(window.location.search);
-              const from = params.get('from');
-              
+              console.log('Fallback routing triggered');
               if (from === 'cancelled') {
                 navigate('/cancelled-invoices');
               } else if (from === 'dispatch') {
@@ -498,7 +503,7 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
               } else if (from === 'vendor_history') {
                 navigate('/vendor-history');
               } else {
-                // Force navigate to root with invoices tab
+                console.log('Defaulting to /?tab=invoices');
                 navigate('/?tab=invoices');
               }
             }}
