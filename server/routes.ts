@@ -102,6 +102,7 @@ const endpointToScreenKey: Record<string, string> = {
   '/api/reports/finished-goods': 'report_finished_goods',
   '/api/reports/monthly-sales': 'report_monthly_sales',
   '/api/reports/sales-returns-summary': 'report_sales_returns',
+  '/api/reports/repacking': 'report_repacking',
   '/api/scrap-inventory/report': 'report_scrap',
   '/api/gst-reports': 'report_gst',
   
@@ -9675,6 +9676,109 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error generating sales returns summary:", error);
       res.status(500).json({ message: "Failed to generate sales returns summary" });
+    }
+  });
+
+  // Get repacking report with date range filtering
+  app.get('/api/reports/repacking', requireRole('admin', 'Admin', 'manager', 'Manager', 'AccountsManager'), async (req: any, res) => {
+    try {
+      const { dateFrom, dateTo } = req.query;
+      
+      let startDate: Date;
+      let endDate: Date;
+      
+      if (dateFrom && dateTo) {
+        startDate = new Date(dateFrom as string);
+        endDate = new Date(dateTo as string);
+        endDate.setHours(23, 59, 59, 999);
+      } else {
+        // Default to last 30 days
+        endDate = new Date();
+        startDate = new Date();
+        startDate.setDate(startDate.getDate() - 30);
+      }
+      
+      // Get all finished goods from repacking source
+      const repackItems = await db.select({
+        fg: finishedGoods,
+        productName: products.name,
+        productCode: products.code,
+      })
+      .from(finishedGoods)
+      .leftJoin(products, eq(finishedGoods.productId, products.id))
+      .where(and(
+        eq(finishedGoods.recordStatus, 1),
+        eq(finishedGoods.source, 'sales_return_repack'),
+        gte(finishedGoods.createdAt, startDate.toISOString()),
+        lte(finishedGoods.createdAt, endDate.toISOString())
+      ))
+      .orderBy(desc(finishedGoods.createdAt));
+      
+      // Calculate summary
+      const summary = {
+        totalRecords: repackItems.length,
+        totalQuantity: repackItems.reduce((sum, r) => sum + (r.fg.quantity || 0), 0),
+        byStatus: {
+          pending: repackItems.filter(r => r.fg.qualityStatus === 'pending').length,
+          approved: repackItems.filter(r => r.fg.qualityStatus === 'approved').length,
+          rejected: repackItems.filter(r => r.fg.qualityStatus === 'rejected').length,
+        },
+        byQualityStatusQuantity: {
+          pending: repackItems.filter(r => r.fg.qualityStatus === 'pending').reduce((sum, r) => sum + (r.fg.quantity || 0), 0),
+          approved: repackItems.filter(r => r.fg.qualityStatus === 'approved').reduce((sum, r) => sum + (r.fg.quantity || 0), 0),
+          rejected: repackItems.filter(r => r.fg.qualityStatus === 'rejected').reduce((sum, r) => sum + (r.fg.quantity || 0), 0),
+        },
+        byProduct: {} as Record<string, { productName: string; productCode: string; pendingCount: number; approvedCount: number; pendingQty: number; approvedQty: number }>,
+      };
+      
+      // Group by product
+      repackItems.forEach(item => {
+        const productId = item.fg.productId;
+        if (!summary.byProduct[productId]) {
+          summary.byProduct[productId] = {
+            productName: item.productName || 'Unknown',
+            productCode: item.productCode || '',
+            pendingCount: 0,
+            approvedCount: 0,
+            pendingQty: 0,
+            approvedQty: 0,
+          };
+        }
+        if (item.fg.qualityStatus === 'pending') {
+          summary.byProduct[productId].pendingCount++;
+          summary.byProduct[productId].pendingQty += item.fg.quantity || 0;
+        } else if (item.fg.qualityStatus === 'approved') {
+          summary.byProduct[productId].approvedCount++;
+          summary.byProduct[productId].approvedQty += item.fg.quantity || 0;
+        }
+      });
+      
+      // Format records for display
+      const records = repackItems.map(item => ({
+        id: item.fg.id,
+        productId: item.fg.productId,
+        productName: item.productName,
+        productCode: item.productCode,
+        batchNumber: item.fg.batchNumber,
+        originalBatchNumber: item.fg.originalBatchNumber,
+        quantity: item.fg.quantity,
+        qualityStatus: item.fg.qualityStatus,
+        productionDate: item.fg.productionDate,
+        inspectionDate: item.fg.inspectionDate,
+        remarks: item.fg.remarks,
+        salesReturnItemId: item.fg.salesReturnItemId,
+        createdAt: item.fg.createdAt,
+      }));
+      
+      res.json({
+        dateFrom: startDate.toISOString(),
+        dateTo: endDate.toISOString(),
+        summary,
+        records,
+      });
+    } catch (error) {
+      console.error("Error generating repacking report:", error);
+      res.status(500).json({ message: "Failed to generate repacking report" });
     }
   });
 

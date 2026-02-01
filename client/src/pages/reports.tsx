@@ -26,7 +26,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { FileText, Package, Receipt, ShoppingCart, Wrench, Filter, FileCheck2, Download, Wallet, Banknote, CreditCard, Check, ChevronsUpDown, Boxes, Settings, Trash2, Undo2 } from "lucide-react";
+import { FileText, Package, Receipt, ShoppingCart, Wrench, Filter, FileCheck2, Download, Wallet, Banknote, CreditCard, Check, ChevronsUpDown, Boxes, Settings, Trash2, Undo2, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import type { Gatepass, Invoice, RawMaterialIssuance, PurchaseOrder, PMExecution, InvoicePayment } from "@shared/schema";
@@ -885,11 +885,12 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
     'monthly-sales': canAccessReportTab('report_monthly_sales'),
     'scrap': canAccessReportTab('report_scrap'),
     'sales-returns': canAccessReportTab('report_sales_returns'),
+    'repacking': canAccessReportTab('report_repacking'),
   };
   
   // Find first accessible tab for default
   const getFirstAccessibleTab = () => {
-    const tabs = ['gatepasses', 'invoices', 'issuances', 'purchase-orders', 'maintenance', 'machines', 'expenses', 'cash-register', 'gst-reports', 'payments', 'finished-goods', 'monthly-sales', 'scrap', 'sales-returns'];
+    const tabs = ['gatepasses', 'invoices', 'issuances', 'purchase-orders', 'maintenance', 'machines', 'expenses', 'cash-register', 'gst-reports', 'payments', 'finished-goods', 'monthly-sales', 'scrap', 'sales-returns', 'repacking'];
     for (const tab of tabs) {
       if (tabPermissions[tab as keyof typeof tabPermissions]) return tab;
     }
@@ -1727,6 +1728,12 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
             <TabsTrigger value="sales-returns" data-testid="tab-sales-returns">
               <Undo2 className="w-4 h-4 mr-2" />
               Sales Returns
+            </TabsTrigger>
+          )}
+          {tabPermissions.repacking && (
+            <TabsTrigger value="repacking" data-testid="tab-repacking">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Repacking
             </TabsTrigger>
           )}
         </TabsList>
@@ -3297,6 +3304,9 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
         <TabsContent value="sales-returns">
           <SalesReturnsReportContent />
         </TabsContent>
+        <TabsContent value="repacking">
+          <RepackingReportContent />
+        </TabsContent>
       </Tabs>
       </div>
     </>
@@ -4012,6 +4022,290 @@ function SalesReturnsReportContent() {
                         </TableRow>
                       );
                     })}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// Repacking Report Content Component
+function RepackingReportContent() {
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [reportGenerated, setReportGenerated] = useState(false);
+  
+  const { data: reportData, isLoading, refetch, isFetching } = useQuery<{
+    dateFrom: string;
+    dateTo: string;
+    summary: {
+      totalRecords: number;
+      totalQuantity: number;
+      byStatus: { pending: number; approved: number; rejected: number };
+      byQualityStatusQuantity: { pending: number; approved: number; rejected: number };
+      byProduct: Record<string, { productName: string; productCode: string; pendingCount: number; approvedCount: number; pendingQty: number; approvedQty: number }>;
+    };
+    records: any[];
+  }>({
+    queryKey: ['/api/reports/repacking', { dateFrom, dateTo }],
+    enabled: false,
+  });
+
+  const handleGenerateReport = () => {
+    if (!dateFrom || !dateTo) return;
+    refetch();
+    setReportGenerated(true);
+  };
+
+  const handleExportExcel = async () => {
+    if (!reportData) return;
+    const XLSX = await import('xlsx');
+    const wb = XLSX.utils.book_new();
+    
+    // Summary sheet
+    const summaryData = [
+      ['Repacking Report'],
+      ['Period', `${format(new Date(reportData.dateFrom), 'dd MMM yyyy')} - ${format(new Date(reportData.dateTo), 'dd MMM yyyy')}`],
+      [],
+      ['Summary'],
+      ['Total Records', reportData.summary.totalRecords],
+      ['Total Quantity', reportData.summary.totalQuantity],
+      [],
+      ['By Status (Count)'],
+      ['Pending', reportData.summary.byStatus.pending],
+      ['Approved', reportData.summary.byStatus.approved],
+      ['Rejected', reportData.summary.byStatus.rejected],
+      [],
+      ['By Status (Quantity)'],
+      ['Pending Qty', reportData.summary.byQualityStatusQuantity.pending],
+      ['Approved Qty', reportData.summary.byQualityStatusQuantity.approved],
+      ['Rejected Qty', reportData.summary.byQualityStatusQuantity.rejected],
+    ];
+    const summaryWs = XLSX.utils.aoa_to_sheet(summaryData);
+    XLSX.utils.book_append_sheet(wb, summaryWs, 'Summary');
+    
+    // Details sheet
+    const detailsData = reportData.records.map(r => ({
+      'Product Code': r.productCode || '',
+      'Product Name': r.productName || 'Unknown',
+      'Batch Number': r.batchNumber || '',
+      'Original Batch': r.originalBatchNumber || '',
+      'Quantity': r.quantity,
+      'Quality Status': r.qualityStatus,
+      'Created Date': r.createdAt ? format(new Date(r.createdAt), 'dd MMM yyyy') : '',
+      'Inspection Date': r.inspectionDate ? format(new Date(r.inspectionDate), 'dd MMM yyyy') : '',
+      'Remarks': r.remarks || '',
+    }));
+    const detailsWs = XLSX.utils.json_to_sheet(detailsData);
+    XLSX.utils.book_append_sheet(wb, detailsWs, 'Details');
+    
+    // Product breakdown sheet
+    const productData = Object.entries(reportData.summary.byProduct).map(([id, data]) => ({
+      'Product Code': data.productCode,
+      'Product Name': data.productName,
+      'Pending Count': data.pendingCount,
+      'Pending Qty': data.pendingQty,
+      'Approved Count': data.approvedCount,
+      'Approved Qty': data.approvedQty,
+    }));
+    const productWs = XLSX.utils.json_to_sheet(productData);
+    XLSX.utils.book_append_sheet(wb, productWs, 'By Product');
+    
+    XLSX.writeFile(wb, `Repacking_Report_${format(new Date(), 'yyyyMMdd')}.xlsx`);
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between gap-2">
+        <div>
+          <CardTitle>Repacking Report</CardTitle>
+          <CardDescription>
+            Items going through repacking workflow from sales returns
+          </CardDescription>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex flex-wrap gap-4 items-end">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">From Date</label>
+            <Input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="w-40"
+              data-testid="input-repacking-date-from"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">To Date</label>
+            <Input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="w-40"
+              data-testid="input-repacking-date-to"
+            />
+          </div>
+          <Button
+            onClick={handleGenerateReport}
+            disabled={!dateFrom || !dateTo || isFetching}
+            data-testid="button-generate-repacking-report"
+          >
+            {isFetching ? 'Generating...' : 'Generate Report'}
+          </Button>
+          {reportData && (
+            <>
+              <Button variant="outline" onClick={handleExportExcel} data-testid="button-export-repacking-excel">
+                <Download className="w-4 h-4 mr-2" />
+                Export Excel
+              </Button>
+              <Button variant="outline" onClick={handlePrint} data-testid="button-print-repacking">
+                Print
+              </Button>
+            </>
+          )}
+        </div>
+
+        {reportGenerated && reportData && (
+          <div className="space-y-6 print:space-y-4">
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Card>
+                <CardContent className="pt-4">
+                  <div className="text-2xl font-bold">{reportData.summary.totalRecords}</div>
+                  <div className="text-sm text-muted-foreground">Total Records</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4">
+                  <div className="text-2xl font-bold">{reportData.summary.totalQuantity}</div>
+                  <div className="text-sm text-muted-foreground">Total Quantity</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4">
+                  <div className="text-2xl font-bold text-yellow-600">{reportData.summary.byQualityStatusQuantity.pending}</div>
+                  <div className="text-sm text-muted-foreground">Pending Qty</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4">
+                  <div className="text-2xl font-bold text-green-600">{reportData.summary.byQualityStatusQuantity.approved}</div>
+                  <div className="text-sm text-muted-foreground">Approved Qty</div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Status Breakdown */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Status Breakdown</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div>
+                    <div className="text-xl font-bold text-yellow-600">{reportData.summary.byStatus.pending}</div>
+                    <div className="text-sm text-muted-foreground">Pending</div>
+                  </div>
+                  <div>
+                    <div className="text-xl font-bold text-green-600">{reportData.summary.byStatus.approved}</div>
+                    <div className="text-sm text-muted-foreground">Approved</div>
+                  </div>
+                  <div>
+                    <div className="text-xl font-bold text-red-600">{reportData.summary.byStatus.rejected}</div>
+                    <div className="text-sm text-muted-foreground">Rejected</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Product Breakdown */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">By Product</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Product</TableHead>
+                      <TableHead className="text-right">Pending Count</TableHead>
+                      <TableHead className="text-right">Pending Qty</TableHead>
+                      <TableHead className="text-right">Approved Count</TableHead>
+                      <TableHead className="text-right">Approved Qty</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {Object.entries(reportData.summary.byProduct).map(([productId, data]) => (
+                      <TableRow key={productId}>
+                        <TableCell>
+                          <div className="font-medium">{data.productName}</div>
+                          {data.productCode && <div className="text-xs text-muted-foreground">{data.productCode}</div>}
+                        </TableCell>
+                        <TableCell className="text-right">{data.pendingCount}</TableCell>
+                        <TableCell className="text-right">{data.pendingQty}</TableCell>
+                        <TableCell className="text-right">{data.approvedCount}</TableCell>
+                        <TableCell className="text-right">{data.approvedQty}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+
+            {/* Details Table */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Repacking Details</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Product</TableHead>
+                      <TableHead>Batch</TableHead>
+                      <TableHead className="text-right">Qty</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Remarks</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {reportData.records.map((r: any) => (
+                      <TableRow key={r.id}>
+                        <TableCell>
+                          <div className="font-medium">{r.productName}</div>
+                          {r.productCode && <div className="text-xs text-muted-foreground">{r.productCode}</div>}
+                        </TableCell>
+                        <TableCell>
+                          <div>{r.batchNumber}</div>
+                          {r.originalBatchNumber && r.originalBatchNumber !== r.batchNumber && (
+                            <div className="text-xs text-muted-foreground">Orig: {r.originalBatchNumber}</div>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">{r.quantity}</TableCell>
+                        <TableCell>
+                          <Badge variant={
+                            r.qualityStatus === 'approved' ? 'default' :
+                            r.qualityStatus === 'rejected' ? 'destructive' : 'secondary'
+                          }>
+                            {r.qualityStatus}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {r.createdAt ? format(new Date(r.createdAt), 'dd MMM yyyy') : '-'}
+                        </TableCell>
+                        <TableCell className="max-w-[200px] truncate">{r.remarks || '-'}</TableCell>
+                      </TableRow>
+                    ))}
                   </TableBody>
                 </Table>
               </CardContent>
