@@ -98,6 +98,10 @@ import PrintGatepassPage from "@/pages/PrintGatepassPage";
 import PrintCreditNotePage from "@/pages/PrintCreditNotePage";
 import PrintDebitNotePage from "@/pages/PrintDebitNotePage";
 import PrintInvoiceGatepassPage from "@/pages/PrintInvoiceGatepassPage";
+import RawMaterialDetail from "@/pages/raw-material-detail";
+import RawMaterialTypeDetail from "@/pages/raw-material-type-detail";
+import ProductDetail from "@/pages/product-detail";
+import FinishedGoodDetail from "@/pages/finished-good-detail";
 
 type Role = 'admin' | 'operator' | 'reviewer' | 'manager';
 
@@ -2420,6 +2424,10 @@ function Router() {
       <ProtectedRoute path="/vendor-history" component={VendorHistoryPage} />
       <ProtectedRoute path="/vendor-history/:vendorId" component={VendorHistoryDetailPage} />
       <ProtectedRoute path="/invoice/:id" component={InvoiceDetailPageWrapper} />
+      <ProtectedRoute path="/raw-material/:id" component={RawMaterialDetail} />
+      <ProtectedRoute path="/raw-material-type/:id" component={RawMaterialTypeDetail} />
+      <ProtectedRoute path="/product/:id" component={ProductDetail} />
+      <ProtectedRoute path="/finished-good/:id" component={FinishedGoodDetail} />
       <ProtectedRoute path="/dispatch-tracking" component={DispatchTrackingPageWrapper} />
       <ProtectedRoute path="/dispatch-masters" component={DispatchMastersPageWrapper} />
       <ProtectedRoute path="/sales-returns" component={SalesReturnsPageWrapper} />

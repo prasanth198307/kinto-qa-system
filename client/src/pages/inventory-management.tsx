@@ -913,7 +913,7 @@ function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSea
                 </TableRow>
               ) : (
                 products.map((item) => (
-                  <TableRow key={item.id} data-testid={`row-product-${item.id}`}>
+                  <TableRow key={item.id} data-testid={`row-product-${item.id}`} className="cursor-pointer hover-elevate" onClick={() => setLocation(`/product/${item.id}`)}>
                     <TableCell className="font-medium" data-testid={`text-code-${item.id}`}>{item.productCode}</TableCell>
                     <TableCell data-testid={`text-name-${item.id}`}>{item.productName}</TableCell>
                     <TableCell className="text-muted-foreground" data-testid={`text-category-${item.id}`}>
@@ -934,7 +934,7 @@ function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSea
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleEdit(item)}
+                            onClick={(e) => { e.stopPropagation(); handleEdit(item); }}
                             data-testid={`button-edit-${item.id}`}
                           >
                             <Pencil className="h-4 w-4" />
@@ -944,7 +944,7 @@ function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSea
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleDelete(item.id)}
+                            onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
                             data-testid={`button-delete-${item.id}`}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -2263,6 +2263,7 @@ function ProductDialog({
 function RawMaterialsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSearchChange: (value: string) => void }) {
   const { toast } = useToast();
   const { role, hasPermission } = usePermissions();
+  const [, navigate] = useLocation();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<RawMaterial | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -2683,7 +2684,7 @@ function RawMaterialsTab({ searchTerm, onSearchChange }: { searchTerm: string; o
                 </TableRow>
               ) : (
                 paginatedItems.map((item) => (
-                  <TableRow key={item.id} data-testid={`row-material-${item.id}`}>
+                  <TableRow key={item.id} data-testid={`row-material-${item.id}`} className="cursor-pointer hover-elevate" onClick={() => navigate(`/raw-material/${item.id}`)}>
                     <TableCell className="font-medium" data-testid={`text-code-${item.id}`}>{item.materialCode}</TableCell>
                     <TableCell data-testid={`text-name-${item.id}`}>{item.materialName}</TableCell>
                     <TableCell data-testid={`text-batch-${item.id}`}>
@@ -2725,7 +2726,7 @@ function RawMaterialsTab({ searchTerm, onSearchChange }: { searchTerm: string; o
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handlePrintLabel(item)}
+                          onClick={(e) => { e.stopPropagation(); handlePrintLabel(item); }}
                           title="Print Label"
                           data-testid={`button-print-${item.id}`}
                         >
@@ -2735,7 +2736,7 @@ function RawMaterialsTab({ searchTerm, onSearchChange }: { searchTerm: string; o
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleEdit(item)}
+                            onClick={(e) => { e.stopPropagation(); handleEdit(item); }}
                             data-testid={`button-edit-${item.id}`}
                           >
                             <Pencil className="h-4 w-4" />
@@ -2745,7 +2746,7 @@ function RawMaterialsTab({ searchTerm, onSearchChange }: { searchTerm: string; o
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleDelete(item.id)}
+                            onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
                             data-testid={`button-delete-${item.id}`}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -4096,6 +4097,7 @@ function RawMaterialDialog({
 function FinishedGoodsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSearchChange: (value: string) => void }) {
   const { toast } = useToast();
   const { role, hasPermission } = usePermissions();
+  const [, navigate] = useLocation();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<FinishedGood | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -4741,7 +4743,7 @@ function FinishedGoodsTab({ searchTerm, onSearchChange }: { searchTerm: string; 
                 </TableRow>
               ) : (
                 paginatedItems.map((item) => (
-                  <TableRow key={item.id} data-testid={`row-good-${item.id}`}>
+                  <TableRow key={item.id} data-testid={`row-good-${item.id}`} className="cursor-pointer hover-elevate" onClick={() => navigate(`/finished-good/${item.id}`)}>
                     <TableCell className="font-medium" data-testid={`text-batch-${item.id}`}>{item.batchNumber}</TableCell>
                     <TableCell data-testid={`text-product-${item.id}`}>{getProductName(item.productId)}</TableCell>
                     <TableCell className="text-muted-foreground" data-testid={`text-date-${item.id}`}>
@@ -4762,7 +4764,7 @@ function FinishedGoodsTab({ searchTerm, onSearchChange }: { searchTerm: string; 
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => approvalMutation.mutate({ id: item.id, status: 'approved' })}
+                              onClick={(e) => { e.stopPropagation(); approvalMutation.mutate({ id: item.id, status: 'approved' }); }}
                               disabled={approvalMutation.isPending}
                               title="Approve"
                               data-testid={`button-approve-${item.id}`}
@@ -4773,7 +4775,7 @@ function FinishedGoodsTab({ searchTerm, onSearchChange }: { searchTerm: string; 
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => approvalMutation.mutate({ id: item.id, status: 'rejected' })}
+                              onClick={(e) => { e.stopPropagation(); approvalMutation.mutate({ id: item.id, status: 'rejected' }); }}
                               disabled={approvalMutation.isPending}
                               title="Reject"
                               data-testid={`button-reject-${item.id}`}
@@ -4787,7 +4789,7 @@ function FinishedGoodsTab({ searchTerm, onSearchChange }: { searchTerm: string; 
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleEdit(item)}
+                            onClick={(e) => { e.stopPropagation(); handleEdit(item); }}
                             data-testid={`button-edit-${item.id}`}
                           >
                             <Pencil className="h-4 w-4" />
@@ -4797,7 +4799,7 @@ function FinishedGoodsTab({ searchTerm, onSearchChange }: { searchTerm: string; 
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleDelete(item.id)}
+                            onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
                             data-testid={`button-delete-${item.id}`}
                           >
                             <Trash2 className="h-4 w-4" />

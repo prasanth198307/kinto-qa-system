@@ -337,7 +337,7 @@ export default function RawMaterialTypeMaster() {
               </TableHeader>
               <TableBody>
                 {types.map((type) => (
-                  <TableRow key={type.id} data-testid={`row-type-${type.id}`}>
+                  <TableRow key={type.id} data-testid={`row-type-${type.id}`} className="cursor-pointer hover-elevate" onClick={() => setLocation(`/raw-material-type/${type.id}`)}>
                     <TableCell className="font-medium">{type.typeCode}</TableCell>
                     <TableCell>{type.typeName}</TableCell>
                     <TableCell>
@@ -388,7 +388,7 @@ export default function RawMaterialTypeMaster() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => handleEdit(type)}
+                            onClick={(e) => { e.stopPropagation(); handleEdit(type); }}
                             data-testid={`button-edit-${type.id}`}
                           >
                             <Edit className="h-4 w-4" />
@@ -398,7 +398,7 @@ export default function RawMaterialTypeMaster() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => handleDelete(type)}
+                            onClick={(e) => { e.stopPropagation(); handleDelete(type); }}
                             data-testid={`button-delete-${type.id}`}
                           >
                             <Trash2 className="h-4 w-4" />
