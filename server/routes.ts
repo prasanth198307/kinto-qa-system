@@ -3960,7 +3960,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Repacking Queue - Get items pending repacking
   app.get('/api/repacking-queue', isAuthenticated, async (req: any, res) => {
     try {
-      // Get finished goods with pending quality status and REPACK in batch number
+      // Get finished goods from sales return repack source with pending quality status
       const pendingRepack = await db.select({
         id: finishedGoods.id,
         productId: finishedGoods.productId,
@@ -3968,6 +3968,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         quantity: finishedGoods.quantity,
         qualityStatus: finishedGoods.qualityStatus,
         remarks: finishedGoods.remarks,
+        source: finishedGoods.source,
+        salesReturnItemId: finishedGoods.salesReturnItemId,
         createdAt: finishedGoods.createdAt,
         productName: products.productName,
         productCode: products.productCode,
@@ -3977,7 +3979,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(and(
           eq(finishedGoods.qualityStatus, 'pending'),
           eq(finishedGoods.recordStatus, 1),
-          sql`${finishedGoods.batchNumber} LIKE '%REPACK%'`
+          eq(finishedGoods.source, 'sales_return_repack') // Use source field for precise filtering
         ))
         .orderBy(desc(finishedGoods.createdAt));
       
@@ -9041,6 +9043,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 quantity: processQty,
                 qualityStatus: 'approved',
                 remarks: `Returned goods from sales return - Good condition`,
+                source: 'sales_return_restock', // Track source for reporting
+                salesReturnItemId: item.id, // Link to sales return item for traceability
                 createdBy: req.user?.id,
               }]);
               console.log(`[INVENTORY] Restocked ${processQty} units of product ${item.productId} batch ${originalBatch} (Sales Return - Good condition)`);
@@ -9058,6 +9062,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 quantity: processQty,
                 qualityStatus: 'pending', // Pending until repacked
                 remarks: `Returned goods - Needs repacking before sale`,
+                source: 'sales_return_repack', // Track source for reporting
+                salesReturnItemId: item.id, // Link to sales return item for traceability
                 createdBy: req.user?.id,
               }]);
               console.log(`[INVENTORY] Added ${processQty} units of product ${item.productId} batch ${originalBatch} for repacking (Sales Return)`);
