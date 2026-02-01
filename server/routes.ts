@@ -9082,7 +9082,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 SELECT COALESCE(MAX(CAST(SUBSTRING(scrap_number FROM 15 FOR 3) AS INTEGER)), 0) + 1 as next_seq
                 FROM scrap_inventory 
                 WHERE scrap_number LIKE ${'SCRAP-' + today + '-%'}
-                FOR UPDATE
               `);
               const seq = scrapCountResult.rows?.[0]?.next_seq || 1;
               const scrapNumber = `SCRAP-${today}-${String(seq).padStart(3, '0')}`;
