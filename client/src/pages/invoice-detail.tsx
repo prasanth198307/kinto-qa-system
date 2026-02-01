@@ -481,8 +481,14 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
             onClick={() => {
               // Check if we came from cancelled invoices
               const params = new URLSearchParams(window.location.search);
-              if (params.get('from') === 'cancelled') {
+              const from = params.get('from');
+              
+              if (from === 'cancelled') {
                 navigate('/cancelled-invoices');
+              } else if (from === 'dispatch') {
+                navigate('/dispatch-tracking');
+              } else if (from === 'customer_advance') {
+                navigate('/customer-advances');
               } else {
                 navigate('/?tab=invoices');
               }
