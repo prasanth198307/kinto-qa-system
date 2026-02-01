@@ -70,7 +70,8 @@ export default function AdminDashboardOverview({ onNavigateToTab }: AdminDashboa
       icon: Settings,
       color: "text-green-600",
       bgColor: "bg-green-100",
-      testId: "stat-active-machines"
+      testId: "stat-active-machines",
+      action: "machines"
     },
     {
       title: "Checklist Templates",
@@ -167,7 +168,11 @@ export default function AdminDashboardOverview({ onNavigateToTab }: AdminDashboa
         {stats.map((stat, index) => {
           const Icon = stat.icon;
           return (
-            <Card key={index} className="hover:shadow-md transition-shadow">
+            <Card 
+              key={index} 
+              className="hover:shadow-md transition-shadow cursor-pointer"
+              onClick={() => stat.action && onNavigateToTab(stat.action)}
+            >
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="space-y-2">

@@ -479,6 +479,12 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
             variant="ghost"
             size="icon"
             onClick={() => {
+              // Try to use browser history first if possible, otherwise fallback to smart routing
+              if (window.history.length > 2) {
+                window.history.back();
+                return;
+              }
+
               // Get current location/URL to check for tab param
               const params = new URLSearchParams(window.location.search);
               const from = params.get('from');
