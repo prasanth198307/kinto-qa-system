@@ -1147,11 +1147,11 @@ function ScrapInventorySection() {
                       </Button>
                     </div>
                   ) : (
-                    <div className="relative">
+                    <label className="cursor-pointer">
                       <input
                         type="file"
                         accept="image/jpeg,image/png,image/webp"
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        className="hidden"
                         onChange={(e) => handleFileChange(scrap.id, e)}
                         disabled={uploadingId === scrap.id}
                         data-testid={`input-upload-evidence-${scrap.id}`}
@@ -1160,18 +1160,21 @@ function ScrapInventorySection() {
                         size="sm"
                         variant="outline"
                         disabled={uploadingId === scrap.id}
+                        asChild
                         data-testid={`button-upload-evidence-${scrap.id}`}
                       >
-                        {uploadingId === scrap.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <>
-                            <Upload className="h-4 w-4 mr-1" />
-                            Upload
-                          </>
-                        )}
+                        <span>
+                          {uploadingId === scrap.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <>
+                              <Upload className="h-4 w-4 mr-1" />
+                              Upload
+                            </>
+                          )}
+                        </span>
                       </Button>
-                    </div>
+                    </label>
                   )}
                 </TableCell>
                 <TableCell>
