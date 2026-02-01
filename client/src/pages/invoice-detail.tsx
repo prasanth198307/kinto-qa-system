@@ -492,10 +492,8 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
               } else if (from === 'vendor_history') {
                 navigate('/vendor-history');
               } else {
-                // If we're already on the dashboard but in a detail view,
-                // we should navigate back to the root with the invoices tab.
-                // Using window.location.href check to be sure we are navigating correctly.
-                window.location.href = '/?tab=invoices';
+                // Return to dashboard with invoices tab active
+                navigate('/?tab=invoices');
               }
             }}
             data-testid="button-back-to-dashboard"
