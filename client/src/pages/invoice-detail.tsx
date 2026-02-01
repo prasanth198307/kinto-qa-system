@@ -1068,8 +1068,8 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
                   <div className="text-sm">
                     <span className="text-muted-foreground">Replaced by: </span>
                     <Button 
-                      variant="link" 
-                      className="p-0 h-auto text-primary"
+                      variant="ghost" 
+                      className="p-0 h-auto text-primary underline hover:no-underline"
                       onClick={() => navigate(`/invoice/${(invoice as any).replacedByInvoiceId}`)}
                       data-testid="link-replacement-invoice"
                     >
@@ -1092,8 +1092,8 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
                 <div className="text-sm mt-2">
                   <span className="text-muted-foreground">Original cancelled invoice: </span>
                   <Button 
-                    variant="link" 
-                    className="p-0 h-auto text-primary"
+                    variant="ghost" 
+                    className="p-0 h-auto text-primary underline hover:no-underline"
                     onClick={() => navigate(`/invoice/${(invoice as any).originalInvoiceId}`)}
                     data-testid="link-original-invoice"
                   >

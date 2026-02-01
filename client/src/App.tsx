@@ -401,12 +401,13 @@ function CustomRoleDashboard({ roleName }: { roleName: string }) {
   const [isExecutionDialogOpen, setIsExecutionDialogOpen] = useState(false);
   const [selectedPlanForExecution, setSelectedPlanForExecution] = useState<any>(null);
 
+  // Handle tab parameter from URL - wouter's location only contains pathname, not query string
   useEffect(() => {
-    const params = new URLSearchParams(location.split('?')[1] || '');
+    const params = new URLSearchParams(window.location.search);
     const tab = params.get('tab');
     
     if (tab) {
-      const validTabs = ['invoices', 'gatepasses', 'raw-material-issuance'];
+      const validTabs = ['overview', 'invoices', 'gatepasses', 'raw-material-issuance', 'products', 'inventory', 'production', 'finished-goods', 'raw-materials', 'checklists', 'users', 'machines', 'maintenance', 'reports', 'sales-dashboard', 'vendor-analytics'];
       if (validTabs.includes(tab)) {
         setActiveView(tab);
       }
@@ -667,13 +668,14 @@ function AdminDashboard() {
   const [selectedPlanForExecution, setSelectedPlanForExecution] = useState<any>(null);
 
   // Handle tab parameter from URL (for Cancel & Reissue flow and other deep links)
+  // Note: wouter's location only contains pathname, not query string, so we use window.location.search
   useEffect(() => {
-    const params = new URLSearchParams(location.split('?')[1] || '');
+    const params = new URLSearchParams(window.location.search);
     const tab = params.get('tab');
     
     if (tab) {
-      // Map valid tab values to activeView
-      const validTabs = ['invoices', 'gatepasses', 'raw-material-issuance'];
+      // Map valid tab values to activeView - include all tab values used in navigation
+      const validTabs = ['overview', 'invoices', 'gatepasses', 'raw-material-issuance', 'products', 'inventory', 'production', 'finished-goods', 'raw-materials', 'checklists', 'users', 'machines', 'maintenance', 'reports', 'sales-dashboard', 'vendor-analytics'];
       if (validTabs.includes(tab)) {
         setActiveView(tab);
       }
