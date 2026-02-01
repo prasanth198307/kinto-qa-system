@@ -8804,6 +8804,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get sales return items for a specific return
+  app.get('/api/sales-return-items', isAuthenticated, async (req: any, res) => {
+    try {
+      const { returnId } = req.query;
+      if (!returnId) {
+        return res.status(400).json({ message: "returnId query parameter required" });
+      }
+      
+      const items = await storage.getSalesReturnItems(returnId as string);
+      res.json(items);
+    } catch (error) {
+      console.error("Error fetching sales return items:", error);
+      res.status(500).json({ message: "Failed to fetch sales return items" });
+    }
+  });
+
   // Mark return as received - allow create OR edit for workflow progression
   app.patch('/api/sales-returns/:id/receive', async (req: any, res) => {
     try {
