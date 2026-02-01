@@ -3318,8 +3318,10 @@ function ScrapReportContent() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [reportGenerated, setReportGenerated] = useState(false);
+  const [queryMonth, setQueryMonth] = useState<number | null>(null);
+  const [queryYear, setQueryYear] = useState<number | null>(null);
 
-  const { data: reportData, isLoading, refetch, isFetching } = useQuery<{
+  const { data: reportData, isLoading, isFetching } = useQuery<{
     month: number;
     year: number;
     summary: {
@@ -3337,12 +3339,13 @@ function ScrapReportContent() {
     };
     records: any[];
   }>({
-    queryKey: ['/api/scrap-inventory/report', { month: selectedMonth, year: selectedYear }],
-    enabled: false,
+    queryKey: ['/api/scrap-inventory/report', { month: queryMonth, year: queryYear }],
+    enabled: queryMonth !== null && queryYear !== null,
   });
 
   const handleGenerateReport = () => {
-    refetch();
+    setQueryMonth(selectedMonth);
+    setQueryYear(selectedYear);
     setReportGenerated(true);
   };
 
@@ -3692,8 +3695,10 @@ function SalesReturnsReportContent() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [reportGenerated, setReportGenerated] = useState(false);
+  const [queryDateFrom, setQueryDateFrom] = useState<string | null>(null);
+  const [queryDateTo, setQueryDateTo] = useState<string | null>(null);
   
-  const { data: reportData, isLoading, refetch, isFetching } = useQuery<{
+  const { data: reportData, isLoading, isFetching } = useQuery<{
     dateFrom: string;
     dateTo: string;
     summary: {
@@ -3707,13 +3712,14 @@ function SalesReturnsReportContent() {
     };
     records: any[];
   }>({
-    queryKey: ['/api/reports/sales-returns-summary', { dateFrom, dateTo }],
-    enabled: false,
+    queryKey: ['/api/reports/sales-returns-summary', { dateFrom: queryDateFrom, dateTo: queryDateTo }],
+    enabled: queryDateFrom !== null && queryDateTo !== null,
   });
 
   const handleGenerateReport = () => {
     if (!dateFrom || !dateTo) return;
-    refetch();
+    setQueryDateFrom(dateFrom);
+    setQueryDateTo(dateTo);
     setReportGenerated(true);
   };
 
@@ -4038,8 +4044,10 @@ function RepackingReportContent() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [reportGenerated, setReportGenerated] = useState(false);
+  const [queryDateFrom, setQueryDateFrom] = useState<string | null>(null);
+  const [queryDateTo, setQueryDateTo] = useState<string | null>(null);
   
-  const { data: reportData, isLoading, refetch, isFetching } = useQuery<{
+  const { data: reportData, isLoading, isFetching } = useQuery<{
     dateFrom: string;
     dateTo: string;
     summary: {
@@ -4051,13 +4059,14 @@ function RepackingReportContent() {
     };
     records: any[];
   }>({
-    queryKey: ['/api/reports/repacking', { dateFrom, dateTo }],
-    enabled: false,
+    queryKey: ['/api/reports/repacking', { dateFrom: queryDateFrom, dateTo: queryDateTo }],
+    enabled: queryDateFrom !== null && queryDateTo !== null,
   });
 
   const handleGenerateReport = () => {
     if (!dateFrom || !dateTo) return;
-    refetch();
+    setQueryDateFrom(dateFrom);
+    setQueryDateTo(dateTo);
     setReportGenerated(true);
   };
 
