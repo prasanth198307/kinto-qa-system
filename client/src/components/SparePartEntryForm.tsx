@@ -354,7 +354,7 @@ export default function SparePartEntryForm({ part, onClose }: SparePartEntryForm
                 data-testid="input-entry-date"
               />
             </div>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Quantity</Label>
                 <Input 
@@ -377,6 +377,8 @@ export default function SparePartEntryForm({ part, onClose }: SparePartEntryForm
                   data-testid="input-entry-price"
                 />
               </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>GST %</Label>
                 <Select value={entryFormData.gstPercent} onValueChange={v => setEntryFormData({...entryFormData, gstPercent: v})}>
@@ -392,23 +394,17 @@ export default function SparePartEntryForm({ part, onClose }: SparePartEntryForm
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-            {entryFormData.quantity && entryFormData.unitPrice && (
-              <div className="p-3 bg-muted rounded-md space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <span>Base Amount:</span>
-                  <span>₹{(parseInt(entryFormData.quantity) || 0) * (parseInt(entryFormData.unitPrice) || 0)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>GST ({entryFormData.gstPercent || 0}%):</span>
-                  <span>₹{Math.round((parseInt(entryFormData.quantity) || 0) * (parseInt(entryFormData.unitPrice) || 0) * (parseInt(entryFormData.gstPercent) || 0) / 100)}</span>
-                </div>
-                <div className="flex justify-between font-medium border-t pt-1">
-                  <span>Total Amount:</span>
-                  <span>₹{(parseInt(entryFormData.quantity) || 0) * (parseInt(entryFormData.unitPrice) || 0) + Math.round((parseInt(entryFormData.quantity) || 0) * (parseInt(entryFormData.unitPrice) || 0) * (parseInt(entryFormData.gstPercent) || 0) / 100)}</span>
-                </div>
+              <div className="space-y-2">
+                <Label>Total Amount (₹)</Label>
+                <Input 
+                  type="number" 
+                  value={(parseInt(entryFormData.quantity) || 0) * (parseInt(entryFormData.unitPrice) || 0) + Math.round((parseInt(entryFormData.quantity) || 0) * (parseInt(entryFormData.unitPrice) || 0) * (parseInt(entryFormData.gstPercent) || 0) / 100)}
+                  readOnly
+                  className="bg-muted"
+                  data-testid="input-entry-total-amount"
+                />
               </div>
-            )}
+            </div>
             <div className="space-y-2">
               <Label>Remarks</Label>
               <Input 
