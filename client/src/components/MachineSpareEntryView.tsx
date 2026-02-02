@@ -32,6 +32,7 @@ export default function MachineSpareEntryView() {
     category: '',
     reorderThreshold: '',
     currentStock: '',
+    openingStockDate: new Date().toISOString().split('T')[0],
     recommendedQuantity: '1'
   });
   const { toast } = useToast();
@@ -49,7 +50,7 @@ export default function MachineSpareEntryView() {
   });
 
   const createSpareMutation = useMutation({
-    mutationFn: async (data: { partName: string; partNumber?: string; category?: string; machineId: string; reorderThreshold?: number; currentStock?: number }) => {
+    mutationFn: async (data: { partName: string; partNumber?: string; category?: string; machineId: string; reorderThreshold?: number; currentStock?: number; openingStockDate?: string }) => {
       return await apiRequest('POST', '/api/spare-parts', data);
     },
     onSuccess: () => {
@@ -124,6 +125,7 @@ export default function MachineSpareEntryView() {
       category: '',
       reorderThreshold: '',
       currentStock: '',
+      openingStockDate: new Date().toISOString().split('T')[0],
       recommendedQuantity: '1'
     });
   };
@@ -154,6 +156,7 @@ export default function MachineSpareEntryView() {
       category: spare.category || '',
       reorderThreshold: spare.reorderThreshold?.toString() || '',
       currentStock: spare.currentStock?.toString() || '',
+      openingStockDate: spare.openingStockDate ? spare.openingStockDate.split('T')[0] : new Date().toISOString().split('T')[0],
       recommendedQuantity: '1'
     });
     setIsEditDialogOpen(true);
@@ -185,6 +188,7 @@ export default function MachineSpareEntryView() {
       machineId: selectedMachineId,
       reorderThreshold: parseNumber(formData.reorderThreshold),
       currentStock: parseNumber(formData.currentStock),
+      openingStockDate: formData.openingStockDate ? new Date(formData.openingStockDate).toISOString() : undefined,
     };
 
     if (!data.partName) {
@@ -215,6 +219,7 @@ export default function MachineSpareEntryView() {
       category: formData.category?.trim() || undefined,
       reorderThreshold: parseNumber(formData.reorderThreshold),
       currentStock: parseNumber(formData.currentStock),
+      openingStockDate: formData.openingStockDate ? new Date(formData.openingStockDate).toISOString() : undefined,
     };
 
     if (!data.partName) {
@@ -461,7 +466,7 @@ export default function MachineSpareEntryView() {
                   </Select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="currentStock">Opening Stock *</Label>
                   <Input
@@ -472,6 +477,16 @@ export default function MachineSpareEntryView() {
                     onChange={(e) => setFormData({ ...formData, currentStock: e.target.value })}
                     placeholder="0"
                     data-testid="input-current-stock"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="openingStockDate">Opening Stock Date</Label>
+                  <Input
+                    id="openingStockDate"
+                    type="date"
+                    value={formData.openingStockDate}
+                    onChange={(e) => setFormData({ ...formData, openingStockDate: e.target.value })}
+                    data-testid="input-opening-stock-date"
                   />
                 </div>
                 <div className="space-y-2">
@@ -548,7 +563,7 @@ export default function MachineSpareEntryView() {
                   </Select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="editCurrentStock">Opening Stock *</Label>
                   <Input
@@ -559,6 +574,16 @@ export default function MachineSpareEntryView() {
                     onChange={(e) => setFormData({ ...formData, currentStock: e.target.value })}
                     placeholder="0"
                     data-testid="input-edit-current-stock"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="editOpeningStockDate">Opening Stock Date</Label>
+                  <Input
+                    id="editOpeningStockDate"
+                    type="date"
+                    value={formData.openingStockDate}
+                    onChange={(e) => setFormData({ ...formData, openingStockDate: e.target.value })}
+                    data-testid="input-edit-opening-stock-date"
                   />
                 </div>
                 <div className="space-y-2">

@@ -316,6 +316,7 @@ export const sparePartsCatalog = pgTable("spare_parts_catalog", {
   unitPrice: integer("unit_price"),
   reorderThreshold: integer("reorder_threshold"),
   currentStock: integer("current_stock").default(0),
+  openingStockDate: timestamp("opening_stock_date", { mode: 'string' }),
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),

@@ -34,7 +34,8 @@ export default function AdminSparePartsManagement() {
     category: '',
     machineId: '',
     reorderThreshold: '',
-    currentStock: ''
+    currentStock: '',
+    openingStockDate: new Date().toISOString().split('T')[0]
   });
   const { toast } = useToast();
 
@@ -47,7 +48,7 @@ export default function AdminSparePartsManagement() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: { partName: string; partNumber?: string; category?: string; machineId?: string; reorderThreshold?: number; currentStock?: number }) => {
+    mutationFn: async (data: { partName: string; partNumber?: string; category?: string; machineId?: string; reorderThreshold?: number; currentStock?: number; openingStockDate?: string }) => {
       return await apiRequest('POST', '/api/spare-parts', data);
     },
     onSuccess: () => {
@@ -69,7 +70,7 @@ export default function AdminSparePartsManagement() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<{ partName: string; partNumber?: string; category?: string; machineId?: string; reorderThreshold?: number; currentStock?: number }> }) => {
+    mutationFn: async ({ id, data }: { id: string; data: Partial<{ partName: string; partNumber?: string; category?: string; machineId?: string; reorderThreshold?: number; currentStock?: number; openingStockDate?: string }> }) => {
       return await apiRequest('PATCH', `/api/spare-parts/${id}`, data);
     },
     onSuccess: () => {
@@ -152,7 +153,8 @@ export default function AdminSparePartsManagement() {
       category: '',
       machineId: '',
       reorderThreshold: '',
-      currentStock: ''
+      currentStock: '',
+      openingStockDate: new Date().toISOString().split('T')[0]
     });
   };
 
@@ -165,7 +167,8 @@ export default function AdminSparePartsManagement() {
         category: editingSparePart.category || '',
         machineId: editingSparePart.machineId || '',
         reorderThreshold: editingSparePart.reorderThreshold?.toString() || '',
-        currentStock: editingSparePart.currentStock?.toString() || ''
+        currentStock: editingSparePart.currentStock?.toString() || '',
+        openingStockDate: editingSparePart.openingStockDate ? editingSparePart.openingStockDate.split('T')[0] : new Date().toISOString().split('T')[0]
       });
     }
   }, [editingSparePart]);
@@ -203,6 +206,7 @@ export default function AdminSparePartsManagement() {
       machineId: formData.machineId?.trim() || undefined,
       reorderThreshold: parseNumber(formData.reorderThreshold),
       currentStock: parseNumber(formData.currentStock),
+      openingStockDate: formData.openingStockDate ? new Date(formData.openingStockDate).toISOString() : undefined,
     };
     
     if (!data.partName) {
@@ -234,6 +238,7 @@ export default function AdminSparePartsManagement() {
         machineId: formData.machineId?.trim() || undefined,
         reorderThreshold: parseNumber(formData.reorderThreshold),
         currentStock: parseNumber(formData.currentStock),
+        openingStockDate: formData.openingStockDate ? new Date(formData.openingStockDate).toISOString() : undefined,
       };
       
       if (!data.partName) {
@@ -505,7 +510,7 @@ export default function AdminSparePartsManagement() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <div>
                   <Label htmlFor="currentStock">Opening Stock</Label>
                   <Input
@@ -515,6 +520,16 @@ export default function AdminSparePartsManagement() {
                     value={formData.currentStock}
                     onChange={(e) => setFormData({ ...formData, currentStock: e.target.value })}
                     data-testid="input-current-stock"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="openingStockDate">Opening Stock Date</Label>
+                  <Input
+                    id="openingStockDate"
+                    type="date"
+                    value={formData.openingStockDate}
+                    onChange={(e) => setFormData({ ...formData, openingStockDate: e.target.value })}
+                    data-testid="input-opening-stock-date"
                   />
                 </div>
                 <div>
@@ -598,7 +613,7 @@ export default function AdminSparePartsManagement() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <div>
                   <Label htmlFor="edit-currentStock">Opening Stock</Label>
                   <Input
@@ -608,6 +623,16 @@ export default function AdminSparePartsManagement() {
                     value={formData.currentStock}
                     onChange={(e) => setFormData({ ...formData, currentStock: e.target.value })}
                     data-testid="input-edit-current-stock"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-openingStockDate">Opening Stock Date</Label>
+                  <Input
+                    id="edit-openingStockDate"
+                    type="date"
+                    value={formData.openingStockDate}
+                    onChange={(e) => setFormData({ ...formData, openingStockDate: e.target.value })}
+                    data-testid="input-edit-opening-stock-date"
                   />
                 </div>
                 <div>
