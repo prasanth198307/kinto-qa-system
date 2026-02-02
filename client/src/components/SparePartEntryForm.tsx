@@ -478,6 +478,7 @@ export default function SparePartEntryForm({ part, onClose }: SparePartEntryForm
                   <div className="space-y-2">
                     <Label>Machine</Label>
                     <Select 
+                      key={`machine-select-${part.id}-${part.machineId || 'none'}`}
                       value={issueFormData.machineId || "none"} 
                       onValueChange={v => setIssueFormData({...issueFormData, machineId: v === "none" ? "" : v})}
                     >
