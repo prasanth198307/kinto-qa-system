@@ -330,6 +330,7 @@ function ManagerDashboard() {
       case 'raw-materials':
       case 'finished-goods':
       case 'vendors':
+      case 'spare-parts':
         return <InventoryManagement activeTab={activeView} />;
       case 'raw-material-types':
         return <RawMaterialTypeMaster />;
@@ -579,6 +580,7 @@ function CustomRoleDashboard({ roleName }: { roleName: string }) {
       case 'raw-materials':
       case 'finished-goods':
       case 'vendors':
+      case 'spare-parts':
         return <InventoryManagement activeTab={activeView} />;
       case 'product-categories':
         return <ProductCategories />;
@@ -962,6 +964,7 @@ function AdminDashboard() {
       case 'raw-materials':
       case 'finished-goods':
       case 'vendors':
+      case 'spare-parts':
         return <InventoryManagement activeTab={activeView} />;
       case 'product-categories':
         return <ProductCategories />;

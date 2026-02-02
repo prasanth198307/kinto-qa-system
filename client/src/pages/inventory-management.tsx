@@ -81,7 +81,8 @@ export default function InventoryManagement({ activeTab: externalActiveTab }: In
     canAccessScreen('finished_goods') ||
     canAccessScreen('products') ||
     canAccessScreen('raw_materials') ||
-    canAccessScreen('uom');
+    canAccessScreen('uom') ||
+    canAccessScreen('spare_parts');
 
   if (permissionsLoading) {
     return (
@@ -118,6 +119,8 @@ export default function InventoryManagement({ activeTab: externalActiveTab }: In
         return <VendorManagement />;
       case 'banks':
         return <BankManagement />;
+      case 'spare-parts':
+        return <AdminSparePartsManagement />;
       default:
         return <UOMTab searchTerm={searchTerm} onSearchChange={setSearchTerm} />;
     }
@@ -141,7 +144,7 @@ export default function InventoryManagement({ activeTab: externalActiveTab }: In
               </Button>
               <div>
                 <h1 className="text-2xl font-bold text-foreground">Inventory Management</h1>
-                <p className="text-sm text-muted-foreground mt-1">Manage units, products, raw materials, and finished goods</p>
+                <p className="text-sm text-muted-foreground mt-1">Manage units, products, raw materials, finished goods, and spare parts</p>
               </div>
             </div>
           </div>
