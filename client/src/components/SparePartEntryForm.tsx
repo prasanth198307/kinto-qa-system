@@ -485,6 +485,7 @@ export default function SparePartEntryForm({ part, onClose }: SparePartEntryForm
                         <SelectValue placeholder="Select machine" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="none">Select machine</SelectItem>
                         {machines.map(m => (
                           <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
                         ))}
