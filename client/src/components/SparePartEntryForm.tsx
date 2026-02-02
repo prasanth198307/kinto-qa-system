@@ -201,10 +201,10 @@ export default function SparePartEntryForm({ part, onClose }: SparePartEntryForm
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => setIsEntryDialogOpen(true)} data-testid="button-add-stock">
-            <Plus className="w-4 h-4 mr-1" /> Add Stock
+            <Plus className="w-4 h-4 mr-1" /> Add Spare Part Entry
           </Button>
           <Button size="sm" onClick={() => setIsIssueDialogOpen(true)} data-testid="button-issue-stock">
-            <Minus className="w-4 h-4 mr-1" /> Issue
+            <Minus className="w-4 h-4 mr-1" /> Issue Part
           </Button>
         </div>
       </div>
