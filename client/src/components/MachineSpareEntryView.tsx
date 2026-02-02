@@ -470,9 +470,9 @@ export default function MachineSpareEntryView() {
                   </Select>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="currentStock">Current Stock</Label>
+                  <Label htmlFor="currentStock">Opening Stock *</Label>
                   <Input
                     id="currentStock"
                     type="number"
@@ -493,18 +493,6 @@ export default function MachineSpareEntryView() {
                     onChange={(e) => setFormData({ ...formData, reorderThreshold: e.target.value })}
                     placeholder="5"
                     data-testid="input-reorder-threshold"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="unitPrice">Unit Price (₹)</Label>
-                  <Input
-                    id="unitPrice"
-                    type="number"
-                    min="0"
-                    value={formData.unitPrice}
-                    onChange={(e) => setFormData({ ...formData, unitPrice: e.target.value })}
-                    placeholder="100"
-                    data-testid="input-unit-price"
                   />
                 </div>
               </div>
@@ -569,9 +557,9 @@ export default function MachineSpareEntryView() {
                   </Select>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="editCurrentStock">Current Stock</Label>
+                  <Label htmlFor="editCurrentStock">Opening Stock *</Label>
                   <Input
                     id="editCurrentStock"
                     type="number"
@@ -592,18 +580,6 @@ export default function MachineSpareEntryView() {
                     onChange={(e) => setFormData({ ...formData, reorderThreshold: e.target.value })}
                     placeholder="5"
                     data-testid="input-edit-reorder-threshold"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="editUnitPrice">Unit Price (₹)</Label>
-                  <Input
-                    id="editUnitPrice"
-                    type="number"
-                    min="0"
-                    value={formData.unitPrice}
-                    onChange={(e) => setFormData({ ...formData, unitPrice: e.target.value })}
-                    placeholder="100"
-                    data-testid="input-edit-unit-price"
                   />
                 </div>
               </div>
