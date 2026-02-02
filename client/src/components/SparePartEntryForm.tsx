@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -46,6 +46,16 @@ export default function SparePartEntryForm({ part, onClose }: SparePartEntryForm
     workOrderNumber: '',
     remarks: ''
   });
+
+  // Effect to sync machineId if part changes or when dialog opens
+  useEffect(() => {
+    if (isIssueDialogOpen) {
+      setIssueFormData(prev => ({
+        ...prev,
+        machineId: part.machineId || ''
+      }));
+    }
+  }, [isIssueDialogOpen, part.machineId]);
 
   const [returnQuantity, setReturnQuantity] = useState('');
 
@@ -466,7 +476,7 @@ export default function SparePartEntryForm({ part, onClose }: SparePartEntryForm
                   disabled={!!part.machineId}
                 >
                   <SelectTrigger data-testid="select-issue-machine">
-                    <SelectValue placeholder={part.machineId ? getMachineName(part.machineId) : "Select machine"} />
+                    <SelectValue placeholder={issueFormData.machineId ? getMachineName(issueFormData.machineId) : "Select machine"} />
                   </SelectTrigger>
                   <SelectContent>
                     {machines.map(m => (
