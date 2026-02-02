@@ -116,7 +116,7 @@ export default function ProductDetail({ showHeader = true }: ProductDetailProps)
   const productFinishedGoods = finishedGoods.filter(fg => fg.productId === id);
   const approvedStock = productFinishedGoods
     .filter(fg => fg.qualityStatus === 'approved')
-    .reduce((sum, fg) => sum + fg.quantity, 0);
+    .reduce((sum, fg) => sum + (fg.quantity || 0), 0);
 
   const getCategoryName = (categoryId: string | null) => {
     if (!categoryId) return 'N/A';
@@ -141,12 +141,13 @@ export default function ProductDetail({ showHeader = true }: ProductDetailProps)
     return uom?.name || '';
   };
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number | undefined | null) => {
+    const safeAmount = typeof amount === 'number' ? amount : 0;
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
       minimumFractionDigits: 2,
-    }).format(amount / 100);
+    }).format(safeAmount / 100);
   };
 
   if (isLoading) {
@@ -165,7 +166,7 @@ export default function ProductDetail({ showHeader = true }: ProductDetailProps)
           <CardContent className="py-8 text-center">
             <p className="text-muted-foreground">Product not found</p>
             <Button 
-              onClick={() => setLocation('/inventory?tab=products')} 
+              onClick={() => setLocation('/inventory-management?tab=products')} 
               className="mt-4"
               data-testid="button-back-to-products"
             >
@@ -178,8 +179,8 @@ export default function ProductDetail({ showHeader = true }: ProductDetailProps)
     );
   }
 
-  const totalStock = productFinishedGoods.reduce((sum, fg) => sum + fg.quantity, 0);
-  const stockValue = approvedStock * product.unitPrice;
+  const totalStock = productFinishedGoods.reduce((sum, fg) => sum + (fg.quantity || 0), 0);
+  const stockValue = approvedStock * (product.unitPrice || 0);
 
   return (
     <div className="p-4 space-y-4">
@@ -187,7 +188,7 @@ export default function ProductDetail({ showHeader = true }: ProductDetailProps)
         <Button 
           variant="outline" 
           size="sm" 
-          onClick={() => setLocation('/inventory?tab=products')}
+          onClick={() => setLocation('/inventory-management?tab=products')}
           data-testid="button-back"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />

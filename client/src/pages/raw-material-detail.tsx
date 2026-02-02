@@ -94,12 +94,13 @@ export default function RawMaterialDetail({ showHeader = true }: RawMaterialDeta
     return uom?.name || uomId;
   };
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number | undefined | null) => {
+    const safeAmount = typeof amount === 'number' ? amount : 0;
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
       minimumFractionDigits: 2,
-    }).format(amount / 100);
+    }).format(safeAmount / 100);
   };
 
   if (isLoading) {
@@ -118,7 +119,7 @@ export default function RawMaterialDetail({ showHeader = true }: RawMaterialDeta
           <CardContent className="py-8 text-center">
             <p className="text-muted-foreground">Raw material not found</p>
             <Button 
-              onClick={() => setLocation('/inventory?tab=raw-materials')} 
+              onClick={() => setLocation('/inventory-management?tab=raw-materials')} 
               className="mt-4"
               data-testid="button-back-to-inventory"
             >
@@ -131,8 +132,8 @@ export default function RawMaterialDetail({ showHeader = true }: RawMaterialDeta
     );
   }
 
-  const stockValue = rawMaterial.currentStock * rawMaterial.costPerUnit;
-  const isLowStock = rawMaterial.currentStock < rawMaterial.minStock;
+  const stockValue = (rawMaterial.currentStock || 0) * (rawMaterial.costPerUnit || 0);
+  const isLowStock = (rawMaterial.currentStock || 0) < (rawMaterial.minStock || 0);
 
   return (
     <div className="p-4 space-y-4">
@@ -140,7 +141,7 @@ export default function RawMaterialDetail({ showHeader = true }: RawMaterialDeta
         <Button 
           variant="outline" 
           size="sm" 
-          onClick={() => setLocation('/inventory?tab=raw-materials')}
+          onClick={() => setLocation('/inventory-management?tab=raw-materials')}
           data-testid="button-back"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />

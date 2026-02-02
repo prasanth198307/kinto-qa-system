@@ -77,12 +77,13 @@ export default function FinishedGoodDetail({ showHeader = true }: FinishedGoodDe
     return u?.fullName || u?.username || userId;
   };
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number | undefined | null) => {
+    const safeAmount = typeof amount === 'number' ? amount : 0;
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
       minimumFractionDigits: 2,
-    }).format(amount / 100);
+    }).format(safeAmount / 100);
   };
 
   const getSourceLabel = (source: string | null) => {
@@ -110,7 +111,7 @@ export default function FinishedGoodDetail({ showHeader = true }: FinishedGoodDe
           <CardContent className="py-8 text-center">
             <p className="text-muted-foreground">Finished good not found</p>
             <Button 
-              onClick={() => setLocation('/inventory?tab=finished-goods')} 
+              onClick={() => setLocation('/inventory-management?tab=finished-goods')} 
               className="mt-4"
               data-testid="button-back-to-inventory"
             >
@@ -124,7 +125,7 @@ export default function FinishedGoodDetail({ showHeader = true }: FinishedGoodDe
   }
 
   const product = products.find(p => p.id === finishedGood.productId);
-  const stockValue = product ? finishedGood.quantity * product.unitPrice : 0;
+  const stockValue = product ? (finishedGood.quantity || 0) * (product.unitPrice || 0) : 0;
 
   return (
     <div className="p-4 space-y-4">
@@ -132,7 +133,7 @@ export default function FinishedGoodDetail({ showHeader = true }: FinishedGoodDe
         <Button 
           variant="outline" 
           size="sm" 
-          onClick={() => setLocation('/inventory?tab=finished-goods')}
+          onClick={() => setLocation('/inventory-management?tab=finished-goods')}
           data-testid="button-back"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />

@@ -54,15 +54,16 @@ export default function RawMaterialTypeDetail({ showHeader = true }: RawMaterial
   const materialType = materialTypes.find(t => t.id === id);
   const materialsOfType = rawMaterials.filter(m => m.typeId === id);
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number | undefined | null) => {
+    const safeAmount = typeof amount === 'number' ? amount : 0;
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
       minimumFractionDigits: 2,
-    }).format(amount / 100);
+    }).format(safeAmount / 100);
   };
 
-  const totalStockValue = materialsOfType.reduce((sum, m) => sum + (m.currentStock * m.costPerUnit), 0);
+  const totalStockValue = materialsOfType.reduce((sum, m) => sum + ((m.currentStock || 0) * (m.costPerUnit || 0)), 0);
 
   if (isLoadingTypes) {
     return (
@@ -80,7 +81,7 @@ export default function RawMaterialTypeDetail({ showHeader = true }: RawMaterial
           <CardContent className="py-8 text-center">
             <p className="text-muted-foreground">Material type not found</p>
             <Button 
-              onClick={() => setLocation('/raw-material-types')} 
+              onClick={() => setLocation('/inventory-management?tab=material-types')} 
               className="mt-4"
               data-testid="button-back-to-types"
             >
@@ -99,7 +100,7 @@ export default function RawMaterialTypeDetail({ showHeader = true }: RawMaterial
         <Button 
           variant="outline" 
           size="sm" 
-          onClick={() => setLocation('/raw-material-types')}
+          onClick={() => setLocation('/inventory-management?tab=material-types')}
           data-testid="button-back"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
@@ -221,8 +222,8 @@ export default function RawMaterialTypeDetail({ showHeader = true }: RawMaterial
                     <TableCell className="font-medium">{material.materialCode}</TableCell>
                     <TableCell>{material.materialName}</TableCell>
                     <TableCell>
-                      <span className={material.currentStock < material.minStock ? 'text-destructive font-medium' : ''}>
-                        {material.currentStock}
+                      <span className={(material.currentStock || 0) < (material.minStock || 0) ? 'text-destructive font-medium' : ''}>
+                        {material.currentStock || 0}
                       </span>
                     </TableCell>
                     <TableCell>{material.minStock}</TableCell>
