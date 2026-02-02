@@ -30,7 +30,6 @@ export default function MachineSpareEntryView() {
     partName: '',
     partNumber: '',
     category: '',
-    unitPrice: '',
     reorderThreshold: '',
     currentStock: '',
     recommendedQuantity: '1'
@@ -50,7 +49,7 @@ export default function MachineSpareEntryView() {
   });
 
   const createSpareMutation = useMutation({
-    mutationFn: async (data: { partName: string; partNumber?: string; category?: string; machineId: string; unitPrice?: number; reorderThreshold?: number; currentStock?: number }) => {
+    mutationFn: async (data: { partName: string; partNumber?: string; category?: string; machineId: string; reorderThreshold?: number; currentStock?: number }) => {
       return await apiRequest('POST', '/api/spare-parts', data);
     },
     onSuccess: () => {
@@ -123,7 +122,6 @@ export default function MachineSpareEntryView() {
       partName: '',
       partNumber: '',
       category: '',
-      unitPrice: '',
       reorderThreshold: '',
       currentStock: '',
       recommendedQuantity: '1'
@@ -154,7 +152,6 @@ export default function MachineSpareEntryView() {
       partName: spare.partName || '',
       partNumber: spare.partNumber || '',
       category: spare.category || '',
-      unitPrice: spare.unitPrice?.toString() || '',
       reorderThreshold: spare.reorderThreshold?.toString() || '',
       currentStock: spare.currentStock?.toString() || '',
       recommendedQuantity: '1'
@@ -186,7 +183,6 @@ export default function MachineSpareEntryView() {
       partNumber: formData.partNumber?.trim() || undefined,
       category: formData.category?.trim() || undefined,
       machineId: selectedMachineId,
-      unitPrice: parseNumber(formData.unitPrice),
       reorderThreshold: parseNumber(formData.reorderThreshold),
       currentStock: parseNumber(formData.currentStock),
     };
@@ -217,7 +213,6 @@ export default function MachineSpareEntryView() {
       partName: formData.partName.trim(),
       partNumber: formData.partNumber?.trim() || undefined,
       category: formData.category?.trim() || undefined,
-      unitPrice: parseNumber(formData.unitPrice),
       reorderThreshold: parseNumber(formData.reorderThreshold),
       currentStock: parseNumber(formData.currentStock),
     };
@@ -311,7 +306,6 @@ export default function MachineSpareEntryView() {
                               <th className="text-left p-2 font-medium">Category</th>
                               <th className="text-right p-2 font-medium">Stock</th>
                               <th className="text-right p-2 font-medium">Reorder</th>
-                              <th className="text-right p-2 font-medium">Unit Price</th>
                               <th className="text-center p-2 font-medium">Actions</th>
                             </tr>
                           </thead>
@@ -331,9 +325,6 @@ export default function MachineSpareEntryView() {
                                   </span>
                                 </td>
                                 <td className="p-2 text-right text-muted-foreground">{spare.reorderThreshold ?? '-'}</td>
-                                <td className="p-2 text-right">
-                                  {spare.unitPrice ? `₹${(spare.unitPrice / 100).toFixed(2)}` : '-'}
-                                </td>
                                 <td className="p-2">
                                   <div className="flex items-center justify-center gap-1">
                                     <Button

@@ -33,7 +33,6 @@ export default function AdminSparePartsManagement() {
     partNumber: '',
     category: '',
     machineId: '',
-    unitPrice: '',
     reorderThreshold: '',
     currentStock: ''
   });
@@ -48,7 +47,7 @@ export default function AdminSparePartsManagement() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: { partName: string; partNumber?: string; category?: string; machineId?: string; unitPrice?: number; reorderThreshold?: number; currentStock?: number }) => {
+    mutationFn: async (data: { partName: string; partNumber?: string; category?: string; machineId?: string; reorderThreshold?: number; currentStock?: number }) => {
       return await apiRequest('POST', '/api/spare-parts', data);
     },
     onSuccess: () => {
@@ -70,7 +69,7 @@ export default function AdminSparePartsManagement() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<{ partName: string; partNumber?: string; category?: string; machineId?: string; unitPrice?: number; reorderThreshold?: number; currentStock?: number }> }) => {
+    mutationFn: async ({ id, data }: { id: string; data: Partial<{ partName: string; partNumber?: string; category?: string; machineId?: string; reorderThreshold?: number; currentStock?: number }> }) => {
       return await apiRequest('PATCH', `/api/spare-parts/${id}`, data);
     },
     onSuccess: () => {
@@ -152,7 +151,6 @@ export default function AdminSparePartsManagement() {
       partNumber: '',
       category: '',
       machineId: '',
-      unitPrice: '',
       reorderThreshold: '',
       currentStock: ''
     });
@@ -166,7 +164,6 @@ export default function AdminSparePartsManagement() {
         partNumber: editingSparePart.partNumber || '',
         category: editingSparePart.category || '',
         machineId: editingSparePart.machineId || '',
-        unitPrice: editingSparePart.unitPrice?.toString() || '',
         reorderThreshold: editingSparePart.reorderThreshold?.toString() || '',
         currentStock: editingSparePart.currentStock?.toString() || ''
       });
@@ -204,7 +201,6 @@ export default function AdminSparePartsManagement() {
       partNumber: formData.partNumber?.trim() || undefined,
       category: formData.category?.trim() || undefined,
       machineId: formData.machineId?.trim() || undefined,
-      unitPrice: parseNumber(formData.unitPrice),
       reorderThreshold: parseNumber(formData.reorderThreshold),
       currentStock: parseNumber(formData.currentStock),
     };
@@ -236,7 +232,6 @@ export default function AdminSparePartsManagement() {
         partNumber: formData.partNumber?.trim() || undefined,
         category: formData.category?.trim() || undefined,
         machineId: formData.machineId?.trim() || undefined,
-        unitPrice: parseNumber(formData.unitPrice),
         reorderThreshold: parseNumber(formData.reorderThreshold),
         currentStock: parseNumber(formData.currentStock),
       };
