@@ -2184,6 +2184,122 @@ function InvoiceDetailPageWrapper() {
   );
 }
 
+// Wrapper component for Raw Material Detail page with filtered navigation
+function RawMaterialDetailWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('raw-materials');
+  
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
+  
+  return (
+    <DashboardShell
+      title="Raw Material Details"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={(viewId) => {
+        setActiveView(viewId);
+      }}
+    >
+      <RawMaterialDetail showHeader={false} />
+    </DashboardShell>
+  );
+}
+
+// Wrapper component for Raw Material Type Detail page with filtered navigation
+function RawMaterialTypeDetailWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('raw-material-types');
+  
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
+  
+  return (
+    <DashboardShell
+      title="Material Type Details"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={(viewId) => {
+        setActiveView(viewId);
+      }}
+    >
+      <RawMaterialTypeDetail showHeader={false} />
+    </DashboardShell>
+  );
+}
+
+// Wrapper component for Product Detail page with filtered navigation
+function ProductDetailWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('products');
+  
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
+  
+  return (
+    <DashboardShell
+      title="Product Details"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={(viewId) => {
+        setActiveView(viewId);
+      }}
+    >
+      <ProductDetail showHeader={false} />
+    </DashboardShell>
+  );
+}
+
+// Wrapper component for Finished Good Detail page with filtered navigation
+function FinishedGoodDetailWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('finished-goods');
+  
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
+  
+  return (
+    <DashboardShell
+      title="Finished Good Details"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={(viewId) => {
+        setActiveView(viewId);
+      }}
+    >
+      <FinishedGoodDetail showHeader={false} />
+    </DashboardShell>
+  );
+}
+
 // Wrapper component for Production Management page with filtered navigation
 function ProductionManagementPageWrapper() {
   const { logoutMutation } = useAuth();
@@ -2424,10 +2540,10 @@ function Router() {
       <ProtectedRoute path="/vendor-history" component={VendorHistoryPage} />
       <ProtectedRoute path="/vendor-history/:vendorId" component={VendorHistoryDetailPage} />
       <ProtectedRoute path="/invoice/:id" component={InvoiceDetailPageWrapper} />
-      <ProtectedRoute path="/raw-material/:id" component={RawMaterialDetail} />
-      <ProtectedRoute path="/raw-material-type/:id" component={RawMaterialTypeDetail} />
-      <ProtectedRoute path="/product/:id" component={ProductDetail} />
-      <ProtectedRoute path="/finished-good/:id" component={FinishedGoodDetail} />
+      <ProtectedRoute path="/raw-material/:id" component={RawMaterialDetailWrapper} />
+      <ProtectedRoute path="/raw-material-type/:id" component={RawMaterialTypeDetailWrapper} />
+      <ProtectedRoute path="/product/:id" component={ProductDetailWrapper} />
+      <ProtectedRoute path="/finished-good/:id" component={FinishedGoodDetailWrapper} />
       <ProtectedRoute path="/dispatch-tracking" component={DispatchTrackingPageWrapper} />
       <ProtectedRoute path="/dispatch-masters" component={DispatchMastersPageWrapper} />
       <ProtectedRoute path="/sales-returns" component={SalesReturnsPageWrapper} />

@@ -15,8 +15,6 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
-import { GlobalHeader } from "@/components/GlobalHeader";
-import { useAuth } from "@/hooks/use-auth";
 
 interface RawMaterial {
   id: string;
@@ -57,10 +55,13 @@ interface RawMaterialTransaction {
   createdAt: string | null;
 }
 
-export default function RawMaterialDetail() {
+interface RawMaterialDetailProps {
+  showHeader?: boolean;
+}
+
+export default function RawMaterialDetail({ showHeader = true }: RawMaterialDetailProps) {
   const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
-  const { logoutMutation, user } = useAuth();
 
   const { data: rawMaterials = [], isLoading } = useQuery<RawMaterial[]>({
     queryKey: ['/api/raw-materials'],
@@ -103,228 +104,251 @@ export default function RawMaterialDetail() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col min-h-screen">
-        <GlobalHeader
-          title="Raw Material Detail"
-          user={user}
-          onLogout={() => logoutMutation.mutate()}
-        />
-        <div className="flex-1 p-4 space-y-4">
-          <Skeleton className="h-8 w-64" />
-          <Skeleton className="h-48 w-full" />
-        </div>
+      <div className="p-4 space-y-4">
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-48 w-full" />
       </div>
     );
   }
 
   if (!rawMaterial) {
     return (
-      <div className="flex flex-col min-h-screen">
-        <GlobalHeader
-          title="Raw Material Detail"
-          user={user}
-          onLogout={() => logoutMutation.mutate()}
-        />
-        <div className="flex-1 p-4">
-          <Card>
-            <CardContent className="py-8 text-center">
-              <p className="text-muted-foreground">Raw material not found</p>
-              <Button onClick={() => navigate('/inventory')} className="mt-4">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Inventory
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+      <div className="p-4">
+        <Card>
+          <CardContent className="py-8 text-center">
+            <p className="text-muted-foreground">Raw material not found</p>
+            <Button 
+              onClick={() => navigate('/inventory?tab=raw-materials')} 
+              className="mt-4"
+              data-testid="button-back-to-inventory"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Raw Materials
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
+  const stockValue = rawMaterial.currentStock * rawMaterial.costPerUnit;
+  const isLowStock = rawMaterial.currentStock < rawMaterial.minStock;
+
   return (
-    <div className="flex flex-col min-h-screen">
-      <GlobalHeader
-        title={`Raw Material: ${rawMaterial.materialName}`}
-        user={user}
-        onLogout={() => logoutMutation.mutate()}
-      />
-      <div className="flex-1 p-4 space-y-4">
-        <div className="flex items-center gap-4">
-          <Button variant="outline" size="sm" onClick={() => navigate('/inventory')}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back
-          </Button>
-          <h1 className="text-2xl font-bold">{rawMaterial.materialName}</h1>
-          <Badge variant={rawMaterial.isActive === 'true' ? 'default' : 'secondary'}>
-            {rawMaterial.isActive === 'true' ? 'Active' : 'Inactive'}
-          </Badge>
-        </div>
+    <div className="p-4 space-y-4">
+      <div className="flex items-center gap-4 flex-wrap">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => navigate('/inventory?tab=raw-materials')}
+          data-testid="button-back"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to Raw Materials
+        </Button>
+        <h1 className="text-2xl font-bold" data-testid="text-material-name">{rawMaterial.materialName}</h1>
+        <Badge variant={rawMaterial.isActive === 'true' ? 'default' : 'secondary'} data-testid="badge-status">
+          {rawMaterial.isActive === 'true' ? 'Active' : 'Inactive'}
+        </Badge>
+        {isLowStock && (
+          <Badge variant="destructive" data-testid="badge-low-stock">Low Stock</Badge>
+        )}
+      </div>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Current Stock</CardTitle>
-              <Package className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{rawMaterial.currentStock}</div>
-              <p className="text-xs text-muted-foreground">
-                Min: {rawMaterial.minStock} {getUomName(rawMaterial.uomId)}
-              </p>
-            </CardContent>
-          </Card>
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Current Stock</CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold" data-testid="text-current-stock">{rawMaterial.currentStock}</div>
+            <p className="text-xs text-muted-foreground">Min: {rawMaterial.minStock} {getUomName(rawMaterial.uomId)}</p>
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Cost per Unit</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(rawMaterial.costPerUnit)}</div>
-              <p className="text-xs text-muted-foreground">per {getUomName(rawMaterial.uomId)}</p>
-            </CardContent>
-          </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Stock Value</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold" data-testid="text-stock-value">{formatCurrency(stockValue)}</div>
+            <p className="text-xs text-muted-foreground">At {formatCurrency(rawMaterial.costPerUnit)}/unit</p>
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Type</CardTitle>
-              <Layers className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{getTypeName(rawMaterial.typeId)}</div>
-              <p className="text-xs text-muted-foreground">Material Category</p>
-            </CardContent>
-          </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Material Type</CardTitle>
+            <Layers className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold" data-testid="text-type-name">{getTypeName(rawMaterial.typeId)}</div>
+            <p className="text-xs text-muted-foreground">Category</p>
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Stock Value</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {formatCurrency(rawMaterial.currentStock * rawMaterial.costPerUnit)}
-              </div>
-              <p className="text-xs text-muted-foreground">Total inventory value</p>
-            </CardContent>
-          </Card>
-        </div>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Unit of Measure</CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold" data-testid="text-uom">{getUomName(rawMaterial.uomId)}</div>
+            <p className="text-xs text-muted-foreground">Measurement unit</p>
+          </CardContent>
+        </Card>
+      </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Code:</span>
-                <span className="font-medium">{rawMaterial.materialCode}</span>
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Material Information</CardTitle>
+            <CardDescription>Details about this raw material</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Material Code</p>
+                <p className="font-medium" data-testid="text-material-code">{rawMaterial.materialCode}</p>
               </div>
-              <Separator />
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Name:</span>
-                <span className="font-medium">{rawMaterial.materialName}</span>
+              <div>
+                <p className="text-sm text-muted-foreground">Material Name</p>
+                <p className="font-medium">{rawMaterial.materialName}</p>
               </div>
-              <Separator />
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Description:</span>
-                <span className="font-medium">{rawMaterial.description || 'N/A'}</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Unit of Measure:</span>
-                <span className="font-medium">{getUomName(rawMaterial.uomId)}</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Created:</span>
-                <span className="font-medium">
-                  {rawMaterial.createdAt ? format(new Date(rawMaterial.createdAt), 'dd MMM yyyy') : 'N/A'}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Stock Status</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Current Stock:</span>
-                <span className="font-medium text-lg">{rawMaterial.currentStock} {getUomName(rawMaterial.uomId)}</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Minimum Stock:</span>
-                <span className="font-medium">{rawMaterial.minStock} {getUomName(rawMaterial.uomId)}</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Stock Status:</span>
-                {rawMaterial.currentStock <= rawMaterial.minStock ? (
-                  <Badge variant="destructive">Low Stock</Badge>
-                ) : rawMaterial.currentStock <= rawMaterial.minStock * 1.5 ? (
-                  <Badge variant="secondary">Reorder Soon</Badge>
+              <div>
+                <p className="text-sm text-muted-foreground">Type</p>
+                {rawMaterial.typeId ? (
+                  <Link href={`/raw-material-type/${rawMaterial.typeId}`}>
+                    <p className="font-medium text-primary hover:underline cursor-pointer" data-testid="link-type">
+                      {getTypeName(rawMaterial.typeId)}
+                    </p>
+                  </Link>
                 ) : (
-                  <Badge variant="default">Adequate</Badge>
+                  <p className="font-medium">N/A</p>
                 )}
               </div>
-            </CardContent>
-          </Card>
-        </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Cost Per Unit</p>
+                <p className="font-medium" data-testid="text-cost-per-unit">{formatCurrency(rawMaterial.costPerUnit)}</p>
+              </div>
+            </div>
+
+            {rawMaterial.description && (
+              <>
+                <Separator />
+                <div>
+                  <p className="text-sm text-muted-foreground">Description</p>
+                  <p className="font-medium">{rawMaterial.description}</p>
+                </div>
+              </>
+            )}
+
+            <Separator />
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Created</p>
+                <p className="font-medium">
+                  {rawMaterial.createdAt ? format(new Date(rawMaterial.createdAt), 'dd MMM yyyy') : 'N/A'}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Last Updated</p>
+                <p className="font-medium">
+                  {rawMaterial.updatedAt ? format(new Date(rawMaterial.updatedAt), 'dd MMM yyyy') : 'N/A'}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Recent Transactions</CardTitle>
-            <CardDescription>Last 20 stock movements for this material</CardDescription>
+            <CardTitle>Stock Status</CardTitle>
+            <CardDescription>Current inventory levels</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Current Stock</span>
+                <span className="font-medium">{rawMaterial.currentStock} {getUomName(rawMaterial.uomId)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Minimum Stock</span>
+                <span className="font-medium">{rawMaterial.minStock} {getUomName(rawMaterial.uomId)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Status</span>
+                <Badge variant={isLowStock ? 'destructive' : 'default'}>
+                  {isLowStock ? 'Below Minimum' : 'Adequate'}
+                </Badge>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Stock Value</span>
+                <span className="font-medium">{formatCurrency(stockValue)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Cost Per Unit</span>
+                <span className="font-medium">{formatCurrency(rawMaterial.costPerUnit)}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Transactions</CardTitle>
+          <CardDescription>Stock movement history</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {transactions.length === 0 ? (
+            <p className="text-muted-foreground text-center py-4">No transactions found</p>
+          ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
                   <TableHead>Type</TableHead>
+                  <TableHead>Quantity</TableHead>
                   <TableHead>Batch</TableHead>
-                  <TableHead className="text-right">Quantity</TableHead>
                   <TableHead>Remarks</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {transactions.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                      No transactions found
+                {transactions.slice(0, 10).map((txn) => (
+                  <TableRow key={txn.id} data-testid={`row-transaction-${txn.id}`}>
+                    <TableCell>
+                      {txn.createdAt ? format(new Date(txn.createdAt), 'dd MMM yyyy') : 'N/A'}
                     </TableCell>
+                    <TableCell>
+                      <Badge variant={txn.transactionType === 'in' ? 'default' : 'secondary'}>
+                        {txn.transactionType === 'in' ? (
+                          <><TrendingUp className="w-3 h-3 mr-1" /> In</>
+                        ) : (
+                          <><TrendingDown className="w-3 h-3 mr-1" /> Out</>
+                        )}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {txn.transactionType === 'in' ? '+' : '-'}{txn.quantity}
+                    </TableCell>
+                    <TableCell>{txn.batchNumber || '-'}</TableCell>
+                    <TableCell className="max-w-[200px] truncate">{txn.remarks || '-'}</TableCell>
                   </TableRow>
-                ) : (
-                  transactions.slice(0, 20).map((tx) => (
-                    <TableRow key={tx.id}>
-                      <TableCell>
-                        {tx.createdAt ? format(new Date(tx.createdAt), 'dd MMM yyyy') : '-'}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={tx.transactionType === 'IN' ? 'default' : 'secondary'}>
-                          {tx.transactionType === 'IN' ? (
-                            <TrendingUp className="w-3 h-3 mr-1" />
-                          ) : (
-                            <TrendingDown className="w-3 h-3 mr-1" />
-                          )}
-                          {tx.transactionType}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{tx.batchNumber || '-'}</TableCell>
-                      <TableCell className="text-right font-medium">
-                        {tx.transactionType === 'IN' ? '+' : '-'}{tx.quantity}
-                      </TableCell>
-                      <TableCell className="max-w-[200px] truncate">{tx.remarks || '-'}</TableCell>
-                    </TableRow>
-                  ))
-                )}
+                ))}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
-      </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
