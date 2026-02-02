@@ -6,6 +6,8 @@ import {
   checklistTemplates,
   templateTasks,
   sparePartsCatalog,
+  sparePartEntries,
+  sparePartIssuances,
   machineTypes,
   machineSpares,
   purchaseOrders,
@@ -63,6 +65,10 @@ import {
   type PartialTaskAnswer,
   type InsertPartialTaskAnswer,
   type SparePartCatalog,
+  type SparePartEntry,
+  type InsertSparePartEntry,
+  type SparePartIssuance,
+  type InsertSparePartIssuance,
   type MachineType,
   type InsertMachineType,
   type MachineSpare,
@@ -1224,6 +1230,98 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(sparePartEntries)
       .where(and(eq(sparePartEntries.sparePartId, sparePartId), eq(sparePartEntries.recordStatus, 1)))
       .orderBy(desc(sparePartEntries.purchaseDate));
+  }
+
+  // Spare Part Issuances (with FIFO deduction)
+  async createSparePartIssuance(issuance: InsertSparePartIssuance): Promise<SparePartIssuance> {
+    // First check if we have enough stock
+    const part = await this.getSparePart(issuance.sparePartId);
+    if (!part) {
+      throw new Error('Spare part not found');
+    }
+    
+    const currentStock = Number(part.currentStock) || 0;
+    if (currentStock < Number(issuance.quantity)) {
+      throw new Error(`Insufficient stock. Available: ${currentStock}, Requested: ${issuance.quantity}`);
+    }
+    
+    // Create the issuance record
+    const [created] = await db.insert(sparePartIssuances).values(issuance).returning();
+    
+    // Deduct from current stock (FIFO is handled by tracking entries separately)
+    const newStock = currentStock - Number(issuance.quantity);
+    await this.updateSparePart(part.id, { currentStock: newStock });
+    
+    return created;
+  }
+
+  async getSparePartIssuances(sparePartId?: string): Promise<SparePartIssuance[]> {
+    if (sparePartId) {
+      return await db.select().from(sparePartIssuances)
+        .where(and(eq(sparePartIssuances.sparePartId, sparePartId), eq(sparePartIssuances.recordStatus, 1)))
+        .orderBy(desc(sparePartIssuances.issueDate));
+    }
+    return await db.select().from(sparePartIssuances)
+      .where(eq(sparePartIssuances.recordStatus, 1))
+      .orderBy(desc(sparePartIssuances.issueDate));
+  }
+
+  async getSparePartIssuance(id: string): Promise<SparePartIssuance | undefined> {
+    const [result] = await db.select().from(sparePartIssuances)
+      .where(and(eq(sparePartIssuances.id, id), eq(sparePartIssuances.recordStatus, 1)));
+    return result;
+  }
+
+  async updateSparePartIssuance(id: string, data: Partial<InsertSparePartIssuance>): Promise<SparePartIssuance | undefined> {
+    const [updated] = await db
+      .update(sparePartIssuances)
+      .set({ ...data, updatedAt: new Date().toISOString() })
+      .where(and(eq(sparePartIssuances.id, id), eq(sparePartIssuances.recordStatus, 1)))
+      .returning();
+    return updated;
+  }
+
+  async returnSparePartIssuance(id: string, returnedQty: number): Promise<SparePartIssuance | undefined> {
+    const issuance = await this.getSparePartIssuance(id);
+    if (!issuance) {
+      throw new Error('Issuance not found');
+    }
+    
+    const maxReturnable = Number(issuance.quantity) - (Number(issuance.returnedQuantity) || 0);
+    if (returnedQty > maxReturnable) {
+      throw new Error(`Cannot return more than issued. Max returnable: ${maxReturnable}`);
+    }
+    
+    // Update issuance record
+    const newReturnedQty = (Number(issuance.returnedQuantity) || 0) + returnedQty;
+    const status = newReturnedQty >= Number(issuance.quantity) ? 'returned' : 'issued';
+    
+    const [updated] = await db
+      .update(sparePartIssuances)
+      .set({
+        returnedQuantity: newReturnedQty,
+        returnDate: new Date().toISOString(),
+        status,
+        updatedAt: new Date().toISOString()
+      })
+      .where(eq(sparePartIssuances.id, id))
+      .returning();
+    
+    // Add back to stock
+    const part = await this.getSparePart(issuance.sparePartId);
+    if (part) {
+      const newStock = (Number(part.currentStock) || 0) + returnedQty;
+      await this.updateSparePart(part.id, { currentStock: newStock });
+    }
+    
+    return updated;
+  }
+
+  // Get spare part transaction ledger (entries + issuances combined)
+  async getSparePartLedger(sparePartId: string): Promise<{entries: SparePartEntry[], issuances: SparePartIssuance[]}> {
+    const entries = await this.getSparePartEntries(sparePartId);
+    const issuances = await this.getSparePartIssuances(sparePartId);
+    return { entries, issuances };
   }
 
   async getPMExecutionsByPlan(planId: string): Promise<PMExecution[]> {

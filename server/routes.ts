@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import crypto from "crypto";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertPurchaseOrderItemSchema, purchaseOrders, purchaseOrderItems, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, paymentEvidence, salesReturns, salesReturnItems, creditNotes, creditNoteItems, debitNotes, debitNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes, vendors, users, uom, insertDocumentCategorySchema, insertDocumentSchema, insertExpenseCategorySchema, insertExpenseVoucherSchema, insertExpenseItemSchema, insertExpenseAttachmentSchema, rolePermissions, vendorDebitNotes, vendorDebitNoteItems, vendorDebitNoteAdjustments, transporters, vehicles, drivers, insertTransporterSchema, insertVehicleSchema, insertDriverSchema, scrapInventory, insertScrapInventorySchema } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertPurchaseOrderItemSchema, purchaseOrders, purchaseOrderItems, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, paymentEvidence, salesReturns, salesReturnItems, creditNotes, creditNoteItems, debitNotes, debitNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes, vendors, users, uom, insertDocumentCategorySchema, insertDocumentSchema, insertExpenseCategorySchema, insertExpenseVoucherSchema, insertExpenseItemSchema, insertExpenseAttachmentSchema, rolePermissions, vendorDebitNotes, vendorDebitNoteItems, vendorDebitNoteAdjustments, transporters, vehicles, drivers, insertTransporterSchema, insertVehicleSchema, insertDriverSchema, scrapInventory, insertSparePartEntrySchema, insertSparePartIssuanceSchema, insertScrapInventorySchema } from "@shared/schema";
 import { format } from "date-fns";
 import { z } from "zod";
 import path from "path";
@@ -2567,6 +2567,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.error("Error creating spare part entry:", error);
       res.status(500).json({ message: "Failed to create spare part entry" });
+    }
+  });
+
+  // Spare Part Issuances (with FIFO deduction)
+  app.get('/api/spare-part-issuances', isAuthenticated, async (req: any, res) => {
+    try {
+      const { sparePartId } = req.query;
+      const issuances = await storage.getSparePartIssuances(sparePartId as string | undefined);
+      res.json(issuances);
+    } catch (error) {
+      console.error("Error fetching spare part issuances:", error);
+      res.status(500).json({ message: "Failed to fetch spare part issuances" });
+    }
+  });
+
+  app.get('/api/spare-parts/:id/issuances', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const issuances = await storage.getSparePartIssuances(id);
+      res.json(issuances);
+    } catch (error) {
+      console.error("Error fetching spare part issuances:", error);
+      res.status(500).json({ message: "Failed to fetch spare part issuances" });
+    }
+  });
+
+  app.post('/api/spare-part-issuances', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const validatedData = insertSparePartIssuanceSchema.parse(req.body);
+      const created = await storage.createSparePartIssuance(validatedData);
+      res.json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      if (error instanceof Error) {
+        return res.status(400).json({ message: error.message });
+      }
+      console.error("Error creating spare part issuance:", error);
+      res.status(500).json({ message: "Failed to create spare part issuance" });
+    }
+  });
+
+  app.get('/api/spare-part-issuances/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const issuance = await storage.getSparePartIssuance(id);
+      if (!issuance) {
+        return res.status(404).json({ message: "Issuance not found" });
+      }
+      res.json(issuance);
+    } catch (error) {
+      console.error("Error fetching spare part issuance:", error);
+      res.status(500).json({ message: "Failed to fetch spare part issuance" });
+    }
+  });
+
+  app.patch('/api/spare-part-issuances/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const updated = await storage.updateSparePartIssuance(id, req.body);
+      if (!updated) {
+        return res.status(404).json({ message: "Issuance not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating spare part issuance:", error);
+      res.status(500).json({ message: "Failed to update spare part issuance" });
+    }
+  });
+
+  app.post('/api/spare-part-issuances/:id/return', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { quantity } = req.body;
+      if (!quantity || quantity <= 0) {
+        return res.status(400).json({ message: "Invalid return quantity" });
+      }
+      const updated = await storage.returnSparePartIssuance(id, quantity);
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof Error) {
+        return res.status(400).json({ message: error.message });
+      }
+      console.error("Error returning spare part:", error);
+      res.status(500).json({ message: "Failed to return spare part" });
+    }
+  });
+
+  // Spare Part Ledger (combined entries and issuances)
+  app.get('/api/spare-parts/:id/ledger', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const ledger = await storage.getSparePartLedger(id);
+      res.json(ledger);
+    } catch (error) {
+      console.error("Error fetching spare part ledger:", error);
+      res.status(500).json({ message: "Failed to fetch spare part ledger" });
     }
   });
 

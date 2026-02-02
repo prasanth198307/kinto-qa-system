@@ -355,6 +355,37 @@ export const insertSparePartEntrySchema = createInsertSchema(sparePartEntries).o
 
 export type InsertSparePartEntry = z.infer<typeof insertSparePartEntrySchema>;
 export type SparePartEntry = typeof sparePartEntries.$inferSelect;
+
+// Spare Part Issuances - tracks when spare parts are issued/allocated
+export const sparePartIssuances = pgTable("spare_part_issuances", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sparePartId: varchar("spare_part_id").references(() => sparePartsCatalog.id).notNull(),
+  machineId: varchar("machine_id").references(() => machines.id),
+  issuedTo: varchar("issued_to").references(() => users.id), // Person who received the part
+  issuedBy: varchar("issued_by").references(() => users.id), // Person who issued/approved
+  issueDate: timestamp("issue_date", { mode: 'string' }).notNull(),
+  quantity: integer("quantity").notNull(),
+  purpose: text("purpose"), // Reason for issuance
+  workOrderNumber: varchar("work_order_number", { length: 100 }), // Reference to work order if any
+  status: varchar("status", { length: 50 }).default('issued'), // issued, returned, consumed
+  returnedQuantity: integer("returned_quantity").default(0),
+  returnDate: timestamp("return_date", { mode: 'string' }),
+  remarks: text("remarks"),
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
+});
+
+export const insertSparePartIssuanceSchema = createInsertSchema(sparePartIssuances).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertSparePartIssuance = z.infer<typeof insertSparePartIssuanceSchema>;
+export type SparePartIssuance = typeof sparePartIssuances.$inferSelect;
+
 export const requiredSpares = pgTable("required_spares", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   submissionId: varchar("submission_id").references(() => checklistSubmissions.id),
