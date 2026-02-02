@@ -41,7 +41,7 @@ interface RawMaterialTypeDetailProps {
 
 export default function RawMaterialTypeDetail({ showHeader = true }: RawMaterialTypeDetailProps) {
   const { id } = useParams<{ id: string }>();
-  const [, navigate] = useLocation();
+  const [, setLocation] = useLocation();
 
   const { data: materialTypes = [], isLoading: isLoadingTypes } = useQuery<RawMaterialType[]>({
     queryKey: ['/api/raw-material-types'],
@@ -80,7 +80,7 @@ export default function RawMaterialTypeDetail({ showHeader = true }: RawMaterial
           <CardContent className="py-8 text-center">
             <p className="text-muted-foreground">Material type not found</p>
             <Button 
-              onClick={() => navigate('/raw-material-types')} 
+              onClick={() => setLocation('/raw-material-types')} 
               className="mt-4"
               data-testid="button-back-to-types"
             >
@@ -99,7 +99,7 @@ export default function RawMaterialTypeDetail({ showHeader = true }: RawMaterial
         <Button 
           variant="outline" 
           size="sm" 
-          onClick={() => navigate('/raw-material-types')}
+          onClick={() => setLocation('/raw-material-types')}
           data-testid="button-back"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
@@ -215,7 +215,7 @@ export default function RawMaterialTypeDetail({ showHeader = true }: RawMaterial
                   <TableRow 
                     key={material.id} 
                     className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => navigate(`/raw-material/${material.id}`)}
+                    onClick={() => setLocation(`/raw-material/${material.id}`)}
                     data-testid={`row-material-${material.id}`}
                   >
                     <TableCell className="font-medium">{material.materialCode}</TableCell>

@@ -80,7 +80,7 @@ interface ProductDetailProps {
 
 export default function ProductDetail({ showHeader = true }: ProductDetailProps) {
   const { id } = useParams<{ id: string }>();
-  const [, navigate] = useLocation();
+  const [, setLocation] = useLocation();
 
   const { data: products = [], isLoading } = useQuery<Product[]>({
     queryKey: ['/api/products'],
@@ -165,7 +165,7 @@ export default function ProductDetail({ showHeader = true }: ProductDetailProps)
           <CardContent className="py-8 text-center">
             <p className="text-muted-foreground">Product not found</p>
             <Button 
-              onClick={() => navigate('/inventory?tab=products')} 
+              onClick={() => setLocation('/inventory?tab=products')} 
               className="mt-4"
               data-testid="button-back-to-products"
             >
@@ -187,7 +187,7 @@ export default function ProductDetail({ showHeader = true }: ProductDetailProps)
         <Button 
           variant="outline" 
           size="sm" 
-          onClick={() => navigate('/inventory?tab=products')}
+          onClick={() => setLocation('/inventory?tab=products')}
           data-testid="button-back"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
@@ -322,7 +322,7 @@ export default function ProductDetail({ showHeader = true }: ProductDetailProps)
                     <TableRow 
                       key={item.id}
                       className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => navigate(`/raw-material/${item.rawMaterialId}`)}
+                      onClick={() => setLocation(`/raw-material/${item.rawMaterialId}`)}
                       data-testid={`row-bom-${item.id}`}
                     >
                       <TableCell className="font-medium">{getRawMaterialName(item.rawMaterialId)}</TableCell>
@@ -360,7 +360,7 @@ export default function ProductDetail({ showHeader = true }: ProductDetailProps)
                   <TableRow 
                     key={fg.id}
                     className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => navigate(`/finished-good/${fg.id}`)}
+                    onClick={() => setLocation(`/finished-good/${fg.id}`)}
                     data-testid={`row-finished-good-${fg.id}`}
                   >
                     <TableCell className="font-medium">{fg.batchNumber}</TableCell>

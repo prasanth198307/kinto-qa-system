@@ -45,7 +45,7 @@ interface FinishedGoodDetailProps {
 
 export default function FinishedGoodDetail({ showHeader = true }: FinishedGoodDetailProps) {
   const { id } = useParams<{ id: string }>();
-  const [, navigate] = useLocation();
+  const [, setLocation] = useLocation();
 
   const { data: finishedGoods = [], isLoading: isLoadingFG } = useQuery<FinishedGood[]>({
     queryKey: ['/api/finished-goods'],
@@ -110,7 +110,7 @@ export default function FinishedGoodDetail({ showHeader = true }: FinishedGoodDe
           <CardContent className="py-8 text-center">
             <p className="text-muted-foreground">Finished good not found</p>
             <Button 
-              onClick={() => navigate('/inventory?tab=finished-goods')} 
+              onClick={() => setLocation('/inventory?tab=finished-goods')} 
               className="mt-4"
               data-testid="button-back-to-inventory"
             >
@@ -132,7 +132,7 @@ export default function FinishedGoodDetail({ showHeader = true }: FinishedGoodDe
         <Button 
           variant="outline" 
           size="sm" 
-          onClick={() => navigate('/inventory?tab=finished-goods')}
+          onClick={() => setLocation('/inventory?tab=finished-goods')}
           data-testid="button-back"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />

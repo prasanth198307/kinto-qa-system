@@ -61,7 +61,7 @@ interface RawMaterialDetailProps {
 
 export default function RawMaterialDetail({ showHeader = true }: RawMaterialDetailProps) {
   const { id } = useParams<{ id: string }>();
-  const [, navigate] = useLocation();
+  const [, setLocation] = useLocation();
 
   const { data: rawMaterials = [], isLoading } = useQuery<RawMaterial[]>({
     queryKey: ['/api/raw-materials'],
@@ -118,7 +118,7 @@ export default function RawMaterialDetail({ showHeader = true }: RawMaterialDeta
           <CardContent className="py-8 text-center">
             <p className="text-muted-foreground">Raw material not found</p>
             <Button 
-              onClick={() => navigate('/inventory?tab=raw-materials')} 
+              onClick={() => setLocation('/inventory?tab=raw-materials')} 
               className="mt-4"
               data-testid="button-back-to-inventory"
             >
@@ -140,7 +140,7 @@ export default function RawMaterialDetail({ showHeader = true }: RawMaterialDeta
         <Button 
           variant="outline" 
           size="sm" 
-          onClick={() => navigate('/inventory?tab=raw-materials')}
+          onClick={() => setLocation('/inventory?tab=raw-materials')}
           data-testid="button-back"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
