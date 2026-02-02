@@ -4247,17 +4247,17 @@ function FinishedGoodsTab({ searchTerm, onSearchChange }: { searchTerm: string; 
     return product ? product.productName.toLowerCase() : '';
   };
 
-  // Comprehensive filtering logic
   const filteredItems = useMemo(() => {
+    // Filter logic
     const filtered = goods.filter(item => {
-      // Hide items with zero quantity
-      if (item.quantity === 0) return false;
+      // Hide items with zero quantity unless they are from restock/repack which might be pending
+      if (item.quantity === 0 && item.qualityStatus === 'approved') return false;
       
       // Search filter (batch number or product name)
       const productName = getProductNameById(item.productId);
       const matchesSearch = 
-        item.batchNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        productName.includes(searchTerm.toLowerCase());
+        (item.batchNumber && item.batchNumber.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (productName && productName.toLowerCase().includes(searchTerm.toLowerCase()));
       
       // Quality status filter
       const itemQualityStatus = item.qualityStatus || 'pending';
@@ -4268,24 +4268,27 @@ function FinishedGoodsTab({ searchTerm, onSearchChange }: { searchTerm: string; 
       // Date filter
       let matchesDate = true;
       if (dateFilterType !== 'all') {
-        const itemDate = parseISO(item.productionDate);
-        
-        if (dateFilterType === 'range' && dateFrom && dateTo) {
-          // Adjust dateTo to include the entire end day (23:59:59)
-          const adjustedDateTo = new Date(dateTo);
-          adjustedDateTo.setHours(23, 59, 59, 999);
-          matchesDate = isWithinInterval(itemDate, { start: dateFrom, end: adjustedDateTo });
-        } else if (dateFilterType === 'month' && selectedMonth) {
-          const [year, month] = selectedMonth.split('-');
-          matchesDate = format(itemDate, 'yyyy-MM') === `${year}-${month}`;
-        } else if (dateFilterType === 'year' && selectedYear) {
-          matchesDate = format(itemDate, 'yyyy') === selectedYear;
+        try {
+          const itemDate = parseISO(item.productionDate);
+          if (dateFilterType === 'range' && dateFrom && dateTo) {
+            const adjustedDateTo = new Date(dateTo);
+            adjustedDateTo.setHours(23, 59, 59, 999);
+            matchesDate = isWithinInterval(itemDate, { start: dateFrom, end: adjustedDateTo });
+          } else if (dateFilterType === 'month' && selectedMonth) {
+            const [year, month] = selectedMonth.split('-');
+            matchesDate = format(itemDate, 'yyyy-MM') === `${year}-${month}`;
+          } else if (dateFilterType === 'year' && selectedYear) {
+            matchesDate = format(itemDate, 'yyyy') === selectedYear;
+          }
+        } catch (e) {
+          console.error("Date parsing error:", e);
+          matchesDate = false;
         }
       }
       
       return matchesSearch && matchesQualityStatus && matchesDate;
     });
-    
+
     // Sort by production date (newest first)
     return filtered.sort((a, b) => {
       const dateA = new Date(a.productionDate).getTime();
