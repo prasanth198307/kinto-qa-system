@@ -473,10 +473,9 @@ export default function SparePartEntryForm({ part, onClose }: SparePartEntryForm
                 <Select 
                   value={issueFormData.machineId} 
                   onValueChange={v => setIssueFormData({...issueFormData, machineId: v})}
-                  disabled={!!part.machineId}
                 >
                   <SelectTrigger data-testid="select-issue-machine">
-                    <SelectValue placeholder={issueFormData.machineId ? getMachineName(issueFormData.machineId) : "Select machine"} />
+                    <SelectValue placeholder="Select machine" />
                   </SelectTrigger>
                   <SelectContent>
                     {machines.map(m => (
