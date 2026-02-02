@@ -86,7 +86,7 @@ export default function ProductDetail({ showHeader = true }: ProductDetailProps)
     queryKey: ['/api/products'],
   });
 
-  const product = products.find(p => p.id === id);
+  const product = products.find(p => String(p.id) === String(id));
 
   const { data: categories = [] } = useQuery<ProductCategory[]>({
     queryKey: ['/api/product-categories'],
@@ -113,10 +113,10 @@ export default function ProductDetail({ showHeader = true }: ProductDetailProps)
     queryKey: ['/api/uoms'],
   });
 
-  const productFinishedGoods = finishedGoods.filter(fg => fg.productId === id);
+  const productFinishedGoods = finishedGoods.filter(fg => String(fg.productId) === String(id));
   const approvedStock = productFinishedGoods
     .filter(fg => fg.qualityStatus === 'approved')
-    .reduce((sum, fg) => sum + (fg.quantity || 0), 0);
+    .reduce((sum, fg) => sum + (Number(fg.quantity) || 0), 0);
 
   const getCategoryName = (categoryId: string | null) => {
     if (!categoryId) return 'N/A';
@@ -141,8 +141,8 @@ export default function ProductDetail({ showHeader = true }: ProductDetailProps)
     return uom?.name || '';
   };
 
-  const formatCurrency = (amount: number | undefined | null) => {
-    const safeAmount = typeof amount === 'number' ? amount : 0;
+  const formatCurrency = (amount: string | number | undefined | null) => {
+    const safeAmount = typeof amount === 'number' ? amount : (amount ? parseFloat(amount) : 0);
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
@@ -179,8 +179,8 @@ export default function ProductDetail({ showHeader = true }: ProductDetailProps)
     );
   }
 
-  const totalStock = productFinishedGoods.reduce((sum, fg) => sum + (fg.quantity || 0), 0);
-  const stockValue = approvedStock * (product.unitPrice || 0);
+  const totalStock = productFinishedGoods.reduce((sum, fg) => sum + (Number(fg.quantity) || 0), 0);
+  const stockValue = approvedStock * (Number(product.unitPrice) || 0);
 
   return (
     <div className="p-4 space-y-4">

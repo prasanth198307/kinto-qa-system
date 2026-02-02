@@ -51,11 +51,11 @@ export default function RawMaterialTypeDetail({ showHeader = true }: RawMaterial
     queryKey: ['/api/raw-materials'],
   });
 
-  const materialType = materialTypes.find(t => t.id === id);
-  const materialsOfType = rawMaterials.filter(m => m.typeId === id);
+  const materialType = materialTypes.find(t => String(t.id) === String(id));
+  const materialsOfType = rawMaterials.filter(m => String(m.typeId) === String(id));
 
-  const formatCurrency = (amount: number | undefined | null) => {
-    const safeAmount = typeof amount === 'number' ? amount : 0;
+  const formatCurrency = (amount: string | number | undefined | null) => {
+    const safeAmount = typeof amount === 'number' ? amount : (amount ? parseFloat(amount) : 0);
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
@@ -63,7 +63,7 @@ export default function RawMaterialTypeDetail({ showHeader = true }: RawMaterial
     }).format(safeAmount / 100);
   };
 
-  const totalStockValue = materialsOfType.reduce((sum, m) => sum + ((m.currentStock || 0) * (m.costPerUnit || 0)), 0);
+  const totalStockValue = materialsOfType.reduce((sum, m) => sum + ((Number(m.currentStock) || 0) * (Number(m.costPerUnit) || 0)), 0);
 
   if (isLoadingTypes) {
     return (
@@ -222,8 +222,8 @@ export default function RawMaterialTypeDetail({ showHeader = true }: RawMaterial
                     <TableCell className="font-medium">{material.materialCode}</TableCell>
                     <TableCell>{material.materialName}</TableCell>
                     <TableCell>
-                      <span className={(material.currentStock || 0) < (material.minStock || 0) ? 'text-destructive font-medium' : ''}>
-                        {material.currentStock || 0}
+                      <span className={(Number(material.currentStock) || 0) < (Number(material.minStock) || 0) ? 'text-destructive font-medium' : ''}>
+                        {Number(material.currentStock) || 0}
                       </span>
                     </TableCell>
                     <TableCell>{material.minStock}</TableCell>

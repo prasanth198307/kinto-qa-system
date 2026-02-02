@@ -59,7 +59,7 @@ export default function FinishedGoodDetail({ showHeader = true }: FinishedGoodDe
     queryKey: ['/api/users'],
   });
 
-  const finishedGood = finishedGoods.find(fg => fg.id === id);
+  const finishedGood = finishedGoods.find(fg => String(fg.id) === String(id));
 
   const getProductName = (productId: string) => {
     const product = products.find(p => p.id === productId);
@@ -77,8 +77,8 @@ export default function FinishedGoodDetail({ showHeader = true }: FinishedGoodDe
     return u?.fullName || u?.username || userId;
   };
 
-  const formatCurrency = (amount: number | undefined | null) => {
-    const safeAmount = typeof amount === 'number' ? amount : 0;
+  const formatCurrency = (amount: string | number | undefined | null) => {
+    const safeAmount = typeof amount === 'number' ? amount : (amount ? parseFloat(amount) : 0);
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
@@ -125,7 +125,7 @@ export default function FinishedGoodDetail({ showHeader = true }: FinishedGoodDe
   }
 
   const product = products.find(p => p.id === finishedGood.productId);
-  const stockValue = product ? (finishedGood.quantity || 0) * (product.unitPrice || 0) : 0;
+  const stockValue = product ? (Number(finishedGood.quantity) || 0) * (Number(product.unitPrice) || 0) : 0;
 
   return (
     <div className="p-4 space-y-4">

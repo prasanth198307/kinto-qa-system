@@ -67,7 +67,7 @@ export default function RawMaterialDetail({ showHeader = true }: RawMaterialDeta
     queryKey: ['/api/raw-materials'],
   });
 
-  const rawMaterial = rawMaterials.find(m => m.id === id);
+  const rawMaterial = rawMaterials.find(m => String(m.id) === String(id));
 
   const { data: rawMaterialTypes = [] } = useQuery<RawMaterialType[]>({
     queryKey: ['/api/raw-material-types'],
@@ -94,8 +94,8 @@ export default function RawMaterialDetail({ showHeader = true }: RawMaterialDeta
     return uom?.name || uomId;
   };
 
-  const formatCurrency = (amount: number | undefined | null) => {
-    const safeAmount = typeof amount === 'number' ? amount : 0;
+  const formatCurrency = (amount: string | number | undefined | null) => {
+    const safeAmount = typeof amount === 'number' ? amount : (amount ? parseFloat(amount) : 0);
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
@@ -132,8 +132,8 @@ export default function RawMaterialDetail({ showHeader = true }: RawMaterialDeta
     );
   }
 
-  const stockValue = (rawMaterial.currentStock || 0) * (rawMaterial.costPerUnit || 0);
-  const isLowStock = (rawMaterial.currentStock || 0) < (rawMaterial.minStock || 0);
+  const stockValue = (Number(rawMaterial.currentStock) || 0) * (Number(rawMaterial.costPerUnit) || 0);
+  const isLowStock = (Number(rawMaterial.currentStock) || 0) < (Number(rawMaterial.minStock) || 0);
 
   return (
     <div className="p-4 space-y-4">
