@@ -38,7 +38,7 @@ export default function SparePartEntryForm({ part, onClose }: SparePartEntryForm
   });
 
   const [issueFormData, setIssueFormData] = useState({
-    machineId: part.machineId || '',
+    machineId: '', // Start empty
     issuedTo: '',
     issueDate: new Date().toISOString().split('T')[0],
     quantity: '',
@@ -49,13 +49,14 @@ export default function SparePartEntryForm({ part, onClose }: SparePartEntryForm
 
   // Effect to sync machineId if part changes or when dialog opens
   useEffect(() => {
-    if (isIssueDialogOpen) {
+    if (isIssueDialogOpen && part.machineId) {
+      console.log('Pre-selecting machine:', part.machineId);
       setIssueFormData(prev => ({
         ...prev,
-        machineId: part.machineId || ''
+        machineId: part.machineId!
       }));
     }
-  }, [isIssueDialogOpen, part.machineId]);
+  }, [isIssueDialogOpen, part.id, part.machineId]);
 
   const [returnQuantity, setReturnQuantity] = useState('');
 
@@ -479,7 +480,7 @@ export default function SparePartEntryForm({ part, onClose }: SparePartEntryForm
                   </SelectTrigger>
                   <SelectContent>
                     {machines.map(m => (
-                      <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                      <SelectItem key={m.id} value={m.id || "unassigned"}>{m.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
