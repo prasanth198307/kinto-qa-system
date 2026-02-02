@@ -56,6 +56,7 @@ import { format, parseISO, isWithinInterval } from "date-fns";
 import VendorManagement from "@/components/VendorManagement";
 import BankManagement from "@/components/BankManagement";
 import AdminSparePartsManagement from "@/components/AdminSparePartsManagement";
+import { DataTablePagination } from "@/components/DataTablePagination";
 
 interface InventoryManagementProps {
   activeTab?: string;
