@@ -188,11 +188,11 @@ export default function ProductDetail({ showHeader = true }: ProductDetailProps)
         <Button 
           variant="outline" 
           size="sm" 
-          onClick={() => setLocation('/inventory-management?tab=products')}
+          onClick={() => window.history.back()}
           data-testid="button-back"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Products
+          Back
         </Button>
         <h1 className="text-2xl font-bold" data-testid="text-product-name">{product.productName}</h1>
         <Badge variant={product.isActive === 1 ? 'default' : 'secondary'} data-testid="badge-status">

@@ -111,11 +111,11 @@ export default function RawMaterialTypeDetail({ showHeader = true }: RawMaterial
         <Button 
           variant="outline" 
           size="sm" 
-          onClick={() => setLocation('/inventory-management?tab=material-types')}
+          onClick={() => window.history.back()}
           data-testid="button-back"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Material Types
+          Back
         </Button>
         <h1 className="text-2xl font-bold" data-testid="text-type-name">{materialType.typeName}</h1>
         <Badge variant={materialType.isActive === 1 ? 'default' : 'secondary'} data-testid="badge-status">

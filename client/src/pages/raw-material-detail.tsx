@@ -147,11 +147,11 @@ export default function RawMaterialDetail({ showHeader = true }: RawMaterialDeta
         <Button 
           variant="outline" 
           size="sm" 
-          onClick={() => setLocation('/inventory-management?tab=raw-materials')}
+          onClick={() => window.history.back()}
           data-testid="button-back"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Raw Materials
+          Back
         </Button>
         <h1 className="text-2xl font-bold" data-testid="text-material-name">{rawMaterial.materialName}</h1>
         <Badge variant={rawMaterial.isActive === 'true' ? 'default' : 'secondary'} data-testid="badge-status">

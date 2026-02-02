@@ -133,11 +133,11 @@ export default function FinishedGoodDetail({ showHeader = true }: FinishedGoodDe
         <Button 
           variant="outline" 
           size="sm" 
-          onClick={() => setLocation('/inventory-management?tab=finished-goods')}
+          onClick={() => window.history.back()}
           data-testid="button-back"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Finished Goods
+          Back
         </Button>
         <h1 className="text-2xl font-bold" data-testid="text-batch-title">Batch: {finishedGood.batchNumber}</h1>
         <Badge 
