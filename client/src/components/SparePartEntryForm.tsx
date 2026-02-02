@@ -477,11 +477,19 @@ export default function SparePartEntryForm({ part, onClose }: SparePartEntryForm
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Machine</Label>
-                    <div className="h-10 px-3 py-2 rounded-md border border-input bg-muted flex items-center">
-                      <span className="text-sm font-medium">
-                        {part.machineId ? getMachineName(part.machineId) : "Unassigned"}
-                      </span>
-                    </div>
+                    <Select 
+                      value={issueFormData.machineId || "none"} 
+                      onValueChange={v => setIssueFormData({...issueFormData, machineId: v === "none" ? "" : v})}
+                    >
+                      <SelectTrigger data-testid="select-issue-machine">
+                        <SelectValue placeholder="Select machine" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {machines.map(m => (
+                          <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label>Issued To *</Label>
