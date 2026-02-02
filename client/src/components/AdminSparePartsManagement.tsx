@@ -33,9 +33,7 @@ export default function AdminSparePartsManagement() {
     partNumber: '',
     category: '',
     machineId: '',
-    reorderThreshold: '',
-    currentStock: '',
-    openingStockDate: new Date().toISOString().split('T')[0]
+    reorderThreshold: ''
   });
   const { toast } = useToast();
 
@@ -48,7 +46,7 @@ export default function AdminSparePartsManagement() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: { partName: string; partNumber?: string; category?: string; machineId?: string; reorderThreshold?: number; currentStock?: number; openingStockDate?: string }) => {
+    mutationFn: async (data: { partName: string; partNumber?: string; category?: string; machineId?: string; reorderThreshold?: number }) => {
       return await apiRequest('POST', '/api/spare-parts', data);
     },
     onSuccess: () => {
@@ -70,7 +68,7 @@ export default function AdminSparePartsManagement() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<{ partName: string; partNumber?: string; category?: string; machineId?: string; reorderThreshold?: number; currentStock?: number; openingStockDate?: string }> }) => {
+    mutationFn: async ({ id, data }: { id: string; data: Partial<{ partName: string; partNumber?: string; category?: string; machineId?: string; reorderThreshold?: number }> }) => {
       return await apiRequest('PATCH', `/api/spare-parts/${id}`, data);
     },
     onSuccess: () => {
@@ -152,9 +150,7 @@ export default function AdminSparePartsManagement() {
       partNumber: '',
       category: '',
       machineId: '',
-      reorderThreshold: '',
-      currentStock: '',
-      openingStockDate: new Date().toISOString().split('T')[0]
+      reorderThreshold: ''
     });
   };
 
@@ -166,9 +162,7 @@ export default function AdminSparePartsManagement() {
         partNumber: editingSparePart.partNumber || '',
         category: editingSparePart.category || '',
         machineId: editingSparePart.machineId || '',
-        reorderThreshold: editingSparePart.reorderThreshold?.toString() || '',
-        currentStock: editingSparePart.currentStock?.toString() || '',
-        openingStockDate: editingSparePart.openingStockDate ? editingSparePart.openingStockDate.split('T')[0] : new Date().toISOString().split('T')[0]
+        reorderThreshold: editingSparePart.reorderThreshold?.toString() || ''
       });
     }
   }, [editingSparePart]);
@@ -205,8 +199,6 @@ export default function AdminSparePartsManagement() {
       category: formData.category?.trim() || undefined,
       machineId: formData.machineId?.trim() || undefined,
       reorderThreshold: parseNumber(formData.reorderThreshold),
-      currentStock: parseNumber(formData.currentStock),
-      openingStockDate: formData.openingStockDate ? new Date(formData.openingStockDate).toISOString() : undefined,
     };
     
     if (!data.partName) {
@@ -237,8 +229,6 @@ export default function AdminSparePartsManagement() {
         category: formData.category?.trim() || undefined,
         machineId: formData.machineId?.trim() || undefined,
         reorderThreshold: parseNumber(formData.reorderThreshold),
-        currentStock: parseNumber(formData.currentStock),
-        openingStockDate: formData.openingStockDate ? new Date(formData.openingStockDate).toISOString() : undefined,
       };
       
       if (!data.partName) {
@@ -510,39 +500,16 @@ export default function AdminSparePartsManagement() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <Label htmlFor="currentStock">Opening Stock</Label>
-                  <Input
-                    id="currentStock"
-                    type="number"
-                    placeholder="0"
-                    value={formData.currentStock}
-                    onChange={(e) => setFormData({ ...formData, currentStock: e.target.value })}
-                    data-testid="input-current-stock"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="openingStockDate">Opening Stock Date</Label>
-                  <Input
-                    id="openingStockDate"
-                    type="date"
-                    value={formData.openingStockDate}
-                    onChange={(e) => setFormData({ ...formData, openingStockDate: e.target.value })}
-                    data-testid="input-opening-stock-date"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="reorderThreshold">Reorder At</Label>
-                  <Input
-                    id="reorderThreshold"
-                    type="number"
-                    placeholder="0"
-                    value={formData.reorderThreshold}
-                    onChange={(e) => setFormData({ ...formData, reorderThreshold: e.target.value })}
-                    data-testid="input-reorder-threshold"
-                  />
-                </div>
+              <div>
+                <Label htmlFor="reorderThreshold">Reorder At (Low Stock Threshold)</Label>
+                <Input
+                  id="reorderThreshold"
+                  type="number"
+                  placeholder="0"
+                  value={formData.reorderThreshold}
+                  onChange={(e) => setFormData({ ...formData, reorderThreshold: e.target.value })}
+                  data-testid="input-reorder-threshold"
+                />
               </div>
             </div>
             <DialogFooter>
@@ -613,39 +580,16 @@ export default function AdminSparePartsManagement() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <Label htmlFor="edit-currentStock">Opening Stock</Label>
-                  <Input
-                    id="edit-currentStock"
-                    type="number"
-                    placeholder="0"
-                    value={formData.currentStock}
-                    onChange={(e) => setFormData({ ...formData, currentStock: e.target.value })}
-                    data-testid="input-edit-current-stock"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="edit-openingStockDate">Opening Stock Date</Label>
-                  <Input
-                    id="edit-openingStockDate"
-                    type="date"
-                    value={formData.openingStockDate}
-                    onChange={(e) => setFormData({ ...formData, openingStockDate: e.target.value })}
-                    data-testid="input-edit-opening-stock-date"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="edit-reorderThreshold">Reorder At</Label>
-                  <Input
-                    id="edit-reorderThreshold"
-                    type="number"
-                    placeholder="0"
-                    value={formData.reorderThreshold}
-                    onChange={(e) => setFormData({ ...formData, reorderThreshold: e.target.value })}
-                    data-testid="input-edit-reorder-threshold"
-                  />
-                </div>
+              <div>
+                <Label htmlFor="edit-reorderThreshold">Reorder At (Low Stock Threshold)</Label>
+                <Input
+                  id="edit-reorderThreshold"
+                  type="number"
+                  placeholder="0"
+                  value={formData.reorderThreshold}
+                  onChange={(e) => setFormData({ ...formData, reorderThreshold: e.target.value })}
+                  data-testid="input-edit-reorder-threshold"
+                />
               </div>
             </div>
             <DialogFooter>

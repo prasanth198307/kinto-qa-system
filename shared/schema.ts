@@ -338,7 +338,10 @@ export const sparePartEntries = pgTable("spare_part_entries", {
   sparePartId: varchar("spare_part_id").references(() => sparePartsCatalog.id).notNull(),
   purchaseDate: timestamp("purchase_date", { mode: 'string' }).notNull(),
   quantity: integer("quantity").notNull(),
-  unitPrice: integer("unit_price").notNull(),
+  unitPrice: integer("unit_price").notNull(), // Price per unit before GST
+  gstPercent: integer("gst_percent").default(0), // GST percentage (e.g., 18 for 18%)
+  gstAmount: integer("gst_amount").default(0), // GST amount in paise/cents
+  totalAmount: integer("total_amount"), // Total amount including GST
   vendorId: varchar("vendor_id").references(() => vendors.id),
   remarks: text("remarks"),
   recordStatus: integer("record_status").default(1).notNull(),

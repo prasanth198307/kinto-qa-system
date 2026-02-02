@@ -33,6 +33,7 @@ export default function SparePartEntryForm({ part, onClose }: SparePartEntryForm
     purchaseDate: new Date().toISOString().split('T')[0],
     quantity: '',
     unitPrice: '',
+    gstPercent: '18',
     remarks: ''
   });
 
@@ -76,6 +77,7 @@ export default function SparePartEntryForm({ part, onClose }: SparePartEntryForm
         purchaseDate: new Date().toISOString().split('T')[0],
         quantity: '',
         unitPrice: '',
+        gstPercent: '18',
         remarks: ''
       });
       toast({ title: "Success", description: "Stock entry recorded successfully" });
@@ -128,10 +130,20 @@ export default function SparePartEntryForm({ part, onClose }: SparePartEntryForm
 
   const handleEntrySubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const qty = parseInt(entryFormData.quantity);
+    const unitPrice = parseInt(entryFormData.unitPrice);
+    const gstPercent = parseInt(entryFormData.gstPercent) || 0;
+    const baseAmount = qty * unitPrice;
+    const gstAmount = Math.round(baseAmount * gstPercent / 100);
+    const totalAmount = baseAmount + gstAmount;
+    
     entryMutation.mutate({
-      ...entryFormData,
-      quantity: parseInt(entryFormData.quantity),
-      unitPrice: parseInt(entryFormData.unitPrice),
+      quantity: qty,
+      unitPrice: unitPrice,
+      gstPercent: gstPercent,
+      gstAmount: gstAmount,
+      totalAmount: totalAmount,
+      remarks: entryFormData.remarks,
       purchaseDate: new Date(entryFormData.purchaseDate).toISOString()
     });
   };
@@ -212,6 +224,7 @@ export default function SparePartEntryForm({ part, onClose }: SparePartEntryForm
                     <TableHead>Date</TableHead>
                     <TableHead>Qty</TableHead>
                     <TableHead>Unit Price (₹)</TableHead>
+                    <TableHead>GST</TableHead>
                     <TableHead>Total (₹)</TableHead>
                     <TableHead>Remarks</TableHead>
                   </TableRow>
@@ -219,26 +232,32 @@ export default function SparePartEntryForm({ part, onClose }: SparePartEntryForm
                 <TableBody>
                   {entriesLoading ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">
+                      <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
                         Loading...
                       </TableCell>
                     </TableRow>
                   ) : entries.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">
+                      <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
                         No stock entries found
                       </TableCell>
                     </TableRow>
                   ) : (
-                    entries.map((entry) => (
-                      <TableRow key={entry.id}>
-                        <TableCell>{format(new Date(entry.purchaseDate), 'dd MMM yyyy')}</TableCell>
-                        <TableCell className="text-green-600 font-medium">+{entry.quantity}</TableCell>
-                        <TableCell>{entry.unitPrice}</TableCell>
-                        <TableCell>{entry.quantity * entry.unitPrice}</TableCell>
-                        <TableCell>{entry.remarks || '-'}</TableCell>
-                      </TableRow>
-                    ))
+                    entries.map((entry) => {
+                      const baseAmount = entry.quantity * entry.unitPrice;
+                      const gstAmt = (entry as any).gstAmount || 0;
+                      const total = (entry as any).totalAmount || baseAmount + gstAmt;
+                      return (
+                        <TableRow key={entry.id}>
+                          <TableCell>{format(new Date(entry.purchaseDate), 'dd MMM yyyy')}</TableCell>
+                          <TableCell className="text-green-600 font-medium">+{entry.quantity}</TableCell>
+                          <TableCell>₹{entry.unitPrice}</TableCell>
+                          <TableCell>{(entry as any).gstPercent || 0}% (₹{gstAmt})</TableCell>
+                          <TableCell className="font-medium">₹{total}</TableCell>
+                          <TableCell>{entry.remarks || '-'}</TableCell>
+                        </TableRow>
+                      );
+                    })
                   )}
                 </TableBody>
               </Table>
@@ -335,7 +354,7 @@ export default function SparePartEntryForm({ part, onClose }: SparePartEntryForm
                 data-testid="input-entry-date"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>Quantity</Label>
                 <Input 
@@ -358,7 +377,38 @@ export default function SparePartEntryForm({ part, onClose }: SparePartEntryForm
                   data-testid="input-entry-price"
                 />
               </div>
+              <div className="space-y-2">
+                <Label>GST %</Label>
+                <Select value={entryFormData.gstPercent} onValueChange={v => setEntryFormData({...entryFormData, gstPercent: v})}>
+                  <SelectTrigger data-testid="select-entry-gst">
+                    <SelectValue placeholder="GST %" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">0%</SelectItem>
+                    <SelectItem value="5">5%</SelectItem>
+                    <SelectItem value="12">12%</SelectItem>
+                    <SelectItem value="18">18%</SelectItem>
+                    <SelectItem value="28">28%</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
+            {entryFormData.quantity && entryFormData.unitPrice && (
+              <div className="p-3 bg-muted rounded-md space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span>Base Amount:</span>
+                  <span>₹{(parseInt(entryFormData.quantity) || 0) * (parseInt(entryFormData.unitPrice) || 0)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>GST ({entryFormData.gstPercent || 0}%):</span>
+                  <span>₹{Math.round((parseInt(entryFormData.quantity) || 0) * (parseInt(entryFormData.unitPrice) || 0) * (parseInt(entryFormData.gstPercent) || 0) / 100)}</span>
+                </div>
+                <div className="flex justify-between font-medium border-t pt-1">
+                  <span>Total Amount:</span>
+                  <span>₹{(parseInt(entryFormData.quantity) || 0) * (parseInt(entryFormData.unitPrice) || 0) + Math.round((parseInt(entryFormData.quantity) || 0) * (parseInt(entryFormData.unitPrice) || 0) * (parseInt(entryFormData.gstPercent) || 0) / 100)}</span>
+                </div>
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Remarks</Label>
               <Input 
