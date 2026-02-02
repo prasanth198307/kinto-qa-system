@@ -1,0 +1,52 @@
+ 1000  history
+[kinto@iplvnic1 ~]$ sudo journalctl -u kinto.service -n 50 --no-pager
+Feb 02 04:17:39 iplvnic1 npm[2241869]: 🔹 Request: GET /api/products
+Feb 02 04:17:39 iplvnic1 npm[2241869]:    Cookie header: connect.sid=s%3AS9TlQEEWKeOxmpc259SPA5sHrj7lIxax.3fhk47d4m2I4Iyb%2BeZGXjChYiLFflkLqfi5yY2CqOi0
+Feb 02 04:17:39 iplvnic1 npm[2241869]:    Session ID: S9TlQEEWKeOxmpc259SPA5sHrj7lIxax
+Feb 02 04:17:39 iplvnic1 npm[2241869]:    Authenticated: true
+Feb 02 04:17:39 iplvnic1 npm[2241869]: 🔹 Request: GET /api/users
+Feb 02 04:17:39 iplvnic1 npm[2241869]:    Cookie header: connect.sid=s%3AS9TlQEEWKeOxmpc259SPA5sHrj7lIxax.3fhk47d4m2I4Iyb%2BeZGXjChYiLFflkLqfi5yY2CqOi0
+Feb 02 04:17:39 iplvnic1 npm[2241869]:    Session ID: S9TlQEEWKeOxmpc259SPA5sHrj7lIxax
+Feb 02 04:17:39 iplvnic1 npm[2241869]:    Authenticated: true
+Feb 02 04:17:39 iplvnic1 npm[2241869]: 🔹 Request: GET /api/uom
+Feb 02 04:17:39 iplvnic1 npm[2241869]:    Cookie header: connect.sid=s%3AS9TlQEEWKeOxmpc259SPA5sHrj7lIxax.3fhk47d4m2I4Iyb%2BeZGXjChYiLFflkLqfi5yY2CqOi0
+Feb 02 04:17:39 iplvnic1 npm[2241869]:    Session ID: S9TlQEEWKeOxmpc259SPA5sHrj7lIxax
+Feb 02 04:17:39 iplvnic1 npm[2241869]:    Authenticated: true
+Feb 02 04:17:39 iplvnic1 npm[2241869]: 🔹 Request: GET /api/machines
+Feb 02 04:17:39 iplvnic1 npm[2241869]:    Cookie header: connect.sid=s%3AS9TlQEEWKeOxmpc259SPA5sHrj7lIxax.3fhk47d4m2I4Iyb%2BeZGXjChYiLFflkLqfi5yY2CqOi0
+Feb 02 04:17:39 iplvnic1 npm[2241869]:    Session ID: S9TlQEEWKeOxmpc259SPA5sHrj7lIxax
+Feb 02 04:17:39 iplvnic1 npm[2241869]:    Authenticated: true
+Feb 02 04:17:39 iplvnic1 npm[2241869]: 4:17:39 AM [express] GET /api/products 304 in 27ms :: [{"id":"a4de2b77-b570-4f77-b537-2174e9f2caf7",…
+Feb 02 04:17:39 iplvnic1 npm[2241869]: 4:17:39 AM [express] GET /api/my-permissions 304 in 35ms :: {"role":"admin","roleId":"role-admin","p…
+Feb 02 04:17:39 iplvnic1 npm[2241869]: 4:17:39 AM [express] GET /api/users 304 in 28ms :: [{"id":"c2c21995-2d0a-4a59-a601-4ec01344efcd","us…
+Feb 02 04:17:39 iplvnic1 npm[2241869]: 4:17:39 AM [express] GET /api/uom 304 in 30ms :: [{"id":"57cdd356-f009-435a-b3ff-8f25a5cda30f","code…
+Feb 02 04:17:39 iplvnic1 npm[2241869]: 4:17:39 AM [express] GET /api/machines 304 in 34ms :: [{"id":"80649cc4-2677-493d-a712-63f0833ae39d",…
+Feb 02 04:17:52 iplvnic1 npm[2241869]: 🔹 Request: GET /api/finished-goods
+Feb 02 04:17:52 iplvnic1 npm[2241869]:    Cookie header: connect.sid=s%3AS9TlQEEWKeOxmpc259SPA5sHrj7lIxax.3fhk47d4m2I4Iyb%2BeZGXjChYiLFflkLqfi5yY2CqOi0
+Feb 02 04:17:52 iplvnic1 npm[2241869]:    Session ID: S9TlQEEWKeOxmpc259SPA5sHrj7lIxax
+Feb 02 04:17:52 iplvnic1 npm[2241869]:    Authenticated: true
+Feb 02 04:17:52 iplvnic1 npm[2241869]: Error fetching finished goods: error: column "source" does not exist
+Feb 02 04:17:52 iplvnic1 npm[2241869]:     at /home/kinto/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+Feb 02 04:17:52 iplvnic1 npm[2241869]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+Feb 02 04:17:52 iplvnic1 npm[2241869]:     at async file:///home/kinto/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+Feb 02 04:17:52 iplvnic1 npm[2241869]:     at async DatabaseStorage.getAllFinishedGoods (file:///home/kinto/kinto-qa-system/dist/index.js:4064:16)
+Feb 02 04:17:52 iplvnic1 npm[2241869]:     at async file:///home/kinto/kinto-qa-system/dist/index.js:12781:21 {
+Feb 02 04:17:52 iplvnic1 npm[2241869]:   length: 107,
+Feb 02 04:17:52 iplvnic1 npm[2241869]:   severity: 'ERROR',
+Feb 02 04:17:52 iplvnic1 npm[2241869]:   code: '42703',
+Feb 02 04:17:52 iplvnic1 npm[2241869]:   detail: undefined,
+Feb 02 04:17:52 iplvnic1 npm[2241869]:   hint: undefined,
+Feb 02 04:17:52 iplvnic1 npm[2241869]:   position: '223',
+Feb 02 04:17:52 iplvnic1 npm[2241869]:   internalPosition: undefined,
+Feb 02 04:17:52 iplvnic1 npm[2241869]:   internalQuery: undefined,
+Feb 02 04:17:52 iplvnic1 npm[2241869]:   where: undefined,
+Feb 02 04:17:52 iplvnic1 npm[2241869]:   schema: undefined,
+Feb 02 04:17:52 iplvnic1 npm[2241869]:   table: undefined,
+Feb 02 04:17:52 iplvnic1 npm[2241869]:   column: undefined,
+Feb 02 04:17:52 iplvnic1 npm[2241869]:   dataType: undefined,
+Feb 02 04:17:52 iplvnic1 npm[2241869]:   constraint: undefined,
+Feb 02 04:17:52 iplvnic1 npm[2241869]:   file: 'parse_relation.c',
+Feb 02 04:17:52 iplvnic1 npm[2241869]:   line: '3722',
+Feb 02 04:17:52 iplvnic1 npm[2241869]:   routine: 'errorMissingColumn'
+Feb 02 04:17:52 iplvnic1 npm[2241869]: }
+Feb 02 04:17:52 iplvnic1 npm[2241869]: 4:17:52 AM [express] GET /api/finished-goods 500 in 18ms :: {"message":"Failed to fetch finished goo…
