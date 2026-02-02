@@ -55,8 +55,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format, parseISO, isWithinInterval } from "date-fns";
 import VendorManagement from "@/components/VendorManagement";
 import BankManagement from "@/components/BankManagement";
-import { GlobalHeader } from "@/components/GlobalHeader";
-import { DataTablePagination } from "@/components/DataTablePagination";
+import AdminSparePartsManagement from "@/components/AdminSparePartsManagement";
 
 interface InventoryManagementProps {
   activeTab?: string;
