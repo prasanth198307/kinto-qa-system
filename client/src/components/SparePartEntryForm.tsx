@@ -47,12 +47,19 @@ export default function SparePartEntryForm({ part, onClose }: SparePartEntryForm
     remarks: ''
   });
 
+  // Effect to sync machineId if part changes or when dialog opens
   useEffect(() => {
     if (isIssueDialogOpen) {
-      console.log('Dialog opened, part machineId:', part.machineId);
+      console.log('DIALOG OPENED - Syncing machineId. Part has:', part.machineId);
       setIssueFormData(prev => ({
         ...prev,
         machineId: part.machineId || ''
+      }));
+    } else {
+      // Clear when closing
+      setIssueFormData(prev => ({
+        ...prev,
+        machineId: ''
       }));
     }
   }, [isIssueDialogOpen, part.id, part.machineId]);
@@ -471,6 +478,7 @@ export default function SparePartEntryForm({ part, onClose }: SparePartEntryForm
               <div className="space-y-2">
                 <Label>Machine</Label>
                 <Select 
+                  key={`machine-select-${issueFormData.machineId}`}
                   value={issueFormData.machineId || "none"} 
                   onValueChange={v => setIssueFormData({...issueFormData, machineId: v === "none" ? "" : v})}
                 >
