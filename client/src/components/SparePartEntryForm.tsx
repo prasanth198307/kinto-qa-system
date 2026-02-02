@@ -440,7 +440,7 @@ export default function SparePartEntryForm({ part, onClose }: SparePartEntryForm
           <DialogHeader>
             <DialogTitle>Issue Spare Part</DialogTitle>
             <DialogDescription>
-              Issue {part.partName} from stock. Current available: <strong>{part.currentStock || 0}</strong>
+              Issue {part.partName} from stock. Current available: <strong>{issueMutation.isPending ? '...' : (part.currentStock || 0)}</strong>
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleIssueSubmit} className="space-y-4">
