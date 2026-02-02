@@ -22,6 +22,17 @@ interface RawMaterialType {
   description: string | null;
   isActive: number;
   createdAt: string | null;
+  conversionMethod: string | null;
+  baseUnit: string | null;
+  baseUnitWeight: string | number | null;
+  derivedUnit: string | null;
+  weightPerDerivedUnit: string | number | null;
+  derivedValuePerBase: string | number | null;
+  outputType: string | null;
+  outputUnitsCovered: string | number | null;
+  conversionValue: string | number | null;
+  lossPercent: string | number | null;
+  usableUnits: string | number | null;
 }
 
 interface RawMaterial {
@@ -185,6 +196,63 @@ export default function RawMaterialTypeDetail({ showHeader = true }: RawMaterial
           )}
         </CardContent>
       </Card>
+
+      {materialType.conversionMethod && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Calculation & Conversion Details</CardTitle>
+            <CardDescription>Configuration for material units and stock calculations</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Method</p>
+                <Badge variant="outline" className="capitalize">
+                  {materialType.conversionMethod.replace('-', ' ')}
+                </Badge>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Base Unit</p>
+                <p className="font-medium">{materialType.baseUnit || '-'}</p>
+              </div>
+              {materialType.baseUnitWeight && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Base Unit Weight</p>
+                  <p className="font-medium">{materialType.baseUnitWeight} kg</p>
+                </div>
+              )}
+              <div>
+                <p className="text-sm text-muted-foreground">Derived Unit</p>
+                <p className="font-medium">{materialType.derivedUnit || '-'}</p>
+              </div>
+              {materialType.conversionValue && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Conversion Value</p>
+                  <p className="font-medium">{materialType.conversionValue} {materialType.derivedUnit}</p>
+                </div>
+              )}
+              {materialType.lossPercent && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Loss Percent</p>
+                  <p className="font-medium text-destructive">{materialType.lossPercent}%</p>
+                </div>
+              )}
+              {materialType.usableUnits && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Usable Units</p>
+                  <p className="font-medium text-green-600">{materialType.usableUnits} {materialType.derivedUnit}</p>
+                </div>
+              )}
+              {materialType.outputType && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Output Type</p>
+                  <p className="font-medium">{materialType.outputType}</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
