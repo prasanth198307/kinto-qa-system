@@ -385,8 +385,7 @@ export default function AdminSparePartsManagement() {
                     {part.partNumber && <p className="text-xs text-muted-foreground mt-1">Part #: {part.partNumber}</p>}
                     {part.category && <p className="text-xs text-muted-foreground">Category: {part.category}</p>}
                     <div className="flex gap-4 mt-2 text-xs">
-                      {part.unitPrice !== null && <span>Price: ₹{part.unitPrice}</span>}
-                      {part.currentStock !== null && <span>Stock: {part.currentStock}</span>}
+                      {part.currentStock !== null && <span>Current Stock: {part.currentStock}</span>}
                       {part.reorderThreshold !== null && <span>Reorder at: {part.reorderThreshold}</span>}
                     </div>
                   </div>
@@ -513,18 +512,7 @@ export default function AdminSparePartsManagement() {
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <Label htmlFor="unitPrice">Unit Price (₹)</Label>
-                  <Input
-                    id="unitPrice"
-                    type="number"
-                    placeholder="0"
-                    value={formData.unitPrice}
-                    onChange={(e) => setFormData({ ...formData, unitPrice: e.target.value })}
-                    data-testid="input-unit-price"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="currentStock">Current Stock</Label>
+                  <Label htmlFor="currentStock">Opening Stock</Label>
                   <Input
                     id="currentStock"
                     type="number"
@@ -615,20 +603,9 @@ export default function AdminSparePartsManagement() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <Label htmlFor="edit-unitPrice">Unit Price (₹)</Label>
-                  <Input
-                    id="edit-unitPrice"
-                    type="number"
-                    placeholder="0"
-                    value={formData.unitPrice}
-                    onChange={(e) => setFormData({ ...formData, unitPrice: e.target.value })}
-                    data-testid="input-edit-unit-price"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="edit-currentStock">Current Stock</Label>
+                  <Label htmlFor="edit-currentStock">Opening Stock</Label>
                   <Input
                     id="edit-currentStock"
                     type="number"
