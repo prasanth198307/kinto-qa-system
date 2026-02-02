@@ -27,6 +27,7 @@ import AdminUserManagement from "@/components/AdminUserManagement";
 import AdminMachineConfig from "@/components/AdminMachineConfig";
 import AdminChecklistBuilder from "@/components/AdminChecklistBuilder";
 import AdminSparePartsManagement from "@/components/AdminSparePartsManagement";
+import SparePartsStockView from "@/components/SparePartsStockView";
 import AdminMachineTypeConfig from "@/components/AdminMachineTypeConfig";
 import AdminPMTaskListTemplates from "@/components/AdminPMTaskListTemplates";
 import AdminHPCLMigration from "@/components/AdminHPCLMigration";
@@ -330,8 +331,13 @@ function ManagerDashboard() {
       case 'raw-materials':
       case 'finished-goods':
       case 'vendors':
-      case 'spare-parts':
         return <InventoryManagement activeTab={activeView} />;
+      case 'spare-parts':
+        return (
+          <div className="p-4">
+            <SparePartsStockView />
+          </div>
+        );
       case 'raw-material-types':
         return <RawMaterialTypeMaster />;
       case 'purchase-orders':
@@ -580,8 +586,13 @@ function CustomRoleDashboard({ roleName }: { roleName: string }) {
       case 'raw-materials':
       case 'finished-goods':
       case 'vendors':
-      case 'spare-parts':
         return <InventoryManagement activeTab={activeView} />;
+      case 'spare-parts':
+        return (
+          <div className="p-4">
+            <SparePartsStockView />
+          </div>
+        );
       case 'product-categories':
         return <ProductCategories />;
       case 'product-types':
@@ -965,8 +976,13 @@ function AdminDashboard() {
       case 'raw-materials':
       case 'finished-goods':
       case 'vendors':
-      case 'spare-parts':
         return <InventoryManagement activeTab={activeView} />;
+      case 'spare-parts':
+        return (
+          <div className="p-4">
+            <SparePartsStockView />
+          </div>
+        );
       case 'product-categories':
         return <ProductCategories />;
       case 'product-types':
