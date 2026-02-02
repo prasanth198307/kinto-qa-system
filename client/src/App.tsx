@@ -777,7 +777,7 @@ function AdminDashboard() {
         { id: "production-reconciliations", label: "Production Reconciliation", icon: Calculator },
         { id: "production-reconciliation-report", label: "Reconciliation Report", icon: FileStack },
         { id: "variance-analytics", label: "Variance Analytics", icon: TrendingUp },
-        { id: "spare-parts", label: "Spare Parts", icon: Wrench },
+        { id: "spare-parts", label: "Spare Parts Stock", icon: Wrench },
       ],
       quickActions: [
         { id: "add-product", label: "Add Product", icon: Package, onClick: () => setActiveView("products") },
@@ -1417,7 +1417,7 @@ const navItemToScreen: Record<string, string> = {
   'production-reconciliation-report': 'Create Finished Goods',
   'finished-goods-report': 'Create Finished Goods',
   'variance-analytics': 'Create Finished Goods',
-  'spare-parts': 'Spare Parts',
+  'spare-parts': 'Spare Parts Stock',
   // Finance & Sales
   'invoices': 'Purchase Orders',
   'vendor-history': 'Purchase Orders',
@@ -1446,7 +1446,7 @@ const navItemToScreen: Record<string, string> = {
   'vendor-types': 'Inventory Management',
   'machines': 'Machines',
   'machine-types': 'Machine Types',
-  'spare-parts': 'Spare Parts',
+  'spare-parts': 'Spare Parts Stock',
   'pm-templates': 'PM Templates',
   'uom': 'Inventory Management',
   'raw-material-types': 'Inventory Management',

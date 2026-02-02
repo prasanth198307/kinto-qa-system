@@ -137,7 +137,7 @@ const navItemToScreen: Record<string, string> = {
   'vendor-types': 'Inventory Management',
   'machines': 'Machines',
   'machine-types': 'Machine Types',
-  'spare-parts': 'Spare Parts',
+  'spare-parts': 'Spare Parts Stock',
   'pm-templates': 'PM Templates',
   'uom': 'Inventory Management',
   'raw-material-types': 'Inventory Management',
