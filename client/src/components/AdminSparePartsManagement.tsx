@@ -15,8 +15,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MachineSpareEntryView from "@/components/MachineSpareEntryView";
+import SparePartEntryForm from "@/components/SparePartEntryForm";
 
 export default function AdminSparePartsManagement() {
+  const [selectedPartForEntries, setSelectedPartForEntries] = useState<SparePartCatalog | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -394,6 +396,16 @@ export default function AdminSparePartsManagement() {
                       variant="outline"
                       size="sm"
                       className="flex-1"
+                      onClick={() => setSelectedPartForEntries(part)}
+                      data-testid={`button-entries-${index}`}
+                    >
+                      <History className="h-4 w-4 mr-1" />
+                      Stock
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
                       onClick={() => handleEditClick(part)}
                       data-testid={`button-edit-${index}`}
                     >
@@ -431,6 +443,17 @@ export default function AdminSparePartsManagement() {
           <MachineSpareEntryView />
         </TabsContent>
       </Tabs>
+
+      <Dialog open={!!selectedPartForEntries} onOpenChange={(open) => !open && setSelectedPartForEntries(null)}>
+        <DialogContent className="max-w-3xl">
+          {selectedPartForEntries && (
+            <SparePartEntryForm 
+              part={selectedPartForEntries} 
+              onClose={() => setSelectedPartForEntries(null)} 
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent data-testid="dialog-add-spare-part">

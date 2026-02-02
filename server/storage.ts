@@ -1206,8 +1206,24 @@ export class DatabaseStorage implements IStorage {
     return execution;
   }
 
-  async getPMExecutionTasks(executionId: string): Promise<PMExecutionTask[]> {
-    return await db.select().from(pmExecutionTasks).where(eq(pmExecutionTasks.executionId, executionId));
+  // Spare Part Entries
+  async createSparePartEntry(entry: InsertSparePartEntry): Promise<SparePartEntry> {
+    const [created] = await db.insert(sparePartEntries).values(entry).returning();
+    
+    // Update current stock in catalog
+    const part = await this.getSparePart(entry.sparePartId);
+    if (part) {
+      const newStock = (Number(part.currentStock) || 0) + Number(entry.quantity);
+      await this.updateSparePart(part.id, { currentStock: newStock });
+    }
+    
+    return created;
+  }
+
+  async getSparePartEntries(sparePartId: string): Promise<SparePartEntry[]> {
+    return await db.select().from(sparePartEntries)
+      .where(and(eq(sparePartEntries.sparePartId, sparePartId), eq(sparePartEntries.recordStatus, 1)))
+      .orderBy(desc(sparePartEntries.purchaseDate));
   }
 
   async getPMExecutionsByPlan(planId: string): Promise<PMExecution[]> {

@@ -2543,7 +2543,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Product BOM (Bill of Materials) API
-  app.get('/api/products/:productId/bom', isAuthenticated, async (req: any, res) => {
+  // Spare Part Entries API
+  app.get('/api/spare-parts/:id/entries', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const entries = await storage.getSparePartEntries(id);
+      res.json(entries);
+    } catch (error) {
+      console.error("Error fetching spare part entries:", error);
+      res.status(500).json({ message: "Failed to fetch spare part entries" });
+    }
+  });
+
+  app.post('/api/spare-parts/:id/entries', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertSparePartEntrySchema.parse({ ...req.body, sparePartId: id });
+      const created = await storage.createSparePartEntry(validatedData);
+      res.json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error creating spare part entry:", error);
+      res.status(500).json({ message: "Failed to create spare part entry" });
+    }
+  });
     try {
       const { productId } = req.params;
       const bomItems = await storage.getProductBom(productId);

@@ -331,7 +331,29 @@ export const insertSparePartSchema = createInsertSchema(sparePartsCatalog).omit(
 export type InsertSparePart = z.infer<typeof insertSparePartSchema>;
 export type SparePartCatalog = typeof sparePartsCatalog.$inferSelect;
 
-// Required spares (linked to submissions)
+// Spare part stock entries (capturing different purchase dates and prices)
+export const sparePartEntries = pgTable("spare_part_entries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sparePartId: varchar("spare_part_id").references(() => sparePartsCatalog.id).notNull(),
+  purchaseDate: timestamp("purchase_date", { mode: 'string' }).notNull(),
+  quantity: integer("quantity").notNull(),
+  unitPrice: integer("unit_price").notNull(),
+  vendorId: varchar("vendor_id").references(() => vendors.id),
+  remarks: text("remarks"),
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
+});
+
+export const insertSparePartEntrySchema = createInsertSchema(sparePartEntries).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertSparePartEntry = z.infer<typeof insertSparePartEntrySchema>;
+export type SparePartEntry = typeof sparePartEntries.$inferSelect;
 export const requiredSpares = pgTable("required_spares", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   submissionId: varchar("submission_id").references(() => checklistSubmissions.id),
