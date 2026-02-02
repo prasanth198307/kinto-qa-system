@@ -38,7 +38,7 @@ export default function SparePartEntryForm({ part, onClose }: SparePartEntryForm
   });
 
   const [issueFormData, setIssueFormData] = useState({
-    machineId: '',
+    machineId: part.machineId || '',
     issuedTo: '',
     issueDate: new Date().toISOString().split('T')[0],
     quantity: '',
@@ -96,7 +96,7 @@ export default function SparePartEntryForm({ part, onClose }: SparePartEntryForm
       queryClient.invalidateQueries({ queryKey: ['/api/spare-parts'] });
       setIsIssueDialogOpen(false);
       setIssueFormData({
-        machineId: '',
+        machineId: part.machineId || '',
         issuedTo: '',
         issueDate: new Date().toISOString().split('T')[0],
         quantity: '',
@@ -464,9 +464,13 @@ export default function SparePartEntryForm({ part, onClose }: SparePartEntryForm
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Machine</Label>
-                <Select value={issueFormData.machineId} onValueChange={v => setIssueFormData({...issueFormData, machineId: v})}>
+                <Select 
+                  value={issueFormData.machineId} 
+                  onValueChange={v => setIssueFormData({...issueFormData, machineId: v})}
+                  disabled={!!part.machineId}
+                >
                   <SelectTrigger data-testid="select-issue-machine">
-                    <SelectValue placeholder="Select machine" />
+                    <SelectValue placeholder={part.machineId ? getMachineName(part.machineId) : "Select machine"} />
                   </SelectTrigger>
                   <SelectContent>
                     {machines.map(m => (
@@ -476,19 +480,14 @@ export default function SparePartEntryForm({ part, onClose }: SparePartEntryForm
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Issued To</Label>
-                <Select value={issueFormData.issuedTo} onValueChange={v => setIssueFormData({...issueFormData, issuedTo: v})}>
-                  <SelectTrigger data-testid="select-issue-user">
-                    <SelectValue placeholder="Select person" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {users.map(u => (
-                      <SelectItem key={u.id} value={u.id}>
-                        {u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : u.username}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label>Issued To *</Label>
+                <Input 
+                  value={issueFormData.issuedTo} 
+                  onChange={e => setIssueFormData({...issueFormData, issuedTo: e.target.value})}
+                  placeholder="Enter person name"
+                  required
+                  data-testid="input-issue-user"
+                />
               </div>
             </div>
             <div className="space-y-2">
