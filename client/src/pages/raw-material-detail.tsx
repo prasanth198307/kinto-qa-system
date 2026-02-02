@@ -29,6 +29,12 @@ interface RawMaterial {
   isActive: string;
   createdAt: string | null;
   updatedAt: string | null;
+  conversionType: string | null;
+  conversionValue: string | number | null;
+  weightPerUnit: string | number | null;
+  lossPercent: string | number | null;
+  totalCost: string | number | null;
+  totalValuation: string | number | null;
 }
 
 interface RawMaterialType {
@@ -246,6 +252,41 @@ export default function RawMaterialDetail({ showHeader = true }: RawMaterialDeta
               </>
             )}
 
+            {(rawMaterial.conversionType || rawMaterial.conversionValue) && (
+              <>
+                <Separator />
+                <div className="space-y-3">
+                  <p className="text-sm font-semibold text-primary">Calculation & Conversion</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    {rawMaterial.conversionType && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">Conversion Type</p>
+                        <p className="font-medium capitalize">{rawMaterial.conversionType}</p>
+                      </div>
+                    )}
+                    {rawMaterial.conversionValue && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">Conversion Value</p>
+                        <p className="font-medium">{rawMaterial.conversionValue}</p>
+                      </div>
+                    )}
+                    {rawMaterial.weightPerUnit && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">Weight Per Unit</p>
+                        <p className="font-medium">{rawMaterial.weightPerUnit} kg</p>
+                      </div>
+                    )}
+                    {rawMaterial.lossPercent && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">Loss Percent</p>
+                        <p className="font-medium text-destructive">{rawMaterial.lossPercent}%</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+
             <Separator />
 
             <div className="grid grid-cols-2 gap-4">
@@ -292,8 +333,12 @@ export default function RawMaterialDetail({ showHeader = true }: RawMaterialDeta
 
             <div className="space-y-2">
               <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Stock Value</span>
-                <span className="font-medium">{formatCurrency(stockValue)}</span>
+                <span className="text-sm text-muted-foreground">Stock Value (Valuation)</span>
+                <span className="font-medium text-green-600">{formatCurrency(rawMaterial.totalValuation || stockValue)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Total Acquisition Cost</span>
+                <span className="font-medium">{formatCurrency(rawMaterial.totalCost)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">Cost Per Unit</span>
