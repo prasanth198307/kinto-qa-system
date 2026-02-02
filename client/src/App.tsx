@@ -766,6 +766,7 @@ function AdminDashboard() {
         { id: "production-reconciliations", label: "Production Reconciliation", icon: Calculator },
         { id: "production-reconciliation-report", label: "Reconciliation Report", icon: FileStack },
         { id: "variance-analytics", label: "Variance Analytics", icon: TrendingUp },
+        { id: "spare-parts", label: "Spare Parts", icon: Wrench },
       ],
       quickActions: [
         { id: "add-product", label: "Add Product", icon: Package, onClick: () => setActiveView("products") },
@@ -1330,6 +1331,7 @@ const navItemToScreenKey: Record<string, string> = {
   'production-reconciliation-report': 'production_reconciliation_report',
   'finished-goods-report': 'finished_goods_report',
   'variance-analytics': 'variance_analytics',
+  'spare-parts': 'spare_parts',
   // Finance & Sales
   'invoices': 'invoices',
   'vendor-history': 'vendors',
@@ -1399,6 +1401,7 @@ const navItemToScreen: Record<string, string> = {
   'production-reconciliation-report': 'Create Finished Goods',
   'finished-goods-report': 'Create Finished Goods',
   'variance-analytics': 'Create Finished Goods',
+  'spare-parts': 'Spare Parts',
   // Finance & Sales
   'invoices': 'Purchase Orders',
   'vendor-history': 'Purchase Orders',
@@ -1577,6 +1580,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "production-reconciliations", label: "Production Reconciliation", icon: Calculator, onClick: () => setLocation('/') },
         { id: "production-reconciliation-report", label: "Reconciliation Report", icon: FileStack, onClick: () => setLocation('/reports/production-reconciliation') },
         { id: "variance-analytics", label: "Variance Analytics", icon: TrendingUp, onClick: () => setLocation('/') },
+        { id: "spare-parts", label: "Spare Parts", icon: Wrench, onClick: () => setLocation('/') },
       ],
     },
     {
