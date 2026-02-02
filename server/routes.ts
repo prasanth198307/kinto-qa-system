@@ -2569,6 +2569,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to create spare part entry" });
     }
   });
+
+  // Product BOM (Bill of Materials) API
+  app.get('/api/products/:productId/bom', isAuthenticated, async (req: any, res) => {
     try {
       const { productId } = req.params;
       const bomItems = await storage.getProductBom(productId);
