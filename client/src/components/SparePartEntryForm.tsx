@@ -47,13 +47,12 @@ export default function SparePartEntryForm({ part, onClose }: SparePartEntryForm
     remarks: ''
   });
 
-  // Effect to sync machineId if part changes or when dialog opens
   useEffect(() => {
-    if (isIssueDialogOpen && part.machineId) {
-      console.log('Pre-selecting machine:', part.machineId);
+    if (isIssueDialogOpen) {
+      console.log('Dialog opened, part machineId:', part.machineId);
       setIssueFormData(prev => ({
         ...prev,
-        machineId: part.machineId!
+        machineId: part.machineId || ''
       }));
     }
   }, [isIssueDialogOpen, part.id, part.machineId]);
@@ -472,15 +471,16 @@ export default function SparePartEntryForm({ part, onClose }: SparePartEntryForm
               <div className="space-y-2">
                 <Label>Machine</Label>
                 <Select 
-                  value={issueFormData.machineId} 
-                  onValueChange={v => setIssueFormData({...issueFormData, machineId: v})}
+                  value={issueFormData.machineId || "none"} 
+                  onValueChange={v => setIssueFormData({...issueFormData, machineId: v === "none" ? "" : v})}
                 >
                   <SelectTrigger data-testid="select-issue-machine">
                     <SelectValue placeholder="Select machine" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="none">Select machine</SelectItem>
                     {machines.map(m => (
-                      <SelectItem key={m.id} value={m.id || "unassigned"}>{m.name}</SelectItem>
+                      <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
