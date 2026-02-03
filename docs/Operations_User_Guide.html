@@ -362,6 +362,55 @@ Return Initiated &rarr; Quality Check &rarr; Disposition Decision &rarr; Complet
   <li>Link to original sales return item maintained</li>
 </ul>
 
+<h2>Repack Queue</h2>
+<p>Items marked for repacking go to the Repack Queue:</p>
+<p><strong>Navigation:</strong> Sidebar → Inventory → Repack Queue</p>
+<ol>
+  <li>View items pending repacking</li>
+  <li>Process each item:
+    <ul>
+      <li>Inspect and clean packaging</li>
+      <li>Replace labels if needed</li>
+      <li>Record new packaging used</li>
+    </ul>
+  </li>
+  <li>Mark as "Repacked"</li>
+  <li>Item moves to finished goods (source: sales_return_repack)</li>
+</ol>
+
+<h2>Scrap Inventory & Evidence</h2>
+<p>Items marked as Scrap require evidence documentation:</p>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Description</th></tr>
+  <tr><td>Scrap Reason</td><td>Yes</td><td>Why item is being scrapped</td></tr>
+  <tr><td>Photo Evidence</td><td>Yes</td><td>Photos showing damage/issue</td></tr>
+  <tr><td>Quantity</td><td>Yes</td><td>Number of units scrapped</td></tr>
+  <tr><td>Approved By</td><td>Yes</td><td>Supervisor approval</td></tr>
+</table>
+
+<p>Scrap items are:</p>
+<ul>
+  <li>Removed from saleable inventory</li>
+  <li>Recorded in scrap inventory for audit</li>
+  <li>Written off financially</li>
+  <li>Credit note generated for customer</li>
+</ul>
+
+<h2>Split Disposition</h2>
+<p>When return has items with different conditions:</p>
+<ol>
+  <li>Select return item</li>
+  <li>Enter quantity for each disposition:
+    <ul>
+      <li>Restock: 20 units (good condition)</li>
+      <li>Repack: 5 units (minor damage)</li>
+      <li>Scrap: 2 units (unusable)</li>
+    </ul>
+  </li>
+  <li>Upload evidence for scrapped items</li>
+  <li>Submit - each quantity handled separately</li>
+</ol>
+
 <h1 id="scenarios">5. Common Scenarios</h1>
 
 <div class="scenario-box">

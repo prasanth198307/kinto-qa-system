@@ -373,6 +373,40 @@ Production Entry &rarr; Pending QC &rarr; Quality Check &rarr; Approved/Rejected
   <li>Expandable to see individual records</li>
 </ul>
 
+<h2>Traceability & Source Tracking</h2>
+<p>Every finished goods record tracks its source for complete audit trail:</p>
+<table>
+  <tr><th>Source</th><th>Description</th><th>Tracked Fields</th></tr>
+  <tr><td>production</td><td>From production entry</td><td>Production ID, Batch, BOM used</td></tr>
+  <tr><td>sales_return_restock</td><td>From customer return (good condition)</td><td>Sales Return Item ID, Original Invoice</td></tr>
+  <tr><td>sales_return_repack</td><td>From repack queue after return</td><td>Repack ID, Original Return</td></tr>
+</table>
+
+<h2>Batch Preservation</h2>
+<div class="note-box">
+  <strong>Important:</strong> Original batch numbers are preserved throughout all workflows. Physical bottle labels remain unchanged regardless of returns or repacking. This ensures:
+  <ul>
+    <li>Customer can verify batch on physical product</li>
+    <li>Traceability from sale back to production</li>
+    <li>Quality investigation if issues arise</li>
+  </ul>
+</div>
+
+<h2>Using Consolidated View</h2>
+<ol>
+  <li>Go to Finished Goods tab</li>
+  <li>Toggle "Consolidated" switch ON</li>
+  <li>View grouped by Product + Batch</li>
+  <li>Total quantity shows sum from all sources</li>
+  <li>Click row to expand and see:
+    <ul>
+      <li>Production records</li>
+      <li>Restock records</li>
+      <li>Repack records</li>
+    </ul>
+  </li>
+</ol>
+
 <h1 id="scenarios">7. Common Scenarios</h1>
 
 <div class="scenario-box">

@@ -329,9 +329,100 @@
 <ul>
   <li>Invoice outstanding reduced</li>
   <li>GST liability reduced</li>
-  <li>Appears in GST reports</li>
+  <li>Appears in GST reports (GSTR-1)</li>
   <li>Linked to original invoice for audit</li>
+  <li>Inventory updated (if return)</li>
 </ul>
+
+<h2>Credit Note Fields</h2>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Description</th></tr>
+  <tr><td>Credit Note Number</td><td>Auto</td><td>System-generated CN number</td></tr>
+  <tr><td>Credit Note Date</td><td>Yes</td><td>Date of credit note</td></tr>
+  <tr><td>Original Invoice</td><td>Yes</td><td>Invoice being credited</td></tr>
+  <tr><td>Customer</td><td>Auto</td><td>From original invoice</td></tr>
+  <tr><td>Items</td><td>Yes</td><td>Products being credited</td></tr>
+  <tr><td>Quantity</td><td>Yes</td><td>Return/credit quantity</td></tr>
+  <tr><td>Rate</td><td>Auto</td><td>From original invoice</td></tr>
+  <tr><td>GST</td><td>Auto</td><td>Calculated on credit amount</td></tr>
+  <tr><td>Reason</td><td>Yes</td><td>Reason for credit</td></tr>
+  <tr><td>Remarks</td><td>No</td><td>Additional notes</td></tr>
+</table>
+
+<h2>Credit Note Calculation Example</h2>
+<table>
+  <tr><th>Description</th><th>Original Invoice</th><th>Credit Note</th></tr>
+  <tr><td>Product: XYZ Oil 5L</td><td>10 units @ ₹500</td><td>2 units @ ₹500</td></tr>
+  <tr><td>Taxable Value</td><td>₹5,000</td><td>₹1,000</td></tr>
+  <tr><td>CGST @ 9%</td><td>₹450</td><td>₹90</td></tr>
+  <tr><td>SGST @ 9%</td><td>₹450</td><td>₹90</td></tr>
+  <tr><td><strong>Total</strong></td><td><strong>₹5,900</strong></td><td><strong>₹1,180</strong></td></tr>
+</table>
+<p>After credit note: Invoice outstanding = ₹5,900 - ₹1,180 = ₹4,720</p>
+
+<h2>Credit Note Scenarios</h2>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 1: Partial Goods Return</div>
+  <p><strong>Situation:</strong> Customer returns 5 bottles of 50 invoiced (quality issue)</p>
+  <ol>
+    <li>Open original invoice</li>
+    <li>Click "Create Credit Note"</li>
+    <li>Select the product</li>
+    <li>Enter return quantity: 5</li>
+    <li>Reason: "Quality defect - leaking bottles"</li>
+    <li>Create credit note</li>
+  </ol>
+  <p><strong>Result:</strong> ₹X credited, invoice outstanding reduced, inventory +5 units (if restock)</p>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 2: Price Correction (Previous Month Invoice)</div>
+  <p><strong>Situation:</strong> January invoice had wrong rate, now February (can't cancel)</p>
+  <ol>
+    <li>Open January invoice</li>
+    <li>Click "Correct & Credit"</li>
+    <li>Select item with wrong price</li>
+    <li>Enter correct lower price</li>
+    <li>System calculates difference</li>
+    <li>Create credit note for difference</li>
+  </ol>
+  <p><strong>Result:</strong> Credit note issued, GST adjusted, outstanding reduced</p>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 3: Complete Invoice Return</div>
+  <p><strong>Situation:</strong> Customer refuses entire shipment</p>
+  <ol>
+    <li>Open original invoice</li>
+    <li>Click "Full Credit Note"</li>
+    <li>Confirm all items selected</li>
+    <li>Enter reason: "Order rejected - wrong delivery"</li>
+    <li>Create credit note</li>
+  </ol>
+  <p><strong>Result:</strong> Invoice fully credited, outstanding = ₹0, all inventory returned</p>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 4: Discount After Invoice</div>
+  <p><strong>Situation:</strong> Agreed 5% discount after invoice already issued</p>
+  <ol>
+    <li>Open original invoice</li>
+    <li>Click "Create Credit Note"</li>
+    <li>Enter discount amount manually</li>
+    <li>Reason: "Post-sale discount as per agreement"</li>
+    <li>Create credit note</li>
+  </ol>
+  <p><strong>Result:</strong> Discount credited with proportional GST adjustment</p>
+</div>
+
+<h2>Credit Note Viewing & Printing</h2>
+<ol>
+  <li>Go to Sidebar → Credit Notes</li>
+  <li>Search by CN number, invoice, or customer</li>
+  <li>Click credit note to view details</li>
+  <li>Click "Print" for GST-compliant printout</li>
+</ol>
 
 <h1 id="debit-notes">6. Vendor Debit Notes</h1>
 
@@ -387,14 +478,127 @@
   Click <strong>"Create"</strong>
 </div>
 
+<h2>Debit Note Fields</h2>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Description</th></tr>
+  <tr><td>Debit Note Number</td><td>Auto</td><td>System-generated DN number</td></tr>
+  <tr><td>Debit Note Date</td><td>Yes</td><td>Date of debit note</td></tr>
+  <tr><td>Vendor</td><td>Yes</td><td>Supplier being debited</td></tr>
+  <tr><td>Reference PO</td><td>No</td><td>Related purchase order</td></tr>
+  <tr><td>Reference Invoice</td><td>No</td><td>Vendor's invoice number</td></tr>
+  <tr><td>Items</td><td>Yes</td><td>Claim line items</td></tr>
+  <tr><td>Description</td><td>Yes</td><td>Description of claim</td></tr>
+  <tr><td>Quantity</td><td>Yes</td><td>Quantity claimed</td></tr>
+  <tr><td>Rate</td><td>Yes</td><td>Rate per unit</td></tr>
+  <tr><td>HSN Code</td><td>No</td><td>For GST purposes</td></tr>
+  <tr><td>GST Rate</td><td>No</td><td>Applicable GST %</td></tr>
+  <tr><td>Reason</td><td>Yes</td><td>Reason for claim</td></tr>
+</table>
+
 <h2>Settlement Tracking</h2>
 <p>Track debit note settlements:</p>
-<ul>
-  <li>Pending - Awaiting vendor response</li>
-  <li>Partially Settled - Some amount adjusted</li>
-  <li>Fully Settled - Complete adjustment received</li>
-  <li>Disputed - Vendor contesting claim</li>
-</ul>
+<table>
+  <tr><th>Status</th><th>Description</th><th>Next Action</th></tr>
+  <tr><td style="color: #f0ad4e;">Pending</td><td>Awaiting vendor response</td><td>Follow up with vendor</td></tr>
+  <tr><td style="color: #5bc0de;">Partially Settled</td><td>Some amount adjusted</td><td>Track remaining amount</td></tr>
+  <tr><td style="color: #5cb85c;">Fully Settled</td><td>Complete adjustment received</td><td>No action needed</td></tr>
+  <tr><td style="color: #d9534f;">Disputed</td><td>Vendor contesting claim</td><td>Resolve dispute</td></tr>
+  <tr><td style="color: #777;">Cancelled</td><td>Claim withdrawn</td><td>No action needed</td></tr>
+</table>
+
+<h2>Recording Settlement</h2>
+<div class="step-box">
+  <span class="step-number">1</span>
+  Open the debit note
+</div>
+
+<div class="step-box">
+  <span class="step-number">2</span>
+  Click <strong>"Record Settlement"</strong>
+</div>
+
+<div class="step-box">
+  <span class="step-number">3</span>
+  Enter settlement details:
+  <ul>
+    <li>Settlement date</li>
+    <li>Amount settled</li>
+    <li>Settlement mode (adjustment/credit/cash)</li>
+    <li>Reference (if any)</li>
+  </ul>
+</div>
+
+<div class="step-box">
+  <span class="step-number">4</span>
+  Click <strong>"Save"</strong>
+</div>
+
+<h2>Debit Note Scenarios</h2>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 1: Short Supply Claim</div>
+  <p><strong>Situation:</strong> PO for 100 drums, received only 95</p>
+  <ol>
+    <li>Go to Vendor Debit Notes</li>
+    <li>Click "New Debit Note"</li>
+    <li>Select vendor</li>
+    <li>Reference: PO-2024-001</li>
+    <li>Add item: "Short supply - 5 drums"</li>
+    <li>Quantity: 5, Rate: ₹2,000</li>
+    <li>Total claim: ₹10,000 + GST</li>
+    <li>Create and send to vendor</li>
+  </ol>
+  <p><strong>Follow-up:</strong> Vendor sends replacement or adjusts next invoice</p>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 2: Quality Rejection</div>
+  <p><strong>Situation:</strong> 20% of received material fails quality check</p>
+  <ol>
+    <li>Document quality failure with photos</li>
+    <li>Create debit note for rejected quantity</li>
+    <li>Attach quality report</li>
+    <li>Request vendor pickup or replacement</li>
+    <li>Track until settled</li>
+  </ol>
+  <p><strong>Resolution:</strong> Vendor issues credit or replaces material</p>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 3: Price Difference</div>
+  <p><strong>Situation:</strong> Vendor invoiced ₹550/unit, agreed price was ₹500/unit</p>
+  <ol>
+    <li>Create debit note</li>
+    <li>Description: "Price difference claim"</li>
+    <li>Quantity: 100 units</li>
+    <li>Rate: ₹50 (difference)</li>
+    <li>Total: ₹5,000 + GST</li>
+    <li>Reference vendor invoice number</li>
+  </ol>
+  <p><strong>Resolution:</strong> Adjust in next payment</p>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 4: Transit Damage</div>
+  <p><strong>Situation:</strong> 10 cartons damaged during delivery</p>
+  <ol>
+    <li>Document damage at time of receipt</li>
+    <li>Get transporter/driver acknowledgment</li>
+    <li>Create debit note with photos attached</li>
+    <li>Include: Item description, quantity, rate</li>
+    <li>Submit to vendor for settlement</li>
+  </ol>
+  <p><strong>Resolution:</strong> Insurance claim or vendor credit</p>
+</div>
+
+<h2>Debit Note GST Impact</h2>
+<table>
+  <tr><th>Scenario</th><th>GST Treatment</th></tr>
+  <tr><td>Short supply (goods not received)</td><td>GST claimed on original purchase reversed</td></tr>
+  <tr><td>Quality rejection (goods returned)</td><td>GST reversed on return value</td></tr>
+  <tr><td>Price difference</td><td>GST on difference amount</td></tr>
+  <tr><td>Damage (goods scrapped)</td><td>Depends on insurance claim</td></tr>
+</table>
 
 <h1 id="expenses">7. Expense Management</h1>
 

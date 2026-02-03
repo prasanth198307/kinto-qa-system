@@ -519,8 +519,21 @@
 <ol>
   <li>Click <strong>"Bank Account"</strong> dropdown</li>
   <li>Select bank for payment details</li>
-  <li>Bank info and UPI QR code appear on printed invoice</li>
+  <li>Bank info appears on printed invoice</li>
 </ol>
+
+<h3>Automatic UPI Payment QR Code</h3>
+<p>When a bank with UPI ID is selected, the system automatically generates a payment QR code:</p>
+<ul>
+  <li><strong>QR Contains:</strong> UPI ID, Invoice amount, Invoice number as reference</li>
+  <li><strong>Customer Action:</strong> Scan with any UPI app (GPay, PhonePe, Paytm, etc.)</li>
+  <li><strong>Pre-filled Amount:</strong> QR includes invoice total for quick payment</li>
+  <li><strong>Auto Reference:</strong> Invoice number included for easy reconciliation</li>
+</ul>
+
+<div class="tip-box">
+  <strong>UPI QR Setup:</strong> Configure UPI ID in Admin → Bank Accounts → Edit Bank → Enter UPI ID field
+</div>
 
 <h3>Step 10: Save or Preview</h3>
 <ul>
