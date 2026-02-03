@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Sales Invoice Screen - Complete User Guide</title>
+  <style>
+    body {
+      font-family: 'Calibri', 'Arial', sans-serif;
+      font-size: 11pt;
+      line-height: 1.6;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px;
+      color: #333;
+    }
+    h1 {
+      font-size: 24pt;
+      color: #1a5490;
+      border-bottom: 3px solid #1a5490;
+      padding-bottom: 10px;
+      page-break-before: always;
+    }
+    h1:first-of-type {
+      page-break-before: avoid;
+    }
+    h2 {
+      font-size: 16pt;
+      color: #2a6db0;
+      margin-top: 30px;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 5px;
+    }
+    h3 {
+      font-size: 13pt;
+      color: #3a7dc0;
+      margin-top: 20px;
+    }
+    h4 {
+      font-size: 11pt;
+      color: #4a8dd0;
+      margin-top: 15px;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 15px 0;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px 12px;
+      text-align: left;
+    }
+    th {
+      background-color: #f0f5fa;
+      font-weight: bold;
+    }
+    tr:nth-child(even) {
+      background-color: #fafafa;
+    }
+    .toc {
+      background-color: #f5f8fc;
+      padding: 20px 30px;
+      border-radius: 5px;
+      margin: 20px 0;
+    }
+    .toc h2 {
+      margin-top: 0;
+      border-bottom: none;
+    }
+    .toc ol {
+      columns: 2;
+      column-gap: 30px;
+    }
+    .header-section {
+      text-align: center;
+      margin-bottom: 40px;
+      padding: 30px;
+      background: linear-gradient(135deg, #1a5490 0%, #2a6db0 100%);
+      color: white;
+      border-radius: 10px;
+    }
+    .header-section h1 {
+      color: white;
+      border-bottom: none;
+      margin: 0;
+    }
+    .header-section p {
+      margin: 10px 0 0 0;
+      opacity: 0.9;
+    }
+    .note-box {
+      background-color: #fff8e6;
+      border-left: 4px solid #f0ad4e;
+      padding: 15px;
+      margin: 15px 0;
+    }
+    .tip-box {
+      background-color: #e8f5e9;
+      border-left: 4px solid #4caf50;
+      padding: 15px;
+      margin: 15px 0;
+    }
+    .warning-box {
+      background-color: #ffebee;
+      border-left: 4px solid #f44336;
+      padding: 15px;
+      margin: 15px 0;
+    }
+    .workflow-diagram {
+      background-color: #f5f5f5;
+      padding: 20px;
+      font-family: 'Courier New', monospace;
+      font-size: 10pt;
+      overflow-x: auto;
+      border-radius: 5px;
+    }
+    .step-box {
+      background-color: #f8f9fa;
+      border: 1px solid #e0e0e0;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 5px;
+    }
+    .step-number {
+      display: inline-block;
+      background-color: #1a5490;
+      color: white;
+      width: 25px;
+      height: 25px;
+      text-align: center;
+      border-radius: 50%;
+      margin-right: 10px;
+      font-weight: bold;
+    }
+    code {
+      background-color: #f0f0f0;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+    }
+    .scenario-box {
+      background-color: #f0f8ff;
+      border: 1px solid #b0d0f0;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+    }
+    .scenario-title {
+      font-weight: bold;
+      color: #1a5490;
+      font-size: 12pt;
+      margin-bottom: 10px;
+    }
+    @media print {
+      body {
+        font-size: 10pt;
+      }
+      h1 {
+        page-break-before: always;
+      }
+      .scenario-box, .note-box, .tip-box {
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header-section">
+  <h1>Sales Invoice Screen</h1>
+  <h2 style="color: white; border: none; margin-top: 10px;">Complete User Guide</h2>
+  <p>KINTO Operations & QA Management System</p>
+  <p>Version 1.0 | February 2024</p>
+</div>
+
+<div class="toc">
+  <h2>Table of Contents</h2>
+  <ol>
+    <li><a href="#intro">Introduction</a></li>
+    <li><a href="#access">Accessing the Invoice Screen</a></li>
+    <li><a href="#list">Invoice List View</a></li>
+    <li><a href="#create">Creating a New Invoice</a></li>
+    <li><a href="#detail">Invoice Detail View</a></li>
+    <li><a href="#workflow">Invoice Workflow & Status</a></li>
+    <li><a href="#edit">Editing an Invoice</a></li>
+    <li><a href="#cancel">Cancelling & Reissuing</a></li>
+    <li><a href="#credit">Credit Notes</a></li>
+    <li><a href="#debit">Debit Notes</a></li>
+    <li><a href="#payments">Payments & Tracking</a></li>
+    <li><a href="#print">Printing & Exporting</a></li>
+    <li><a href="#search">Search & Filtering</a></li>
+    <li><a href="#scenarios">Common Scenarios</a></li>
+    <li><a href="#troubleshoot">Troubleshooting & FAQs</a></li>
+    <li><a href="#permissions">Permission Requirements</a></li>
+    <li><a href="#tips">Tips & Best Practices</a></li>
+    <li><a href="#glossary">Glossary</a></li>
+  </ol>
+</div>
+
+<h1 id="intro">1. Introduction</h1>
+
+<h2>Purpose of This Document</h2>
+<p>This guide provides step-by-step instructions for using the Sales Invoice screen in KINTO Operations & QA Management System. It covers all aspects of invoice management from creation to payment tracking.</p>
+
+<h2>Who Should Use This Guide</h2>
+<ul>
+  <li>Sales Team Members</li>
+  <li>Accounts & Finance Staff</li>
+  <li>Operations Managers</li>
+  <li>Administrators</li>
+</ul>
+
+<h2>Key Features Overview</h2>
+<table>
+  <tr>
+    <th>Feature</th>
+    <th>Description</th>
+  </tr>
+  <tr>
+    <td>GST-Compliant Invoicing</td>
+    <td>Automatic CGST/SGST/IGST calculations based on state</td>
+  </tr>
+  <tr>
+    <td>Multi-Item Support</td>
+    <td>Add unlimited products per invoice with HSN codes</td>
+  </tr>
+  <tr>
+    <td>Workflow Tracking</td>
+    <td>Track from creation to delivery with status updates</td>
+  </tr>
+  <tr>
+    <td>Payment Management</td>
+    <td>Record payments with FIFO allocation</td>
+  </tr>
+  <tr>
+    <td>Credit Notes</td>
+    <td>Adjust invoice values for returns/corrections</td>
+  </tr>
+  <tr>
+    <td>Stock Reservation</td>
+    <td>Automatic inventory reservation on invoice creation</td>
+  </tr>
+  <tr>
+    <td>Print & Export</td>
+    <td>Professional invoice printing with QR codes</td>
+  </tr>
+</table>
+
+<h1 id="access">2. Accessing the Invoice Screen</h1>
+
+<h2>Navigation Methods</h2>
+
+<div class="step-box">
+  <span class="step-number">1</span>
+  <strong>Dashboard Method:</strong> Dashboard &rarr; Click on "Invoices" Tab
+</div>
+
+<div class="step-box">
+  <span class="step-number">2</span>
+  <strong>Sidebar Method:</strong> Sidebar Menu &rarr; Production Management &rarr; Invoices
+</div>
+
+<div class="step-box">
+  <span class="step-number">3</span>
+  <strong>Direct URL:</strong> /production-management?tab=invoices
+</div>
+
+<h2>Screen Layout Overview</h2>
+<table>
+  <tr>
+    <th>Area</th>
+    <th>Description</th>
+  </tr>
+  <tr>
+    <td>Header Bar</td>
+    <td>Contains "New Invoice" button and search box</td>
+  </tr>
+  <tr>
+    <td>Filter Section</td>
+    <td>Date filters, customer filter, status filter</td>
+  </tr>
+  <tr>
+    <td>Invoice Table</td>
+    <td>List of all invoices with key columns</td>
+  </tr>
+  <tr>
+    <td>Pagination</td>
+    <td>Navigation for multiple pages</td>
+  </tr>
+  <tr>
+    <td>Action Buttons</td>
+    <td>View, Edit, Print options for each invoice</td>
+  </tr>
+</table>
+
+<h1 id="list">3. Invoice List View</h1>
+
+<h2>Understanding the Invoice Table</h2>
+<table>
+  <tr>
+    <th>Column</th>
+    <th>Description</th>
+    <th>Example</th>
+  </tr>
+  <tr>
+    <td>Invoice No.</td>
+    <td>Unique system-generated number</td>
+    <td>INV-2024-00456</td>
+  </tr>
+  <tr>
+    <td>Date</td>
+    <td>Invoice creation date</td>
+    <td>15-Jan-2024</td>
+  </tr>
+  <tr>
+    <td>Customer</td>
+    <td>Buyer/customer name</td>
+    <td>ABC Distributors</td>
+  </tr>
+  <tr>
+    <td>Items</td>
+    <td>Number of line items</td>
+    <td>3 items</td>
+  </tr>
+  <tr>
+    <td>Subtotal</td>
+    <td>Amount before GST</td>
+    <td>&#8377;45,000.00</td>
+  </tr>
+  <tr>
+    <td>GST</td>
+    <td>Total tax amount</td>
+    <td>&#8377;8,100.00</td>
+  </tr>
+  <tr>
+    <td>Total</td>
+    <td>Grand total including GST</td>
+    <td>&#8377;53,100.00</td>
+  </tr>
+  <tr>
+    <td>Status</td>
+    <td>Current workflow stage</td>
+    <td>Ready for Dispatch</td>
+  </tr>
+  <tr>
+    <td>Payment</td>
+    <td>Payment status</td>
+    <td>Partial (&#8377;30,000)</td>
+  </tr>
+</table>
+
+<h2>Status Color Coding</h2>
+<table>
+  <tr>
+    <th>Color</th>
+    <th>Status</th>
+    <th>Meaning</th>
+  </tr>
+  <tr>
+    <td style="background-color: #3498db; color: white;">Blue</td>
+    <td>Created</td>
+    <td>Invoice saved, pending approval</td>
+  </tr>
+  <tr>
+    <td style="background-color: #f1c40f;">Yellow</td>
+    <td>Ready for Dispatch</td>
+    <td>Approved, awaiting gatepass</td>
+  </tr>
+  <tr>
+    <td style="background-color: #e67e22; color: white;">Orange</td>
+    <td>Gatepass Generated</td>
+    <td>Packed, ready to ship</td>
+  </tr>
+  <tr>
+    <td style="background-color: #9b59b6; color: white;">Purple</td>
+    <td>Dispatched</td>
+    <td>Goods left facility</td>
+  </tr>
+  <tr>
+    <td style="background-color: #1abc9c; color: white;">Cyan</td>
+    <td>In Transit</td>
+    <td>On the way to customer</td>
+  </tr>
+  <tr>
+    <td style="background-color: #27ae60; color: white;">Green</td>
+    <td>Delivered</td>
+    <td>Customer received goods</td>
+  </tr>
+  <tr>
+    <td style="background-color: #e74c3c; color: white;">Red</td>
+    <td>Cancelled</td>
+    <td>Invoice cancelled</td>
+  </tr>
+</table>
+
+<h1 id="create">4. Creating a New Invoice</h1>
+
+<h2>Before You Begin</h2>
+<div class="note-box">
+  <strong>Prerequisites Checklist:</strong>
+  <ul>
+    <li>&#9989; Customer registered in the system with correct GSTIN</li>
+    <li>&#9989; Products available in inventory with correct HSN codes</li>
+    <li>&#9989; Invoice template configured (if using templates)</li>
+    <li>&#9989; Bank details set up (for payment information on invoice)</li>
+  </ul>
+</div>
+
+<h2>Step-by-Step Invoice Creation</h2>
+
+<h3>Step 1: Open New Invoice Form</h3>
+<ol>
+  <li>Navigate to Invoice screen</li>
+  <li>Click <strong>"New Invoice"</strong> button (top-right corner)</li>
+  <li>Invoice form opens in a popup/dialog</li>
+</ol>
+
+<h3>Step 2: Select Invoice Template (Optional)</h3>
+<ol>
+  <li>Click the <strong>Template</strong> dropdown</li>
+  <li>Select from available templates</li>
+  <li>Template auto-fills seller company details, bank information, and terms</li>
+</ol>
+
+<h3>Step 3: Set Invoice Date</h3>
+<ol>
+  <li>Click the <strong>Date</strong> field</li>
+  <li>Select invoice date from calendar</li>
+  <li>Default is today's date</li>
+  <li>Can backdate within current month only</li>
+</ol>
+
+<h3>Step 4: Select Customer (Buyer)</h3>
+<ol>
+  <li>Click <strong>"Select Customer"</strong> dropdown</li>
+  <li>Type customer name to search</li>
+  <li>Select customer from list</li>
+</ol>
+
+<div class="tip-box">
+  <strong>Auto-populated Information:</strong> Customer name, GSTIN, billing address, state code, and contact details are automatically filled from the customer master.
+</div>
+
+<h3>Step 5: Configure Shipping Address (If Different)</h3>
+<ol>
+  <li>Toggle <strong>"Ship to Different Address"</strong> switch</li>
+  <li>Enter Ship-to Name, Address, City, State, Pincode</li>
+  <li>Enter Ship-to GSTIN if applicable</li>
+</ol>
+
+<h3>Step 6: Add Line Items (Products)</h3>
+<table>
+  <tr>
+    <th>Field</th>
+    <th>How to Fill</th>
+    <th>Notes</th>
+  </tr>
+  <tr>
+    <td>Product</td>
+    <td>Select from dropdown</td>
+    <td>Shows product code and name</td>
+  </tr>
+  <tr>
+    <td>Description</td>
+    <td>Auto-fills, can edit</td>
+    <td>Appears on printed invoice</td>
+  </tr>
+  <tr>
+    <td>HSN Code</td>
+    <td>Auto-fills from product</td>
+    <td>GST classification code</td>
+  </tr>
+  <tr>
+    <td>Quantity</td>
+    <td>Enter number</td>
+    <td>Check available stock shown</td>
+  </tr>
+  <tr>
+    <td>Unit Price</td>
+    <td>Enter per-unit price</td>
+    <td>Amount in &#8377; (excluding GST)</td>
+  </tr>
+  <tr>
+    <td>GST Rate</td>
+    <td>Select percentage</td>
+    <td>0%, 5%, 12%, 18%, 28%</td>
+  </tr>
+  <tr>
+    <td>Transport</td>
+    <td>Enter if applicable</td>
+    <td>Per-case transport cost</td>
+  </tr>
+</table>
+
+<h3>Step 7: Review Tax Calculations</h3>
+
+<div class="note-box">
+  <strong>For Intra-State Sales (Same State):</strong>
+  <ul>
+    <li>Taxable Amount = Quantity × Unit Price</li>
+    <li>CGST = Taxable Amount × (GST Rate ÷ 2)</li>
+    <li>SGST = Taxable Amount × (GST Rate ÷ 2)</li>
+  </ul>
+  <strong>For Inter-State Sales (Different State):</strong>
+  <ul>
+    <li>IGST = Taxable Amount × GST Rate</li>
+  </ul>
+</div>
+
+<h3>Step 8: GST Inclusive Mode (Optional)</h3>
+<p>If customer quotes total price including GST:</p>
+<ol>
+  <li>Toggle <strong>"GST Inclusive"</strong> switch ON</li>
+  <li>Enter total amount per item</li>
+  <li>System calculates base price and GST automatically</li>
+</ol>
+
+<h3>Step 9: Select Bank Details</h3>
+<ol>
+  <li>Click <strong>"Bank Account"</strong> dropdown</li>
+  <li>Select bank for payment details</li>
+  <li>Bank info and UPI QR code appear on printed invoice</li>
+</ol>
+
+<h3>Step 10: Save or Preview</h3>
+<ul>
+  <li><strong>Save Invoice:</strong> Creates invoice and returns to list</li>
+  <li><strong>Print Preview:</strong> View how invoice will look before saving</li>
+</ul>
+
+<h1 id="detail">5. Invoice Detail View</h1>
+
+<h2>Accessing Invoice Details</h2>
+<p>Click on any invoice number in the list, or click the "View" action button.</p>
+
+<h2>Information Sections</h2>
+
+<h3>Header Section</h3>
+<ul>
+  <li>Invoice number with status badge</li>
+  <li>Invoice date</li>
+  <li>Quick action buttons (Edit, Print, Email)</li>
+</ul>
+
+<h3>Seller Information</h3>
+<table>
+  <tr><th>Field</th><th>Description</th></tr>
+  <tr><td>Company Name</td><td>Your registered business name</td></tr>
+  <tr><td>GSTIN</td><td>Your GST registration number</td></tr>
+  <tr><td>Address</td><td>Registered business address</td></tr>
+  <tr><td>State</td><td>State with code</td></tr>
+  <tr><td>Contact</td><td>Phone and email</td></tr>
+</table>
+
+<h3>Payment Summary Card</h3>
+<table>
+  <tr><th>Field</th><th>Example Amount</th></tr>
+  <tr><td>Invoice Total</td><td>&#8377;53,100.00</td></tr>
+  <tr><td>Payments Received</td><td>&#8377;30,000.00</td></tr>
+  <tr><td>Credit Notes</td><td>&#8377;0.00</td></tr>
+  <tr><td><strong>Outstanding</strong></td><td><strong>&#8377;23,100.00</strong></td></tr>
+</table>
+
+<h1 id="workflow">6. Invoice Workflow & Status</h1>
+
+<h2>Complete Workflow Diagram</h2>
+<div class="workflow-diagram">
+CREATED &rarr; READY FOR DISPATCH &rarr; GATEPASS GENERATED &rarr; DISPATCHED &rarr; IN TRANSIT &rarr; DELIVERED
+</div>
+
+<h2>Status Details</h2>
+
+<h3>1. Created</h3>
+<table>
+  <tr><td><strong>Meaning:</strong></td><td>Invoice saved in system</td></tr>
+  <tr><td><strong>Can Edit:</strong></td><td>&#9989; Yes</td></tr>
+  <tr><td><strong>Next Action:</strong></td><td>Mark "Ready for Dispatch"</td></tr>
+</table>
+
+<h3>2. Ready for Dispatch</h3>
+<table>
+  <tr><td><strong>Meaning:</strong></td><td>Invoice approved for shipping</td></tr>
+  <tr><td><strong>Can Edit:</strong></td><td>&#9989; Yes</td></tr>
+  <tr><td><strong>Next Action:</strong></td><td>Generate Gatepass</td></tr>
+</table>
+
+<h3>3. Gatepass Generated</h3>
+<table>
+  <tr><td><strong>Meaning:</strong></td><td>Gatepass created, goods packed</td></tr>
+  <tr><td><strong>Can Edit:</strong></td><td>&#10060; No (locked)</td></tr>
+  <tr><td><strong>Inventory:</strong></td><td>Stock deducted</td></tr>
+</table>
+
+<h3>4. Dispatched</h3>
+<table>
+  <tr><td><strong>Meaning:</strong></td><td>Goods have left the facility</td></tr>
+  <tr><td><strong>Can Edit:</strong></td><td>&#10060; No</td></tr>
+</table>
+
+<h3>5. In Transit</h3>
+<table>
+  <tr><td><strong>Meaning:</strong></td><td>Goods on the way to customer</td></tr>
+  <tr><td><strong>Can Edit:</strong></td><td>&#10060; No</td></tr>
+</table>
+
+<h3>6. Delivered</h3>
+<table>
+  <tr><td><strong>Meaning:</strong></td><td>Customer received goods</td></tr>
+  <tr><td><strong>POD:</strong></td><td>Proof of delivery obtained</td></tr>
+  <tr><td><strong>Invoice:</strong></td><td>Complete</td></tr>
+</table>
+
+<h1 id="edit">7. Editing an Invoice</h1>
+
+<h2>Edit Availability Rules</h2>
+<table>
+  <tr>
+    <th>Condition</th>
+    <th>Can Edit?</th>
+  </tr>
+  <tr>
+    <td>Status: Created</td>
+    <td>&#9989; Yes</td>
+  </tr>
+  <tr>
+    <td>Status: Ready for Dispatch</td>
+    <td>&#9989; Yes</td>
+  </tr>
+  <tr>
+    <td>Status: Gatepass Generated or later</td>
+    <td>&#10060; No</td>
+  </tr>
+  <tr>
+    <td>Invoice Cancelled</td>
+    <td>&#10060; No</td>
+  </tr>
+  <tr>
+    <td>Previous Month Invoice</td>
+    <td>&#9888; Limited</td>
+  </tr>
+</table>
+
+<h2>How to Edit</h2>
+<ol>
+  <li>Open invoice detail page</li>
+  <li>Click <strong>"Edit"</strong> button (if available)</li>
+  <li>Invoice form opens with existing data</li>
+  <li>Make required changes</li>
+  <li>Click <strong>"Save"</strong> to update</li>
+</ol>
+
+<h1 id="cancel">8. Cancelling & Reissuing an Invoice</h1>
+
+<h2>GST Compliance Rules</h2>
+<table>
+  <tr>
+    <th>Invoice Month</th>
+    <th>Action Available</th>
+  </tr>
+  <tr>
+    <td>Current Month</td>
+    <td>&#9989; Cancel & Reissue</td>
+  </tr>
+  <tr>
+    <td>Previous Month</td>
+    <td>&#10060; Cannot Cancel - Use Credit Notes</td>
+  </tr>
+</table>
+
+<h2>Cancel & Reissue Process</h2>
+<ol>
+  <li>Open invoice detail page</li>
+  <li>Verify it's a current month invoice</li>
+  <li>Click <strong>"Cancel & Reissue"</strong> button</li>
+  <li>Confirm cancellation in dialog</li>
+  <li>New invoice form opens with pre-filled data</li>
+  <li>Make your corrections</li>
+  <li>Click <strong>"Save"</strong></li>
+</ol>
+
+<div class="note-box">
+  <strong>What Happens on Cancellation:</strong>
+  <ul>
+    <li>Original invoice status &rarr; Cancelled</li>
+    <li>Stock reservation &rarr; Released</li>
+    <li>Gatepass (if any) &rarr; Cancelled</li>
+    <li>Audit trail &rarr; Maintained</li>
+    <li>Both invoices linked for reference</li>
+  </ul>
+</div>
+
+<h1 id="credit">9. Credit Notes</h1>
+
+<h2>Purpose of Credit Notes</h2>
+<p>Credit notes adjust invoice values after GST filing. They are used for:</p>
+<ul>
+  <li>Goods returned by customer</li>
+  <li>Price reductions agreed after invoicing</li>
+  <li>Quantity discrepancies</li>
+  <li>Quality issues / Defective goods</li>
+</ul>
+
+<h2>Types of Credit Notes</h2>
+<table>
+  <tr>
+    <th>Type</th>
+    <th>Use Case</th>
+  </tr>
+  <tr>
+    <td>Simple Credit Note</td>
+    <td>Basic adjustment for specific amount</td>
+  </tr>
+  <tr>
+    <td>Correct & Credit</td>
+    <td>System calculates difference for price/quantity corrections</td>
+  </tr>
+  <tr>
+    <td>Quick Full Credit</td>
+    <td>Credits entire invoice for complete order return</td>
+  </tr>
+</table>
+
+<h2>Creating a Credit Note</h2>
+<ol>
+  <li>Open original invoice detail (must be previous month)</li>
+  <li>Click <strong>"Create Credit Note"</strong> button</li>
+  <li>Credit Note form opens</li>
+  <li>Select items to credit</li>
+  <li>Enter quantity for each</li>
+  <li>Enter reason/remarks</li>
+  <li>Click <strong>"Create Credit Note"</strong></li>
+</ol>
+
+<h1 id="debit">10. Debit Notes</h1>
+
+<h2>Purpose of Debit Notes</h2>
+<p>Debit notes increase invoice values when:</p>
+<ul>
+  <li>Additional charges applied after invoicing</li>
+  <li>Price increases agreed after invoice</li>
+  <li>Under-billing corrections</li>
+</ul>
+
+<h2>Creating a Debit Note</h2>
+<ol>
+  <li>Open original invoice detail</li>
+  <li>Click <strong>"Correct & Debit"</strong> button</li>
+  <li>Enter corrected (higher) values</li>
+  <li>System calculates additional amount</li>
+  <li>Debit note created</li>
+</ol>
+
+<h1 id="payments">11. Payments & Tracking</h1>
+
+<h2>Recording Payments</h2>
+
+<h3>Method 1: From Invoice Detail</h3>
+<ol>
+  <li>Open invoice</li>
+  <li>Scroll to Payment History section</li>
+  <li>Click <strong>"Record Payment"</strong></li>
+  <li>Enter payment details</li>
+  <li>Save</li>
+</ol>
+
+<h3>Method 2: From Payment Management</h3>
+<ol>
+  <li>Navigate to Payment Management screen</li>
+  <li>Click <strong>"New Payment"</strong></li>
+  <li>Select customer</li>
+  <li>Select invoice(s) to apply payment</li>
+  <li>Enter amount and details</li>
+  <li>Save</li>
+</ol>
+
+<h2>Payment Modes Supported</h2>
+<table>
+  <tr>
+    <th>Mode</th>
+    <th>Details Needed</th>
+  </tr>
+  <tr><td>Cash</td><td>Just amount</td></tr>
+  <tr><td>Cheque</td><td>Cheque no., Bank, Date</td></tr>
+  <tr><td>NEFT/RTGS</td><td>UTR number, Bank</td></tr>
+  <tr><td>UPI</td><td>Transaction ID</td></tr>
+  <tr><td>Bank Transfer</td><td>Reference number</td></tr>
+</table>
+
+<h2>FIFO Payment Allocation</h2>
+<div class="note-box">
+  <strong>How It Works:</strong>
+  <ol>
+    <li>When payment received from customer</li>
+    <li>System identifies oldest unpaid invoices</li>
+    <li>Payment applied to oldest invoice first</li>
+    <li>Remaining amount to next oldest</li>
+    <li>Continues until payment exhausted</li>
+  </ol>
+</div>
+
+<h2>Customer Advances</h2>
+<p>Pre-payments received before invoice creation can be:</p>
+<ul>
+  <li>Recorded in Customer Advances screen</li>
+  <li>Applied to invoices when creating or later</li>
+  <li>Balance carried forward for future invoices</li>
+</ul>
+
+<h1 id="print">12. Printing & Exporting</h1>
+
+<h2>Print Invoice</h2>
+<ol>
+  <li>Open invoice detail</li>
+  <li>Click <strong>"Print"</strong> button</li>
+  <li>Print-ready view opens in new tab</li>
+  <li>Use browser print (Ctrl+P / Cmd+P)</li>
+</ol>
+
+<h2>Print Settings Recommended</h2>
+<table>
+  <tr><td>Paper size</td><td>A4</td></tr>
+  <tr><td>Margins</td><td>Default or narrow</td></tr>
+  <tr><td>Scale</td><td>100%</td></tr>
+  <tr><td>Background graphics</td><td>&#9989; Enabled</td></tr>
+</table>
+
+<h2>Print Invoice with Gatepass</h2>
+<ol>
+  <li>Open invoice detail</li>
+  <li>Click <strong>"Print with Gatepass"</strong> button</li>
+  <li>Both documents print together</li>
+</ol>
+
+<h2>Signature Selection</h2>
+<ol>
+  <li>In invoice detail, find <strong>Signature</strong> dropdown</li>
+  <li>Select Signature 1 or Signature 2</li>
+  <li>Click Print - selected signature appears</li>
+</ol>
+
+<h1 id="search">13. Search & Filtering</h1>
+
+<h2>Quick Search</h2>
+<p>Located at top of invoice list - type to search by:</p>
+<ul>
+  <li>Invoice number: "INV-2024-00456"</li>
+  <li>Customer name: "ABC Distributors"</li>
+  <li>Amount: "53100"</li>
+</ul>
+
+<h2>Date Filters</h2>
+<table>
+  <tr>
+    <th>Filter Option</th>
+    <th>Description</th>
+  </tr>
+  <tr><td>All Dates</td><td>Show all invoices</td></tr>
+  <tr><td>Today</td><td>Today's invoices only</td></tr>
+  <tr><td>This Week</td><td>Current week</td></tr>
+  <tr><td>This Month</td><td>Current month</td></tr>
+  <tr><td>Last Month</td><td>Previous month</td></tr>
+  <tr><td>Date Range</td><td>Custom from-to dates</td></tr>
+  <tr><td>Select Month</td><td>Specific month picker</td></tr>
+  <tr><td>Select Year</td><td>Specific year</td></tr>
+</table>
+
+<h2>Combining Filters</h2>
+<p>All filters work together. Example: "This Month" + "ABC Distributors" + "Unpaid" shows only this month's unpaid invoices for ABC.</p>
+
+<h1 id="scenarios">14. Common Scenarios & Examples</h1>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 1: Standard Invoice Creation</div>
+  <p><strong>Situation:</strong> New order from regular customer for 3 products</p>
+  <p><strong>Steps:</strong></p>
+  <ol>
+    <li>Click "New Invoice"</li>
+    <li>Select customer: "XYZ Distributors"</li>
+    <li>Add items with quantities and prices</li>
+    <li>Select bank account</li>
+    <li>Save invoice</li>
+    <li>Print and send to customer</li>
+  </ol>
+  <p><strong>Result:</strong> Invoice created with auto-generated number</p>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 2: Wrong Customer Selected (Current Month)</div>
+  <p><strong>Situation:</strong> Selected "ABC Ltd" instead of "ABC Industries"</p>
+  <p><strong>Steps:</strong></p>
+  <ol>
+    <li>Open wrong invoice</li>
+    <li>Click "Cancel & Reissue"</li>
+    <li>Confirm cancellation</li>
+    <li>New form opens</li>
+    <li>Change customer to "ABC Industries"</li>
+    <li>Save new invoice</li>
+  </ol>
+  <p><strong>Result:</strong> Old invoice cancelled, new one with correct customer</p>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 3: Goods Returned After Delivery (Previous Month)</div>
+  <p><strong>Situation:</strong> Customer returns 10 cases due to damage from last month's invoice</p>
+  <p><strong>Steps:</strong></p>
+  <ol>
+    <li>Open delivered invoice</li>
+    <li>Click "Create Credit Note"</li>
+    <li>Select returned product</li>
+    <li>Enter quantity: 10</li>
+    <li>Reason: "Damaged goods returned"</li>
+    <li>Create credit note</li>
+  </ol>
+  <p><strong>Result:</strong> Credit note for 10 cases value, customer outstanding reduced</p>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 4: Partial Payment Received</div>
+  <p><strong>Situation:</strong> Invoice for &#8377;53,100, customer pays &#8377;30,000</p>
+  <p><strong>Steps:</strong></p>
+  <ol>
+    <li>Go to Payment Management</li>
+    <li>Click "New Payment"</li>
+    <li>Select customer and invoice</li>
+    <li>Enter amount: &#8377;30,000</li>
+    <li>Payment mode: Bank Transfer</li>
+    <li>Save</li>
+  </ol>
+  <p><strong>Result:</strong> Invoice shows "Partial - &#8377;30,000 paid", Outstanding: &#8377;23,100</p>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 5: Applying Customer Advance</div>
+  <p><strong>Situation:</strong> Customer paid &#8377;50,000 advance, new invoice is &#8377;45,000</p>
+  <p><strong>Steps:</strong></p>
+  <ol>
+    <li>Create invoice as normal (&#8377;45,000)</li>
+    <li>Go to Customer Advances</li>
+    <li>Find customer's advance</li>
+    <li>Click "Apply to Invoice"</li>
+    <li>Select new invoice, enter &#8377;45,000</li>
+    <li>Confirm</li>
+  </ol>
+  <p><strong>Result:</strong> Invoice paid, advance balance now &#8377;5,000</p>
+</div>
+
+<h1 id="troubleshoot">15. Troubleshooting & FAQs</h1>
+
+<h2>Common Issues</h2>
+
+<table>
+  <tr>
+    <th>Problem</th>
+    <th>Cause</th>
+    <th>Solution</th>
+  </tr>
+  <tr>
+    <td>"New Invoice" button not visible</td>
+    <td>Missing create permission</td>
+    <td>Contact administrator</td>
+  </tr>
+  <tr>
+    <td>Cannot edit invoice</td>
+    <td>Invoice has gatepass or is delivered</td>
+    <td>Use Cancel & Reissue or Credit Note</td>
+  </tr>
+  <tr>
+    <td>Stock showing zero</td>
+    <td>Stock not approved/quality pending</td>
+    <td>Approve finished goods first</td>
+  </tr>
+  <tr>
+    <td>Customer GSTIN not auto-filling</td>
+    <td>GSTIN not entered in master</td>
+    <td>Update customer record</td>
+  </tr>
+  <tr>
+    <td>Credit Note button not visible</td>
+    <td>Current month or no permission</td>
+    <td>Check invoice month; contact admin</td>
+  </tr>
+  <tr>
+    <td>Payment not reflecting</td>
+    <td>Payment allocated to older invoice (FIFO)</td>
+    <td>Check Payment Management</td>
+  </tr>
+</table>
+
+<h1 id="permissions">16. Permission Requirements</h1>
+
+<h2>Invoice Operations</h2>
+<table>
+  <tr>
+    <th>Operation</th>
+    <th>Required Permission</th>
+  </tr>
+  <tr><td>View invoice list</td><td>invoices &rarr; view</td></tr>
+  <tr><td>Create new invoice</td><td>invoices &rarr; create</td></tr>
+  <tr><td>Edit invoice</td><td>invoices &rarr; edit</td></tr>
+  <tr><td>Cancel & Reissue</td><td>invoices &rarr; edit</td></tr>
+  <tr><td>Create credit note</td><td>credit_notes &rarr; create</td></tr>
+  <tr><td>Record payment</td><td>payments &rarr; create</td></tr>
+  <tr><td>Create gatepass</td><td>gatepasses &rarr; create</td></tr>
+</table>
+
+<h1 id="tips">17. Tips & Best Practices</h1>
+
+<h2>Before Creating Invoice</h2>
+<ul>
+  <li>&#9989; Verify customer GSTIN is correct</li>
+  <li>&#9989; Check stock availability for all items</li>
+  <li>&#9989; Confirm prices with latest price list</li>
+  <li>&#9989; Verify shipping address if different</li>
+</ul>
+
+<h2>During Invoice Creation</h2>
+<ul>
+  <li>&#9989; Use templates for consistency</li>
+  <li>&#9989; Double-check quantities before saving</li>
+  <li>&#9989; Preview before final save for large invoices</li>
+</ul>
+
+<h2>After Invoice Creation</h2>
+<ul>
+  <li>&#9989; Mark "Ready for Dispatch" promptly</li>
+  <li>&#9989; Print copy for dispatch team</li>
+  <li>&#9989; Record payments immediately when received</li>
+</ul>
+
+<h2>Month-End</h2>
+<ul>
+  <li>&#9989; Complete all corrections before month close</li>
+  <li>&#9989; Ensure all credit notes are processed</li>
+  <li>&#9989; Reconcile GST reports</li>
+</ul>
+
+<h1 id="glossary">18. Glossary</h1>
+
+<table>
+  <tr>
+    <th>Term</th>
+    <th>Definition</th>
+  </tr>
+  <tr><td><strong>CGST</strong></td><td>Central Goods and Services Tax - Goes to Central Government</td></tr>
+  <tr><td><strong>Credit Note</strong></td><td>Document reducing invoice value after GST filing</td></tr>
+  <tr><td><strong>Debit Note</strong></td><td>Document increasing invoice value</td></tr>
+  <tr><td><strong>FIFO</strong></td><td>First In First Out - Oldest invoices paid first</td></tr>
+  <tr><td><strong>Gatepass</strong></td><td>Document authorizing goods to leave facility</td></tr>
+  <tr><td><strong>GSTIN</strong></td><td>GST Identification Number - 15-digit unique ID</td></tr>
+  <tr><td><strong>HSN Code</strong></td><td>Harmonized System Nomenclature - Product classification</td></tr>
+  <tr><td><strong>IGST</strong></td><td>Integrated GST - For inter-state sales</td></tr>
+  <tr><td><strong>Intra-State</strong></td><td>Sale within same state (CGST + SGST)</td></tr>
+  <tr><td><strong>Inter-State</strong></td><td>Sale to different state (IGST)</td></tr>
+  <tr><td><strong>Invoice</strong></td><td>Bill for goods sold with GST details</td></tr>
+  <tr><td><strong>Outstanding</strong></td><td>Amount yet to be paid by customer</td></tr>
+  <tr><td><strong>POD</strong></td><td>Proof of Delivery - Confirmation of receipt</td></tr>
+  <tr><td><strong>SGST</strong></td><td>State Goods and Services Tax - Goes to State Government</td></tr>
+  <tr><td><strong>Stock Reservation</strong></td><td>Holding inventory for pending invoice</td></tr>
+  <tr><td><strong>UTR</strong></td><td>Unique Transaction Reference - Bank transfer ID</td></tr>
+</table>
+
+<hr>
+<div style="text-align: center; margin-top: 40px; padding: 20px; background-color: #f5f5f5;">
+  <p><strong>KINTO Operations & QA Management System</strong></p>
+  <p>Sales Invoice Screen - User Guide</p>
+  <p>Version 1.0 | February 2024</p>
+</div>
+
+</body>
+</html>
