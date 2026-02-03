@@ -227,17 +227,8 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
     enabled: !!selectedProductId && selectedProductId !== "",
   });
 
-  // Auto-select default configuration when product changes
-  useEffect(() => {
-    if (bomConfigurations.length > 0 && !selectedConfigId) {
-      const defaultConfig = bomConfigurations.find(c => c.isDefault === 1);
-      if (defaultConfig) {
-        setSelectedConfigId(defaultConfig.id);
-      } else if (bomConfigurations.length === 1) {
-        setSelectedConfigId(bomConfigurations[0].id);
-      }
-    }
-  }, [bomConfigurations, selectedConfigId]);
+  // No auto-selection - user must explicitly choose BOM configuration
+  // This ensures user is aware of which BOM they're using for issuance
 
   // Reset config when product changes
   useEffect(() => {
@@ -632,37 +623,42 @@ export default function RawMaterialIssuanceForm({ issuance, onClose }: RawMateri
                 )}
               />
 
-              {/* BOM Configuration Selector - only shows when product has multiple configs */}
-              {selectedProductId && bomConfigurations.length > 0 && (
+              {/* BOM Configuration Selector - shows when product is selected */}
+              {selectedProductId && (
                 <FormItem>
-                  <FormLabel>BOM Configuration</FormLabel>
-                  <Select 
-                    onValueChange={(value) => setSelectedConfigId(value === "none" ? undefined : value)} 
-                    value={selectedConfigId || "none"}
-                    disabled={isConfigLoading}
-                  >
-                    <FormControl>
-                      <SelectTrigger data-testid="select-bom-config">
-                        <SelectValue placeholder={isConfigLoading ? "Loading..." : "Select BOM configuration"} />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {bomConfigurations.length === 0 && (
-                        <SelectItem value="none">-- No configurations --</SelectItem>
-                      )}
-                      {bomConfigurations.map((config) => (
-                        <SelectItem key={config.id} value={config.id}>
-                          {config.configName}
-                          {config.isDefault === 1 && " (Default)"}
-                          {config.description && ` - ${config.description}`}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {bomConfigurations.length > 1 && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      This product has {bomConfigurations.length} BOM configurations. Select the one to use for this issuance.
-                    </p>
+                  <FormLabel>BOM Configuration *</FormLabel>
+                  {isConfigLoading ? (
+                    <div className="h-10 flex items-center text-sm text-muted-foreground">Loading BOM configurations...</div>
+                  ) : bomConfigurations.length === 0 ? (
+                    <div className="h-10 flex items-center text-sm text-amber-600">
+                      No BOM configurations found for this product. Add BOM in product settings first.
+                    </div>
+                  ) : (
+                    <>
+                      <Select 
+                        onValueChange={(value) => setSelectedConfigId(value === "none" ? undefined : value)} 
+                        value={selectedConfigId || "none"}
+                      >
+                        <FormControl>
+                          <SelectTrigger data-testid="select-bom-config">
+                            <SelectValue placeholder="Select BOM configuration" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">-- Select BOM --</SelectItem>
+                          {bomConfigurations.map((config) => (
+                            <SelectItem key={config.id} value={config.id}>
+                              {config.configName}
+                              {config.isDefault === 1 && " (Default)"}
+                              {config.description && ` - ${config.description}`}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {bomConfigurations.length} BOM configuration{bomConfigurations.length > 1 ? 's' : ''} available. Select the one to use for this issuance.
+                      </p>
+                    </>
                   )}
                 </FormItem>
               )}
