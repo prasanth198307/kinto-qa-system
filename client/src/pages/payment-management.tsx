@@ -187,8 +187,8 @@ export default function PaymentManagement() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const { hasPermission } = usePermissions();
-  const canCreate = hasPermission('payment_management', 'create');
-  const canEdit = hasPermission('payment_management', 'edit');
+  const canCreate = hasPermission('payments', 'create');
+  const canEdit = hasPermission('payments', 'edit');
   
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [allocationPreview, setAllocationPreview] = useState<any>(null);
