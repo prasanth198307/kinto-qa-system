@@ -490,6 +490,97 @@ Production Entry &rarr; Pending QC &rarr; Quality Check &rarr; Approved/Rejected
   </ol>
 </div>
 
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 6: Multi-Batch FIFO (3+ Batches)</div>
+  <p><strong>Situation:</strong> Need 1000 Kg base oil, spread across 4 batches</p>
+  <ol>
+    <li>Create Raw Material Issuance</li>
+    <li>Select product and BOM</li>
+    <li>Enter quantity requiring 1000 Kg base oil</li>
+    <li>System shows FIFO allocation:
+      <table>
+        <tr><th>Batch</th><th>Available</th><th>Allocated</th><th>Remaining</th></tr>
+        <tr><td>B-001 (oldest)</td><td>300 Kg</td><td>300 Kg</td><td>0 Kg</td></tr>
+        <tr><td>B-002</td><td>250 Kg</td><td>250 Kg</td><td>0 Kg</td></tr>
+        <tr><td>B-003</td><td>400 Kg</td><td>400 Kg</td><td>0 Kg</td></tr>
+        <tr><td>B-004 (newest)</td><td>500 Kg</td><td>50 Kg</td><td>450 Kg</td></tr>
+      </table>
+    </li>
+    <li>Review allocation carefully</li>
+    <li>Confirm issuance</li>
+    <li>All 4 batches updated in inventory</li>
+    <li>Issuance record shows complete breakdown</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 7: BOM Variance Investigation</div>
+  <p><strong>Situation:</strong> Consistent 3% over-consumption on Base Oil</p>
+  <ol>
+    <li>Go to Reports → Variance Analytics</li>
+    <li>Filter by raw material: Base Oil</li>
+    <li>See trend: 3% over BOM for past 2 weeks</li>
+    <li>Investigation steps:
+      <ul>
+        <li>Check weighing scale calibration</li>
+        <li>Review operator technique</li>
+        <li>Inspect for spillage/leakage</li>
+        <li>Verify BOM loss % setting</li>
+      </ul>
+    </li>
+    <li>Finding: Weighing scale needs calibration</li>
+    <li>Action: Calibrate scale, monitor next batches</li>
+    <li>OR if BOM needs update:</li>
+    <li>Go to Master Data → BOM</li>
+    <li>Update loss percentage from 1% to 2%</li>
+    <li>Future issuances will account for higher loss</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 8: Production with BOM Substitution</div>
+  <p><strong>Situation:</strong> Primary additive out of stock, need to use alternate</p>
+  <ol>
+    <li>Product has 2 BOMs configured:
+      <ul>
+        <li>Standard (uses Additive A)</li>
+        <li>Alternate (uses Additive B)</li>
+      </ul>
+    </li>
+    <li>Additive A stock: 0 Kg</li>
+    <li>Create issuance, select product</li>
+    <li>BOM dropdown shows both options</li>
+    <li>Select "Alternate" BOM</li>
+    <li>System shows Additive B requirement</li>
+    <li>Proceed with issuance</li>
+    <li>Production entry links to Alternate BOM</li>
+    <li>Finished goods record which BOM used</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 9: End-of-Day Reconciliation</div>
+  <p><strong>Situation:</strong> Daily production reconciliation required</p>
+  <ol>
+    <li>Go to Production → Reconciliation</li>
+    <li>Select today's date</li>
+    <li>System calculates:
+      <table>
+        <tr><th>Metric</th><th>Value</th></tr>
+        <tr><td>Opening Raw Material</td><td>5000 Kg</td></tr>
+        <tr><td>Materials Issued</td><td>1200 Kg</td></tr>
+        <tr><td>Expected Consumption</td><td>1200 Kg</td></tr>
+        <tr><td>Actual Production</td><td>118 cases</td></tr>
+        <tr><td>Expected Production</td><td>120 cases</td></tr>
+        <tr><td>Variance</td><td>-2 cases (1.7%)</td></tr>
+      </table>
+    </li>
+    <li>Enter variance explanation if needed</li>
+    <li>Supervisor reviews and approves</li>
+    <li>Reconciliation locked for the day</li>
+  </ol>
+</div>
+
 <hr>
 <div style="text-align: center; margin-top: 40px; padding: 20px; background-color: #f5f5f5;">
   <p><strong>KINTO Operations & QA Management System</strong></p>

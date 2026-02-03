@@ -472,6 +472,88 @@ Return Initiated &rarr; Quality Check &rarr; Disposition Decision &rarr; Complet
   </ol>
 </div>
 
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 5: Digital Signature on Delivery</div>
+  <p><strong>Situation:</strong> Customer wants signed POD (Proof of Delivery)</p>
+  <ol>
+    <li>Delivery person reaches customer</li>
+    <li>Opens Dispatch Tracking on mobile</li>
+    <li>Finds the dispatch entry</li>
+    <li>Clicks "Mark Delivered"</li>
+    <li>Customer signs on screen (finger/stylus)</li>
+    <li>Capture signature as image</li>
+    <li>Upload along with delivery photo</li>
+    <li>Submit - Dispatch marked "Delivered"</li>
+    <li>Signature stored with dispatch record</li>
+  </ol>
+  <p><strong>Access later:</strong> View signature in Dispatch Details → POD section</p>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 6: Failed Delivery Re-attempt</div>
+  <p><strong>Situation:</strong> Customer not available, delivery failed</p>
+  <ol>
+    <li>Open dispatch in Dispatch Tracking</li>
+    <li>Click "Update Status"</li>
+    <li>Select "Delivery Attempted"</li>
+    <li>Enter reason: "Customer premises closed"</li>
+    <li>Add photo evidence if needed</li>
+    <li>Save - status updated</li>
+    <li>Schedule re-delivery:
+      <ul>
+        <li>Click "Schedule Re-attempt"</li>
+        <li>Select new date/time</li>
+        <li>Add notes for driver</li>
+      </ul>
+    </li>
+    <li>On re-attempt, proceed with normal delivery</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 7: POD with Damage Notation</div>
+  <p><strong>Situation:</strong> Customer accepts delivery but notes 2 cases damaged</p>
+  <ol>
+    <li>Complete delivery as normal</li>
+    <li>In "Mark Delivered" screen:</li>
+    <li>Check "Delivery with exceptions"</li>
+    <li>Enter exception: "2 cases damaged on arrival"</li>
+    <li>Take photo of damaged cases</li>
+    <li>Get customer signature with acknowledgment</li>
+    <li>Submit delivery with notes</li>
+    <li>System flags for follow-up</li>
+    <li>Initiate Sales Return for 2 damaged cases</li>
+    <li>Credit note generated for customer</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 8: Split Disposition Return</div>
+  <p><strong>Situation:</strong> 27 cases returned - some good, some damaged, some scrap</p>
+  <ol>
+    <li>Create Sales Return for 27 cases</li>
+    <li>During quality inspection:</li>
+    <li>Split disposition:
+      <ul>
+        <li>Restock: 20 cases (good condition)</li>
+        <li>Repack: 5 cases (label damage only)</li>
+        <li>Scrap: 2 cases (leaking, unusable)</li>
+      </ul>
+    </li>
+    <li>For scrap:
+      <ul>
+        <li>Upload damage photos</li>
+        <li>Get supervisor approval</li>
+      </ul>
+    </li>
+    <li>Submit disposition</li>
+    <li>20 cases → finished goods (restock)</li>
+    <li>5 cases → repack queue</li>
+    <li>2 cases → scrap inventory</li>
+    <li>Credit note for all 27 generated</li>
+  </ol>
+</div>
+
 <hr>
 <div style="text-align: center; margin-top: 40px; padding: 20px; background-color: #f5f5f5;">
   <p><strong>KINTO Operations & QA Management System</strong></p>

@@ -852,6 +852,115 @@
   </ol>
 </div>
 
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 6: Excess Payment Creating Advance</div>
+  <p><strong>Situation:</strong> Customer owes ₹80,000 but pays ₹1,00,000</p>
+  <ol>
+    <li>Record payment of ₹1,00,000</li>
+    <li>FIFO allocates ₹80,000 to outstanding invoices</li>
+    <li>All invoices marked "Paid"</li>
+    <li>Remaining ₹20,000 automatically creates advance</li>
+    <li>Advance visible in Customer Advances screen</li>
+    <li>Available for future invoice application</li>
+  </ol>
+  <p><strong>Result:</strong> No manual advance entry needed - system handles automatically</p>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 7: Cheque Bounce Handling</div>
+  <p><strong>Situation:</strong> Customer's cheque for ₹50,000 bounces</p>
+  <ol>
+    <li>Find original payment in Payment Management</li>
+    <li>Click "Reverse Payment"</li>
+    <li>Select reason: "Cheque Bounce"</li>
+    <li>Enter bank return memo details</li>
+    <li>Confirm reversal</li>
+    <li>System reverses FIFO allocation</li>
+    <li>Original invoices become outstanding again</li>
+    <li>Record bounce charges if applicable</li>
+    <li>Follow up with customer for replacement cheque</li>
+  </ol>
+  <p><strong>Audit:</strong> Both original payment and reversal maintained in records</p>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 8: Partial FIFO with Remaining Balance</div>
+  <p><strong>Situation:</strong> 3 invoices (₹30K, ₹40K, ₹50K), customer pays ₹85,000</p>
+  <table>
+    <tr><th>Invoice</th><th>Amount</th><th>Allocated</th><th>Status</th></tr>
+    <tr><td>INV-001 (oldest)</td><td>₹30,000</td><td>₹30,000</td><td>Fully Paid</td></tr>
+    <tr><td>INV-002</td><td>₹40,000</td><td>₹40,000</td><td>Fully Paid</td></tr>
+    <tr><td>INV-003</td><td>₹50,000</td><td>₹15,000</td><td>Partial (₹35K pending)</td></tr>
+  </table>
+  <p><strong>Next payment:</strong> Will first clear INV-003's ₹35K balance</p>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 9: Mid-Day Bank Deposit</div>
+  <p><strong>Situation:</strong> Cash collection high, need to deposit ₹50,000 to bank</p>
+  <ol>
+    <li>Go to Cash Register</li>
+    <li>Click "New Transaction"</li>
+    <li>Type: Bank Deposit</li>
+    <li>Amount: ₹50,000</li>
+    <li>Bank: Select depositing bank</li>
+    <li>Reference: Deposit slip number</li>
+    <li>Save transaction</li>
+    <li>Cash balance reduced by ₹50,000</li>
+    <li>Continue collecting cash</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 10: Petty Cash Replenishment</div>
+  <p><strong>Situation:</strong> Petty cash fund needs top-up</p>
+  <ol>
+    <li>Go to Cash Register</li>
+    <li>Click "New Transaction"</li>
+    <li>Type: Bank Withdrawal</li>
+    <li>Amount: ₹10,000</li>
+    <li>Purpose: Petty cash replenishment</li>
+    <li>Reference: Withdrawal slip number</li>
+    <li>Save - cash balance increases</li>
+    <li>Use for small expenses during day</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 11: Month-End Cash Reconciliation</div>
+  <p><strong>Situation:</strong> Month closing, need complete reconciliation</p>
+  <ol>
+    <li>Ensure all daily closures complete</li>
+    <li>Go to Reports → Cash Register Report</li>
+    <li>Select month range</li>
+    <li>Review:
+      <ul>
+        <li>Total cash receipts</li>
+        <li>Total cash payments</li>
+        <li>Bank deposits made</li>
+        <li>Daily variances (should total near zero)</li>
+      </ul>
+    </li>
+    <li>Compare with bank statement</li>
+    <li>Identify any unreconciled items</li>
+    <li>Export report for accounts</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 12: Advance Application to Multiple Invoices</div>
+  <p><strong>Situation:</strong> Customer has ₹75,000 advance, new invoices ₹30K and ₹40K created</p>
+  <ol>
+    <li>Go to Customer Advances</li>
+    <li>Find customer's advance (₹75,000)</li>
+    <li>Click "Apply to Invoices"</li>
+    <li>Select both invoices (₹30K + ₹40K = ₹70K)</li>
+    <li>Confirm application</li>
+    <li>Both invoices marked "Paid"</li>
+    <li>Remaining advance: ₹5,000</li>
+  </ol>
+</div>
+
 <hr>
 <div style="text-align: center; margin-top: 40px; padding: 20px; background-color: #f5f5f5;">
   <p><strong>KINTO Operations & QA Management System</strong></p>

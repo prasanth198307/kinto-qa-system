@@ -507,6 +507,106 @@ Plan Created &rarr; Task Generated &rarr; Assigned &rarr; In Progress &rarr; Com
   </ol>
 </div>
 
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 6: Emergency Spare Part Issuance</div>
+  <p><strong>Situation:</strong> Filling machine breaks down, needs immediate belt replacement</p>
+  <ol>
+    <li>Production calls for urgent spare</li>
+    <li>Go to Spare Parts Stock</li>
+    <li>Click "Issue Spare Part"</li>
+    <li>Select: "Conveyor Belt - FM-01"</li>
+    <li>Machine auto-populates (if linked)</li>
+    <li>Quantity: 1</li>
+    <li>Issued To: "Raju - Maintenance Tech"</li>
+    <li>Reason: "Emergency breakdown repair"</li>
+    <li>Priority: Mark as "Urgent"</li>
+    <li>Issue immediately</li>
+    <li>Stock decremented</li>
+    <li>If below reorder level, alert triggered</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 7: Return of Unused Spare Parts</div>
+  <p><strong>Situation:</strong> Technician issued 3 bearings, used only 2</p>
+  <ol>
+    <li>Go to Spare Parts Stock</li>
+    <li>Find original issuance record</li>
+    <li>Click "Return"</li>
+    <li>Enter return quantity: 1</li>
+    <li>Condition: Good (unused)</li>
+    <li>Reason: "Not required for repair"</li>
+    <li>Confirm return</li>
+    <li>Stock increased by 1</li>
+    <li>Original issuance updated: 3 issued, 1 returned, net 2 used</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 8: WhatsApp Checklist with Photo</div>
+  <p><strong>Situation:</strong> Operator completes startup checklist via WhatsApp</p>
+  <ol>
+    <li>7:30 AM - System sends WhatsApp reminder</li>
+    <li>Message: "Good morning! Time for FM-01 startup checklist"</li>
+    <li><strong>Q1:</strong> "Is oil level okay?" → Operator replies "yes"</li>
+    <li>AI interprets as YES ✓</li>
+    <li><strong>Q2:</strong> "Temperature reading?" → Operator replies "45"</li>
+    <li>Recorded as numeric: 45 ✓</li>
+    <li><strong>Q3:</strong> "Send photo of gauge" → Operator sends image</li>
+    <li>Photo downloaded and stored ✓</li>
+    <li><strong>Q4:</strong> "Any unusual noise?" → Operator replies "nahi"</li>
+    <li>AI interprets Hindi "nahi" as NO ✓</li>
+    <li>Checklist completed and saved</li>
+    <li>Dashboard shows green status</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 9: Missed Checklist Escalation</div>
+  <p><strong>Situation:</strong> Operator doesn't complete checklist by due time</p>
+  <ol>
+    <li>8:00 AM - Checklist due time</li>
+    <li>8:00 AM - System sends first reminder to operator</li>
+    <li>8:15 AM - Still not completed</li>
+    <li>8:15 AM - Second reminder + supervisor notified</li>
+    <li>Supervisor receives WhatsApp: "FM-01 checklist overdue"</li>
+    <li>8:30 AM - Still pending</li>
+    <li>Manager receives email escalation</li>
+    <li>Dashboard shows RED status for FM-01</li>
+    <li>Supervisor contacts operator</li>
+    <li>Checklist completed at 8:45 AM (late)</li>
+    <li>Recorded with "Late completion" flag</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 10: PM with Multiple Spare Parts</div>
+  <p><strong>Situation:</strong> Quarterly service requires multiple parts</p>
+  <ol>
+    <li>PM task generated: "Quarterly Service - Compressor"</li>
+    <li>Technician starts PM task</li>
+    <li>Follows checklist:
+      <ul>
+        <li>Check oil → OK</li>
+        <li>Check filter → Needs replacement</li>
+        <li>Check belt → Needs replacement</li>
+        <li>Check gasket → OK</li>
+      </ul>
+    </li>
+    <li>Record spare parts used:
+      <ul>
+        <li>Air Filter x1 - ₹450</li>
+        <li>V-Belt x1 - ₹280</li>
+      </ul>
+    </li>
+    <li>Stock auto-deducted for both</li>
+    <li>Add observation: "Minor rust on housing"</li>
+    <li>Complete PM task</li>
+    <li>Total parts cost: ₹730 recorded</li>
+    <li>Next PM scheduled for 3 months</li>
+  </ol>
+</div>
+
 <hr>
 <div style="text-align: center; margin-top: 40px; padding: 20px; background-color: #f5f5f5;">
   <p><strong>KINTO Operations & QA Management System</strong></p>

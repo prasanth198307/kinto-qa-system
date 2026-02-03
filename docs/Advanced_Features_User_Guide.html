@@ -472,6 +472,189 @@
   Save settings
 </div>
 
+<h1 id="scenarios">9. Common Scenarios</h1>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 1: Vyapaar Import with Fuzzy Matching</div>
+  <p><strong>Situation:</strong> Importing sale report with vendor name variations</p>
+  <ol>
+    <li>Upload SaleReport.xlsx</li>
+    <li>System validates data</li>
+    <li>Fuzzy matching screen shows:
+      <table>
+        <tr><th>Excel Name</th><th>Suggested Match</th><th>Confidence</th></tr>
+        <tr><td>"Sharma Traders Pvt"</td><td>"Sharma Traders Pvt Ltd"</td><td>95%</td></tr>
+        <tr><td>"ABC Industries"</td><td>"A.B.C. Industries Ltd"</td><td>87%</td></tr>
+        <tr><td>"Unknown Vendor XYZ"</td><td>No match found</td><td>-</td></tr>
+      </table>
+    </li>
+    <li>Review each suggestion</li>
+    <li>Confirm correct matches</li>
+    <li>For "Unknown Vendor XYZ":
+      <ul>
+        <li>Click "Create New" to add as new vendor</li>
+        <li>OR click "Skip" to exclude from import</li>
+      </ul>
+    </li>
+    <li>Proceed with import</li>
+    <li>View import summary</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 2: Handling Duplicate Detection</div>
+  <p><strong>Situation:</strong> Re-importing file with some existing records</p>
+  <ol>
+    <li>Upload Payments.xlsx (contains 100 records)</li>
+    <li>System detects 15 duplicates already in system</li>
+    <li>Duplicate handling screen shows:
+      <ul>
+        <li>85 new records to import</li>
+        <li>15 duplicates found</li>
+      </ul>
+    </li>
+    <li>Options:
+      <ul>
+        <li><strong>Skip duplicates:</strong> Import only 85 new records</li>
+        <li><strong>Update duplicates:</strong> Overwrite existing with new data</li>
+        <li><strong>Review each:</strong> Decide individually</li>
+      </ul>
+    </li>
+    <li>Select "Skip duplicates"</li>
+    <li>Import proceeds with 85 records</li>
+    <li>Summary shows what was imported vs skipped</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 3: Document Expiry Alert Handling</div>
+  <p><strong>Situation:</strong> FSSAI license expiring in 30 days</p>
+  <ol>
+    <li>System sends alert: "FSSAI License expires in 30 days"</li>
+    <li>Admin receives email notification</li>
+    <li>Go to Documents</li>
+    <li>Find FSSAI License document</li>
+    <li>Start renewal process externally</li>
+    <li>Once renewed:
+      <ul>
+        <li>Click "Upload New Version"</li>
+        <li>Upload new license PDF</li>
+        <li>Enter new expiry date</li>
+        <li>Save</li>
+      </ul>
+    </li>
+    <li>Old version archived, new version active</li>
+    <li>New expiry alert scheduled</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 4: Linking Document to Vendor</div>
+  <p><strong>Situation:</strong> Store vendor's GST certificate with their profile</p>
+  <ol>
+    <li>Go to Documents</li>
+    <li>Click "Upload Document"</li>
+    <li>Select GST Certificate PDF</li>
+    <li>Title: "ABC Traders - GST Certificate"</li>
+    <li>Category: "Vendor Documents"</li>
+    <li>Link to Vendor: Select "ABC Traders"</li>
+    <li>Expiry Date: Enter certificate validity</li>
+    <li>Save</li>
+    <li>Document now visible:
+      <ul>
+        <li>In Documents list</li>
+        <li>In Vendor Details → Documents tab</li>
+      </ul>
+    </li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 5: Cancel & Reissue Current Month Invoice</div>
+  <p><strong>Situation:</strong> Wrong customer selected on today's invoice</p>
+  <ol>
+    <li>Open the incorrect invoice</li>
+    <li>Verify it's current month (Cancel & Reissue available)</li>
+    <li>Click "Cancel & Reissue"</li>
+    <li>Confirm cancellation warning</li>
+    <li>New invoice form opens with pre-filled items</li>
+    <li>Change customer to correct one</li>
+    <li>Review all details</li>
+    <li>Save new invoice</li>
+    <li>Old invoice: Status = "Cancelled"</li>
+    <li>New invoice: New number, correct customer</li>
+    <li>Stock reservation transferred automatically</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 6: Vendor Analytics Review</div>
+  <p><strong>Situation:</strong> Quarterly review of top customer performance</p>
+  <ol>
+    <li>Go to Vendor Management</li>
+    <li>Click on Tier 1 (Key Account) customer</li>
+    <li>Open "Analytics" tab</li>
+    <li>Review metrics:
+      <table>
+        <tr><th>Metric</th><th>Value</th></tr>
+        <tr><td>Total Revenue (YTD)</td><td>₹45,00,000</td></tr>
+        <tr><td>Avg Order Value</td><td>₹75,000</td></tr>
+        <tr><td>Avg Payment Days</td><td>18 days</td></tr>
+        <tr><td>Orders This Quarter</td><td>15</td></tr>
+        <tr><td>YoY Growth</td><td>+22%</td></tr>
+      </table>
+    </li>
+    <li>View top products purchased</li>
+    <li>Check payment trend graph</li>
+    <li>Export report for management review</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 7: Setting Up Machine Startup Reminder</div>
+  <p><strong>Situation:</strong> New filling machine needs daily startup checklist</p>
+  <ol>
+    <li>Ensure machine exists in Machines master</li>
+    <li>Ensure checklist template created</li>
+    <li>Go to Admin → Machine Startup Reminders</li>
+    <li>Click "Add Reminder"</li>
+    <li>Configure:
+      <ul>
+        <li>Machine: "Filling Machine FM-03"</li>
+        <li>Checklist: "Filling Machine Startup"</li>
+        <li>Time: 7:30 AM</li>
+        <li>Assigned To: Ramesh (Operator)</li>
+        <li>WhatsApp: +91 98765 43210</li>
+        <li>Days: Monday to Saturday</li>
+      </ul>
+    </li>
+    <li>Save and activate</li>
+    <li>Test by clicking "Send Test Message"</li>
+    <li>Ramesh receives WhatsApp at 7:30 AM daily</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 8: Viewing Cancelled Invoices Report</div>
+  <p><strong>Situation:</strong> Auditor needs list of all cancelled invoices this quarter</p>
+  <ol>
+    <li>Go to Reports → Cancelled Invoices</li>
+    <li>Set date range: Q3 (July-September)</li>
+    <li>View list with:
+      <ul>
+        <li>Original invoice numbers</li>
+        <li>Cancellation dates</li>
+        <li>Cancelled by (user)</li>
+        <li>Reasons</li>
+        <li>Reissued as (if applicable)</li>
+      </ul>
+    </li>
+    <li>Click any row for full details</li>
+    <li>Export to Excel for auditor</li>
+    <li>Print summary report</li>
+  </ol>
+</div>
+
 <hr>
 <div style="text-align: center; margin-top: 40px; padding: 20px; background-color: #f5f5f5;">
   <p><strong>KINTO Operations & QA Management System</strong></p>
