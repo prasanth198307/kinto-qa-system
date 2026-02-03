@@ -63,7 +63,10 @@ const AVAILABLE_SCREENS: ScreenDefinition[] = [
   { key: 'whatsapp_analytics', label: 'WhatsApp Analytics', allowedActions: ['view'] },
   { key: 'pm_history', label: 'PM History', allowedActions: ['view'] },
   { key: 'vendor_analytics', label: 'Vendor Analytics', allowedActions: ['view'] },
+  { key: 'vendor_history', label: 'Vendor History', allowedActions: ['view'] },
   { key: 'pending_payments', label: 'Pending Payments', allowedActions: ['view'] },
+  { key: 'write_off_report', label: 'Write-Off Report', allowedActions: ['view'] },
+  { key: 'reviewer_dashboard', label: 'Reviewer Dashboard', allowedActions: ['view'] },
   { key: 'payments', label: 'Payment Management', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'payment_management', label: 'Payment Management (Alt)', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'customer_advances', label: 'Customer Advances', allowedActions: ['view', 'create', 'edit', 'delete'] },
@@ -133,6 +136,7 @@ const AVAILABLE_SCREENS: ScreenDefinition[] = [
   { key: 'machine_startup_reminders', label: 'Machine Startup Reminders', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'vyapaar_import', label: 'Vyapaar Data Import', allowedActions: ['view', 'create'] },
   { key: 'data_import', label: 'Data Import', allowedActions: ['view', 'create'] },
+  { key: 'hpcl_migration', label: 'HPCL Data Migration', allowedActions: ['view', 'create'] },
   { key: 'payment_writeoff', label: 'Payment Write-Off', allowedActions: ['view', 'create', 'delete'] },
 ];
 
