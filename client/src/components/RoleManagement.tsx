@@ -65,6 +65,8 @@ const AVAILABLE_SCREENS: ScreenDefinition[] = [
   { key: 'vendor_analytics', label: 'Vendor Analytics', allowedActions: ['view'] },
   { key: 'pending_payments', label: 'Pending Payments', allowedActions: ['view'] },
   { key: 'payments', label: 'Payment Management', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'payment_management', label: 'Payment Management (Alt)', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'customer_advances', label: 'Customer Advances', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'cancelled_invoices_report', label: 'Cancelled Invoices Report', allowedActions: ['view'] },
   { key: 'cash_register_report', label: 'Cash Register Report', allowedActions: ['view'] },
   
@@ -92,7 +94,8 @@ const AVAILABLE_SCREENS: ScreenDefinition[] = [
   // Quality & Maintenance
   { key: 'machines', label: 'Machines', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'machine_types', label: 'Machine Types', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'spare_parts', label: 'Spare Parts', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'spare_parts', label: 'Spare Parts (Catalog)', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'spare_parts_stock', label: 'Spare Parts Stock', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'checklist_templates', label: 'Checklist Templates', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'checklist_assignments', label: 'Checklist Assignments', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'checklists', label: 'Checklists', allowedActions: ['view', 'create', 'edit', 'delete'] },
