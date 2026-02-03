@@ -1175,6 +1175,219 @@ Category: Greases (GRS)
   </ul>
 </div>
 
+<h1 id="scenarios">9. Common Scenarios</h1>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 1: Adding New Customer</div>
+  <p><strong>Situation:</strong> New customer wants to place first order</p>
+  <ol>
+    <li>Go to Vendor/Customer Management</li>
+    <li>Search existing records to avoid duplicates</li>
+    <li>Click "Add New"</li>
+    <li>Enter details:
+      <table>
+        <tr><th>Field</th><th>Value</th></tr>
+        <tr><td>Name</td><td>ABC Industries Pvt Ltd</td></tr>
+        <tr><td>Type</td><td>Customer</td></tr>
+        <tr><td>GSTIN</td><td>27AABCA1234A1ZB</td></tr>
+        <tr><td>State</td><td>Maharashtra</td></tr>
+        <tr><td>State Code</td><td>27</td></tr>
+        <tr><td>Phone</td><td>022-12345678</td></tr>
+        <tr><td>Credit Limit</td><td>₹5,00,000</td></tr>
+      </table>
+    </li>
+    <li>Save customer</li>
+    <li>Customer now available for invoicing</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 2: Creating New Product with BOM</div>
+  <p><strong>Situation:</strong> Launching new lubricant product</p>
+  <ol>
+    <li>First ensure raw materials exist</li>
+    <li>Go to Products → Add New</li>
+    <li>Enter product details:
+      <ul>
+        <li>Name: Premium Gear Oil 20L</li>
+        <li>Category: Lubricants</li>
+        <li>Type: Gear Oil</li>
+        <li>HSN: 27101980</li>
+        <li>GST: 18%</li>
+        <li>Unit Price: ₹950</li>
+      </ul>
+    </li>
+    <li>Save product</li>
+    <li>Go to BOM → Add New</li>
+    <li>Select product: Premium Gear Oil 20L</li>
+    <li>BOM Name: "Standard Formula"</li>
+    <li>Add ingredients:
+      <table>
+        <tr><th>Raw Material</th><th>Qty per Unit</th><th>UOM</th></tr>
+        <tr><td>Base Oil SN-150</td><td>18.5</td><td>Liters</td></tr>
+        <tr><td>EP Additive</td><td>1.2</td><td>Liters</td></tr>
+        <tr><td>Viscosity Modifier</td><td>0.3</td><td>Liters</td></tr>
+      </table>
+    </li>
+    <li>Set loss percentage: 1%</li>
+    <li>Save BOM</li>
+    <li>Product ready for production</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 3: Updating Product Price</div>
+  <p><strong>Situation:</strong> Price revision due to raw material cost increase</p>
+  <ol>
+    <li>Go to Products</li>
+    <li>Find product to update</li>
+    <li>Click "Edit"</li>
+    <li>Update price: ₹850 → ₹920</li>
+    <li>Save changes</li>
+    <li>New price effective immediately</li>
+    <li>Existing invoices unaffected</li>
+    <li>New invoices use new price</li>
+  </ol>
+  <p><strong>Note:</strong> For bulk price updates, use Excel import feature</p>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 4: Deactivating Obsolete Product</div>
+  <p><strong>Situation:</strong> Product discontinued, should not appear in invoicing</p>
+  <ol>
+    <li>Go to Products</li>
+    <li>Find obsolete product</li>
+    <li>Click "Edit"</li>
+    <li>Toggle "Active" to OFF</li>
+    <li>Save changes</li>
+    <li>Product hidden from dropdowns</li>
+    <li>Historical data preserved</li>
+    <li>Reports still include past transactions</li>
+  </ol>
+  <div class="warning-box">
+    <strong>Never delete!</strong> Deactivate instead to preserve history.
+  </div>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 5: Correcting Customer GSTIN</div>
+  <p><strong>Situation:</strong> Customer's GSTIN was entered incorrectly</p>
+  <ol>
+    <li>Go to Vendor/Customer Management</li>
+    <li>Find customer</li>
+    <li>Click "Edit"</li>
+    <li>Correct GSTIN (15 digits)</li>
+    <li>Verify on GST portal if unsure</li>
+    <li>Save changes</li>
+    <li>Future invoices use correct GSTIN</li>
+    <li>Past invoices need credit note if GST filed</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 6: Adding Alternate BOM</div>
+  <p><strong>Situation:</strong> Same product can be made with different formula</p>
+  <ol>
+    <li>Go to BOM</li>
+    <li>Click "Add New"</li>
+    <li>Select same product</li>
+    <li>BOM Name: "Alternate Formula"</li>
+    <li>Add different ingredients:
+      <ul>
+        <li>Base Oil SN-500 (instead of SN-150)</li>
+        <li>Different additive package</li>
+      </ul>
+    </li>
+    <li>Set loss percentage</li>
+    <li>Save BOM</li>
+    <li>Product now has 2 BOMs</li>
+    <li>Operator must select BOM during issuance</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 7: Setting Up New Bank Account</div>
+  <p><strong>Situation:</strong> Company opened new current account</p>
+  <ol>
+    <li>Go to Admin → Bank Accounts</li>
+    <li>Click "Add Bank"</li>
+    <li>Enter details:
+      <table>
+        <tr><th>Field</th><th>Value</th></tr>
+        <tr><td>Bank Name</td><td>HDFC Bank</td></tr>
+        <tr><td>Branch</td><td>MIDC Andheri</td></tr>
+        <tr><td>Account Number</td><td>50100123456789</td></tr>
+        <tr><td>IFSC</td><td>HDFC0001234</td></tr>
+        <tr><td>UPI ID</td><td>company@hdfcbank</td></tr>
+      </table>
+    </li>
+    <li>Save bank</li>
+    <li>Bank now available in invoice bank dropdown</li>
+    <li>UPI QR will auto-generate on invoices</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 8: Adding New Raw Material</div>
+  <p><strong>Situation:</strong> New additive to be used in production</p>
+  <ol>
+    <li>Go to Raw Materials</li>
+    <li>Click "Add New"</li>
+    <li>Enter:
+      <ul>
+        <li>Name: Anti-Foam Additive AF-100</li>
+        <li>Category: Additives</li>
+        <li>UOM: Liters</li>
+        <li>Reorder Level: 50 L</li>
+        <li>HSN Code: 38112100</li>
+      </ul>
+    </li>
+    <li>Save material</li>
+    <li>Material available for:
+      <ul>
+        <li>Purchase orders</li>
+        <li>BOM configuration</li>
+        <li>Stock management</li>
+      </ul>
+    </li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 9: HSN Code Verification</div>
+  <p><strong>Situation:</strong> Unsure about correct HSN code for product</p>
+  <ol>
+    <li>Go to GST Portal (gst.gov.in)</li>
+    <li>Search HSN/SAC codes</li>
+    <li>Enter product description</li>
+    <li>Find matching HSN code</li>
+    <li>Note GST rate for that HSN</li>
+    <li>Update product in system:
+      <ul>
+        <li>HSN Code: 27101980</li>
+        <li>GST Rate: 18%</li>
+      </ul>
+    </li>
+    <li>Correct HSN ensures proper GST filing</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 10: Changing Customer Credit Limit</div>
+  <p><strong>Situation:</strong> Good customer requests higher credit</p>
+  <ol>
+    <li>Review customer's payment history</li>
+    <li>Check current outstanding</li>
+    <li>Get management approval</li>
+    <li>Go to Vendor/Customer Management</li>
+    <li>Find customer</li>
+    <li>Click "Edit"</li>
+    <li>Update Credit Limit: ₹5,00,000 → ₹8,00,000</li>
+    <li>Save changes</li>
+    <li>Customer can now order more without warnings</li>
+  </ol>
+</div>
+
 <hr>
 <div style="text-align: center; margin-top: 40px; padding: 20px; background-color: #f5f5f5;">
   <p><strong>KINTO Operations & QA Management System</strong></p>

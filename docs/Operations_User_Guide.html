@@ -554,6 +554,118 @@ Return Initiated &rarr; Quality Check &rarr; Disposition Decision &rarr; Complet
   </ol>
 </div>
 
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 9: Purchase Order Amendment</div>
+  <p><strong>Situation:</strong> Vendor can only supply 80 of 100 ordered drums</p>
+  <ol>
+    <li>Open existing PO</li>
+    <li>Click "Amend PO"</li>
+    <li>Change quantity from 100 to 80</li>
+    <li>Add amendment reason: "Vendor stock shortage"</li>
+    <li>Save amendment</li>
+    <li>PO shows amendment history</li>
+    <li>Options for remaining 20:
+      <ul>
+        <li>Create new PO for later delivery</li>
+        <li>Source from alternate vendor</li>
+        <li>Cancel remaining quantity</li>
+      </ul>
+    </li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 10: GRN Discrepancy Handling</div>
+  <p><strong>Situation:</strong> PO for 100 drums, received 98 (2 damaged in transit)</p>
+  <ol>
+    <li>Open PO → Click "Receive Goods"</li>
+    <li>Enter received qty: 98 (instead of 100)</li>
+    <li>Short receipt reason: "Transit damage"</li>
+    <li>Upload photos of damaged drums</li>
+    <li>Complete GRN for 98</li>
+    <li>Inventory updated for 98 only</li>
+    <li>System prompts: "Create Debit Note?"</li>
+    <li>Click Yes → Debit Note created for 2 drums</li>
+    <li>Send to vendor for credit/replacement</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 11: Stock Transfer Between Locations</div>
+  <p><strong>Situation:</strong> Move 50 cases from Main Warehouse to Dispatch Area</p>
+  <ol>
+    <li>Go to Inventory → Stock Transfer</li>
+    <li>From Location: Main Warehouse</li>
+    <li>To Location: Dispatch Area</li>
+    <li>Select product and batch</li>
+    <li>Enter quantity: 50</li>
+    <li>Purpose: "Pre-staging for dispatch"</li>
+    <li>Confirm transfer</li>
+    <li>Stock deducted from Main Warehouse</li>
+    <li>Stock added to Dispatch Area</li>
+    <li>Transfer record maintained</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 12: Inventory Adjustment (Shortage)</div>
+  <p><strong>Situation:</strong> Physical count shows 5 cases less than system</p>
+  <ol>
+    <li>Go to Inventory → Adjustments</li>
+    <li>Click "New Adjustment"</li>
+    <li>Type: Negative (shortage)</li>
+    <li>Product: Select product</li>
+    <li>Batch: Select affected batch</li>
+    <li>Quantity: -5</li>
+    <li>Reason: "Physical count variance"</li>
+    <li>Reference: Stock count sheet number</li>
+    <li>Attach count sheet photo</li>
+    <li>Submit for approval</li>
+    <li>Manager approves</li>
+    <li>Inventory reduced by 5</li>
+    <li>Adjustment logged in audit trail</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 13: E-Way Bill Generation</div>
+  <p><strong>Situation:</strong> Dispatching goods worth ₹55,000 (requires e-way bill)</p>
+  <ol>
+    <li>Create invoice (₹55,000 > ₹50,000 threshold)</li>
+    <li>System prompts: "E-Way Bill required"</li>
+    <li>Enter transport details:
+      <ul>
+        <li>Vehicle number</li>
+        <li>Transporter ID (if applicable)</li>
+        <li>Distance in km</li>
+      </ul>
+    </li>
+    <li>Click "Generate E-Way Bill"</li>
+    <li>E-Way Bill number generated</li>
+    <li>Valid for specified duration based on distance</li>
+    <li>E-Way Bill prints with gatepass</li>
+    <li>Driver carries both documents</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 14: Quality Hold Release</div>
+  <p><strong>Situation:</strong> Production batch pending QC approval for dispatch</p>
+  <ol>
+    <li>Sales team creates invoice for new batch</li>
+    <li>System shows: "Batch pending QC approval"</li>
+    <li>Cannot create gatepass until approved</li>
+    <li>QC team completes testing</li>
+    <li>Go to Finished Goods → Pending QC</li>
+    <li>Find the batch</li>
+    <li>Enter test results</li>
+    <li>Click "Approve"</li>
+    <li>Batch status: "Approved for Sale"</li>
+    <li>Sales team can now create gatepass</li>
+    <li>Dispatch proceeds normally</li>
+  </ol>
+</div>
+
 <hr>
 <div style="text-align: center; margin-top: 40px; padding: 20px; background-color: #f5f5f5;">
   <p><strong>KINTO Operations & QA Management System</strong></p>

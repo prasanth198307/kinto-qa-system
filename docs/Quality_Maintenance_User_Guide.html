@@ -607,6 +607,155 @@ Plan Created &rarr; Task Generated &rarr; Assigned &rarr; In Progress &rarr; Com
   </ol>
 </div>
 
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 11: Machine Breakdown Logging</div>
+  <p><strong>Situation:</strong> Filling machine stops working unexpectedly</p>
+  <ol>
+    <li>Operator reports breakdown</li>
+    <li>Go to Machines → Select FM-01</li>
+    <li>Click "Log Breakdown"</li>
+    <li>Enter details:
+      <table>
+        <tr><th>Field</th><th>Value</th></tr>
+        <tr><td>Start Time</td><td>10:30 AM</td></tr>
+        <tr><td>Type</td><td>Mechanical</td></tr>
+        <tr><td>Description</td><td>Conveyor belt snapped</td></tr>
+        <tr><td>Production Loss</td><td>Yes</td></tr>
+      </table>
+    </li>
+    <li>Assign to technician</li>
+    <li>Technician repairs machine</li>
+    <li>Update: End Time = 12:15 PM</li>
+    <li>Total downtime: 1 hr 45 min logged</li>
+    <li>Spare parts used recorded</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 12: Calibration Due Alert</div>
+  <p><strong>Situation:</strong> Weighing scale calibration expiring in 7 days</p>
+  <ol>
+    <li>Dashboard shows alert: "Calibration Due"</li>
+    <li>Go to Machines → Weighing Scale WS-01</li>
+    <li>View calibration history</li>
+    <li>Schedule external calibration agency visit</li>
+    <li>After calibration:
+      <ul>
+        <li>Go to machine record</li>
+        <li>Click "Record Calibration"</li>
+        <li>Enter calibration date</li>
+        <li>Enter next due date</li>
+        <li>Attach calibration certificate</li>
+      </ul>
+    </li>
+    <li>Alert cleared</li>
+    <li>New alert scheduled for next due date</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 13: Finished Goods Quality Approval</div>
+  <p><strong>Situation:</strong> New production batch needs QC approval</p>
+  <ol>
+    <li>Production completes batch of 100 cases</li>
+    <li>Batch appears in Finished Goods → Pending QC</li>
+    <li>QC takes samples for testing</li>
+    <li>Run tests:
+      <ul>
+        <li>Viscosity: ✓ Pass</li>
+        <li>Flash Point: ✓ Pass</li>
+        <li>Appearance: ✓ Clear</li>
+        <li>Specific Gravity: ✓ Within range</li>
+      </ul>
+    </li>
+    <li>Open batch in system</li>
+    <li>Click "Approve for Sale"</li>
+    <li>Enter test results/certificate number</li>
+    <li>Batch status: "Approved"</li>
+    <li>Available for invoicing</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 14: Non-Conformance Recording</div>
+  <p><strong>Situation:</strong> Customer complaint about product quality</p>
+  <ol>
+    <li>Go to Quality → Non-Conformances</li>
+    <li>Click "New NCR"</li>
+    <li>Enter details:
+      <ul>
+        <li>Type: Customer Complaint</li>
+        <li>Product: Gear Oil 20L</li>
+        <li>Batch: B-2024-0125</li>
+        <li>Description: "Oil appears cloudy"</li>
+        <li>Customer: ABC Industries</li>
+      </ul>
+    </li>
+    <li>Assign to QC Manager</li>
+    <li>Investigation:
+      <ul>
+        <li>Check retained sample</li>
+        <li>Review production records</li>
+        <li>Check storage conditions</li>
+      </ul>
+    </li>
+    <li>Root cause: Water contamination during filling</li>
+    <li>Corrective action: Seal inspection procedure added</li>
+    <li>Close NCR with findings</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 15: Spare Parts Stock Take</div>
+  <p><strong>Situation:</strong> Monthly spare parts inventory count</p>
+  <ol>
+    <li>Go to Spare Parts Stock</li>
+    <li>Print current stock list</li>
+    <li>Physical count all items:
+      <table>
+        <tr><th>Item</th><th>System</th><th>Physical</th><th>Variance</th></tr>
+        <tr><td>V-Belt A68</td><td>12</td><td>12</td><td>0</td></tr>
+        <tr><td>Bearing 6205</td><td>8</td><td>7</td><td>-1</td></tr>
+        <tr><td>Oil Seal 25x40</td><td>15</td><td>15</td><td>0</td></tr>
+        <tr><td>Filter Element</td><td>6</td><td>5</td><td>-1</td></tr>
+      </table>
+    </li>
+    <li>For variances, create adjustments</li>
+    <li>Investigate missing items</li>
+    <li>Update stock accordingly</li>
+    <li>Document count results</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 16: PM Schedule Creation</div>
+  <p><strong>Situation:</strong> Setting up PM plan for new machine</p>
+  <ol>
+    <li>Ensure machine exists in Machines master</li>
+    <li>Go to Preventive Maintenance → Plans</li>
+    <li>Click "Create Plan"</li>
+    <li>Configure:
+      <ul>
+        <li>Machine: Compressor CP-01</li>
+        <li>PM Type: Routine Service</li>
+        <li>Frequency: Monthly</li>
+        <li>Checklist: Select "Compressor Monthly"</li>
+        <li>Assigned To: Maintenance Team</li>
+        <li>Estimated Duration: 2 hours</li>
+      </ul>
+    </li>
+    <li>Expected parts (auto-order):
+      <ul>
+        <li>Air Filter x1</li>
+        <li>Oil (if due)</li>
+      </ul>
+    </li>
+    <li>Save plan</li>
+    <li>First PM task generated automatically</li>
+    <li>Recurring tasks created per schedule</li>
+  </ol>
+</div>
+
 <hr>
 <div style="text-align: center; margin-top: 40px; padding: 20px; background-color: #f5f5f5;">
   <p><strong>KINTO Operations & QA Management System</strong></p>

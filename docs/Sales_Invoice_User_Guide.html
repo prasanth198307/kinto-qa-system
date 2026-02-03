@@ -957,6 +957,121 @@ CREATED &rarr; READY FOR DISPATCH &rarr; GATEPASS GENERATED &rarr; DISPATCHED &r
   <p><strong>Result:</strong> Invoice paid, advance balance now &#8377;5,000</p>
 </div>
 
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 8: Bulk Invoicing for Same Customer</div>
+  <p><strong>Situation:</strong> Customer orders 5 different products, wants single invoice</p>
+  <ol>
+    <li>Click "New Invoice"</li>
+    <li>Select customer</li>
+    <li>Add first product, enter quantity and rate</li>
+    <li>Click "Add Item" to add another row</li>
+    <li>Repeat for all 5 products</li>
+    <li>System calculates:
+      <table>
+        <tr><th>Product</th><th>Qty</th><th>Rate</th><th>Amount</th><th>GST</th></tr>
+        <tr><td>Gear Oil 20L</td><td>50</td><td>₹800</td><td>₹40,000</td><td>₹7,200</td></tr>
+        <tr><td>Engine Oil 5L</td><td>100</td><td>₹350</td><td>₹35,000</td><td>₹6,300</td></tr>
+        <tr><td>Hydraulic Oil 20L</td><td>30</td><td>₹950</td><td>₹28,500</td><td>₹5,130</td></tr>
+        <tr><td>Grease 1Kg</td><td>200</td><td>₹120</td><td>₹24,000</td><td>₹4,320</td></tr>
+        <tr><td>Coolant 5L</td><td>40</td><td>₹280</td><td>₹11,200</td><td>₹2,016</td></tr>
+        <tr><td colspan="3"><strong>Grand Total</strong></td><td><strong>₹1,38,700</strong></td><td><strong>₹24,966</strong></td></tr>
+      </table>
+    </li>
+    <li>Total Invoice: ₹1,63,666</li>
+    <li>Save and print consolidated invoice</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 9: Inter-State Invoice (IGST)</div>
+  <p><strong>Situation:</strong> Your company in Maharashtra, customer in Gujarat</p>
+  <ol>
+    <li>Create new invoice</li>
+    <li>Select customer (Gujarat state)</li>
+    <li>System detects inter-state sale</li>
+    <li>GST type automatically set to IGST</li>
+    <li>Add items with quantities</li>
+    <li>GST breakdown shows:
+      <ul>
+        <li>CGST: ₹0</li>
+        <li>SGST: ₹0</li>
+        <li>IGST: ₹7,200 (full 18%)</li>
+      </ul>
+    </li>
+    <li>Invoice prints with IGST column only</li>
+    <li>Customer's state code appears on invoice</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 10: Zero-Rated/Exempt GST Invoice</div>
+  <p><strong>Situation:</strong> Selling GST-exempt product or export sale</p>
+  <ol>
+    <li>Create new invoice</li>
+    <li>Select product with 0% GST rate</li>
+    <li>OR toggle "Export Sale" for export invoices</li>
+    <li>Add items</li>
+    <li>GST calculation shows:
+      <ul>
+        <li>Taxable Amount: ₹50,000</li>
+        <li>GST (0%): ₹0</li>
+        <li>Total: ₹50,000</li>
+      </ul>
+    </li>
+    <li>For exports: Add shipping details, LUT number</li>
+    <li>Invoice clearly marked as "Export Invoice"</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 11: Rush Order Same-Day Invoice</div>
+  <p><strong>Situation:</strong> Customer needs urgent order, invoice and delivery today</p>
+  <ol>
+    <li>Verify stock availability first</li>
+    <li>Create invoice with items</li>
+    <li>Save invoice - status "Ready for Dispatch"</li>
+    <li>Immediately create gatepass</li>
+    <li>Verify stock reserved for this invoice</li>
+    <li>Create gatepass - stock deducted</li>
+    <li>Print gatepass for driver</li>
+    <li>Mark as "Dispatched" → "In Transit" → "Delivered"</li>
+    <li>Collect payment (cash/UPI)</li>
+    <li>Record payment against invoice</li>
+    <li>Complete cycle in single day</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 12: Invoice with Transport Details</div>
+  <p><strong>Situation:</strong> Customer arranges own transport, need vehicle details on invoice</p>
+  <ol>
+    <li>Create invoice as normal</li>
+    <li>In Transport section:</li>
+    <li>Transport Mode: "Road"</li>
+    <li>Vehicle Number: "GJ-01-AB-1234"</li>
+    <li>Transporter Name: "Fast Cargo"</li>
+    <li>LR Number: "LR-2024-001"</li>
+    <li>Distance: "450 km"</li>
+    <li>Save invoice</li>
+    <li>Transport details appear on printed invoice</li>
+    <li>Useful for e-way bill generation</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 13: Viewing Customer's Invoice History</div>
+  <p><strong>Situation:</strong> Customer calls asking about past orders</p>
+  <ol>
+    <li>Go to Sales Invoice list</li>
+    <li>Use customer filter: Select customer name</li>
+    <li>All invoices for that customer displayed</li>
+    <li>Sort by date (newest first)</li>
+    <li>See invoice numbers, amounts, payment status</li>
+    <li>Click any invoice for full details</li>
+    <li>Share invoice copy if needed</li>
+  </ol>
+</div>
+
 <h1 id="troubleshoot">15. Troubleshooting & FAQs</h1>
 
 <h2>Common Issues</h2>
