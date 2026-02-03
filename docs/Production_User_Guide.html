@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Production Management - Complete User Guide</title>
+  <style>
+    body { font-family: 'Calibri', 'Arial', sans-serif; font-size: 11pt; line-height: 1.6; max-width: 800px; margin: 0 auto; padding: 40px; color: #333; }
+    h1 { font-size: 24pt; color: #e65100; border-bottom: 3px solid #e65100; padding-bottom: 10px; page-break-before: always; }
+    h1:first-of-type { page-break-before: avoid; }
+    h2 { font-size: 16pt; color: #ef6c00; margin-top: 30px; border-bottom: 1px solid #ccc; padding-bottom: 5px; }
+    h3 { font-size: 13pt; color: #f57c00; margin-top: 20px; }
+    table { border-collapse: collapse; width: 100%; margin: 15px 0; }
+    th, td { border: 1px solid #ccc; padding: 8px 12px; text-align: left; }
+    th { background-color: #fff3e0; font-weight: bold; }
+    tr:nth-child(even) { background-color: #fafafa; }
+    .header-section { text-align: center; margin-bottom: 40px; padding: 30px; background: linear-gradient(135deg, #e65100 0%, #ef6c00 100%); color: white; border-radius: 10px; }
+    .header-section h1 { color: white; border-bottom: none; margin: 0; }
+    .note-box { background-color: #fff8e6; border-left: 4px solid #f0ad4e; padding: 15px; margin: 15px 0; }
+    .tip-box { background-color: #e8f5e9; border-left: 4px solid #4caf50; padding: 15px; margin: 15px 0; }
+    .warning-box { background-color: #ffebee; border-left: 4px solid #f44336; padding: 15px; margin: 15px 0; }
+    .step-box { background-color: #f8f9fa; border: 1px solid #e0e0e0; padding: 15px; margin: 10px 0; border-radius: 5px; }
+    .step-number { display: inline-block; background-color: #e65100; color: white; width: 25px; height: 25px; text-align: center; border-radius: 50%; margin-right: 10px; font-weight: bold; }
+    .toc { background-color: #fff3e0; padding: 20px 30px; border-radius: 5px; margin: 20px 0; }
+    .workflow-diagram { background-color: #f5f5f5; padding: 20px; font-family: 'Courier New', monospace; font-size: 10pt; border-radius: 5px; }
+    .scenario-box { background-color: #fff3e0; border: 1px solid #ffcc80; padding: 20px; margin: 20px 0; border-radius: 8px; }
+    .scenario-title { font-weight: bold; color: #e65100; font-size: 12pt; margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+
+<div class="header-section">
+  <h1>Production Management</h1>
+  <h2 style="color: white; border: none; margin-top: 10px;">Complete User Guide</h2>
+  <p>Raw Material Issuance, Production Entry & Reconciliation</p>
+  <p>Version 1.0 | February 2024</p>
+</div>
+
+<div class="toc">
+  <h2>Table of Contents</h2>
+  <ol>
+    <li><a href="#overview">Production Overview</a></li>
+    <li><a href="#issuance">Raw Material Issuance</a></li>
+    <li><a href="#production">Production Entry</a></li>
+    <li><a href="#reconciliation">Production Reconciliation</a></li>
+    <li><a href="#variance">Variance Analytics</a></li>
+    <li><a href="#finished-goods">Finished Goods Approval</a></li>
+    <li><a href="#scenarios">Common Scenarios</a></li>
+  </ol>
+</div>
+
+<h1 id="overview">1. Production Overview</h1>
+
+<h2>Production Workflow</h2>
+<div class="workflow-diagram">
+Select Product &rarr; Select BOM &rarr; Issue Raw Materials &rarr; Manufacture &rarr; Enter Production &rarr; Quality Check &rarr; Approve Finished Goods &rarr; Available for Sale
+</div>
+
+<h2>Key Concepts</h2>
+<table>
+  <tr><th>Concept</th><th>Description</th></tr>
+  <tr><td>BOM</td><td>Bill of Materials - recipe defining raw materials needed</td></tr>
+  <tr><td>Issuance</td><td>Raw materials taken from inventory for production</td></tr>
+  <tr><td>Production Entry</td><td>Recording finished goods manufactured</td></tr>
+  <tr><td>Variance</td><td>Difference between expected and actual material usage</td></tr>
+  <tr><td>Reconciliation</td><td>Daily matching of issued vs. consumed materials</td></tr>
+</table>
+
+<h1 id="issuance">2. Raw Material Issuance</h1>
+
+<h2>Overview</h2>
+<p>Raw Material Issuance transfers materials from inventory to production floor. It is BOM-driven and supports multiple BOMs per product.</p>
+
+<h2>Accessing Issuance</h2>
+<p><strong>Navigation:</strong> Dashboard &rarr; Raw Material Issuance Tab OR Sidebar &rarr; Production Management</p>
+
+<h2>Creating an Issuance</h2>
+
+<div class="step-box">
+  <span class="step-number">1</span>
+  Click <strong>"New Issuance"</strong>
+</div>
+
+<div class="step-box">
+  <span class="step-number">2</span>
+  Set Issuance Details:
+  <ul>
+    <li>Date (default: today)</li>
+    <li>Issued To (free text - operator name or department)</li>
+  </ul>
+</div>
+
+<div class="step-box">
+  <span class="step-number">3</span>
+  Select Product:
+  <ul>
+    <li>Choose the finished product being manufactured</li>
+    <li>Product must have at least one active BOM</li>
+  </ul>
+</div>
+
+<div class="step-box">
+  <span class="step-number">4</span>
+  <strong>Select BOM:</strong>
+  <ul>
+    <li>Dropdown shows all active BOMs for the product</li>
+    <li>You must explicitly select - no auto-selection</li>
+    <li>Different BOMs may use different ingredients</li>
+  </ul>
+</div>
+
+<div class="note-box">
+  <strong>Important:</strong> BOM selection is mandatory and explicit. The system will not auto-select a default BOM. You must consciously choose which recipe to use.
+</div>
+
+<div class="step-box">
+  <span class="step-number">5</span>
+  Enter Production Quantity:
+  <ul>
+    <li>How many units are you planning to produce?</li>
+    <li>System calculates required materials based on BOM</li>
+  </ul>
+</div>
+
+<div class="step-box">
+  <span class="step-number">6</span>
+  Review Material Requirements:
+  <ul>
+    <li>System shows required quantities per BOM</li>
+    <li>Green = sufficient stock available</li>
+    <li>Red = insufficient stock</li>
+  </ul>
+</div>
+
+<div class="step-box">
+  <span class="step-number">7</span>
+  FIFO Batch Allocation:
+  <ul>
+    <li>Materials are allocated from oldest batches first</li>
+    <li>View batch breakdown for each material</li>
+    <li>System may use multiple batches to fulfill requirement</li>
+  </ul>
+</div>
+
+<div class="step-box">
+  <span class="step-number">8</span>
+  Click <strong>"Issue Materials"</strong>
+</div>
+
+<h2>Issuance Fields</h2>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Description</th></tr>
+  <tr><td>Issuance Number</td><td>Auto</td><td>System-generated unique ID</td></tr>
+  <tr><td>Date</td><td>Yes</td><td>Date of issuance</td></tr>
+  <tr><td>Issued To</td><td>Yes</td><td>Free text - operator/department name</td></tr>
+  <tr><td>Product</td><td>Yes</td><td>Finished good being produced</td></tr>
+  <tr><td>BOM</td><td>Yes</td><td>Selected recipe/formula</td></tr>
+  <tr><td>Planned Quantity</td><td>Yes</td><td>Number of units to produce</td></tr>
+  <tr><td>Status</td><td>Auto</td><td>Pending/Completed/Cancelled</td></tr>
+</table>
+
+<h2>Multi-BOM Selection</h2>
+<p>When a product has multiple BOMs:</p>
+<table>
+  <tr><th>BOM Name</th><th>Use Case</th></tr>
+  <tr><td>Standard</td><td>Normal production run</td></tr>
+  <tr><td>Economy</td><td>Cost-saving formula with alternate ingredients</td></tr>
+  <tr><td>Premium</td><td>Higher quality ingredients</td></tr>
+  <tr><td>Export</td><td>Modified formula for export requirements</td></tr>
+</table>
+
+<h2>FIFO Batch Breakdown</h2>
+<p>Example: Need 100 Kg of Base Oil</p>
+<table>
+  <tr><th>Batch</th><th>Available</th><th>Allocated</th></tr>
+  <tr><td>Batch-001 (Jan 10)</td><td>60 Kg</td><td>60 Kg</td></tr>
+  <tr><td>Batch-002 (Jan 15)</td><td>80 Kg</td><td>40 Kg</td></tr>
+  <tr><td><strong>Total</strong></td><td>140 Kg</td><td><strong>100 Kg</strong></td></tr>
+</table>
+
+<h1 id="production">3. Production Entry</h1>
+
+<h2>Overview</h2>
+<p>Production Entry records finished goods manufactured from issued raw materials.</p>
+
+<h2>Creating Production Entry</h2>
+
+<div class="step-box">
+  <span class="step-number">1</span>
+  Navigate to Production Management
+</div>
+
+<div class="step-box">
+  <span class="step-number">2</span>
+  Click <strong>"Record Production"</strong>
+</div>
+
+<div class="step-box">
+  <span class="step-number">3</span>
+  Link to Issuance (optional):
+  <ul>
+    <li>Select related issuance for variance tracking</li>
+    <li>Or record standalone production</li>
+  </ul>
+</div>
+
+<div class="step-box">
+  <span class="step-number">4</span>
+  Enter Production Details:
+  <ul>
+    <li>Product manufactured</li>
+    <li>Quantity produced</li>
+    <li>Batch number (for traceability)</li>
+    <li>Production date</li>
+  </ul>
+</div>
+
+<div class="step-box">
+  <span class="step-number">5</span>
+  Quality Status:
+  <ul>
+    <li>Pending QC (default)</li>
+    <li>QC Passed</li>
+    <li>QC Failed</li>
+  </ul>
+</div>
+
+<div class="step-box">
+  <span class="step-number">6</span>
+  Click <strong>"Save Production"</strong>
+</div>
+
+<h2>Variance Analysis</h2>
+<p>When linked to an issuance, system calculates variance:</p>
+<table>
+  <tr><th>Metric</th><th>Formula</th></tr>
+  <tr><td>Expected Output</td><td>Issuance Planned Quantity</td></tr>
+  <tr><td>Actual Output</td><td>Production Entry Quantity</td></tr>
+  <tr><td>Variance</td><td>Actual - Expected</td></tr>
+  <tr><td>Variance %</td><td>(Variance / Expected) x 100</td></tr>
+</table>
+
+<h1 id="reconciliation">4. Production Reconciliation</h1>
+
+<h2>Overview</h2>
+<p>End-of-day reconciliation matches issued materials against actual consumption. It identifies variances and helps control wastage.</p>
+
+<h2>Accessing Reconciliation</h2>
+<p><strong>Navigation:</strong> Sidebar &rarr; Reports &rarr; Production Reconciliation</p>
+
+<h2>Reconciliation Process</h2>
+
+<div class="step-box">
+  <span class="step-number">1</span>
+  Select Date (or date range)
+</div>
+
+<div class="step-box">
+  <span class="step-number">2</span>
+  Review Summary:
+  <ul>
+    <li>Total materials issued</li>
+    <li>Total production recorded</li>
+    <li>Expected consumption vs. actual</li>
+  </ul>
+</div>
+
+<div class="step-box">
+  <span class="step-number">3</span>
+  For each material, enter:
+  <ul>
+    <li>Actual consumption (if different from calculated)</li>
+    <li>Reason for variance (if any)</li>
+  </ul>
+</div>
+
+<div class="step-box">
+  <span class="step-number">4</span>
+  Submit Reconciliation
+</div>
+
+<h2>Reconciliation Fields</h2>
+<table>
+  <tr><th>Field</th><th>Description</th></tr>
+  <tr><td>Date</td><td>Reconciliation date</td></tr>
+  <tr><td>Material</td><td>Raw material name</td></tr>
+  <tr><td>Opening</td><td>Stock at start of day</td></tr>
+  <tr><td>Issued</td><td>Materials issued during day</td></tr>
+  <tr><td>Consumed (Calculated)</td><td>Based on production entries</td></tr>
+  <tr><td>Consumed (Actual)</td><td>Physical count / adjustment</td></tr>
+  <tr><td>Closing</td><td>Stock at end of day</td></tr>
+  <tr><td>Variance</td><td>Difference requiring explanation</td></tr>
+</table>
+
+<h1 id="variance">5. Variance Analytics</h1>
+
+<h2>Overview</h2>
+<p>Variance Analytics Dashboard provides insights into production efficiency and material usage patterns.</p>
+
+<h2>Accessing Analytics</h2>
+<p><strong>Navigation:</strong> Sidebar &rarr; Reports &rarr; Variance Analytics</p>
+
+<h2>Dashboard Metrics</h2>
+<table>
+  <tr><th>Metric</th><th>Description</th><th>Target</th></tr>
+  <tr><td>Overall Variance %</td><td>Average variance across all production</td><td>&lt; 2%</td></tr>
+  <tr><td>Wastage %</td><td>Material loss during production</td><td>Within BOM loss %</td></tr>
+  <tr><td>Production Efficiency</td><td>Actual vs. planned output</td><td>&gt; 95%</td></tr>
+  <tr><td>BOM Accuracy</td><td>How well BOM predicts actual usage</td><td>&gt; 98%</td></tr>
+</table>
+
+<h2>Variance Types</h2>
+<table>
+  <tr><th>Type</th><th>Cause</th><th>Action</th></tr>
+  <tr><td>Positive</td><td>Produced more than expected</td><td>Review BOM accuracy</td></tr>
+  <tr><td>Negative</td><td>Produced less than expected</td><td>Investigate wastage</td></tr>
+  <tr><td>Material Variance</td><td>Used more/less material</td><td>Check weighing accuracy</td></tr>
+</table>
+
+<h1 id="finished-goods">6. Finished Goods Approval</h1>
+
+<h2>Overview</h2>
+<p>Finished goods require quality approval before they can be sold. This ensures only quality-checked products are invoiced.</p>
+
+<h2>Accessing Finished Goods</h2>
+<p><strong>Navigation:</strong> Sidebar &rarr; Inventory Management &rarr; Finished Goods Tab</p>
+
+<h2>Approval Workflow</h2>
+<div class="workflow-diagram">
+Production Entry &rarr; Pending QC &rarr; Quality Check &rarr; Approved/Rejected &rarr; Available for Sale
+</div>
+
+<h2>Approving Finished Goods</h2>
+
+<div class="step-box">
+  <span class="step-number">1</span>
+  Go to Finished Goods tab
+</div>
+
+<div class="step-box">
+  <span class="step-number">2</span>
+  Filter by "Pending Approval" status
+</div>
+
+<div class="step-box">
+  <span class="step-number">3</span>
+  Select batch(es) to approve
+</div>
+
+<div class="step-box">
+  <span class="step-number">4</span>
+  Click <strong>"Approve"</strong> or <strong>"Reject"</strong>
+</div>
+
+<div class="step-box">
+  <span class="step-number">5</span>
+  If rejecting, enter reason
+</div>
+
+<h2>Stock Visibility</h2>
+<table>
+  <tr><th>Status</th><th>Available for Invoice?</th><th>Shown in Stock?</th></tr>
+  <tr><td>Pending QC</td><td>No</td><td>Yes (as pending)</td></tr>
+  <tr><td>Approved</td><td>Yes</td><td>Yes (as available)</td></tr>
+  <tr><td>Rejected</td><td>No</td><td>Yes (as rejected)</td></tr>
+</table>
+
+<h2>Consolidated View</h2>
+<p>The Finished Goods tab includes a "Consolidated" toggle:</p>
+<ul>
+  <li><strong>Detailed View:</strong> Shows each inventory record separately</li>
+  <li><strong>Consolidated View:</strong> Groups by product and batch number</li>
+  <li>Shows source breakdown: Production / Restock / Repack</li>
+  <li>Expandable to see individual records</li>
+</ul>
+
+<h1 id="scenarios">7. Common Scenarios</h1>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 1: Standard Production Run</div>
+  <p><strong>Situation:</strong> Produce 100 cases of Engine Oil 5W-30</p>
+  <ol>
+    <li>Create new Raw Material Issuance</li>
+    <li>Select product: "Engine Oil 5W-30"</li>
+    <li>Select BOM: "Standard Formula"</li>
+    <li>Enter quantity: 100 cases</li>
+    <li>Review material requirements (base oil, additives, etc.)</li>
+    <li>Confirm FIFO batch allocation</li>
+    <li>Issue materials - inventory decreases</li>
+    <li>After manufacturing, record production entry</li>
+    <li>Enter batch number for traceability</li>
+    <li>Quality team approves finished goods</li>
+    <li>100 cases now available for sale</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 2: Using Economy BOM</div>
+  <p><strong>Situation:</strong> Cost reduction needed - use alternate formula</p>
+  <ol>
+    <li>Create issuance</li>
+    <li>Select product</li>
+    <li>From BOM dropdown, select "Economy Formula"</li>
+    <li>Note: Different materials may be required</li>
+    <li>Proceed with issuance and production</li>
+    <li>Mark finished goods with formula identifier</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 3: Production Variance Investigation</div>
+  <p><strong>Situation:</strong> Produced 95 cases instead of expected 100</p>
+  <ol>
+    <li>Check reconciliation report</li>
+    <li>Identify variance: -5 cases (5%)</li>
+    <li>Investigate causes:
+      <ul>
+        <li>Weighing accuracy?</li>
+        <li>Material quality issues?</li>
+        <li>Equipment problems?</li>
+        <li>Operator error?</li>
+      </ul>
+    </li>
+    <li>Document findings in variance remarks</li>
+    <li>If BOM is inaccurate, update loss percentage</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 4: Multi-Batch Material Issuance</div>
+  <p><strong>Situation:</strong> Need 500 Kg base oil, but spread across batches</p>
+  <ol>
+    <li>Create issuance as normal</li>
+    <li>System shows FIFO allocation:
+      <ul>
+        <li>Batch A (oldest): 200 Kg</li>
+        <li>Batch B: 300 Kg</li>
+      </ul>
+    </li>
+    <li>Review allocation before confirming</li>
+    <li>Issue materials - both batches depleted accordingly</li>
+    <li>Issuance shows batch breakdown for records</li>
+  </ol>
+</div>
+
+<div class="scenario-box">
+  <div class="scenario-title">Scenario 5: Quality Rejection</div>
+  <p><strong>Situation:</strong> QC finds defects in produced batch</p>
+  <ol>
+    <li>Go to Finished Goods</li>
+    <li>Find the batch in "Pending QC"</li>
+    <li>Click "Reject"</li>
+    <li>Enter reason: "Viscosity out of spec"</li>
+    <li>Batch marked as rejected</li>
+    <li>Not available for invoicing</li>
+    <li>Investigate and decide: rework or scrap</li>
+  </ol>
+</div>
+
+<hr>
+<div style="text-align: center; margin-top: 40px; padding: 20px; background-color: #f5f5f5;">
+  <p><strong>KINTO Operations & QA Management System</strong></p>
+  <p>Production Management - User Guide</p>
+  <p>Version 1.0 | February 2024</p>
+</div>
+
+</body>
+</html>

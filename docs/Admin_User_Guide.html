@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Administration - Complete User Guide</title>
+  <style>
+    body { font-family: 'Calibri', 'Arial', sans-serif; font-size: 11pt; line-height: 1.6; max-width: 800px; margin: 0 auto; padding: 40px; color: #333; }
+    h1 { font-size: 24pt; color: #37474f; border-bottom: 3px solid #37474f; padding-bottom: 10px; page-break-before: always; }
+    h1:first-of-type { page-break-before: avoid; }
+    h2 { font-size: 16pt; color: #455a64; margin-top: 30px; border-bottom: 1px solid #ccc; padding-bottom: 5px; }
+    h3 { font-size: 13pt; color: #546e7a; margin-top: 20px; }
+    table { border-collapse: collapse; width: 100%; margin: 15px 0; }
+    th, td { border: 1px solid #ccc; padding: 8px 12px; text-align: left; }
+    th { background-color: #eceff1; font-weight: bold; }
+    tr:nth-child(even) { background-color: #fafafa; }
+    .header-section { text-align: center; margin-bottom: 40px; padding: 30px; background: linear-gradient(135deg, #37474f 0%, #455a64 100%); color: white; border-radius: 10px; }
+    .header-section h1 { color: white; border-bottom: none; margin: 0; }
+    .note-box { background-color: #fff8e6; border-left: 4px solid #f0ad4e; padding: 15px; margin: 15px 0; }
+    .tip-box { background-color: #e8f5e9; border-left: 4px solid #4caf50; padding: 15px; margin: 15px 0; }
+    .warning-box { background-color: #ffebee; border-left: 4px solid #f44336; padding: 15px; margin: 15px 0; }
+    .step-box { background-color: #f8f9fa; border: 1px solid #e0e0e0; padding: 15px; margin: 10px 0; border-radius: 5px; }
+    .step-number { display: inline-block; background-color: #37474f; color: white; width: 25px; height: 25px; text-align: center; border-radius: 50%; margin-right: 10px; font-weight: bold; }
+    .toc { background-color: #eceff1; padding: 20px 30px; border-radius: 5px; margin: 20px 0; }
+  </style>
+</head>
+<body>
+
+<div class="header-section">
+  <h1>Administration</h1>
+  <h2 style="color: white; border: none; margin-top: 10px;">Complete User Guide</h2>
+  <p>Users, Roles, Permissions & System Settings</p>
+  <p>Version 1.0 | February 2024</p>
+</div>
+
+<div class="toc">
+  <h2>Table of Contents</h2>
+  <ol>
+    <li><a href="#users">User Management</a></li>
+    <li><a href="#roles">Role Management</a></li>
+    <li><a href="#permissions">Permissions</a></li>
+    <li><a href="#settings">System Settings</a></li>
+    <li><a href="#audit">Audit & Security</a></li>
+  </ol>
+</div>
+
+<h1 id="users">1. User Management</h1>
+
+<h2>Overview</h2>
+<p>User Management controls who can access the system and what they can do.</p>
+
+<h2>Accessing Users</h2>
+<p><strong>Navigation:</strong> Sidebar &rarr; Admin &rarr; Users</p>
+
+<h2>User Fields</h2>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Description</th></tr>
+  <tr><td>Username</td><td>Yes</td><td>Unique login name</td></tr>
+  <tr><td>Email</td><td>Yes</td><td>For notifications and login</td></tr>
+  <tr><td>Full Name</td><td>Yes</td><td>Display name</td></tr>
+  <tr><td>Password</td><td>Yes</td><td>Secure password</td></tr>
+  <tr><td>Role</td><td>Yes</td><td>Assigned role(s)</td></tr>
+  <tr><td>Phone</td><td>No</td><td>Contact number</td></tr>
+  <tr><td>WhatsApp</td><td>No</td><td>For WhatsApp integration</td></tr>
+  <tr><td>Status</td><td>Yes</td><td>Active/Inactive</td></tr>
+</table>
+
+<h2>Creating a User</h2>
+
+<div class="step-box">
+  <span class="step-number">1</span>
+  Click <strong>"Add User"</strong>
+</div>
+
+<div class="step-box">
+  <span class="step-number">2</span>
+  Enter User Details:
+  <ul>
+    <li>Username (unique, no spaces)</li>
+    <li>Email address</li>
+    <li>Full name</li>
+    <li>Phone number</li>
+  </ul>
+</div>
+
+<div class="step-box">
+  <span class="step-number">3</span>
+  Set Password:
+  <ul>
+    <li>Strong password required</li>
+    <li>Minimum 8 characters</li>
+  </ul>
+</div>
+
+<div class="step-box">
+  <span class="step-number">4</span>
+  Assign Role(s):
+  <ul>
+    <li>Select one or more roles</li>
+    <li>Roles determine permissions</li>
+  </ul>
+</div>
+
+<div class="step-box">
+  <span class="step-number">5</span>
+  Click <strong>"Save"</strong>
+</div>
+
+<h2>Editing a User</h2>
+<ol>
+  <li>Find user in list</li>
+  <li>Click Edit icon</li>
+  <li>Modify required fields</li>
+  <li>Save changes</li>
+</ol>
+
+<h2>Deactivating a User</h2>
+<ol>
+  <li>Edit the user</li>
+  <li>Toggle Status to "Inactive"</li>
+  <li>Save</li>
+</ol>
+
+<div class="note-box">
+  <strong>Note:</strong> Deactivated users cannot log in but their data and audit trail are preserved.
+</div>
+
+<h2>Password Reset</h2>
+<ol>
+  <li>Edit the user</li>
+  <li>Click "Reset Password"</li>
+  <li>Enter new password</li>
+  <li>Save</li>
+</ol>
+
+<h1 id="roles">2. Role Management</h1>
+
+<h2>Overview</h2>
+<p>Roles group permissions together. Users are assigned roles, and roles determine what screens and actions they can access.</p>
+
+<h2>Accessing Roles</h2>
+<p><strong>Navigation:</strong> Sidebar &rarr; Admin &rarr; Roles</p>
+
+<h2>Default Roles</h2>
+<table>
+  <tr><th>Role</th><th>Description</th><th>Typical Users</th></tr>
+  <tr><td>Admin</td><td>Full system access</td><td>System administrators</td></tr>
+  <tr><td>Manager</td><td>Operations and reporting</td><td>Department heads</td></tr>
+  <tr><td>Accounts</td><td>Financial operations</td><td>Accountants, Finance team</td></tr>
+  <tr><td>Sales</td><td>Sales and invoicing</td><td>Sales staff</td></tr>
+  <tr><td>Production</td><td>Production operations</td><td>Production supervisors</td></tr>
+  <tr><td>Store</td><td>Inventory management</td><td>Store keepers</td></tr>
+  <tr><td>Quality</td><td>QA and checklists</td><td>Quality inspectors</td></tr>
+  <tr><td>Operator</td><td>Basic data entry</td><td>Machine operators</td></tr>
+</table>
+
+<h2>Creating a Role</h2>
+
+<div class="step-box">
+  <span class="step-number">1</span>
+  Click <strong>"Add Role"</strong>
+</div>
+
+<div class="step-box">
+  <span class="step-number">2</span>
+  Enter Role Details:
+  <ul>
+    <li>Role Name</li>
+    <li>Description</li>
+  </ul>
+</div>
+
+<div class="step-box">
+  <span class="step-number">3</span>
+  Configure Permissions (see next section)
+</div>
+
+<div class="step-box">
+  <span class="step-number">4</span>
+  Click <strong>"Save"</strong>
+</div>
+
+<h1 id="permissions">3. Permissions</h1>
+
+<h2>Overview</h2>
+<p>Permissions control access to specific screens and actions. They are assigned to roles, not directly to users.</p>
+
+<h2>Permission Structure</h2>
+<p>Each screen has multiple permission levels:</p>
+<table>
+  <tr><th>Level</th><th>Allows</th></tr>
+  <tr><td>View</td><td>See the screen and data</td></tr>
+  <tr><td>Create</td><td>Add new records</td></tr>
+  <tr><td>Edit</td><td>Modify existing records</td></tr>
+  <tr><td>Delete</td><td>Remove records</td></tr>
+  <tr><td>Approve</td><td>Approve/reject items</td></tr>
+  <tr><td>Export</td><td>Export data</td></tr>
+</table>
+
+<h2>Screen Categories</h2>
+
+<h3>Sales & Invoicing</h3>
+<ul>
+  <li>invoices - Sales Invoice management</li>
+  <li>credit_notes - Credit note creation</li>
+  <li>debit_notes - Debit note management</li>
+  <li>pending_payments - View pending payments</li>
+</ul>
+
+<h3>Operations</h3>
+<ul>
+  <li>gatepasses - Gatepass management</li>
+  <li>dispatch_tracking - Dispatch status</li>
+  <li>purchase_orders - PO management</li>
+  <li>sales_returns - Returns processing</li>
+</ul>
+
+<h3>Production</h3>
+<ul>
+  <li>raw_material_issuance - Material issuance</li>
+  <li>production_entry - Production recording</li>
+  <li>production_reconciliation - Daily reconciliation</li>
+  <li>variance_analytics - Variance reports</li>
+</ul>
+
+<h3>Inventory</h3>
+<ul>
+  <li>products - Product master</li>
+  <li>raw_materials - Material master</li>
+  <li>finished_goods - Finished goods inventory</li>
+  <li>spare_parts_stock - Spare parts inventory</li>
+</ul>
+
+<h3>Financial</h3>
+<ul>
+  <li>payments - Payment management</li>
+  <li>customer_advances - Advance tracking</li>
+  <li>expenses - Expense recording</li>
+  <li>cash_register - Daily cash management</li>
+  <li>write_off_report - Write-off access</li>
+</ul>
+
+<h3>Quality & Maintenance</h3>
+<ul>
+  <li>machines - Machine master</li>
+  <li>spare_parts - Spare parts master</li>
+  <li>checklists - Checklist completion</li>
+  <li>pm_execution - PM task execution</li>
+</ul>
+
+<h3>Administration</h3>
+<ul>
+  <li>users - User management</li>
+  <li>roles - Role management</li>
+  <li>vendors - Vendor master</li>
+  <li>settings - System settings</li>
+</ul>
+
+<h2>Configuring Role Permissions</h2>
+
+<div class="step-box">
+  <span class="step-number">1</span>
+  Open Role &rarr; Permissions Tab
+</div>
+
+<div class="step-box">
+  <span class="step-number">2</span>
+  For each screen:
+  <ul>
+    <li>Check permissions to grant</li>
+    <li>Uncheck to deny</li>
+  </ul>
+</div>
+
+<div class="step-box">
+  <span class="step-number">3</span>
+  Use "Select All" for quick setup
+</div>
+
+<div class="step-box">
+  <span class="step-number">4</span>
+  Click <strong>"Save Permissions"</strong>
+</div>
+
+<h2>Permission Examples</h2>
+
+<table>
+  <tr><th>Role</th><th>Typical Permissions</th></tr>
+  <tr>
+    <td>Sales</td>
+    <td>
+      <ul>
+        <li>invoices: view, create, edit</li>
+        <li>gatepasses: view</li>
+        <li>pending_payments: view</li>
+        <li>products: view</li>
+      </ul>
+    </td>
+  </tr>
+  <tr>
+    <td>Production</td>
+    <td>
+      <ul>
+        <li>raw_material_issuance: view, create</li>
+        <li>production_entry: view, create, edit</li>
+        <li>finished_goods: view</li>
+        <li>raw_materials: view</li>
+      </ul>
+    </td>
+  </tr>
+  <tr>
+    <td>Accounts</td>
+    <td>
+      <ul>
+        <li>invoices: view</li>
+        <li>payments: view, create, edit</li>
+        <li>credit_notes: view, create</li>
+        <li>expenses: view, create, edit</li>
+        <li>cash_register: view, create, edit</li>
+      </ul>
+    </td>
+  </tr>
+</table>
+
+<h1 id="settings">4. System Settings</h1>
+
+<h2>General Settings</h2>
+<p><strong>Navigation:</strong> Sidebar &rarr; Admin &rarr; Settings</p>
+
+<table>
+  <tr><th>Setting</th><th>Description</th></tr>
+  <tr><td>Company Name</td><td>Your organization name</td></tr>
+  <tr><td>Company Address</td><td>Registered address</td></tr>
+  <tr><td>GSTIN</td><td>GST registration number</td></tr>
+  <tr><td>Financial Year</td><td>Fiscal year start month</td></tr>
+  <tr><td>Date Format</td><td>DD-MM-YYYY or MM-DD-YYYY</td></tr>
+  <tr><td>Currency</td><td>Default currency (INR)</td></tr>
+</table>
+
+<h2>Invoice Settings</h2>
+<table>
+  <tr><th>Setting</th><th>Description</th></tr>
+  <tr><td>Invoice Prefix</td><td>Prefix for invoice numbers (e.g., INV-)</td></tr>
+  <tr><td>Invoice Number Format</td><td>Numbering pattern</td></tr>
+  <tr><td>Default Terms</td><td>Standard payment terms</td></tr>
+  <tr><td>Default Bank</td><td>Default bank for invoices</td></tr>
+</table>
+
+<h2>Notification Settings</h2>
+<table>
+  <tr><th>Setting</th><th>Description</th></tr>
+  <tr><td>Email Notifications</td><td>Enable/disable email alerts</td></tr>
+  <tr><td>WhatsApp Notifications</td><td>Enable/disable WhatsApp alerts</td></tr>
+  <tr><td>Low Stock Alerts</td><td>Threshold and recipients</td></tr>
+  <tr><td>Payment Reminders</td><td>Overdue payment alerts</td></tr>
+</table>
+
+<h1 id="audit">5. Audit & Security</h1>
+
+<h2>Audit Trail</h2>
+<p>System maintains audit trail for:</p>
+<ul>
+  <li>User logins/logouts</li>
+  <li>Record creation</li>
+  <li>Record modifications</li>
+  <li>Record deletions</li>
+  <li>Permission changes</li>
+  <li>Critical actions</li>
+</ul>
+
+<h2>Viewing Audit Logs</h2>
+<p><strong>Navigation:</strong> Sidebar &rarr; Admin &rarr; Audit Logs</p>
+
+<table>
+  <tr><th>Column</th><th>Description</th></tr>
+  <tr><td>Timestamp</td><td>When action occurred</td></tr>
+  <tr><td>User</td><td>Who performed action</td></tr>
+  <tr><td>Action</td><td>What was done</td></tr>
+  <tr><td>Entity</td><td>What was affected</td></tr>
+  <tr><td>Details</td><td>Additional information</td></tr>
+</table>
+
+<h2>Security Best Practices</h2>
+
+<div class="tip-box">
+  <strong>Recommended:</strong>
+  <ul>
+    <li>Use strong, unique passwords</li>
+    <li>Assign minimum required permissions</li>
+    <li>Regularly review user access</li>
+    <li>Deactivate unused accounts</li>
+    <li>Review audit logs periodically</li>
+    <li>Keep role definitions updated</li>
+  </ul>
+</div>
+
+<div class="warning-box">
+  <strong>Avoid:</strong>
+  <ul>
+    <li>Sharing login credentials</li>
+    <li>Giving admin access unnecessarily</li>
+    <li>Using weak passwords</li>
+    <li>Leaving inactive users active</li>
+  </ul>
+</div>
+
+<hr>
+<div style="text-align: center; margin-top: 40px; padding: 20px; background-color: #f5f5f5;">
+  <p><strong>KINTO Operations & QA Management System</strong></p>
+  <p>Administration - User Guide</p>
+  <p>Version 1.0 | February 2024</p>
+</div>
+
+</body>
+</html>

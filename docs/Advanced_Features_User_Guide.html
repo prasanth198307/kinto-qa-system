@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Advanced Features - Complete User Guide</title>
+  <style>
+    body { font-family: 'Calibri', 'Arial', sans-serif; font-size: 11pt; line-height: 1.6; max-width: 800px; margin: 0 auto; padding: 40px; color: #333; }
+    h1 { font-size: 24pt; color: #5d4037; border-bottom: 3px solid #5d4037; padding-bottom: 10px; page-break-before: always; }
+    h1:first-of-type { page-break-before: avoid; }
+    h2 { font-size: 16pt; color: #6d4c41; margin-top: 30px; border-bottom: 1px solid #ccc; padding-bottom: 5px; }
+    h3 { font-size: 13pt; color: #795548; margin-top: 20px; }
+    table { border-collapse: collapse; width: 100%; margin: 15px 0; }
+    th, td { border: 1px solid #ccc; padding: 8px 12px; text-align: left; }
+    th { background-color: #efebe9; font-weight: bold; }
+    tr:nth-child(even) { background-color: #fafafa; }
+    .header-section { text-align: center; margin-bottom: 40px; padding: 30px; background: linear-gradient(135deg, #5d4037 0%, #6d4c41 100%); color: white; border-radius: 10px; }
+    .header-section h1 { color: white; border-bottom: none; margin: 0; }
+    .note-box { background-color: #fff8e6; border-left: 4px solid #f0ad4e; padding: 15px; margin: 15px 0; }
+    .tip-box { background-color: #e8f5e9; border-left: 4px solid #4caf50; padding: 15px; margin: 15px 0; }
+    .warning-box { background-color: #ffebee; border-left: 4px solid #f44336; padding: 15px; margin: 15px 0; }
+    .step-box { background-color: #f8f9fa; border: 1px solid #e0e0e0; padding: 15px; margin: 10px 0; border-radius: 5px; }
+    .step-number { display: inline-block; background-color: #5d4037; color: white; width: 25px; height: 25px; text-align: center; border-radius: 50%; margin-right: 10px; font-weight: bold; }
+    .toc { background-color: #efebe9; padding: 20px 30px; border-radius: 5px; margin: 20px 0; }
+    .scenario-box { background-color: #efebe9; border: 1px solid #bcaaa4; padding: 20px; margin: 20px 0; border-radius: 8px; }
+    .scenario-title { font-weight: bold; color: #5d4037; font-size: 12pt; margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+
+<div class="header-section">
+  <h1>Advanced Features</h1>
+  <h2 style="color: white; border: none; margin-top: 10px;">Complete User Guide</h2>
+  <p>Data Import, Documents, Notifications & Specialized Workflows</p>
+  <p>Version 1.0 | February 2024</p>
+</div>
+
+<div class="toc">
+  <h2>Table of Contents</h2>
+  <ol>
+    <li><a href="#machine-reminders">Machine Startup Reminders</a></li>
+    <li><a href="#missed-checklists">Missed Checklist Notifications</a></li>
+    <li><a href="#cancel-reissue">Invoice Cancel & Reissue</a></li>
+    <li><a href="#cancelled-invoices">Cancelled Invoices Report</a></li>
+    <li><a href="#document-management">Document Management System</a></li>
+    <li><a href="#data-import">Vyapaar Data Import</a></li>
+    <li><a href="#vendor-history">Vendor History & Analytics</a></li>
+    <li><a href="#notifications">Notification Settings</a></li>
+  </ol>
+</div>
+
+<h1 id="machine-reminders">1. Machine Startup Reminders</h1>
+
+<h2>Overview</h2>
+<p>Machine Startup Reminders automatically send WhatsApp notifications to operators when machines need to be started and checklists completed.</p>
+
+<h2>Accessing Machine Startup Reminders</h2>
+<p><strong>Navigation:</strong> Sidebar &rarr; Admin &rarr; Machine Startup Reminders</p>
+
+<h2>Reminder Configuration</h2>
+<table>
+  <tr><th>Field</th><th>Description</th></tr>
+  <tr><td>Machine</td><td>Select machine from master</td></tr>
+  <tr><td>Reminder Time</td><td>When to send reminder (e.g., 07:30 AM)</td></tr>
+  <tr><td>Checklist Template</td><td>Which checklist to complete</td></tr>
+  <tr><td>Assigned To</td><td>User to receive reminder</td></tr>
+  <tr><td>WhatsApp Number</td><td>Phone number for notification</td></tr>
+  <tr><td>Days Active</td><td>Which days reminder is active</td></tr>
+  <tr><td>Is Active</td><td>Enable/disable reminder</td></tr>
+</table>
+
+<h2>Creating a Reminder</h2>
+
+<div class="step-box">
+  <span class="step-number">1</span>
+  Click <strong>"Add Reminder"</strong>
+</div>
+
+<div class="step-box">
+  <span class="step-number">2</span>
+  Select Machine and Checklist Template
+</div>
+
+<div class="step-box">
+  <span class="step-number">3</span>
+  Set reminder time (when to notify)
+</div>
+
+<div class="step-box">
+  <span class="step-number">4</span>
+  Assign user and enter WhatsApp number
+</div>
+
+<div class="step-box">
+  <span class="step-number">5</span>
+  Select active days (Mon-Sun)
+</div>
+
+<div class="step-box">
+  <span class="step-number">6</span>
+  Click <strong>"Save"</strong>
+</div>
+
+<h2>How It Works</h2>
+<ol>
+  <li>At scheduled time, system sends WhatsApp message</li>
+  <li>Message includes machine name and checklist link</li>
+  <li>Operator can complete checklist via WhatsApp</li>
+  <li>Interactive Q&A session begins</li>
+  <li>Responses recorded in system</li>
+</ol>
+
+<h1 id="missed-checklists">2. Missed Checklist Notifications</h1>
+
+<h2>Overview</h2>
+<p>When checklists are not completed by their due time, the system automatically notifies supervisors via WhatsApp and Email.</p>
+
+<h2>Notification Triggers</h2>
+<table>
+  <tr><th>Trigger</th><th>Description</th></tr>
+  <tr><td>Past Due Time</td><td>Checklist not started by due time</td></tr>
+  <tr><td>Incomplete</td><td>Checklist started but not finished</td></tr>
+  <tr><td>No Response</td><td>WhatsApp message sent, no reply received</td></tr>
+</table>
+
+<h2>Notification Recipients</h2>
+<ul>
+  <li>Assigned operator (reminder)</li>
+  <li>Supervisor (escalation)</li>
+  <li>Department head (critical)</li>
+</ul>
+
+<h2>Configuring Escalations</h2>
+<p><strong>Navigation:</strong> Sidebar &rarr; Admin &rarr; Notification Settings</p>
+
+<table>
+  <tr><th>Level</th><th>Delay</th><th>Recipients</th></tr>
+  <tr><td>First Alert</td><td>0 mins</td><td>Assigned operator</td></tr>
+  <tr><td>Reminder</td><td>15 mins</td><td>Operator + Supervisor</td></tr>
+  <tr><td>Escalation</td><td>30 mins</td><td>Supervisor + Manager</td></tr>
+</table>
+
+<h1 id="cancel-reissue">3. Invoice Cancel & Reissue</h1>
+
+<h2>Overview</h2>
+<p>Cancel & Reissue allows correcting invoices from the current month. The original invoice is cancelled and a new corrected invoice is created.</p>
+
+<h2>When to Use</h2>
+<ul>
+  <li>Wrong customer selected</li>
+  <li>Incorrect product/quantity</li>
+  <li>Price errors</li>
+  <li>Wrong shipping address</li>
+</ul>
+
+<div class="note-box">
+  <strong>Important:</strong> Cancel & Reissue is only available for current month invoices. For previous month invoices, use Credit Notes.
+</div>
+
+<h2>Cancel & Reissue Process</h2>
+
+<div class="step-box">
+  <span class="step-number">1</span>
+  Open the invoice to be cancelled
+</div>
+
+<div class="step-box">
+  <span class="step-number">2</span>
+  Verify it's a current month invoice
+</div>
+
+<div class="step-box">
+  <span class="step-number">3</span>
+  Click <strong>"Cancel & Reissue"</strong> button
+</div>
+
+<div class="step-box">
+  <span class="step-number">4</span>
+  Confirm cancellation in dialog
+</div>
+
+<div class="step-box">
+  <span class="step-number">5</span>
+  New invoice form opens with pre-filled data
+</div>
+
+<div class="step-box">
+  <span class="step-number">6</span>
+  Make required corrections
+</div>
+
+<div class="step-box">
+  <span class="step-number">7</span>
+  Click <strong>"Save"</strong> to create new invoice
+</div>
+
+<h2>What Happens on Cancellation</h2>
+<table>
+  <tr><th>Item</th><th>Action</th></tr>
+  <tr><td>Original Invoice</td><td>Status changed to "Cancelled"</td></tr>
+  <tr><td>Stock Reservation</td><td>Released back to inventory</td></tr>
+  <tr><td>Gatepass (if any)</td><td>Automatically cancelled</td></tr>
+  <tr><td>Payments (if any)</td><td>Transferred to new invoice</td></tr>
+  <tr><td>Audit Trail</td><td>Link maintained between old and new</td></tr>
+</table>
+
+<h1 id="cancelled-invoices">4. Cancelled Invoices Report</h1>
+
+<h2>Overview</h2>
+<p>View all cancelled invoices for audit and tracking purposes.</p>
+
+<h2>Accessing Cancelled Invoices</h2>
+<p><strong>Navigation:</strong> Sidebar &rarr; Reports &rarr; Cancelled Invoices</p>
+
+<h2>Report Columns</h2>
+<table>
+  <tr><th>Column</th><th>Description</th></tr>
+  <tr><td>Invoice Number</td><td>Original invoice number</td></tr>
+  <tr><td>Date</td><td>Original invoice date</td></tr>
+  <tr><td>Customer</td><td>Customer name</td></tr>
+  <tr><td>Amount</td><td>Invoice total</td></tr>
+  <tr><td>Cancelled Date</td><td>When cancelled</td></tr>
+  <tr><td>Cancelled By</td><td>User who cancelled</td></tr>
+  <tr><td>Reason</td><td>Cancellation reason</td></tr>
+  <tr><td>Reissued As</td><td>Link to replacement invoice</td></tr>
+</table>
+
+<h2>Filters</h2>
+<ul>
+  <li>Date range</li>
+  <li>Customer</li>
+  <li>Cancelled by user</li>
+</ul>
+
+<h1 id="document-management">5. Document Management System</h1>
+
+<h2>Overview</h2>
+<p>Store and organize contracts, invoices, certificates, and other documents with versioning, category management, and sharing capabilities.</p>
+
+<h2>Accessing Documents</h2>
+<p><strong>Navigation:</strong> Sidebar &rarr; Documents</p>
+
+<h2>Document Features</h2>
+<table>
+  <tr><th>Feature</th><th>Description</th></tr>
+  <tr><td>File Upload</td><td>Upload any file type</td></tr>
+  <tr><td>Categories</td><td>Organize by type (Contract, Certificate, etc.)</td></tr>
+  <tr><td>Versioning</td><td>Multiple versions of same document</td></tr>
+  <tr><td>Vendor/Invoice Linking</td><td>Link documents to records</td></tr>
+  <tr><td>Sharing</td><td>Share with team members</td></tr>
+  <tr><td>Expiry Alerts</td><td>Notifications for expiring documents</td></tr>
+</table>
+
+<h2>Uploading a Document</h2>
+
+<div class="step-box">
+  <span class="step-number">1</span>
+  Click <strong>"Upload Document"</strong>
+</div>
+
+<div class="step-box">
+  <span class="step-number">2</span>
+  Select file from computer
+</div>
+
+<div class="step-box">
+  <span class="step-number">3</span>
+  Enter document details:
+  <ul>
+    <li>Title</li>
+    <li>Category</li>
+    <li>Description</li>
+    <li>Expiry date (if applicable)</li>
+  </ul>
+</div>
+
+<div class="step-box">
+  <span class="step-number">4</span>
+  Link to vendor or invoice (optional)
+</div>
+
+<div class="step-box">
+  <span class="step-number">5</span>
+  Click <strong>"Save"</strong>
+</div>
+
+<h2>Document Categories</h2>
+<ul>
+  <li>Contracts & Agreements</li>
+  <li>Certificates (GST, FSSAI, etc.)</li>
+  <li>Vendor Documents</li>
+  <li>Customer Documents</li>
+  <li>Compliance Documents</li>
+  <li>Internal Policies</li>
+</ul>
+
+<h2>Expiry Alerts</h2>
+<p>For documents with expiry dates:</p>
+<ul>
+  <li>30 days before: Warning notification</li>
+  <li>7 days before: Urgent notification</li>
+  <li>On expiry: Alert sent to admin</li>
+</ul>
+
+<h1 id="data-import">6. Vyapaar Data Import</h1>
+
+<h2>Overview</h2>
+<p>Import data from Vyapaar accounting software via Excel files. Supports sale reports, payments, and vendor data with intelligent matching.</p>
+
+<h2>Accessing Data Import</h2>
+<p><strong>Navigation:</strong> Sidebar &rarr; Admin &rarr; Data Import</p>
+
+<h2>Supported Imports</h2>
+<table>
+  <tr><th>Import Type</th><th>Source File</th><th>Description</th></tr>
+  <tr><td>Sale Report</td><td>SaleReport.xlsx</td><td>Invoices with payment status</td></tr>
+  <tr><td>Payments</td><td>Payments.xlsx</td><td>Payment records with FIFO allocation</td></tr>
+  <tr><td>Vendors</td><td>Vendors.xlsx</td><td>Customer/supplier master data</td></tr>
+  <tr><td>Products</td><td>Products.xlsx</td><td>Product master data</td></tr>
+</table>
+
+<h2>Import Process</h2>
+
+<div class="step-box">
+  <span class="step-number">1</span>
+  Select import type
+</div>
+
+<div class="step-box">
+  <span class="step-number">2</span>
+  Upload Excel file
+</div>
+
+<div class="step-box">
+  <span class="step-number">3</span>
+  System validates data:
+  <ul>
+    <li>Format checking</li>
+    <li>Required fields validation</li>
+    <li>Duplicate detection</li>
+  </ul>
+</div>
+
+<div class="step-box">
+  <span class="step-number">4</span>
+  Review validation results
+</div>
+
+<div class="step-box">
+  <span class="step-number">5</span>
+  Fuzzy matching for vendors/products:
+  <ul>
+    <li>System suggests matches</li>
+    <li>Confirm or correct mappings</li>
+  </ul>
+</div>
+
+<div class="step-box">
+  <span class="step-number">6</span>
+  Click <strong>"Import"</strong> to proceed
+</div>
+
+<div class="step-box">
+  <span class="step-number">7</span>
+  View import summary and errors
+</div>
+
+<h2>Intelligent Features</h2>
+<table>
+  <tr><th>Feature</th><th>Description</th></tr>
+  <tr><td>Fuzzy Matching</td><td>Matches similar vendor/product names</td></tr>
+  <tr><td>Date Conversion</td><td>Handles various date formats</td></tr>
+  <tr><td>FIFO Allocation</td><td>Payments auto-allocated to oldest invoices</td></tr>
+  <tr><td>De-duplication</td><td>Prevents duplicate imports</td></tr>
+  <tr><td>Error Handling</td><td>Detailed error reports</td></tr>
+</table>
+
+<h2>Payment Evidence System</h2>
+<p>Imported payments are linked as payment evidence:</p>
+<ul>
+  <li>Sale Report "Amount Received" = Immutable ledger</li>
+  <li>Payments.xlsx records = Payment evidence for audit</li>
+</ul>
+
+<h1 id="vendor-history">7. Vendor History & Analytics</h1>
+
+<h2>Overview</h2>
+<p>Complete transaction history and analytics for any vendor.</p>
+
+<h2>Accessing Vendor History</h2>
+<p><strong>Navigation:</strong> Sidebar &rarr; Vendor Management &rarr; Click Vendor &rarr; History Tab</p>
+<p>OR Sidebar &rarr; Reports &rarr; Vendor History</p>
+
+<h2>History Information</h2>
+<table>
+  <tr><th>Section</th><th>Content</th></tr>
+  <tr><td>Invoice History</td><td>All invoices issued to vendor</td></tr>
+  <tr><td>Payment History</td><td>All payments received</td></tr>
+  <tr><td>Credit Notes</td><td>Credit notes issued</td></tr>
+  <tr><td>Outstanding</td><td>Current amount pending</td></tr>
+  <tr><td>Advances</td><td>Advance balance</td></tr>
+</table>
+
+<h2>Analytics Metrics</h2>
+<table>
+  <tr><th>Metric</th><th>Description</th></tr>
+  <tr><td>Total Revenue</td><td>Lifetime sales to vendor</td></tr>
+  <tr><td>Average Order Value</td><td>Mean invoice amount</td></tr>
+  <tr><td>Payment Trend</td><td>Average payment days</td></tr>
+  <tr><td>Top Products</td><td>Most purchased products</td></tr>
+  <tr><td>YoY Growth</td><td>Year-over-year comparison</td></tr>
+</table>
+
+<h2>Vendor Classification</h2>
+<p>Three-tier revenue classification:</p>
+<table>
+  <tr><th>Tier</th><th>Classification</th><th>Criteria</th></tr>
+  <tr><td>Tier 1</td><td>Key Account</td><td>Top 20% by revenue</td></tr>
+  <tr><td>Tier 2</td><td>Regular</td><td>Middle 50%</td></tr>
+  <tr><td>Tier 3</td><td>Occasional</td><td>Bottom 30%</td></tr>
+</table>
+
+<h1 id="notifications">8. Notification Settings</h1>
+
+<h2>Overview</h2>
+<p>Configure system notifications for various events via Email and WhatsApp.</p>
+
+<h2>Accessing Notification Settings</h2>
+<p><strong>Navigation:</strong> Sidebar &rarr; Admin &rarr; Notification Settings</p>
+
+<h2>Notification Types</h2>
+<table>
+  <tr><th>Category</th><th>Events</th></tr>
+  <tr><td>Inventory</td><td>Low stock alerts, reorder reminders</td></tr>
+  <tr><td>Payments</td><td>Payment received, overdue reminders</td></tr>
+  <tr><td>Production</td><td>Production complete, variance alerts</td></tr>
+  <tr><td>Quality</td><td>Checklist due, missed checklists</td></tr>
+  <tr><td>Maintenance</td><td>PM due, equipment alerts</td></tr>
+  <tr><td>Documents</td><td>Expiry alerts</td></tr>
+</table>
+
+<h2>Channel Configuration</h2>
+<table>
+  <tr><th>Channel</th><th>Setup Required</th></tr>
+  <tr><td>Email</td><td>SMTP settings, recipient list</td></tr>
+  <tr><td>WhatsApp</td><td>WhatsApp Business API credentials</td></tr>
+</table>
+
+<h2>Configuring Notifications</h2>
+
+<div class="step-box">
+  <span class="step-number">1</span>
+  Select notification type
+</div>
+
+<div class="step-box">
+  <span class="step-number">2</span>
+  Enable/disable channels (Email, WhatsApp)
+</div>
+
+<div class="step-box">
+  <span class="step-number">3</span>
+  Set recipients for each channel
+</div>
+
+<div class="step-box">
+  <span class="step-number">4</span>
+  Configure thresholds (e.g., days overdue)
+</div>
+
+<div class="step-box">
+  <span class="step-number">5</span>
+  Save settings
+</div>
+
+<hr>
+<div style="text-align: center; margin-top: 40px; padding: 20px; background-color: #f5f5f5;">
+  <p><strong>KINTO Operations & QA Management System</strong></p>
+  <p>Advanced Features - User Guide</p>
+  <p>Version 1.0 | February 2024</p>
+</div>
+
+</body>
+</html>

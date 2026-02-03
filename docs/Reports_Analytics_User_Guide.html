@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Reports & Analytics - Complete User Guide</title>
+  <style>
+    body { font-family: 'Calibri', 'Arial', sans-serif; font-size: 11pt; line-height: 1.6; max-width: 800px; margin: 0 auto; padding: 40px; color: #333; }
+    h1 { font-size: 24pt; color: #c62828; border-bottom: 3px solid #c62828; padding-bottom: 10px; page-break-before: always; }
+    h1:first-of-type { page-break-before: avoid; }
+    h2 { font-size: 16pt; color: #d32f2f; margin-top: 30px; border-bottom: 1px solid #ccc; padding-bottom: 5px; }
+    h3 { font-size: 13pt; color: #e53935; margin-top: 20px; }
+    table { border-collapse: collapse; width: 100%; margin: 15px 0; }
+    th, td { border: 1px solid #ccc; padding: 8px 12px; text-align: left; }
+    th { background-color: #ffebee; font-weight: bold; }
+    tr:nth-child(even) { background-color: #fafafa; }
+    .header-section { text-align: center; margin-bottom: 40px; padding: 30px; background: linear-gradient(135deg, #c62828 0%, #d32f2f 100%); color: white; border-radius: 10px; }
+    .header-section h1 { color: white; border-bottom: none; margin: 0; }
+    .note-box { background-color: #fff8e6; border-left: 4px solid #f0ad4e; padding: 15px; margin: 15px 0; }
+    .tip-box { background-color: #e8f5e9; border-left: 4px solid #4caf50; padding: 15px; margin: 15px 0; }
+    .toc { background-color: #ffebee; padding: 20px 30px; border-radius: 5px; margin: 20px 0; }
+  </style>
+</head>
+<body>
+
+<div class="header-section">
+  <h1>Reports & Analytics</h1>
+  <h2 style="color: white; border: none; margin-top: 10px;">Complete User Guide</h2>
+  <p>Dashboards, Reports, GST & MIS</p>
+  <p>Version 1.0 | February 2024</p>
+</div>
+
+<div class="toc">
+  <h2>Table of Contents</h2>
+  <ol>
+    <li><a href="#dashboard">Dashboard Overview</a></li>
+    <li><a href="#sales">Sales Reports</a></li>
+    <li><a href="#gst">GST Reports</a></li>
+    <li><a href="#inventory">Inventory Reports</a></li>
+    <li><a href="#production">Production Reports</a></li>
+    <li><a href="#financial">Financial Reports</a></li>
+    <li><a href="#mis">MIS Module</a></li>
+  </ol>
+</div>
+
+<h1 id="dashboard">1. Dashboard Overview</h1>
+
+<h2>Main Dashboard</h2>
+<p><strong>Navigation:</strong> Sidebar &rarr; Dashboard (Home)</p>
+
+<h2>Dashboard Widgets</h2>
+<table>
+  <tr><th>Widget</th><th>Information</th></tr>
+  <tr><td>Today's Sales</td><td>Invoices created today with total value</td></tr>
+  <tr><td>Pending Payments</td><td>Total outstanding from customers</td></tr>
+  <tr><td>Production Summary</td><td>Today's production count</td></tr>
+  <tr><td>Low Stock Alerts</td><td>Items below reorder level</td></tr>
+  <tr><td>Pending Dispatches</td><td>Invoices awaiting dispatch</td></tr>
+  <tr><td>Recent Activity</td><td>Latest transactions</td></tr>
+</table>
+
+<h2>Quick Access Tabs</h2>
+<p>Dashboard provides quick access to:</p>
+<ul>
+  <li>Invoices</li>
+  <li>Gatepasses</li>
+  <li>Raw Material Issuance</li>
+  <li>Production Entry</li>
+</ul>
+
+<h1 id="sales">2. Sales Reports</h1>
+
+<h2>Sales Summary</h2>
+<p><strong>Navigation:</strong> Sidebar &rarr; Reports &rarr; Sales Summary</p>
+
+<table>
+  <tr><th>Metric</th><th>Description</th></tr>
+  <tr><td>Total Sales</td><td>Sum of all invoices</td></tr>
+  <tr><td>Invoice Count</td><td>Number of invoices</td></tr>
+  <tr><td>Average Invoice Value</td><td>Mean invoice amount</td></tr>
+  <tr><td>Top Customers</td><td>Highest revenue customers</td></tr>
+  <tr><td>Top Products</td><td>Best-selling products</td></tr>
+</table>
+
+<h2>Customer-wise Sales</h2>
+<p>View sales breakdown by customer:</p>
+<ul>
+  <li>Filter by date range</li>
+  <li>View invoices per customer</li>
+  <li>Total revenue per customer</li>
+  <li>Payment status per customer</li>
+</ul>
+
+<h2>Product-wise Sales</h2>
+<p>Analyze product performance:</p>
+<ul>
+  <li>Quantity sold per product</li>
+  <li>Revenue per product</li>
+  <li>Trend analysis</li>
+</ul>
+
+<h1 id="gst">3. GST Reports</h1>
+
+<h2>GSTR-1 Data</h2>
+<p><strong>Navigation:</strong> Sidebar &rarr; Reports &rarr; GST Reports &rarr; GSTR-1</p>
+
+<p>Outward supplies report:</p>
+<ul>
+  <li>B2B Invoices (to registered parties)</li>
+  <li>B2C Invoices (to unregistered parties)</li>
+  <li>Credit Notes</li>
+  <li>Debit Notes</li>
+  <li>HSN Summary</li>
+</ul>
+
+<h2>GST Summary</h2>
+<table>
+  <tr><th>Component</th><th>Calculation</th></tr>
+  <tr><td>Total Taxable Value</td><td>Sum of all invoice subtotals</td></tr>
+  <tr><td>CGST Collected</td><td>For intra-state sales</td></tr>
+  <tr><td>SGST Collected</td><td>For intra-state sales</td></tr>
+  <tr><td>IGST Collected</td><td>For inter-state sales</td></tr>
+  <tr><td>Total Tax</td><td>Sum of all GST</td></tr>
+</table>
+
+<h2>HSN Summary</h2>
+<p>Breakdown by HSN code:</p>
+<ul>
+  <li>HSN Code</li>
+  <li>Description</li>
+  <li>Total Quantity</li>
+  <li>Total Value</li>
+  <li>Tax Amount</li>
+</ul>
+
+<h1 id="inventory">4. Inventory Reports</h1>
+
+<h2>Stock Status Report</h2>
+<p><strong>Navigation:</strong> Sidebar &rarr; Reports &rarr; Stock Status</p>
+
+<table>
+  <tr><th>Report</th><th>Shows</th></tr>
+  <tr><td>Current Stock</td><td>All items with current quantities</td></tr>
+  <tr><td>Low Stock</td><td>Items below reorder level</td></tr>
+  <tr><td>Stock Movement</td><td>In/out transactions</td></tr>
+  <tr><td>Batch-wise Stock</td><td>Stock by batch number</td></tr>
+</table>
+
+<h2>Stock Valuation</h2>
+<p>Value of inventory:</p>
+<ul>
+  <li>Raw materials value</li>
+  <li>Finished goods value</li>
+  <li>Spare parts value</li>
+  <li>Total inventory value</li>
+</ul>
+
+<h1 id="production">5. Production Reports</h1>
+
+<h2>Production Summary</h2>
+<p><strong>Navigation:</strong> Sidebar &rarr; Reports &rarr; Production Summary</p>
+
+<table>
+  <tr><th>Metric</th><th>Description</th></tr>
+  <tr><td>Total Production</td><td>Units produced in period</td></tr>
+  <tr><td>By Product</td><td>Breakdown by product</td></tr>
+  <tr><td>By BOM</td><td>Which formulas used</td></tr>
+  <tr><td>Variance Summary</td><td>Overall variance %</td></tr>
+</table>
+
+<h2>Variance Analytics</h2>
+<p><strong>Navigation:</strong> Sidebar &rarr; Reports &rarr; Variance Analytics</p>
+
+<table>
+  <tr><th>Metric</th><th>Target</th></tr>
+  <tr><td>Material Variance</td><td>&lt; 2%</td></tr>
+  <tr><td>Output Variance</td><td>&lt; 5%</td></tr>
+  <tr><td>BOM Accuracy</td><td>&gt; 98%</td></tr>
+</table>
+
+<h2>Reconciliation Report</h2>
+<p>Daily/monthly reconciliation:</p>
+<ul>
+  <li>Opening stock</li>
+  <li>Materials issued</li>
+  <li>Consumption calculated</li>
+  <li>Closing stock</li>
+  <li>Variance explanation</li>
+</ul>
+
+<h1 id="financial">6. Financial Reports</h1>
+
+<h2>Receivables Aging</h2>
+<p><strong>Navigation:</strong> Sidebar &rarr; Reports &rarr; Aging Report</p>
+
+<table>
+  <tr><th>Age Bucket</th><th>Description</th></tr>
+  <tr><td>0-30 Days</td><td>Current</td></tr>
+  <tr><td>31-60 Days</td><td>Slightly overdue</td></tr>
+  <tr><td>61-90 Days</td><td>Overdue</td></tr>
+  <tr><td>90+ Days</td><td>Significantly overdue</td></tr>
+</table>
+
+<h2>Collection Report</h2>
+<p>Payments received:</p>
+<ul>
+  <li>By date range</li>
+  <li>By customer</li>
+  <li>By payment mode</li>
+  <li>Collection efficiency</li>
+</ul>
+
+<h2>Write-Off Report</h2>
+<p><strong>Navigation:</strong> Sidebar &rarr; Reports &rarr; Write-Off Report</p>
+
+<p>Track written-off amounts:</p>
+<ul>
+  <li>Customer name</li>
+  <li>Invoice details</li>
+  <li>Amount written off</li>
+  <li>Reason</li>
+  <li>Date</li>
+</ul>
+
+<h1 id="mis">7. MIS Module</h1>
+
+<h2>Overview</h2>
+<p>Management Information System provides executive dashboards for strategic decision-making.</p>
+
+<h2>Accessing MIS</h2>
+<p><strong>Navigation:</strong> Sidebar &rarr; MIS</p>
+
+<h2>MIS Screens</h2>
+
+<h3>1. Executive KPI Dashboard</h3>
+<table>
+  <tr><th>KPI</th><th>Description</th></tr>
+  <tr><td>Revenue MTD/YTD</td><td>Month-to-date, Year-to-date sales</td></tr>
+  <tr><td>Order Pipeline</td><td>Pending orders value</td></tr>
+  <tr><td>Collection Rate</td><td>% of invoices collected</td></tr>
+  <tr><td>Working Capital</td><td>Receivables - Payables</td></tr>
+</table>
+
+<h3>2. Production Analytics</h3>
+<table>
+  <tr><th>Metric</th><th>Description</th></tr>
+  <tr><td>Production Volume</td><td>Trend over time</td></tr>
+  <tr><td>Efficiency %</td><td>Actual vs planned</td></tr>
+  <tr><td>Material Utilization</td><td>Usage efficiency</td></tr>
+  <tr><td>Waste %</td><td>Material wastage trend</td></tr>
+</table>
+
+<h3>3. Inventory Intelligence</h3>
+<table>
+  <tr><th>Insight</th><th>Description</th></tr>
+  <tr><td>Stock Turnover</td><td>How fast inventory moves</td></tr>
+  <tr><td>Dead Stock</td><td>Items not moving</td></tr>
+  <tr><td>Optimal Reorder</td><td>Suggested reorder points</td></tr>
+  <tr><td>Stock Value Trend</td><td>Inventory value over time</td></tr>
+</table>
+
+<h3>4. Sales Analysis</h3>
+<table>
+  <tr><th>Analysis</th><th>Description</th></tr>
+  <tr><td>Customer Segmentation</td><td>A/B/C classification</td></tr>
+  <tr><td>Product Mix</td><td>Revenue contribution</td></tr>
+  <tr><td>Geographic Distribution</td><td>Sales by region</td></tr>
+  <tr><td>Trend Analysis</td><td>Growth patterns</td></tr>
+</table>
+
+<h3>5. Delivery Performance</h3>
+<table>
+  <tr><th>Metric</th><th>Target</th></tr>
+  <tr><td>On-Time Delivery %</td><td>&gt; 95%</td></tr>
+  <tr><td>Average Delivery Time</td><td>&lt; 48 hours</td></tr>
+  <tr><td>Return Rate</td><td>&lt; 2%</td></tr>
+  <tr><td>Customer Complaints</td><td>&lt; 1%</td></tr>
+</table>
+
+<hr>
+<div style="text-align: center; margin-top: 40px; padding: 20px; background-color: #f5f5f5;">
+  <p><strong>KINTO Operations & QA Management System</strong></p>
+  <p>Reports & Analytics - User Guide</p>
+  <p>Version 1.0 | February 2024</p>
+</div>
+
+</body>
+</html>

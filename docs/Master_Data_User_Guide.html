@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Master Data Management - Complete User Guide</title>
+  <style>
+    body { font-family: 'Calibri', 'Arial', sans-serif; font-size: 11pt; line-height: 1.6; max-width: 800px; margin: 0 auto; padding: 40px; color: #333; }
+    h1 { font-size: 24pt; color: #1a5490; border-bottom: 3px solid #1a5490; padding-bottom: 10px; page-break-before: always; }
+    h1:first-of-type { page-break-before: avoid; }
+    h2 { font-size: 16pt; color: #2a6db0; margin-top: 30px; border-bottom: 1px solid #ccc; padding-bottom: 5px; }
+    h3 { font-size: 13pt; color: #3a7dc0; margin-top: 20px; }
+    h4 { font-size: 11pt; color: #4a8dd0; margin-top: 15px; }
+    table { border-collapse: collapse; width: 100%; margin: 15px 0; }
+    th, td { border: 1px solid #ccc; padding: 8px 12px; text-align: left; }
+    th { background-color: #f0f5fa; font-weight: bold; }
+    tr:nth-child(even) { background-color: #fafafa; }
+    .header-section { text-align: center; margin-bottom: 40px; padding: 30px; background: linear-gradient(135deg, #2e7d32 0%, #43a047 100%); color: white; border-radius: 10px; }
+    .header-section h1 { color: white; border-bottom: none; margin: 0; }
+    .note-box { background-color: #fff8e6; border-left: 4px solid #f0ad4e; padding: 15px; margin: 15px 0; }
+    .tip-box { background-color: #e8f5e9; border-left: 4px solid #4caf50; padding: 15px; margin: 15px 0; }
+    .warning-box { background-color: #ffebee; border-left: 4px solid #f44336; padding: 15px; margin: 15px 0; }
+    .step-box { background-color: #f8f9fa; border: 1px solid #e0e0e0; padding: 15px; margin: 10px 0; border-radius: 5px; }
+    .step-number { display: inline-block; background-color: #2e7d32; color: white; width: 25px; height: 25px; text-align: center; border-radius: 50%; margin-right: 10px; font-weight: bold; }
+    .toc { background-color: #f5f8fc; padding: 20px 30px; border-radius: 5px; margin: 20px 0; }
+    .toc ol { columns: 2; column-gap: 30px; }
+    .scenario-box { background-color: #f0f8ff; border: 1px solid #b0d0f0; padding: 20px; margin: 20px 0; border-radius: 8px; }
+    .scenario-title { font-weight: bold; color: #2e7d32; font-size: 12pt; margin-bottom: 10px; }
+    @media print { body { font-size: 10pt; } h1 { page-break-before: always; } }
+  </style>
+</head>
+<body>
+
+<div class="header-section">
+  <h1>Master Data Management</h1>
+  <h2 style="color: white; border: none; margin-top: 10px;">Complete User Guide</h2>
+  <p>KINTO Operations & QA Management System</p>
+  <p>Version 1.0 | February 2024</p>
+</div>
+
+<div class="toc">
+  <h2>Table of Contents</h2>
+  <ol>
+    <li><a href="#intro">Introduction to Master Data</a></li>
+    <li><a href="#products">Product Master</a></li>
+    <li><a href="#raw-materials">Raw Materials Master</a></li>
+    <li><a href="#vendors">Vendor Master</a></li>
+    <li><a href="#uom">Units of Measure (UOM)</a></li>
+    <li><a href="#categories">Product Categories</a></li>
+    <li><a href="#product-types">Product Types</a></li>
+    <li><a href="#raw-material-types">Raw Material Types</a></li>
+    <li><a href="#vendor-types">Vendor Types</a></li>
+    <li><a href="#bom">Bill of Materials (BOM)</a></li>
+    <li><a href="#banks">Bank Accounts</a></li>
+    <li><a href="#templates">Invoice Templates</a></li>
+    <li><a href="#best-practices">Best Practices</a></li>
+  </ol>
+</div>
+
+<h1 id="intro">1. Introduction to Master Data</h1>
+
+<h2>What is Master Data?</h2>
+<p>Master data is the core reference information that the entire system relies upon. It includes products you sell, raw materials you purchase, vendors you deal with, and configuration settings. Accurate master data ensures smooth operations across all modules.</p>
+
+<h2>Why Master Data is Important</h2>
+<table>
+  <tr>
+    <th>Impact Area</th>
+    <th>Why It Matters</th>
+  </tr>
+  <tr>
+    <td>Invoicing</td>
+    <td>Products, HSN codes, and prices flow from master data</td>
+  </tr>
+  <tr>
+    <td>GST Compliance</td>
+    <td>HSN codes and tax rates must be accurate</td>
+  </tr>
+  <tr>
+    <td>Inventory</td>
+    <td>Stock is tracked against product/material masters</td>
+  </tr>
+  <tr>
+    <td>Production</td>
+    <td>BOM defines material requirements for each product</td>
+  </tr>
+  <tr>
+    <td>Purchasing</td>
+    <td>Vendor details used for purchase orders</td>
+  </tr>
+  <tr>
+    <td>Payments</td>
+    <td>Vendor bank details for payment processing</td>
+  </tr>
+</table>
+
+<h2>Master Data Categories</h2>
+<table>
+  <tr>
+    <th>Category</th>
+    <th>Screens</th>
+  </tr>
+  <tr>
+    <td>Product Data</td>
+    <td>Products, Product Categories, Product Types, BOM</td>
+  </tr>
+  <tr>
+    <td>Material Data</td>
+    <td>Raw Materials, Raw Material Types, UOM</td>
+  </tr>
+  <tr>
+    <td>Vendor Data</td>
+    <td>Vendors, Vendor Types</td>
+  </tr>
+  <tr>
+    <td>Configuration</td>
+    <td>Invoice Templates, Bank Accounts, Terms & Conditions</td>
+  </tr>
+</table>
+
+<h1 id="products">2. Product Master</h1>
+
+<h2>Overview</h2>
+<p>The Product Master contains all finished goods that you manufacture and sell. Each product has pricing, HSN codes, tax rates, and can have one or more Bill of Materials (BOM) configurations.</p>
+
+<h2>Accessing Product Master</h2>
+<p><strong>Navigation:</strong> Sidebar &rarr; Inventory Management &rarr; Products Tab</p>
+
+<h2>Product List View</h2>
+<table>
+  <tr>
+    <th>Column</th>
+    <th>Description</th>
+  </tr>
+  <tr>
+    <td>Product Code</td>
+    <td>Unique identifier (e.g., PRD-001)</td>
+  </tr>
+  <tr>
+    <td>Product Name</td>
+    <td>Full name of the product</td>
+  </tr>
+  <tr>
+    <td>Category</td>
+    <td>Product category classification</td>
+  </tr>
+  <tr>
+    <td>Type</td>
+    <td>Product type within category</td>
+  </tr>
+  <tr>
+    <td>HSN Code</td>
+    <td>GST classification code</td>
+  </tr>
+  <tr>
+    <td>Unit Price</td>
+    <td>Standard selling price</td>
+  </tr>
+  <tr>
+    <td>GST Rate</td>
+    <td>Applicable tax percentage</td>
+  </tr>
+  <tr>
+    <td>Status</td>
+    <td>Active/Inactive</td>
+  </tr>
+</table>
+
+<h2>Creating a New Product</h2>
+
+<div class="step-box">
+  <span class="step-number">1</span>
+  Click <strong>"Add Product"</strong> button
+</div>
+
+<div class="step-box">
+  <span class="step-number">2</span>
+  Fill in Basic Information:
+  <ul>
+    <li><strong>Product Code:</strong> Unique identifier (auto-generated or manual)</li>
+    <li><strong>Product Name:</strong> Full descriptive name</li>
+    <li><strong>Description:</strong> Detailed description for invoices</li>
+  </ul>
+</div>
+
+<div class="step-box">
+  <span class="step-number">3</span>
+  Select Classification:
+  <ul>
+    <li><strong>Category:</strong> Select from dropdown (e.g., Lubricants, Chemicals)</li>
+    <li><strong>Type:</strong> Select type within category</li>
+  </ul>
+</div>
+
+<div class="step-box">
+  <span class="step-number">4</span>
+  Enter Tax Information:
+  <ul>
+    <li><strong>HSN Code:</strong> 4-8 digit classification code</li>
+    <li><strong>GST Rate:</strong> 0%, 5%, 12%, 18%, or 28%</li>
+  </ul>
+</div>
+
+<div class="step-box">
+  <span class="step-number">5</span>
+  Set Pricing:
+  <ul>
+    <li><strong>Unit Price:</strong> Standard selling price per unit</li>
+    <li><strong>MRP:</strong> Maximum retail price (if applicable)</li>
+  </ul>
+</div>
+
+<div class="step-box">
+  <span class="step-number">6</span>
+  Configure Units:
+  <ul>
+    <li><strong>Primary UOM:</strong> Main unit of measure (e.g., Cases)</li>
+    <li><strong>Secondary UOM:</strong> Alternate unit (e.g., Litres)</li>
+    <li><strong>Conversion Factor:</strong> Units per case</li>
+  </ul>
+</div>
+
+<div class="step-box">
+  <span class="step-number">7</span>
+  Click <strong>"Save"</strong>
+</div>
+
+<h2>Product Fields Reference</h2>
+<table>
+  <tr>
+    <th>Field</th>
+    <th>Required</th>
+    <th>Description</th>
+  </tr>
+  <tr>
+    <td>Product Code</td>
+    <td>Yes</td>
+    <td>Unique identifier, cannot be changed after creation</td>
+  </tr>
+  <tr>
+    <td>Product Name</td>
+    <td>Yes</td>
+    <td>Display name used in invoices and reports</td>
+  </tr>
+  <tr>
+    <td>Description</td>
+    <td>No</td>
+    <td>Detailed description for invoice line items</td>
+  </tr>
+  <tr>
+    <td>Category</td>
+    <td>Yes</td>
+    <td>Primary classification</td>
+  </tr>
+  <tr>
+    <td>Type</td>
+    <td>No</td>
+    <td>Sub-classification within category</td>
+  </tr>
+  <tr>
+    <td>HSN Code</td>
+    <td>Yes</td>
+    <td>Required for GST compliance</td>
+  </tr>
+  <tr>
+    <td>GST Rate</td>
+    <td>Yes</td>
+    <td>Tax rate applied on sales</td>
+  </tr>
+  <tr>
+    <td>Unit Price</td>
+    <td>Yes</td>
+    <td>Default selling price</td>
+  </tr>
+  <tr>
+    <td>Primary UOM</td>
+    <td>Yes</td>
+    <td>Main unit for inventory and invoicing</td>
+  </tr>
+  <tr>
+    <td>Pack Size</td>
+    <td>No</td>
+    <td>Number of units per pack/case</td>
+  </tr>
+  <tr>
+    <td>Is Active</td>
+    <td>Yes</td>
+    <td>Active products appear in dropdowns</td>
+  </tr>
+</table>
+
+<h2>Editing a Product</h2>
+<ol>
+  <li>Find product in list (use search)</li>
+  <li>Click on product row or Edit icon</li>
+  <li>Modify required fields</li>
+  <li>Click <strong>"Save"</strong></li>
+</ol>
+
+<div class="warning-box">
+  <strong>Warning:</strong> Changing HSN codes or GST rates affects future invoices only. Past invoices retain original values.
+</div>
+
+<h2>Deactivating a Product</h2>
+<p>Instead of deleting, deactivate products that are no longer sold:</p>
+<ol>
+  <li>Edit the product</li>
+  <li>Toggle <strong>"Active"</strong> to OFF</li>
+  <li>Save</li>
+</ol>
+<p>Deactivated products won't appear in invoice product selection but remain in historical records.</p>
+
+<h1 id="raw-materials">3. Raw Materials Master</h1>
+
+<h2>Overview</h2>
+<p>Raw Materials are inputs used in manufacturing finished goods. They are tracked for inventory, linked to products via BOM, and used in purchase orders.</p>
+
+<h2>Accessing Raw Materials</h2>
+<p><strong>Navigation:</strong> Sidebar &rarr; Inventory Management &rarr; Raw Materials Tab</p>
+
+<h2>Raw Material Fields</h2>
+<table>
+  <tr>
+    <th>Field</th>
+    <th>Required</th>
+    <th>Description</th>
+  </tr>
+  <tr>
+    <td>Material Code</td>
+    <td>Yes</td>
+    <td>Unique identifier (e.g., RM-001)</td>
+  </tr>
+  <tr>
+    <td>Material Name</td>
+    <td>Yes</td>
+    <td>Descriptive name</td>
+  </tr>
+  <tr>
+    <td>Material Type</td>
+    <td>Yes</td>
+    <td>Classification (e.g., Base Oil, Additive)</td>
+  </tr>
+  <tr>
+    <td>Primary UOM</td>
+    <td>Yes</td>
+    <td>Main unit (e.g., Kg, Litre)</td>
+  </tr>
+  <tr>
+    <td>Secondary UOM</td>
+    <td>No</td>
+    <td>Alternate unit for conversion</td>
+  </tr>
+  <tr>
+    <td>Conversion Factor</td>
+    <td>No</td>
+    <td>Ratio between primary and secondary UOM</td>
+  </tr>
+  <tr>
+    <td>Reorder Level</td>
+    <td>No</td>
+    <td>Minimum stock before reordering</td>
+  </tr>
+  <tr>
+    <td>Loss Percentage</td>
+    <td>No</td>
+    <td>Expected wastage during production</td>
+  </tr>
+  <tr>
+    <td>HSN Code</td>
+    <td>No</td>
+    <td>For purchase orders and GST</td>
+  </tr>
+</table>
+
+<h2>Creating a Raw Material</h2>
+
+<div class="step-box">
+  <span class="step-number">1</span>
+  Click <strong>"Add Raw Material"</strong>
+</div>
+
+<div class="step-box">
+  <span class="step-number">2</span>
+  Enter material details:
+  <ul>
+    <li>Material Code and Name</li>
+    <li>Select Material Type</li>
+    <li>Choose Primary UOM</li>
+  </ul>
+</div>
+
+<div class="step-box">
+  <span class="step-number">3</span>
+  Configure optional settings:
+  <ul>
+    <li>Secondary UOM and conversion factor</li>
+    <li>Reorder level for alerts</li>
+    <li>Expected loss percentage</li>
+  </ul>
+</div>
+
+<div class="step-box">
+  <span class="step-number">4</span>
+  Click <strong>"Save"</strong>
+</div>
+
+<h2>Inventory Modes</h2>
+<p>Raw materials support two inventory tracking modes:</p>
+
+<table>
+  <tr>
+    <th>Mode</th>
+    <th>Use Case</th>
+    <th>Behavior</th>
+  </tr>
+  <tr>
+    <td>Opening Stock Only</td>
+    <td>Initial setup, migration</td>
+    <td>Single opening balance entry</td>
+  </tr>
+  <tr>
+    <td>Ongoing Inventory</td>
+    <td>Regular operations</td>
+    <td>Purchase receipts increase, issuance decreases</td>
+  </tr>
+</table>
+
+<h1 id="vendors">4. Vendor Master</h1>
+
+<h2>Overview</h2>
+<p>Vendors include customers (buyers) and suppliers. The same master is used for both, with vendor types distinguishing their role.</p>
+
+<h2>Accessing Vendor Master</h2>
+<p><strong>Navigation:</strong> Sidebar &rarr; Admin &rarr; Vendor Management</p>
+
+<h2>Vendor Classification (Three-Tier System)</h2>
+<table>
+  <tr>
+    <th>Tier</th>
+    <th>Description</th>
+    <th>Examples</th>
+  </tr>
+  <tr>
+    <td>Tier 1 - Distributors</td>
+    <td>Large volume buyers with credit terms</td>
+    <td>Regional distributors, Wholesalers</td>
+  </tr>
+  <tr>
+    <td>Tier 2 - Dealers</td>
+    <td>Medium volume, mixed payment terms</td>
+    <td>Local dealers, Retailers</td>
+  </tr>
+  <tr>
+    <td>Tier 3 - Retail/Institutional</td>
+    <td>Direct customers, spot sales</td>
+    <td>End consumers, Institutions</td>
+  </tr>
+</table>
+
+<h2>Vendor Fields</h2>
+<table>
+  <tr>
+    <th>Field</th>
+    <th>Required</th>
+    <th>Description</th>
+  </tr>
+  <tr>
+    <td>Vendor Code</td>
+    <td>Yes</td>
+    <td>Unique identifier (auto or manual)</td>
+  </tr>
+  <tr>
+    <td>Vendor Name</td>
+    <td>Yes</td>
+    <td>Legal/registered name</td>
+  </tr>
+  <tr>
+    <td>Vendor Type(s)</td>
+    <td>Yes</td>
+    <td>Can have multiple types</td>
+  </tr>
+  <tr>
+    <td>GSTIN</td>
+    <td>Conditional</td>
+    <td>Required for GST-registered vendors</td>
+  </tr>
+  <tr>
+    <td>PAN</td>
+    <td>No</td>
+    <td>For TDS compliance</td>
+  </tr>
+  <tr>
+    <td>Address</td>
+    <td>Yes</td>
+    <td>Registered/billing address</td>
+  </tr>
+  <tr>
+    <td>City</td>
+    <td>Yes</td>
+    <td>City name</td>
+  </tr>
+  <tr>
+    <td>State</td>
+    <td>Yes</td>
+    <td>State (determines CGST/SGST vs IGST)</td>
+  </tr>
+  <tr>
+    <td>State Code</td>
+    <td>Yes</td>
+    <td>2-digit GST state code</td>
+  </tr>
+  <tr>
+    <td>Pincode</td>
+    <td>No</td>
+    <td>Postal code</td>
+  </tr>
+  <tr>
+    <td>Contact Person</td>
+    <td>No</td>
+    <td>Primary contact name</td>
+  </tr>
+  <tr>
+    <td>Phone</td>
+    <td>Yes</td>
+    <td>Contact number</td>
+  </tr>
+  <tr>
+    <td>Email</td>
+    <td>No</td>
+    <td>For sending invoices</td>
+  </tr>
+  <tr>
+    <td>Credit Limit</td>
+    <td>No</td>
+    <td>Maximum outstanding allowed</td>
+  </tr>
+  <tr>
+    <td>Credit Days</td>
+    <td>No</td>
+    <td>Payment terms</td>
+  </tr>
+</table>
+
+<h2>Creating a Vendor</h2>
+
+<div class="step-box">
+  <span class="step-number">1</span>
+  Click <strong>"Add Vendor"</strong>
+</div>
+
+<div class="step-box">
+  <span class="step-number">2</span>
+  Enter Basic Information:
+  <ul>
+    <li>Vendor Code (or let system generate)</li>
+    <li>Vendor Name (legal name as per GST)</li>
+    <li>Select Vendor Type(s)</li>
+  </ul>
+</div>
+
+<div class="step-box">
+  <span class="step-number">3</span>
+  Enter Tax Information:
+  <ul>
+    <li>GSTIN (15-digit GST number)</li>
+    <li>PAN (10-character)</li>
+  </ul>
+</div>
+
+<div class="step-box">
+  <span class="step-number">4</span>
+  Enter Address:
+  <ul>
+    <li>Complete billing address</li>
+    <li>City, State, State Code, Pincode</li>
+  </ul>
+</div>
+
+<div class="step-box">
+  <span class="step-number">5</span>
+  Enter Contact Details:
+  <ul>
+    <li>Contact person name</li>
+    <li>Phone number</li>
+    <li>Email address</li>
+  </ul>
+</div>
+
+<div class="step-box">
+  <span class="step-number">6</span>
+  Set Credit Terms (Optional):
+  <ul>
+    <li>Credit limit amount</li>
+    <li>Credit days (payment terms)</li>
+  </ul>
+</div>
+
+<div class="step-box">
+  <span class="step-number">7</span>
+  Add Shipping Address (Optional):
+  <ul>
+    <li>If delivery address differs from billing</li>
+    <li>Enter complete shipping details</li>
+  </ul>
+</div>
+
+<div class="step-box">
+  <span class="step-number">8</span>
+  Click <strong>"Save"</strong>
+</div>
+
+<h2>Multiple Vendor Types</h2>
+<p>A single vendor can have multiple types:</p>
+<ul>
+  <li>Example: "ABC Industries" can be both a Customer (you sell to them) and Supplier (they supply raw materials)</li>
+  <li>Set one type as "Primary" for revenue classification</li>
+</ul>
+
+<h2>Vendor History</h2>
+<p>View complete transaction history for any vendor:</p>
+<ol>
+  <li>Open vendor details</li>
+  <li>Click "View History" or navigate to Vendor History screen</li>
+  <li>See all invoices, payments, credit notes, and outstanding</li>
+</ol>
+
+<h1 id="uom">5. Units of Measure (UOM)</h1>
+
+<h2>Overview</h2>
+<p>UOM defines how products and materials are measured. Standard units ensure consistency across invoicing, inventory, and production.</p>
+
+<h2>Accessing UOM Master</h2>
+<p><strong>Navigation:</strong> Sidebar &rarr; Inventory Management &rarr; UOM Tab</p>
+
+<h2>UOM Fields</h2>
+<table>
+  <tr>
+    <th>Field</th>
+    <th>Required</th>
+    <th>Description</th>
+  </tr>
+  <tr>
+    <td>UOM Code</td>
+    <td>Yes</td>
+    <td>Short code (e.g., KG, LTR, PCS)</td>
+  </tr>
+  <tr>
+    <td>UOM Name</td>
+    <td>Yes</td>
+    <td>Full name (e.g., Kilogram, Litre, Pieces)</td>
+  </tr>
+  <tr>
+    <td>Description</td>
+    <td>No</td>
+    <td>Additional notes</td>
+  </tr>
+  <tr>
+    <td>Is Active</td>
+    <td>Yes</td>
+    <td>Active UOMs appear in dropdowns</td>
+  </tr>
+</table>
+
+<h2>Standard UOM Examples</h2>
+<table>
+  <tr>
+    <th>Code</th>
+    <th>Name</th>
+    <th>Used For</th>
+  </tr>
+  <tr>
+    <td>KG</td>
+    <td>Kilogram</td>
+    <td>Raw materials (solids)</td>
+  </tr>
+  <tr>
+    <td>LTR</td>
+    <td>Litre</td>
+    <td>Raw materials (liquids)</td>
+  </tr>
+  <tr>
+    <td>PCS</td>
+    <td>Pieces</td>
+    <td>Individual items</td>
+  </tr>
+  <tr>
+    <td>CASES</td>
+    <td>Cases</td>
+    <td>Finished goods packaging</td>
+  </tr>
+  <tr>
+    <td>DOZ</td>
+    <td>Dozen</td>
+    <td>12-unit packs</td>
+  </tr>
+  <tr>
+    <td>BOX</td>
+    <td>Box</td>
+    <td>Box packaging</td>
+  </tr>
+  <tr>
+    <td>MT</td>
+    <td>Metric Ton</td>
+    <td>Bulk raw materials</td>
+  </tr>
+</table>
+
+<h2>Creating a UOM</h2>
+<ol>
+  <li>Click <strong>"Add UOM"</strong></li>
+  <li>Enter Code (short, unique)</li>
+  <li>Enter Name (descriptive)</li>
+  <li>Optional: Add description</li>
+  <li>Click <strong>"Save"</strong></li>
+</ol>
+
+<h1 id="categories">6. Product Categories</h1>
+
+<h2>Overview</h2>
+<p>Categories provide high-level classification for products. They help organize the product catalog and enable category-wise reporting.</p>
+
+<h2>Accessing Product Categories</h2>
+<p><strong>Navigation:</strong> Sidebar &rarr; Admin &rarr; Product Categories</p>
+
+<h2>Category Fields</h2>
+<table>
+  <tr>
+    <th>Field</th>
+    <th>Required</th>
+    <th>Description</th>
+  </tr>
+  <tr>
+    <td>Category Code</td>
+    <td>Yes</td>
+    <td>Short unique code</td>
+  </tr>
+  <tr>
+    <td>Category Name</td>
+    <td>Yes</td>
+    <td>Display name</td>
+  </tr>
+  <tr>
+    <td>Description</td>
+    <td>No</td>
+    <td>Additional details</td>
+  </tr>
+  <tr>
+    <td>Is Active</td>
+    <td>Yes</td>
+    <td>Active categories appear in dropdowns</td>
+  </tr>
+</table>
+
+<h2>Example Categories</h2>
+<ul>
+  <li>LUB - Lubricants</li>
+  <li>CHM - Chemicals</li>
+  <li>GRS - Greases</li>
+  <li>OIL - Base Oils</li>
+  <li>ADD - Additives</li>
+</ul>
+
+<h1 id="product-types">7. Product Types</h1>
+
+<h2>Overview</h2>
+<p>Product Types provide sub-classification within categories. They offer more granular organization.</p>
+
+<h2>Accessing Product Types</h2>
+<p><strong>Navigation:</strong> Sidebar &rarr; Admin &rarr; Product Types</p>
+
+<h2>Type Fields</h2>
+<table>
+  <tr>
+    <th>Field</th>
+    <th>Required</th>
+    <th>Description</th>
+  </tr>
+  <tr>
+    <td>Type Code</td>
+    <td>Yes</td>
+    <td>Short unique code</td>
+  </tr>
+  <tr>
+    <td>Type Name</td>
+    <td>Yes</td>
+    <td>Display name</td>
+  </tr>
+  <tr>
+    <td>Category</td>
+    <td>Yes</td>
+    <td>Parent category</td>
+  </tr>
+  <tr>
+    <td>Description</td>
+    <td>No</td>
+    <td>Additional details</td>
+  </tr>
+</table>
+
+<h2>Example Hierarchy</h2>
+<pre>
+Category: Lubricants (LUB)
+  ├── Type: Engine Oils (ENG)
+  ├── Type: Gear Oils (GER)
+  ├── Type: Hydraulic Oils (HYD)
+  └── Type: Transmission Fluids (TRN)
+
+Category: Greases (GRS)
+  ├── Type: Lithium Grease (LIT)
+  ├── Type: Calcium Grease (CAL)
+  └── Type: Specialty Grease (SPC)
+</pre>
+
+<h1 id="raw-material-types">8. Raw Material Types</h1>
+
+<h2>Overview</h2>
+<p>Raw Material Types classify the different kinds of inputs used in production.</p>
+
+<h2>Accessing Raw Material Types</h2>
+<p><strong>Navigation:</strong> Sidebar &rarr; Inventory Management &rarr; Raw Material Types</p>
+
+<h2>Type Fields</h2>
+<table>
+  <tr>
+    <th>Field</th>
+    <th>Required</th>
+    <th>Description</th>
+  </tr>
+  <tr>
+    <td>Type Code</td>
+    <td>Yes</td>
+    <td>Short unique code</td>
+  </tr>
+  <tr>
+    <td>Type Name</td>
+    <td>Yes</td>
+    <td>Display name</td>
+  </tr>
+  <tr>
+    <td>Description</td>
+    <td>No</td>
+    <td>Additional details</td>
+  </tr>
+</table>
+
+<h2>Example Raw Material Types</h2>
+<ul>
+  <li>BASE - Base Oils</li>
+  <li>ADD - Additives</li>
+  <li>PKG - Packaging Materials</li>
+  <li>LAB - Labels</li>
+  <li>CHM - Chemicals</li>
+</ul>
+
+<h1 id="vendor-types">9. Vendor Types</h1>
+
+<h2>Overview</h2>
+<p>Vendor Types classify vendors by their relationship with your business.</p>
+
+<h2>Accessing Vendor Types</h2>
+<p><strong>Navigation:</strong> Sidebar &rarr; Admin &rarr; Vendor Types</p>
+
+<h2>Standard Vendor Types</h2>
+<table>
+  <tr>
+    <th>Code</th>
+    <th>Name</th>
+    <th>Description</th>
+  </tr>
+  <tr>
+    <td>DIST</td>
+    <td>Distributor</td>
+    <td>Large volume buyers with credit terms</td>
+  </tr>
+  <tr>
+    <td>DEAL</td>
+    <td>Dealer</td>
+    <td>Medium volume buyers</td>
+  </tr>
+  <tr>
+    <td>RET</td>
+    <td>Retail</td>
+    <td>End consumers, spot sales</td>
+  </tr>
+  <tr>
+    <td>INST</td>
+    <td>Institutional</td>
+    <td>Bulk buyers (factories, fleet operators)</td>
+  </tr>
+  <tr>
+    <td>SUPP</td>
+    <td>Supplier</td>
+    <td>Raw material vendors</td>
+  </tr>
+  <tr>
+    <td>SVC</td>
+    <td>Service Provider</td>
+    <td>Service vendors (transport, etc.)</td>
+  </tr>
+</table>
+
+<h1 id="bom">10. Bill of Materials (BOM)</h1>
+
+<h2>Overview</h2>
+<p>BOM defines the recipe for manufacturing a product. It specifies which raw materials are needed and in what quantities.</p>
+
+<h2>Accessing BOM</h2>
+<p><strong>Navigation:</strong> Sidebar &rarr; Inventory Management &rarr; Products &rarr; Click Product &rarr; BOM Tab</p>
+
+<h2>BOM Structure</h2>
+<table>
+  <tr>
+    <th>Field</th>
+    <th>Description</th>
+  </tr>
+  <tr>
+    <td>BOM Name</td>
+    <td>Identifier for this recipe (e.g., "Standard", "Economy")</td>
+  </tr>
+  <tr>
+    <td>Product</td>
+    <td>Finished good this BOM produces</td>
+  </tr>
+  <tr>
+    <td>Output Quantity</td>
+    <td>Amount produced by this recipe</td>
+  </tr>
+  <tr>
+    <td>Output UOM</td>
+    <td>Unit of output (e.g., Cases, Litres)</td>
+  </tr>
+  <tr>
+    <td>Is Default</td>
+    <td>Default BOM used when issuing materials</td>
+  </tr>
+  <tr>
+    <td>Is Active</td>
+    <td>Active BOMs available for production</td>
+  </tr>
+</table>
+
+<h2>BOM Items (Ingredients)</h2>
+<table>
+  <tr>
+    <th>Field</th>
+    <th>Description</th>
+  </tr>
+  <tr>
+    <td>Raw Material</td>
+    <td>Input material from Raw Materials master</td>
+  </tr>
+  <tr>
+    <td>Quantity</td>
+    <td>Amount needed per output unit</td>
+  </tr>
+  <tr>
+    <td>UOM</td>
+    <td>Unit of measure for input</td>
+  </tr>
+  <tr>
+    <td>Loss %</td>
+    <td>Expected wastage percentage</td>
+  </tr>
+</table>
+
+<h2>Multi-BOM Configuration</h2>
+<p>A product can have multiple BOMs for different scenarios:</p>
+<ul>
+  <li><strong>Standard BOM:</strong> Normal production recipe</li>
+  <li><strong>Economy BOM:</strong> Cost-effective alternative ingredients</li>
+  <li><strong>Premium BOM:</strong> Higher quality ingredients</li>
+</ul>
+
+<div class="note-box">
+  <strong>Important:</strong> When issuing raw materials for production, you must explicitly select which BOM to use. The system does not auto-select.
+</div>
+
+<h2>Creating a BOM</h2>
+<ol>
+  <li>Navigate to Product detail page</li>
+  <li>Click <strong>"BOM"</strong> tab</li>
+  <li>Click <strong>"Add BOM"</strong></li>
+  <li>Enter BOM name and output details</li>
+  <li>Add raw material items:
+    <ul>
+      <li>Select raw material</li>
+      <li>Enter quantity</li>
+      <li>Set loss percentage if applicable</li>
+    </ul>
+  </li>
+  <li>Mark as default if primary recipe</li>
+  <li>Click <strong>"Save"</strong></li>
+</ol>
+
+<h1 id="banks">11. Bank Accounts</h1>
+
+<h2>Overview</h2>
+<p>Bank account details appear on invoices for customer payments. UPI IDs generate QR codes for easy payment.</p>
+
+<h2>Accessing Bank Accounts</h2>
+<p><strong>Navigation:</strong> Sidebar &rarr; Admin &rarr; Bank Accounts</p>
+
+<h2>Bank Account Fields</h2>
+<table>
+  <tr>
+    <th>Field</th>
+    <th>Required</th>
+    <th>Description</th>
+  </tr>
+  <tr>
+    <td>Bank Name</td>
+    <td>Yes</td>
+    <td>Name of the bank</td>
+  </tr>
+  <tr>
+    <td>Account Number</td>
+    <td>Yes</td>
+    <td>Bank account number</td>
+  </tr>
+  <tr>
+    <td>Account Holder</td>
+    <td>Yes</td>
+    <td>Name as per bank records</td>
+  </tr>
+  <tr>
+    <td>IFSC Code</td>
+    <td>Yes</td>
+    <td>Bank IFSC code</td>
+  </tr>
+  <tr>
+    <td>Branch Name</td>
+    <td>No</td>
+    <td>Branch name</td>
+  </tr>
+  <tr>
+    <td>UPI ID</td>
+    <td>No</td>
+    <td>For QR code generation</td>
+  </tr>
+  <tr>
+    <td>Is Default</td>
+    <td>No</td>
+    <td>Default bank for new invoices</td>
+  </tr>
+</table>
+
+<h1 id="templates">12. Invoice Templates</h1>
+
+<h2>Overview</h2>
+<p>Invoice templates store seller details, terms, and formatting preferences. Different templates can be used for different business units or customers.</p>
+
+<h2>Accessing Templates</h2>
+<p><strong>Navigation:</strong> Sidebar &rarr; Admin &rarr; Invoice Templates</p>
+
+<h2>Template Fields</h2>
+<table>
+  <tr>
+    <th>Field</th>
+    <th>Description</th>
+  </tr>
+  <tr>
+    <td>Template Name</td>
+    <td>Identifier for selection</td>
+  </tr>
+  <tr>
+    <td>Company Name</td>
+    <td>Seller company name</td>
+  </tr>
+  <tr>
+    <td>GSTIN</td>
+    <td>Seller GST number</td>
+  </tr>
+  <tr>
+    <td>Address</td>
+    <td>Seller address</td>
+  </tr>
+  <tr>
+    <td>State/State Code</td>
+    <td>Seller state details</td>
+  </tr>
+  <tr>
+    <td>Phone/Email</td>
+    <td>Contact details</td>
+  </tr>
+  <tr>
+    <td>Bank Details</td>
+    <td>Default bank for template</td>
+  </tr>
+  <tr>
+    <td>Logo</td>
+    <td>Company logo for print</td>
+  </tr>
+  <tr>
+    <td>Signature</td>
+    <td>Authorised signatory image</td>
+  </tr>
+  <tr>
+    <td>Terms</td>
+    <td>Default terms and conditions</td>
+  </tr>
+</table>
+
+<h1 id="best-practices">13. Best Practices</h1>
+
+<h2>Data Entry Guidelines</h2>
+
+<div class="tip-box">
+  <strong>Product Codes:</strong>
+  <ul>
+    <li>Use consistent format (e.g., PRD-001, PRD-002)</li>
+    <li>Include category prefix if helpful (e.g., LUB-001 for Lubricants)</li>
+    <li>Avoid special characters</li>
+  </ul>
+</div>
+
+<div class="tip-box">
+  <strong>HSN Codes:</strong>
+  <ul>
+    <li>Verify codes from official GST portal</li>
+    <li>Use 6-8 digit codes for accuracy</li>
+    <li>Review periodically for updates</li>
+  </ul>
+</div>
+
+<div class="tip-box">
+  <strong>Vendor GSTIN:</strong>
+  <ul>
+    <li>Validate format: 2 digit state + 10 char PAN + 3 chars</li>
+    <li>Verify on GST portal before entry</li>
+    <li>State code must match GSTIN first 2 digits</li>
+  </ul>
+</div>
+
+<h2>Maintenance Checklist</h2>
+<table>
+  <tr>
+    <th>Task</th>
+    <th>Frequency</th>
+  </tr>
+  <tr>
+    <td>Review and update product prices</td>
+    <td>Monthly or as needed</td>
+  </tr>
+  <tr>
+    <td>Verify vendor GSTIN status</td>
+    <td>Quarterly</td>
+  </tr>
+  <tr>
+    <td>Check BOM accuracy</td>
+    <td>After any formula change</td>
+  </tr>
+  <tr>
+    <td>Deactivate obsolete products</td>
+    <td>As needed</td>
+  </tr>
+  <tr>
+    <td>Update reorder levels</td>
+    <td>Quarterly</td>
+  </tr>
+  <tr>
+    <td>Review credit limits</td>
+    <td>Annually or on request</td>
+  </tr>
+</table>
+
+<h2>Common Mistakes to Avoid</h2>
+
+<div class="warning-box">
+  <ul>
+    <li>&#10060; Creating duplicate vendors (search first!)</li>
+    <li>&#10060; Wrong HSN codes (verify on GST portal)</li>
+    <li>&#10060; Incorrect state codes (causes wrong GST type)</li>
+    <li>&#10060; Missing BOM items (production variance)</li>
+    <li>&#10060; Deleting instead of deactivating</li>
+    <li>&#10060; Wrong UOM conversions</li>
+  </ul>
+</div>
+
+<hr>
+<div style="text-align: center; margin-top: 40px; padding: 20px; background-color: #f5f5f5;">
+  <p><strong>KINTO Operations & QA Management System</strong></p>
+  <p>Master Data Management - User Guide</p>
+  <p>Version 1.0 | February 2024</p>
+</div>
+
+</body>
+</html>
