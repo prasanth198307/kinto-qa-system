@@ -91,7 +91,7 @@ export default function CustomerAdvancesPage() {
   const { data: vendors = [] } = useQuery<Vendor[]>({
     queryKey: ['/api/vendors', 'all-for-advances'],
     queryFn: async () => {
-      const res = await fetch('/api/vendors?limit=2000');
+      const res = await fetch('/api/vendors?limit=5000');
       if (!res.ok) throw new Error("Failed to fetch vendors");
       const data = await res.json();
       return Array.isArray(data) ? data : (data.vendors || []);
@@ -112,13 +112,18 @@ export default function CustomerAdvancesPage() {
   // Filter only customer vendors (buyers)
   const buyerVendors = vendors.filter(v => {
     const type = (v.vendorType || '').toLowerCase();
-    // Inclusive filter to ensure no customer is missed
-    return type.includes('customer') || 
-           type.includes('both') || 
-           type.includes('buyer') || 
-           v.vendorType === 'Buyer' ||
-           v.vendorType === 'Customer';
+    // Be very inclusive to ensure all relevant entities show up
+    const matches = type.includes('customer') || 
+                   type.includes('both') || 
+                   type.includes('buyer') ||
+                   type === '' || 
+                   !v.vendorType;
+    if (matches) console.log('Found buyer:', v.vendorName, v.vendorType);
+    return matches;
   });
+  
+  console.log('Total vendors fetched:', vendors.length);
+  console.log('Total buyer vendors filtered:', buyerVendors.length);
 
   // Create advance mutation
   const createMutation = useMutation({
