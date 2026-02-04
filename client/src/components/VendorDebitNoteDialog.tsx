@@ -93,6 +93,7 @@ const vendorDebitNoteSchema = z.object({
   notes: z.string().optional(),
   entryMode: z.enum(["itemized", "lumpsum"]).default("lumpsum"),
   lumpSumAmount: z.coerce.number().min(0).optional(),
+  lumpSumTotalAmount: z.coerce.number().min(0).optional(),
   lumpSumDescription: z.string().optional(),
   lumpSumCgstRate: z.coerce.number().min(0).max(2800).default(0),
   lumpSumSgstRate: z.coerce.number().min(0).max(2800).default(0),
@@ -186,6 +187,7 @@ export function VendorDebitNoteDialog({
       notes: "",
       entryMode: "lumpsum",
       lumpSumAmount: 0,
+      lumpSumTotalAmount: 0,
       lumpSumDescription: "",
       lumpSumCgstRate: 900,
       lumpSumSgstRate: 900,
@@ -207,6 +209,7 @@ export function VendorDebitNoteDialog({
         notes: "",
         entryMode: "lumpsum",
         lumpSumAmount: 0,
+        lumpSumTotalAmount: 0,
         lumpSumDescription: "",
         lumpSumCgstRate: 900,
         lumpSumSgstRate: 900,
@@ -591,48 +594,6 @@ export function VendorDebitNoteDialog({
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="lumpSumAmount"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Amount (₹) *</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            min="0" 
-                            step="0.01"
-                            placeholder="e.g., 1000.00" 
-                            value={field.value ? (Number(field.value) / 100).toFixed(2) : ""}
-                            onChange={(e) => field.onChange(Math.round(parseFloat(e.target.value || "0") * 100))}
-                            data-testid="input-lumpsum-amount" 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="lumpSumDescription"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Description (optional)</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="Leave blank to use reason as description" 
-                            {...field} 
-                            data-testid="input-lumpsum-description" 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
                     name="lumpSumCgstRate"
                     render={({ field }) => (
                       <FormItem>
@@ -674,6 +635,70 @@ export function VendorDebitNoteDialog({
                       </FormItem>
                     )}
                   />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="lumpSumTotalAmount"
+                    render={({ field }) => {
+                      const cgstRate = form.watch("lumpSumCgstRate") || 0;
+                      const sgstRate = form.watch("lumpSumSgstRate") || 0;
+                      const totalGstRate = (cgstRate + sgstRate) / 10000;
+                      
+                      return (
+                        <FormItem>
+                          <FormLabel>Total Amount (GST Inclusive) *</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="number" 
+                              min="0" 
+                              step="0.01"
+                              placeholder="e.g., 1180.00" 
+                              value={field.value ? (Number(field.value) / 100).toFixed(2) : ""}
+                              onChange={(e) => {
+                                const totalPaise = Math.round(parseFloat(e.target.value || "0") * 100);
+                                field.onChange(totalPaise);
+                                const taxableAmount = Math.round(totalPaise / (1 + totalGstRate));
+                                form.setValue("lumpSumAmount", taxableAmount);
+                              }}
+                              data-testid="input-lumpsum-total" 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      );
+                    }}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="lumpSumDescription"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description (optional)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Leave blank to use reason as description" 
+                            {...field} 
+                            data-testid="input-lumpsum-description" 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 p-3 bg-muted/50 rounded-lg">
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">Taxable Amount:</span>{" "}
+                    <span className="font-medium">₹{((lumpSumAmount || 0) / 100).toFixed(2)}</span>
+                  </div>
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">GST ({((lumpSumCgstRate + lumpSumSgstRate) / 100).toFixed(0)}%):</span>{" "}
+                    <span className="font-medium">₹{(((lumpSumAmount || 0) * (lumpSumCgstRate + lumpSumSgstRate) / 1000000)).toFixed(2)}</span>
+                  </div>
                 </div>
               </Card>
             ) : (
