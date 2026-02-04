@@ -73,6 +73,7 @@ interface VendorDetailResponse {
     totalDebits: number;
     totalPayments: number;
     totalAdvances: number;
+    vendorDebitNoteAdjustments: number;
     currentBalance: number;
     invoiceCount: number;
     creditNoteCount: number;
@@ -194,7 +195,7 @@ export default function VendorHistoryDetailPage() {
           .vendor-info div { font-size: 13px; }
           .vendor-info label { color: #666; }
           .vendor-info span { font-weight: 500; }
-          .summary { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px; }
+          .summary { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; margin-bottom: 20px; }
           .summary-card { padding: 12px; border: 1px solid #e5e5e5; border-radius: 6px; text-align: center; }
           .summary-card .label { font-size: 11px; color: #666; text-transform: uppercase; margin-bottom: 4px; }
           .summary-card .value { font-size: 16px; font-weight: 600; }
@@ -249,6 +250,11 @@ export default function VendorHistoryDetailPage() {
             <div class="label">Debit Notes</div>
             <div class="value" style="color: #ea580c;">${formatCurrency(data.summary.totalDebits)}</div>
             <div class="count">${data.summary.debitNoteCount} notes</div>
+          </div>
+          <div class="summary-card">
+            <div class="label">DN Adjustments</div>
+            <div class="value" style="color: #9333ea;">${formatCurrency(data.summary.vendorDebitNoteAdjustments || 0)}</div>
+            <div class="count">Vendor claims</div>
           </div>
           <div class="summary-card" style="background: #fef3c7;">
             <div class="label">Current Balance</div>
@@ -333,6 +339,7 @@ export default function VendorHistoryDetailPage() {
       ['Total Advances', formatCurrencyForExcel(data.summary.totalAdvances)],
       ['Total Credits', formatCurrencyForExcel(data.summary.totalCredits)],
       ['Total Debits', formatCurrencyForExcel(data.summary.totalDebits)],
+      ['DN Adjustments', formatCurrencyForExcel(data.summary.vendorDebitNoteAdjustments || 0)],
       ['Current Balance', formatCurrencyForExcel(data.summary.currentBalance)],
       [],
       ['Transaction Ledger'],
@@ -551,6 +558,27 @@ export default function VendorHistoryDetailPage() {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {data?.summary.debitNoteCount} notes
+                </p>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">DN Adjustments</CardTitle>
+            <TrendingUp className="h-4 w-4 text-purple-500" />
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-7 w-24" />
+            ) : (
+              <>
+                <div className="text-xl font-bold text-purple-600" data-testid="text-summary-dn-adjustments">
+                  {formatCurrency(data?.summary.vendorDebitNoteAdjustments || 0)}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Vendor claims applied
                 </p>
               </>
             )}
