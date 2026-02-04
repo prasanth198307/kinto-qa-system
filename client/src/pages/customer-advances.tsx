@@ -112,13 +112,13 @@ export default function CustomerAdvancesPage() {
     enabled: !!selectedAdvance?.vendorId && showApplyDialog,
     queryFn: async () => {
       // Fetch invoices for parent vendor
-      const parentRes = await fetch(`/api/invoices?vendorId=${selectedAdvance?.vendorId}&paymentStatus=pending`);
+      const parentRes = await fetch(`/api/invoices?vendorId=${selectedAdvance?.vendorId}&paymentStatus=pending`, { credentials: 'include' });
       if (!parentRes.ok) throw new Error("Failed to fetch invoices");
       const parentInvoices = await parentRes.json();
       
       // Fetch invoices for all child vendors
       const childInvoicesPromises = childVendorIds.map(async (childId) => {
-        const res = await fetch(`/api/invoices?vendorId=${childId}&paymentStatus=pending`);
+        const res = await fetch(`/api/invoices?vendorId=${childId}&paymentStatus=pending`, { credentials: 'include' });
         if (!res.ok) return [];
         return res.json();
       });
@@ -126,8 +126,14 @@ export default function CustomerAdvancesPage() {
       const childInvoicesArrays = await Promise.all(childInvoicesPromises);
       const allChildInvoices = childInvoicesArrays.flat();
       
-      // Combine parent and child invoices
-      return [...parentInvoices, ...allChildInvoices];
+      // Combine parent and child invoices and map to consistent format with outstanding balance
+      const allInvoices = [...parentInvoices, ...allChildInvoices].map((inv: any) => ({
+        ...inv,
+        invoiceTotal: inv.totalAmount,
+        outstanding: inv.totalAmount - (inv.amountReceived || 0),
+      }));
+      
+      return allInvoices;
     },
   });
 
@@ -762,7 +768,7 @@ export default function CustomerAdvancesPage() {
                 <SelectContent>
                   {Array.isArray(vendorInvoices) && vendorInvoices.map((inv: any) => (
                     <SelectItem key={inv.id} value={inv.id}>
-                      {inv.invoiceNumber} - {formatCurrency(inv.invoiceTotal)}
+                      {inv.invoiceNumber} - Outstanding: {formatCurrency(inv.outstanding)} (of {formatCurrency(inv.invoiceTotal)})
                     </SelectItem>
                   ))}
                 </SelectContent>

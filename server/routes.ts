@@ -6734,6 +6734,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
             inv.buyerName.toLowerCase().includes((filters.buyerName as string).toLowerCase())
           );
         }
+        // Filter by vendorId - lookup vendor name and filter by buyer name
+        if (filters.vendorId) {
+          const vendor = await storage.getVendor(filters.vendorId as string);
+          if (vendor) {
+            allInvoices = allInvoices.filter(inv => 
+              inv.buyerName.toLowerCase() === vendor.vendorName.toLowerCase()
+            );
+          } else {
+            allInvoices = []; // No vendor found, return empty
+          }
+        }
+        // Filter by payment status (pending = has outstanding balance)
+        if (filters.paymentStatus === 'pending') {
+          allInvoices = allInvoices.filter(inv => 
+            inv.totalAmount > (inv.amountReceived || 0)
+          );
+        }
         
         // Apply search filter for invoice number
         if (search) {
@@ -6807,6 +6824,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Default non-paginated return (for compatibility with existing components)
+      // Apply vendorId filter if provided
+      if (filters.vendorId) {
+        const vendor = await storage.getVendor(filters.vendorId as string);
+        if (vendor) {
+          allInvoices = allInvoices.filter(inv => 
+            inv.buyerName.toLowerCase() === vendor.vendorName.toLowerCase()
+          );
+        } else {
+          allInvoices = [];
+        }
+      }
+      // Apply paymentStatus filter if provided
+      if (filters.paymentStatus === 'pending') {
+        allInvoices = allInvoices.filter(inv => 
+          inv.totalAmount > (inv.amountReceived || 0)
+        );
+      }
       return res.json(allInvoices);
     } catch (error) {
       console.error('[API] Error fetching invoices:', error);
