@@ -221,7 +221,7 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                   name="amount"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Payment Amount (₹)</FormLabel>
+                      <FormLabel>Total Payment Amount (₹)</FormLabel>
                       <FormControl>
                         <Input
                           {...field}
@@ -333,24 +333,6 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                           <SelectItem value="other">Other</SelectItem>
                         </SelectContent>
                       </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="payerName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Payer Name</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          placeholder="Enter name of entity"
-                          data-testid="input-payer-name"
-                        />
-                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
