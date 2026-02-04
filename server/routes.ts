@@ -7783,7 +7783,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   .where(and(
                     eq(finishedGoods.productId, item.productId),
                     eq(finishedGoods.batchNumber, batchNumber),
-                    eq(finishedGoods.recordStatus, 1)
+                    // We check for all records (even recordStatus 0) to allow restoration
+                    or(eq(finishedGoods.recordStatus, 1), eq(finishedGoods.recordStatus, 0))
                   ))
                   .limit(1);
                 
