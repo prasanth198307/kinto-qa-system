@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { format } from "date-fns";
@@ -98,14 +98,36 @@ export default function CustomerAdvancesPage() {
     }
   });
 
-  // Fetch invoices for apply dialog
+  // Get all child vendor IDs for the selected parent vendor
+  const childVendorIds = useMemo(() => {
+    if (!selectedAdvance?.vendorId) return [];
+    return vendors
+      .filter(v => v.parentVendorId === selectedAdvance.vendorId)
+      .map(v => v.id);
+  }, [vendors, selectedAdvance?.vendorId]);
+
+  // Fetch invoices for apply dialog (parent + all child vendors)
   const { data: vendorInvoices = [] } = useQuery({
-    queryKey: ['/api/invoices', 'vendor', selectedAdvance?.vendorId],
+    queryKey: ['/api/invoices', 'vendor-family', selectedAdvance?.vendorId, childVendorIds],
     enabled: !!selectedAdvance?.vendorId && showApplyDialog,
     queryFn: async () => {
-      const res = await fetch(`/api/invoices?vendorId=${selectedAdvance?.vendorId}&paymentStatus=pending`);
-      if (!res.ok) throw new Error("Failed to fetch invoices");
-      return res.json();
+      // Fetch invoices for parent vendor
+      const parentRes = await fetch(`/api/invoices?vendorId=${selectedAdvance?.vendorId}&paymentStatus=pending`);
+      if (!parentRes.ok) throw new Error("Failed to fetch invoices");
+      const parentInvoices = await parentRes.json();
+      
+      // Fetch invoices for all child vendors
+      const childInvoicesPromises = childVendorIds.map(async (childId) => {
+        const res = await fetch(`/api/invoices?vendorId=${childId}&paymentStatus=pending`);
+        if (!res.ok) return [];
+        return res.json();
+      });
+      
+      const childInvoicesArrays = await Promise.all(childInvoicesPromises);
+      const allChildInvoices = childInvoicesArrays.flat();
+      
+      // Combine parent and child invoices
+      return [...parentInvoices, ...allChildInvoices];
     },
   });
 
