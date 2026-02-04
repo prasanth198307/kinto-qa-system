@@ -526,9 +526,9 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
           </CardHeader>
           {pendingData && pendingData.invoiceCount > 0 && (
             <CardContent className="pt-0">
-              <div className="rounded-md border max-h-48 overflow-y-auto">
+              <div className="rounded-md border max-h-[400px] overflow-y-auto">
                 <Table>
-                  <TableHeader>
+                  <TableHeader className="sticky top-0 bg-background z-10 shadow-sm">
                     <TableRow>
                       <TableHead className="text-xs">Invoice #</TableHead>
                       <TableHead className="text-xs">Date</TableHead>
@@ -536,7 +536,7 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                       <TableHead className="text-xs text-right">Paid</TableHead>
                       <TableHead className="text-xs text-right">Outstanding</TableHead>
                       {allocationMethod === 'manual' && (
-                        <TableHead className="text-xs text-right w-[120px]">Pay Amount</TableHead>
+                        <TableHead className="text-xs text-right w-[140px]">Pay Amount (₹)</TableHead>
                       )}
                     </TableRow>
                   </TableHeader>
@@ -546,12 +546,12 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                         <TableCell className="text-sm font-medium">
                           {invoice.invoiceNumber}
                           {idx === 0 && allocationMethod === 'fifo' && (
-                            <Badge variant="outline" className="ml-2 text-xs">
+                            <Badge variant="outline" className="ml-2 text-[10px] h-4">
                               Oldest
                             </Badge>
                           )}
                         </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
+                        <TableCell className="text-xs text-muted-foreground">
                           {format(new Date(invoice.invoiceDate), "dd-MMM-yy")}
                         </TableCell>
                         <TableCell className="text-sm text-right">
@@ -568,11 +568,12 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                             <Input
                               type="number"
                               step="0.01"
-                              className="h-8 text-right text-xs"
+                              className="h-8 text-right text-xs border-primary/20 focus:border-primary"
                               placeholder="0.00"
                               value={manualAllocations[invoice.id] || ""}
                               onChange={(e) => handleManualAllocationChange(invoice.id, e.target.value)}
                               max={(invoice.outstanding / 100).toFixed(2)}
+                              data-testid={`input-manual-alloc-${invoice.id}`}
                             />
                           </TableCell>
                         )}
@@ -581,8 +582,10 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                   </TableBody>
                 </Table>
               </div>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Payment will be allocated starting from the oldest invoice (FIFO order)
+              <p className="mt-2 text-[10px] text-muted-foreground italic">
+                {allocationMethod === 'fifo' 
+                  ? "Payment will be automatically distributed starting from the oldest invoice." 
+                  : "Enter the exact amount you want to pay against specific invoices above."}
               </p>
             </CardContent>
           )}
