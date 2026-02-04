@@ -7793,6 +7793,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   await tx.update(finishedGoods)
                     .set({
                       quantity: newQuantity,
+                      recordStatus: 1, // Restore to active status even if it was exhausted (0 qty)
                       updatedAt: new Date().toISOString(),
                       remarks: existingBatch.remarks 
                         ? `${existingBatch.remarks} | +${item.quantity} returned from invoice ${invoice.invoiceNumber}`
