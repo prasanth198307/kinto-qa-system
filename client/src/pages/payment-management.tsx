@@ -57,23 +57,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Loader2, Plus, X, FileText, Search, Filter, Check, ChevronsUpDown, Pencil, ChevronDown, ChevronRight, Link2, CircleCheck, AlertTriangle, CircleDashed, AlertCircle, ArrowLeft } from "lucide-react";
 import { usePermissions } from "@/hooks/use-permissions";
 import { cn } from "@/lib/utils";
-
-const fifoPaymentSchema = z.object({
-  vendorId: z.string().min(1, "Please select a vendor"),
-  amount: z.string().min(1, "Payment amount is required"),
-  paymentDate: z.string().min(1, "Payment date is required"),
-  paymentMethod: z.enum(["Cash", "Cheque", "NEFT", "RTGS", "UPI", "Other"]),
-  referenceNumber: z.string().optional(),
-  bankName: z.string().optional(),
-  remarks: z.string().optional(),
-});
+import FIFOPaymentAllocation from "@/components/FIFOPaymentAllocation";
 
 const editPaymentSchema = z.object({
   paymentDate: z.string().min(1, "Payment date is required"),
@@ -85,7 +74,6 @@ const editPaymentSchema = z.object({
   amountChangeReason: z.string().optional(),
 });
 
-type FIFOPaymentFormData = z.infer<typeof fifoPaymentSchema>;
 type EditPaymentFormData = z.infer<typeof editPaymentSchema>;
 
 // Payment Evidence Row Component - shows Payments.xlsx records linked to a VY- payment
@@ -191,11 +179,8 @@ export default function PaymentManagement() {
   const canEdit = hasPermission('payments', 'edit');
   
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
-  const [allocationPreview, setAllocationPreview] = useState<any>(null);
   const [cancelPaymentId, setCancelPaymentId] = useState<string | null>(null);
   const [cancellationRemarks, setCancellationRemarks] = useState("");
-  const [vendorPopoverOpen, setVendorPopoverOpen] = useState(false);
-  const [selectedVendorId, setSelectedVendorId] = useState<string>("");
   
   // Edit payment state
   const [editPayment, setEditPayment] = useState<any>(null);
@@ -214,76 +199,8 @@ export default function PaymentManagement() {
     queryKey: ['/api/vendors'],
   });
 
-  const { data: banks = [] } = useQuery<any[]>({
-    queryKey: ['/api/banks'],
-  });
-
   const { data: paymentsData = [], isLoading } = useQuery<any[]>({
     queryKey: ['/api/invoice-payments/history'],
-  });
-
-  // Fetch pending invoices when vendor is selected (for preview in dialog)
-  const { data: pendingData, isLoading: isPendingLoading } = useQuery<{
-    vendorName: string;
-    pendingInvoices: Array<{
-      id: string;
-      invoiceNumber: string;
-      invoiceDate: string;
-      totalAmount: number;
-      totalPaid: number;
-      outstanding: number;
-    }>;
-    totalOutstanding: number;
-    invoiceCount: number;
-  }>({
-    queryKey: ['/api/vendors', selectedVendorId, 'pending-invoices'],
-    enabled: !!selectedVendorId && showPaymentDialog,
-  });
-
-  const form = useForm<FIFOPaymentFormData>({
-    resolver: zodResolver(fifoPaymentSchema),
-    defaultValues: {
-      vendorId: "",
-      amount: "",
-      paymentDate: format(new Date(), "yyyy-MM-dd"),
-      paymentMethod: "Cash",
-      referenceNumber: "",
-      bankName: "",
-      remarks: "",
-    },
-  });
-
-  const allocateMutation = useMutation({
-    mutationFn: async (data: FIFOPaymentFormData) => {
-      const payload = {
-        vendorId: data.vendorId,
-        amount: Math.round(parseFloat(data.amount) * 100),
-        paymentDate: new Date(data.paymentDate).toISOString(),
-        paymentMethod: data.paymentMethod,
-        referenceNumber: data.referenceNumber,
-        bankName: data.bankName,
-        remarks: data.remarks,
-      };
-      const response = await apiRequest('POST', '/api/invoice-payments/allocate-fifo', payload);
-      return await response.json(); // Parse the JSON response
-    },
-    onSuccess: (data: any) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/invoice-payments'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/invoice-payments/history'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
-      setAllocationPreview(data);
-      toast({
-        title: "Success",
-        description: `Payment allocated to ${data?.allocations?.length || 0} invoice(s)`,
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
   });
 
   const cancelMutation = useMutation({
@@ -400,20 +317,10 @@ export default function PaymentManagement() {
     }
   };
 
-  const onSubmit = (data: FIFOPaymentFormData) => {
-    allocateMutation.mutate(data);
-  };
-
   const handleCancelPayment = () => {
     if (cancelPaymentId && cancellationRemarks.trim()) {
       cancelMutation.mutate({ paymentId: cancelPaymentId, remarks: cancellationRemarks });
     }
-  };
-
-  const handleCloseAllocationPreview = () => {
-    setAllocationPreview(null);
-    setShowPaymentDialog(false);
-    form.reset();
   };
 
   // Filter payments
@@ -499,7 +406,7 @@ export default function PaymentManagement() {
                 <SelectItem value="all">All Vendors</SelectItem>
                 {vendors.map((vendor: any) => (
                   <SelectItem key={vendor.id} value={vendor.id}>
-                    {vendor.name}
+                    {vendor.vendorName}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -558,7 +465,6 @@ export default function PaymentManagement() {
                     <TableHead>Amount</TableHead>
                     <TableHead>Method</TableHead>
                     <TableHead>Reference</TableHead>
-                    <TableHead>Type</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
@@ -569,88 +475,68 @@ export default function PaymentManagement() {
                     const isExpanded = expandedPayments.has(payment.id);
                     
                     return (
-                      <>
-                        <TableRow key={payment.id} data-testid={`row-payment-${payment.id}`}>
-                          <TableCell className="text-sm">
-                            <div className="flex items-center gap-1">
-                              {isVyapaar && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6"
-                                  onClick={() => togglePaymentEvidence(payment.id)}
-                                  data-testid={`button-expand-evidence-${payment.id}`}
-                                  title="View Payments.xlsx evidence"
-                                >
-                                  {isExpanded ? (
-                                    <ChevronDown className="w-4 h-4" />
-                                  ) : (
-                                    <ChevronRight className="w-4 h-4" />
-                                  )}
-                                </Button>
-                              )}
-                              {format(new Date(payment.paymentDate), 'dd MMM yyyy')}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-sm">{payment.vendorName}</TableCell>
-                          <TableCell className="text-sm font-medium">{payment.invoiceNumber}</TableCell>
-                          <TableCell className="text-sm">₹{(payment.amount / 100).toFixed(2)}</TableCell>
-                          <TableCell className="text-sm">{payment.paymentMethod}</TableCell>
-                          <TableCell className="text-sm">
-                            <div className="flex items-center gap-1">
-                              {payment.referenceNumber || '-'}
-                              {isVyapaar && (
-                                <Badge variant="secondary" className="text-xs ml-1">
-                                  <Link2 className="w-3 h-3 mr-1" />
-                                  Vyapaar
-                                </Badge>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="text-xs">
-                              {payment.paymentType}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {payment.cancelledAt ? (
-                              <Badge variant="destructive" className="text-xs">Cancelled</Badge>
-                            ) : (
-                              <Badge variant="default" className="text-xs bg-green-600 hover:bg-green-700">Active</Badge>
+                      <TableRow key={payment.id} data-testid={`row-payment-${payment.id}`}>
+                        <TableCell className="text-sm">
+                          <div className="flex items-center gap-1">
+                            {isVyapaar && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => togglePaymentEvidence(payment.id)}
+                                data-testid={`button-expand-evidence-${payment.id}`}
+                                title="View Payments.xlsx evidence"
+                              >
+                                {isExpanded ? (
+                                  <ChevronDown className="w-4 h-4" />
+                                ) : (
+                                  <ChevronRight className="w-4 h-4" />
+                                )}
+                              </Button>
                             )}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              {!payment.cancelledAt && canEdit && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleEditPayment(payment)}
-                                  data-testid={`button-edit-${payment.id}`}
-                                >
-                                  <Pencil className="w-4 h-4 mr-1" />
-                                  Edit
-                                </Button>
-                              )}
-                              {!payment.cancelledAt && payment.paymentType !== 'Write-off' && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => setCancelPaymentId(payment.id)}
-                                  data-testid={`button-cancel-${payment.id}`}
-                                >
-                                  <X className="w-4 h-4 mr-1" />
-                                  Cancel
-                                </Button>
-                              )}
+                            {format(new Date(payment.paymentDate), 'dd MMM yyyy')}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-sm">{payment.vendorName}</TableCell>
+                        <TableCell className="text-sm font-medium">{payment.invoiceNumber}</TableCell>
+                        <TableCell className="text-sm">₹{(payment.amount / 100).toFixed(2)}</TableCell>
+                        <TableCell className="text-sm">{payment.paymentMethod}</TableCell>
+                        <TableCell className="text-sm">{payment.referenceNumber || '-'}</TableCell>
+                        <TableCell className="text-sm">
+                          <Badge 
+                            variant={payment.cancelledAt ? "destructive" : "default"}
+                            className={cn(
+                              !payment.cancelledAt && "bg-green-600 hover:bg-green-700"
+                            )}
+                          >
+                            {payment.cancelledAt ? "Cancelled" : "Active"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {!payment.cancelledAt && canEdit && (
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => handleEditPayment(payment)}
+                                data-testid={`button-edit-payment-${payment.id}`}
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive"
+                                onClick={() => setCancelPaymentId(payment.id)}
+                                data-testid={`button-cancel-payment-${payment.id}`}
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
                             </div>
-                          </TableCell>
-                        </TableRow>
-                        {/* Payment Evidence Sub-row */}
-                        {isVyapaar && isExpanded && (
-                          <PaymentEvidenceRow key={`evidence-${payment.id}`} paymentId={payment.id} />
-                        )}
-                      </>
+                          )}
+                        </TableCell>
+                      </TableRow>
                     );
                   })}
                 </TableBody>
@@ -660,15 +546,7 @@ export default function PaymentManagement() {
         </CardContent>
       </Card>
 
-      {/* New Payment Dialog */}
-      <Dialog open={showPaymentDialog} onOpenChange={(open) => {
-        setShowPaymentDialog(open);
-        if (!open) {
-          setAllocationPreview(null);
-          setSelectedVendorId("");
-          form.reset();
-        }
-      }}>
+      <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>New FIFO Payment</DialogTitle>
@@ -677,378 +555,69 @@ export default function PaymentManagement() {
             </DialogDescription>
           </DialogHeader>
 
-          {!allocationPreview ? (
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="vendorId"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Vendor</FormLabel>
-                        <Popover open={vendorPopoverOpen} onOpenChange={setVendorPopoverOpen}>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant="outline"
-                                role="combobox"
-                                aria-expanded={vendorPopoverOpen}
-                                className={cn(
-                                  "w-full justify-between",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                                data-testid="select-vendor"
-                              >
-                                {field.value
-                                  ? vendors.find((vendor: any) => vendor.id === field.value)?.vendorName || "Select vendor"
-                                  : "Select vendor"}
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-[400px] p-0" align="start">
-                            <Command>
-                              <CommandInput placeholder="Search vendors..." data-testid="input-search-vendor" />
-                              <CommandEmpty>No vendor found.</CommandEmpty>
-                              <CommandList className="max-h-64 overflow-auto">
-                                <CommandGroup>
-                                  {vendors.map((vendor: any) => (
-                                    <CommandItem
-                                      key={vendor.id}
-                                      value={vendor.vendorName}
-                                      keywords={[vendor.vendorCode, vendor.mobileNumber || '']}
-                                      onSelect={() => {
-                                        form.setValue("vendorId", vendor.id);
-                                        setSelectedVendorId(vendor.id);
-                                        setVendorPopoverOpen(false);
-                                      }}
-                                      data-testid={`vendor-option-${vendor.vendorCode}`}
-                                    >
-                                      <Check
-                                        className={cn(
-                                          "mr-2 h-4 w-4",
-                                          field.value === vendor.id ? "opacity-100" : "opacity-0"
-                                        )}
-                                      />
-                                      <div className="flex flex-col">
-                                        <span className="font-medium">{vendor.vendorName}</span>
-                                        <span className="text-xs text-muted-foreground">
-                                          {vendor.vendorCode} {vendor.mobileNumber && `• ${vendor.mobileNumber}`}
-                                        </span>
-                                      </div>
-                                    </CommandItem>
-                                  ))}
-                                </CommandGroup>
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="amount"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Payment Amount (₹)</FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            type="number"
-                            step="0.01"
-                            placeholder="0.00"
-                            data-testid="input-amount"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="paymentDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Payment Date</FormLabel>
-                        <FormControl>
-                          <Input {...field} type="date" data-testid="input-payment-date" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="paymentMethod"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Payment Method</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger data-testid="select-payment-method">
-                              <SelectValue />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="Cash">Cash</SelectItem>
-                            <SelectItem value="Cheque">Cheque</SelectItem>
-                            <SelectItem value="NEFT">NEFT</SelectItem>
-                            <SelectItem value="RTGS">RTGS</SelectItem>
-                            <SelectItem value="UPI">UPI</SelectItem>
-                            <SelectItem value="Other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="referenceNumber"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Reference Number</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Transaction ID / Cheque No" data-testid="input-reference" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="bankName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Bank Name</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Bank name" data-testid="input-bank-name" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="remarks"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Remarks</FormLabel>
-                      <FormControl>
-                        <Textarea {...field} rows={3} placeholder="Additional notes" data-testid="input-remarks" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Pending Invoices Preview - Shows when vendor is selected */}
-                {selectedVendorId && (
-                  <div className="rounded-lg border p-4 space-y-3 bg-muted/30">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-medium text-sm">Pending Invoices for {pendingData?.vendorName}</h4>
-                      {isPendingLoading ? (
-                        <span className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Loading...
-                        </span>
-                      ) : pendingData?.invoiceCount === 0 ? (
-                        <span className="flex items-center gap-2 text-sm text-yellow-600">
-                          <AlertCircle className="h-4 w-4" />
-                          No pending invoices
-                        </span>
-                      ) : (
-                        <Badge variant="secondary">
-                          {pendingData?.invoiceCount} invoice(s) • ₹{((pendingData?.totalOutstanding || 0) / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })} outstanding
-                        </Badge>
-                      )}
-                    </div>
-                    {pendingData && pendingData.invoiceCount > 0 && (
-                      <div className="rounded-md border max-h-40 overflow-y-auto bg-background">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead className="text-xs py-2">Invoice #</TableHead>
-                              <TableHead className="text-xs py-2">Date</TableHead>
-                              <TableHead className="text-xs text-right py-2">Total</TableHead>
-                              <TableHead className="text-xs text-right py-2">Paid</TableHead>
-                              <TableHead className="text-xs text-right py-2">Outstanding</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {pendingData.pendingInvoices.map((invoice, idx) => (
-                              <TableRow key={invoice.id}>
-                                <TableCell className="text-sm font-medium py-1.5">
-                                  {invoice.invoiceNumber}
-                                  {idx === 0 && (
-                                    <Badge variant="outline" className="ml-2 text-xs">
-                                      Oldest
-                                    </Badge>
-                                  )}
-                                </TableCell>
-                                <TableCell className="text-sm text-muted-foreground py-1.5">
-                                  {format(new Date(invoice.invoiceDate), "dd-MMM-yy")}
-                                </TableCell>
-                                <TableCell className="text-sm text-right py-1.5">
-                                  ₹{(invoice.totalAmount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                </TableCell>
-                                <TableCell className="text-sm text-right text-green-600 py-1.5">
-                                  ₹{(invoice.totalPaid / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                </TableCell>
-                                <TableCell className="text-sm text-right font-medium text-destructive py-1.5">
-                                  ₹{(invoice.outstanding / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    )}
-                    <p className="text-xs text-muted-foreground">
-                      Payment will be allocated starting from the oldest invoice (FIFO order)
-                    </p>
-                  </div>
-                )}
-
-                <DialogFooter>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setShowPaymentDialog(false)}
-                    data-testid="button-cancel-payment"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={allocateMutation.isPending}
-                    data-testid="button-submit-payment"
-                  >
-                    {allocateMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                    Allocate Payment
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          ) : allocationPreview && allocationPreview.allocations ? (
-            <div className="space-y-4">
-              <div className="grid grid-cols-3 gap-4 p-4 rounded-md border bg-muted/30">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Payment</p>
-                  <p className="text-lg font-semibold">
-                    ₹{((allocationPreview.totalAmount || 0) / 100).toFixed(2)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Allocated</p>
-                  <p className="text-lg font-semibold text-green-600">
-                    ₹{((allocationPreview.allocated || 0) / 100).toFixed(2)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Remaining</p>
-                  <p className="text-lg font-semibold text-destructive">
-                    ₹{((allocationPreview.remaining || 0) / 100).toFixed(2)}
-                  </p>
-                </div>
-              </div>
-
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Invoice Number</TableHead>
-                      <TableHead>Invoice Date</TableHead>
-                      <TableHead>Outstanding Before</TableHead>
-                      <TableHead>Amount Allocated</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {allocationPreview.allocations.map((allocation: any) => (
-                      <TableRow key={allocation.paymentId}>
-                        <TableCell className="font-medium">
-                          {allocation.invoiceNumber}
-                        </TableCell>
-                        <TableCell>
-                          {format(new Date(allocation.invoiceDate), 'dd MMM yyyy')}
-                        </TableCell>
-                        <TableCell>
-                          ₹{(allocation.outstanding / 100).toFixed(2)}
-                        </TableCell>
-                        <TableCell className="text-green-600 font-semibold">
-                          ₹{(allocation.allocated / 100).toFixed(2)}
-                        </TableCell>
-                        <TableCell>
-                          {allocation.allocated === allocation.outstanding ? (
-                            <Badge variant="default" className="bg-green-600 hover:bg-green-700">Fully Paid</Badge>
-                          ) : (
-                            <Badge variant="outline">Partial</Badge>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-
-              <DialogFooter>
-                <Button onClick={handleCloseAllocationPreview} data-testid="button-close-preview">
-                  Close
-                </Button>
-              </DialogFooter>
-            </div>
-          ) : (
-            <div className="p-4 text-center text-muted-foreground">
-              <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
-              <p>Processing payment allocation...</p>
-            </div>
-          )}
+          <FIFOPaymentAllocation 
+            onSuccess={() => {
+              setShowPaymentDialog(false);
+              queryClient.invalidateQueries({ queryKey: ['/api/invoice-payments/history'] });
+              queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
+            }} 
+            onCancel={() => setShowPaymentDialog(false)} 
+          />
         </DialogContent>
       </Dialog>
 
       {/* Edit Payment Dialog */}
-      <Dialog open={showEditDialog} onOpenChange={(open) => {
-        setShowEditDialog(open);
-        if (!open) {
-          setEditPayment(null);
-          editForm.reset();
-        }
-      }}>
-        <DialogContent className="max-w-lg">
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Edit Payment</DialogTitle>
             <DialogDescription>
-              Update payment details for {editPayment?.vendorName} - Invoice #{editPayment?.invoiceNumber}
+              Update payment details or adjust amount
             </DialogDescription>
           </DialogHeader>
+
           <Form {...editForm}>
             <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
+              <FormField
+                control={editForm.control}
+                name="paymentDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Payment Date</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="date" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={editForm.control}
-                  name="paymentDate"
+                  name="paymentMethod"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Payment Date</FormLabel>
-                      <FormControl>
-                        <Input {...field} type="date" data-testid="input-edit-payment-date" />
-                      </FormControl>
+                      <FormLabel>Method</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="Cash">Cash</SelectItem>
+                          <SelectItem value="Cheque">Cheque</SelectItem>
+                          <SelectItem value="NEFT">NEFT</SelectItem>
+                          <SelectItem value="RTGS">RTGS</SelectItem>
+                          <SelectItem value="UPI">UPI</SelectItem>
+                          <SelectItem value="Other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-
                 <FormField
                   control={editForm.control}
                   name="amount"
@@ -1056,72 +625,13 @@ export default function PaymentManagement() {
                     <FormItem>
                       <FormLabel>Amount (₹)</FormLabel>
                       <FormControl>
-                        <Input 
-                          {...field} 
-                          type="number" 
-                          step="0.01"
-                          data-testid="input-edit-amount" 
-                        />
+                        <Input {...field} type="number" step="0.01" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
-
-              {editForm.watch('amount') !== (editPayment?.amount / 100).toFixed(2) && (
-                <>
-                  {isVyapaarPayment(editPayment) && (
-                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-md text-amber-800 text-sm">
-                      <strong>Warning:</strong> This is a Vyapaar-imported payment (VY-). Changing this amount will affect the Vyapaar totals matching.
-                    </div>
-                  )}
-                  <FormField
-                    control={editForm.control}
-                    name="amountChangeReason"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Reason for Amount Change *</FormLabel>
-                        <FormControl>
-                          <Textarea 
-                            {...field} 
-                            rows={2} 
-                            placeholder="Please provide a reason for changing the amount..." 
-                            data-testid="input-edit-amount-reason" 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </>
-              )}
-
-              <FormField
-                control={editForm.control}
-                name="paymentMethod"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Payment Method</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-edit-payment-method">
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="Cash">Cash</SelectItem>
-                        <SelectItem value="Cheque">Cheque</SelectItem>
-                        <SelectItem value="NEFT">NEFT</SelectItem>
-                        <SelectItem value="RTGS">RTGS</SelectItem>
-                        <SelectItem value="UPI">UPI</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
 
               <FormField
                 control={editForm.control}
@@ -1130,7 +640,7 @@ export default function PaymentManagement() {
                   <FormItem>
                     <FormLabel>Reference Number</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="Transaction ID / Cheque No" data-testid="input-edit-reference" />
+                      <Input {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -1144,7 +654,7 @@ export default function PaymentManagement() {
                   <FormItem>
                     <FormLabel>Bank Name</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="Bank name" data-testid="input-edit-bank-name" />
+                      <Input {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -1158,33 +668,42 @@ export default function PaymentManagement() {
                   <FormItem>
                     <FormLabel>Remarks</FormLabel>
                     <FormControl>
-                      <Textarea {...field} rows={3} placeholder="Additional notes" data-testid="input-edit-remarks" />
+                      <Textarea {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
+              {editForm.watch("amount") !== (editPayment?.amount / 100).toFixed(2) && (
+                <FormField
+                  control={editForm.control}
+                  name="amountChangeReason"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Reason for Amount Change</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="e.g. Correction, TDS adjustment" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
               <DialogFooter>
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => {
-                    setShowEditDialog(false);
-                    setEditPayment(null);
-                    editForm.reset();
-                  }}
-                  data-testid="button-cancel-edit"
+                  onClick={() => setShowEditDialog(false)}
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
                   disabled={editMutation.isPending}
-                  data-testid="button-save-edit"
                 >
-                  {editMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  Save Changes
+                  {editMutation.isPending ? "Updating..." : "Update Payment"}
                 </Button>
               </DialogFooter>
             </form>
@@ -1192,38 +711,33 @@ export default function PaymentManagement() {
         </DialogContent>
       </Dialog>
 
-      {/* Cancel Payment Confirmation */}
-      <AlertDialog open={!!cancelPaymentId} onOpenChange={(open) => !open && setCancelPaymentId(null)}>
+      {/* Cancel Confirmation */}
+      <AlertDialog open={!!cancelPaymentId} onOpenChange={() => setCancelPaymentId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Cancel Payment?</AlertDialogTitle>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will reverse the payment allocation and restore the outstanding balance on the linked invoice.
-              Please provide a reason for cancellation:
+              This will cancel the payment and restore the outstanding balance on the linked invoices.
+              This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <Textarea
-            value={cancellationRemarks}
-            onChange={(e) => setCancellationRemarks(e.target.value)}
-            placeholder="Reason for cancellation..."
-            rows={3}
-            data-testid="input-cancellation-remarks"
-          />
+          <div className="py-4">
+            <FormLabel>Cancellation Remarks</FormLabel>
+            <Textarea
+              value={cancellationRemarks}
+              onChange={(e) => setCancellationRemarks(e.target.value)}
+              placeholder="Provide a reason for cancellation..."
+              className="mt-2"
+            />
+          </div>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => {
-              setCancelPaymentId(null);
-              setCancellationRemarks("");
-            }} data-testid="button-cancel-dialog">
-              No, Keep Payment
-            </AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleCancelPayment}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={!cancellationRemarks.trim() || cancelMutation.isPending}
-              className="bg-destructive hover:bg-destructive/90"
-              data-testid="button-confirm-cancel"
             >
-              {cancelMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Yes, Cancel Payment
+              {cancelMutation.isPending ? "Cancelling..." : "Confirm Cancellation"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
