@@ -2989,6 +2989,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get pending invoices for a vendor (for FIFO payment allocation preview)
+  // Also includes invoices from child vendors linked to this parent
   app.get('/api/vendors/:id/pending-invoices', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
@@ -2999,9 +3000,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Vendor not found" });
       }
 
-      // Get all invoices for this vendor
+      // Get all vendors to find children of this parent
+      const allVendors = await storage.getAllVendors();
+      const childVendors = allVendors.filter(v => v.parentVendorId === id);
+      
+      // Build list of vendor names to include (parent + all children)
+      const vendorNamesToInclude = [vendor.vendorName, ...childVendors.map(cv => cv.vendorName)];
+
+      // Get all invoices for this vendor family (parent + children)
       const allInvoices = await storage.getAllInvoices();
-      const vendorInvoices = allInvoices.filter(inv => inv.buyerName === vendor.vendorName && inv.recordStatus === 1);
+      const vendorInvoices = allInvoices.filter(inv => 
+        vendorNamesToInclude.includes(inv.buyerName) && inv.recordStatus === 1
+      );
 
       // Get all credit notes and debit notes for outstanding balance calculation
       const allCreditNotes = await db.select().from(creditNotes).where(
