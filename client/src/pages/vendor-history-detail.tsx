@@ -33,12 +33,13 @@ import {
   TrendingDown,
   Receipt,
   Calendar,
-  Printer
+  Printer,
+  Wallet
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface LedgerEntry {
-  type: 'invoice' | 'credit_note' | 'debit_note' | 'payment';
+  type: 'invoice' | 'credit_note' | 'debit_note' | 'payment' | 'advance' | 'vendor_debit_note_adjustment';
   id: string;
   date: string;
   reference: string;
@@ -49,6 +50,7 @@ interface LedgerEntry {
   status?: string;
   reason?: string;
   paymentMode?: string;
+  availableBalance?: number;
 }
 
 interface VendorDetailResponse {
@@ -68,10 +70,12 @@ interface VendorDetailResponse {
     totalCredits: number;
     totalDebits: number;
     totalPayments: number;
+    totalAdvances: number;
     currentBalance: number;
     invoiceCount: number;
     creditNoteCount: number;
     debitNoteCount: number;
+    advanceCount: number;
     paymentCount: number;
   };
   ledger: LedgerEntry[];
@@ -114,6 +118,8 @@ export default function VendorHistoryDetailPage() {
       case 'credit_note': return <TrendingDown className="h-4 w-4 text-green-500" />;
       case 'debit_note': return <TrendingUp className="h-4 w-4 text-orange-500" />;
       case 'payment': return <CreditCard className="h-4 w-4 text-green-600" />;
+      case 'advance': return <Wallet className="h-4 w-4 text-blue-600" />;
+      case 'vendor_debit_note_adjustment': return <TrendingUp className="h-4 w-4 text-purple-500" />;
       default: return <Receipt className="h-4 w-4" />;
     }
   };
@@ -128,6 +134,10 @@ export default function VendorHistoryDetailPage() {
         return <Badge variant="outline" className="text-orange-600 border-orange-200">Debit Note</Badge>;
       case 'payment':
         return <Badge variant="outline" className="text-emerald-600 border-emerald-200">Payment</Badge>;
+      case 'advance':
+        return <Badge variant="outline" className="text-blue-600 border-blue-200">Advance</Badge>;
+      case 'vendor_debit_note_adjustment':
+        return <Badge variant="outline" className="text-purple-600 border-purple-200">DN Adjustment</Badge>;
       default:
         return <Badge variant="outline">{type}</Badge>;
     }
@@ -149,6 +159,8 @@ export default function VendorHistoryDetailPage() {
         case 'credit_note': return 'Credit Note';
         case 'debit_note': return 'Debit Note';
         case 'payment': return 'Payment';
+        case 'advance': return 'Customer Advance';
+        case 'vendor_debit_note_adjustment': return 'DN Adjustment';
         default: return type;
       }
     };
@@ -220,6 +232,11 @@ export default function VendorHistoryDetailPage() {
             <div class="label">Payments</div>
             <div class="value" style="color: #16a34a;">${formatCurrency(data.summary.totalPayments)}</div>
             <div class="count">${data.summary.paymentCount} payments</div>
+          </div>
+          <div class="summary-card">
+            <div class="label">Advances</div>
+            <div class="value" style="color: #2563eb;">${formatCurrency(data.summary.totalAdvances || 0)}</div>
+            <div class="count">${data.summary.advanceCount || 0} advance(s)</div>
           </div>
           <div class="summary-card">
             <div class="label">Credit Notes</div>
@@ -409,6 +426,27 @@ export default function VendorHistoryDetailPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Advances</CardTitle>
+            <Wallet className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-7 w-24" />
+            ) : (
+              <>
+                <div className="text-xl font-bold text-blue-600" data-testid="text-summary-advances">
+                  {formatCurrency(data?.summary.totalAdvances || 0)}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {data?.summary.advanceCount || 0} advance(s)
+                </p>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Credit Notes</CardTitle>
             <TrendingDown className="h-4 w-4 text-green-500" />
           </CardHeader>
@@ -489,6 +527,7 @@ export default function VendorHistoryDetailPage() {
               <SelectItem value="all">All Transactions</SelectItem>
               <SelectItem value="invoice">Invoices Only</SelectItem>
               <SelectItem value="payment">Payments Only</SelectItem>
+              <SelectItem value="advance">Advances Only</SelectItem>
               <SelectItem value="credit_note">Credit Notes Only</SelectItem>
               <SelectItem value="debit_note">Debit Notes Only</SelectItem>
             </SelectContent>

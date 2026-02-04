@@ -11720,6 +11720,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           eq(debitNotes.status, 'issued')
         ));
       
+      // Get all customer advances
+      const allAdvances = await db.select()
+        .from(customerAdvances)
+        .where(eq(customerAdvances.recordStatus, 1));
+      
       // Build vendor summaries
       const vendorSummaries = filteredVendors.map(vendor => {
         // Get invoices for this vendor (by buyerName match)
@@ -11740,9 +11745,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const vendorDebits = allDebitNotes.filter(dn => invoiceIds.includes(dn.invoiceId));
         const totalDebits = vendorDebits.reduce((sum, dn) => sum + (dn.grandTotal || 0), 0);
         
-        // Outstanding = Invoiced + Debits - Credits - Received
-        // Formula: What they originally owed + additional charges - reductions - what they paid
-        const outstanding = totalInvoiced + totalDebits - totalCredits - totalReceived;
+        // Customer advances for this vendor (available balance = unapplied advances)
+        const vendorAdvances = allAdvances.filter(adv => adv.vendorId === vendor.id);
+        const totalAdvances = vendorAdvances.reduce((sum, adv) => sum + (adv.availableBalance || 0), 0);
+        
+        // Outstanding = Invoiced + Debits - Credits - Received - Advances
+        // Formula: What they originally owed + additional charges - reductions - what they paid - prepayments
+        const outstanding = totalInvoiced + totalDebits - totalCredits - totalReceived - totalAdvances;
         
         // Last transaction date
         const lastInvoiceDate = vendorInvoices.length > 0 
@@ -11760,10 +11769,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           invoiceCount: vendorInvoices.length,
           creditNoteCount: vendorCredits.length,
           debitNoteCount: vendorDebits.length,
+          advanceCount: vendorAdvances.length,
           totalInvoiced,
           totalReceived,
           totalCredits,
           totalDebits,
+          totalAdvances,
           outstanding,
           lastTransactionDate: lastInvoiceDate,
         };
@@ -11887,6 +11898,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ));
       }
 
+      // Get customer advances for this vendor
+      const vendorAdvances = await db.select()
+        .from(customerAdvances)
+        .where(and(
+          eq(customerAdvances.recordStatus, 1),
+          eq(customerAdvances.vendorId, vendorId)
+        ));
+
       // Group payments by invoice
       const paymentsByInvoice = allInvoicePayments.reduce((acc, pmt) => {
         if (!acc[pmt.invoiceId]) acc[pmt.invoiceId] = [];
@@ -11977,6 +11996,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       });
       
+      // Add customer advances to ledger (reduce what customer owes - prepayment)
+      vendorAdvances.forEach(adv => {
+        // Add the advance receipt entry
+        ledgerEntries.push({
+          type: 'advance',
+          id: adv.id,
+          date: adv.advanceDate,
+          reference: adv.advanceNumber,
+          description: `Customer Advance ${adv.advanceNumber} received (${adv.paymentMethod || 'Cash'})`,
+          debit: 0,
+          credit: adv.amount, // Reduces what customer owes (prepayment)
+          status: adv.status,
+          availableBalance: adv.availableBalance,
+        });
+      });
+      
       // Filter by type if specified
       let filteredEntries = ledgerEntries;
       if (type && type !== 'all') {
@@ -11998,14 +12033,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalPayments = vendorInvoices.reduce((sum, inv) => sum + (inv.amountReceived || 0), 0);
       const totalCredits = vendorCreditNotes.reduce((sum, cn) => sum + (cn.grandTotal || 0), 0);
       const totalDebits = customerDebitNotes.reduce((sum, dn) => sum + (dn.grandTotal || 0), 0);
+      const totalAdvances = vendorAdvances.reduce((sum, adv) => sum + (adv.availableBalance || 0), 0);
       
       // Calculate vendor debit note adjustments total
       const vendorDebitNoteAdjustmentsTotal = allInvoicePayments
         .filter(pmt => pmt.paymentMethod === 'Debit Note Adjustment')
         .reduce((sum, pmt) => sum + pmt.amount, 0);
       
-      // Current balance = Invoiced + Debits - Credits - Payments (consistent with list view)
-      const currentBalance = totalInvoiced + totalDebits - totalCredits - totalPayments;
+      // Current balance = Invoiced + Debits - Credits - Payments - Advances (consistent with list view)
+      const currentBalance = totalInvoiced + totalDebits - totalCredits - totalPayments - totalAdvances;
       
       res.json({
         vendor: {
@@ -12024,11 +12060,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totalCredits,
           totalDebits,
           totalPayments,
+          totalAdvances,
           vendorDebitNoteAdjustments: vendorDebitNoteAdjustmentsTotal,
           currentBalance,
           invoiceCount: vendorInvoices.length,
           creditNoteCount: vendorCreditNotes.length,
           debitNoteCount: customerDebitNotes.length,
+          advanceCount: vendorAdvances.length,
           paymentCount: vendorInvoices.filter(inv => inv.amountReceived && inv.amountReceived > 0).length,
         },
         ledger: filteredEntries.reverse(), // Most recent first for display
