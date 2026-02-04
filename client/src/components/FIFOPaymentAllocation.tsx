@@ -218,27 +218,6 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
 
                 <FormField
                   control={form.control}
-                  name="amount"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Total Payment Amount (₹)</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          type="number"
-                          step="0.01"
-                          placeholder="0.00"
-                          data-testid="input-amount"
-                          disabled={allocationMethod === 'manual'}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
                   name="allocationMethod"
                   render={({ field }) => (
                     <FormItem>
@@ -257,6 +236,27 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                           <SelectItem value="manual">Specific Invoices</SelectItem>
                         </SelectContent>
                       </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="amount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Total Payment Amount (₹)</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          data-testid="input-amount"
+                          disabled={allocationMethod === 'manual'}
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
