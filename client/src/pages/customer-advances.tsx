@@ -87,9 +87,15 @@ export default function CustomerAdvancesPage() {
     },
   });
 
-  // Fetch vendors (buyers)
+  // Fetch vendors
   const { data: vendors = [] } = useQuery<Vendor[]>({
-    queryKey: ['/api/vendors'],
+    queryKey: ['/api/vendors', 'all'],
+    queryFn: async () => {
+      const res = await fetch('/api/vendors?limit=1000');
+      if (!res.ok) throw new Error("Failed to fetch vendors");
+      const data = await res.json();
+      return Array.isArray(data) ? data : (data.vendors || []);
+    }
   });
 
   // Fetch invoices for apply dialog
