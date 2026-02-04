@@ -34,8 +34,10 @@ import {
   Receipt,
   Calendar,
   Printer,
-  Wallet
+  Wallet,
+  Download
 } from "lucide-react";
+import { exportToExcel, formatCurrencyForExcel, formatDateForExcel } from "@/lib/excel-export";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface LedgerEntry {
@@ -289,6 +291,63 @@ export default function VendorHistoryDetailPage() {
     printWindow.document.close();
   };
 
+  const handleExportExcel = async () => {
+    if (!data) return;
+
+    const getTypeLabel = (type: string) => {
+      switch (type) {
+        case 'invoice': return 'Invoice';
+        case 'credit_note': return 'Credit Note';
+        case 'debit_note': return 'Debit Note';
+        case 'payment': return 'Payment';
+        case 'advance': return 'Customer Advance';
+        case 'vendor_debit_note_adjustment': return 'DN Adjustment';
+        default: return type;
+      }
+    };
+
+    const ledgerData = filteredLedger.map(entry => [
+      formatDateForExcel(entry.date),
+      getTypeLabel(entry.type),
+      entry.reference,
+      entry.description,
+      entry.debit > 0 ? formatCurrencyForExcel(entry.debit) : '',
+      entry.credit > 0 ? formatCurrencyForExcel(entry.credit) : '',
+      formatCurrencyForExcel(entry.balance),
+    ]);
+
+    const summaryData = [
+      ['Vendor Ledger Report'],
+      [],
+      ['Vendor Details'],
+      ['Name', data.vendor.vendorName],
+      ['Code', data.vendor.vendorCode],
+      ['GST', data.vendor.gstNumber || 'N/A'],
+      ['Phone', data.vendor.mobileNumber],
+      ['Email', data.vendor.email || 'N/A'],
+      ['Address', [data.vendor.address, data.vendor.city, data.vendor.state].filter(Boolean).join(', ') || 'N/A'],
+      [],
+      ['Summary'],
+      ['Total Invoiced', formatCurrencyForExcel(data.summary.totalInvoiced)],
+      ['Total Payments', formatCurrencyForExcel(data.summary.totalPayments)],
+      ['Total Advances', formatCurrencyForExcel(data.summary.totalAdvances)],
+      ['Total Credits', formatCurrencyForExcel(data.summary.totalCredits)],
+      ['Total Debits', formatCurrencyForExcel(data.summary.totalDebits)],
+      ['Current Balance', formatCurrencyForExcel(data.summary.currentBalance)],
+      [],
+      ['Transaction Ledger'],
+      ['Date', 'Type', 'Reference', 'Description', 'Debit', 'Credit', 'Balance'],
+      ...ledgerData,
+    ];
+
+    const filename = `${data.vendor.vendorName.replace(/[^a-zA-Z0-9]/g, '_')}_Ledger_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+    await exportToExcel({
+      filename,
+      sheets: [{ name: 'Vendor Ledger', data: summaryData }],
+    });
+  };
+
   return (
     <div className="p-4 md:p-6 space-y-6">
       {/* Header */}
@@ -310,15 +369,26 @@ export default function VendorHistoryDetailPage() {
             <p className="text-muted-foreground print:text-sm">Transaction history and ledger</p>
           </div>
         </div>
-        <Button
-          variant="outline"
-          onClick={handlePrint}
-          disabled={isLoading || !data}
-          data-testid="button-print-vendor-ledger"
-        >
-          <Printer className="h-4 w-4 mr-2" />
-          Print Ledger
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={handleExportExcel}
+            disabled={isLoading || !data}
+            data-testid="button-export-vendor-ledger"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export Excel
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handlePrint}
+            disabled={isLoading || !data}
+            data-testid="button-print-vendor-ledger"
+          >
+            <Printer className="h-4 w-4 mr-2" />
+            Print Ledger
+          </Button>
+        </div>
       </div>
 
       {/* Vendor Info Card */}
