@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -34,7 +34,21 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { format } from "date-fns";
-import { Loader2, AlertCircle } from "lucide-react";
+import { Loader2, AlertCircle, Search, Check, ChevronsUpDown } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 
 const fifoPaymentSchema = z.object({
   vendorId: z.string().min(1, "Vendor is required"),
@@ -63,6 +77,7 @@ interface FIFOPaymentAllocationProps {
 export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPaymentAllocationProps) {
   const { toast } = useToast();
   const [allocationPreview, setAllocationPreview] = useState<any>(null);
+  const [vendorPopoverOpen, setVendorPopoverOpen] = useState(false);
   const [selectedVendorId, setSelectedVendorId] = useState<string>("");
 
   const { data: vendors = [] } = useQuery<any[]>({
@@ -187,30 +202,56 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                   render={({ field }) => (
                     <FormItem className="flex-1">
                       <FormLabel>Vendor/Customer</FormLabel>
-                      <Select 
-                        onValueChange={(value) => {
-                          field.onChange(value);
-                          setSelectedVendorId(value);
-                          const vendor = vendors.find(v => v.id === value);
-                          if (vendor) {
-                            form.setValue('payerName', vendor.vendorName || "");
-                          }
-                        }} 
-                        value={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger data-testid="select-vendor">
-                            <SelectValue placeholder="Select vendor" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {vendors.map((vendor: any) => (
-                            <SelectItem key={vendor.id} value={vendor.id}>
-                              {vendor.vendorName}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Popover open={vendorPopoverOpen} onOpenChange={setVendorPopoverOpen}>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              className={cn(
+                                "w-full justify-between font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                              data-testid="select-vendor"
+                            >
+                              {field.value
+                                ? vendors.find((v: any) => v.id === field.value)?.vendorName
+                                : "Select vendor"}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[400px] p-0" align="start">
+                          <Command>
+                            <CommandInput placeholder="Search vendor..." />
+                            <CommandList>
+                              <CommandEmpty>No vendor found.</CommandEmpty>
+                              <CommandGroup>
+                                {vendors.map((vendor: any) => (
+                                  <CommandItem
+                                    key={vendor.id}
+                                    value={vendor.vendorName}
+                                    onSelect={() => {
+                                      form.setValue("vendorId", vendor.id);
+                                      setSelectedVendorId(vendor.id);
+                                      form.setValue("payerName", vendor.vendorName || "");
+                                      setVendorPopoverOpen(false);
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        vendor.id === field.value ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    {vendor.vendorName}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                       <FormMessage />
                     </FormItem>
                   )}
