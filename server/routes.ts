@@ -7777,16 +7777,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 // Preserve the original batch number as the new batchNumber for FIFO continuity
                 const batchNumber = originalBatchNumber || `CANCEL-${invoice.invoiceNumber}-${format(new Date(), 'yyyyMMdd-HHmmss')}`;
                 
-                await tx.insert(finishedGoods).values({
-                  productId: item.productId,
-                  batchNumber,
-                  originalBatchNumber, // Store the original batch number for display
-                  productionDate: new Date().toISOString(),
-                  quantity: item.quantity,
-                  qualityStatus: 'approved',
-                  remarks: `Inventory returned - Invoice ${invoice.invoiceNumber} cancelled & reissued. Gatepass(es): ${cancelledGatepassNumbers.join(', ')}${originalBatchNumber ? `. Original batch: ${originalBatchNumber}` : ''}`,
-                  createdBy: req.user?.id,
-                });
+                // Check if a finished goods record with this batch number already exists
+                const [existingBatch] = await tx.select()
+                  .from(finishedGoods)
+                  .where(and(
+                    eq(finishedGoods.productId, item.productId),
+                    eq(finishedGoods.batchNumber, batchNumber),
+                    eq(finishedGoods.recordStatus, 1)
+                  ))
+                  .limit(1);
+                
+                if (existingBatch) {
+                  // Add quantity back to existing batch instead of creating duplicate
+                  const newQuantity = existingBatch.quantity + item.quantity;
+                  await tx.update(finishedGoods)
+                    .set({
+                      quantity: newQuantity,
+                      updatedAt: new Date().toISOString(),
+                      remarks: existingBatch.remarks 
+                        ? `${existingBatch.remarks} | +${item.quantity} returned from invoice ${invoice.invoiceNumber}`
+                        : `+${item.quantity} returned from invoice ${invoice.invoiceNumber} (Cancel & Reissue)`
+                    })
+                    .where(eq(finishedGoods.id, existingBatch.id));
+                  console.log(`[CANCEL_REISSUE] Added ${item.quantity} back to existing batch ${batchNumber} (new total: ${newQuantity})`);
+                } else {
+                  // Create new record only if batch doesn't exist
+                  await tx.insert(finishedGoods).values({
+                    productId: item.productId,
+                    batchNumber,
+                    originalBatchNumber, // Store the original batch number for display
+                    productionDate: new Date().toISOString(),
+                    quantity: item.quantity,
+                    qualityStatus: 'approved',
+                    remarks: `Inventory returned - Invoice ${invoice.invoiceNumber} cancelled & reissued. Gatepass(es): ${cancelledGatepassNumbers.join(', ')}${originalBatchNumber ? `. Original batch: ${originalBatchNumber}` : ''}`,
+                    createdBy: req.user?.id,
+                  });
+                  console.log(`[CANCEL_REISSUE] Created new batch ${batchNumber} with quantity ${item.quantity}`);
+                }
               }
             }
           }
