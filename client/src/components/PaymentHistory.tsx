@@ -133,6 +133,7 @@ export default function PaymentHistory({ invoice }: PaymentHistoryProps) {
                   <TableHead>Amount</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Method</TableHead>
+                  <TableHead>Payer</TableHead>
                   <TableHead>Reference</TableHead>
                   <TableHead>Running Balance</TableHead>
                   <TableHead>Recorded By</TableHead>
@@ -156,6 +157,12 @@ export default function PaymentHistory({ invoice }: PaymentHistoryProps) {
                     </TableCell>
                     <TableCell data-testid={`text-payment-method-${payment.id}`}>
                       {payment.paymentMethod}
+                    </TableCell>
+                    <TableCell data-testid={`text-payment-payer-${payment.id}`}>
+                      <div className="flex flex-col">
+                        <span className="font-medium capitalize">{payment.paidBy}</span>
+                        <span className="text-xs text-muted-foreground">{payment.payerName || "-"}</span>
+                      </div>
                     </TableCell>
                     <TableCell data-testid={`text-payment-reference-${payment.id}`}>
                       {payment.referenceNumber || "-"}

@@ -2028,6 +2028,8 @@ export const invoicePayments = pgTable("invoice_payments", {
   paymentMethod: varchar("payment_method", { length: 50 }).notNull(), // Cash, Cheque, NEFT, UPI, etc.
   referenceNumber: varchar("reference_number", { length: 100 }), // Transaction ID, Cheque number, etc.
   paymentType: varchar("payment_type", { length: 50 }).notNull(), // Advance, Partial, Full, Write-off
+  paidBy: varchar("paid_by", { length: 50 }).default('buyer'), // buyer, shipper, other
+  payerName: varchar("payer_name", { length: 255 }), // Specific name of the person/entity who paid
   bankName: varchar("bank_name", { length: 255 }), // Bank name for cheque/transfer
   remarks: text("remarks"),
   

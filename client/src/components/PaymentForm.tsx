@@ -74,6 +74,8 @@ export default function PaymentForm({ invoice, onSuccess, onCancel }: PaymentFor
       amount: (outstandingBalance / 100).toFixed(2),
       paymentMethod: "Cash",
       paymentType: "Partial",
+      paidBy: "buyer",
+      payerName: invoice.buyerName || "",
       referenceNumber: "",
       bankName: "",
       remarks: "",
@@ -224,6 +226,60 @@ export default function PaymentForm({ invoice, onSuccess, onCancel }: PaymentFor
                       <SelectItem value="Full">Full Payment</SelectItem>
                     </SelectContent>
                   </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="paidBy"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Paid By</FormLabel>
+                  <Select 
+                    onValueChange={(val) => {
+                      field.onChange(val);
+                      if (val === 'buyer') {
+                        form.setValue('payerName', invoice.buyerName || "");
+                      } else if (val === 'shipper') {
+                        form.setValue('payerName', invoice.shipToName || "");
+                      }
+                    }} 
+                    value={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger data-testid="select-paid-by">
+                        <SelectValue placeholder="Who paid?" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="buyer">Buyer ({invoice.buyerName})</SelectItem>
+                      <SelectItem value="shipper">Shipper ({invoice.shipToName || 'N/A'})</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="payerName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Payer Name</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Enter name of person/entity"
+                      data-testid="input-payer-name"
+                      {...field}
+                      value={field.value || ""}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
