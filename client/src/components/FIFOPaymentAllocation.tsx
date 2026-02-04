@@ -38,6 +38,7 @@ import { Loader2, AlertCircle } from "lucide-react";
 
 const fifoPaymentSchema = z.object({
   vendorId: z.string().min(1, "Vendor is required"),
+  allocationMethod: z.enum(["fifo", "manual"]).default("fifo"),
   amount: z.string().min(1, "Amount is required")
     .refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
       message: "Amount must be greater than 0",
@@ -49,6 +50,7 @@ const fifoPaymentSchema = z.object({
   referenceNumber: z.string().optional(),
   bankName: z.string().optional(),
   remarks: z.string().optional(),
+  manualAllocations: z.record(z.string(), z.string()).optional(),
 });
 
 type FIFOPaymentFormData = z.infer<typeof fifoPaymentSchema>;
@@ -93,6 +95,7 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
     resolver: zodResolver(fifoPaymentSchema),
     defaultValues: {
       vendorId: "",
+      allocationMethod: "fifo",
       amount: "",
       paymentDate: format(new Date(), "yyyy-MM-dd"),
       paymentMethod: "Cash",
@@ -101,13 +104,32 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
       referenceNumber: "",
       bankName: "",
       remarks: "",
+      manualAllocations: {},
     },
   });
+
+  const allocationMethod = form.watch("allocationMethod");
+  const manualAllocations = form.watch("manualAllocations") || {};
+
+  const handleManualAllocationChange = (invoiceId: string, value: string) => {
+    const currentAllocations = { ...manualAllocations };
+    if (!value || parseFloat(value) === 0) {
+      delete currentAllocations[invoiceId];
+    } else {
+      currentAllocations[invoiceId] = value;
+    }
+    form.setValue("manualAllocations", currentAllocations);
+    
+    // Update total amount based on manual entries
+    const total = Object.values(currentAllocations).reduce((sum, val) => sum + parseFloat(val), 0);
+    form.setValue("amount", total.toFixed(2));
+  };
 
   const allocateMutation = useMutation({
     mutationFn: async (data: FIFOPaymentFormData) => {
       const payload = {
         vendorId: data.vendorId,
+        allocationMethod: data.allocationMethod,
         amount: Math.round(parseFloat(data.amount) * 100), // Convert to paise
         paymentDate: new Date(data.paymentDate).toISOString(),
         paymentMethod: data.paymentMethod,
@@ -116,6 +138,9 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
         referenceNumber: data.referenceNumber,
         bankName: data.bankName,
         remarks: data.remarks,
+        manualAllocations: data.allocationMethod === 'manual' 
+          ? Object.fromEntries(Object.entries(data.manualAllocations || {}).map(([id, val]) => [id, Math.round(parseFloat(val) * 100)]))
+          : undefined,
       };
       const response = await apiRequest('POST', '/api/invoice-payments/allocate-fifo', payload);
       return await response.json();
@@ -204,8 +229,34 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                           step="0.01"
                           placeholder="0.00"
                           data-testid="input-amount"
+                          disabled={allocationMethod === 'manual'}
                         />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="allocationMethod"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Allocation Method</FormLabel>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger data-testid="select-allocation-method">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="fifo">FIFO (Oldest First)</SelectItem>
+                          <SelectItem value="manual">Specific Invoices</SelectItem>
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -459,6 +510,9 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                       <TableHead className="text-xs text-right">Total</TableHead>
                       <TableHead className="text-xs text-right">Paid</TableHead>
                       <TableHead className="text-xs text-right">Outstanding</TableHead>
+                      {allocationMethod === 'manual' && (
+                        <TableHead className="text-xs text-right w-[120px]">Pay Amount</TableHead>
+                      )}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -466,7 +520,7 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                       <TableRow key={invoice.id}>
                         <TableCell className="text-sm font-medium">
                           {invoice.invoiceNumber}
-                          {idx === 0 && (
+                          {idx === 0 && allocationMethod === 'fifo' && (
                             <Badge variant="outline" className="ml-2 text-xs">
                               Oldest
                             </Badge>
@@ -484,6 +538,19 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                         <TableCell className="text-sm text-right font-medium text-destructive">
                           ₹{(invoice.outstanding / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                         </TableCell>
+                        {allocationMethod === 'manual' && (
+                          <TableCell className="text-right">
+                            <Input
+                              type="number"
+                              step="0.01"
+                              className="h-8 text-right text-xs"
+                              placeholder="0.00"
+                              value={manualAllocations[invoice.id] || ""}
+                              onChange={(e) => handleManualAllocationChange(invoice.id, e.target.value)}
+                              max={(invoice.outstanding / 100).toFixed(2)}
+                            />
+                          </TableCell>
+                        )}
                       </TableRow>
                     ))}
                   </TableBody>

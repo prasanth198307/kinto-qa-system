@@ -13232,8 +13232,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // FIFO Payment Allocation - Allocate one payment across multiple outstanding invoices
   app.post('/api/invoice-payments/allocate-fifo', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
-      const { vendorId, amount, paymentDate, paymentMethod, referenceNumber, bankName, remarks } = req.body;
-
+      const { vendorId, amount, paymentDate, paymentMethod, paidBy, payerName, referenceNumber, bankName, remarks, allocationMethod, manualAllocations } = req.body;
+      
       if (!vendorId || !amount || amount <= 0) {
         return res.status(400).json({ message: "Vendor ID and valid payment amount are required" });
       }
@@ -13244,93 +13244,136 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Vendor not found" });
       }
 
-      // Get all outstanding invoices for this vendor, ordered by invoice date (FIFO)
-      const allInvoices = await storage.getAllInvoices();
-      const vendorInvoices = allInvoices.filter(inv => inv.buyerName === vendor.vendorName);
+      const result = await db.transaction(async (tx) => {
+        let remainingAmount = amount;
+        const allocations = [];
 
-      if (vendorInvoices.length === 0) {
-        return res.status(404).json({ message: "No invoices found for this vendor" });
-      }
+        if (allocationMethod === 'manual' && manualAllocations) {
+          // Manual allocation to specific invoices
+          for (const [invoiceId, allocPaise] of Object.entries(manualAllocations)) {
+            const allocateAmount = Number(allocPaise);
+            if (allocateAmount <= 0) continue;
 
-      // Calculate outstanding balance for each invoice
-      const invoicesWithBalance = await Promise.all(
-        vendorInvoices.map(async (invoice) => {
-          const payments = await storage.getPaymentsByInvoice(invoice.id);
-          const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-          const outstanding = invoice.totalAmount - totalPaid;
-          return { ...invoice, outstanding };
-        })
-      );
+            const [invoice] = await tx.select().from(invoices).where(eq(invoices.id, invoiceId));
+            if (!invoice) continue;
 
-      // Filter only invoices with outstanding balance and sort by invoice date (FIFO)
-      const outstandingInvoices = invoicesWithBalance
-        .filter(inv => inv.outstanding > 0)
-        .sort((a, b) => new Date(a.invoiceDate).getTime() - new Date(b.invoiceDate).getTime());
+            const [paymentSum] = await tx
+              .select({ sum: sql<number>`COALESCE(SUM(amount), 0)` })
+              .from(invoicePayments)
+              .where(and(eq(invoicePayments.invoiceId, invoice.id), eq(invoicePayments.recordStatus, 1)));
+            
+            const outstanding = invoice.totalAmount - Number(paymentSum.sum);
+            
+            // Create payment record
+            const [payment] = await tx.insert(invoicePayments).values({
+              invoiceId: invoice.id,
+              paymentDate: paymentDate ? new Date(paymentDate).toISOString() : new Date().toISOString(),
+              amount: allocateAmount,
+              paymentMethod: paymentMethod || 'Cash',
+              paymentType: allocateAmount >= outstanding ? 'Full' : 'Partial',
+              paidBy: paidBy || 'buyer',
+              payerName: payerName || '',
+              referenceNumber: referenceNumber || null,
+              bankName: bankName || null,
+              remarks: remarks || `Manual allocation from bulk payment`,
+              recordedBy: req.user?.id,
+            }).returning();
 
-      if (outstandingInvoices.length === 0) {
-        return res.status(400).json({ message: "No outstanding invoices for this vendor" });
-      }
+            // Update invoice.amountReceived
+            await tx.update(invoices)
+              .set({ amountReceived: (invoice.amountReceived || 0) + allocateAmount })
+              .where(eq(invoices.id, invoice.id));
 
-      // Allocate payment using FIFO logic
-      let remainingAmount = amount;
-      const allocations = [];
+            allocations.push({
+              invoiceId: invoice.id,
+              invoiceNumber: invoice.invoiceNumber,
+              invoiceDate: invoice.invoiceDate,
+              allocated: allocateAmount,
+              outstanding: outstanding,
+              paymentId: payment.id,
+            });
+            remainingAmount -= allocateAmount;
+          }
+        } else {
+          // Standard FIFO Logic
+          // Get all outstanding invoices for this vendor, ordered by invoice date (FIFO)
+          const allInvoices = await storage.getAllInvoices();
+          const vendorInvoices = allInvoices.filter(inv => inv.buyerName === vendor.vendorName);
 
-      for (const invoice of outstandingInvoices) {
-        if (remainingAmount <= 0) break;
+          if (vendorInvoices.length === 0) {
+            throw new Error("No invoices found for this vendor");
+          }
 
-        const allocationAmount = Math.min(remainingAmount, invoice.outstanding);
-        
-        // Create payment record for this invoice
-        const payment = await storage.createPayment({
-          invoiceId: invoice.id,
-          paymentDate: paymentDate ? new Date(paymentDate).toISOString() : new Date().toISOString(),
-          amount: allocationAmount,
-          paymentMethod: paymentMethod || 'Cash',
-          referenceNumber,
-          paymentType: allocationAmount === invoice.outstanding ? 'Full' : 'Partial',
-          paidBy: paidBy || 'buyer',
-          payerName: payerName || '',
-          bankName,
-          remarks: remarks || `FIFO allocation from bulk payment`,
-          recordedBy: req.user?.id,
-        });
+          // Calculate outstanding balance for each invoice
+          const invoicesWithBalance = await Promise.all(
+            vendorInvoices.map(async (invoice) => {
+              const [paymentSum] = await tx
+                .select({ sum: sql<number>`COALESCE(SUM(amount), 0)` })
+                .from(invoicePayments)
+                .where(and(eq(invoicePayments.invoiceId, invoice.id), eq(invoicePayments.recordStatus, 1)));
+              const outstanding = invoice.totalAmount - Number(paymentSum.sum);
+              return { ...invoice, outstanding };
+            })
+          );
 
-        // Update invoice.amountReceived to reflect the payment (for vendor analytics consistency)
-        const currentAmountReceived = invoice.amountReceived || 0;
-        await db.update(invoices)
-          .set({ amountReceived: currentAmountReceived + allocationAmount })
-          .where(eq(invoices.id, invoice.id));
+          // Filter and sort by invoice date (FIFO)
+          const outstandingInvoices = invoicesWithBalance
+            .filter(inv => inv.outstanding > 0)
+            .sort((a, b) => new Date(a.invoiceDate).getTime() - new Date(b.invoiceDate).getTime());
 
-        allocations.push({
-          invoiceId: invoice.id,
-          invoiceNumber: invoice.invoiceNumber,
-          invoiceDate: invoice.invoiceDate,
-          outstanding: invoice.outstanding,
-          allocated: allocationAmount,
-          paymentId: payment.id,
-        });
+          if (outstandingInvoices.length === 0) {
+            throw new Error("No outstanding invoices for this vendor");
+          }
 
-        remainingAmount -= allocationAmount;
+          for (const invoice of outstandingInvoices) {
+            if (remainingAmount <= 0) break;
 
-        await logAudit(
-          req.user?.id, 
-          'CREATE', 
-          'invoice_payments', 
-          payment.id, 
-          `FIFO allocation: ₹${(allocationAmount / 100).toFixed(2)} to invoice ${invoice.invoiceNumber}`
-        );
-      }
+            const allocateAmount = Math.min(remainingAmount, invoice.outstanding);
+            
+            const [payment] = await tx.insert(invoicePayments).values({
+              invoiceId: invoice.id,
+              paymentDate: paymentDate ? new Date(paymentDate).toISOString() : new Date().toISOString(),
+              amount: allocateAmount,
+              paymentMethod: paymentMethod || 'Cash',
+              paymentType: allocateAmount === invoice.outstanding ? 'Full' : 'Partial',
+              paidBy: paidBy || 'buyer',
+              payerName: payerName || '',
+              referenceNumber: referenceNumber || null,
+              bankName: bankName || null,
+              remarks: remarks || `FIFO allocation from bulk payment`,
+              recordedBy: req.user?.id,
+            }).returning();
 
-      res.json({
-        message: "Payment allocated successfully using FIFO",
-        totalAmount: amount,
-        allocated: amount - remainingAmount,
-        remaining: remainingAmount,
-        allocations,
+            await tx.update(invoices)
+              .set({ amountReceived: (invoice.amountReceived || 0) + allocateAmount })
+              .where(eq(invoices.id, invoice.id));
+
+            allocations.push({
+              invoiceId: invoice.id,
+              invoiceNumber: invoice.invoiceNumber,
+              invoiceDate: invoice.invoiceDate,
+              allocated: allocateAmount,
+              outstanding: invoice.outstanding,
+              paymentId: payment.id,
+            });
+
+            remainingAmount -= allocateAmount;
+          }
+        }
+
+        return {
+          totalAmount: amount,
+          allocated: amount - remainingAmount,
+          remaining: remainingAmount,
+          allocations
+        };
       });
-    } catch (error) {
-      console.error("Error allocating payment:", error);
-      res.status(500).json({ message: "Failed to allocate payment" });
+
+      await logAudit(req.user?.id, 'CREATE', 'invoice_payments', 'bulk-allocation', `Allocated payment of ₹${(amount / 100).toFixed(2)} using ${allocationMethod || 'fifo'} method`);
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error in bulk allocation:", error);
+      res.status(500).json({ message: error.message || "Failed to allocate payment" });
     }
   });
 
