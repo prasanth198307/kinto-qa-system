@@ -227,7 +227,7 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                         value={field.value}
                       >
                         <FormControl>
-                          <SelectTrigger data-testid="select-allocation-method">
+                          <SelectTrigger data-testid="select-allocation-method" className="bg-white border-primary/20">
                             <SelectValue placeholder="Select type" />
                           </SelectTrigger>
                         </FormControl>
@@ -236,6 +236,52 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                           <SelectItem value="manual">Specific Invoices</SelectItem>
                         </SelectContent>
                       </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="paidBy"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Paid By</FormLabel>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger data-testid="select-paid-by">
+                            <SelectValue placeholder="Who is paying?" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="buyer">Buyer (Vendor)</SelectItem>
+                          <SelectItem value="shipper">Shipper (HP Pani)</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="payerName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Payer Name</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          placeholder="Enter payer name"
+                          data-testid="input-payer-name"
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
