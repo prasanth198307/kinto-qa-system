@@ -87,11 +87,11 @@ export default function CustomerAdvancesPage() {
     },
   });
 
-  // Fetch vendors
+  // Filter vendors
   const { data: vendors = [] } = useQuery<Vendor[]>({
-    queryKey: ['/api/vendors', 'all'],
+    queryKey: ['/api/vendors', 'all-for-advances'],
     queryFn: async () => {
-      const res = await fetch('/api/vendors?limit=1000');
+      const res = await fetch('/api/vendors?limit=2000');
       if (!res.ok) throw new Error("Failed to fetch vendors");
       const data = await res.json();
       return Array.isArray(data) ? data : (data.vendors || []);
@@ -110,12 +110,15 @@ export default function CustomerAdvancesPage() {
   });
 
   // Filter only customer vendors (buyers)
-  const buyerVendors = vendors.filter(v => 
-    v.vendorType === 'Customer' || 
-    v.vendorType === 'customer' || 
-    v.vendorType === 'Both' || 
-    v.vendorType === 'both'
-  );
+  const buyerVendors = vendors.filter(v => {
+    const type = (v.vendorType || '').toLowerCase();
+    // Inclusive filter to ensure no customer is missed
+    return type.includes('customer') || 
+           type.includes('both') || 
+           type.includes('buyer') || 
+           v.vendorType === 'Buyer' ||
+           v.vendorType === 'Customer';
+  });
 
   // Create advance mutation
   const createMutation = useMutation({
@@ -483,24 +486,26 @@ export default function CustomerAdvancesPage() {
                     <CommandList>
                       <CommandEmpty>No customer found.</CommandEmpty>
                       <CommandGroup>
-                        {buyerVendors.map(v => (
-                          <CommandItem
-                            key={v.id}
-                            value={v.vendorName}
-                            onSelect={() => {
-                              setFormData({ ...formData, vendorId: v.id });
-                              setCustomerSearchOpen(false);
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                formData.vendorId === v.id ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            {v.vendorName}
-                          </CommandItem>
-                        ))}
+                        <div className="max-h-[300px] overflow-y-auto">
+                          {buyerVendors.map(v => (
+                            <CommandItem
+                              key={v.id}
+                              value={v.vendorName}
+                              onSelect={() => {
+                                setFormData({ ...formData, vendorId: v.id });
+                                setCustomerSearchOpen(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  formData.vendorId === v.id ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {v.vendorName}
+                            </CommandItem>
+                          ))}
+                        </div>
                       </CommandGroup>
                     </CommandList>
                   </Command>
