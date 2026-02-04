@@ -185,7 +185,7 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                   control={form.control}
                   name="vendorId"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="flex-1">
                       <FormLabel>Vendor/Customer</FormLabel>
                       <Select 
                         onValueChange={(value) => {
@@ -220,15 +220,15 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                   control={form.control}
                   name="allocationMethod"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Allocation Method</FormLabel>
+                    <FormItem className="w-[200px]">
+                      <FormLabel>Allocation Type</FormLabel>
                       <Select 
                         onValueChange={field.onChange} 
                         value={field.value}
                       >
                         <FormControl>
                           <SelectTrigger data-testid="select-allocation-method">
-                            <SelectValue />
+                            <SelectValue placeholder="Select type" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -240,7 +240,9 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                     </FormItem>
                   )}
                 />
+              </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="amount"
