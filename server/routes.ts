@@ -12054,20 +12054,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         entry.balance = runningBalance;
       });
       
-      // Calculate summary totals - use amountReceived as authoritative source (matches Vyapaar)
+      // Calculate summary totals
       const totalInvoiced = vendorInvoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
-      const totalPayments = vendorInvoices.reduce((sum, inv) => sum + (inv.amountReceived || 0), 0);
       const totalCredits = vendorCreditNotes.reduce((sum, cn) => sum + (cn.grandTotal || 0), 0);
       const totalDebits = customerDebitNotes.reduce((sum, dn) => sum + (dn.grandTotal || 0), 0);
       const totalAdvances = vendorAdvances.reduce((sum, adv) => sum + ((adv.amount || 0) - (adv.usedAmount || 0)), 0);
       
-      // Calculate vendor debit note adjustments total
+      // Calculate vendor debit note adjustments total (these are invoice payments with method "Debit Note Adjustment")
       const vendorDebitNoteAdjustmentsTotal = allInvoicePayments
         .filter(pmt => pmt.paymentMethod === 'Debit Note Adjustment')
         .reduce((sum, pmt) => sum + pmt.amount, 0);
       
-      // Current balance = Invoiced + Debits - Credits - Payments - Advances (consistent with list view)
-      const currentBalance = totalInvoiced + totalDebits - totalCredits - totalPayments - totalAdvances;
+      // Calculate actual payments (excluding DN Adjustments) from invoice_payments table
+      const actualPaymentsTotal = allInvoicePayments
+        .filter(pmt => pmt.paymentMethod !== 'Debit Note Adjustment')
+        .reduce((sum, pmt) => sum + pmt.amount, 0);
+      
+      // Total payments = actual payments only (DN Adjustments shown separately)
+      const totalPayments = actualPaymentsTotal;
+      
+      // Current balance = Invoiced + Debits - Credits - Payments - DN Adjustments - Advances
+      const currentBalance = totalInvoiced + totalDebits - totalCredits - totalPayments - vendorDebitNoteAdjustmentsTotal - totalAdvances;
       
       res.json({
         vendor: {
