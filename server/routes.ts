@@ -12639,6 +12639,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get pending invoices for a vendor - matches invoices by buyer name to vendor name
   // Used for adjusting vendor debit notes against sales invoices owed by the vendor
+  // Includes invoices from child vendors linked to this parent
   app.get('/api/vendor-debit-notes/pending-invoices/:vendorId', isAuthenticated, async (req: any, res) => {
     try {
       const { vendorId } = req.params;
@@ -12649,8 +12650,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Vendor not found" });
       }
       
-      // Find invoices where buyer matches this vendor (by name or ship_to_name)
-      const vendorInvoices = await db.select({
+      // Get all vendors to find children of this parent
+      const allVendors = await storage.getAllVendors();
+      const childVendors = allVendors.filter(v => v.parentVendorId === vendorId && v.recordStatus === 1);
+      
+      // Build list of vendor names to include (parent + all children)
+      const vendorNamesToInclude = [
+        vendor.vendorName,
+        vendor.shipToName || '',
+        ...childVendors.map(cv => cv.vendorName),
+        ...childVendors.map(cv => cv.shipToName || '')
+      ].filter(Boolean);
+      
+      // Get all invoices for this vendor family
+      const allInvoices = await db.select({
         id: invoices.id,
         invoiceNumber: invoices.invoiceNumber,
         invoiceDate: invoices.invoiceDate,
@@ -12660,14 +12673,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: invoices.status,
       })
         .from(invoices)
-        .where(and(
-          eq(invoices.recordStatus, 1),
-          or(
-            eq(invoices.buyerName, vendor.vendorName),
-            eq(invoices.buyerName, vendor.shipToName || '')
-          )
-        ))
+        .where(eq(invoices.recordStatus, 1))
         .orderBy(desc(invoices.invoiceDate));
+      
+      // Filter invoices by vendor family names (case-insensitive)
+      const vendorInvoices = allInvoices.filter(inv => 
+        vendorNamesToInclude.some(name => 
+          name.toLowerCase() === (inv.buyerName || '').toLowerCase()
+        )
+      );
       
       // Get existing payments for these invoices
       const invoiceIds = vendorInvoices.map(inv => inv.id);
@@ -12691,12 +12705,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return acc;
       }, {} as Record<string, number>);
       
-      // Return invoices with pending amounts (totalAmount - paid)
-      const pendingInvoices = vendorInvoices.map(inv => ({
-        ...inv,
-        paidAmount: paymentsByInvoice[inv.id] || inv.amountReceived || 0,
-        pendingAmount: (inv.totalAmount || 0) - (paymentsByInvoice[inv.id] || inv.amountReceived || 0),
-      })).filter(inv => inv.pendingAmount > 0);
+      // Get credit notes for these invoices (reduce outstanding)
+      const allCreditNotes = invoiceIds.length > 0
+        ? await db.select({
+            invoiceId: creditNotes.invoiceId,
+            grandTotal: creditNotes.grandTotal,
+          })
+          .from(creditNotes)
+          .where(and(
+            inArray(creditNotes.invoiceId, invoiceIds),
+            eq(creditNotes.recordStatus, 1),
+            eq(creditNotes.status, 'issued')
+          ))
+        : [];
+      
+      const creditsByInvoice = allCreditNotes.reduce((acc, cn) => {
+        acc[cn.invoiceId] = (acc[cn.invoiceId] || 0) + (cn.grandTotal || 0);
+        return acc;
+      }, {} as Record<string, number>);
+      
+      // Get debit notes for these invoices (increase outstanding)
+      const allDebitNotes = invoiceIds.length > 0
+        ? await db.select({
+            invoiceId: debitNotes.invoiceId,
+            grandTotal: debitNotes.grandTotal,
+          })
+          .from(debitNotes)
+          .where(and(
+            inArray(debitNotes.invoiceId, invoiceIds),
+            eq(debitNotes.recordStatus, 1),
+            eq(debitNotes.status, 'issued')
+          ))
+        : [];
+      
+      const debitsByInvoice = allDebitNotes.reduce((acc, dn) => {
+        acc[dn.invoiceId] = (acc[dn.invoiceId] || 0) + (dn.grandTotal || 0);
+        return acc;
+      }, {} as Record<string, number>);
+      
+      // Return invoices with pending amounts
+      // Formula: outstanding = totalAmount + debitNotes - creditNotes - amountReceived
+      const pendingInvoices = vendorInvoices.map(inv => {
+        const paidAmount = paymentsByInvoice[inv.id] || inv.amountReceived || 0;
+        const creditNoteAmount = creditsByInvoice[inv.id] || 0;
+        const debitNoteAmount = debitsByInvoice[inv.id] || 0;
+        const pendingAmount = (inv.totalAmount || 0) + debitNoteAmount - creditNoteAmount - paidAmount;
+        
+        return {
+          ...inv,
+          paidAmount,
+          creditNoteAmount,
+          debitNoteAmount,
+          pendingAmount,
+        };
+      }).filter(inv => inv.pendingAmount > 0);
       
       res.json(pendingInvoices);
     } catch (error) {
