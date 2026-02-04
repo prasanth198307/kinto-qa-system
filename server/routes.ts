@@ -11727,36 +11727,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Build vendor summaries
       const vendorSummaries = filteredVendors.map(vendor => {
-        // Get invoices for this vendor (by buyerName match)
-        const vendorInvoices = activeInvoices.filter(inv => inv.buyerName === vendor.vendorName);
+        // Find child vendors of this parent
+        const childVendors = activeVendors.filter(v => v.parentVendorId === vendor.id);
+        const vendorIdsToInclude = [vendor.id, ...childVendors.map(cv => cv.id)];
+        const vendorNamesToInclude = [vendor.vendorName, ...childVendors.map(cv => cv.vendorName)];
         
-        // Get invoice IDs for this vendor
+        // Get invoices for this vendor family (parent + children) - case insensitive match
+        const vendorInvoices = activeInvoices.filter(inv => 
+          vendorNamesToInclude.some(name => name.toLowerCase() === inv.buyerName.toLowerCase())
+        );
+        
+        // Get invoice IDs for this vendor family
         const invoiceIds = vendorInvoices.map(inv => inv.id);
         
         // Calculate totals - use amountReceived as authoritative source (matches Vyapaar import)
         const totalInvoiced = vendorInvoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
         const totalReceived = vendorInvoices.reduce((sum, inv) => sum + (inv.amountReceived || 0), 0);
         
-        // Credit notes for this vendor's invoices (issued status only)
+        // Credit notes for this vendor family's invoices (issued status only)
         const vendorCredits = allCreditNotes.filter(cn => invoiceIds.includes(cn.invoiceId));
         const totalCredits = vendorCredits.reduce((sum, cn) => sum + (cn.grandTotal || 0), 0);
         
-        // Debit notes for this vendor's invoices (issued status only)
+        // Debit notes for this vendor family's invoices (issued status only)
         const vendorDebits = allDebitNotes.filter(dn => invoiceIds.includes(dn.invoiceId));
         const totalDebits = vendorDebits.reduce((sum, dn) => sum + (dn.grandTotal || 0), 0);
         
-        // Customer advances for this vendor (available balance = amount - usedAmount)
-        const vendorAdvances = allAdvances.filter(adv => adv.vendorId === vendor.id && adv.status === 'active');
+        // Customer advances for this vendor family (available balance = amount - usedAmount)
+        const vendorAdvances = allAdvances.filter(adv => 
+          vendorIdsToInclude.includes(adv.vendorId) && adv.status === 'active'
+        );
         const totalAdvances = vendorAdvances.reduce((sum, adv) => sum + ((adv.amount || 0) - (adv.usedAmount || 0)), 0);
         
         // Outstanding = Invoiced + Debits - Credits - Received - Advances
         // Formula: What they originally owed + additional charges - reductions - what they paid - prepayments
         const outstanding = totalInvoiced + totalDebits - totalCredits - totalReceived - totalAdvances;
         
-        // Last transaction date
+        // Last transaction date (across all family members)
         const lastInvoiceDate = vendorInvoices.length > 0 
           ? vendorInvoices.sort((a, b) => new Date(b.invoiceDate).getTime() - new Date(a.invoiceDate).getTime())[0].invoiceDate
           : null;
+        
+        // Count of child vendors for display
+        const childVendorCount = childVendors.length;
         
         return {
           id: vendor.id,
@@ -11770,6 +11782,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           creditNoteCount: vendorCredits.length,
           debitNoteCount: vendorDebits.length,
           advanceCount: vendorAdvances.length,
+          childVendorCount,
           totalInvoiced,
           totalReceived,
           totalCredits,
