@@ -109,21 +109,19 @@ export default function CustomerAdvancesPage() {
     },
   });
 
-  // Filter only customer vendors (buyers)
+  // Filter only parent/main customer accounts (not child/linked accounts)
+  // Show vendors that either have no parent OR are themselves parent accounts
   const buyerVendors = vendors.filter(v => {
     const type = (v.vendorType || '').toLowerCase();
-    // Be very inclusive to ensure all relevant entities show up
-    const matches = type.includes('customer') || 
-                   type.includes('both') || 
-                   type.includes('buyer') ||
-                   type === '' || 
-                   !v.vendorType;
-    if (matches) console.log('Found buyer:', v.vendorName, v.vendorType);
-    return matches;
+    const isCustomerType = type.includes('customer') || 
+                          type.includes('both') || 
+                          type.includes('buyer') ||
+                          type === '' || 
+                          !v.vendorType;
+    // Only show vendors that are NOT linked to a parent (main accounts only)
+    const isParentOrStandalone = !v.parentVendorId;
+    return isCustomerType && isParentOrStandalone;
   });
-  
-  console.log('Total vendors fetched:', vendors.length);
-  console.log('Total buyer vendors filtered:', buyerVendors.length);
 
   // Create advance mutation
   const createMutation = useMutation({
