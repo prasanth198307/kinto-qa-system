@@ -11745,9 +11745,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const vendorDebits = allDebitNotes.filter(dn => invoiceIds.includes(dn.invoiceId));
         const totalDebits = vendorDebits.reduce((sum, dn) => sum + (dn.grandTotal || 0), 0);
         
-        // Customer advances for this vendor (available balance = unapplied advances)
-        const vendorAdvances = allAdvances.filter(adv => adv.vendorId === vendor.id);
-        const totalAdvances = vendorAdvances.reduce((sum, adv) => sum + (adv.availableBalance || 0), 0);
+        // Customer advances for this vendor (available balance = amount - usedAmount)
+        const vendorAdvances = allAdvances.filter(adv => adv.vendorId === vendor.id && adv.status === 'active');
+        const totalAdvances = vendorAdvances.reduce((sum, adv) => sum + ((adv.amount || 0) - (adv.usedAmount || 0)), 0);
         
         // Outstanding = Invoiced + Debits - Credits - Received - Advances
         // Formula: What they originally owed + additional charges - reductions - what they paid - prepayments
@@ -11845,10 +11845,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Vendor not found" });
       }
       
-      // Get all invoices for this vendor
+      // Get all vendors to find children of this parent (for parent-child vendor grouping)
+      const allVendors = await storage.getAllVendors();
+      const childVendors = allVendors.filter(v => v.parentVendorId === vendorId);
+      const vendorIdsToInclude = [vendorId, ...childVendors.map(cv => cv.id)];
+      const vendorNamesToInclude = [vendor.vendorName, ...childVendors.map(cv => cv.vendorName)];
+      
+      // Get all invoices for this vendor family (parent + children)
       const allInvoices = await storage.getAllInvoices();
       let vendorInvoices = allInvoices.filter(inv => 
-        inv.buyerName === vendor.vendorName && inv.recordStatus === 1
+        vendorNamesToInclude.some(name => name.toLowerCase() === inv.buyerName.toLowerCase()) && inv.recordStatus === 1
       );
       
       // Filter by date range if provided
@@ -11898,12 +11904,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ));
       }
 
-      // Get customer advances for this vendor
+      // Get customer advances for this vendor family (parent + children)
       const vendorAdvances = await db.select()
         .from(customerAdvances)
         .where(and(
           eq(customerAdvances.recordStatus, 1),
-          eq(customerAdvances.vendorId, vendorId)
+          inArray(customerAdvances.vendorId, vendorIdsToInclude)
         ));
 
       // Group payments by invoice
@@ -11999,16 +12005,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Add customer advances to ledger (reduce what customer owes - prepayment)
       vendorAdvances.forEach(adv => {
         // Add the advance receipt entry
+        const availableBalance = (adv.amount || 0) - (adv.usedAmount || 0);
+        // Find vendor name for this advance (could be parent or child)
+        const advanceVendor = allVendors.find(v => v.id === adv.vendorId);
+        const vendorLabel = advanceVendor && advanceVendor.id !== vendorId 
+          ? ` [${advanceVendor.vendorName}]` 
+          : '';
         ledgerEntries.push({
           type: 'advance',
           id: adv.id,
-          date: adv.advanceDate,
+          date: adv.receiptDate, // Use receiptDate, not advanceDate
           reference: adv.advanceNumber,
-          description: `Customer Advance ${adv.advanceNumber} received (${adv.paymentMethod || 'Cash'})`,
+          description: `Customer Advance ${adv.advanceNumber} received (${adv.paymentMethod || 'Cash'})${vendorLabel}`,
           debit: 0,
-          credit: adv.amount, // Reduces what customer owes (prepayment)
+          credit: adv.amount, // Full amount as credit (reduces what customer owes)
           status: adv.status,
-          availableBalance: adv.availableBalance,
+          availableBalance: availableBalance,
+          usedAmount: adv.usedAmount,
         });
       });
       
@@ -12033,7 +12046,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalPayments = vendorInvoices.reduce((sum, inv) => sum + (inv.amountReceived || 0), 0);
       const totalCredits = vendorCreditNotes.reduce((sum, cn) => sum + (cn.grandTotal || 0), 0);
       const totalDebits = customerDebitNotes.reduce((sum, dn) => sum + (dn.grandTotal || 0), 0);
-      const totalAdvances = vendorAdvances.reduce((sum, adv) => sum + (adv.availableBalance || 0), 0);
+      const totalAdvances = vendorAdvances.reduce((sum, adv) => sum + ((adv.amount || 0) - (adv.usedAmount || 0)), 0);
       
       // Calculate vendor debit note adjustments total
       const vendorDebitNoteAdjustmentsTotal = allInvoicePayments
