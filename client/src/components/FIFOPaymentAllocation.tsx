@@ -44,6 +44,8 @@ const fifoPaymentSchema = z.object({
     }),
   paymentDate: z.string().min(1, "Payment date is required"),
   paymentMethod: z.string().min(1, "Payment method is required"),
+  paidBy: z.string().min(1, "Payer category is required"),
+  payerName: z.string().min(1, "Payer name is required"),
   referenceNumber: z.string().optional(),
   bankName: z.string().optional(),
   remarks: z.string().optional(),
@@ -94,6 +96,8 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
       amount: "",
       paymentDate: format(new Date(), "yyyy-MM-dd"),
       paymentMethod: "Cash",
+      paidBy: "buyer",
+      payerName: "",
       referenceNumber: "",
       bankName: "",
       remarks: "",
@@ -107,6 +111,8 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
         amount: Math.round(parseFloat(data.amount) * 100), // Convert to paise
         paymentDate: new Date(data.paymentDate).toISOString(),
         paymentMethod: data.paymentMethod,
+        paidBy: data.paidBy,
+        payerName: data.payerName,
         referenceNumber: data.referenceNumber,
         bankName: data.bankName,
         remarks: data.remarks,
@@ -160,6 +166,10 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                         onValueChange={(value) => {
                           field.onChange(value);
                           setSelectedVendorId(value);
+                          const vendor = vendors.find(v => v.id === value);
+                          if (vendor) {
+                            form.setValue('payerName', vendor.vendorName || "");
+                          }
                         }} 
                         value={field.value}
                       >
@@ -240,7 +250,81 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                     </FormItem>
                   )}
                 />
+              </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="paidBy"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Paid By</FormLabel>
+                      <Select 
+                        onValueChange={(val) => {
+                          field.onChange(val);
+                          const vendor = vendors.find(v => v.id === selectedVendorId);
+                          if (val === 'buyer') {
+                            form.setValue('payerName', vendor?.vendorName || "");
+                          } else if (val === 'shipper') {
+                            form.setValue('payerName', vendor?.shipToName || "");
+                          }
+                        }} 
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger data-testid="select-paid-by">
+                            <SelectValue placeholder="Who paid?" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="buyer">Buyer/Vendor</SelectItem>
+                          <SelectItem value="shipper">Shipper (Unit)</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="payerName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Payer Name</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          placeholder="Enter name of entity"
+                          data-testid="input-payer-name"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="payerName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Payer Name</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          placeholder="Enter name of entity"
+                          data-testid="input-payer-name"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="referenceNumber"

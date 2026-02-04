@@ -13283,11 +13283,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Create payment record for this invoice
         const payment = await storage.createPayment({
           invoiceId: invoice.id,
-          paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
+          paymentDate: paymentDate ? new Date(paymentDate).toISOString() : new Date().toISOString(),
           amount: allocationAmount,
           paymentMethod: paymentMethod || 'Cash',
           referenceNumber,
           paymentType: allocationAmount === invoice.outstanding ? 'Full' : 'Partial',
+          paidBy: paidBy || 'buyer',
+          payerName: payerName || '',
           bankName,
           remarks: remarks || `FIFO allocation from bulk payment`,
           recordedBy: req.user?.id,
