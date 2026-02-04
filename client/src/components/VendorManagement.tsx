@@ -150,6 +150,8 @@ export default function VendorManagement() {
   const [selectedVendorTypes, setSelectedVendorTypes] = useState<string[]>([]);
   const [primaryVendorTypeId, setPrimaryVendorTypeId] = useState<string | null>(null);
   const [vendorTypePopoverOpen, setVendorTypePopoverOpen] = useState(false);
+  const [parentVendorId, setParentVendorId] = useState<string | null>(null);
+  const [parentVendorPopoverOpen, setParentVendorPopoverOpen] = useState(false);
   const [gstVerifying, setGstVerifying] = useState(false);
   const [gstVerificationResult, setGstVerificationResult] = useState<{
     status: string;
@@ -241,6 +243,22 @@ export default function VendorManagement() {
   const { data: allVendorTypeAssignments = [] } = useQuery<VendorVendorType[]>({
     queryKey: ['/api/vendor-vendor-types/batch'],
   });
+
+  // Fetch all vendors for parent vendor dropdown (only those without a parent - main accounts)
+  const { data: allVendorsForParent = [] } = useQuery<Vendor[]>({
+    queryKey: ['/api/vendors', 'all-for-parent'],
+    queryFn: async () => {
+      const res = await fetch('/api/vendors?limit=5000');
+      if (!res.ok) throw new Error("Failed to fetch vendors");
+      const data = await res.json();
+      return Array.isArray(data) ? data : (data.data || data.vendors || []);
+    }
+  });
+
+  // Filter to only show main accounts (no parent) as potential parents
+  const parentVendorOptions = useMemo(() => {
+    return allVendorsForParent.filter(v => !v.parentVendorId && v.id !== editingVendor?.id);
+  }, [allVendorsForParent, editingVendor?.id]);
 
   // Group vendor types by vendorId for quick lookup (memoized to prevent infinite loops)
   // Deduplicate to handle React Query dev-mode double-fetch edge cases
@@ -498,6 +516,7 @@ export default function VendorManagement() {
       shipToState: formData.get("shipToState") as string || null,
       shipToPincode: formData.get("shipToPincode") as string || null,
       shipToGstin: formData.get("shipToGstin") as string || null,
+      parentVendorId: parentVendorId || null,
     };
 
     if (editingVendor) {
@@ -524,6 +543,8 @@ export default function VendorManagement() {
     setSelectedVendorTypes(existingTypes.map(vt => vt.vendorTypeId));
     const primary = existingTypes.find(vt => vt.isPrimary === 1);
     setPrimaryVendorTypeId(primary?.vendorTypeId || null);
+    // Set parent vendor
+    setParentVendorId(vendor.parentVendorId || null);
     setIsDialogOpen(true);
   };
 
@@ -546,6 +567,8 @@ export default function VendorManagement() {
     setSelectedVendorTypes([]);
     setPrimaryVendorTypeId(null);
     setGstVerificationResult(null);
+    setParentVendorId(null);
+    setParentVendorPopoverOpen(false);
   };
 
   const verifyGst = async (gstin: string) => {
@@ -892,6 +915,74 @@ export default function VendorManagement() {
                       <SelectItem value="Both">Both</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                <div>
+                  <Label>Parent Account</Label>
+                  <p className="text-xs text-muted-foreground mb-1">Link to a main account for advances</p>
+                  <Popover open={parentVendorPopoverOpen} onOpenChange={setParentVendorPopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={parentVendorPopoverOpen}
+                        className="w-full justify-between"
+                        data-testid="button-select-parent-vendor"
+                      >
+                        {parentVendorId
+                          ? parentVendorOptions.find(v => v.id === parentVendorId)?.vendorName || "Select parent..."
+                          : "None (Main Account)"}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[400px] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Search parent account..." data-testid="input-search-parent-vendor" />
+                        <CommandEmpty>No vendor found.</CommandEmpty>
+                        <CommandList className="max-h-64 overflow-auto">
+                          <CommandGroup>
+                            <CommandItem
+                              value="none"
+                              onSelect={() => {
+                                setParentVendorId(null);
+                                setParentVendorPopoverOpen(false);
+                              }}
+                              data-testid="parent-vendor-option-none"
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  !parentVendorId ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              None (Main Account)
+                            </CommandItem>
+                            {parentVendorOptions
+                              .sort((a, b) => a.vendorName.localeCompare(b.vendorName))
+                              .map((vendor) => (
+                                <CommandItem
+                                  key={vendor.id}
+                                  value={vendor.vendorName}
+                                  onSelect={() => {
+                                    setParentVendorId(vendor.id);
+                                    setParentVendorPopoverOpen(false);
+                                  }}
+                                  data-testid={`parent-vendor-option-${vendor.id}`}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      parentVendorId === vendor.id ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {vendor.vendorName}
+                                </CommandItem>
+                              ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
 
