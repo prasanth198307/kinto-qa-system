@@ -13234,22 +13234,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         debitNotesByInvoice.set(dn.invoiceId, current + dn.grandTotal);
       });
 
-      // Filter to only parent vendors (vendors without a parentVendorId) for display
-      // Child vendor data will be aggregated under their parent
-      const parentVendors = allVendors.filter(v => !v.parentVendorId);
-      
-      // Calculate analytics for each parent vendor (including aggregated child data)
-      const vendorAnalytics = await Promise.all(parentVendors.map(async (vendor) => {
-        // Find child vendors of this parent
-        const childVendors = allVendors.filter(v => v.parentVendorId === vendor.id);
-        const vendorNamesToInclude = [
-          vendor.vendorName,
-          vendor.shipToName || '',
-          ...childVendors.map(cv => cv.vendorName),
-          ...childVendors.map(cv => cv.shipToName || '')
-        ].filter(Boolean);
+      // Calculate analytics for each vendor
+      // Parent vendors: show aggregated data (parent + all children)
+      // Child vendors: show only their own data
+      const vendorAnalytics = await Promise.all(allVendors.map(async (vendor) => {
+        // Determine if this is a parent or child vendor
+        const isParent = !vendor.parentVendorId;
         
-        // Find invoices for this vendor family (parent + children) using buyerName or shipToName
+        let vendorNamesToInclude: string[];
+        let childVendors: typeof allVendors = [];
+        
+        if (isParent) {
+          // For parent vendors, include parent + all children names
+          childVendors = allVendors.filter(v => v.parentVendorId === vendor.id);
+          vendorNamesToInclude = [
+            vendor.vendorName,
+            vendor.shipToName || '',
+            ...childVendors.map(cv => cv.vendorName),
+            ...childVendors.map(cv => cv.shipToName || '')
+          ].filter(Boolean);
+        } else {
+          // For child vendors, only include their own name
+          vendorNamesToInclude = [vendor.vendorName, vendor.shipToName || ''].filter(Boolean);
+        }
+        
+        // Find invoices for this vendor (or vendor family if parent) using buyerName or shipToName
         const vendorInvoices = allInvoices.filter(inv => 
           inv.recordStatus === 1 && (
             vendorNamesToInclude.some(name => 
@@ -13288,6 +13297,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           vendorTypeLinks.find(link => link.vendorId === vendor.id && link.vendorTypeId === type.id)?.isPrimary === 1
         );
 
+        // For child vendors, get parent vendor name
+        const parentVendor = vendor.parentVendorId 
+          ? allVendors.find(v => v.id === vendor.parentVendorId) 
+          : null;
+
         return {
           vendorId: vendor.id,
           vendorCode: vendor.vendorCode,
@@ -13304,6 +13318,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           outstandingBalance,
           avgOrderValue: totalOrders > 0 ? totalRevenue / totalOrders : 0,
           childVendorCount: childVendors.length,
+          isChild: !!vendor.parentVendorId,
+          parentVendorName: parentVendor?.vendorName || null,
         };
       }));
 

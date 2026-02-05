@@ -31,6 +31,8 @@ interface VendorAnalytic {
   outstandingBalance: number;
   avgOrderValue: number;
   childVendorCount?: number;
+  isChild?: boolean;
+  parentVendorName?: string | null;
 }
 
 interface VendorAnalyticsResponse {
@@ -453,8 +455,19 @@ export default function VendorAnalytics() {
                                 +{vendor.childVendorCount} child{vendor.childVendorCount > 1 ? 'ren' : ''}
                               </Badge>
                             )}
+                            {vendor.isChild && (
+                              <Badge variant="secondary" className="text-xs" data-testid={`badge-child-${vendor.vendorId}`}>
+                                Child
+                              </Badge>
+                            )}
                           </div>
-                          <div className="text-sm text-muted-foreground">{vendor.mobileNumber}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {vendor.isChild && vendor.parentVendorName ? (
+                              <span>Parent: {vendor.parentVendorName}</span>
+                            ) : (
+                              vendor.mobileNumber
+                            )}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell data-testid={`cell-type-${vendor.vendorId}`}>
