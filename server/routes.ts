@@ -8636,6 +8636,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // MUST be before /:invoiceId route to avoid "history" being matched as invoiceId
   app.get('/api/invoice-payments/history', isAuthenticated, async (req: any, res) => {
     try {
+      // First, get all payments with invoice info (no vendor join to avoid duplicates)
       const payments = await db.select({
         id: invoicePayments.id,
         invoiceId: invoicePayments.invoiceId,
@@ -8650,16 +8651,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cancellationRemarks: invoicePayments.cancellationRemarks,
         invoiceNumber: invoices.invoiceNumber,
         invoiceDate: invoices.invoiceDate,
-        vendorId: vendors.id,
-        vendorName: vendors.vendorName,
+        buyerName: invoices.buyerName,
       })
       .from(invoicePayments)
       .leftJoin(invoices, eq(invoicePayments.invoiceId, invoices.id))
-      .leftJoin(vendors, eq(invoices.buyerName, vendors.vendorName))
       .where(eq(invoicePayments.recordStatus, 1))
       .orderBy(desc(invoicePayments.paymentDate));
 
-      res.json(payments);
+      // Get all vendors to lookup by name (using a Map for O(1) lookup)
+      const allVendors = await storage.getAllVendors();
+      const vendorByName = new Map<string, typeof allVendors[0]>();
+      allVendors.forEach(v => {
+        // Only store first match (avoid duplicates from parent-child vendors with same name)
+        const lowerName = v.vendorName.toLowerCase();
+        if (!vendorByName.has(lowerName)) {
+          vendorByName.set(lowerName, v);
+        }
+      });
+
+      // Attach vendor info to each payment
+      const paymentsWithVendor = payments.map(p => {
+        const vendor = p.buyerName ? vendorByName.get(p.buyerName.toLowerCase()) : null;
+        return {
+          ...p,
+          vendorId: vendor?.id || null,
+          vendorName: p.buyerName || null,
+        };
+      });
+
+      res.json(paymentsWithVendor);
     } catch (error: any) {
       console.error("Error fetching payment history:", error?.message || error);
       res.status(500).json({ message: "Failed to fetch payment history" });
