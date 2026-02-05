@@ -67,6 +67,7 @@ const REASON_LABELS: Record<string, string> = {
   freight_charges: "Freight/Transport Charges",
   quality_premium: "Quality Premium/Bonus",
   material_conversion: "Material Conversion Charges",
+  service_commission: "Service Commission",
   defective_goods: "Defective Goods",
   short_receipt: "Short Receipt",
   quality_rejection: "Quality Rejection",
@@ -355,6 +356,7 @@ export default function VendorDebitNotesPage() {
             noteNumber: adjustmentNote.noteNumber,
             vendorId: adjustmentNote.vendorId,
             vendorName: adjustmentNote.vendorName,
+            subtotal: adjustmentNote.subtotal,
             grandTotal: adjustmentNote.grandTotal,
             settledAmount: adjustmentNote.settledAmount,
           }}

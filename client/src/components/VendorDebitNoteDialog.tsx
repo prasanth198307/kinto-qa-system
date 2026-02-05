@@ -114,6 +114,7 @@ const REASON_LABELS: Record<string, string> = {
   freight_charges: "Freight/Transport Charges",
   quality_premium: "Quality Premium/Bonus",
   material_conversion: "Material Conversion Charges",
+  service_commission: "Service Commission",
   defective_goods: "Defective Goods",
   short_receipt: "Short Receipt",
   quality_rejection: "Quality Rejection",

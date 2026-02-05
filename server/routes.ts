@@ -8462,13 +8462,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return hsn;
       });
       
-      // Calculate vendor debit note totals for ITC adjustments
-      let vendorDebitNoteTaxableTotal = 0;
-      let vendorDebitNoteTaxTotal = 0;
-      vendorDebitNotesWithDetails.forEach(({ vendorDebitNote }) => {
-        vendorDebitNoteTaxableTotal += vendorDebitNote.subtotal / 100;
-        vendorDebitNoteTaxTotal += (vendorDebitNote.cgstAmount + vendorDebitNote.sgstAmount + vendorDebitNote.igstAmount) / 100;
-      });
+      // Note: Vendor debit notes are excluded from GST calculations as they are internal adjustments
+      // Only the base amount (subtotal) is used for settlement, not for GST reporting
+      const vendorDebitNoteTaxableTotal = 0;
+      const vendorDebitNoteTaxTotal = 0;
       
       // Calculate scrap loss totals for write-off disclosure
       // GST Treatment: Scrap/damaged inventory losses require ITC reversal if ITC was claimed on input
@@ -12846,7 +12843,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Vendor debit note not found" });
       }
 
-      const unsettledAmount = debitNote.grandTotal - debitNote.settledAmount;
+      // Use subtotal (base amount without GST) for adjustments - GST is not included in debit adjustments
+      const unsettledAmount = debitNote.subtotal - debitNote.settledAmount;
       if (adjustmentAmount > unsettledAmount) {
         return res.status(400).json({ 
           message: `Adjustment amount (₹${(adjustmentAmount / 100).toFixed(2)}) exceeds unsettled balance (₹${(unsettledAmount / 100).toFixed(2)})` 
@@ -12882,11 +12880,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           adjustedBy: req.user?.id,
         });
 
-        // Update settled amount on debit note
+        // Update settled amount on debit note - use subtotal (without GST) for settlement tracking
         await tx.update(vendorDebitNotes)
           .set({ 
             settledAmount: debitNote.settledAmount + adjustmentAmount,
-            status: (debitNote.settledAmount + adjustmentAmount) >= debitNote.grandTotal ? 'settled' : 'issued',
+            status: (debitNote.settledAmount + adjustmentAmount) >= debitNote.subtotal ? 'settled' : 'issued',
           })
           .where(eq(vendorDebitNotes.id, debitNoteId));
 

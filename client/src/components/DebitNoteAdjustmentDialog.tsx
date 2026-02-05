@@ -62,6 +62,7 @@ interface DebitNoteAdjustmentDialogProps {
     noteNumber: string;
     vendorId: string;
     vendorName: string | null;
+    subtotal: number;
     grandTotal: number;
     settledAmount: number;
   };
@@ -80,7 +81,8 @@ export function DebitNoteAdjustmentDialog({
   const [remarks, setRemarks] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const unsettledAmount = debitNote.grandTotal - debitNote.settledAmount;
+  // Use subtotal (base amount without GST) for adjustments
+  const unsettledAmount = debitNote.subtotal - debitNote.settledAmount;
 
   // Reset selections when dialog opens
   useEffect(() => {
@@ -220,8 +222,8 @@ export function DebitNoteAdjustmentDialog({
         <div className="space-y-4">
           <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
             <div>
-              <p className="text-sm text-muted-foreground">Debit Note Total</p>
-              <p className="text-lg font-semibold">{formatCurrency(debitNote.grandTotal)}</p>
+              <p className="text-sm text-muted-foreground">Base Amount (excl. GST)</p>
+              <p className="text-lg font-semibold">{formatCurrency(debitNote.subtotal)}</p>
             </div>
             <Separator orientation="vertical" className="h-10" />
             <div>
