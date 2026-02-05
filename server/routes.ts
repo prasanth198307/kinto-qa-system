@@ -12858,6 +12858,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create adjustment in transaction
+      // Use the debit note's original date for the adjustment, not today's date
+      const adjustmentDate = debitNote.debitDate;
+      
       await db.transaction(async (tx) => {
         // Insert adjustment record
         await tx.insert(vendorDebitNoteAdjustments).values({
@@ -12866,7 +12869,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           invoiceId: referenceType === 'invoice' ? invoiceId : null,
           purchaseOrderId: referenceType === 'purchase_order' ? purchaseOrderId : null,
           adjustmentAmount,
-          adjustmentDate: new Date().toISOString().split('T')[0],
+          adjustmentDate,
           remarks,
           adjustedBy: req.user?.id,
         });
@@ -12884,9 +12887,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Get current invoice to update amountReceived
           const [currentInvoice] = await tx.select().from(invoices).where(eq(invoices.id, invoiceId));
           
+          // Use the debit note's original date for the payment record
           await tx.insert(invoicePayments).values({
             invoiceId,
-            paymentDate: new Date().toISOString(),
+            paymentDate: adjustmentDate,
             amount: adjustmentAmount,
             paymentMethod: 'Debit Note Adjustment',
             referenceNumber: debitNote.noteNumber,
