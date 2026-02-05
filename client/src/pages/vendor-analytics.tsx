@@ -495,7 +495,7 @@ export default function VendorAnalytics() {
                       </TableCell>
                       <TableCell className="text-right" data-testid={`cell-outstanding-${vendor.vendorId}`}>
                         {vendor.outstandingBalance > 0 ? (
-                          <Link href={`/vendor-history/${vendor.vendorId}`}>
+                          <Link href={`/pending-payments?customer=${encodeURIComponent(vendor.vendorName)}`}>
                             <a className="text-orange-600 font-medium hover:text-orange-700 inline-flex items-center gap-1 hover:underline" data-testid={`link-outstanding-${vendor.vendorId}`}>
                               {formatCurrency(vendor.outstandingBalance)}
                               <ExternalLink className="h-3 w-3" />

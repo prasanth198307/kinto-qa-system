@@ -8570,9 +8570,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Filter to only pending invoices (outstanding > 0)
       let pendingInvoices = invoicesWithBalance.filter(inv => inv.outstandingBalance > 0);
       
-      // Apply customer filter if provided
+      // Apply customer filter if provided - include child vendors for parent vendors
       if (customer) {
-        pendingInvoices = pendingInvoices.filter(inv => inv.buyerName === customer);
+        // Get all vendors to find parent-child relationships
+        const allVendors = await storage.getAllVendors();
+        
+        // Find the vendor by name (case-insensitive)
+        const matchedVendor = allVendors.find(v => 
+          v.vendorName.toLowerCase() === (customer as string).toLowerCase()
+        );
+        
+        if (matchedVendor) {
+          // Find all child vendors of this parent
+          const childVendors = allVendors.filter(v => v.parentVendorId === matchedVendor.id);
+          
+          // Build list of all names to include (parent + children)
+          const vendorNamesToInclude = [
+            matchedVendor.vendorName.toLowerCase(),
+            matchedVendor.shipToName?.toLowerCase() || '',
+            ...childVendors.map(cv => cv.vendorName.toLowerCase()),
+            ...childVendors.map(cv => cv.shipToName?.toLowerCase() || '')
+          ].filter(Boolean);
+          
+          // Filter invoices for this vendor family
+          pendingInvoices = pendingInvoices.filter(inv => 
+            vendorNamesToInclude.includes(inv.buyerName?.toLowerCase() || '') ||
+            vendorNamesToInclude.includes(inv.shipToName?.toLowerCase() || '')
+          );
+        } else {
+          // Fallback to exact match if vendor not found
+          pendingInvoices = pendingInvoices.filter(inv => inv.buyerName === customer);
+        }
       }
       
       // Sort by invoice date (oldest first)
