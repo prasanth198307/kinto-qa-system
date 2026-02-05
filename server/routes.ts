@@ -13234,11 +13234,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         debitNotesByInvoice.set(dn.invoiceId, current + dn.grandTotal);
       });
 
-      // Calculate analytics for each vendor
-      const vendorAnalytics = await Promise.all(allVendors.map(async (vendor) => {
-        // Find invoices for this vendor (where buyerName matches vendorName)
+      // Filter to only parent vendors (vendors without a parentVendorId) for display
+      // Child vendor data will be aggregated under their parent
+      const parentVendors = allVendors.filter(v => !v.parentVendorId);
+      
+      // Calculate analytics for each parent vendor (including aggregated child data)
+      const vendorAnalytics = await Promise.all(parentVendors.map(async (vendor) => {
+        // Find child vendors of this parent
+        const childVendors = allVendors.filter(v => v.parentVendorId === vendor.id);
+        const vendorNamesToInclude = [
+          vendor.vendorName,
+          vendor.shipToName || '',
+          ...childVendors.map(cv => cv.vendorName),
+          ...childVendors.map(cv => cv.shipToName || '')
+        ].filter(Boolean);
+        
+        // Find invoices for this vendor family (parent + children) using buyerName or shipToName
         const vendorInvoices = allInvoices.filter(inv => 
-          inv.buyerName === vendor.vendorName && inv.recordStatus === 1
+          inv.recordStatus === 1 && (
+            vendorNamesToInclude.some(name => 
+              name.toLowerCase() === inv.buyerName?.toLowerCase() ||
+              name.toLowerCase() === inv.shipToName?.toLowerCase()
+            )
+          )
         );
 
         // Calculate gross revenue, quantity, and orders
@@ -13285,6 +13303,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totalPaid,
           outstandingBalance,
           avgOrderValue: totalOrders > 0 ? totalRevenue / totalOrders : 0,
+          childVendorCount: childVendors.length,
         };
       }));
 

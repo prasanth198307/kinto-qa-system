@@ -30,6 +30,7 @@ interface VendorAnalytic {
   totalPaid: number;
   outstandingBalance: number;
   avgOrderValue: number;
+  childVendorCount?: number;
 }
 
 interface VendorAnalyticsResponse {
@@ -445,7 +446,14 @@ export default function VendorAnalytics() {
                       </TableCell>
                       <TableCell data-testid={`cell-name-${vendor.vendorId}`}>
                         <div>
-                          <div className="font-medium">{vendor.vendorName}</div>
+                          <div className="font-medium flex items-center gap-2">
+                            {vendor.vendorName}
+                            {vendor.childVendorCount && vendor.childVendorCount > 0 && (
+                              <Badge variant="outline" className="text-xs" data-testid={`badge-children-${vendor.vendorId}`}>
+                                +{vendor.childVendorCount} child{vendor.childVendorCount > 1 ? 'ren' : ''}
+                              </Badge>
+                            )}
+                          </div>
                           <div className="text-sm text-muted-foreground">{vendor.mobileNumber}</div>
                         </div>
                       </TableCell>
