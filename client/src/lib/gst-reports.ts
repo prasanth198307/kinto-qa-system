@@ -546,16 +546,13 @@ export function generateGSTR1(
 
 /**
  * Generate GSTR-3B Report from invoices
- * Now includes vendor debit notes for ITC adjustments per GST accounting rules:
- * - Vendor payments (processing, job work) = ITC eligible (Table 4A)
- * - Vendor claims (defective goods, quality issues) = ITC reversal (Table 4B)
+ * Note: Vendor debit notes are excluded from GST reports as they are internal adjustments without GST
  */
 export function generateGSTR3B(
   outwardInvoices: Invoice[],
   inwardPurchases: any[],
   period: string,
-  companyGSTIN: string,
-  vendorDebitNotes?: VendorDebitNoteWithDetails[]
+  companyGSTIN: string
 ): GSTR3BReport {
   let totalTaxableValue = 0;
   let totalIGST = 0;
@@ -571,39 +568,14 @@ export function generateGSTR3B(
     totalCess += paiseToRupees(invoice.cessAmount);
   });
 
-  // Process vendor debit notes for ITC adjustments
-  // Payment types (processing_charges, job_work_charges, freight_charges, quality_premium, material_conversion) = ITC eligible
-  // Claim types (defective_goods, short_receipt, quality_rejection, price_dispute) = ITC reversal
-  const itcPaymentReasons = ['processing_charges', 'job_work_charges', 'freight_charges', 'quality_premium', 'material_conversion'];
-  const itcReversalReasons = ['defective_goods', 'short_receipt', 'quality_rejection', 'price_dispute'];
-
-  let itcIGST = 0;
-  let itcCGST = 0;
-  let itcSGST = 0;
-  let itcReversalIGST = 0;
-  let itcReversalCGST = 0;
-  let itcReversalSGST = 0;
-
-  if (vendorDebitNotes) {
-    vendorDebitNotes.forEach(({ vendorDebitNote }) => {
-      const reason = vendorDebitNote.reason;
-      const igst = paiseToRupees(vendorDebitNote.igstAmount);
-      const cgst = paiseToRupees(vendorDebitNote.cgstAmount);
-      const sgst = paiseToRupees(vendorDebitNote.sgstAmount);
-
-      if (itcPaymentReasons.includes(reason)) {
-        // ITC eligible - payments to vendors for services
-        itcIGST += igst;
-        itcCGST += cgst;
-        itcSGST += sgst;
-      } else if (itcReversalReasons.includes(reason)) {
-        // ITC reversal - claims against vendors
-        itcReversalIGST += igst;
-        itcReversalCGST += cgst;
-        itcReversalSGST += sgst;
-      }
-    });
-  }
+  // Note: Vendor debit notes are excluded from GST reports - they are internal adjustments without GST
+  // ITC values are set to 0 as vendor debit notes no longer carry GST amounts
+  const itcIGST = 0;
+  const itcCGST = 0;
+  const itcSGST = 0;
+  const itcReversalIGST = 0;
+  const itcReversalCGST = 0;
+  const itcReversalSGST = 0;
 
   return {
     gstin: companyGSTIN,

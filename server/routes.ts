@@ -8369,15 +8369,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
       );
       
-      // Fetch VENDOR debit notes for the period (purchase-side for ITC adjustments)
-      const allVendorDebitNotes = await db.select().from(vendorDebitNotes)
-        .where(
-          and(
-            eq(vendorDebitNotes.recordStatus, 1),
-            gte(vendorDebitNotes.debitDate, startDate.toISOString().split('T')[0]),
-            lte(vendorDebitNotes.debitDate, endDate.toISOString().split('T')[0])
-          )
-        );
+      // Note: Vendor debit notes are completely excluded from GST reports as they are internal adjustments
+      // They don't involve GST transactions - only base amounts are used for settlements
       
       // Fetch approved scrap inventory records for the period (write-off losses)
       // scrapDate is stored as ISO timestamp string, so compare using ISO format
@@ -8393,19 +8386,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           )
         );
       
-      // Get vendor details and items for each vendor debit note
-      const vendorDebitNotesWithDetails = await Promise.all(
-        allVendorDebitNotes.map(async (vdn) => {
-          const vendor = await storage.getVendor(vdn.vendorId);
-          const vdnItems = await db.select().from(vendorDebitNoteItems)
-            .where(eq(vendorDebitNoteItems.vendorDebitNoteId, vdn.id));
-          return {
-            vendorDebitNote: vdn,
-            vendor: vendor!,
-            items: vdnItems
-          };
-        })
-      );
       
       // Aggregate HSN summary
       const hsnMap = new Map<string, any>();
@@ -8462,11 +8442,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return hsn;
       });
       
-      // Note: Vendor debit notes are excluded from GST calculations as they are internal adjustments
-      // Only the base amount (subtotal) is used for settlement, not for GST reporting
-      const vendorDebitNoteTaxableTotal = 0;
-      const vendorDebitNoteTaxTotal = 0;
-      
       // Calculate scrap loss totals for write-off disclosure
       // GST Treatment: Scrap/damaged inventory losses require ITC reversal if ITC was claimed on input
       let scrapLossCostTotal = 0;
@@ -8494,12 +8469,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lossAmount: Number(data.lossAmount.toFixed(2)),
       }));
       
-      // Build response
+      // Build response - vendor debit notes excluded as they are internal adjustments, not GST transactions
       const response = {
         invoices: invoicesWithItems,
         creditNotes: creditNotesWithInvoice,
         debitNotes: debitNotesWithInvoice,
-        vendorDebitNotes: vendorDebitNotesWithDetails,
         scrapLosses: scrapLosses.map(scrap => ({
           ...scrap,
           // Convert paise to rupees for frontend display
@@ -8525,12 +8499,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totalInvoices: invoicesWithItems.length,
           totalCreditNotes: creditNotesWithInvoice.length,
           totalDebitNotes: debitNotesWithInvoice.length,
-          totalVendorDebitNotes: vendorDebitNotesWithDetails.length,
           totalScrapRecords: scrapLosses.length,
           totalTaxableValue: Number(totalTaxableValue.toFixed(2)),
           totalTax: Number(totalTax.toFixed(2)),
-          vendorDebitNoteTaxableTotal: Number(vendorDebitNoteTaxableTotal.toFixed(2)),
-          vendorDebitNoteTaxTotal: Number(vendorDebitNoteTaxTotal.toFixed(2)),
           scrapLossCostTotal: Number(scrapLossCostTotal.toFixed(2)),
           scrapLossSellingTotal: Number(scrapLossSellingTotal.toFixed(2)),
         },
