@@ -80,7 +80,8 @@ const vendorDebitNoteSchema = z.object({
     "job_work_charges", 
     "freight_charges", 
     "quality_premium", 
-    "material_conversion", 
+    "material_conversion",
+    "service_commission", 
     "defective_goods", 
     "short_receipt", 
     "quality_rejection", 
@@ -190,8 +191,8 @@ export function VendorDebitNoteDialog({
       lumpSumAmount: 0,
       lumpSumTotalAmount: 0,
       lumpSumDescription: "",
-      lumpSumCgstRate: 900,
-      lumpSumSgstRate: 900,
+      lumpSumCgstRate: 0,
+      lumpSumSgstRate: 0,
       items: [],
     },
   });
@@ -212,8 +213,8 @@ export function VendorDebitNoteDialog({
         lumpSumAmount: 0,
         lumpSumTotalAmount: 0,
         lumpSumDescription: "",
-        lumpSumCgstRate: 900,
-        lumpSumSgstRate: 900,
+        lumpSumCgstRate: 0,
+        lumpSumSgstRate: 0,
         items: [],
       });
     }
@@ -595,81 +596,30 @@ export function VendorDebitNoteDialog({
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="lumpSumCgstRate"
+                    name="lumpSumAmount"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>CGST Rate (%)</FormLabel>
+                        <FormLabel>Amount *</FormLabel>
                         <FormControl>
                           <Input 
                             type="number" 
                             min="0" 
                             step="0.01"
-                            placeholder="e.g., 9" 
-                            value={field.value ? (Number(field.value) / 100).toString() : ""}
-                            onChange={(e) => field.onChange(Math.round(parseFloat(e.target.value || "0") * 100))}
-                            data-testid="input-lumpsum-cgst" 
+                            placeholder="e.g., 1000.00" 
+                            value={field.value ? (Number(field.value) / 100).toFixed(2) : ""}
+                            onChange={(e) => {
+                              const amountPaise = Math.round(parseFloat(e.target.value || "0") * 100);
+                              field.onChange(amountPaise);
+                              form.setValue("lumpSumTotalAmount", amountPaise);
+                              form.setValue("lumpSumCgstRate", 0);
+                              form.setValue("lumpSumSgstRate", 0);
+                            }}
+                            data-testid="input-lumpsum-amount" 
                           />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="lumpSumSgstRate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>SGST Rate (%)</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            min="0" 
-                            step="0.01"
-                            placeholder="e.g., 9" 
-                            value={field.value ? (Number(field.value) / 100).toString() : ""}
-                            onChange={(e) => field.onChange(Math.round(parseFloat(e.target.value || "0") * 100))}
-                            data-testid="input-lumpsum-sgst" 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="lumpSumTotalAmount"
-                    render={({ field }) => {
-                      const cgstRate = form.watch("lumpSumCgstRate") || 0;
-                      const sgstRate = form.watch("lumpSumSgstRate") || 0;
-                      const totalGstRate = (cgstRate + sgstRate) / 10000;
-                      
-                      return (
-                        <FormItem>
-                          <FormLabel>Total Amount (GST Inclusive) *</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              min="0" 
-                              step="0.01"
-                              placeholder="e.g., 1180.00" 
-                              value={field.value ? (Number(field.value) / 100).toFixed(2) : ""}
-                              onChange={(e) => {
-                                const totalPaise = Math.round(parseFloat(e.target.value || "0") * 100);
-                                field.onChange(totalPaise);
-                                const taxableAmount = Math.round(totalPaise / (1 + totalGstRate));
-                                form.setValue("lumpSumAmount", taxableAmount);
-                              }}
-                              data-testid="input-lumpsum-total" 
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      );
-                    }}
                   />
 
                   <FormField
@@ -689,17 +639,6 @@ export function VendorDebitNoteDialog({
                       </FormItem>
                     )}
                   />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 p-3 bg-muted/50 rounded-lg">
-                  <div className="text-sm">
-                    <span className="text-muted-foreground">Taxable Amount:</span>{" "}
-                    <span className="font-medium">₹{((lumpSumAmount || 0) / 100).toFixed(2)}</span>
-                  </div>
-                  <div className="text-sm">
-                    <span className="text-muted-foreground">GST ({((lumpSumCgstRate + lumpSumSgstRate) / 100).toFixed(0)}%):</span>{" "}
-                    <span className="font-medium">₹{(((lumpSumAmount || 0) * (lumpSumCgstRate + lumpSumSgstRate) / 1000000)).toFixed(2)}</span>
-                  </div>
                 </div>
               </Card>
             ) : (
@@ -870,34 +809,9 @@ export function VendorDebitNoteDialog({
             <Separator />
 
             <Card className="p-4 bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800">
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span>Subtotal:</span>
-                  <span>{formatCurrency(totals.subtotal)}</span>
-                </div>
-                {totals.cgstAmount > 0 && (
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>CGST:</span>
-                    <span>{formatCurrency(totals.cgstAmount)}</span>
-                  </div>
-                )}
-                {totals.sgstAmount > 0 && (
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>SGST:</span>
-                    <span>{formatCurrency(totals.sgstAmount)}</span>
-                  </div>
-                )}
-                {totals.igstAmount > 0 && (
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>IGST:</span>
-                    <span>{formatCurrency(totals.igstAmount)}</span>
-                  </div>
-                )}
-                <Separator />
-                <div className="flex justify-between font-bold text-orange-700 dark:text-orange-300">
-                  <span>Grand Total:</span>
-                  <span>{formatCurrency(totals.grandTotal)}</span>
-                </div>
+              <div className="flex justify-between font-bold text-orange-700 dark:text-orange-300">
+                <span>Total Amount:</span>
+                <span>{formatCurrency(totals.subtotal)}</span>
               </div>
             </Card>
 
