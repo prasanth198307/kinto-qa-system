@@ -92,6 +92,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   electricity: "Electricity",
   imps_reversal: "IMPS Reversal",
   bulk_posting: "Bulk Posting",
+  director_loan: "Director / Promoter Loan",
 };
 
 const ACCOUNT_BADGE_STYLES: Record<string, { label: string; className: string }> = {

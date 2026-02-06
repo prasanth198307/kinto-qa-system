@@ -20309,6 +20309,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   const CATEGORY_RULES: CategoryRule[] = [
+    { pattern: /ANANTHRAJ|POLAMARASETTY/i, category: 'director_loan', accountCode: '2402', accountName: 'Unsecured Loans - Directors / Promoters', type: 'credit' },
+    { pattern: /CHINTALAPUDI|SYAM\s*SRINIVAS/i, category: 'director_loan', accountCode: '2402', accountName: 'Unsecured Loans - Directors / Promoters', type: 'credit' },
+    { pattern: /DUSIPRAS|DUSI\s*PRA|PRASANTH\s*KUMAR/i, category: 'director_loan', accountCode: '2402', accountName: 'Unsecured Loans - Directors / Promoters', type: 'credit' },
+    { pattern: /PALLAVI|PATHIVADA/i, category: 'director_loan', accountCode: '2402', accountName: 'Unsecured Loans - Directors / Promoters', type: 'credit' },
     { pattern: /PART PERIOD INTER|DEBIT INTEREST/i, category: 'loan_interest', accountCode: '5107', accountName: 'Interest Paid', type: 'debit' },
     { pattern: /ARREAR INTEREST/i, category: 'loan_interest', accountCode: '5107', accountName: 'Interest Paid', type: 'debit' },
     { pattern: /O\.?S\.?\s*DEPOSIT TRAN|DEPOSIT TRANSFER.*(?:Term\s*loan|Repayment|EMI)/i, category: 'loan_repayment', accountCode: '2401', accountName: 'Bank Loan - Term Loan (SBI)', type: 'credit' },
