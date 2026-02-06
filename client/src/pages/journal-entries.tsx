@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, Plus, Eye, BookOpen, ArrowUpDown, RefreshCw } from "lucide-react";
+import { Search, Plus, Eye, BookOpen, ArrowUpDown, RefreshCw, Download } from "lucide-react";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
@@ -92,6 +93,12 @@ export default function JournalEntriesPage() {
   const pageSize = 25;
   const [showBackfillDialog, setShowBackfillDialog] = useState(false);
   const [backfillResults, setBackfillResults] = useState<any>(null);
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [exportDateFrom, setExportDateFrom] = useState("");
+  const [exportDateTo, setExportDateTo] = useState("");
+  const [exportSource, setExportSource] = useState("all");
+  const [exportCompany, setExportCompany] = useState("KINTO Operations");
+  const [isExporting, setIsExporting] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
   const isAdmin = user?.role?.toLowerCase() === 'admin';
@@ -163,6 +170,18 @@ export default function JournalEntriesPage() {
               <RefreshCw className="w-4 h-4 mr-1" /> Backfill Missing Entries
             </Button>
           )}
+          <Button
+            variant="outline"
+            onClick={() => {
+              setExportDateFrom(dateFrom);
+              setExportDateTo(dateTo);
+              setExportSource(filterSource);
+              setShowExportDialog(true);
+            }}
+            data-testid="button-export-tally"
+          >
+            <Download className="w-4 h-4 mr-1" /> Export to Tally
+          </Button>
           <Button onClick={() => setLocation("/journal-entry/new")} data-testid="button-new-journal">
             <Plus className="w-4 h-4 mr-1" /> Manual Entry
           </Button>
@@ -213,6 +232,111 @@ export default function JournalEntriesPage() {
               </Button>
             </DialogFooter>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Export to Tally</DialogTitle>
+            <DialogDescription>
+              Export journal entries as Tally-compatible XML file. Only posted entries are exported.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="export-company" data-testid="label-export-company">Company Name (in Tally)</Label>
+              <Input
+                id="export-company"
+                value={exportCompany}
+                onChange={(e) => setExportCompany(e.target.value)}
+                data-testid="input-export-company"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="export-from" data-testid="label-export-from">From Date</Label>
+                <Input
+                  id="export-from"
+                  type="date"
+                  value={exportDateFrom}
+                  onChange={(e) => setExportDateFrom(e.target.value)}
+                  data-testid="input-export-from"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="export-to" data-testid="label-export-to">To Date</Label>
+                <Input
+                  id="export-to"
+                  type="date"
+                  value={exportDateTo}
+                  onChange={(e) => setExportDateTo(e.target.value)}
+                  data-testid="input-export-to"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="export-source" data-testid="label-export-source">Source Type</Label>
+              <Select value={exportSource} onValueChange={setExportSource}>
+                <SelectTrigger data-testid="select-export-source">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  {Object.entries(SOURCE_LABELS).map(([key, label]) => (
+                    <SelectItem key={key} value={key}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowExportDialog(false)} data-testid="button-export-cancel">
+              Cancel
+            </Button>
+            <Button
+              disabled={isExporting}
+              onClick={async () => {
+                setIsExporting(true);
+                try {
+                  const params = new URLSearchParams();
+                  if (exportDateFrom) params.set("dateFrom", exportDateFrom);
+                  if (exportDateTo) params.set("dateTo", exportDateTo);
+                  if (exportSource && exportSource !== "all") params.set("sourceType", exportSource);
+                  if (exportCompany) params.set("companyName", exportCompany);
+
+                  const response = await fetch(`/api/journal-entries/export/tally-xml?${params.toString()}`);
+                  if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.message || "Export failed");
+                  }
+                  const blob = await response.blob();
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `tally_journal_entries_${exportDateFrom || 'all'}_${exportDateTo || 'all'}.xml`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+
+                  toast({ title: "Export Complete", description: "Tally XML file downloaded successfully." });
+                  setShowExportDialog(false);
+                } catch (err: any) {
+                  toast({ title: "Export Failed", description: err.message || "Could not export journal entries.", variant: "destructive" });
+                } finally {
+                  setIsExporting(false);
+                }
+              }}
+              data-testid="button-export-confirm"
+            >
+              {isExporting ? (
+                <><Download className="w-4 h-4 mr-1 animate-spin" /> Exporting...</>
+              ) : (
+                <><Download className="w-4 h-4 mr-1" /> Download XML</>
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

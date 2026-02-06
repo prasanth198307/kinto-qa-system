@@ -19,7 +19,7 @@ import { importVyapaarData, clearImportedData, importPaymentsOnly } from "./vyap
 import { importCreditNotesFromExcel } from "./creditnote-import";
 import { parseExcelFile, commitImport } from "./cashRegisterImport";
 import { importCashRegisterFromExcel } from "./importCashRegisterFromExcel";
-import { insertCashRegisterDaySchema, insertCashRegisterTransactionSchema, insertCashRegisterExpenseItemSchema, insertSalespersonMappingSchema, cashRegisterDays, cashRegisterTransactions, cashRegisterExpenseItems, expenseVouchers, expenseItems, customerAdvances, advanceApplications, insertCustomerAdvanceSchema, insertAdvanceApplicationSchema, journalEntries, journalLines } from "@shared/schema";
+import { insertCashRegisterDaySchema, insertCashRegisterTransactionSchema, insertCashRegisterExpenseItemSchema, insertSalespersonMappingSchema, cashRegisterDays, cashRegisterTransactions, cashRegisterExpenseItems, expenseVouchers, expenseItems, customerAdvances, advanceApplications, insertCustomerAdvanceSchema, insertAdvanceApplicationSchema, journalEntries, journalLines, chartOfAccounts } from "@shared/schema";
 import { sql, and, eq, ne, gte, lte, gt, desc, inArray, isNotNull, isNull, or, ilike, type SQL } from "drizzle-orm";
 
 // Simple audit logging function
@@ -19928,6 +19928,161 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ entries, total, page: pageNum, pageSize: pageSizeNum });
     } catch (error: any) {
       res.status(500).json({ message: error.message || 'Failed to fetch journal entries' });
+    }
+  });
+
+  app.get('/api/journal-entries/export/tally-xml', async (req: any, res) => {
+    try {
+      const { dateFrom, dateTo, sourceType, companyName = 'KINTO Operations' } = req.query;
+
+      const conditions: any[] = [
+        eq(journalEntries.recordStatus, 1),
+        eq(journalEntries.status, 'posted'),
+      ];
+      if (sourceType && sourceType !== 'all') conditions.push(eq(journalEntries.sourceType, sourceType as string));
+      if (dateFrom) conditions.push(gte(journalEntries.journalDate, dateFrom as string));
+      if (dateTo) conditions.push(lte(journalEntries.journalDate, dateTo as string));
+
+      const whereClause = conditions.length > 1 ? and(...conditions) : conditions[0];
+
+      const entries = await db.select()
+        .from(journalEntries)
+        .where(whereClause)
+        .orderBy(journalEntries.journalDate, journalEntries.journalNumber);
+
+      const voucherTypeMap: Record<string, string> = {
+        invoice: 'Sales',
+        payment: 'Receipt',
+        customer_advance: 'Receipt',
+        advance_application: 'Journal',
+        credit_note: 'Credit Note',
+        debit_note: 'Debit Note',
+        expense: 'Payment',
+        write_off: 'Journal',
+        vendor_debit_note: 'Debit Note',
+        vdn_adjustment: 'Journal',
+        material_receipt: 'Purchase',
+        material_issuance: 'Journal',
+        production_entry: 'Journal',
+        spare_part_receipt: 'Purchase',
+        spare_part_issuance: 'Journal',
+        cash_register_deposit: 'Receipt',
+        cash_register_transfer: 'Contra',
+        manual: 'Journal',
+      };
+
+      function escapeXml(str: string): string {
+        return str
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&apos;');
+      }
+
+      function formatTallyDate(dateStr: string): string {
+        const d = new Date(dateStr);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}${m}${day}`;
+      }
+
+      const entryIds = entries.map(e => e.id);
+      const allLines = entryIds.length > 0
+        ? await db.select({
+            id: journalLines.id,
+            journalId: journalLines.journalId,
+            accountId: journalLines.accountId,
+            debit: journalLines.debit,
+            credit: journalLines.credit,
+            accountName: chartOfAccounts.name,
+          })
+          .from(journalLines)
+          .innerJoin(chartOfAccounts, eq(journalLines.accountId, chartOfAccounts.id))
+          .where(and(
+            inArray(journalLines.journalId, entryIds),
+            eq(journalLines.recordStatus, 1)
+          ))
+        : [];
+
+      const linesByJournal = new Map<string, typeof allLines>();
+      for (const line of allLines) {
+        const existing = linesByJournal.get(line.journalId) || [];
+        existing.push(line);
+        linesByJournal.set(line.journalId, existing);
+      }
+
+      let vouchers = '';
+      for (const entry of entries) {
+        const lines = linesByJournal.get(entry.id) || [];
+        if (lines.length === 0) continue;
+
+        const vchType = voucherTypeMap[entry.sourceType || 'manual'] || 'Journal';
+        const tallyDate = formatTallyDate(entry.journalDate);
+        const narration = escapeXml(entry.description || '');
+
+        let ledgerEntries = '';
+        for (const line of lines) {
+          const ledgerName = escapeXml(line.accountName || 'Unknown Account');
+          const debitAmt = (line.debit || 0) / 100;
+          const creditAmt = (line.credit || 0) / 100;
+
+          if (debitAmt > 0) {
+            ledgerEntries += `
+          <ALLLEDGERENTRIES.LIST>
+            <LEDGERNAME>${ledgerName}</LEDGERNAME>
+            <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
+            <AMOUNT>-${debitAmt.toFixed(2)}</AMOUNT>
+          </ALLLEDGERENTRIES.LIST>`;
+          }
+          if (creditAmt > 0) {
+            ledgerEntries += `
+          <ALLLEDGERENTRIES.LIST>
+            <LEDGERNAME>${ledgerName}</LEDGERNAME>
+            <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+            <AMOUNT>${creditAmt.toFixed(2)}</AMOUNT>
+          </ALLLEDGERENTRIES.LIST>`;
+          }
+        }
+
+        vouchers += `
+        <VOUCHER VCHTYPE="${escapeXml(vchType)}" ACTION="Create">
+          <DATE>${tallyDate}</DATE>
+          <VOUCHERTYPENAME>${escapeXml(vchType)}</VOUCHERTYPENAME>
+          <VOUCHERNUMBER>${escapeXml(entry.journalNumber)}</VOUCHERNUMBER>
+          <NARRATION>${narration}</NARRATION>${ledgerEntries}
+        </VOUCHER>`;
+      }
+
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<ENVELOPE>
+  <HEADER>
+    <VERSION>1</VERSION>
+    <TALLYREQUEST>Import</TALLYREQUEST>
+    <TYPE>Data</TYPE>
+    <ID>Vouchers</ID>
+  </HEADER>
+  <BODY>
+    <DESC>
+      <STATICVARIABLES>
+        <SVCURRENTCOMPANY>${escapeXml(companyName as string)}</SVCURRENTCOMPANY>
+      </STATICVARIABLES>
+    </DESC>
+    <DATA>
+      <TALLYMESSAGE xmlns:UDF="TallyUDF">${vouchers}
+      </TALLYMESSAGE>
+    </DATA>
+  </BODY>
+</ENVELOPE>`;
+
+      const filename = `tally_journal_entries_${dateFrom || 'all'}_${dateTo || 'all'}.xml`;
+      res.setHeader('Content-Type', 'application/xml');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.send(xml);
+    } catch (error: any) {
+      console.error('Tally XML export error:', error);
+      res.status(500).json({ message: error.message || 'Failed to export journal entries' });
     }
   });
 
