@@ -481,6 +481,196 @@ export default function VendorHistoryDetailPage() {
     });
   };
 
+  const handlePrintTransactions = () => {
+    if (!data || !txnData) return;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const getAllocTypeLabel = (type: string) => {
+      switch (type) {
+        case 'payment': return 'Payment';
+        case 'debit_note_adjustment': return 'DN Adjustment';
+        case 'advance_application': return 'Advance';
+        case 'credit_note': return 'Credit Note';
+        case 'debit_note': return 'Debit Note';
+        default: return type;
+      }
+    };
+
+    const invoiceRows = filteredTxnInvoices.map(inv => {
+      const allocRows = inv.allocations.map(alloc => {
+        const isAddition = alloc.type === 'debit_note';
+        const detail = alloc.type === 'payment' 
+          ? `${alloc.method || 'Cash'}${alloc.bankName ? ' - ' + alloc.bankName : ''}${alloc.payerName ? ' (Paid by: ' + alloc.payerName + ')' : ''}`
+          : alloc.type === 'advance_application' ? `From: ${alloc.advanceNumber || ''}`
+          : alloc.type === 'debit_note_adjustment' ? `Vendor DN: ${alloc.reference || ''}`
+          : `${alloc.noteNumber || ''}${alloc.reason ? ' - ' + alloc.reason : ''}`;
+        return `<tr style="background: #fafafa;">
+          <td style="padding: 4px 8px; font-size: 12px;">${formatDate(alloc.date)}</td>
+          <td style="padding: 4px 8px; font-size: 12px;">${getAllocTypeLabel(alloc.type)}</td>
+          <td style="padding: 4px 8px; font-size: 12px; font-family: monospace;">${alloc.reference || alloc.advanceNumber || alloc.noteNumber || '-'}</td>
+          <td style="padding: 4px 8px; font-size: 12px;">${detail}</td>
+          <td style="padding: 4px 8px; font-size: 12px; text-align: right; color: ${isAddition ? '#ea580c' : '#16a34a'};">${isAddition ? '+' : '-'}${formatCurrency(alloc.amount)}</td>
+        </tr>`;
+      }).join('');
+
+      const statusColor = inv.outstanding <= 0 ? '#16a34a' : inv.totalSettled > 0 ? '#ca8a04' : '#dc2626';
+
+      return `
+        <tr style="border-top: 2px solid #e5e5e5;">
+          <td style="padding: 8px; font-weight: 600; font-family: monospace;">${inv.invoiceNumber}</td>
+          <td style="padding: 8px;">${formatDate(inv.invoiceDate)}</td>
+          <td style="padding: 8px;">${inv.buyerName}${inv.isChildVendor ? ' (Child)' : ''}</td>
+          <td style="padding: 8px; text-align: right;">${formatCurrency(inv.effectiveTotal)}</td>
+          <td style="padding: 8px; text-align: right; color: #16a34a;">${formatCurrency(inv.totalSettled)}</td>
+          <td style="padding: 8px; text-align: right; font-weight: 600; color: ${statusColor};">${inv.outstanding > 0 ? formatCurrency(inv.outstanding) : 'Settled'}</td>
+        </tr>
+        ${inv.allocations.length > 0 ? `
+        <tr><td colspan="6" style="padding: 0 0 8px 30px;">
+          <table style="width: calc(100% - 30px); border-collapse: collapse;">
+            <tr style="background: #f3f4f6;">
+              <th style="padding: 4px 8px; text-align: left; font-size: 11px;">Date</th>
+              <th style="padding: 4px 8px; text-align: left; font-size: 11px;">Type</th>
+              <th style="padding: 4px 8px; text-align: left; font-size: 11px;">Reference</th>
+              <th style="padding: 4px 8px; text-align: left; font-size: 11px;">Details</th>
+              <th style="padding: 4px 8px; text-align: right; font-size: 11px;">Amount</th>
+            </tr>
+            ${allocRows}
+          </table>
+        </td></tr>` : ''}
+      `;
+    }).join('');
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Invoice Transactions - ${data.vendor.vendorName}</title>
+        <style>
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; color: #333; }
+          .header { text-align: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #ea580c; }
+          .header h1 { font-size: 24px; color: #ea580c; margin-bottom: 5px; }
+          .header p { color: #666; font-size: 14px; }
+          .summary { display: flex; gap: 20px; margin-bottom: 20px; flex-wrap: wrap; }
+          .summary-item { font-size: 13px; }
+          .summary-item .label { color: #666; }
+          .summary-item .value { font-weight: 600; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+          th { background: #f3f4f6; padding: 10px 8px; text-align: left; font-size: 12px; font-weight: 600; border-bottom: 2px solid #e5e5e5; }
+          .footer { display: flex; justify-content: space-between; padding: 10px 0; border-top: 2px solid #e5e5e5; font-size: 13px; }
+          .print-date { text-align: right; font-size: 11px; color: #888; margin-top: 20px; }
+          @media print { body { padding: 10px; } @page { margin: 1cm; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>KINTO Smart Ops</h1>
+          <p>Invoice Transactions Report</p>
+        </div>
+        <h2 style="font-size: 18px; margin-bottom: 15px;">${data.vendor.vendorName} (${data.vendor.vendorCode})</h2>
+        <div class="summary">
+          <div class="summary-item"><span class="label">Invoices: </span><span class="value">${filteredTxnInvoices.length}</span></div>
+          <div class="summary-item"><span class="label">Total: </span><span class="value">${formatCurrency(txnData.summary.totalInvoiceAmount)}</span></div>
+          <div class="summary-item"><span class="label">Settled: </span><span class="value" style="color: #16a34a;">${formatCurrency((txnData.summary.totalPayments || 0) + (txnData.summary.totalDnAdjustments || 0) + (txnData.summary.totalAdvances || 0))}</span></div>
+          <div class="summary-item"><span class="label">Outstanding: </span><span class="value" style="color: #ea580c;">${formatCurrency(txnData.summary.totalOutstanding)}</span></div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Invoice #</th>
+              <th>Date</th>
+              <th>Customer</th>
+              <th style="text-align: right;">Total</th>
+              <th style="text-align: right;">Settled</th>
+              <th style="text-align: right;">Outstanding</th>
+            </tr>
+          </thead>
+          <tbody>${invoiceRows}</tbody>
+        </table>
+        <div class="footer">
+          <span>${filteredTxnInvoices.length} invoice(s)</span>
+          <span>Total Outstanding: <strong style="color: #ea580c;">${formatCurrency(txnData.summary.totalOutstanding)}</strong></span>
+        </div>
+        <div class="print-date">Printed on: ${new Date().toLocaleString('en-IN')}</div>
+        <script>window.onload = function() { window.print(); }</script>
+      </body>
+      </html>
+    `;
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
+
+  const handleExportTransactionsExcel = async () => {
+    if (!data || !txnData) return;
+
+    const getAllocTypeLabel = (type: string) => {
+      switch (type) {
+        case 'payment': return 'Payment';
+        case 'debit_note_adjustment': return 'DN Adjustment';
+        case 'advance_application': return 'Advance';
+        case 'credit_note': return 'Credit Note';
+        case 'debit_note': return 'Debit Note';
+        default: return type;
+      }
+    };
+
+    const rows: any[][] = [
+      ['Invoice Transactions Report'],
+      [],
+      ['Vendor', data.vendor.vendorName],
+      ['Code', data.vendor.vendorCode],
+      [],
+      ['Invoice #', 'Date', 'Customer', 'Total', 'Settled', 'Outstanding', 'Status'],
+    ];
+
+    filteredTxnInvoices.forEach(inv => {
+      rows.push([
+        inv.invoiceNumber,
+        formatDateForExcel(inv.invoiceDate),
+        inv.buyerName + (inv.isChildVendor ? ' (Child)' : ''),
+        formatCurrencyForExcel(inv.effectiveTotal),
+        formatCurrencyForExcel(inv.totalSettled),
+        formatCurrencyForExcel(inv.outstanding),
+        inv.outstanding <= 0 ? 'Settled' : inv.totalSettled > 0 ? 'Partial' : 'Unpaid',
+      ]);
+      if (inv.allocations.length > 0) {
+        rows.push(['', 'Date', 'Type', 'Reference', 'Details', 'Amount']);
+        inv.allocations.forEach(alloc => {
+          const isAddition = alloc.type === 'debit_note';
+          const detail = alloc.type === 'payment'
+            ? `${alloc.method || 'Cash'}${alloc.bankName ? ' - ' + alloc.bankName : ''}${alloc.payerName ? ' (Paid by: ' + alloc.payerName + ')' : ''}`
+            : alloc.type === 'advance_application' ? `From: ${alloc.advanceNumber || ''}`
+            : alloc.type === 'debit_note_adjustment' ? `Vendor DN: ${alloc.reference || ''}`
+            : `${alloc.noteNumber || ''}${alloc.reason ? ' - ' + alloc.reason : ''}`;
+          rows.push([
+            '',
+            formatDateForExcel(alloc.date),
+            getAllocTypeLabel(alloc.type),
+            alloc.reference || alloc.advanceNumber || alloc.noteNumber || '-',
+            detail,
+            `${isAddition ? '+' : '-'}${formatCurrencyForExcel(alloc.amount)}`,
+          ]);
+        });
+        rows.push([]);
+      }
+    });
+
+    rows.push([]);
+    rows.push(['Summary']);
+    rows.push(['Total Invoices', filteredTxnInvoices.length]);
+    rows.push(['Total Amount', formatCurrencyForExcel(txnData.summary.totalInvoiceAmount)]);
+    rows.push(['Total Settled', formatCurrencyForExcel((txnData.summary.totalPayments || 0) + (txnData.summary.totalDnAdjustments || 0) + (txnData.summary.totalAdvances || 0))]);
+    rows.push(['Total Outstanding', formatCurrencyForExcel(txnData.summary.totalOutstanding)]);
+
+    const filename = `${data.vendor.vendorName.replace(/[^a-zA-Z0-9]/g, '_')}_Invoice_Transactions_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+    await exportToExcel({
+      filename,
+      sheets: [{ name: 'Invoice Transactions', data: rows }],
+    });
+  };
+
   return (
     <div className="p-4 md:p-6 space-y-6">
       {/* Header */}
@@ -501,26 +691,6 @@ export default function VendorHistoryDetailPage() {
             </h1>
             <p className="text-muted-foreground print:text-sm">Transaction history and ledger</p>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={handleExportExcel}
-            disabled={isLoading || !data}
-            data-testid="button-export-vendor-ledger"
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Export Excel
-          </Button>
-          <Button
-            variant="outline"
-            onClick={handlePrint}
-            disabled={isLoading || !data}
-            data-testid="button-print-vendor-ledger"
-          >
-            <Printer className="h-4 w-4 mr-2" />
-            Print Ledger
-          </Button>
         </div>
       </div>
 
@@ -775,6 +945,14 @@ export default function VendorHistoryDetailPage() {
                 Transaction Ledger
               </CardTitle>
               <div className="flex items-center gap-2 print:hidden">
+                <Button variant="outline" size="sm" onClick={handleExportExcel} disabled={isLoading || !data} className="gap-1" data-testid="button-export-vendor-ledger">
+                  <Download className="h-4 w-4" />
+                  <span className="hidden sm:inline">Excel</span>
+                </Button>
+                <Button variant="outline" size="sm" onClick={handlePrint} disabled={isLoading || !data} className="gap-1" data-testid="button-print-vendor-ledger">
+                  <Printer className="h-4 w-4" />
+                  <span className="hidden sm:inline">Print</span>
+                </Button>
                 {selectedFilters.length > 0 && (
                   <Button variant="ghost" size="sm" onClick={() => setSelectedFilters([])} data-testid="button-clear-filters">
                     Clear
@@ -920,6 +1098,14 @@ export default function VendorHistoryDetailPage() {
                 Invoice Transactions
               </CardTitle>
               <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={handleExportTransactionsExcel} disabled={txnLoading || !txnData} className="gap-1" data-testid="button-export-transactions">
+                  <Download className="h-4 w-4" />
+                  <span className="hidden sm:inline">Excel</span>
+                </Button>
+                <Button variant="outline" size="sm" onClick={handlePrintTransactions} disabled={txnLoading || !txnData} className="gap-1" data-testid="button-print-transactions">
+                  <Printer className="h-4 w-4" />
+                  <span className="hidden sm:inline">Print</span>
+                </Button>
                 <Select value={txnFilter} onValueChange={setTxnFilter}>
                   <SelectTrigger className="w-[180px]" data-testid="select-txn-filter">
                     <SelectValue placeholder="Filter" />
