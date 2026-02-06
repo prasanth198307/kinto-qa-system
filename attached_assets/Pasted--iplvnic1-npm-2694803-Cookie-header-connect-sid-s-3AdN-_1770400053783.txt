@@ -1,0 +1,28 @@
+ iplvnic1 npm[2694803]:    Cookie header: connect.sid=s%3AdN-mW66GHnjmI0vZPzDriq5a7NDntiSl.KTcp7TA1ri6OOCHw%2BttuQFfal0UdKkCGx7%2F7v151jAU; _ga=GA1.1.1321689309.1766052649; _ga_8MR6CJ1YLW=GS2.1.s1766052649$o1$g0$t1766052649$j60$l0$h0
+Feb 06 17:46:40 iplvnic1 npm[2694803]:    Session ID: dN-mW66GHnjmI0vZPzDriq5a7NDntiSl
+Feb 06 17:46:40 iplvnic1 npm[2694803]:    Authenticated: true
+Feb 06 17:46:40 iplvnic1 npm[2694803]: [Bank Import] Error: error: column "created_by" of relation "bank_statement_imports" does not exist
+Feb 06 17:46:40 iplvnic1 npm[2694803]:     at /home/kinto/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+Feb 06 17:46:40 iplvnic1 npm[2694803]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+Feb 06 17:46:40 iplvnic1 npm[2694803]:     at async file:///home/kinto/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+Feb 06 17:46:40 iplvnic1 npm[2694803]:     at async DatabaseStorage.createBankStatementImport (file:///home/kinto/kinto-qa-system/dist/index.js:5894:27)
+Feb 06 17:46:40 iplvnic1 npm[2694803]:     at async file:///home/kinto/kinto-qa-system/dist/index.js:27134:28 {
+Feb 06 17:46:40 iplvnic1 npm[2694803]:   length: 146,
+Feb 06 17:46:40 iplvnic1 npm[2694803]:   severity: 'ERROR',
+Feb 06 17:46:40 iplvnic1 npm[2694803]:   code: '42703',
+Feb 06 17:46:40 iplvnic1 npm[2694803]:   detail: undefined,
+Feb 06 17:46:40 iplvnic1 npm[2694803]:   hint: undefined,
+Feb 06 17:46:40 iplvnic1 npm[2694803]:   position: '167',
+Feb 06 17:46:40 iplvnic1 npm[2694803]:   internalPosition: undefined,
+Feb 06 17:46:40 iplvnic1 npm[2694803]:   internalQuery: undefined,
+Feb 06 17:46:40 iplvnic1 npm[2694803]:   where: undefined,
+Feb 06 17:46:40 iplvnic1 npm[2694803]:   schema: undefined,
+Feb 06 17:46:40 iplvnic1 npm[2694803]:   table: undefined,
+Feb 06 17:46:40 iplvnic1 npm[2694803]:   column: undefined,
+Feb 06 17:46:40 iplvnic1 npm[2694803]:   dataType: undefined,
+Feb 06 17:46:40 iplvnic1 npm[2694803]:   constraint: undefined,
+Feb 06 17:46:40 iplvnic1 npm[2694803]:   file: 'parse_target.c',
+Feb 06 17:46:40 iplvnic1 npm[2694803]:   line: '1066',
+Feb 06 17:46:40 iplvnic1 npm[2694803]:   routine: 'checkInsertTargets'
+Feb 06 17:46:40 iplvnic1 npm[2694803]: }
+Feb 06 17:46:40 iplvnic1 npm[2694803]: 5:46:40 PM [express] POST /api/bank-transactions/import 500 in 24ms :: {"message":"column \"created_…
