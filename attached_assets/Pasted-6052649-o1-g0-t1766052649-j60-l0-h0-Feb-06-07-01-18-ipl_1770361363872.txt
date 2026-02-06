@@ -1,0 +1,51 @@
+6052649$o1$g0$t1766052649$j60$l0$h0
+Feb 06 07:01:18 iplvnic1 npm[2643410]:    Session ID: dN-mW66GHnjmI0vZPzDriq5a7NDntiSl
+Feb 06 07:01:18 iplvnic1 npm[2643410]:    Authenticated: true
+Feb 06 07:01:18 iplvnic1 npm[2643410]: [AUDIT] Role admin granted create access to /api/customer-advances/2a41d15b-1327-460a-8d19-edb0f28bd224/apply via screen permission customer_advances
+Feb 06 07:01:18 iplvnic1 npm[2643410]: 7:01:18 AM [express] POST /api/customer-advances/2a41d15b-1327-460a-8d19-edb0f28bd224/apply 400 in 4…
+Feb 06 07:01:36 iplvnic1 npm[2643410]: 🔹 Request: GET /api/my-permissions
+Feb 06 07:01:36 iplvnic1 npm[2643410]:    Cookie header: connect.sid=s%3AdN-mW66GHnjmI0vZPzDriq5a7NDntiSl.KTcp7TA1ri6OOCHw%2BttuQFfal0UdKkCGx7%2F7v151jAU; _ga=GA1.1.1321689309.1766052649; _ga_8MR6CJ1YLW=GS2.1.s1766052649$o1$g0$t1766052649$j60$l0$h0
+Feb 06 07:01:36 iplvnic1 npm[2643410]:    Session ID: dN-mW66GHnjmI0vZPzDriq5a7NDntiSl
+Feb 06 07:01:36 iplvnic1 npm[2643410]:    Authenticated: true
+Feb 06 07:01:36 iplvnic1 npm[2643410]: 🔹 Request: GET /api/vendor-history
+Feb 06 07:01:36 iplvnic1 npm[2643410]:    Cookie header: connect.sid=s%3AdN-mW66GHnjmI0vZPzDriq5a7NDntiSl.KTcp7TA1ri6OOCHw%2BttuQFfal0UdKkCGx7%2F7v151jAU; _ga=GA1.1.1321689309.1766052649; _ga_8MR6CJ1YLW=GS2.1.s1766052649$o1$g0$t1766052649$j60$l0$h0
+Feb 06 07:01:36 iplvnic1 npm[2643410]:    Session ID: dN-mW66GHnjmI0vZPzDriq5a7NDntiSl
+Feb 06 07:01:36 iplvnic1 npm[2643410]:    Authenticated: true
+Feb 06 07:01:36 iplvnic1 npm[2643410]: 7:01:36 AM [express] GET /api/my-permissions 304 in 67ms :: {"role":"admin","roleId":"role-admin","p…
+Feb 06 07:01:36 iplvnic1 npm[2643410]: 7:01:36 AM [express] GET /api/vendor-history 200 in 97ms :: {"vendors":[{"id":"4ce94561-160a-4737-b3…
+Feb 06 07:01:38 iplvnic1 npm[2643410]: 🔹 Request: GET /api/vendor-history
+Feb 06 07:01:38 iplvnic1 npm[2643410]:    Cookie header: connect.sid=s%3AdN-mW66GHnjmI0vZPzDriq5a7NDntiSl.KTcp7TA1ri6OOCHw%2BttuQFfal0UdKkCGx7%2F7v151jAU; _ga=GA1.1.1321689309.1766052649; _ga_8MR6CJ1YLW=GS2.1.s1766052649$o1$g0$t1766052649$j60$l0$h0
+Feb 06 07:01:38 iplvnic1 npm[2643410]:    Session ID: dN-mW66GHnjmI0vZPzDriq5a7NDntiSl
+Feb 06 07:01:38 iplvnic1 npm[2643410]:    Authenticated: true
+Feb 06 07:01:38 iplvnic1 npm[2643410]: 7:01:38 AM [express] GET /api/vendor-history 200 in 71ms :: {"vendors":[{"id":"4ce94561-160a-4737-b3…
+Feb 06 07:01:38 iplvnic1 npm[2643410]: 🔹 Request: GET /api/vendor-history
+Feb 06 07:01:38 iplvnic1 npm[2643410]:    Cookie header: connect.sid=s%3AdN-mW66GHnjmI0vZPzDriq5a7NDntiSl.KTcp7TA1ri6OOCHw%2BttuQFfal0UdKkCGx7%2F7v151jAU; _ga=GA1.1.1321689309.1766052649; _ga_8MR6CJ1YLW=GS2.1.s1766052649$o1$g0$t1766052649$j60$l0$h0
+Feb 06 07:01:38 iplvnic1 npm[2643410]:    Session ID: dN-mW66GHnjmI0vZPzDriq5a7NDntiSl
+Feb 06 07:01:38 iplvnic1 npm[2643410]:    Authenticated: true
+Feb 06 07:01:38 iplvnic1 npm[2643410]: 7:01:38 AM [express] GET /api/vendor-history 200 in 43ms :: {"vendors":[{"id":"11ed75d9-53f5-4408-bb…
+Feb 06 07:01:38 iplvnic1 npm[2643410]: 🔹 Request: GET /api/vendor-history
+Feb 06 07:01:38 iplvnic1 npm[2643410]:    Cookie header: connect.sid=s%3AdN-mW66GHnjmI0vZPzDriq5a7NDntiSl.KTcp7TA1ri6OOCHw%2BttuQFfal0UdKkCGx7%2F7v151jAU; _ga=GA1.1.1321689309.1766052649; _ga_8MR6CJ1YLW=GS2.1.s1766052649$o1$g0$t1766052649$j60$l0$h0
+Feb 06 07:01:38 iplvnic1 npm[2643410]:    Session ID: dN-mW66GHnjmI0vZPzDriq5a7NDntiSl
+Feb 06 07:01:38 iplvnic1 npm[2643410]:    Authenticated: true
+Feb 06 07:01:38 iplvnic1 npm[2643410]: 7:01:38 AM [express] GET /api/vendor-history 200 in 54ms :: {"vendors":[{"id":"11ed75d9-53f5-4408-bb…
+Feb 06 07:01:39 iplvnic1 npm[2643410]: 🔹 Request: GET /api/vendor-history
+Feb 06 07:01:39 iplvnic1 npm[2643410]:    Cookie header: connect.sid=s%3AdN-mW66GHnjmI0vZPzDriq5a7NDntiSl.KTcp7TA1ri6OOCHw%2BttuQFfal0UdKkCGx7%2F7v151jAU; _ga=GA1.1.1321689309.1766052649; _ga_8MR6CJ1YLW=GS2.1.s1766052649$o1$g0$t1766052649$j60$l0$h0
+Feb 06 07:01:39 iplvnic1 npm[2643410]:    Session ID: dN-mW66GHnjmI0vZPzDriq5a7NDntiSl
+Feb 06 07:01:39 iplvnic1 npm[2643410]:    Authenticated: true
+Feb 06 07:01:39 iplvnic1 npm[2643410]: 7:01:39 AM [express] GET /api/vendor-history 200 in 38ms :: {"vendors":[{"id":"11ed75d9-53f5-4408-bb…
+Feb 06 07:01:41 iplvnic1 npm[2643410]: 🔹 Request: GET /api/my-permissions
+Feb 06 07:01:41 iplvnic1 npm[2643410]:    Cookie header: connect.sid=s%3AdN-mW66GHnjmI0vZPzDriq5a7NDntiSl.KTcp7TA1ri6OOCHw%2BttuQFfal0UdKkCGx7%2F7v151jAU; _ga=GA1.1.1321689309.1766052649; _ga_8MR6CJ1YLW=GS2.1.s1766052649$o1$g0$t1766052649$j60$l0$h0
+Feb 06 07:01:41 iplvnic1 npm[2643410]:    Session ID: dN-mW66GHnjmI0vZPzDriq5a7NDntiSl
+Feb 06 07:01:41 iplvnic1 npm[2643410]:    Authenticated: true
+Feb 06 07:01:41 iplvnic1 npm[2643410]: 🔹 Request: GET /api/vendor-history/6b27b3ac-9d78-451a-bfa1-dd06521efe5b
+Feb 06 07:01:41 iplvnic1 npm[2643410]:    Cookie header: connect.sid=s%3AdN-mW66GHnjmI0vZPzDriq5a7NDntiSl.KTcp7TA1ri6OOCHw%2BttuQFfal0UdKkCGx7%2F7v151jAU; _ga=GA1.1.1321689309.1766052649; _ga_8MR6CJ1YLW=GS2.1.s1766052649$o1$g0$t1766052649$j60$l0$h0
+Feb 06 07:01:41 iplvnic1 npm[2643410]:    Session ID: dN-mW66GHnjmI0vZPzDriq5a7NDntiSl
+Feb 06 07:01:41 iplvnic1 npm[2643410]:    Authenticated: true
+Feb 06 07:01:41 iplvnic1 npm[2643410]: 7:01:41 AM [express] GET /api/my-permissions 304 in 13ms :: {"role":"admin","roleId":"role-admin","p…
+Feb 06 07:01:41 iplvnic1 npm[2643410]: 7:01:41 AM [express] GET /api/vendor-history/6b27b3ac-9d78-451a-bfa1-dd06521efe5b 304 in 49ms :: {"v…
+Feb 06 07:01:47 iplvnic1 npm[2643410]: 🔹 Request: GET /api/vendor-invoice-transactions/6b27b3ac-9d78-451a-bfa1-dd06521efe5b
+Feb 06 07:01:47 iplvnic1 npm[2643410]:    Cookie header: connect.sid=s%3AdN-mW66GHnjmI0vZPzDriq5a7NDntiSl.KTcp7TA1ri6OOCHw%2BttuQFfal0UdKkCGx7%2F7v151jAU; _ga=GA1.1.1321689309.1766052649; _ga_8MR6CJ1YLW=GS2.1.s1766052649$o1$g0$t1766052649$j60$l0$h0
+Feb 06 07:01:47 iplvnic1 npm[2643410]:    Session ID: dN-mW66GHnjmI0vZPzDriq5a7NDntiSl
+Feb 06 07:01:47 iplvnic1 npm[2643410]:    Authenticated: true
+Feb 06 07:01:47 iplvnic1 npm[2643410]: 7:01:47 AM [express] GET /api/vendor-invoice-transactions/6b27b3ac-9d78-451a-bfa1-dd06521efe5b 304 i…
+[kinto@iplvnic1 ~]$ 

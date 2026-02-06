@@ -10489,19 +10489,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
           throw new Error("Invoice not found");
         }
         
-        // Check invoice belongs to same vendor or child vendor
-        if (invoice.vendorId !== advance.vendorId) {
-          // Check if invoice vendor is a child of the advance vendor
-          const allVendors = await storage.getAllVendors();
-          const invoiceVendor = allVendors.find(v => v.id === invoice.vendorId);
-          const isChildOfAdvanceVendor = invoiceVendor?.parentVendorId === advance.vendorId;
-          // Also check if advance vendor is a child of the invoice vendor (reverse)
-          const advanceVendor = allVendors.find(v => v.id === advance.vendorId);
-          const isParentOfInvoiceVendor = advanceVendor?.parentVendorId === invoice.vendorId;
-          
-          if (!isChildOfAdvanceVendor && !isParentOfInvoiceVendor) {
-            throw new Error("Invoice does not belong to the same customer family as the advance");
+        // Check invoice belongs to same vendor family by buyerName matching
+        const allVendors = await storage.getAllVendors();
+        const advanceVendor = allVendors.find(v => v.id === advance.vendorId);
+        if (!advanceVendor) {
+          throw new Error("Advance vendor not found");
+        }
+        
+        // Build family: the advance vendor + its children + its parent + siblings under same parent
+        const familyNames: string[] = [advanceVendor.vendorName];
+        
+        // Add children of advance vendor
+        const children = allVendors.filter(v => v.parentVendorId === advance.vendorId);
+        familyNames.push(...children.map(c => c.vendorName));
+        
+        // If advance vendor has a parent, add parent and all its children (siblings)
+        if (advanceVendor.parentVendorId) {
+          const parent = allVendors.find(v => v.id === advanceVendor.parentVendorId);
+          if (parent) {
+            familyNames.push(parent.vendorName);
+            const siblings = allVendors.filter(v => v.parentVendorId === parent.id && v.id !== advance.vendorId);
+            familyNames.push(...siblings.map(s => s.vendorName));
           }
+        }
+        
+        const buyerName = invoice.buyerName?.trim().toLowerCase() || '';
+        const isFamilyMatch = familyNames.some(name => name.trim().toLowerCase() === buyerName);
+        
+        if (!isFamilyMatch) {
+          throw new Error("Invoice does not belong to the same customer family as the advance");
         }
         
         // Create payment record
