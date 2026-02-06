@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Search, Plus, Eye, BookOpen, ArrowUpDown, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/useAuth";
 
 interface JournalEntry {
   id: string;
@@ -88,6 +89,8 @@ export default function JournalEntriesPage() {
   const [showBackfillDialog, setShowBackfillDialog] = useState(false);
   const [backfillResults, setBackfillResults] = useState<any>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const isAdmin = user?.role?.toLowerCase() === 'admin';
 
   const backfillMutation = useMutation({
     mutationFn: async () => {
@@ -147,13 +150,15 @@ export default function JournalEntriesPage() {
           <p className="text-sm text-muted-foreground">{total} entries found</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <Button
-            variant="outline"
-            onClick={() => { setBackfillResults(null); setShowBackfillDialog(true); }}
-            data-testid="button-backfill"
-          >
-            <RefreshCw className="w-4 h-4 mr-1" /> Backfill Missing Entries
-          </Button>
+          {isAdmin && (
+            <Button
+              variant="outline"
+              onClick={() => { setBackfillResults(null); setShowBackfillDialog(true); }}
+              data-testid="button-backfill"
+            >
+              <RefreshCw className="w-4 h-4 mr-1" /> Backfill Missing Entries
+            </Button>
+          )}
           <Button onClick={() => setLocation("/journal-entry/new")} data-testid="button-new-journal">
             <Plus className="w-4 h-4 mr-1" /> Manual Entry
           </Button>
