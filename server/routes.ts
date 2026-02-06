@@ -12149,6 +12149,186 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Vendor Invoice Transactions - Invoice-centric view showing allocations per invoice
+  app.get('/api/vendor-invoice-transactions/:vendorId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { vendorId } = req.params;
+      
+      const vendor = await storage.getVendor(vendorId);
+      if (!vendor) {
+        return res.status(404).json({ message: "Vendor not found" });
+      }
+      
+      const allVendors = await storage.getAllVendors();
+      const childVendors = allVendors.filter(v => v.parentVendorId === vendorId);
+      const vendorIdsToInclude = [vendorId, ...childVendors.map(cv => cv.id)];
+      const vendorNamesToInclude = [vendor.vendorName, ...childVendors.map(cv => cv.vendorName)];
+      
+      const allInvoices = await storage.getAllInvoices();
+      const vendorInvoices = allInvoices.filter(inv => 
+        vendorNamesToInclude.some(name => name.toLowerCase() === inv.buyerName.toLowerCase()) && inv.recordStatus === 1
+      );
+      
+      const invoiceIds = vendorInvoices.map(inv => inv.id);
+      
+      let allPayments: any[] = [];
+      let allCreditNotesList: any[] = [];
+      let allDebitNotesList: any[] = [];
+      let allAdvanceApps: any[] = [];
+      
+      if (invoiceIds.length > 0) {
+        allPayments = await db.select().from(invoicePayments)
+          .where(and(eq(invoicePayments.recordStatus, 1), inArray(invoicePayments.invoiceId, invoiceIds)));
+        
+        allCreditNotesList = await db.select().from(creditNotes)
+          .where(and(eq(creditNotes.recordStatus, 1), inArray(creditNotes.invoiceId, invoiceIds)));
+        
+        allDebitNotesList = await db.select().from(debitNotes)
+          .where(and(eq(debitNotes.recordStatus, 1), inArray(debitNotes.invoiceId, invoiceIds)));
+        
+        allAdvanceApps = await db.select({
+          id: advanceApplications.id,
+          advanceId: advanceApplications.advanceId,
+          invoiceId: advanceApplications.invoiceId,
+          appliedAmount: advanceApplications.appliedAmount,
+          applicationDate: advanceApplications.applicationDate,
+          remarks: advanceApplications.remarks,
+          advanceNumber: customerAdvances.advanceNumber,
+          advanceAmount: customerAdvances.amount,
+        })
+          .from(advanceApplications)
+          .innerJoin(customerAdvances, eq(advanceApplications.advanceId, customerAdvances.id))
+          .where(inArray(advanceApplications.invoiceId, invoiceIds));
+      }
+      
+      const invoiceTransactions = vendorInvoices.map(inv => {
+        const payments = allPayments
+          .filter(p => p.invoiceId === inv.id && p.paymentMethod !== 'Debit Note Adjustment' && p.paymentType !== 'Advance')
+          .map(p => ({
+            id: p.id,
+            date: p.paymentDate,
+            amount: p.amount,
+            method: p.paymentMethod,
+            reference: p.referenceNumber,
+            bankName: p.bankName,
+            paidBy: p.paidBy,
+            payerName: p.payerName,
+            remarks: p.remarks,
+            type: 'payment' as const,
+          }));
+        
+        const dnAdjustments = allPayments
+          .filter(p => p.invoiceId === inv.id && p.paymentMethod === 'Debit Note Adjustment')
+          .map(p => ({
+            id: p.id,
+            date: p.paymentDate,
+            amount: p.amount,
+            reference: p.referenceNumber,
+            remarks: p.remarks,
+            type: 'debit_note_adjustment' as const,
+          }));
+        
+        const advanceApps = allAdvanceApps
+          .filter(a => a.invoiceId === inv.id)
+          .map(a => ({
+            id: a.id,
+            date: a.applicationDate,
+            amount: a.appliedAmount,
+            advanceNumber: a.advanceNumber,
+            advanceId: a.advanceId,
+            remarks: a.remarks,
+            type: 'advance_application' as const,
+          }));
+        
+        const cnotes = allCreditNotesList
+          .filter(cn => cn.invoiceId === inv.id)
+          .map(cn => ({
+            id: cn.id,
+            date: cn.creditDate,
+            amount: cn.grandTotal,
+            noteNumber: cn.noteNumber,
+            reason: cn.reason,
+            type: 'credit_note' as const,
+          }));
+        
+        const dnotes = allDebitNotesList
+          .filter(dn => dn.invoiceId === inv.id)
+          .map(dn => ({
+            id: dn.id,
+            date: dn.debitDate,
+            amount: dn.grandTotal,
+            noteNumber: dn.noteNumber,
+            reason: dn.reason,
+            type: 'debit_note' as const,
+          }));
+        
+        const totalPayments = payments.reduce((s, p) => s + p.amount, 0);
+        const totalDnAdj = dnAdjustments.reduce((s, d) => s + d.amount, 0);
+        const totalAdvances = advanceApps.reduce((s, a) => s + a.amount, 0);
+        const totalCredits = cnotes.reduce((s, c) => s + c.amount, 0);
+        const totalDebits = dnotes.reduce((s, d) => s + d.amount, 0);
+        const effectiveTotal = inv.totalAmount + totalDebits - totalCredits;
+        const totalSettled = totalPayments + totalDnAdj + totalAdvances;
+        const outstanding = effectiveTotal - totalSettled;
+        
+        const isChildVendor = !vendorNamesToInclude[0] || inv.buyerName.toLowerCase() !== vendorNamesToInclude[0].toLowerCase();
+        
+        return {
+          invoiceId: inv.id,
+          invoiceNumber: inv.invoiceNumber,
+          invoiceDate: inv.invoiceDate,
+          buyerName: inv.buyerName,
+          shipToName: inv.shipToName,
+          totalAmount: inv.totalAmount,
+          effectiveTotal,
+          totalPayments,
+          totalDnAdjustments: totalDnAdj,
+          totalAdvances,
+          totalCredits,
+          totalDebits,
+          totalSettled,
+          outstanding,
+          paymentStatus: inv.paymentStatus,
+          isChildVendor,
+          allocations: [
+            ...payments,
+            ...dnAdjustments,
+            ...advanceApps,
+            ...cnotes,
+            ...dnotes,
+          ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
+        };
+      });
+      
+      invoiceTransactions.sort((a, b) => new Date(b.invoiceDate).getTime() - new Date(a.invoiceDate).getTime());
+      
+      const summary = {
+        totalInvoices: invoiceTransactions.length,
+        totalInvoiceAmount: invoiceTransactions.reduce((s, i) => s + i.totalAmount, 0),
+        totalPayments: invoiceTransactions.reduce((s, i) => s + i.totalPayments, 0),
+        totalDnAdjustments: invoiceTransactions.reduce((s, i) => s + i.totalDnAdjustments, 0),
+        totalAdvances: invoiceTransactions.reduce((s, i) => s + i.totalAdvances, 0),
+        totalCredits: invoiceTransactions.reduce((s, i) => s + i.totalCredits, 0),
+        totalDebits: invoiceTransactions.reduce((s, i) => s + i.totalDebits, 0),
+        totalOutstanding: invoiceTransactions.reduce((s, i) => s + i.outstanding, 0),
+      };
+      
+      res.json({
+        vendor: {
+          id: vendor.id,
+          vendorName: vendor.vendorName,
+          vendorCode: vendor.vendorCode,
+        },
+        childVendors: childVendors.map(cv => ({ id: cv.id, vendorName: cv.vendorName })),
+        summary,
+        invoices: invoiceTransactions,
+      });
+    } catch (error) {
+      console.error("Error fetching vendor invoice transactions:", error);
+      res.status(500).json({ message: "Failed to fetch vendor invoice transactions" });
+    }
+  });
+
   // =================== DEBIT NOTES ===================
   // Debit notes are used to INCREASE amounts on previous month invoices
   // (e.g., quantity increases, price increases on old invoices where Cancel & Reissue is not allowed)

@@ -20,6 +20,11 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { 
   ArrowLeft,
   Building2,
@@ -35,7 +40,12 @@ import {
   Calendar,
   Printer,
   Wallet,
-  Download
+  Download,
+  ChevronDown,
+  ChevronRight,
+  CheckCircle,
+  Clock,
+  AlertCircle
 } from "lucide-react";
 import { exportToExcel, formatCurrencyForExcel, formatDateForExcel } from "@/lib/excel-export";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -84,10 +94,63 @@ interface VendorDetailResponse {
   ledger: LedgerEntry[];
 }
 
+interface InvoiceTransaction {
+  invoiceId: string;
+  invoiceNumber: string;
+  invoiceDate: string;
+  buyerName: string;
+  shipToName: string | null;
+  totalAmount: number;
+  effectiveTotal: number;
+  totalPayments: number;
+  totalDnAdjustments: number;
+  totalAdvances: number;
+  totalCredits: number;
+  totalDebits: number;
+  totalSettled: number;
+  outstanding: number;
+  paymentStatus: string;
+  isChildVendor: boolean;
+  allocations: Array<{
+    id: string;
+    date: string;
+    amount: number;
+    type: 'payment' | 'debit_note_adjustment' | 'advance_application' | 'credit_note' | 'debit_note';
+    method?: string;
+    reference?: string;
+    bankName?: string;
+    paidBy?: string;
+    payerName?: string;
+    advanceNumber?: string;
+    noteNumber?: string;
+    reason?: string;
+    remarks?: string;
+  }>;
+}
+
+interface InvoiceTransactionsResponse {
+  vendor: { id: string; vendorName: string; vendorCode: string };
+  childVendors: Array<{ id: string; vendorName: string }>;
+  summary: {
+    totalInvoices: number;
+    totalInvoiceAmount: number;
+    totalPayments: number;
+    totalDnAdjustments: number;
+    totalAdvances: number;
+    totalCredits: number;
+    totalDebits: number;
+    totalOutstanding: number;
+  };
+  invoices: InvoiceTransaction[];
+}
+
 export default function VendorHistoryDetailPage() {
   const [, setLocation] = useLocation();
   const { vendorId } = useParams<{ vendorId: string }>();
   const [filterType, setFilterType] = useState("all");
+  const [activeTab, setActiveTab] = useState("ledger");
+  const [expandedInvoices, setExpandedInvoices] = useState<Record<string, boolean>>({});
+  const [txnFilter, setTxnFilter] = useState("all");
 
   const { data, isLoading } = useQuery<VendorDetailResponse>({
     queryKey: ['/api/vendor-history', vendorId],
@@ -98,6 +161,27 @@ export default function VendorHistoryDetailPage() {
     },
     enabled: !!vendorId,
   });
+
+  const { data: txnData, isLoading: txnLoading } = useQuery<InvoiceTransactionsResponse>({
+    queryKey: ['/api/vendor-invoice-transactions', vendorId],
+    queryFn: async () => {
+      const res = await fetch(`/api/vendor-invoice-transactions/${vendorId}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch invoice transactions');
+      return res.json();
+    },
+    enabled: !!vendorId && activeTab === 'transactions',
+  });
+
+  const toggleInvoiceExpanded = (invoiceId: string) => {
+    setExpandedInvoices(prev => ({ ...prev, [invoiceId]: !prev[invoiceId] }));
+  };
+
+  const filteredTxnInvoices = txnData?.invoices.filter(inv => {
+    if (txnFilter === 'all') return true;
+    if (txnFilter === 'pending') return inv.outstanding > 0;
+    if (txnFilter === 'settled') return inv.outstanding <= 0;
+    return true;
+  }) || [];
 
   const formatCurrency = (amount: number) => {
     return (amount / 100).toLocaleString('en-IN', { 
