@@ -1,0 +1,30 @@
+Feb 06 17:59:44 iplvnic1 npm[2696619]: 5:59:44 PM [express] GET /api/chart-of-accounts-list 304 in 29ms :: [{"id":"23d1cabd-e89f-4bd8-a208-…
+Feb 06 17:59:59 iplvnic1 npm[2696619]: 🔹 Request: POST /api/bank-transactions/import
+Feb 06 17:59:59 iplvnic1 npm[2696619]:    Cookie header: connect.sid=s%3AdN-mW66GHnjmI0vZPzDriq5a7NDntiSl.KTcp7TA1ri6OOCHw%2BttuQFfal0UdKkCGx7%2F7v151jAU; _ga=GA1.1.1321689309.1766052649; _ga_8MR6CJ1YLW=GS2.1.s1766052649$o1$g0$t1766052649$j60$l0$h0
+Feb 06 17:59:59 iplvnic1 npm[2696619]:    Session ID: dN-mW66GHnjmI0vZPzDriq5a7NDntiSl
+Feb 06 17:59:59 iplvnic1 npm[2696619]:    Authenticated: true
+Feb 06 17:59:59 iplvnic1 npm[2696619]: [Bank Import] Error: error: value too long for type character varying(10)
+Feb 06 17:59:59 iplvnic1 npm[2696619]:     at /home/kinto/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+Feb 06 17:59:59 iplvnic1 npm[2696619]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+Feb 06 17:59:59 iplvnic1 npm[2696619]:     at async file:///home/kinto/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+Feb 06 17:59:59 iplvnic1 npm[2696619]:     at async DatabaseStorage.createBankStatementImport (file:///home/kinto/kinto-qa-system/dist/index.js:5894:27)
+Feb 06 17:59:59 iplvnic1 npm[2696619]:     at async file:///home/kinto/kinto-qa-system/dist/index.js:27134:28 {
+Feb 06 17:59:59 iplvnic1 npm[2696619]:   length: 98,
+Feb 06 17:59:59 iplvnic1 npm[2696619]:   severity: 'ERROR',
+Feb 06 17:59:59 iplvnic1 npm[2696619]:   code: '22001',
+Feb 06 17:59:59 iplvnic1 npm[2696619]:   detail: undefined,
+Feb 06 17:59:59 iplvnic1 npm[2696619]:   hint: undefined,
+Feb 06 17:59:59 iplvnic1 npm[2696619]:   position: undefined,
+Feb 06 17:59:59 iplvnic1 npm[2696619]:   internalPosition: undefined,
+Feb 06 17:59:59 iplvnic1 npm[2696619]:   internalQuery: undefined,
+Feb 06 17:59:59 iplvnic1 npm[2696619]:   where: undefined,
+Feb 06 17:59:59 iplvnic1 npm[2696619]:   schema: undefined,
+Feb 06 17:59:59 iplvnic1 npm[2696619]:   table: undefined,
+Feb 06 17:59:59 iplvnic1 npm[2696619]:   column: undefined,
+Feb 06 17:59:59 iplvnic1 npm[2696619]:   dataType: undefined,
+Feb 06 17:59:59 iplvnic1 npm[2696619]:   constraint: undefined,
+Feb 06 17:59:59 iplvnic1 npm[2696619]:   file: 'varchar.c',
+Feb 06 17:59:59 iplvnic1 npm[2696619]:   line: '638',
+Feb 06 17:59:59 iplvnic1 npm[2696619]:   routine: 'varchar'
+Feb 06 17:59:59 iplvnic1 npm[2696619]: }
+Feb 06 17:59:59 iplvnic1 npm[2696619]: 5:59:59 PM [express] POST /api/bank-transactions/import 500 in 52ms :: {"message":"value too long fo…
