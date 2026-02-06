@@ -640,6 +640,29 @@ export default function BankTransactionsPage() {
                   </SelectContent>
                 </Select>
               </div>
+              {editCategory === 'director_loan' && (() => {
+                const directorAccounts = accounts.filter(a => a.code.startsWith('2402') && a.code !== '2402');
+                return directorAccounts.length > 0 ? (
+                  <div className="space-y-1">
+                    <Label>Assign to Director</Label>
+                    <div className="grid grid-cols-2 gap-1">
+                      {directorAccounts.map(da => (
+                        <Button
+                          key={da.id}
+                          size="sm"
+                          variant={editAccountId === da.id ? "default" : "outline"}
+                          className="text-xs justify-start"
+                          onClick={() => setEditAccountId(da.id)}
+                          data-testid={`button-director-${da.code}`}
+                        >
+                          <Users className="w-3 h-3 mr-1 flex-shrink-0" />
+                          {da.name.replace('Loan - ', '')}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null;
+              })()}
               <div className="space-y-1">
                 <Label>Map to Account</Label>
                 <Select value={editAccountId} onValueChange={setEditAccountId}>
