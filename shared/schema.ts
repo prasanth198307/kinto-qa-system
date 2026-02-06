@@ -3535,8 +3535,8 @@ export const bankTransactions = pgTable("bank_transactions", {
   importId: varchar("import_id").references(() => bankStatementImports.id).notNull(),
   bankAccountId: varchar("bank_account_id").references(() => chartOfAccounts.id),
 
-  txnDate: varchar("txn_date", { length: 10 }).notNull(),
-  valueDate: varchar("value_date", { length: 10 }),
+  txnDate: varchar("txn_date", { length: 50 }).notNull(),
+  valueDate: varchar("value_date", { length: 50 }),
   description: text("description").notNull(),
   reference: varchar("reference", { length: 500 }),
   branchCode: varchar("branch_code", { length: 20 }),
