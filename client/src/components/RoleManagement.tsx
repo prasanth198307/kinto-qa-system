@@ -130,6 +130,8 @@ const AVAILABLE_SCREENS: ScreenDefinition[] = [
   { key: 'chart_of_accounts', label: 'Chart of Accounts', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'journal_entries', label: 'Journal Entries', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'manual_journal_entry', label: 'Manual Journal Entry', allowedActions: ['view', 'create'] },
+  { key: 'trial_balance', label: 'Trial Balance', allowedActions: ['view'] },
+  { key: 'profit_loss', label: 'Profit & Loss Statement', allowedActions: ['view'] },
   
   // System & Configuration
   { key: 'users', label: 'User Management', allowedActions: ['view', 'create', 'edit', 'delete'] },
