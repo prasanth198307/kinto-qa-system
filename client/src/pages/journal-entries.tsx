@@ -199,7 +199,13 @@ export default function JournalEntriesPage() {
           </DialogHeader>
           {backfillResults ? (
             <div className="space-y-2 text-sm max-h-[300px] overflow-y-auto">
-              {Object.entries(backfillResults).filter(([k]) => k !== 'total').map(([key, val]: [string, any]) => (
+              {backfillResults.orphansRemoved > 0 && (
+                <div className="flex items-center justify-between gap-2 py-1 border-b">
+                  <span className="font-medium">Orphans Cleaned Up</span>
+                  <Badge variant="outline">{backfillResults.orphansRemoved} removed</Badge>
+                </div>
+              )}
+              {Object.entries(backfillResults).filter(([k]) => k !== 'total' && k !== 'orphansRemoved').map(([key, val]: [string, any]) => (
                 val.processed > 0 || val.errors > 0 ? (
                   <div key={key} className="flex items-center justify-between gap-2 py-1 border-b last:border-b-0">
                     <span className="font-medium capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</span>

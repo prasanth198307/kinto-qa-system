@@ -712,6 +712,7 @@ export async function backfillJournalEntries(): Promise<{
   sparePartReceipts: { processed: number; skipped: number; errors: number };
   sparePartIssuances: { processed: number; skipped: number; errors: number };
   total: { processed: number; skipped: number; errors: number };
+  orphansRemoved: number;
 }> {
   const results = {
     invoices: { processed: 0, skipped: 0, errors: 0 },
@@ -738,6 +739,53 @@ export async function backfillJournalEntries(): Promise<{
     const existing = await storage.getJournalEntryBySource(sourceType, sourceId);
     return !!existing;
   }
+
+  // 0. Cleanup orphaned journal entries (source transaction deleted or record_status=0)
+  console.log('[BACKFILL] Starting orphan cleanup...');
+  let orphansRemoved = 0;
+  try {
+    const sourceTableMap: Record<string, { table: string; statusFilter?: string }> = {
+      invoice: { table: 'invoices', statusFilter: "AND status != 'cancelled'" },
+      payment: { table: 'invoice_payments', statusFilter: "AND (payment_type IS NULL OR payment_type != 'write_off')" },
+      write_off: { table: 'invoice_payments', statusFilter: "AND payment_type = 'write_off'" },
+      credit_note: { table: 'credit_notes' },
+      customer_advance: { table: 'customer_advances' },
+      advance_application: { table: 'advance_applications' },
+      vendor_debit_note: { table: 'vendor_debit_notes' },
+      vdn_adjustment: { table: 'vendor_debit_note_adjustments' },
+      expense: { table: 'expense_vouchers' },
+      material_receipt: { table: 'raw_material_receipts' },
+      material_issuance: { table: 'raw_material_issuances' },
+      production_entry: { table: 'production_entries' },
+      spare_part_receipt: { table: 'spare_part_receipts' },
+      spare_part_issuance: { table: 'spare_part_issuances' },
+      cash_register_deposit: { table: 'cash_register_transactions' },
+      cash_register_transfer: { table: 'cash_register_transactions' },
+    };
+
+    const autoJournals: any[] = (await db.execute(sql`
+      SELECT id, source_type, source_id FROM journal_entries 
+      WHERE record_status = 1 AND is_auto_generated = 1 AND source_type IS NOT NULL AND source_id IS NOT NULL
+    `)).rows;
+
+    for (const je of autoJournals) {
+      const mapping = sourceTableMap[je.source_type];
+      if (!mapping) continue;
+
+      const checkResult: any[] = (await db.execute(
+        sql.raw(`SELECT id FROM ${mapping.table} WHERE id = '${je.source_id}' AND record_status = 1 ${mapping.statusFilter || ''} LIMIT 1`)
+      )).rows;
+
+      if (checkResult.length === 0) {
+        await db.execute(sql`UPDATE journal_entries SET record_status = 0 WHERE id = ${je.id}`);
+        await db.execute(sql`UPDATE journal_lines SET record_status = 0 WHERE journal_id = ${je.id}`);
+        orphansRemoved++;
+      }
+    }
+  } catch (e: any) {
+    console.error('[BACKFILL] Orphan cleanup error:', e.message);
+  }
+  console.log(`[BACKFILL] Orphan cleanup done: ${orphansRemoved} orphaned entries removed`);
 
   // Use raw SQL queries to avoid TypeScript column name issues
   // All queries use the actual database column names
@@ -1292,6 +1340,6 @@ export async function backfillJournalEntries(): Promise<{
     results.total.errors += results[key].errors;
   }
 
-  console.log(`[BACKFILL] === COMPLETE === Total: ${results.total.processed} created, ${results.total.skipped} skipped, ${results.total.errors} errors`);
-  return results;
+  console.log(`[BACKFILL] === COMPLETE === Total: ${results.total.processed} created, ${results.total.skipped} skipped, ${results.total.errors} errors, ${orphansRemoved} orphans removed`);
+  return { ...results, orphansRemoved };
 }
