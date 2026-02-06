@@ -15,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Edit, Mail, FileText, Printer, Star, Receipt, RefreshCw, Calculator, CreditCard, Lock, PackageCheck, PenTool } from "lucide-react";
+import { ArrowLeft, Edit, Mail, FileText, Printer, Star, Receipt, RefreshCw, Calculator, CreditCard, Lock, PackageCheck, PenTool, XCircle } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -40,6 +40,7 @@ import {
 import PrintableInvoice from "@/components/PrintableInvoice";
 import InvoiceForm from "@/components/InvoiceForm";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -91,6 +92,8 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
   const [isCorrectAndDebitOpen, setIsCorrectAndDebitOpen] = useState(false);
   const [isQuickFullCreditOpen, setIsQuickFullCreditOpen] = useState(false);
   const [isCancelReissueConfirmOpen, setIsCancelReissueConfirmOpen] = useState(false);
+  const [isCancelOnlyConfirmOpen, setIsCancelOnlyConfirmOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
   const [isReissueFormOpen, setIsReissueFormOpen] = useState(false);
   const [reissueInvoiceData, setReissueInvoiceData] = useState<any>(null);
 
@@ -271,6 +274,33 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
       toast({
         title: "Error",
         description: error.message || "Failed to cancel & reissue invoice",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const cancelOnlyMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', `/api/invoices/${id}/cancel`, { reason: cancelReason });
+      return await response.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Invoice Cancelled",
+        description: data.gatepassesCancelled > 0
+          ? `Invoice ${data.invoiceNumber} and ${data.gatepassesCancelled} gatepass(es) cancelled. Inventory returned.`
+          : `Invoice ${data.invoiceNumber} cancelled. Inventory returned.`,
+      });
+      setCancelReason('');
+      queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/gatepasses'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/finished-goods'] });
+      navigate('/production-management?tab=invoices');
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to cancel invoice",
         variant: "destructive",
       });
     },
@@ -597,16 +627,29 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
             </Button>
           )}
           {canCancelAndReissue && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsCancelReissueConfirmOpen(true)}
-              disabled={cancelAndReissueMutation.isPending}
-              data-testid="button-cancel-and-reissue"
-            >
-              <RefreshCw className={`w-4 h-4 mr-2 ${cancelAndReissueMutation.isPending ? 'animate-spin' : ''}`} />
-              {cancelAndReissueMutation.isPending ? 'Cancelling...' : 'Cancel & Reissue'}
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsCancelReissueConfirmOpen(true)}
+                disabled={cancelAndReissueMutation.isPending}
+                data-testid="button-cancel-and-reissue"
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${cancelAndReissueMutation.isPending ? 'animate-spin' : ''}`} />
+                {cancelAndReissueMutation.isPending ? 'Cancelling...' : 'Cancel & Reissue'}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsCancelOnlyConfirmOpen(true)}
+                disabled={cancelOnlyMutation.isPending}
+                className="border-red-300 text-red-600"
+                data-testid="button-cancel-only"
+              >
+                <XCircle className={`w-4 h-4 mr-2 ${cancelOnlyMutation.isPending ? 'animate-spin' : ''}`} />
+                {cancelOnlyMutation.isPending ? 'Cancelling...' : 'Cancel Only'}
+              </Button>
+            </>
           )}
           {canCorrectAndCredit && (
             <>
@@ -1290,6 +1333,50 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
               data-testid="button-cancel-reissue-confirm"
             >
               {cancelAndReissueMutation.isPending ? 'Cancelling...' : 'Yes, Cancel & Reissue'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Cancel Only Confirmation Dialog */}
+      <AlertDialog open={isCancelOnlyConfirmOpen} onOpenChange={(open) => { setIsCancelOnlyConfirmOpen(open); if (!open) setCancelReason(''); }}>
+        <AlertDialogContent data-testid="dialog-cancel-only-confirm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel Invoice</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div>
+                <p>
+                  Are you sure you want to cancel invoice <strong>{invoice?.invoiceNumber}</strong>? 
+                  This will permanently mark the invoice as cancelled and return all inventory.
+                </p>
+                {relatedGatepass && (
+                  <p className="mt-2 font-semibold text-destructive">
+                    The associated gatepass ({relatedGatepass.gatepassNumber}) will also be cancelled automatically.
+                  </p>
+                )}
+                <div className="mt-3">
+                  <label className="text-sm font-medium">Reason for cancellation (optional)</label>
+                  <Input
+                    value={cancelReason}
+                    onChange={(e) => setCancelReason(e.target.value)}
+                    placeholder="Enter reason..."
+                    className="mt-1"
+                    data-testid="input-cancel-reason"
+                  />
+                </div>
+                <p className="mt-3 font-semibold">This action cannot be undone.</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-only-dismiss">Go Back</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => cancelOnlyMutation.mutate()}
+              disabled={cancelOnlyMutation.isPending}
+              className="bg-destructive text-destructive-foreground"
+              data-testid="button-cancel-only-confirm"
+            >
+              {cancelOnlyMutation.isPending ? 'Cancelling...' : 'Yes, Cancel Invoice'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
