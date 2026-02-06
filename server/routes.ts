@@ -16958,6 +16958,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             // Refresh transaction to include voucher link
             transaction = await storage.getCashRegisterTransaction(transaction.id) || transaction;
+            
+            // Auto-generate journal entry for expense voucher (non-blocking)
+            try {
+              const { journalForExpenseVoucher } = await import('./journal-service');
+              await journalForExpenseVoucher(voucher);
+            } catch (je) { console.error('[JOURNAL] Cash register expense voucher journal failed:', je); }
           } catch (voucherError) {
             console.error('[CASH_REGISTER] Error creating expense voucher:', voucherError);
             // Continue even if voucher creation fails
@@ -16975,6 +16981,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         (updates.totalTransfers ?? day.totalTransfers);
       
       await storage.updateCashRegisterDay(dayId, updates);
+      
+      // Auto-generate journal entries for deposit/transfer transactions (non-blocking)
+      if (parsed.transactionType === 'deposit') {
+        try {
+          const { journalForCashRegisterDeposit } = await import('./journal-service');
+          await journalForCashRegisterDeposit(transaction, day);
+        } catch (je) { console.error('[JOURNAL] Cash register deposit journal failed:', je); }
+      } else if (parsed.transactionType === 'transfer') {
+        try {
+          const { journalForCashRegisterTransfer } = await import('./journal-service');
+          await journalForCashRegisterTransfer(transaction, day);
+        } catch (je) { console.error('[JOURNAL] Cash register transfer journal failed:', je); }
+      }
       
       res.status(201).json(transaction);
     } catch (error: any) {
