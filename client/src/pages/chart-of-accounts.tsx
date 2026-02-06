@@ -231,7 +231,8 @@ export default function ChartOfAccountsPage() {
     });
   }
 
-  function downloadExcel() {
+  async function downloadExcel() {
+    const XLSX = await import('xlsx');
     const typeLabel = (t: string) => ACCOUNT_TYPES.find(at => at.value === t)?.label || t;
     const rows = accounts
       .sort((a, b) => a.code.localeCompare(b.code))
@@ -246,27 +247,21 @@ export default function ChartOfAccountsPage() {
         'Current Balance': (Number(a.currentBalance) || 0) / 100,
       }));
 
-    const headers = Object.keys(rows[0] || {});
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => headers.map(h => {
-        const val = (row as any)[h];
-        if (typeof val === 'string' && (val.includes(',') || val.includes('"'))) {
-          return `"${val.replace(/"/g, '""')}"`;
-        }
-        return val;
-      }).join(','))
-    ].join('\n');
-
-    const BOM = '\uFEFF';
-    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Chart_of_Accounts_FY_${selectedFY}-${String(parseInt(selectedFY) + 1).slice(2)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast({ title: "Downloaded", description: "Chart of Accounts exported as CSV (opens in Excel)" });
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [
+      { wch: 14 },
+      { wch: 40 },
+      { wch: 12 },
+      { wch: 18 },
+      { wch: 16 },
+      { wch: 16 },
+      { wch: 16 },
+      { wch: 16 },
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Chart of Accounts');
+    XLSX.writeFile(wb, `Chart_of_Accounts_FY_${selectedFY}-${String(parseInt(selectedFY) + 1).slice(2)}.xlsx`);
+    toast({ title: "Downloaded", description: "Chart of Accounts exported as Excel (.xlsx)" });
   }
 
   const filteredAccounts = accounts.filter(a => {
