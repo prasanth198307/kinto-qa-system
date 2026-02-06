@@ -200,6 +200,13 @@ const endpointToScreenKey: Record<string, string> = {
   '/api/data-import': 'data_import',
   '/api/vyapaar': 'data_import',
   
+  // Accounting & Journal Entries
+  '/api/journal-entries': 'journal_entries',
+  '/api/chart-of-accounts': 'chart_of_accounts',
+  '/api/trial-balance': 'trial_balance',
+  '/api/profit-loss': 'profit_loss',
+  '/api/bank-transactions': 'bank_transactions',
+
   // MIS (Management Information System)
   '/api/mis/kpi-dashboard': 'mis_dashboard',
   '/api/mis/alerts': 'mis_dashboard',
