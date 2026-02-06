@@ -20553,6 +20553,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/bank-transactions/recategorize', async (req: any, res) => {
+    try {
+      const allTxns = await storage.getBankTransactions({});
+      const uncategorized = allTxns.filter(t => !t.category || t.status === 'unmatched');
+      let updated = 0;
+      for (const txn of uncategorized) {
+        const isDebit = parseFloat(txn.debit || '0') > 0;
+        const result = categorizeTransaction(txn.description, isDebit);
+        if (result) {
+          const acctMatch = await storage.getChartOfAccountByCode(result.accountCode);
+          await storage.updateBankTransaction(txn.id, {
+            category: result.category,
+            matchedAccountId: acctMatch?.id || null,
+            matchedAccountName: acctMatch?.name || result.accountName,
+            status: 'needs_review',
+          });
+          updated++;
+        }
+      }
+      res.json({ updated, total: uncategorized.length, message: `Re-categorized ${updated} of ${uncategorized.length} uncategorized transactions` });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.post('/api/bank-transactions/post-to-journal', async (req: any, res) => {
     try {
       const { transactionIds } = req.body;

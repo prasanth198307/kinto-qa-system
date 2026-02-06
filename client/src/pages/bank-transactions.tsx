@@ -203,6 +203,20 @@ export default function BankTransactionsPage() {
     },
   });
 
+  const recategorizeMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', '/api/bank-transactions/recategorize');
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/bank-transactions'] });
+      toast({ title: "Re-categorized", description: data.message });
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed", description: err.message, variant: "destructive" });
+    },
+  });
+
   const handleUpload = () => {
     const file = fileRef.current?.files?.[0];
     if (!file) return toast({ title: "No file selected", variant: "destructive" });
@@ -297,9 +311,15 @@ export default function BankTransactionsPage() {
           <h1 className="text-lg font-semibold" data-testid="text-page-title">Bank Statement Import</h1>
           <p className="text-xs text-muted-foreground">Upload bank statements, review & categorize transactions, then post to journal</p>
         </div>
-        <Button onClick={() => { setShowUploadDialog(true); setImportResult(null); }} data-testid="button-upload-statement">
-          <Upload className="w-4 h-4 mr-1" /> Import Statement
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => recategorizeMutation.mutate()} disabled={recategorizeMutation.isPending} data-testid="button-recategorize">
+            {recategorizeMutation.isPending ? <RefreshCw className="w-4 h-4 mr-1 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-1" />}
+            Re-categorize
+          </Button>
+          <Button onClick={() => { setShowUploadDialog(true); setImportResult(null); }} data-testid="button-upload-statement">
+            <Upload className="w-4 h-4 mr-1" /> Import Statement
+          </Button>
+        </div>
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
