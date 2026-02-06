@@ -98,6 +98,7 @@ export default function JournalEntriesPage() {
   const [exportDateTo, setExportDateTo] = useState("");
   const [exportSource, setExportSource] = useState("all");
   const [exportCompany, setExportCompany] = useState("KINTO Operations");
+  const [exportFormat, setExportFormat] = useState<"xml" | "csv">("xml");
   const [isExporting, setIsExporting] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -180,7 +181,7 @@ export default function JournalEntriesPage() {
             }}
             data-testid="button-export-tally"
           >
-            <Download className="w-4 h-4 mr-1" /> Export to Tally
+            <Download className="w-4 h-4 mr-1" /> Export
           </Button>
           <Button onClick={() => setLocation("/journal-entry/new")} data-testid="button-new-journal">
             <Plus className="w-4 h-4 mr-1" /> Manual Entry
@@ -238,21 +239,35 @@ export default function JournalEntriesPage() {
       <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Export to Tally</DialogTitle>
+            <DialogTitle>Export Journal Entries</DialogTitle>
             <DialogDescription>
-              Export journal entries as Tally-compatible XML file. Only posted entries are exported.
+              Export journal entries as Tally XML or CSV file. Only posted entries are exported.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="export-company" data-testid="label-export-company">Company Name (in Tally)</Label>
-              <Input
-                id="export-company"
-                value={exportCompany}
-                onChange={(e) => setExportCompany(e.target.value)}
-                data-testid="input-export-company"
-              />
+              <Label data-testid="label-export-format">Export Format</Label>
+              <Select value={exportFormat} onValueChange={(v) => setExportFormat(v as "xml" | "csv")}>
+                <SelectTrigger data-testid="select-export-format">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="xml">Tally XML</SelectItem>
+                  <SelectItem value="csv">CSV</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+            {exportFormat === "xml" && (
+              <div className="space-y-2">
+                <Label htmlFor="export-company" data-testid="label-export-company">Company Name (in Tally)</Label>
+                <Input
+                  id="export-company"
+                  value={exportCompany}
+                  onChange={(e) => setExportCompany(e.target.value)}
+                  data-testid="input-export-company"
+                />
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="export-from" data-testid="label-export-from">From Date</Label>
@@ -303,9 +318,19 @@ export default function JournalEntriesPage() {
                   if (exportDateFrom) params.set("dateFrom", exportDateFrom);
                   if (exportDateTo) params.set("dateTo", exportDateTo);
                   if (exportSource && exportSource !== "all") params.set("sourceType", exportSource);
-                  if (exportCompany) params.set("companyName", exportCompany);
 
-                  const response = await fetch(`/api/journal-entries/export/tally-xml?${params.toString()}`);
+                  let endpoint: string;
+                  let filename: string;
+                  if (exportFormat === "xml") {
+                    if (exportCompany) params.set("companyName", exportCompany);
+                    endpoint = `/api/journal-entries/export/tally-xml?${params.toString()}`;
+                    filename = `tally_journal_entries_${exportDateFrom || 'all'}_${exportDateTo || 'all'}.xml`;
+                  } else {
+                    endpoint = `/api/journal-entries/export/csv?${params.toString()}`;
+                    filename = `journal_entries_${exportDateFrom || 'all'}_${exportDateTo || 'all'}.csv`;
+                  }
+
+                  const response = await fetch(endpoint);
                   if (!response.ok) {
                     const err = await response.json();
                     throw new Error(err.message || "Export failed");
@@ -314,13 +339,13 @@ export default function JournalEntriesPage() {
                   const url = URL.createObjectURL(blob);
                   const a = document.createElement("a");
                   a.href = url;
-                  a.download = `tally_journal_entries_${exportDateFrom || 'all'}_${exportDateTo || 'all'}.xml`;
+                  a.download = filename;
                   document.body.appendChild(a);
                   a.click();
                   document.body.removeChild(a);
                   URL.revokeObjectURL(url);
 
-                  toast({ title: "Export Complete", description: "Tally XML file downloaded successfully." });
+                  toast({ title: "Export Complete", description: `${exportFormat.toUpperCase()} file downloaded successfully.` });
                   setShowExportDialog(false);
                 } catch (err: any) {
                   toast({ title: "Export Failed", description: err.message || "Could not export journal entries.", variant: "destructive" });
@@ -333,7 +358,7 @@ export default function JournalEntriesPage() {
               {isExporting ? (
                 <><Download className="w-4 h-4 mr-1 animate-spin" /> Exporting...</>
               ) : (
-                <><Download className="w-4 h-4 mr-1" /> Download XML</>
+                <><Download className="w-4 h-4 mr-1" /> Download {exportFormat.toUpperCase()}</>
               )}
             </Button>
           </DialogFooter>

@@ -20086,6 +20086,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/journal-entries/export/csv', async (req: any, res) => {
+    try {
+      const { dateFrom, dateTo, sourceType } = req.query;
+
+      const conditions: any[] = [
+        eq(journalEntries.recordStatus, 1),
+        eq(journalEntries.status, 'posted'),
+      ];
+      if (sourceType && sourceType !== 'all') conditions.push(eq(journalEntries.sourceType, sourceType as string));
+      if (dateFrom) conditions.push(gte(journalEntries.journalDate, dateFrom as string));
+      if (dateTo) conditions.push(lte(journalEntries.journalDate, dateTo as string));
+
+      const whereClause = conditions.length > 1 ? and(...conditions) : conditions[0];
+
+      const entries = await db.select()
+        .from(journalEntries)
+        .where(whereClause)
+        .orderBy(journalEntries.journalDate, journalEntries.journalNumber);
+
+      const entryIds = entries.map(e => e.id);
+      const allLines = entryIds.length > 0
+        ? await db.select({
+            id: journalLines.id,
+            journalId: journalLines.journalId,
+            accountId: journalLines.accountId,
+            debit: journalLines.debit,
+            credit: journalLines.credit,
+            accountName: chartOfAccounts.name,
+            accountCode: chartOfAccounts.code,
+          })
+          .from(journalLines)
+          .innerJoin(chartOfAccounts, eq(journalLines.accountId, chartOfAccounts.id))
+          .where(and(
+            inArray(journalLines.journalId, entryIds),
+            eq(journalLines.recordStatus, 1)
+          ))
+        : [];
+
+      const linesByJournal = new Map<string, typeof allLines>();
+      for (const line of allLines) {
+        const existing = linesByJournal.get(line.journalId) || [];
+        existing.push(line);
+        linesByJournal.set(line.journalId, existing);
+      }
+
+      function escapeCsv(str: string): string {
+        if (!str) return '';
+        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+          return `"${str.replace(/"/g, '""')}"`;
+        }
+        return str;
+      }
+
+      let csv = 'Date,Voucher Type,Voucher Number,Account Code,Account Name,Debit,Credit,Description\n';
+
+      const sourceTypeLabels: Record<string, string> = {
+        invoice: 'Sales', payment: 'Receipt', customer_advance: 'Receipt',
+        advance_application: 'Journal', credit_note: 'Credit Note', debit_note: 'Debit Note',
+        expense: 'Payment', write_off: 'Journal', vendor_debit_note: 'Debit Note',
+        vdn_adjustment: 'Journal', material_receipt: 'Purchase', material_issuance: 'Journal',
+        production_entry: 'Journal', spare_part_receipt: 'Purchase', spare_part_issuance: 'Journal',
+        cash_register_deposit: 'Receipt', cash_register_transfer: 'Contra', manual: 'Journal',
+      };
+
+      for (const entry of entries) {
+        const lines = linesByJournal.get(entry.id) || [];
+        if (lines.length === 0) continue;
+
+        const vchType = sourceTypeLabels[entry.sourceType || 'manual'] || 'Journal';
+        const dateStr = new Date(entry.journalDate).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+        for (const line of lines) {
+          const debitAmt = (line.debit || 0) / 100;
+          const creditAmt = (line.credit || 0) / 100;
+          csv += `${dateStr},${escapeCsv(vchType)},${escapeCsv(entry.journalNumber)},${escapeCsv(line.accountCode || '')},${escapeCsv(line.accountName || '')},${debitAmt > 0 ? debitAmt.toFixed(2) : ''},${creditAmt > 0 ? creditAmt.toFixed(2) : ''},${escapeCsv(entry.description || '')}\n`;
+        }
+      }
+
+      const filename = `journal_entries_${dateFrom || 'all'}_${dateTo || 'all'}.csv`;
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.send(csv);
+    } catch (error: any) {
+      console.error('CSV export error:', error);
+      res.status(500).json({ message: error.message || 'Failed to export journal entries' });
+    }
+  });
+
   app.get('/api/journal-entries/:id', async (req: any, res) => {
     try {
       const entry = await storage.getJournalEntry(req.params.id);
