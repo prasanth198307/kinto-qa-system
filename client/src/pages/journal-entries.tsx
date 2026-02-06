@@ -1,12 +1,15 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Plus, Eye, BookOpen, ArrowUpDown } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Search, Plus, Eye, BookOpen, ArrowUpDown, RefreshCw } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface JournalEntry {
   id: string;
@@ -82,6 +85,32 @@ export default function JournalEntriesPage() {
   const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 25;
+  const [showBackfillDialog, setShowBackfillDialog] = useState(false);
+  const [backfillResults, setBackfillResults] = useState<any>(null);
+  const { toast } = useToast();
+
+  const backfillMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/journal-entries/backfill");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setBackfillResults(data.results);
+      queryClient.invalidateQueries({ queryKey: ["/api/journal-entries"] });
+      const total = data.results?.total;
+      toast({
+        title: "Backfill Complete",
+        description: `${total?.processed || 0} new entries created, ${total?.skipped || 0} already existed, ${total?.errors || 0} errors.`,
+      });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Backfill Failed",
+        description: err.message || "Could not run backfill. Make sure you are logged in as Admin.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const queryParams = new URLSearchParams();
   queryParams.set("page", String(page));
@@ -117,10 +146,66 @@ export default function JournalEntriesPage() {
           <h1 className="text-xl font-semibold" data-testid="text-page-title">Journal Entries</h1>
           <p className="text-sm text-muted-foreground">{total} entries found</p>
         </div>
-        <Button onClick={() => setLocation("/journal-entry/new")} data-testid="button-new-journal">
-          <Plus className="w-4 h-4 mr-1" /> Manual Entry
-        </Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant="outline"
+            onClick={() => { setBackfillResults(null); setShowBackfillDialog(true); }}
+            data-testid="button-backfill"
+          >
+            <RefreshCw className="w-4 h-4 mr-1" /> Backfill Missing Entries
+          </Button>
+          <Button onClick={() => setLocation("/journal-entry/new")} data-testid="button-new-journal">
+            <Plus className="w-4 h-4 mr-1" /> Manual Entry
+          </Button>
+        </div>
       </div>
+
+      <Dialog open={showBackfillDialog} onOpenChange={setShowBackfillDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Backfill Journal Entries</DialogTitle>
+            <DialogDescription>
+              This will scan all transactions (invoices, payments, expenses, cash register, manufacturing, etc.) and create journal entries for any that are missing. Existing entries will not be duplicated.
+            </DialogDescription>
+          </DialogHeader>
+          {backfillResults ? (
+            <div className="space-y-2 text-sm max-h-[300px] overflow-y-auto">
+              {Object.entries(backfillResults).filter(([k]) => k !== 'total').map(([key, val]: [string, any]) => (
+                val.processed > 0 || val.errors > 0 ? (
+                  <div key={key} className="flex items-center justify-between gap-2 py-1 border-b last:border-b-0">
+                    <span className="font-medium capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
+                    <span>
+                      <Badge variant="secondary" className="mr-1">{val.processed} created</Badge>
+                      {val.errors > 0 && <Badge variant="destructive">{val.errors} errors</Badge>}
+                    </span>
+                  </div>
+                ) : null
+              ))}
+              {backfillResults.total && (
+                <div className="flex items-center justify-between gap-2 pt-2 font-semibold border-t">
+                  <span>Total</span>
+                  <span>{backfillResults.total.processed} created, {backfillResults.total.skipped} skipped</span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowBackfillDialog(false)} data-testid="button-backfill-cancel">Cancel</Button>
+              <Button
+                onClick={() => backfillMutation.mutate()}
+                disabled={backfillMutation.isPending}
+                data-testid="button-backfill-confirm"
+              >
+                {backfillMutation.isPending ? (
+                  <><RefreshCw className="w-4 h-4 mr-1 animate-spin" /> Processing...</>
+                ) : (
+                  "Run Backfill"
+                )}
+              </Button>
+            </DialogFooter>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <div className="flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 min-w-[180px] max-w-sm">
