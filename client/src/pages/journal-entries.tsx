@@ -46,6 +46,7 @@ const SOURCE_LABELS: Record<string, string> = {
   spare_part_issuance: "Spare Part Issuance",
   cash_register_deposit: "Cash Deposit",
   cash_register_transfer: "Cash Transfer",
+  bank_transaction: "Bank Statement",
   manual: "Manual Entry",
 };
 
@@ -66,7 +67,8 @@ const SOURCE_COLORS: Record<string, string> = {
   spare_part_issuance: "bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-900 dark:text-fuchsia-200",
   cash_register_deposit: "bg-sky-100 text-sky-800 dark:bg-sky-900 dark:text-sky-200",
   cash_register_transfer: "bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200",
-  manual: "bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200",
+  bank_transaction: "bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200",
+  manual: "bg-stone-100 text-stone-800 dark:bg-stone-900 dark:text-stone-200",
 };
 
 function formatAmount(paise: number): string {

@@ -201,12 +201,18 @@ import {
   chartOfAccounts,
   journalEntries,
   journalLines,
+  bankStatementImports,
+  bankTransactions,
   type ChartOfAccount,
   type InsertChartOfAccount,
   type JournalEntry,
   type InsertJournalEntry,
   type JournalLine,
   type InsertJournalLine,
+  type BankStatementImport,
+  type InsertBankStatementImport,
+  type BankTransaction,
+  type InsertBankTransaction,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, isNotNull, notInArray, inArray, gte, lte, sql, desc } from "drizzle-orm";
@@ -709,6 +715,18 @@ export interface IStorage {
   // Journal Lines
   createJournalLine(line: InsertJournalLine): Promise<JournalLine>;
   getJournalLines(journalId: string): Promise<JournalLine[]>;
+
+  // Bank Statement Imports
+  createBankStatementImport(imp: InsertBankStatementImport): Promise<BankStatementImport>;
+  getBankStatementImports(): Promise<BankStatementImport[]>;
+  getBankStatementImport(id: string): Promise<BankStatementImport | undefined>;
+
+  // Bank Transactions
+  createBankTransaction(txn: InsertBankTransaction): Promise<BankTransaction>;
+  getBankTransactions(filters?: { importId?: string; status?: string }): Promise<BankTransaction[]>;
+  getBankTransaction(id: string): Promise<BankTransaction | undefined>;
+  updateBankTransaction(id: string, data: Partial<InsertBankTransaction>): Promise<BankTransaction | undefined>;
+  getBankTransactionByHash(hash: string, bankAccountId: string): Promise<BankTransaction | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -4431,6 +4449,61 @@ export class DatabaseStorage implements IStorage {
 
   async getJournalLines(journalId: string): Promise<JournalLine[]> {
     return db.select().from(journalLines).where(and(eq(journalLines.journalId, journalId), eq(journalLines.recordStatus, 1)));
+  }
+
+  // ============================================================
+  // BANK STATEMENT IMPORTS
+  // ============================================================
+
+  async createBankStatementImport(imp: InsertBankStatementImport): Promise<BankStatementImport> {
+    const [created] = await db.insert(bankStatementImports).values(imp).returning();
+    return created;
+  }
+
+  async getBankStatementImports(): Promise<BankStatementImport[]> {
+    return db.select().from(bankStatementImports).where(eq(bankStatementImports.recordStatus, 1)).orderBy(desc(bankStatementImports.createdAt));
+  }
+
+  async getBankStatementImport(id: string): Promise<BankStatementImport | undefined> {
+    const [imp] = await db.select().from(bankStatementImports).where(and(eq(bankStatementImports.id, id), eq(bankStatementImports.recordStatus, 1))).limit(1);
+    return imp;
+  }
+
+  // ============================================================
+  // BANK TRANSACTIONS
+  // ============================================================
+
+  async createBankTransaction(txn: InsertBankTransaction): Promise<BankTransaction> {
+    const [created] = await db.insert(bankTransactions).values(txn).returning();
+    return created;
+  }
+
+  async getBankTransactions(filters?: { importId?: string; status?: string }): Promise<BankTransaction[]> {
+    const conditions = [eq(bankTransactions.recordStatus, 1)];
+    if (filters?.importId) conditions.push(eq(bankTransactions.importId, filters.importId));
+    if (filters?.status) conditions.push(eq(bankTransactions.status, filters.status));
+    return db.select().from(bankTransactions).where(and(...conditions)).orderBy(bankTransactions.txnDate);
+  }
+
+  async getBankTransaction(id: string): Promise<BankTransaction | undefined> {
+    const [txn] = await db.select().from(bankTransactions).where(and(eq(bankTransactions.id, id), eq(bankTransactions.recordStatus, 1))).limit(1);
+    return txn;
+  }
+
+  async updateBankTransaction(id: string, data: Partial<InsertBankTransaction>): Promise<BankTransaction | undefined> {
+    const [updated] = await db.update(bankTransactions).set(data).where(eq(bankTransactions.id, id)).returning();
+    return updated;
+  }
+
+  async getBankTransactionByHash(hash: string, bankAccountId: string): Promise<BankTransaction | undefined> {
+    const [txn] = await db.select().from(bankTransactions).where(
+      and(
+        eq(bankTransactions.duplicateHash, hash),
+        eq(bankTransactions.bankAccountId, bankAccountId),
+        eq(bankTransactions.recordStatus, 1)
+      )
+    ).limit(1);
+    return txn;
   }
 }
 

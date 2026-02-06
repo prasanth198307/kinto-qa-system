@@ -3503,3 +3503,69 @@ export const insertJournalLineSchema = createInsertSchema(journalLines).omit({
 
 export type InsertJournalLine = z.infer<typeof insertJournalLineSchema>;
 export type JournalLine = typeof journalLines.$inferSelect;
+
+// Bank Statement Imports - tracks each uploaded bank statement file
+export const bankStatementImports = pgTable("bank_statement_imports", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  fileName: varchar("file_name", { length: 255 }).notNull(),
+  bankAccountId: varchar("bank_account_id").references(() => chartOfAccounts.id),
+  bankName: varchar("bank_name", { length: 100 }),
+  accountNumber: varchar("account_number", { length: 50 }),
+  startDate: varchar("start_date", { length: 50 }),
+  endDate: varchar("end_date", { length: 50 }),
+  totalRows: integer("total_rows").default(0),
+  duplicateCount: integer("duplicate_count").default(0),
+  createdBy: varchar("created_by"),
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+});
+
+export const insertBankStatementImportSchema = createInsertSchema(bankStatementImports).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+});
+
+export type InsertBankStatementImport = z.infer<typeof insertBankStatementImportSchema>;
+export type BankStatementImport = typeof bankStatementImports.$inferSelect;
+
+// Bank Transactions - individual rows from imported bank statements
+export const bankTransactions = pgTable("bank_transactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  importId: varchar("import_id").references(() => bankStatementImports.id).notNull(),
+  bankAccountId: varchar("bank_account_id").references(() => chartOfAccounts.id),
+
+  txnDate: varchar("txn_date", { length: 10 }).notNull(),
+  valueDate: varchar("value_date", { length: 10 }),
+  description: text("description").notNull(),
+  reference: varchar("reference", { length: 500 }),
+  branchCode: varchar("branch_code", { length: 20 }),
+  debit: numeric("debit", { precision: 15, scale: 2 }).default("0"),
+  credit: numeric("credit", { precision: 15, scale: 2 }).default("0"),
+  balance: numeric("balance", { precision: 15, scale: 2 }),
+
+  category: varchar("category", { length: 50 }),
+  matchedAccountId: varchar("matched_account_id").references(() => chartOfAccounts.id),
+  matchedAccountName: varchar("matched_account_name", { length: 255 }),
+  memo: text("memo"),
+
+  status: varchar("status", { length: 20 }).default("needs_review").notNull(),
+  duplicateHash: varchar("duplicate_hash", { length: 64 }),
+  journalEntryId: varchar("journal_entry_id"),
+
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+}, (table) => [
+  index("bt_import_idx").on(table.importId),
+  index("bt_status_idx").on(table.status),
+  index("bt_hash_idx").on(table.duplicateHash),
+]);
+
+export const insertBankTransactionSchema = createInsertSchema(bankTransactions).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+});
+
+export type InsertBankTransaction = z.infer<typeof insertBankTransactionSchema>;
+export type BankTransaction = typeof bankTransactions.$inferSelect;

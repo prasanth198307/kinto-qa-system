@@ -1,0 +1,555 @@
+import { useState, useRef } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Upload, Search, Check, X, Edit2, ArrowUpDown, FileSpreadsheet, CheckSquare, RefreshCw, Building2, ArrowRight, Filter } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+
+interface BankTransaction {
+  id: string;
+  importId: string;
+  bankAccountId: string;
+  txnDate: string;
+  valueDate: string;
+  description: string;
+  reference: string | null;
+  branchCode: string | null;
+  debit: string;
+  credit: string;
+  balance: string;
+  category: string | null;
+  matchedAccountId: string | null;
+  matchedAccountName: string | null;
+  memo: string | null;
+  status: string;
+  journalEntryId: string | null;
+  createdAt: string;
+}
+
+interface BankImport {
+  id: string;
+  fileName: string;
+  bankAccountId: string;
+  bankName: string | null;
+  accountNumber: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  totalRows: number;
+  duplicateCount: number;
+  createdAt: string;
+}
+
+interface ChartAccount {
+  id: string;
+  code: string;
+  name: string;
+  accountType: string;
+  subType: string;
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+  upi_receipt: "UPI Receipt",
+  neft_receipt: "NEFT Receipt",
+  imps_receipt: "IMPS Receipt",
+  imps_transfer: "IMPS Transfer",
+  imps_payment: "IMPS Payment",
+  inb_transfer: "Net Banking Transfer",
+  bank_transfer_in: "Bank Transfer In",
+  bank_transfer_out: "Bank Transfer Out",
+  cash_deposit: "Cash Deposit",
+  atm_withdrawal: "ATM Withdrawal",
+  withdrawal: "Withdrawal",
+  emi_debit: "EMI / Loan Debit",
+  tax_payment: "Tax Payment",
+  advertising: "Advertising",
+  telephone: "Telephone",
+  travel: "Travel",
+  card_expense: "Card Expense",
+  cheque_deposit: "Cheque Deposit",
+  cheque_return: "Cheque Return",
+  bank_charges: "Bank Charges",
+  electricity: "Electricity",
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  needs_review: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
+  unmatched: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
+  approved: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
+  posted: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
+  ignored: "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300",
+};
+
+export default function BankTransactionsPage() {
+  const { toast } = useToast();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [selectedImportId, setSelectedImportId] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [editTxn, setEditTxn] = useState<BankTransaction | null>(null);
+  const [editAccountId, setEditAccountId] = useState("");
+  const [editMemo, setEditMemo] = useState("");
+  const [editCategory, setEditCategory] = useState("");
+  const [uploadBankAccountId, setUploadBankAccountId] = useState("");
+  const [importResult, setImportResult] = useState<{ totalRows: number; duplicateCount: number; message: string } | null>(null);
+
+  const { data: imports = [] } = useQuery<BankImport[]>({
+    queryKey: ['/api/bank-statement-imports'],
+  });
+
+  const { data: transactions = [], isLoading } = useQuery<BankTransaction[]>({
+    queryKey: ['/api/bank-transactions', selectedImportId, statusFilter],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (selectedImportId !== "all") params.set("importId", selectedImportId);
+      if (statusFilter !== "all") params.set("status", statusFilter);
+      const res = await fetch(`/api/bank-transactions?${params.toString()}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    },
+  });
+
+  const { data: accounts = [] } = useQuery<ChartAccount[]>({
+    queryKey: ['/api/chart-of-accounts-list'],
+  });
+
+  const bankAccounts = accounts.filter(a => a.subType === 'current_asset' && (a.code === '1002' || a.code === '1003' || a.name.toLowerCase().includes('bank')));
+
+  const uploadMutation = useMutation({
+    mutationFn: async (formData: FormData) => {
+      const res = await fetch('/api/bank-transactions/import', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || 'Upload failed');
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setImportResult(data);
+      queryClient.invalidateQueries({ queryKey: ['/api/bank-statement-imports'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/bank-transactions'] });
+      toast({ title: "Import Complete", description: data.message });
+    },
+    onError: (err: any) => {
+      toast({ title: "Import Failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const res = await apiRequest('PATCH', `/api/bank-transactions/${id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/bank-transactions'] });
+      setEditTxn(null);
+      toast({ title: "Updated" });
+    },
+  });
+
+  const postMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const res = await apiRequest('POST', '/api/bank-transactions/post-to-journal', { transactionIds: ids });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/bank-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/journal-entries'] });
+      setSelectedIds(new Set());
+      toast({ title: "Posted to Journal", description: `${data.posted} entries created${data.errors > 0 ? `, ${data.errors} errors` : ''}` });
+    },
+    onError: (err: any) => {
+      toast({ title: "Post Failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const handleUpload = () => {
+    const file = fileRef.current?.files?.[0];
+    if (!file) return toast({ title: "No file selected", variant: "destructive" });
+    if (!uploadBankAccountId) return toast({ title: "Select a bank account", variant: "destructive" });
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('bankAccountId', uploadBankAccountId);
+    uploadMutation.mutate(formData);
+  };
+
+  const filtered = transactions.filter(t => {
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      return t.description.toLowerCase().includes(term) || 
+             (t.reference || '').toLowerCase().includes(term) ||
+             (t.matchedAccountName || '').toLowerCase().includes(term);
+    }
+    return true;
+  });
+
+  const toggleSelect = (id: string) => {
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setSelectedIds(next);
+  };
+
+  const toggleSelectAll = () => {
+    const selectable = filtered.filter(t => t.status !== 'posted' && t.status !== 'ignored');
+    if (selectedIds.size === selectable.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(selectable.map(t => t.id)));
+    }
+  };
+
+  const approveSelected = () => {
+    selectedIds.forEach(id => {
+      updateMutation.mutate({ id, data: { status: 'approved' } });
+    });
+    setSelectedIds(new Set());
+  };
+
+  const postSelected = () => {
+    const ids = Array.from(selectedIds).filter(id => {
+      const txn = transactions.find(t => t.id === id);
+      return txn && txn.matchedAccountId && txn.status !== 'posted';
+    });
+    if (ids.length === 0) return toast({ title: "No valid transactions to post", description: "Ensure selected items have matched accounts and are not already posted.", variant: "destructive" });
+    postMutation.mutate(ids);
+  };
+
+  const openEdit = (txn: BankTransaction) => {
+    setEditTxn(txn);
+    setEditAccountId(txn.matchedAccountId || '');
+    setEditMemo(txn.memo || '');
+    setEditCategory(txn.category || '');
+  };
+
+  const saveEdit = () => {
+    if (!editTxn) return;
+    const selectedAccount = accounts.find(a => a.id === editAccountId);
+    updateMutation.mutate({
+      id: editTxn.id,
+      data: {
+        matchedAccountId: editAccountId || null,
+        matchedAccountName: selectedAccount?.name || null,
+        memo: editMemo || null,
+        category: editCategory || null,
+        status: editAccountId ? 'needs_review' : 'unmatched',
+      },
+    });
+  };
+
+  const formatAmount = (val: string) => {
+    const num = parseFloat(val || '0');
+    return num > 0 ? num.toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '';
+  };
+
+  const summaryStats = {
+    total: filtered.length,
+    needsReview: filtered.filter(t => t.status === 'needs_review').length,
+    unmatched: filtered.filter(t => t.status === 'unmatched').length,
+    approved: filtered.filter(t => t.status === 'approved').length,
+    posted: filtered.filter(t => t.status === 'posted').length,
+  };
+
+  return (
+    <div className="p-3 space-y-3 max-w-full">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div>
+          <h1 className="text-lg font-semibold" data-testid="text-page-title">Bank Statement Import</h1>
+          <p className="text-xs text-muted-foreground">Upload bank statements, review & categorize transactions, then post to journal</p>
+        </div>
+        <Button onClick={() => { setShowUploadDialog(true); setImportResult(null); }} data-testid="button-upload-statement">
+          <Upload className="w-4 h-4 mr-1" /> Import Statement
+        </Button>
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-1 text-xs">
+          <Badge variant="secondary">{summaryStats.total} Total</Badge>
+          {summaryStats.needsReview > 0 && <Badge className={STATUS_COLORS.needs_review}>{summaryStats.needsReview} Review</Badge>}
+          {summaryStats.unmatched > 0 && <Badge className={STATUS_COLORS.unmatched}>{summaryStats.unmatched} Unmatched</Badge>}
+          {summaryStats.approved > 0 && <Badge className={STATUS_COLORS.approved}>{summaryStats.approved} Approved</Badge>}
+          {summaryStats.posted > 0 && <Badge className={STATUS_COLORS.posted}>{summaryStats.posted} Posted</Badge>}
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search description, reference..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-8"
+            data-testid="input-search"
+          />
+        </div>
+        <Select value={selectedImportId} onValueChange={setSelectedImportId}>
+          <SelectTrigger className="w-[200px]" data-testid="select-import">
+            <FileSpreadsheet className="w-4 h-4 mr-1" />
+            <SelectValue placeholder="All Imports" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Imports</SelectItem>
+            {imports.map(imp => (
+              <SelectItem key={imp.id} value={imp.id}>
+                {imp.fileName.substring(0, 30)} ({imp.totalRows})
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-[150px]" data-testid="select-status-filter">
+            <Filter className="w-4 h-4 mr-1" />
+            <SelectValue placeholder="All Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="unmatched">Unmatched</SelectItem>
+            <SelectItem value="needs_review">Needs Review</SelectItem>
+            <SelectItem value="approved">Approved</SelectItem>
+            <SelectItem value="posted">Posted</SelectItem>
+            <SelectItem value="ignored">Ignored</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-2 p-2 rounded-md bg-muted">
+          <span className="text-sm font-medium">{selectedIds.size} selected</span>
+          <Button size="sm" variant="outline" onClick={approveSelected} data-testid="button-approve-selected">
+            <Check className="w-3 h-3 mr-1" /> Approve
+          </Button>
+          <Button size="sm" onClick={postSelected} disabled={postMutation.isPending} data-testid="button-post-selected">
+            {postMutation.isPending ? <RefreshCw className="w-3 h-3 mr-1 animate-spin" /> : <ArrowRight className="w-3 h-3 mr-1" />}
+            Post to Journal
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => {
+            selectedIds.forEach(id => updateMutation.mutate({ id, data: { status: 'ignored' } }));
+            setSelectedIds(new Set());
+          }} data-testid="button-ignore-selected">
+            <X className="w-3 h-3 mr-1" /> Ignore
+          </Button>
+        </div>
+      )}
+
+      <Card>
+        <CardContent className="p-0">
+          {isLoading ? (
+            <div className="p-8 text-center text-muted-foreground">Loading transactions...</div>
+          ) : filtered.length === 0 ? (
+            <div className="p-8 text-center text-muted-foreground">
+              <FileSpreadsheet className="w-10 h-10 mx-auto mb-2 opacity-40" />
+              <p>No transactions found. Import a bank statement to get started.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="p-2 w-8">
+                      <Checkbox
+                        checked={selectedIds.size > 0 && selectedIds.size === filtered.filter(t => t.status !== 'posted' && t.status !== 'ignored').length}
+                        onCheckedChange={toggleSelectAll}
+                        data-testid="checkbox-select-all"
+                      />
+                    </th>
+                    <th className="p-2 text-left font-medium">Date</th>
+                    <th className="p-2 text-left font-medium min-w-[300px]">Description</th>
+                    <th className="p-2 text-right font-medium">Debit</th>
+                    <th className="p-2 text-right font-medium">Credit</th>
+                    <th className="p-2 text-right font-medium">Balance</th>
+                    <th className="p-2 text-left font-medium">Category</th>
+                    <th className="p-2 text-left font-medium">Mapped Account</th>
+                    <th className="p-2 text-center font-medium">Status</th>
+                    <th className="p-2 text-center font-medium w-12">Edit</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((txn) => (
+                    <tr key={txn.id} className="border-b hover-elevate" data-testid={`row-txn-${txn.id}`}>
+                      <td className="p-2">
+                        {txn.status !== 'posted' && txn.status !== 'ignored' && (
+                          <Checkbox
+                            checked={selectedIds.has(txn.id)}
+                            onCheckedChange={() => toggleSelect(txn.id)}
+                            data-testid={`checkbox-txn-${txn.id}`}
+                          />
+                        )}
+                      </td>
+                      <td className="p-2 whitespace-nowrap">{txn.txnDate}</td>
+                      <td className="p-2">
+                        <div className="max-w-[350px] truncate" title={txn.description}>{txn.description}</div>
+                        {txn.reference && <div className="text-[10px] text-muted-foreground truncate max-w-[350px]">{txn.reference}</div>}
+                        {txn.memo && <div className="text-[10px] text-blue-600 dark:text-blue-400 italic">{txn.memo}</div>}
+                      </td>
+                      <td className="p-2 text-right font-mono text-red-600 dark:text-red-400">{formatAmount(txn.debit)}</td>
+                      <td className="p-2 text-right font-mono text-green-600 dark:text-green-400">{formatAmount(txn.credit)}</td>
+                      <td className="p-2 text-right font-mono">{formatAmount(txn.balance)}</td>
+                      <td className="p-2">
+                        {txn.category && (
+                          <Badge variant="outline" className="text-[10px]">
+                            {CATEGORY_LABELS[txn.category] || txn.category}
+                          </Badge>
+                        )}
+                      </td>
+                      <td className="p-2">
+                        {txn.matchedAccountName ? (
+                          <span className="text-[11px]">{txn.matchedAccountName}</span>
+                        ) : (
+                          <span className="text-[11px] text-muted-foreground italic">Not mapped</span>
+                        )}
+                      </td>
+                      <td className="p-2 text-center">
+                        <Badge className={`text-[10px] ${STATUS_COLORS[txn.status] || ''}`}>
+                          {txn.status === 'needs_review' ? 'Review' : txn.status}
+                        </Badge>
+                      </td>
+                      <td className="p-2 text-center">
+                        {txn.status !== 'posted' && (
+                          <Button size="icon" variant="ghost" onClick={() => openEdit(txn)} data-testid={`button-edit-${txn.id}`}>
+                            <Edit2 className="w-3 h-3" />
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Import Bank Statement</DialogTitle>
+            <DialogDescription>Upload an XLS bank statement file (tab-separated format like SBI statements)</DialogDescription>
+          </DialogHeader>
+          {importResult ? (
+            <div className="space-y-3">
+              <div className="p-3 rounded-md bg-green-50 dark:bg-green-900/20 text-sm">
+                <p className="font-medium text-green-800 dark:text-green-300">{importResult.message}</p>
+                <div className="mt-2 flex items-center gap-3 text-xs">
+                  <Badge variant="secondary">{importResult.totalRows} imported</Badge>
+                  {importResult.duplicateCount > 0 && <Badge variant="outline">{importResult.duplicateCount} duplicates</Badge>}
+                </div>
+              </div>
+              <Button className="w-full" onClick={() => { setShowUploadDialog(false); setImportResult(null); }} data-testid="button-close-import">
+                Done
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <Label>Bank Account</Label>
+                <Select value={uploadBankAccountId} onValueChange={setUploadBankAccountId}>
+                  <SelectTrigger data-testid="select-bank-account">
+                    <Building2 className="w-4 h-4 mr-1" />
+                    <SelectValue placeholder="Select bank account" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {bankAccounts.length > 0 ? bankAccounts.map(a => (
+                      <SelectItem key={a.id} value={a.id}>{a.code} - {a.name}</SelectItem>
+                    )) : accounts.filter(a => a.accountType === 'asset').map(a => (
+                      <SelectItem key={a.id} value={a.id}>{a.code} - {a.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label>Statement File</Label>
+                <Input type="file" ref={fileRef} accept=".xls,.xlsx,.csv,.tsv,.txt" data-testid="input-file" />
+                <p className="text-[10px] text-muted-foreground">Supports SBI-format XLS (tab-separated) statements</p>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowUploadDialog(false)} data-testid="button-cancel-upload">Cancel</Button>
+                <Button onClick={handleUpload} disabled={uploadMutation.isPending} data-testid="button-confirm-upload">
+                  {uploadMutation.isPending ? <><RefreshCw className="w-4 h-4 mr-1 animate-spin" /> Importing...</> : <><Upload className="w-4 h-4 mr-1" /> Import</>}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editTxn} onOpenChange={(open) => { if (!open) setEditTxn(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Transaction</DialogTitle>
+            <DialogDescription>
+              {editTxn && (
+                <span className="block mt-1 text-xs">{editTxn.txnDate} - {parseFloat(editTxn.debit) > 0 ? `Debit: ${formatAmount(editTxn.debit)}` : `Credit: ${formatAmount(editTxn.credit)}`}</span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          {editTxn && (
+            <div className="space-y-3">
+              <div className="p-2 rounded-md bg-muted text-xs max-h-[80px] overflow-y-auto">
+                {editTxn.description}
+              </div>
+              <div className="space-y-1">
+                <Label>Category</Label>
+                <Select value={editCategory} onValueChange={setEditCategory}>
+                  <SelectTrigger data-testid="select-edit-category">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">-- No category --</SelectItem>
+                    {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
+                      <SelectItem key={key} value={key}>{label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label>Map to Account</Label>
+                <Select value={editAccountId} onValueChange={setEditAccountId}>
+                  <SelectTrigger data-testid="select-edit-account">
+                    <SelectValue placeholder="Select account" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">-- Not mapped --</SelectItem>
+                    {accounts.map(a => (
+                      <SelectItem key={a.id} value={a.id}>{a.code} - {a.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label>Memo / Notes</Label>
+                <Textarea
+                  value={editMemo}
+                  onChange={(e) => setEditMemo(e.target.value)}
+                  placeholder="Add a note for this transaction..."
+                  className="text-xs"
+                  data-testid="textarea-edit-memo"
+                />
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setEditTxn(null)} data-testid="button-cancel-edit">Cancel</Button>
+                <Button onClick={saveEdit} disabled={updateMutation.isPending} data-testid="button-save-edit">
+                  {updateMutation.isPending ? <RefreshCw className="w-4 h-4 mr-1 animate-spin" /> : <Check className="w-4 h-4 mr-1" />}
+                  Save
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

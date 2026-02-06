@@ -20271,6 +20271,359 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================================
+  // BANK STATEMENT IMPORT & TRANSACTIONS
+  // ============================================================
+
+  const bankUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+  function parseSBIDate(dateStr: string): string {
+    const trimmed = dateStr.trim();
+    const parts = trimmed.split('/');
+    if (parts.length === 3) {
+      return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+    }
+    const dateObj = new Date(trimmed);
+    if (!isNaN(dateObj.getTime())) {
+      return dateObj.toISOString().split('T')[0];
+    }
+    return trimmed;
+  }
+
+  function parseAmount(val: string): number {
+    if (!val || !val.trim()) return 0;
+    return parseFloat(val.replace(/,/g, '').trim()) || 0;
+  }
+
+  function generateDuplicateHash(txnDate: string, debit: number, credit: number, description: string, reference: string): string {
+    const normalized = `${txnDate}|${debit}|${credit}|${description.replace(/\s+/g, ' ').trim()}|${(reference || '').replace(/\s+/g, ' ').trim()}`;
+    return crypto.createHash('sha256').update(normalized).digest('hex').substring(0, 32);
+  }
+
+  interface CategoryRule {
+    pattern: RegExp;
+    category: string;
+    accountCode: string;
+    accountName: string;
+    type?: 'debit' | 'credit' | 'both';
+  }
+
+  const CATEGORY_RULES: CategoryRule[] = [
+    { pattern: /UPI\/CR/i, category: 'upi_receipt', accountCode: '4001', accountName: 'Sales Revenue', type: 'credit' },
+    { pattern: /NEFT\*/i, category: 'neft_receipt', accountCode: '4001', accountName: 'Sales Revenue', type: 'credit' },
+    { pattern: /IMPS\//i, category: 'imps_transfer', accountCode: '2001', accountName: 'Accounts Payable', type: 'debit' },
+    { pattern: /BY TRANSFER-IMPS/i, category: 'imps_receipt', accountCode: '4001', accountName: 'Sales Revenue', type: 'credit' },
+    { pattern: /TO TRANSFER-IMPS/i, category: 'imps_payment', accountCode: '2001', accountName: 'Accounts Payable', type: 'debit' },
+    { pattern: /TO TRANSFER-INB/i, category: 'inb_transfer', accountCode: '2001', accountName: 'Accounts Payable', type: 'debit' },
+    { pattern: /BY TRANSFER-TRANSFER FROM/i, category: 'bank_transfer_in', accountCode: '4002', accountName: 'Other Income', type: 'credit' },
+    { pattern: /TO TRANSFER-TRANSFER TO/i, category: 'bank_transfer_out', accountCode: '3002', accountName: "Owner's Drawings", type: 'debit' },
+    { pattern: /CASH DEPOSIT/i, category: 'cash_deposit', accountCode: '1001', accountName: 'Cash in Hand', type: 'credit' },
+    { pattern: /ATM WDL|ATM CASH/i, category: 'atm_withdrawal', accountCode: '1001', accountName: 'Cash in Hand', type: 'debit' },
+    { pattern: /WITHDRAWAL TRANSFER/i, category: 'withdrawal', accountCode: '1001', accountName: 'Cash in Hand', type: 'debit' },
+    { pattern: /ACHDr|DEBIT.*ACH/i, category: 'emi_debit', accountCode: '2400', accountName: 'Loans Payable', type: 'debit' },
+    { pattern: /CBDT|TIN 2\.0|Income Tax/i, category: 'tax_payment', accountCode: '5010', accountName: 'Tax Expenses', type: 'debit' },
+    { pattern: /debit card.*GOOGLE ADS/i, category: 'advertising', accountCode: '5008', accountName: 'Marketing & Advertising', type: 'debit' },
+    { pattern: /debit card.*Bharti Airtel/i, category: 'telephone', accountCode: '5005', accountName: 'Telephone & Internet', type: 'debit' },
+    { pattern: /debit card.*ABHIBUS/i, category: 'travel', accountCode: '5006', accountName: 'Travel & Conveyance', type: 'debit' },
+    { pattern: /debit card/i, category: 'card_expense', accountCode: '5009', accountName: 'Miscellaneous Expenses', type: 'debit' },
+    { pattern: /BY CLEARING.*CHEQUE/i, category: 'cheque_deposit', accountCode: '1100', accountName: 'Accounts Receivable', type: 'credit' },
+    { pattern: /OUT-CHQ RETURN/i, category: 'cheque_return', accountCode: '1100', accountName: 'Accounts Receivable', type: 'debit' },
+    { pattern: /cheque returned charges/i, category: 'bank_charges', accountCode: '5007', accountName: 'Bank Charges', type: 'debit' },
+    { pattern: /EASTERN POWER|electricity|EPDCL/i, category: 'electricity', accountCode: '5004', accountName: 'Utilities', type: 'debit' },
+  ];
+
+  function categorizeTransaction(description: string, isDebit: boolean): { category: string; accountCode: string; accountName: string } | null {
+    const descTrim = description.trim();
+    for (const rule of CATEGORY_RULES) {
+      if (rule.pattern.test(descTrim)) {
+        if (rule.type === 'debit' && !isDebit) continue;
+        if (rule.type === 'credit' && isDebit) continue;
+        return { category: rule.category, accountCode: rule.accountCode, accountName: rule.accountName };
+      }
+    }
+    return null;
+  }
+
+  app.post('/api/bank-transactions/import', bankUpload.single('file'), async (req: any, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+
+      const bankAccountId = req.body.bankAccountId;
+      if (!bankAccountId) return res.status(400).json({ message: 'Bank account ID required' });
+
+      const fileContent = req.file.buffer.toString('utf-8');
+      const lines = fileContent.split('\n');
+
+      let bankName = '';
+      let accountNumber = '';
+      let startDate = '';
+      let endDate = '';
+      let headerIndex = -1;
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (line.startsWith('Name')) {
+          const parts = line.split('\t');
+          bankName = (parts[1] || '').trim();
+        }
+        if (line.startsWith('Account Number')) {
+          const parts = line.split('\t');
+          accountNumber = (parts[1] || '').replace(/^_+/, '').trim();
+        }
+        if (line.startsWith('Start Date')) {
+          const parts = line.split('\t');
+          startDate = (parts[1] || '').trim();
+        }
+        if (line.startsWith('End Date')) {
+          const parts = line.split('\t');
+          endDate = (parts[1] || '').trim();
+        }
+        if (line.startsWith('Txn Date')) {
+          headerIndex = i;
+          break;
+        }
+      }
+
+      if (headerIndex === -1) return res.status(400).json({ message: 'Could not find transaction header row. Make sure the file has a "Txn Date" header.' });
+
+      const importRecord = await storage.createBankStatementImport({
+        fileName: req.file.originalname || 'bank_statement.xls',
+        bankAccountId,
+        bankName: bankName || null,
+        accountNumber: accountNumber || null,
+        startDate: startDate || null,
+        endDate: endDate || null,
+        totalRows: 0,
+        duplicateCount: 0,
+        createdBy: req.user?.id || null,
+      });
+
+      let totalRows = 0;
+      let duplicateCount = 0;
+      const allAccounts = await storage.getAllChartOfAccounts();
+
+      for (let i = headerIndex + 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line || line.startsWith('**')) continue;
+
+        const cols = line.split('\t');
+        if (cols.length < 6) continue;
+
+        const txnDateRaw = cols[0]?.trim();
+        if (!txnDateRaw || !/^\d{2}\/\d{2}\/\d{4}$/.test(txnDateRaw)) continue;
+
+        const txnDate = parseSBIDate(txnDateRaw);
+        const valueDate = parseSBIDate(cols[1]?.trim() || txnDateRaw);
+        const description = (cols[2] || '').trim();
+        const reference = (cols[3] || '').trim();
+        const branchCode = (cols[4] || '').trim();
+        const debit = parseAmount(cols[5] || '');
+        const credit = parseAmount(cols[6] || '');
+        const balance = parseAmount(cols[7] || '');
+
+        if (debit === 0 && credit === 0) continue;
+
+        const hash = generateDuplicateHash(txnDate, debit, credit, description, reference);
+        const existingDup = await storage.getBankTransactionByHash(hash, bankAccountId);
+
+        if (existingDup) {
+          duplicateCount++;
+          continue;
+        }
+
+        const isDebit = debit > 0;
+        const catResult = categorizeTransaction(description, isDebit);
+
+        let matchedAccountId: string | null = null;
+        let matchedAccountName: string | null = null;
+
+        if (catResult) {
+          const matchedAcct = allAccounts.find(a => a.code === catResult.accountCode);
+          if (matchedAcct) {
+            matchedAccountId = matchedAcct.id;
+            matchedAccountName = matchedAcct.name;
+          } else {
+            matchedAccountName = catResult.accountName;
+          }
+        }
+
+        await storage.createBankTransaction({
+          importId: importRecord.id,
+          bankAccountId,
+          txnDate,
+          valueDate,
+          description,
+          reference: reference || null,
+          branchCode: branchCode || null,
+          debit: debit.toFixed(2),
+          credit: credit.toFixed(2),
+          balance: balance.toFixed(2),
+          category: catResult?.category || null,
+          matchedAccountId,
+          matchedAccountName,
+          memo: null,
+          status: catResult ? 'needs_review' : 'unmatched',
+          duplicateHash: hash,
+          journalEntryId: null,
+        });
+        totalRows++;
+      }
+
+      await db.execute(sql`
+        UPDATE bank_statement_imports 
+        SET total_rows = ${totalRows}, duplicate_count = ${duplicateCount}
+        WHERE id = ${importRecord.id}
+      `);
+
+      res.json({
+        importId: importRecord.id,
+        totalRows,
+        duplicateCount,
+        message: `Imported ${totalRows} transactions (${duplicateCount} duplicates skipped)`,
+      });
+    } catch (error: any) {
+      console.error('[Bank Import] Error:', error);
+      res.status(500).json({ message: error.message || 'Failed to import bank statement' });
+    }
+  });
+
+  app.get('/api/bank-statement-imports', async (req: any, res) => {
+    try {
+      const imports = await storage.getBankStatementImports();
+      res.json(imports);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get('/api/bank-transactions', async (req: any, res) => {
+    try {
+      const { importId, status } = req.query;
+      const transactions = await storage.getBankTransactions({
+        importId: importId as string,
+        status: status as string,
+      });
+      res.json(transactions);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.patch('/api/bank-transactions/:id', async (req: any, res) => {
+    try {
+      const { matchedAccountId, matchedAccountName, category, memo, status } = req.body;
+      const updated = await storage.updateBankTransaction(req.params.id, {
+        matchedAccountId,
+        matchedAccountName,
+        category,
+        memo,
+        status,
+      });
+      if (!updated) return res.status(404).json({ message: 'Transaction not found' });
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post('/api/bank-transactions/post-to-journal', async (req: any, res) => {
+    try {
+      const { transactionIds } = req.body;
+      if (!transactionIds || !Array.isArray(transactionIds) || transactionIds.length === 0) {
+        return res.status(400).json({ message: 'No transaction IDs provided' });
+      }
+
+      const allAccounts = await storage.getAllChartOfAccounts();
+      let posted = 0;
+      let errors = 0;
+      const errorDetails: string[] = [];
+
+      for (const txnId of transactionIds) {
+        try {
+          const txn = await storage.getBankTransaction(txnId);
+          if (!txn) { errors++; errorDetails.push(`Transaction ${txnId} not found`); continue; }
+          if (txn.status === 'posted') { continue; }
+          if (!txn.matchedAccountId) { errors++; errorDetails.push(`Transaction ${txnId} has no matched account`); continue; }
+
+          const bankAccount = allAccounts.find(a => a.id === txn.bankAccountId);
+          const contraAccount = allAccounts.find(a => a.id === txn.matchedAccountId);
+          if (!bankAccount || !contraAccount) { errors++; errorDetails.push(`Account not found for txn ${txnId}`); continue; }
+
+          const debitAmt = parseFloat(txn.debit || '0');
+          const creditAmt = parseFloat(txn.credit || '0');
+          const amount = Math.round((debitAmt > 0 ? debitAmt : creditAmt) * 100);
+
+          const descShort = (txn.description || '').substring(0, 100);
+          const narration = txn.memo || `Bank: ${descShort}`;
+
+          const journalEntry = await storage.createJournalEntry({
+            entryDate: txn.txnDate,
+            entryNumber: `BNK-${Date.now().toString(36).toUpperCase()}`,
+            narration,
+            sourceType: 'bank_transaction',
+            sourceId: txn.id,
+            isAutoGenerated: 1,
+            status: 'posted',
+          });
+
+          if (debitAmt > 0) {
+            await storage.createJournalLine({
+              journalId: journalEntry.id,
+              accountId: contraAccount.id,
+              debit: amount,
+              credit: 0,
+              memo: narration,
+            });
+            await storage.createJournalLine({
+              journalId: journalEntry.id,
+              accountId: bankAccount.id,
+              debit: 0,
+              credit: amount,
+              memo: narration,
+            });
+          } else {
+            await storage.createJournalLine({
+              journalId: journalEntry.id,
+              accountId: bankAccount.id,
+              debit: amount,
+              credit: 0,
+              memo: narration,
+            });
+            await storage.createJournalLine({
+              journalId: journalEntry.id,
+              accountId: contraAccount.id,
+              debit: 0,
+              credit: amount,
+              memo: narration,
+            });
+          }
+
+          await storage.updateBankTransaction(txnId, {
+            status: 'posted',
+            journalEntryId: journalEntry.id,
+          });
+          posted++;
+        } catch (e: any) {
+          errors++;
+          errorDetails.push(`${txnId}: ${e.message}`);
+        }
+      }
+
+      res.json({ posted, errors, errorDetails });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get('/api/chart-of-accounts-list', async (req: any, res) => {
+    try {
+      const accounts = await storage.getAllChartOfAccounts();
+      res.json(accounts.map(a => ({ id: a.id, code: a.code, name: a.name, accountType: a.accountType, subType: a.subType })));
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
