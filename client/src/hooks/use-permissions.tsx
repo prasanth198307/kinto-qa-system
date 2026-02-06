@@ -17,6 +17,9 @@ interface UserPermissions {
 export function usePermissions() {
   const { data, isLoading, error } = useQuery<UserPermissions>({
     queryKey: ['/api/my-permissions'],
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const hasPermission = (screenKey: string, action: 'view' | 'create' | 'edit' | 'delete' = 'view'): boolean => {

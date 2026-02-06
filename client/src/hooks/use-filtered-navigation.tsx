@@ -1,3 +1,4 @@
+import { useMemo, useRef } from "react";
 import { usePermissions } from "@/hooks/use-permissions";
 import { useAuth } from "@/hooks/use-auth";
 import { type NavSection } from "@/components/VerticalNavSidebar";
@@ -223,14 +224,21 @@ function filterNavSectionsWithDbPermissions(sections: NavSection[], dbPermission
 
 export function useFilteredNavigation(allNavSections: NavSection[]) {
   const { permissions, isLoading: permissionsLoading } = usePermissions();
+  const lastValidRef = useRef<NavSection[]>([]);
   
-  if (permissionsLoading) {
-    return { navSections: [], isLoading: true };
-  }
-  
-  // 100% database driven - always use database permissions for all roles
+  const navSections = useMemo(() => {
+    if (permissionsLoading || !permissions || permissions.length === 0) {
+      return lastValidRef.current;
+    }
+    const filtered = filterNavSectionsWithDbPermissions(allNavSections, permissions);
+    if (filtered.length > 0) {
+      lastValidRef.current = filtered;
+    }
+    return filtered.length > 0 ? filtered : lastValidRef.current;
+  }, [allNavSections, permissions, permissionsLoading]);
+
   return { 
-    navSections: filterNavSectionsWithDbPermissions(allNavSections, permissions),
-    isLoading: false 
+    navSections,
+    isLoading: permissionsLoading && lastValidRef.current.length === 0
   };
 }
