@@ -26,7 +26,7 @@ export function GlobalHeader({
   showMobileMenu = false,
 }: GlobalHeaderProps) {
   return (
-    <div className="fixed top-0 left-0 right-0 h-16 bg-card border-b border-border z-50 flex items-center justify-between px-4 gap-4">
+    <div className="fixed top-0 left-0 right-0 h-16 bg-card border-b border-border z-50 flex items-center justify-between px-4 gap-4" data-testid="global-header">
       {/* Left: Mobile Menu + KINTO Logo + SmartOps (horizontal) + Optional Title */}
       <div className="flex items-center gap-4 min-w-0">
         {/* Mobile Menu Button */}

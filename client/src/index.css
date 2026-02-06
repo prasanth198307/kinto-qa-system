@@ -478,7 +478,6 @@
 
 /* Print Styles - Hide sidebar, header, and navigation elements */
 @media print {
-  /* Hide ALL sidebar elements completely */
   [data-sidebar],
   [data-sidebar="sidebar"],
   [data-sidebar="trigger"],
@@ -490,62 +489,73 @@
   [data-sidebar="menu"],
   aside,
   nav,
-  .sidebar {
+  .sidebar,
+  [data-testid="vertical-nav-sidebar"],
+  [data-testid="global-header"],
+  [data-testid="mobile-bottom-nav"] {
     display: none !important;
     width: 0 !important;
     min-width: 0 !important;
     max-width: 0 !important;
     visibility: hidden !important;
     overflow: hidden !important;
+    position: absolute !important;
+    left: -9999px !important;
   }
-  
-  /* Hide header with sidebar toggle and theme toggle */
+
   header:has([data-testid="button-sidebar-toggle"]),
   header:has([data-sidebar="trigger"]) {
     display: none !important;
   }
-  
-  /* Force main content to take full width */
+
+  .no-print,
+  [data-no-print] {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
   main,
-  [data-sidebar="inset"],
-  .flex-1 {
+  [data-sidebar="inset"] {
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
     margin-left: 0 !important;
-    flex: 1 !important;
   }
-  
-  /* Remove sidebar provider flex layout constraints */
+
+  body,
   body > div,
   #root,
-  #root > div {
+  #root > div,
+  #root > div > div {
     display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
   }
-  
-  /* Reset page margins for printing */
+
   @page {
     margin: 1cm;
+    size: A4 portrait;
   }
-  
-  /* Ensure table headers repeat on each page */
+
   thead {
     display: table-header-group;
   }
-  
-  /* Prevent rows from breaking across pages */
+
   tr {
     page-break-inside: avoid;
   }
-  
-  /* Remove shadows and make backgrounds print-friendly */
+
   * {
     box-shadow: none !important;
     text-shadow: none !important;
   }
-  
-  /* Print date stamp */
+
   body::after {
     content: "Printed on: " attr(data-print-date);
     position: fixed;

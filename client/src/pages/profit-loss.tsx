@@ -119,9 +119,22 @@ export default function ProfitLossPage() {
     );
   }
 
+  const printDate = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+
   return (
     <div className="p-4 space-y-4 max-w-5xl mx-auto" data-testid="page-profit-loss">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+      <div className="hidden print-only" style={{ display: "none" }}>
+        <div style={{ textAlign: "center", marginBottom: "16px", borderBottom: "2px solid #000", paddingBottom: "12px" }}>
+          <div style={{ fontSize: "18px", fontWeight: "bold", letterSpacing: "1px" }}>KINTO Smart Ops</div>
+          <div style={{ fontSize: "11px", color: "#555", marginTop: "2px" }}>Manufacturing Excellence</div>
+          <div style={{ fontSize: "16px", fontWeight: "600", marginTop: "10px" }}>Profit & Loss Statement</div>
+          <div style={{ fontSize: "11px", color: "#555", marginTop: "4px" }}>
+            For the period Apr {fyStart} &ndash; Mar {fyStart + 1}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-4 flex-wrap no-print">
         <div>
           <h1 className="text-xl font-semibold" data-testid="text-page-title">Profit & Loss Statement</h1>
           <p className="text-sm text-muted-foreground">For the period Apr {fyStart} &ndash; Mar {fyStart + 1}</p>
@@ -144,7 +157,7 @@ export default function ProfitLossPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 no-print">
         <Card>
           <CardContent className="p-4">
             <div className="text-xs text-muted-foreground uppercase tracking-wide">Total Revenue</div>
@@ -248,6 +261,12 @@ export default function ProfitLossPage() {
           </table>
         </div>
       </Card>
+
+      <div className="hidden print-only" style={{ display: "none" }}>
+        <div style={{ textAlign: "right", fontSize: "10px", color: "#666", marginTop: "16px", borderTop: "1px solid #ccc", paddingTop: "8px" }}>
+          Printed on: {printDate} &middot; KINTO Smart Ops &middot; Net {isProfit ? "Profit" : "Loss"}: {"\u20B9"}{formatAmount(Math.abs(netProfit))}
+        </div>
+      </div>
     </div>
   );
 }

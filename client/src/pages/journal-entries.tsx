@@ -330,10 +330,16 @@ export default function JournalEntriesPage() {
                     filename = `journal_entries_${exportDateFrom || 'all'}_${exportDateTo || 'all'}.csv`;
                   }
 
-                  const response = await fetch(endpoint);
+                  const response = await fetch(endpoint, { credentials: 'include' });
                   if (!response.ok) {
-                    const err = await response.json();
-                    throw new Error(err.message || "Export failed");
+                    let errorMsg = "Export failed";
+                    try {
+                      const err = await response.json();
+                      errorMsg = err.message || errorMsg;
+                    } catch {
+                      errorMsg = `Server returned ${response.status}`;
+                    }
+                    throw new Error(errorMsg);
                   }
                   const blob = await response.blob();
                   const url = URL.createObjectURL(blob);

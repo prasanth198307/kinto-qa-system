@@ -98,9 +98,22 @@ export default function TrialBalancePage() {
     );
   }
 
+  const printDate = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+
   return (
     <div className="p-4 space-y-4 max-w-5xl mx-auto" data-testid="page-trial-balance">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+      <div className="hidden print-only" style={{ display: "none" }}>
+        <div style={{ textAlign: "center", marginBottom: "16px", borderBottom: "2px solid #000", paddingBottom: "12px" }}>
+          <div style={{ fontSize: "18px", fontWeight: "bold", letterSpacing: "1px" }}>KINTO Smart Ops</div>
+          <div style={{ fontSize: "11px", color: "#555", marginTop: "2px" }}>Manufacturing Excellence</div>
+          <div style={{ fontSize: "16px", fontWeight: "600", marginTop: "10px" }}>Trial Balance</div>
+          <div style={{ fontSize: "11px", color: "#555", marginTop: "4px" }}>
+            As at Mar {fyStart + 1} &middot; Financial Year Apr {fyStart} &ndash; Mar {fyStart + 1}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-4 flex-wrap no-print">
         <div>
           <h1 className="text-xl font-semibold" data-testid="text-page-title">Trial Balance</h1>
           <p className="text-sm text-muted-foreground">As at Mar {fyStart + 1} &middot; Apr {fyStart} &ndash; Mar {fyStart + 1}</p>
@@ -131,7 +144,7 @@ export default function TrialBalancePage() {
         </div>
       </div>
 
-      <Card className={isBalanced ? "border-green-200 dark:border-green-800" : "border-destructive"}>
+      <Card className={`no-print ${isBalanced ? "border-green-200 dark:border-green-800" : "border-destructive"}`}>
         <CardContent className="p-3 flex items-center gap-3">
           {isBalanced ? (
             <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400 shrink-0" />
@@ -187,6 +200,12 @@ export default function TrialBalancePage() {
           </table>
         </div>
       </Card>
+
+      <div className="hidden print-only" style={{ display: "none" }}>
+        <div style={{ textAlign: "right", fontSize: "10px", color: "#666", marginTop: "16px", borderTop: "1px solid #ccc", paddingTop: "8px" }}>
+          Printed on: {printDate} &middot; KINTO Smart Ops &middot; {isBalanced ? "Books Balanced" : `Out of balance by \u20B9${formatAmount(Math.abs(difference))}`}
+        </div>
+      </div>
     </div>
   );
 }
