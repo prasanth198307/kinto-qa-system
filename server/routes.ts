@@ -3662,6 +3662,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertRawMaterialSchema.parse(materialData);
       const created = await storage.createRawMaterial(validatedData);
       
+      // Auto-generate journal entry for raw material receipt
+      try {
+        const { journalForRawMaterialReceipt } = await import('./journal-service');
+        await journalForRawMaterialReceipt(created);
+      } catch (journalError) {
+        console.error("[JOURNAL] Non-blocking: Failed to create journal for material receipt:", journalError);
+      }
+
       // Return created material with type details
       res.json({ ...created, typeDetails });
     } catch (error) {
@@ -4579,6 +4587,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return issuance;
       });
       
+      // Auto-generate journal entry for material issuance
+      try {
+        const { journalForRawMaterialIssuance } = await import('./journal-service');
+        const issuanceItems: any[] = (await db.execute(sql`
+          SELECT rmii.raw_material_id, rmii.quantity_issued, rm.unit_cost, rm.gst_rate, rm.material_name
+          FROM raw_material_issuance_items rmii
+          LEFT JOIN raw_materials rm ON rmii.raw_material_id = rm.id
+          WHERE rmii.issuance_id = ${result.id}
+        `)).rows;
+        const materialNames: Record<string, string> = {};
+        const itemsWithCost = issuanceItems.map((item: any) => {
+          materialNames[item.raw_material_id] = item.material_name || 'Unknown';
+          return {
+            rawMaterialId: item.raw_material_id,
+            quantityIssued: item.quantity_issued,
+            unitCost: item.unit_cost || 0,
+            gstRate: item.gst_rate || 0,
+          };
+        });
+        await journalForRawMaterialIssuance(result, itemsWithCost, materialNames);
+      } catch (journalError) {
+        console.error("[JOURNAL] Non-blocking: Failed to create journal for material issuance:", journalError);
+      }
+
       res.json({ issuance: result, message: "Issuance created successfully with items" });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -5010,6 +5042,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      // Auto-generate journal entry for production (finished goods from manufacturing)
+      try {
+        const { journalForProductionEntry } = await import('./journal-service');
+        let costValue = 0;
+        if (validatedEntry.issuanceId) {
+          const issItemsResult: any[] = (await db.execute(sql`
+            SELECT rmii.quantity_issued, rm.unit_cost
+            FROM raw_material_issuance_items rmii
+            LEFT JOIN raw_materials rm ON rmii.raw_material_id = rm.id
+            WHERE rmii.issuance_id = ${validatedEntry.issuanceId}
+          `)).rows;
+          for (const item of issItemsResult) {
+            const qty = Number(item.quantity_issued) || 0;
+            const uc = Number(item.unit_cost) || 0;
+            costValue += qty * uc;
+          }
+        }
+        const productName = product?.productName || 'Unknown Product';
+        await journalForProductionEntry(productionEntry, productName, costValue);
+      } catch (journalError) {
+        console.error("[JOURNAL] Non-blocking: Failed to create journal for production entry:", journalError);
+      }
+
       res.json({ entry: productionEntry, message: "Production entry created successfully" });
     } catch (error) {
       if (error instanceof z.ZodError) {

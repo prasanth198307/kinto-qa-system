@@ -34,6 +34,9 @@ const SOURCE_LABELS: Record<string, string> = {
   write_off: "Write-Off",
   vendor_debit_note: "Vendor Debit Note",
   vdn_adjustment: "VDN Adjustment",
+  material_receipt: "Material Receipt",
+  material_issuance: "Material Issuance",
+  production_entry: "Production Output",
   manual: "Manual Entry",
 };
 
@@ -47,6 +50,9 @@ const SOURCE_COLORS: Record<string, string> = {
   expense: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
   write_off: "bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-200",
   vendor_debit_note: "bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-200",
+  material_receipt: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200",
+  material_issuance: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+  production_entry: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200",
   manual: "bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200",
 };
 
