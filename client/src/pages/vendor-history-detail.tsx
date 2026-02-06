@@ -253,6 +253,23 @@ export default function VendorHistoryDetailPage() {
       ? FILTER_OPTIONS.find(o => o.value === selectedFilters[0])?.label || selectedFilters[0]
       : `${selectedFilters.length} types selected`;
 
+  const hasFilters = selectedFilters.length > 0;
+  const filteredSummary = hasFilters ? {
+    totalInvoiced: filteredLedger.filter(e => e.type === 'invoice').reduce((sum, e) => sum + e.debit, 0),
+    invoiceCount: filteredLedger.filter(e => e.type === 'invoice').length,
+    totalPayments: filteredLedger.filter(e => e.type === 'payment').reduce((sum, e) => sum + e.credit, 0),
+    paymentCount: filteredLedger.filter(e => e.type === 'payment').length,
+    totalAdvances: filteredLedger.filter(e => e.type === 'advance').reduce((sum, e) => sum + e.credit, 0),
+    advanceCount: filteredLedger.filter(e => e.type === 'advance').length,
+    totalCredits: filteredLedger.filter(e => e.type === 'credit_note').reduce((sum, e) => sum + e.credit, 0),
+    creditNoteCount: filteredLedger.filter(e => e.type === 'credit_note').length,
+    totalDebits: filteredLedger.filter(e => e.type === 'debit_note').reduce((sum, e) => sum + e.debit, 0),
+    debitNoteCount: filteredLedger.filter(e => e.type === 'debit_note').length,
+    vendorDebitNoteAdjustments: filteredLedger.filter(e => e.type === 'vendor_debit_note_adjustment').reduce((sum, e) => sum + e.credit, 0),
+  } : null;
+
+  const s = filteredSummary || data?.summary;
+
   const handlePrint = () => {
     if (!data) return;
     
@@ -561,6 +578,12 @@ export default function VendorHistoryDetailPage() {
       </Card>
 
       {/* Summary Cards */}
+      {hasFilters && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Filter className="h-4 w-4" />
+          <span>Showing filtered totals for: {selectedFilters.map(f => FILTER_OPTIONS.find(o => o.value === f)?.label).join(', ')}</span>
+        </div>
+      )}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -573,10 +596,10 @@ export default function VendorHistoryDetailPage() {
             ) : (
               <>
                 <div className="text-xl font-bold" data-testid="text-summary-invoiced">
-                  {formatCurrency(data?.summary.totalInvoiced || 0)}
+                  {formatCurrency(s?.totalInvoiced || 0)}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {data?.summary.invoiceCount} invoices
+                  {s?.invoiceCount} invoices
                 </p>
               </>
             )}
@@ -594,10 +617,10 @@ export default function VendorHistoryDetailPage() {
             ) : (
               <>
                 <div className="text-xl font-bold text-green-600" data-testid="text-summary-payments">
-                  {formatCurrency(data?.summary.totalPayments || 0)}
+                  {formatCurrency(s?.totalPayments || 0)}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {data?.summary.paymentCount} payments
+                  {s?.paymentCount} payments
                 </p>
               </>
             )}
@@ -615,10 +638,10 @@ export default function VendorHistoryDetailPage() {
             ) : (
               <>
                 <div className="text-xl font-bold text-blue-600" data-testid="text-summary-advances">
-                  {formatCurrency(data?.summary.totalAdvances || 0)}
+                  {formatCurrency(s?.totalAdvances || 0)}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {data?.summary.advanceCount || 0} advance(s)
+                  {s?.advanceCount || 0} advance(s)
                 </p>
               </>
             )}
@@ -636,10 +659,10 @@ export default function VendorHistoryDetailPage() {
             ) : (
               <>
                 <div className="text-xl font-bold text-green-600" data-testid="text-summary-credits">
-                  {formatCurrency(data?.summary.totalCredits || 0)}
+                  {formatCurrency(s?.totalCredits || 0)}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {data?.summary.creditNoteCount} notes
+                  {s?.creditNoteCount} notes
                 </p>
               </>
             )}
@@ -657,10 +680,10 @@ export default function VendorHistoryDetailPage() {
             ) : (
               <>
                 <div className="text-xl font-bold text-orange-600" data-testid="text-summary-debits">
-                  {formatCurrency(data?.summary.totalDebits || 0)}
+                  {formatCurrency(s?.totalDebits || 0)}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {data?.summary.debitNoteCount} notes
+                  {s?.debitNoteCount} notes
                 </p>
               </>
             )}
@@ -678,7 +701,7 @@ export default function VendorHistoryDetailPage() {
             ) : (
               <>
                 <div className="text-xl font-bold text-purple-600" data-testid="text-summary-dn-adjustments">
-                  {formatCurrency(data?.summary.vendorDebitNoteAdjustments || 0)}
+                  {formatCurrency(s?.vendorDebitNoteAdjustments || 0)}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Vendor claims applied
@@ -698,15 +721,26 @@ export default function VendorHistoryDetailPage() {
               <Skeleton className="h-7 w-24" />
             ) : (
               <>
-                <div 
-                  className={`text-xl font-bold ${(data?.summary.currentBalance || 0) > 0 ? 'text-orange-600' : (data?.summary.currentBalance || 0) < 0 ? 'text-green-600' : ''}`}
-                  data-testid="text-summary-balance"
-                >
-                  {formatCurrency(data?.summary.currentBalance || 0)}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {(data?.summary.currentBalance || 0) > 0 ? 'Outstanding' : (data?.summary.currentBalance || 0) < 0 ? 'Credit Balance' : 'Settled'}
-                </p>
+                {hasFilters ? (
+                  <>
+                    <div className="text-xl font-bold" data-testid="text-summary-balance">
+                      {formatCurrency((s?.totalInvoiced || 0) + (s?.totalDebits || 0) - (s?.totalPayments || 0) - (s?.totalAdvances || 0) - (s?.totalCredits || 0) - (s?.vendorDebitNoteAdjustments || 0))}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Filtered balance</p>
+                  </>
+                ) : (
+                  <>
+                    <div 
+                      className={`text-xl font-bold ${(data?.summary.currentBalance || 0) > 0 ? 'text-orange-600' : (data?.summary.currentBalance || 0) < 0 ? 'text-green-600' : ''}`}
+                      data-testid="text-summary-balance"
+                    >
+                      {formatCurrency(data?.summary.currentBalance || 0)}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {(data?.summary.currentBalance || 0) > 0 ? 'Outstanding' : (data?.summary.currentBalance || 0) < 0 ? 'Credit Balance' : 'Settled'}
+                    </p>
+                  </>
+                )}
               </>
             )}
           </CardContent>
