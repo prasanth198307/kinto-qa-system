@@ -4989,10 +4989,13 @@ function FinishedGoodDialog({
       return;
     }
 
-    // Check if batch number already exists for new entries
+    // Check if batch number already exists for new entries (same batch + same date + same product = duplicate)
     setIsChecking(true);
     try {
-      const response = await fetch(`/api/finished-goods/check-batch/${encodeURIComponent(data.batchNumber)}`);
+      const params = new URLSearchParams();
+      if (data.productionDate) params.set('productionDate', data.productionDate);
+      if (data.productId) params.set('productId', data.productId);
+      const response = await fetch(`/api/finished-goods/check-batch/${encodeURIComponent(data.batchNumber)}?${params.toString()}`);
       const result = await response.json();
       
       if (result.exists) {

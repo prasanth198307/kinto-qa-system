@@ -4014,15 +4014,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Check if batch number already exists
+  // Check if batch number already exists (optionally with same production date)
   app.get('/api/finished-goods/check-batch/:batchNumber', isAuthenticated, async (req: any, res) => {
     try {
       const { batchNumber } = req.params;
+      const { productionDate, productId } = req.query;
       const goods = await storage.getAllFinishedGoods();
-      const existing = goods.find(g => 
-        g.batchNumber.toLowerCase() === batchNumber.toLowerCase() && 
-        g.recordStatus === 1
-      );
+      
+      // Find exact duplicate: same batch number + same production date + same product
+      const existing = goods.find(g => {
+        if (g.batchNumber.toLowerCase() !== batchNumber.toLowerCase()) return false;
+        if (g.recordStatus !== 1) return false;
+        
+        // If productionDate and productId are provided, only flag as duplicate when both match
+        if (productionDate && productId) {
+          const existingDate = new Date(g.productionDate).toISOString().split('T')[0];
+          const checkDate = new Date(productionDate as string).toISOString().split('T')[0];
+          return existingDate === checkDate && g.productId === productId;
+        }
+        
+        return true;
+      });
+      
       res.json({ 
         exists: !!existing,
         existingItem: existing ? {
