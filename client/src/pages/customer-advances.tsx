@@ -23,13 +23,16 @@ import {
 import {
   Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList
 } from "@/components/ui/command";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/hooks/use-permissions";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { 
   Plus, Search, IndianRupee, Calendar, User, FileText, 
-  CheckCircle, XCircle, ArrowRightLeft, Eye, ChevronsUpDown, Check, ArrowLeft
+  CheckCircle, XCircle, ArrowRightLeft, Eye, ChevronsUpDown, Check, ArrowLeft, Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Vendor, CustomerAdvance } from "@shared/schema";
@@ -67,12 +70,17 @@ export default function CustomerAdvancesPage() {
     remarks: "",
   });
 
-  // Apply advance form state
-  const [applyData, setApplyData] = useState({
-    invoiceId: "",
-    amount: "",
-    remarks: "",
-  });
+  // Apply advance form state - multi-invoice checkbox approach
+  interface SelectedInvoice {
+    id: string;
+    amount: number;
+    maxAmount: number;
+    label: string;
+    buyerName: string;
+  }
+  const [selectedInvoices, setSelectedInvoices] = useState<Record<string, SelectedInvoice>>({});
+  const [applyRemarks, setApplyRemarks] = useState("");
+  const [isApplying, setIsApplying] = useState(false);
 
   // Fetch customer advances
   const { data: advances = [], isLoading } = useQuery<AdvanceWithBalance[]>({
@@ -187,27 +195,73 @@ export default function CustomerAdvancesPage() {
     },
   });
 
-  // Apply advance mutation
-  const applyMutation = useMutation({
-    mutationFn: async (data: { advanceId: string; invoiceId: string; amount: number; remarks: string }) => {
-      const response = await apiRequest('POST', `/api/customer-advances/${data.advanceId}/apply`, {
-        invoiceId: data.invoiceId,
-        amount: data.amount,
-        remarks: data.remarks,
+  // Multi-invoice advance application helpers
+  const availableBalance = selectedAdvance ? selectedAdvance.availableBalance : 0;
+  const totalSelectedAmount = Object.values(selectedInvoices).reduce((sum, inv) => sum + inv.amount, 0);
+  const remainingToAllocate = availableBalance - totalSelectedAmount;
+
+  const handleToggleInvoice = (id: string, maxAmount: number, label: string, buyerName: string) => {
+    setSelectedInvoices(prev => {
+      if (prev[id]) {
+        const { [id]: removed, ...rest } = prev;
+        return rest;
+      } else {
+        const currentTotal = Object.values(prev).reduce((sum, inv) => sum + inv.amount, 0);
+        const remaining = availableBalance - currentTotal;
+        const autoAmount = Math.min(maxAmount, remaining);
+        return {
+          ...prev,
+          [id]: { id, amount: autoAmount > 0 ? autoAmount : 0, maxAmount, label, buyerName }
+        };
+      }
+    });
+  };
+
+  const handleInvoiceAmountChange = (id: string, value: number) => {
+    setSelectedInvoices(prev => {
+      if (!prev[id]) return prev;
+      const item = prev[id];
+      const clampedValue = Math.min(Math.max(0, value), item.maxAmount);
+      return {
+        ...prev,
+        [id]: { ...item, amount: clampedValue }
+      };
+    });
+  };
+
+  const handleApplyMultiple = async () => {
+    const items = Object.values(selectedInvoices).filter(item => item.amount > 0);
+    if (items.length === 0 || !selectedAdvance) return;
+    
+    if (totalSelectedAmount > availableBalance) {
+      toast({ title: "Error", description: "Total exceeds available balance", variant: "destructive" });
+      return;
+    }
+
+    setIsApplying(true);
+    try {
+      for (const item of items) {
+        await apiRequest('POST', `/api/customer-advances/${selectedAdvance.id}/apply`, {
+          invoiceId: item.id,
+          amount: item.amount,
+          remarks: applyRemarks || `Applied from advance ${selectedAdvance.advanceNumber}`,
+        });
+      }
+      toast({ 
+        title: "Success", 
+        description: `Advance applied to ${items.length} invoice(s) totaling ${formatCurrency(totalSelectedAmount)}` 
       });
-      return response;
-    },
-    onSuccess: () => {
-      toast({ title: "Success", description: "Advance applied to invoice successfully" });
       queryClient.invalidateQueries({ queryKey: ['/api/customer-advances'] });
       queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
       setShowApplyDialog(false);
-      setApplyData({ invoiceId: "", amount: "", remarks: "" });
-    },
-    onError: (error: Error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    },
-  });
+      setSelectedInvoices({});
+      setApplyRemarks("");
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || "Failed to apply advance", variant: "destructive" });
+    } finally {
+      setIsApplying(false);
+    }
+  };
 
   const resetForm = () => {
     setFormData({
@@ -231,18 +285,11 @@ export default function CustomerAdvancesPage() {
     createMutation.mutate(formData);
   };
 
-  const handleApplySubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedAdvance || !applyData.invoiceId || !applyData.amount) {
-      toast({ title: "Error", description: "Invoice and amount are required", variant: "destructive" });
-      return;
-    }
-    applyMutation.mutate({
-      advanceId: selectedAdvance.id,
-      invoiceId: applyData.invoiceId,
-      amount: Math.round(parseFloat(applyData.amount) * 100),
-      remarks: applyData.remarks,
-    });
+  const handleOpenApplyDialog = (advance: AdvanceWithBalance) => {
+    setSelectedAdvance(advance);
+    setSelectedInvoices({});
+    setApplyRemarks("");
+    setShowApplyDialog(true);
   };
 
   const getStatusBadge = (status: string) => {
@@ -460,14 +507,7 @@ export default function CustomerAdvancesPage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => {
-                                setSelectedAdvance(advance);
-                                setApplyData({
-                                  ...applyData,
-                                  amount: (advance.availableBalance / 100).toFixed(2),
-                                });
-                                setShowApplyDialog(true);
-                              }}
+                              onClick={() => handleOpenApplyDialog(advance)}
                               data-testid={`button-apply-${advance.id}`}
                             >
                               <ArrowRightLeft className="h-4 w-4" />
@@ -745,83 +785,196 @@ export default function CustomerAdvancesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Apply to Invoice Dialog */}
-      <Dialog open={showApplyDialog} onOpenChange={setShowApplyDialog}>
-        <DialogContent className="max-w-md">
+      {/* Apply to Invoice Dialog - Multi-select with checkboxes */}
+      <Dialog open={showApplyDialog} onOpenChange={(open) => {
+        setShowApplyDialog(open);
+        if (!open) {
+          setSelectedInvoices({});
+          setApplyRemarks("");
+        }
+      }}>
+        <DialogContent className="max-w-3xl max-h-[90vh]">
           <DialogHeader>
-            <DialogTitle>Apply Advance to Invoice</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <ArrowRightLeft className="h-5 w-5" />
+              Apply Advance to Invoices
+            </DialogTitle>
             <DialogDescription>
-              Apply {selectedAdvance && formatCurrency(selectedAdvance.availableBalance)} available 
-              from {selectedAdvance?.advanceNumber} to an invoice
+              Apply advance <span className="font-semibold">{selectedAdvance?.advanceNumber}</span> to pending invoices. 
+              Select one or more invoices and amounts will be auto-allocated.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleApplySubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Select Invoice *</Label>
-              <Select
-                value={applyData.invoiceId}
-                onValueChange={(v) => setApplyData({ ...applyData, invoiceId: v })}
-              >
-                <SelectTrigger data-testid="select-invoice">
-                  <SelectValue placeholder="Select invoice to apply" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.isArray(vendorInvoices) && vendorInvoices.map((inv: any) => (
-                    <SelectItem key={inv.id} value={inv.id}>
-                      {inv.invoiceNumber}{inv.vendorId !== selectedAdvance?.vendorId ? ` [${inv.buyerName || inv.vendorName || ''}]` : ''} - Outstanding: {formatCurrency(inv.outstanding)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+
+          <div className="space-y-4">
+            <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
+              <div>
+                <p className="text-sm text-muted-foreground">Advance Amount</p>
+                <p className="text-lg font-semibold">{selectedAdvance && formatCurrency(selectedAdvance.amount)}</p>
+              </div>
+              <Separator orientation="vertical" className="h-10" />
+              <div>
+                <p className="text-sm text-muted-foreground">Already Used</p>
+                <p className="text-lg font-semibold">{selectedAdvance && formatCurrency(selectedAdvance.usedAmount)}</p>
+              </div>
+              <Separator orientation="vertical" className="h-10" />
+              <div>
+                <p className="text-sm text-muted-foreground">Available Balance</p>
+                <p className="text-lg font-semibold text-primary">{selectedAdvance && formatCurrency(availableBalance)}</p>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Amount to Apply (₹) *</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min="0.01"
-                max={selectedAdvance ? selectedAdvance.availableBalance / 100 : undefined}
-                value={applyData.amount}
-                onChange={(e) => setApplyData({ ...applyData, amount: e.target.value })}
-                data-testid="input-apply-amount"
-              />
-              <p className="text-xs text-muted-foreground">
-                Maximum: {selectedAdvance && formatCurrency(selectedAdvance.availableBalance)}
-              </p>
-            </div>
+            {Object.keys(selectedInvoices).length > 0 && (
+              <div className={`p-3 border rounded-lg ${
+                totalSelectedAmount === availableBalance 
+                  ? "bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800" 
+                  : totalSelectedAmount > availableBalance 
+                    ? "bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800"
+                    : "bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-800"
+              }`}>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className={`text-sm font-medium ${
+                      totalSelectedAmount === availableBalance 
+                        ? "text-green-800 dark:text-green-200" 
+                        : totalSelectedAmount > availableBalance 
+                          ? "text-red-800 dark:text-red-200"
+                          : "text-yellow-800 dark:text-yellow-200"
+                    }`}>
+                      Allocating to {Object.keys(selectedInvoices).length} invoice(s)
+                    </p>
+                    <p className={`text-xs ${
+                      totalSelectedAmount === availableBalance 
+                        ? "text-green-600 dark:text-green-400" 
+                        : totalSelectedAmount > availableBalance 
+                          ? "text-red-600 dark:text-red-400"
+                          : "text-yellow-600 dark:text-yellow-400"
+                    }`}>
+                      Total: {formatCurrency(totalSelectedAmount)} | Remaining: {formatCurrency(remainingToAllocate)}
+                    </p>
+                  </div>
+                  {totalSelectedAmount > availableBalance && (
+                    <Badge variant="destructive">Exceeds Balance!</Badge>
+                  )}
+                  {totalSelectedAmount < availableBalance && totalSelectedAmount > 0 && (
+                    <Badge variant="outline" className="border-yellow-500 text-yellow-700 dark:text-yellow-400">
+                      Partial Application
+                    </Badge>
+                  )}
+                  {totalSelectedAmount === availableBalance && (
+                    <Badge variant="outline" className="border-green-500 text-green-700 dark:text-green-400">
+                      Fully Allocated
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            )}
 
-            <div className="space-y-2">
-              <Label>Remarks</Label>
-              <Textarea
-                value={applyData.remarks}
-                onChange={(e) => setApplyData({ ...applyData, remarks: e.target.value })}
-                placeholder="Optional notes..."
-                rows={2}
-                data-testid="input-apply-remarks"
-              />
-            </div>
+            <ScrollArea className="h-[320px] border rounded-md p-2">
+              {!vendorInvoices || vendorInvoices.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-muted-foreground py-12">
+                  <FileText className="h-8 w-8 mb-2" />
+                  <p>No pending invoices found for this customer</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {vendorInvoices.filter((inv: any) => inv.outstanding > 0).map((inv: any) => {
+                    const isSelected = !!selectedInvoices[inv.id];
+                    const selectedItem = selectedInvoices[inv.id];
+                    const isChildVendor = inv.vendorId !== selectedAdvance?.vendorId;
+                    return (
+                      <Card 
+                        key={inv.id} 
+                        className={`transition-colors ${isSelected ? "border-primary bg-primary/5" : ""}`}
+                        data-testid={`invoice-option-${inv.id}`}
+                      >
+                        <CardContent className="p-3">
+                          <div className="flex items-start gap-3">
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={() => handleToggleInvoice(inv.id, inv.outstanding, inv.invoiceNumber, inv.buyerName || inv.vendorName || '')}
+                              data-testid={`checkbox-invoice-${inv.id}`}
+                            />
+                            <div className="flex-1">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <p className="font-medium">
+                                    {inv.invoiceNumber}
+                                    {isChildVendor && (
+                                      <Badge variant="outline" className="ml-2 text-xs">{inv.buyerName || inv.vendorName || ''}</Badge>
+                                    )}
+                                  </p>
+                                  <p className="text-sm text-muted-foreground">
+                                    {inv.invoiceDate ? format(new Date(inv.invoiceDate), "dd MMM yyyy") : "N/A"}
+                                  </p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="font-medium">{formatCurrency(inv.outstanding)}</p>
+                                  <p className="text-xs text-muted-foreground">outstanding</p>
+                                </div>
+                              </div>
+                              {isSelected && (
+                                <div className="mt-2 flex items-center gap-2">
+                                  <Label className="text-xs whitespace-nowrap">Apply Amount:</Label>
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    className="h-8 w-32"
+                                    value={((selectedItem?.amount || 0) / 100).toFixed(2)}
+                                    onChange={(e) => handleInvoiceAmountChange(inv.id, Math.round(parseFloat(e.target.value || "0") * 100))}
+                                    data-testid={`input-amount-${inv.id}`}
+                                  />
+                                  <span className="text-xs text-muted-foreground">
+                                    max: {formatCurrency(inv.outstanding)}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </ScrollArea>
 
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setShowApplyDialog(false);
-                  setApplyData({ invoiceId: "", amount: "", remarks: "" });
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={applyMutation.isPending}
-                data-testid="button-apply-submit"
-              >
-                {applyMutation.isPending ? "Applying..." : "Apply Advance"}
-              </Button>
-            </DialogFooter>
-          </form>
+            {Object.keys(selectedInvoices).length > 0 && (
+              <div className="space-y-2">
+                <Label htmlFor="apply-remarks">Remarks (Optional)</Label>
+                <Textarea
+                  id="apply-remarks"
+                  value={applyRemarks}
+                  onChange={(e) => setApplyRemarks(e.target.value)}
+                  placeholder="Add any notes about this application..."
+                  className="resize-none"
+                  data-testid="input-apply-remarks"
+                />
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowApplyDialog(false)} data-testid="button-cancel-apply">
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleApplyMultiple} 
+              disabled={Object.keys(selectedInvoices).length === 0 || totalSelectedAmount <= 0 || totalSelectedAmount > availableBalance || isApplying}
+              data-testid="button-apply-submit"
+            >
+              {isApplying ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Applying...
+                </>
+              ) : (
+                <>
+                  <Check className="mr-2 h-4 w-4" />
+                  Apply to {Object.keys(selectedInvoices).length} Invoice(s)
+                </>
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
