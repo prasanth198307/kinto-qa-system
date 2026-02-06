@@ -10489,9 +10489,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           throw new Error("Invoice not found");
         }
         
-        // Check invoice belongs to same vendor
+        // Check invoice belongs to same vendor or child vendor
         if (invoice.vendorId !== advance.vendorId) {
-          throw new Error("Invoice does not belong to the same customer as the advance");
+          // Check if invoice vendor is a child of the advance vendor
+          const allVendors = await storage.getAllVendors();
+          const invoiceVendor = allVendors.find(v => v.id === invoice.vendorId);
+          const isChildOfAdvanceVendor = invoiceVendor?.parentVendorId === advance.vendorId;
+          // Also check if advance vendor is a child of the invoice vendor (reverse)
+          const advanceVendor = allVendors.find(v => v.id === advance.vendorId);
+          const isParentOfInvoiceVendor = advanceVendor?.parentVendorId === invoice.vendorId;
+          
+          if (!isChildOfAdvanceVendor && !isParentOfInvoiceVendor) {
+            throw new Error("Invoice does not belong to the same customer family as the advance");
+          }
         }
         
         // Create payment record

@@ -768,7 +768,7 @@ export default function CustomerAdvancesPage() {
                 <SelectContent>
                   {Array.isArray(vendorInvoices) && vendorInvoices.map((inv: any) => (
                     <SelectItem key={inv.id} value={inv.id}>
-                      {inv.invoiceNumber} - Outstanding: {formatCurrency(inv.outstanding)} (of {formatCurrency(inv.invoiceTotal)})
+                      {inv.invoiceNumber}{inv.vendorId !== selectedAdvance?.vendorId ? ` [${inv.buyerName || inv.vendorName || ''}]` : ''} - Outstanding: {formatCurrency(inv.outstanding)}
                     </SelectItem>
                   ))}
                 </SelectContent>
