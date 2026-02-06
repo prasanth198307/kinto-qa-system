@@ -69,6 +69,9 @@ const navItemToScreenKey: Record<string, string> = {
   'data-import': 'data_import',
   'chart-of-accounts': 'chart_of_accounts',
   'journal-entries': 'journal_entries',
+  'journal-entry-new': 'manual_journal_entry',
+  'trial-balance': 'trial_balance',
+  'profit-loss': 'profit_loss',
 };
 
 const screenPermissions: Record<string, { admin: boolean; manager: boolean; operator: boolean; reviewer: boolean }> = {
