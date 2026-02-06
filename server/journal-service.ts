@@ -4,6 +4,7 @@ import {
   chartOfAccounts,
   journalEntries,
   journalLines,
+  roles,
   type InsertJournalEntry,
   type InsertJournalLine,
   type JournalEntry,
@@ -138,6 +139,41 @@ export async function seedChartOfAccounts(): Promise<void> {
     }
   }
   console.log('[COA SEED] Chart of Accounts seeding complete');
+
+  await seedAccountingPermissions();
+}
+
+const ACCOUNTING_SCREEN_KEYS = ['chart_of_accounts', 'journal_entries', 'manual_journal_entry'];
+
+async function seedAccountingPermissions(): Promise<void> {
+  try {
+    const defaultRoleNames = ['admin', 'manager'];
+    const allRoles = await db.select().from(roles).where(
+      sql`lower(${roles.name}) IN ('admin', 'manager')`
+    );
+
+    for (const role of allRoles) {
+      const existingPerms = await storage.getRolePermissions(role.id);
+      const existingKeys = new Set(existingPerms.map(p => p.screenKey));
+
+      for (const screenKey of ACCOUNTING_SCREEN_KEYS) {
+        if (!existingKeys.has(screenKey)) {
+          const isAdmin = role.name.toLowerCase() === 'admin';
+          await storage.createRolePermission({
+            roleId: role.id,
+            screenKey,
+            canView: 1,
+            canCreate: 1,
+            canEdit: isAdmin ? 1 : (screenKey === 'manual_journal_entry' ? 0 : 1),
+            canDelete: isAdmin ? 1 : 0,
+          });
+          console.log(`[COA SEED] Added ${screenKey} permission for role ${role.name}`);
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[COA SEED] Error seeding accounting permissions:', err);
+  }
 }
 
 // Cache for account IDs by code
