@@ -20,11 +20,6 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import { 
   ArrowLeft,
   Building2,
@@ -694,127 +689,374 @@ export default function VendorHistoryDetailPage() {
         </Card>
       </div>
 
-      {/* Ledger Table */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5 print:hidden" />
+      {/* Tabs: Ledger View + Invoice Transactions */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="ledger" className="gap-2" data-testid="tab-ledger">
+            <Calendar className="h-4 w-4" />
             Transaction Ledger
-          </CardTitle>
-          <Select value={filterType} onValueChange={setFilterType}>
-            <SelectTrigger className="w-[180px] print:hidden" data-testid="select-filter-type">
-              <SelectValue placeholder="Filter by type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Transactions</SelectItem>
-              <SelectItem value="invoice">Invoices Only</SelectItem>
-              <SelectItem value="payment">Payments Only</SelectItem>
-              <SelectItem value="advance">Advances Only</SelectItem>
-              <SelectItem value="credit_note">Credit Notes Only</SelectItem>
-              <SelectItem value="debit_note">Debit Notes Only</SelectItem>
-            </SelectContent>
-          </Select>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[110px]">Date</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Reference</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead className="text-right">Debit</TableHead>
-                  <TableHead className="text-right">Credit</TableHead>
-                  <TableHead className="text-right">Balance</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                      <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                      <TableCell><Skeleton className="h-5 w-28" /></TableCell>
-                      <TableCell><Skeleton className="h-5 w-40" /></TableCell>
-                      <TableCell><Skeleton className="h-5 w-24 ml-auto" /></TableCell>
-                      <TableCell><Skeleton className="h-5 w-24 ml-auto" /></TableCell>
-                      <TableCell><Skeleton className="h-5 w-24 ml-auto" /></TableCell>
+          </TabsTrigger>
+          <TabsTrigger value="transactions" className="gap-2" data-testid="tab-transactions">
+            <FileText className="h-4 w-4" />
+            Invoice Transactions
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Ledger Tab - Existing View */}
+        <TabsContent value="ledger">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5 print:hidden" />
+                Transaction Ledger
+              </CardTitle>
+              <Select value={filterType} onValueChange={setFilterType}>
+                <SelectTrigger className="w-[180px] print:hidden" data-testid="select-filter-type">
+                  <SelectValue placeholder="Filter by type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Transactions</SelectItem>
+                  <SelectItem value="invoice">Invoices Only</SelectItem>
+                  <SelectItem value="payment">Payments Only</SelectItem>
+                  <SelectItem value="advance">Advances Only</SelectItem>
+                  <SelectItem value="credit_note">Credit Notes Only</SelectItem>
+                  <SelectItem value="debit_note">Debit Notes Only</SelectItem>
+                </SelectContent>
+              </Select>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[110px]">Date</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Reference</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead className="text-right">Debit</TableHead>
+                      <TableHead className="text-right">Credit</TableHead>
+                      <TableHead className="text-right">Balance</TableHead>
                     </TableRow>
-                  ))
-                ) : filteredLedger.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                      No transactions found
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredLedger.map((entry, index) => (
-                    <TableRow key={`${entry.type}-${entry.id}`} data-testid={`row-ledger-${index}`}>
-                      <TableCell className="text-sm">
-                        {formatDate(entry.date)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {getTypeIcon(entry.type)}
-                          {getTypeBadge(entry.type)}
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-mono text-sm">
-                        {entry.reference}
-                      </TableCell>
-                      <TableCell className="max-w-[250px] truncate text-sm text-muted-foreground">
-                        {entry.description}
-                        {entry.reason && (
-                          <span className="block text-xs">Reason: {entry.reason}</span>
-                        )}
-                        {entry.paymentMode && (
-                          <span className="block text-xs">Mode: {entry.paymentMode}</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {entry.debit > 0 ? (
-                          <span className="text-red-600">{formatCurrency(entry.debit)}</span>
-                        ) : '-'}
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {entry.credit > 0 ? (
-                          <span className="text-green-600">{formatCurrency(entry.credit)}</span>
-                        ) : '-'}
-                      </TableCell>
-                      <TableCell className="text-right font-semibold">
-                        <span className={entry.balance > 0 ? 'text-orange-600' : entry.balance < 0 ? 'text-green-600' : ''}>
-                          {formatCurrency(entry.balance)}
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-          
-          {/* Balance Summary Footer */}
-          {!isLoading && filteredLedger.length > 0 && (
-            <div className="border-t px-4 py-3 bg-muted/30">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">
-                  Showing {filteredLedger.length} transactions
-                </span>
-                <div className="text-right">
-                  <span className="text-sm text-muted-foreground">Closing Balance: </span>
-                  <span 
-                    className={`font-bold ${(data?.summary.currentBalance || 0) > 0 ? 'text-orange-600' : (data?.summary.currentBalance || 0) < 0 ? 'text-green-600' : ''}`}
-                    data-testid="text-closing-balance"
-                  >
-                    {formatCurrency(data?.summary.currentBalance || 0)}
-                  </span>
-                </div>
+                  </TableHeader>
+                  <TableBody>
+                    {isLoading ? (
+                      Array.from({ length: 5 }).map((_, i) => (
+                        <TableRow key={i}>
+                          <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                          <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                          <TableCell><Skeleton className="h-5 w-28" /></TableCell>
+                          <TableCell><Skeleton className="h-5 w-40" /></TableCell>
+                          <TableCell><Skeleton className="h-5 w-24 ml-auto" /></TableCell>
+                          <TableCell><Skeleton className="h-5 w-24 ml-auto" /></TableCell>
+                          <TableCell><Skeleton className="h-5 w-24 ml-auto" /></TableCell>
+                        </TableRow>
+                      ))
+                    ) : filteredLedger.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                          No transactions found
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredLedger.map((entry, index) => (
+                        <TableRow key={`${entry.type}-${entry.id}`} data-testid={`row-ledger-${index}`}>
+                          <TableCell className="text-sm">
+                            {formatDate(entry.date)}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              {getTypeIcon(entry.type)}
+                              {getTypeBadge(entry.type)}
+                            </div>
+                          </TableCell>
+                          <TableCell className="font-mono text-sm">
+                            {entry.reference}
+                          </TableCell>
+                          <TableCell className="max-w-[250px] truncate text-sm text-muted-foreground">
+                            {entry.description}
+                            {entry.reason && (
+                              <span className="block text-xs">Reason: {entry.reason}</span>
+                            )}
+                            {entry.paymentMode && (
+                              <span className="block text-xs">Mode: {entry.paymentMode}</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            {entry.debit > 0 ? (
+                              <span className="text-red-600">{formatCurrency(entry.debit)}</span>
+                            ) : '-'}
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            {entry.credit > 0 ? (
+                              <span className="text-green-600">{formatCurrency(entry.credit)}</span>
+                            ) : '-'}
+                          </TableCell>
+                          <TableCell className="text-right font-semibold">
+                            <span className={entry.balance > 0 ? 'text-orange-600' : entry.balance < 0 ? 'text-green-600' : ''}>
+                              {formatCurrency(entry.balance)}
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
               </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              
+              {!isLoading && filteredLedger.length > 0 && (
+                <div className="border-t px-4 py-3 bg-muted/30">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">
+                      Showing {filteredLedger.length} transactions
+                    </span>
+                    <div className="text-right">
+                      <span className="text-sm text-muted-foreground">Closing Balance: </span>
+                      <span 
+                        className={`font-bold ${(data?.summary.currentBalance || 0) > 0 ? 'text-orange-600' : (data?.summary.currentBalance || 0) < 0 ? 'text-green-600' : ''}`}
+                        data-testid="text-closing-balance"
+                      >
+                        {formatCurrency(data?.summary.currentBalance || 0)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Invoice Transactions Tab - New View */}
+        <TabsContent value="transactions">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Invoice Transactions
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                <Select value={txnFilter} onValueChange={setTxnFilter}>
+                  <SelectTrigger className="w-[180px]" data-testid="select-txn-filter">
+                    <SelectValue placeholder="Filter" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Invoices</SelectItem>
+                    <SelectItem value="pending">Pending Only</SelectItem>
+                    <SelectItem value="settled">Settled Only</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => {
+                    const allIds = filteredTxnInvoices.reduce((acc, inv) => {
+                      acc[inv.invoiceId] = true;
+                      return acc;
+                    }, {} as Record<string, boolean>);
+                    const allExpanded = filteredTxnInvoices.every(inv => expandedInvoices[inv.invoiceId]);
+                    setExpandedInvoices(allExpanded ? {} : allIds);
+                  }}
+                  data-testid="button-expand-all"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              {txnLoading ? (
+                <div className="p-6 space-y-4">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <Skeleton key={i} className="h-16 w-full" />
+                  ))}
+                </div>
+              ) : filteredTxnInvoices.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground">
+                  No invoices found
+                </div>
+              ) : (
+                <div className="divide-y">
+                  {filteredTxnInvoices.map((inv) => {
+                    const isExpanded = expandedInvoices[inv.invoiceId];
+                    const statusIcon = inv.outstanding <= 0 
+                      ? <CheckCircle className="h-4 w-4 text-green-500" />
+                      : inv.totalSettled > 0 
+                        ? <Clock className="h-4 w-4 text-yellow-500" /> 
+                        : <AlertCircle className="h-4 w-4 text-red-500" />;
+                    
+                    return (
+                      <div key={inv.invoiceId} data-testid={`txn-invoice-${inv.invoiceId}`}>
+                        <div 
+                          className="flex items-center gap-3 px-4 py-3 cursor-pointer hover-elevate"
+                          onClick={() => toggleInvoiceExpanded(inv.invoiceId)}
+                          data-testid={`txn-row-${inv.invoiceId}`}
+                        >
+                          <div className="flex-shrink-0">
+                            {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                          </div>
+                          <div className="flex-shrink-0">{statusIcon}</div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-mono font-medium text-sm">{inv.invoiceNumber}</span>
+                              <span className="text-xs text-muted-foreground">{formatDate(inv.invoiceDate)}</span>
+                              {inv.isChildVendor && (
+                                <Badge variant="outline" className="text-xs">{inv.buyerName}</Badge>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-4 text-sm">
+                            <div className="text-right">
+                              <span className="text-muted-foreground">Total: </span>
+                              <span className="font-medium">{formatCurrency(inv.effectiveTotal)}</span>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-muted-foreground">Settled: </span>
+                              <span className="font-medium text-green-600">{formatCurrency(inv.totalSettled)}</span>
+                            </div>
+                            <div className="text-right min-w-[100px]">
+                              <span className={`font-semibold ${inv.outstanding > 0 ? 'text-orange-600' : 'text-green-600'}`}>
+                                {inv.outstanding > 0 ? formatCurrency(inv.outstanding) : 'Settled'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {isExpanded && (
+                          <div className="px-4 pb-4 pl-12">
+                            {inv.allocations.length === 0 ? (
+                              <p className="text-sm text-muted-foreground py-2">No payments or adjustments recorded</p>
+                            ) : (
+                              <div className="border rounded-md overflow-hidden">
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow className="bg-muted/50">
+                                      <TableHead className="text-xs py-2">Date</TableHead>
+                                      <TableHead className="text-xs py-2">Type</TableHead>
+                                      <TableHead className="text-xs py-2">Reference</TableHead>
+                                      <TableHead className="text-xs py-2">Details</TableHead>
+                                      <TableHead className="text-xs py-2 text-right">Amount</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {inv.allocations.map((alloc, idx) => {
+                                      const getAllocBadge = () => {
+                                        switch (alloc.type) {
+                                          case 'payment':
+                                            return <Badge variant="outline" className="text-xs text-green-600 border-green-200">Payment</Badge>;
+                                          case 'debit_note_adjustment':
+                                            return <Badge variant="outline" className="text-xs text-purple-600 border-purple-200">DN Adjustment</Badge>;
+                                          case 'advance_application':
+                                            return <Badge variant="outline" className="text-xs text-blue-600 border-blue-200">Advance</Badge>;
+                                          case 'credit_note':
+                                            return <Badge variant="outline" className="text-xs text-green-600 border-green-200">Credit Note</Badge>;
+                                          case 'debit_note':
+                                            return <Badge variant="outline" className="text-xs text-orange-600 border-orange-200">Debit Note</Badge>;
+                                          default:
+                                            return <Badge variant="outline" className="text-xs">{alloc.type}</Badge>;
+                                        }
+                                      };
+                                      
+                                      const getDetails = () => {
+                                        switch (alloc.type) {
+                                          case 'payment':
+                                            return (
+                                              <div className="text-xs text-muted-foreground">
+                                                <span>{alloc.method || 'Cash'}</span>
+                                                {alloc.bankName && <span> - {alloc.bankName}</span>}
+                                                {alloc.payerName && <span> (Paid by: {alloc.payerName})</span>}
+                                              </div>
+                                            );
+                                          case 'debit_note_adjustment':
+                                            return <span className="text-xs text-muted-foreground">Vendor DN: {alloc.reference}</span>;
+                                          case 'advance_application':
+                                            return <span className="text-xs text-muted-foreground">From: {alloc.advanceNumber}</span>;
+                                          case 'credit_note':
+                                            return (
+                                              <div className="text-xs text-muted-foreground">
+                                                {alloc.noteNumber}
+                                                {alloc.reason && <span> - {alloc.reason}</span>}
+                                              </div>
+                                            );
+                                          case 'debit_note':
+                                            return (
+                                              <div className="text-xs text-muted-foreground">
+                                                {alloc.noteNumber}
+                                                {alloc.reason && <span> - {alloc.reason}</span>}
+                                              </div>
+                                            );
+                                          default:
+                                            return null;
+                                        }
+                                      };
+
+                                      const isAddition = alloc.type === 'debit_note';
+                                      
+                                      return (
+                                        <TableRow key={`${alloc.type}-${alloc.id}-${idx}`} data-testid={`alloc-row-${alloc.id}`}>
+                                          <TableCell className="text-xs py-2">{formatDate(alloc.date)}</TableCell>
+                                          <TableCell className="py-2">{getAllocBadge()}</TableCell>
+                                          <TableCell className="text-xs py-2 font-mono">
+                                            {alloc.reference || alloc.advanceNumber || alloc.noteNumber || '-'}
+                                          </TableCell>
+                                          <TableCell className="py-2">{getDetails()}</TableCell>
+                                          <TableCell className={`text-xs py-2 text-right font-medium ${isAddition ? 'text-orange-600' : 'text-green-600'}`}>
+                                            {isAddition ? '+' : '-'}{formatCurrency(alloc.amount)}
+                                          </TableCell>
+                                        </TableRow>
+                                      );
+                                    })}
+                                  </TableBody>
+                                </Table>
+                                <div className="border-t px-3 py-2 bg-muted/30 flex justify-between items-center text-xs">
+                                  <span className="text-muted-foreground">
+                                    Invoice Total: {formatCurrency(inv.totalAmount)}
+                                    {inv.totalDebits > 0 && <span className="text-orange-600"> + DN {formatCurrency(inv.totalDebits)}</span>}
+                                    {inv.totalCredits > 0 && <span className="text-green-600"> - CN {formatCurrency(inv.totalCredits)}</span>}
+                                    {' = '}{formatCurrency(inv.effectiveTotal)}
+                                  </span>
+                                  <span className={`font-semibold ${inv.outstanding > 0 ? 'text-orange-600' : 'text-green-600'}`}>
+                                    Outstanding: {formatCurrency(inv.outstanding)}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              
+              {!txnLoading && filteredTxnInvoices.length > 0 && (
+                <div className="border-t px-4 py-3 bg-muted/30">
+                  <div className="flex justify-between items-center flex-wrap gap-2">
+                    <span className="text-sm text-muted-foreground">
+                      {filteredTxnInvoices.length} invoice(s)
+                    </span>
+                    <div className="flex items-center gap-4 text-sm">
+                      <span>
+                        <span className="text-muted-foreground">Total: </span>
+                        <span className="font-medium">{formatCurrency(txnData?.summary.totalInvoiceAmount || 0)}</span>
+                      </span>
+                      <span>
+                        <span className="text-muted-foreground">Settled: </span>
+                        <span className="font-medium text-green-600">
+                          {formatCurrency((txnData?.summary.totalPayments || 0) + (txnData?.summary.totalDnAdjustments || 0) + (txnData?.summary.totalAdvances || 0))}
+                        </span>
+                      </span>
+                      <span>
+                        <span className="text-muted-foreground">Outstanding: </span>
+                        <span className={`font-bold ${(txnData?.summary.totalOutstanding || 0) > 0 ? 'text-orange-600' : 'text-green-600'}`}>
+                          {formatCurrency(txnData?.summary.totalOutstanding || 0)}
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
