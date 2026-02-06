@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, ChevronDown, ChevronRight, Edit, Trash2, Lock, Calendar } from "lucide-react";
+import { Plus, Search, ChevronDown, ChevronRight, Edit, Trash2, Lock, Calendar, Download } from "lucide-react";
 
 interface ChartAccount {
   id: string;
@@ -231,6 +231,44 @@ export default function ChartOfAccountsPage() {
     });
   }
 
+  function downloadExcel() {
+    const typeLabel = (t: string) => ACCOUNT_TYPES.find(at => at.value === t)?.label || t;
+    const rows = accounts
+      .sort((a, b) => a.code.localeCompare(b.code))
+      .map(a => ({
+        'Account Code': a.code,
+        'Account Name': a.name,
+        'Type': typeLabel(a.accountType),
+        'Sub Type': a.subType || '',
+        'Opening Balance': (Number(a.openingBalance) || 0) / 100,
+        'Period Debit': (Number(a.periodDebit) || 0) / 100,
+        'Period Credit': (Number(a.periodCredit) || 0) / 100,
+        'Current Balance': (Number(a.currentBalance) || 0) / 100,
+      }));
+
+    const headers = Object.keys(rows[0] || {});
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => headers.map(h => {
+        const val = (row as any)[h];
+        if (typeof val === 'string' && (val.includes(',') || val.includes('"'))) {
+          return `"${val.replace(/"/g, '""')}"`;
+        }
+        return val;
+      }).join(','))
+    ].join('\n');
+
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Chart_of_Accounts_FY_${selectedFY}-${String(parseInt(selectedFY) + 1).slice(2)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "Downloaded", description: "Chart of Accounts exported as CSV (opens in Excel)" });
+  }
+
   const filteredAccounts = accounts.filter(a => {
     const matchesSearch = !searchQuery ||
       a.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -281,6 +319,9 @@ export default function ChartOfAccountsPage() {
               ))}
             </SelectContent>
           </Select>
+          <Button variant="outline" onClick={downloadExcel} data-testid="button-download-coa">
+            <Download className="w-4 h-4 mr-1" /> Download Excel
+          </Button>
           <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setEditAccount(null); resetForm(); } }}>
             <DialogTrigger asChild>
               <Button data-testid="button-add-account">
