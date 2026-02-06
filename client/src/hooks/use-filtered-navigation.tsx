@@ -71,6 +71,7 @@ const navItemToScreenKey: Record<string, string> = {
   'chart-of-accounts': 'chart_of_accounts',
   'journal-entries': 'journal_entries',
   'journal-entry-new': 'manual_journal_entry',
+  'bank-transactions': 'journal_entries',
   'trial-balance': 'trial_balance',
   'profit-loss': 'profit_loss',
 };
@@ -154,6 +155,9 @@ const navItemToScreen: Record<string, string> = {
   'data-import': 'User Management',
   'chart-of-accounts': 'Purchase Orders',
   'journal-entries': 'Purchase Orders',
+  'bank-transactions': 'Purchase Orders',
+  'trial-balance': 'Purchase Orders',
+  'profit-loss': 'Purchase Orders',
 };
 
 function canAccessNavItemForDefaultRole(itemId: string, role: string): boolean {
