@@ -20310,6 +20310,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const CATEGORY_RULES: CategoryRule[] = [
     { pattern: /ANANTHRAJ|POLAMARASETTY/i, category: 'director_loan', accountCode: '2402A', accountName: 'Loan - AnanthRaj Polamarasetty', type: 'credit' },
+    { pattern: /CHINTALAPUDI\s*ANURADHA|ANURADHA\s*CHINTALAPUDI/i, category: 'director_loan', accountCode: '2402I', accountName: 'Loan - Chintalapudi Anuradha', type: 'credit' },
     { pattern: /CHINTALAPUDI|SYAM\s*SRINIVAS/i, category: 'director_loan', accountCode: '2402B', accountName: 'Loan - Chintalapudi Syam Srinivas', type: 'credit' },
     { pattern: /DUSIPRAS|DUSI\s*PRA|PRASANTH\s*KUMAR/i, category: 'director_loan', accountCode: '2402C', accountName: 'Loan - Dusi Prasanth Kumar', type: 'credit' },
     { pattern: /PALLAVI|PATHIVADA/i, category: 'director_loan', accountCode: '2402D', accountName: 'Loan - Pallavi Pathivada', type: 'credit' },
