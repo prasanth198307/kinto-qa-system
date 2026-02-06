@@ -72,14 +72,6 @@ const SUB_TYPES: Record<string, { value: string; label: string }[]> = {
   ],
 };
 
-const TYPE_COLORS: Record<string, string> = {
-  asset: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-  liability: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
-  equity: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
-  revenue: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-  expense: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
-};
-
 function getCurrentFY(): string {
   const now = new Date();
   const year = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
@@ -89,6 +81,11 @@ function getCurrentFY(): string {
 function getFYLabel(startYear: string): string {
   const y = parseInt(startYear);
   return `FY ${y}-${String(y + 1).slice(2)}`;
+}
+
+function getFYShortLabel(startYear: string): string {
+  const y = parseInt(startYear);
+  return `${y}-${String(y + 1).slice(2)}`;
 }
 
 function getAvailableFYs(): string[] {
@@ -102,9 +99,24 @@ function getAvailableFYs(): string[] {
 
 function formatAmount(paise: number | null | undefined): string {
   const val = Number(paise) || 0;
-  if (val === 0) return "—";
+  if (val === 0) return "-";
   const abs = Math.abs(val);
-  const formatted = `₹${(abs / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
+  const formatted = (abs / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 });
+  return val < 0 ? `(${formatted})` : formatted;
+}
+
+function formatAmountCompact(paise: number | null | undefined): string {
+  const val = Number(paise) || 0;
+  if (val === 0) return "-";
+  const rupees = Math.abs(val) / 100;
+  let formatted: string;
+  if (rupees >= 10000000) {
+    formatted = (rupees / 10000000).toFixed(2) + " Cr";
+  } else if (rupees >= 100000) {
+    formatted = (rupees / 100000).toFixed(2) + " L";
+  } else {
+    formatted = rupees.toLocaleString("en-IN", { minimumFractionDigits: 2 });
+  }
   return val < 0 ? `(${formatted})` : formatted;
 }
 
@@ -248,7 +260,6 @@ export default function ChartOfAccountsPage() {
     );
   }
 
-  const fyLabel = getFYLabel(selectedFY);
   const fyStartYear = parseInt(selectedFY);
 
   return (
@@ -256,11 +267,11 @@ export default function ChartOfAccountsPage() {
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-xl font-semibold" data-testid="text-page-title">Chart of Accounts</h1>
-          <p className="text-sm text-muted-foreground">{accounts.length} accounts &middot; {fyLabel} (Apr {fyStartYear} — Mar {fyStartYear + 1})</p>
+          <p className="text-sm text-muted-foreground">{accounts.length} accounts &middot; Apr {fyStartYear} &ndash; Mar {fyStartYear + 1}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Select value={selectedFY} onValueChange={setSelectedFY}>
-            <SelectTrigger className="w-[140px]" data-testid="select-financial-year">
+            <SelectTrigger className="w-[160px]" data-testid="select-financial-year">
               <Calendar className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
               <SelectValue />
             </SelectTrigger>
@@ -389,15 +400,17 @@ export default function ChartOfAccountsPage() {
         {typeTotals.map(t => (
           <Card key={t.value} className="cursor-pointer hover-elevate" onClick={() => setFilterType(filterType === t.value ? "all" : t.value)}>
             <CardContent className="p-3">
-              <div className="text-xs text-muted-foreground uppercase">{t.label}</div>
-              <div className="text-sm font-semibold">{t.count} accounts</div>
-              <div className="text-xs font-mono tabular-nums text-muted-foreground mt-0.5">{formatAmount(t.totalBalance)}</div>
+              <div className="text-xs text-muted-foreground uppercase tracking-wide">{t.label}</div>
+              <div className="text-sm font-semibold mt-0.5">{t.count} accounts</div>
+              <div className="text-xs text-muted-foreground mt-0.5 font-mono tabular-nums">
+                {t.totalBalance !== 0 ? `\u20B9${formatAmountCompact(t.totalBalance)}` : "-"}
+              </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-3">
         {ACCOUNT_TYPES.filter(type => filterType === "all" || filterType === type.value).map(type => {
           const group = groupedAccounts[type.value] || [];
           if (group.length === 0) return null;
@@ -415,93 +428,98 @@ export default function ChartOfAccountsPage() {
                 <div className="flex items-center gap-2">
                   {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                   <span className="font-medium">{type.label}</span>
-                  <Badge variant="secondary" className={TYPE_COLORS[type.value]}>{group.length}</Badge>
+                  <Badge variant="secondary">{group.length}</Badge>
                 </div>
-                <span className="text-sm font-mono tabular-nums">{formatAmount(groupTotal)}</span>
+                <span className="text-sm font-mono tabular-nums font-medium">{formatAmount(groupTotal)}</span>
               </div>
               {isExpanded && (
                 <CardContent className="p-0 border-t">
-                  <div className="hidden sm:grid grid-cols-[1fr_100px_100px_100px_100px_72px] gap-2 px-4 py-1.5 text-xs text-muted-foreground font-medium border-b bg-muted/30">
-                    <span>Account</span>
-                    {isBs && <span className="text-right">Opening</span>}
-                    {!isBs && <span className="text-right">Debit</span>}
-                    <span className="text-right">{isBs ? "Debit" : "Credit"}</span>
-                    <span className="text-right">{isBs ? "Credit" : "Movement"}</span>
-                    <span className="text-right">Closing</span>
-                    <span></span>
-                  </div>
-                  <div className="divide-y">
-                    {group.map(account => (
-                      <div
-                        key={account.id}
-                        className="grid grid-cols-1 sm:grid-cols-[1fr_100px_100px_100px_100px_72px] gap-1 sm:gap-2 items-center px-4 py-2 hover-elevate"
-                        data-testid={`row-account-${account.code}`}
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono shrink-0">{account.code}</code>
-                          <span className="text-sm truncate">{account.name}</span>
-                          {account.isSystemAccount === 1 && (
-                            <Lock className="w-3 h-3 text-muted-foreground shrink-0" />
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm" data-testid={`table-${type.value}`}>
+                      <thead>
+                        <tr className="border-b bg-muted/30">
+                          <th className="text-left px-4 py-2 text-xs font-medium text-muted-foreground whitespace-nowrap">Account</th>
+                          {isBs && (
+                            <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground whitespace-nowrap w-[130px]">Opening</th>
                           )}
-                          {account.subType && (
-                            <span className="text-xs text-muted-foreground hidden md:inline">
-                              {account.subType.replace(/_/g, " ")}
-                            </span>
+                          <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground whitespace-nowrap w-[130px]">Debit</th>
+                          <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground whitespace-nowrap w-[130px]">Credit</th>
+                          {!isBs && (
+                            <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground whitespace-nowrap w-[130px]">Net Movement</th>
                           )}
-                        </div>
-                        {isBs ? (
-                          <>
-                            <span className="text-xs sm:text-sm font-mono tabular-nums text-right text-muted-foreground" data-testid={`opening-${account.code}`}>
-                              {formatAmount(account.openingBalance)}
-                            </span>
-                            <span className="text-xs sm:text-sm font-mono tabular-nums text-right" data-testid={`debit-${account.code}`}>
-                              {formatAmount(account.periodDebit)}
-                            </span>
-                            <span className="text-xs sm:text-sm font-mono tabular-nums text-right" data-testid={`credit-${account.code}`}>
-                              {formatAmount(account.periodCredit)}
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <span className="text-xs sm:text-sm font-mono tabular-nums text-right" data-testid={`debit-${account.code}`}>
-                              {formatAmount(account.periodDebit)}
-                            </span>
-                            <span className="text-xs sm:text-sm font-mono tabular-nums text-right" data-testid={`credit-${account.code}`}>
-                              {formatAmount(account.periodCredit)}
-                            </span>
-                            <span className="text-xs sm:text-sm font-mono tabular-nums text-right" data-testid={`movement-${account.code}`}>
-                              {formatAmount(account.periodMovement)}
-                            </span>
-                          </>
-                        )}
-                        <div className="flex items-center justify-end gap-1">
-                          <span className="text-sm font-mono tabular-nums font-medium" data-testid={`closing-${account.code}`}>
-                            {formatAmount(account.currentBalance)}
-                          </span>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={(e) => { e.stopPropagation(); openEditDialog(account); }}
-                            data-testid={`button-edit-${account.code}`}
+                          <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground whitespace-nowrap w-[130px]">Closing</th>
+                          <th className="w-[60px] px-2"></th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {group.map(account => (
+                          <tr
+                            key={account.id}
+                            className="hover-elevate"
+                            data-testid={`row-account-${account.code}`}
                           >
-                            <Edit className="w-3.5 h-3.5" />
-                          </Button>
-                          {account.isSystemAccount !== 1 && (
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (confirm("Delete this account?")) deleteMutation.mutate(account.id);
-                              }}
-                              data-testid={`button-delete-${account.code}`}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                            <td className="px-4 py-2.5">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono shrink-0">{account.code}</code>
+                                <span className="truncate">{account.name}</span>
+                                {account.isSystemAccount === 1 && (
+                                  <Lock className="w-3 h-3 text-muted-foreground shrink-0" />
+                                )}
+                                {account.subType && (
+                                  <span className="text-xs text-muted-foreground hidden lg:inline shrink-0">
+                                    {account.subType.replace(/_/g, " ")}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            {isBs && (
+                              <td className="text-right px-3 py-2.5 font-mono tabular-nums text-muted-foreground whitespace-nowrap" data-testid={`opening-${account.code}`}>
+                                {formatAmount(account.openingBalance)}
+                              </td>
+                            )}
+                            <td className="text-right px-3 py-2.5 font-mono tabular-nums whitespace-nowrap" data-testid={`debit-${account.code}`}>
+                              {formatAmount(account.periodDebit)}
+                            </td>
+                            <td className="text-right px-3 py-2.5 font-mono tabular-nums whitespace-nowrap" data-testid={`credit-${account.code}`}>
+                              {formatAmount(account.periodCredit)}
+                            </td>
+                            {!isBs && (
+                              <td className="text-right px-3 py-2.5 font-mono tabular-nums whitespace-nowrap" data-testid={`movement-${account.code}`}>
+                                {formatAmount(account.periodMovement)}
+                              </td>
+                            )}
+                            <td className="text-right px-3 py-2.5 font-mono tabular-nums font-medium whitespace-nowrap" data-testid={`closing-${account.code}`}>
+                              {formatAmount(account.currentBalance)}
+                            </td>
+                            <td className="px-2 py-2.5">
+                              <div className="flex items-center gap-0.5 justify-end">
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={(e) => { e.stopPropagation(); openEditDialog(account); }}
+                                  data-testid={`button-edit-${account.code}`}
+                                >
+                                  <Edit className="w-3.5 h-3.5" />
+                                </Button>
+                                {account.isSystemAccount !== 1 && (
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (confirm("Delete this account?")) deleteMutation.mutate(account.id);
+                                    }}
+                                    data-testid={`button-delete-${account.code}`}
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </Button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </CardContent>
               )}
