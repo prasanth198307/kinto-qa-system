@@ -229,6 +229,7 @@ export default function VendorHistoryDetailPage() {
   };
 
   const FILTER_OPTIONS = [
+    { value: 'all', label: 'All Transactions' },
     { value: 'invoice', label: 'Invoices' },
     { value: 'payment', label: 'Payments' },
     { value: 'advance', label: 'Advances' },
@@ -238,9 +239,14 @@ export default function VendorHistoryDetailPage() {
   ];
 
   const toggleFilter = (value: string) => {
-    setSelectedFilters(prev => 
-      prev.includes(value) ? prev.filter(f => f !== value) : [...prev, value]
-    );
+    if (value === 'all') {
+      setSelectedFilters([]);
+      return;
+    }
+    setSelectedFilters(prev => {
+      const updated = prev.includes(value) ? prev.filter(f => f !== value) : [...prev, value];
+      return updated;
+    });
   };
 
   const filteredLedger = data?.ledger.filter(entry => 
@@ -786,14 +792,14 @@ export default function VendorHistoryDetailPage() {
                   </PopoverTrigger>
                   <PopoverContent className="w-[220px] p-2" align="end">
                     <div className="space-y-1">
-                      {FILTER_OPTIONS.map(option => (
+                      {FILTER_OPTIONS.map((option, idx) => (
                         <label
                           key={option.value}
-                          className="flex items-center gap-2 rounded-md px-2 py-1.5 cursor-pointer hover-elevate"
+                          className={`flex items-center gap-2 rounded-md px-2 py-1.5 cursor-pointer hover-elevate ${idx === 0 ? 'border-b pb-2 mb-1' : ''}`}
                           data-testid={`filter-option-${option.value}`}
                         >
                           <Checkbox
-                            checked={selectedFilters.includes(option.value)}
+                            checked={option.value === 'all' ? selectedFilters.length === 0 : selectedFilters.includes(option.value)}
                             onCheckedChange={() => toggleFilter(option.value)}
                           />
                           <span className="text-sm">{option.label}</span>
