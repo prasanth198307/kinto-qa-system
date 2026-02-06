@@ -236,7 +236,15 @@ export async function seedChartOfAccounts(): Promise<void> {
   await seedAccountingPermissions();
 }
 
-const ACCOUNTING_SCREEN_KEYS = ['chart_of_accounts', 'journal_entries', 'manual_journal_entry', 'trial_balance', 'profit_loss'];
+const ACCOUNTING_SCREEN_KEYS = [
+  'chart_of_accounts', 'journal_entries', 'manual_journal_entry', 'trial_balance', 'profit_loss',
+  'bank_transactions', 'expenses', 'cash_register', 'documents', 'customer_advances',
+  'payment_writeoff', 'vendor_debit_notes', 'dispatch_tracking', 'dispatch_masters',
+  'template_management', 'notification_settings', 'cancelled_invoices_report', 'scrap_inventory',
+  'mis_dashboard', 'mis_production', 'mis_inventory', 'mis_sales', 'mis_delivery',
+  'sales_dashboard', 'vendor_analytics', 'report_gst', 'report_finished_goods',
+  'machine_startup_reminders', 'whatsapp_analytics',
+];
 
 async function seedAccountingPermissions(): Promise<void> {
   try {

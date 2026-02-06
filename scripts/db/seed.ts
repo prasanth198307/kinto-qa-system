@@ -177,7 +177,15 @@ async function seedRolePermissions() {
     "vendors", "vendor_types", "product_categories", "product_types",
     "invoices", "gatepasses", "payments", "credit_notes", "sales_returns",
     "data_import", "raw_material_issuance", "production_entries",
-    "production_reconciliation", "variance_analytics", "pending_payments"
+    "production_reconciliation", "variance_analytics", "pending_payments",
+    "journal_entries", "chart_of_accounts", "trial_balance", "profit_loss",
+    "bank_transactions", "expenses", "cash_register", "documents",
+    "customer_advances", "payment_writeoff", "vendor_debit_notes",
+    "dispatch_tracking", "dispatch_masters", "template_management",
+    "notification_settings", "cancelled_invoices_report", "scrap_inventory",
+    "mis_dashboard", "mis_production", "mis_inventory", "mis_sales",
+    "mis_delivery", "sales_dashboard", "vendor_analytics", "report_gst",
+    "report_finished_goods", "machine_startup_reminders", "whatsapp_analytics"
   ];
 
   const permissions: Array<{
@@ -209,7 +217,10 @@ async function seedRolePermissions() {
     "checklists", "spare_parts", "purchase_orders", "maintenance_plans",
     "pm_templates", "inventory", "uom", "products", "raw_materials",
     "finished_goods", "reports", "vendors", "invoices", "gatepasses",
-    "production_reconciliation", "variance_analytics"
+    "production_reconciliation", "variance_analytics",
+    "journal_entries", "chart_of_accounts", "trial_balance", "profit_loss",
+    "bank_transactions", "expenses", "cash_register", "payments",
+    "credit_notes", "customer_advances", "pending_payments"
   ];
   
   for (const screen of managerScreens) {
