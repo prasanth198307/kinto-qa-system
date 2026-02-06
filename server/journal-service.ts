@@ -76,6 +76,7 @@ const DEFAULT_ACCOUNTS = [
   { code: '1001', name: 'Cash in Hand', accountType: 'asset', subType: 'current_asset', isSystemAccount: 1 },
   { code: '1002', name: 'Bank - Current Account', accountType: 'asset', subType: 'current_asset', isSystemAccount: 1 },
   { code: '1003', name: 'Bank - Savings Account', accountType: 'asset', subType: 'current_asset', isSystemAccount: 1 },
+  { code: '1004', name: 'Bank - Cash Credit (SBI)', accountType: 'asset', subType: 'current_asset', isSystemAccount: 1 },
   { code: '1100', name: 'Accounts Receivable (Trade Debtors)', accountType: 'asset', subType: 'trade_receivable', isSystemAccount: 1 },
   { code: '1200', name: 'Inventory - Raw Materials', accountType: 'asset', subType: 'inventory', isSystemAccount: 1 },
   { code: '1201', name: 'Inventory - Finished Goods', accountType: 'asset', subType: 'inventory', isSystemAccount: 1 },
@@ -95,6 +96,8 @@ const DEFAULT_ACCOUNTS = [
   { code: '2300', name: 'TDS Payable', accountType: 'liability', subType: 'statutory', isSystemAccount: 1 },
   { code: '2301', name: 'TDS Receivable', accountType: 'liability', subType: 'statutory', isSystemAccount: 1 },
   { code: '2400', name: 'Loans Payable', accountType: 'liability', subType: 'loan', isSystemAccount: 1 },
+  { code: '2401', name: 'Bank Loan - Term Loan (SBI)', accountType: 'liability', subType: 'loan', isSystemAccount: 1 },
+  { code: '2402', name: 'Unsecured Loans - Directors / Promoters', accountType: 'liability', subType: 'loan', isSystemAccount: 1 },
 
   // EQUITY
   { code: '3001', name: "Owner's Capital", accountType: 'equity', subType: 'capital', isSystemAccount: 1 },
@@ -130,6 +133,18 @@ const DEFAULT_ACCOUNTS = [
   { code: '5700', name: 'Vendor Claims', accountType: 'expense', subType: 'adjustment', isSystemAccount: 1 },
 ];
 
+const DIRECTOR_LOAN_ACCOUNTS = [
+  { code: '2402A', name: 'Loan - AnanthRaj Polamarasetty', parentCode: '2402', description: 'Unsecured loan from Director AnanthRaj Polamarasetty' },
+  { code: '2402B', name: 'Loan - Chintalapudi Syam Srinivas', parentCode: '2402', description: 'Unsecured loan from Director Chintalapudi Syam Srinivas' },
+  { code: '2402C', name: 'Loan - Dusi Prasanth Kumar', parentCode: '2402', description: 'Unsecured loan from Director Dusi Prasanth Kumar' },
+  { code: '2402D', name: 'Loan - Pallavi Pathivada', parentCode: '2402', description: 'Unsecured loan from Director Pallavi Pathivada' },
+  { code: '2402E', name: 'Loan - Santhi Priya Dusi', parentCode: '2402', description: 'Unsecured loan from Director Santhi Priya Dusi' },
+  { code: '2402F', name: 'Loan - Satish Pediredla', parentCode: '2402', description: 'Unsecured loan from Director Satish Pediredla' },
+  { code: '2402G', name: 'Loan - Padmaja Togara', parentCode: '2402', description: 'Unsecured loan from Director Padmaja Togara' },
+  { code: '2402H', name: 'Loan - DVG Santosh', parentCode: '2402', description: 'Unsecured loan from Director DVG Santosh' },
+  { code: '2402I', name: 'Loan - Chintalapudi Anuradha', parentCode: '2402', description: 'Unsecured loan from Director Chintalapudi Anuradha' },
+];
+
 export async function seedChartOfAccounts(): Promise<void> {
   for (const account of DEFAULT_ACCOUNTS) {
     const existing = await storage.getChartOfAccountByCode(account.code);
@@ -138,6 +153,26 @@ export async function seedChartOfAccounts(): Promise<void> {
       console.log(`[COA SEED] Created account: ${account.code} - ${account.name}`);
     }
   }
+
+  for (const dirAcct of DIRECTOR_LOAN_ACCOUNTS) {
+    const existing = await storage.getChartOfAccountByCode(dirAcct.code);
+    if (!existing) {
+      const parent = await storage.getChartOfAccountByCode(dirAcct.parentCode);
+      if (parent) {
+        await storage.createChartOfAccount({
+          code: dirAcct.code,
+          name: dirAcct.name,
+          accountType: 'liability',
+          subType: 'loan',
+          parentId: parent.id,
+          description: dirAcct.description,
+          isSystemAccount: 1,
+        } as any);
+        console.log(`[COA SEED] Created director account: ${dirAcct.code} - ${dirAcct.name}`);
+      }
+    }
+  }
+
   console.log('[COA SEED] Chart of Accounts seeding complete');
 
   await seedAccountingPermissions();
