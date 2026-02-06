@@ -20,8 +20,11 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   ArrowLeft,
+  Filter,
   Building2,
   Phone,
   Mail,
@@ -142,7 +145,7 @@ interface InvoiceTransactionsResponse {
 export default function VendorHistoryDetailPage() {
   const [, setLocation] = useLocation();
   const { vendorId } = useParams<{ vendorId: string }>();
-  const [filterType, setFilterType] = useState("all");
+  const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("ledger");
   const [expandedInvoices, setExpandedInvoices] = useState<Record<string, boolean>>({});
   const [txnFilter, setTxnFilter] = useState("all");
@@ -225,9 +228,30 @@ export default function VendorHistoryDetailPage() {
     }
   };
 
+  const FILTER_OPTIONS = [
+    { value: 'invoice', label: 'Invoices' },
+    { value: 'payment', label: 'Payments' },
+    { value: 'advance', label: 'Advances' },
+    { value: 'credit_note', label: 'Credit Notes' },
+    { value: 'debit_note', label: 'Debit Notes' },
+    { value: 'vendor_debit_note_adjustment', label: 'DN Adjustments' },
+  ];
+
+  const toggleFilter = (value: string) => {
+    setSelectedFilters(prev => 
+      prev.includes(value) ? prev.filter(f => f !== value) : [...prev, value]
+    );
+  };
+
   const filteredLedger = data?.ledger.filter(entry => 
-    filterType === 'all' || entry.type === filterType
+    selectedFilters.length === 0 || selectedFilters.includes(entry.type)
   ) || [];
+
+  const filterLabel = selectedFilters.length === 0 
+    ? 'All Transactions' 
+    : selectedFilters.length === 1 
+      ? FILTER_OPTIONS.find(o => o.value === selectedFilters[0])?.label || selectedFilters[0]
+      : `${selectedFilters.length} types selected`;
 
   const handlePrint = () => {
     if (!data) return;
@@ -710,19 +734,41 @@ export default function VendorHistoryDetailPage() {
                 <Calendar className="h-5 w-5 print:hidden" />
                 Transaction Ledger
               </CardTitle>
-              <Select value={filterType} onValueChange={setFilterType}>
-                <SelectTrigger className="w-[180px] print:hidden" data-testid="select-filter-type">
-                  <SelectValue placeholder="Filter by type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Transactions</SelectItem>
-                  <SelectItem value="invoice">Invoices Only</SelectItem>
-                  <SelectItem value="payment">Payments Only</SelectItem>
-                  <SelectItem value="advance">Advances Only</SelectItem>
-                  <SelectItem value="credit_note">Credit Notes Only</SelectItem>
-                  <SelectItem value="debit_note">Debit Notes Only</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-2 print:hidden">
+                {selectedFilters.length > 0 && (
+                  <Button variant="ghost" size="sm" onClick={() => setSelectedFilters([])} data-testid="button-clear-filters">
+                    Clear
+                  </Button>
+                )}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="gap-2 min-w-[180px] justify-between" data-testid="button-filter-type">
+                      <div className="flex items-center gap-2">
+                        <Filter className="h-4 w-4" />
+                        <span className="text-sm">{filterLabel}</span>
+                      </div>
+                      <ChevronDown className="h-4 w-4 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[220px] p-2" align="end">
+                    <div className="space-y-1">
+                      {FILTER_OPTIONS.map(option => (
+                        <label
+                          key={option.value}
+                          className="flex items-center gap-2 rounded-md px-2 py-1.5 cursor-pointer hover-elevate"
+                          data-testid={`filter-option-${option.value}`}
+                        >
+                          <Checkbox
+                            checked={selectedFilters.includes(option.value)}
+                            onCheckedChange={() => toggleFilter(option.value)}
+                          />
+                          <span className="text-sm">{option.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
             </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
