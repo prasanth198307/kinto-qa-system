@@ -62,12 +62,25 @@ const CATEGORY_LABELS: Record<string, string> = {
   imps_transfer: "IMPS Transfer",
   imps_payment: "IMPS Payment",
   inb_transfer: "Net Banking Transfer",
+  inb_receipt: "Net Banking Receipt",
+  rtgs_transfer: "RTGS Transfer",
+  rtgs_receipt: "RTGS Receipt",
   bank_transfer_in: "Bank Transfer In",
   bank_transfer_out: "Bank Transfer Out",
+  internal_transfer: "Internal Transfer",
   cash_deposit: "Cash Deposit",
   atm_withdrawal: "ATM Withdrawal",
   withdrawal: "Withdrawal",
   emi_debit: "EMI / Loan Debit",
+  loan_interest: "Loan Interest",
+  loan_interest_payment: "Interest Payment",
+  loan_repayment: "Loan Repayment",
+  penal_charges: "Penal Charges",
+  interest_adjustment: "Interest Adjustment",
+  interest_reversal: "Interest Reversal",
+  salary_payment: "Salary Payment",
+  rent_payment: "Rent Payment",
+  gst_payment: "GST Payment",
   tax_payment: "Tax Payment",
   advertising: "Advertising",
   telephone: "Telephone",
@@ -77,6 +90,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   cheque_return: "Cheque Return",
   bank_charges: "Bank Charges",
   electricity: "Electricity",
+  imps_reversal: "IMPS Reversal",
+  bulk_posting: "Bulk Posting",
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -100,6 +115,7 @@ export default function BankTransactionsPage() {
   const [editMemo, setEditMemo] = useState("");
   const [editCategory, setEditCategory] = useState("");
   const [uploadBankAccountId, setUploadBankAccountId] = useState("");
+  const [accountFilter, setAccountFilter] = useState<string>("all");
   const [importResult, setImportResult] = useState<{ totalRows: number; duplicateCount: number; message: string } | null>(null);
 
   const { data: imports = [] } = useQuery<BankImport[]>({
@@ -107,11 +123,12 @@ export default function BankTransactionsPage() {
   });
 
   const { data: transactions = [], isLoading } = useQuery<BankTransaction[]>({
-    queryKey: ['/api/bank-transactions', selectedImportId, statusFilter],
+    queryKey: ['/api/bank-transactions', selectedImportId, statusFilter, accountFilter],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (selectedImportId !== "all") params.set("importId", selectedImportId);
       if (statusFilter !== "all") params.set("status", statusFilter);
+      if (accountFilter !== "all") params.set("bankAccountId", accountFilter);
       const res = await fetch(`/api/bank-transactions?${params.toString()}`, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch');
       return res.json();
@@ -122,7 +139,10 @@ export default function BankTransactionsPage() {
     queryKey: ['/api/chart-of-accounts-list'],
   });
 
-  const bankAccounts = accounts.filter(a => a.subType === 'current_asset' && (a.code === '1002' || a.code === '1003' || a.name.toLowerCase().includes('bank')));
+  const bankAccounts = accounts.filter(a => 
+    a.code === '1002' || a.code === '1003' || a.code === '1004' || a.code === '2401' ||
+    a.name.toLowerCase().includes('bank') || a.name.toLowerCase().includes('loan')
+  );
 
   const uploadMutation = useMutation({
     mutationFn: async (formData: FormData) => {
@@ -296,6 +316,18 @@ export default function BankTransactionsPage() {
             data-testid="input-search"
           />
         </div>
+        <Select value={accountFilter} onValueChange={setAccountFilter}>
+          <SelectTrigger className="w-[220px]" data-testid="select-account-filter">
+            <Building2 className="w-4 h-4 mr-1" />
+            <SelectValue placeholder="All Accounts" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Accounts</SelectItem>
+            {bankAccounts.map(a => (
+              <SelectItem key={a.id} value={a.id}>{a.code} - {a.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Select value={selectedImportId} onValueChange={setSelectedImportId}>
           <SelectTrigger className="w-[200px]" data-testid="select-import">
             <FileSpreadsheet className="w-4 h-4 mr-1" />
@@ -305,7 +337,7 @@ export default function BankTransactionsPage() {
             <SelectItem value="all">All Imports</SelectItem>
             {imports.map(imp => (
               <SelectItem key={imp.id} value={imp.id}>
-                {imp.fileName.substring(0, 30)} ({imp.totalRows})
+                {imp.accountNumber ? `...${imp.accountNumber.slice(-6)}` : imp.fileName.substring(0, 20)} ({imp.totalRows})
               </SelectItem>
             ))}
           </SelectContent>

@@ -20309,18 +20309,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   const CATEGORY_RULES: CategoryRule[] = [
+    { pattern: /DEBIT INTEREST/i, category: 'loan_interest', accountCode: '5107', accountName: 'Interest Paid', type: 'debit' },
+    { pattern: /PENAL CHARGES/i, category: 'penal_charges', accountCode: '5106', accountName: 'Bank Charges / Fees', type: 'debit' },
+    { pattern: /TRANSFER CHARGES/i, category: 'bank_charges', accountCode: '5106', accountName: 'Bank Charges / Fees', type: 'debit' },
+    { pattern: /INTT ADJ/i, category: 'interest_adjustment', accountCode: '5107', accountName: 'Interest Paid', type: 'both' },
+    { pattern: /UNPAID INTT REVD|UNPID INTT REVD/i, category: 'interest_reversal', accountCode: '5107', accountName: 'Interest Paid', type: 'both' },
+    { pattern: /CA TO TL|IRREG AMT RECOVERED.*CA TO TL/i, category: 'loan_repayment', accountCode: '2401', accountName: 'Bank Loan - Term Loan (SBI)', type: 'debit' },
+    { pattern: /interest payment|interest served|interest repayment|unpaid interst|Irregular interest/i, category: 'loan_interest_payment', accountCode: '5107', accountName: 'Interest Paid', type: 'credit' },
+    { pattern: /RTGS/i, category: 'rtgs_transfer', accountCode: '2001', accountName: 'Accounts Payable', type: 'debit' },
     { pattern: /UPI\/CR/i, category: 'upi_receipt', accountCode: '4001', accountName: 'Sales Revenue', type: 'credit' },
+    { pattern: /UPI REC CR/i, category: 'upi_receipt', accountCode: '4001', accountName: 'Sales Revenue', type: 'both' },
     { pattern: /NEFT\*/i, category: 'neft_receipt', accountCode: '4001', accountName: 'Sales Revenue', type: 'credit' },
-    { pattern: /IMPS\//i, category: 'imps_transfer', accountCode: '2001', accountName: 'Accounts Payable', type: 'debit' },
     { pattern: /BY TRANSFER-IMPS/i, category: 'imps_receipt', accountCode: '4001', accountName: 'Sales Revenue', type: 'credit' },
     { pattern: /TO TRANSFER-IMPS/i, category: 'imps_payment', accountCode: '2001', accountName: 'Accounts Payable', type: 'debit' },
+    { pattern: /IMPS\//i, category: 'imps_transfer', accountCode: '2001', accountName: 'Accounts Payable', type: 'debit' },
+    { pattern: /BY TRANSFER-INB/i, category: 'inb_receipt', accountCode: '4001', accountName: 'Sales Revenue', type: 'credit' },
     { pattern: /TO TRANSFER-INB/i, category: 'inb_transfer', accountCode: '2001', accountName: 'Accounts Payable', type: 'debit' },
-    { pattern: /BY TRANSFER-TRANSFER FROM/i, category: 'bank_transfer_in', accountCode: '4002', accountName: 'Other Income', type: 'credit' },
-    { pattern: /TO TRANSFER-TRANSFER TO/i, category: 'bank_transfer_out', accountCode: '3002', accountName: "Owner's Drawings", type: 'debit' },
+    { pattern: /BY TRANSFER-RTGS/i, category: 'rtgs_receipt', accountCode: '4001', accountName: 'Sales Revenue', type: 'credit' },
+    { pattern: /Transferred to CC Account|BY TRANSFER-INB Transferred/i, category: 'internal_transfer', accountCode: '1004', accountName: 'Bank - Cash Credit Account', type: 'credit' },
+    { pattern: /BY TRANSFER-TRANSFER FROM/i, category: 'bank_transfer_in', accountCode: '1002', accountName: 'Bank - Current Account', type: 'credit' },
+    { pattern: /TO TRANSFER-TRANSFER TO/i, category: 'bank_transfer_out', accountCode: '1002', accountName: 'Bank - Current Account', type: 'debit' },
+    { pattern: /TO TRANSFER-TRANSFER BY REQ/i, category: 'bank_transfer_out', accountCode: '1002', accountName: 'Bank - Current Account', type: 'debit' },
     { pattern: /CASH DEPOSIT/i, category: 'cash_deposit', accountCode: '1001', accountName: 'Cash in Hand', type: 'credit' },
     { pattern: /ATM WDL|ATM CASH/i, category: 'atm_withdrawal', accountCode: '1001', accountName: 'Cash in Hand', type: 'debit' },
     { pattern: /WITHDRAWAL TRANSFER/i, category: 'withdrawal', accountCode: '1001', accountName: 'Cash in Hand', type: 'debit' },
     { pattern: /ACHDr|DEBIT.*ACH/i, category: 'emi_debit', accountCode: '2400', accountName: 'Loans Payable', type: 'debit' },
+    { pattern: /Paid Salaries|Salary|SALARY/i, category: 'salary_payment', accountCode: '5100', accountName: 'Salary & Wages', type: 'debit' },
+    { pattern: /Paid Ren|RENT/i, category: 'rent_payment', accountCode: '5101', accountName: 'Rent', type: 'debit' },
+    { pattern: /GST Paym/i, category: 'gst_payment', accountCode: '2200', accountName: 'GST Payable - CGST', type: 'debit' },
     { pattern: /CBDT|TIN 2\.0|Income Tax/i, category: 'tax_payment', accountCode: '5010', accountName: 'Tax Expenses', type: 'debit' },
     { pattern: /debit card.*GOOGLE ADS/i, category: 'advertising', accountCode: '5008', accountName: 'Marketing & Advertising', type: 'debit' },
     { pattern: /debit card.*Bharti Airtel/i, category: 'telephone', accountCode: '5005', accountName: 'Telephone & Internet', type: 'debit' },
@@ -20328,8 +20344,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     { pattern: /debit card/i, category: 'card_expense', accountCode: '5009', accountName: 'Miscellaneous Expenses', type: 'debit' },
     { pattern: /BY CLEARING.*CHEQUE/i, category: 'cheque_deposit', accountCode: '1100', accountName: 'Accounts Receivable', type: 'credit' },
     { pattern: /OUT-CHQ RETURN/i, category: 'cheque_return', accountCode: '1100', accountName: 'Accounts Receivable', type: 'debit' },
-    { pattern: /cheque returned charges/i, category: 'bank_charges', accountCode: '5007', accountName: 'Bank Charges', type: 'debit' },
-    { pattern: /EASTERN POWER|electricity|EPDCL/i, category: 'electricity', accountCode: '5004', accountName: 'Utilities', type: 'debit' },
+    { pattern: /cheque returned charges/i, category: 'bank_charges', accountCode: '5106', accountName: 'Bank Charges / Fees', type: 'debit' },
+    { pattern: /EASTERN POWER|electricity|EPDCL/i, category: 'electricity', accountCode: '5102', accountName: 'Electricity & Utilities', type: 'debit' },
+    { pattern: /IRREGULAR AMT RECOVERED.*TL/i, category: 'loan_repayment', accountCode: '2401', accountName: 'Bank Loan - Term Loan (SBI)', type: 'debit' },
+    { pattern: /ACH MANDATE CHARGES|NACH/i, category: 'bank_charges', accountCode: '5106', accountName: 'Bank Charges / Fees', type: 'debit' },
+    { pattern: /CSH DEP|CASH DEP/i, category: 'cash_deposit', accountCode: '1001', accountName: 'Cash in Hand', type: 'credit' },
+    { pattern: /surcharge|tips.*rate diff/i, category: 'bank_charges', accountCode: '5106', accountName: 'Bank Charges / Fees', type: 'debit' },
+    { pattern: /PHONEPE RECHARGE/i, category: 'telephone', accountCode: '5102', accountName: 'Electricity & Utilities', type: 'credit' },
+    { pattern: /CHEQUE DEPOSIT/i, category: 'cheque_deposit', accountCode: '1100', accountName: 'Accounts Receivable', type: 'credit' },
+    { pattern: /BULK POSTING.*IMPS.*RVSL/i, category: 'imps_reversal', accountCode: '4004', accountName: 'Other Income', type: 'credit' },
+    { pattern: /BULK POSTING/i, category: 'bulk_posting', accountCode: '4004', accountName: 'Other Income', type: 'both' },
   ];
 
   function categorizeTransaction(description: string, isDebit: boolean): { category: string; accountCode: string; accountName: string } | null {
@@ -20498,10 +20522,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/bank-transactions', async (req: any, res) => {
     try {
-      const { importId, status } = req.query;
+      const { importId, status, bankAccountId } = req.query;
       const transactions = await storage.getBankTransactions({
         importId: importId as string,
         status: status as string,
+        bankAccountId: bankAccountId as string,
       });
       res.json(transactions);
     } catch (error: any) {

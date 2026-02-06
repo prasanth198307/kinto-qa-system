@@ -723,7 +723,7 @@ export interface IStorage {
 
   // Bank Transactions
   createBankTransaction(txn: InsertBankTransaction): Promise<BankTransaction>;
-  getBankTransactions(filters?: { importId?: string; status?: string }): Promise<BankTransaction[]>;
+  getBankTransactions(filters?: { importId?: string; status?: string; bankAccountId?: string }): Promise<BankTransaction[]>;
   getBankTransaction(id: string): Promise<BankTransaction | undefined>;
   updateBankTransaction(id: string, data: Partial<InsertBankTransaction>): Promise<BankTransaction | undefined>;
   getBankTransactionByHash(hash: string, bankAccountId: string): Promise<BankTransaction | undefined>;
@@ -4478,10 +4478,11 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async getBankTransactions(filters?: { importId?: string; status?: string }): Promise<BankTransaction[]> {
+  async getBankTransactions(filters?: { importId?: string; status?: string; bankAccountId?: string }): Promise<BankTransaction[]> {
     const conditions = [eq(bankTransactions.recordStatus, 1)];
     if (filters?.importId) conditions.push(eq(bankTransactions.importId, filters.importId));
     if (filters?.status) conditions.push(eq(bankTransactions.status, filters.status));
+    if (filters?.bankAccountId) conditions.push(eq(bankTransactions.bankAccountId, filters.bankAccountId));
     return db.select().from(bankTransactions).where(and(...conditions)).orderBy(bankTransactions.txnDate);
   }
 
