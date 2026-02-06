@@ -66,7 +66,7 @@ import { ManagerChecklistAssignment } from "@/components/ManagerChecklistAssignm
 import PendingPaymentsDashboard from "@/components/PendingPaymentsDashboard";
 import { OperatorAssignedChecklists } from "@/components/OperatorAssignedChecklists";
 import { VerticalNavSidebar, type NavSection } from "@/components/VerticalNavSidebar";
-import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, ClipboardList, Settings, Calendar, Users, FileText, FileX, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload, FolderOpen, Wallet, Car, BookOpen } from "lucide-react";
+import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, ClipboardList, Settings, Calendar, Users, FileText, FileX, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload, FolderOpen, Wallet, Car, BookOpen, Scale, BarChart3 } from "lucide-react";
 import SalesDashboard from "@/components/SalesDashboard";
 import VendorAnalytics from "@/pages/vendor-analytics";
 import ReviewerDashboardPage from "@/pages/ReviewerDashboard";
@@ -107,6 +107,8 @@ import ChartOfAccountsPage from "@/pages/chart-of-accounts";
 import JournalEntriesPage from "@/pages/journal-entries";
 import JournalEntryDetailPage from "@/pages/journal-entry-detail";
 import ManualJournalEntryPage from "@/pages/manual-journal-entry";
+import TrialBalancePage from "@/pages/trial-balance";
+import ProfitLossPage from "@/pages/profit-loss";
 
 type Role = 'admin' | 'operator' | 'reviewer' | 'manager';
 
@@ -847,6 +849,8 @@ function AdminDashboard() {
       items: [
         { id: "chart-of-accounts", label: "Chart of Accounts", icon: BookOpen, onClick: () => setLocation('/chart-of-accounts') },
         { id: "journal-entries", label: "Journal Entries", icon: FileStack, onClick: () => setLocation('/journal-entries') },
+        { id: "trial-balance", label: "Trial Balance", icon: Scale, onClick: () => setLocation('/trial-balance') },
+        { id: "profit-loss", label: "Profit & Loss", icon: BarChart3, onClick: () => setLocation('/profit-loss') },
       ],
     },
     {
@@ -1382,6 +1386,8 @@ const navItemToScreenKey: Record<string, string> = {
   'chart-of-accounts': 'chart_of_accounts',
   'journal-entries': 'journal_entries',
   'journal-entry-new': 'manual_journal_entry',
+  'trial-balance': 'trial_balance',
+  'profit-loss': 'profit_loss',
   // Maintenance
   'maintenance': 'maintenance_plans',
   'pm-history': 'pm_history',
@@ -1454,6 +1460,8 @@ const navItemToScreen: Record<string, string> = {
   'chart-of-accounts': 'Accounting',
   'journal-entries': 'Accounting',
   'journal-entry-new': 'Accounting',
+  'trial-balance': 'Accounting',
+  'profit-loss': 'Accounting',
   // Maintenance
   'maintenance': 'Maintenance Plans',
   'pm-history': 'PM History',
@@ -1666,6 +1674,8 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       items: [
         { id: "chart-of-accounts", label: "Chart of Accounts", icon: BookOpen, onClick: () => setLocation('/chart-of-accounts') },
         { id: "journal-entries", label: "Journal Entries", icon: FileStack, onClick: () => setLocation('/journal-entries') },
+        { id: "trial-balance", label: "Trial Balance", icon: Scale, onClick: () => setLocation('/trial-balance') },
+        { id: "profit-loss", label: "Profit & Loss", icon: BarChart3, onClick: () => setLocation('/profit-loss') },
       ],
     },
     {
@@ -1938,6 +1948,34 @@ function ManualJournalEntryPageWrapper() {
   return (
     <DashboardShell title="New Journal Entry" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
       <ManualJournalEntryPage />
+    </DashboardShell>
+  );
+}
+
+function TrialBalancePageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('trial-balance');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  return (
+    <DashboardShell title="Trial Balance" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
+      <TrialBalancePage />
+    </DashboardShell>
+  );
+}
+
+function ProfitLossPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('profit-loss');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  return (
+    <DashboardShell title="Profit & Loss" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
+      <ProfitLossPage />
     </DashboardShell>
   );
 }
@@ -2677,6 +2715,8 @@ function Router() {
       <ProtectedRoute path="/cash-register/vouchers/print" component={CashRegisterVoucherPrint} />
       <ProtectedRoute path="/chart-of-accounts" component={ChartOfAccountsPageWrapper} />
       <ProtectedRoute path="/journal-entries" component={JournalEntriesPageWrapper} />
+      <ProtectedRoute path="/trial-balance" component={TrialBalancePageWrapper} />
+      <ProtectedRoute path="/profit-loss" component={ProfitLossPageWrapper} />
       <ProtectedRoute path="/journal-entry/new" component={ManualJournalEntryPageWrapper} />
       <ProtectedRoute path="/journal-entry/:id" component={JournalEntryDetailPageWrapper} />
       <ProtectedRoute path="/" component={AuthenticatedApp} />

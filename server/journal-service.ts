@@ -143,7 +143,7 @@ export async function seedChartOfAccounts(): Promise<void> {
   await seedAccountingPermissions();
 }
 
-const ACCOUNTING_SCREEN_KEYS = ['chart_of_accounts', 'journal_entries', 'manual_journal_entry'];
+const ACCOUNTING_SCREEN_KEYS = ['chart_of_accounts', 'journal_entries', 'manual_journal_entry', 'trial_balance', 'profit_loss'];
 
 async function seedAccountingPermissions(): Promise<void> {
   try {
