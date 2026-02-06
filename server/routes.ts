@@ -19645,6 +19645,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Backfill journal entries for existing data
+  app.post('/api/journal-entries/backfill', requireRole('admin'), async (req: any, res) => {
+    try {
+      const { backfillJournalEntries } = await import('./journal-service');
+      console.log('[BACKFILL] Admin triggered journal backfill');
+      const results = await backfillJournalEntries();
+      res.json(results);
+    } catch (error: any) {
+      console.error('[BACKFILL] Fatal error:', error.message);
+      res.status(500).json({ message: error.message || 'Backfill failed' });
+    }
+  });
+
   // Journal Entries
   app.get('/api/journal-entries', async (req: any, res) => {
     try {
