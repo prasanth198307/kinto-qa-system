@@ -306,6 +306,34 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
     },
   });
 
+  const [isCancelGatepassConfirmOpen, setIsCancelGatepassConfirmOpen] = useState(false);
+
+  const cancelGatepassMutation = useMutation({
+    mutationFn: async () => {
+      if (!relatedGatepassId) throw new Error("No gatepass found");
+      await apiRequest('DELETE', `/api/gatepasses/${relatedGatepassId}`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Gatepass Cancelled",
+        description: "Gatepass cancelled and stock returned to finished goods. You can create a new gatepass.",
+      });
+      setIsCancelGatepassConfirmOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['/api/gatepasses'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/gatepass-items'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/finished-goods'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/invoices', id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to cancel gatepass",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Mark invoice as ready for gatepass mutation
   const markReadyMutation = useMutation({
     mutationFn: async () => {
@@ -881,13 +909,30 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
       {relatedGatepass && gatepassItems.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5" />
-              Loaded Batch Numbers
-            </CardTitle>
-            <CardDescription>
-              Batch numbers loaded in vehicle for Gatepass {relatedGatepass.gatepassNumber}
-            </CardDescription>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="w-5 h-5" />
+                  Loaded Batch Numbers
+                </CardTitle>
+                <CardDescription>
+                  Batch numbers loaded in vehicle for Gatepass {relatedGatepass.gatepassNumber}
+                </CardDescription>
+              </div>
+              {canCancelAndReissue && relatedGatepass.status === 'generated' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-red-300 text-red-600"
+                  onClick={() => setIsCancelGatepassConfirmOpen(true)}
+                  disabled={cancelGatepassMutation.isPending}
+                  data-testid="button-cancel-gatepass"
+                >
+                  <XCircle className={`w-4 h-4 mr-2 ${cancelGatepassMutation.isPending ? 'animate-spin' : ''}`} />
+                  {cancelGatepassMutation.isPending ? 'Cancelling...' : 'Cancel Gatepass'}
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
@@ -1333,6 +1378,40 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
               data-testid="button-cancel-reissue-confirm"
             >
               {cancelAndReissueMutation.isPending ? 'Cancelling...' : 'Yes, Cancel & Reissue'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Cancel Gatepass Only Confirmation Dialog */}
+      <AlertDialog open={isCancelGatepassConfirmOpen} onOpenChange={setIsCancelGatepassConfirmOpen}>
+        <AlertDialogContent data-testid="dialog-cancel-gatepass-confirm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel Gatepass</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div>
+                <p>
+                  Are you sure you want to cancel gatepass <strong>{relatedGatepass?.gatepassNumber}</strong>?
+                </p>
+                <p className="mt-2">This will:</p>
+                <ul className="list-disc pl-5 mt-1 space-y-1">
+                  <li>Cancel the gatepass only (invoice stays active)</li>
+                  <li>Return all dispatched stock back to finished goods inventory</li>
+                  <li>Reset invoice status so you can create a new gatepass</li>
+                </ul>
+                <p className="mt-3 font-semibold">This action cannot be undone.</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-gatepass-dismiss">Go Back</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => cancelGatepassMutation.mutate()}
+              disabled={cancelGatepassMutation.isPending}
+              className="bg-destructive text-destructive-foreground"
+              data-testid="button-cancel-gatepass-confirm"
+            >
+              {cancelGatepassMutation.isPending ? 'Cancelling...' : 'Yes, Cancel Gatepass'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
