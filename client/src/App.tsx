@@ -1378,6 +1378,10 @@ const navItemToScreenKey: Record<string, string> = {
   'cash-register-report': 'cash_register_report',
   'expenses': 'expenses',
   'documents': 'documents',
+  // Accounting & Ledger
+  'chart-of-accounts': 'chart_of_accounts',
+  'journal-entries': 'journal_entries',
+  'journal-entry-new': 'manual_journal_entry',
   // Maintenance
   'maintenance': 'maintenance_plans',
   'pm-history': 'pm_history',
@@ -1446,6 +1450,10 @@ const navItemToScreen: Record<string, string> = {
   'cash-register-report': 'Purchase Orders',
   'expenses': 'Purchase Orders',
   'documents': 'Inventory Management',
+  // Accounting & Ledger
+  'chart-of-accounts': 'Accounting',
+  'journal-entries': 'Accounting',
+  'journal-entry-new': 'Accounting',
   // Maintenance
   'maintenance': 'Maintenance Plans',
   'pm-history': 'PM History',
@@ -1485,6 +1493,7 @@ const screenPermissions: Record<string, { admin: boolean; manager: boolean; oper
   'Execute Checklists': { admin: true, manager: false, operator: true, reviewer: false },
   'Review Checklists': { admin: true, manager: false, operator: false, reviewer: true },
   'Final Approval': { admin: true, manager: true, operator: false, reviewer: false },
+  'Accounting': { admin: true, manager: true, operator: false, reviewer: false },
 };
 
 // Check if a nav item is accessible for a given role (for default roles)

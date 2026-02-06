@@ -126,6 +126,11 @@ const AVAILABLE_SCREENS: ScreenDefinition[] = [
   { key: 'expense_categories', label: 'Expense Categories', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'cash_register', label: 'Cash Register', allowedActions: ['view', 'create', 'edit', 'delete'] },
   
+  // Accounting & Ledger
+  { key: 'chart_of_accounts', label: 'Chart of Accounts', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'journal_entries', label: 'Journal Entries', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'manual_journal_entry', label: 'Manual Journal Entry', allowedActions: ['view', 'create'] },
+  
   // System & Configuration
   { key: 'users', label: 'User Management', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'roles', label: 'Role Management', allowedActions: ['view', 'create', 'edit', 'delete'] },
