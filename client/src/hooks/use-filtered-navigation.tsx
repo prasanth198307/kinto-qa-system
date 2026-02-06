@@ -67,6 +67,8 @@ const navItemToScreenKey: Record<string, string> = {
   'template-management': 'template_management',
   'notification-settings': 'notification_settings',
   'data-import': 'data_import',
+  'chart-of-accounts': 'chart_of_accounts',
+  'journal-entries': 'journal_entries',
 };
 
 const screenPermissions: Record<string, { admin: boolean; manager: boolean; operator: boolean; reviewer: boolean }> = {
@@ -146,6 +148,8 @@ const navItemToScreen: Record<string, string> = {
   'template-management': 'Inventory Management',
   'notification-settings': 'User Management',
   'data-import': 'User Management',
+  'chart-of-accounts': 'Purchase Orders',
+  'journal-entries': 'Purchase Orders',
 };
 
 function canAccessNavItemForDefaultRole(itemId: string, role: string): boolean {

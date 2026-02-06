@@ -131,6 +131,14 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
+  // Seed Chart of Accounts on startup
+  try {
+    const { seedChartOfAccounts } = await import("./journal-service");
+    await seedChartOfAccounts();
+  } catch (error) {
+    console.error('[COA SEED ERROR]', error);
+  }
+
   const port = parseInt(process.env.PORT || "5000", 10);
   server.listen(port, "0.0.0.0", () => {
     log(`🚀 Server running on port ${port}`);

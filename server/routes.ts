@@ -19,7 +19,7 @@ import { importVyapaarData, clearImportedData, importPaymentsOnly } from "./vyap
 import { importCreditNotesFromExcel } from "./creditnote-import";
 import { parseExcelFile, commitImport } from "./cashRegisterImport";
 import { importCashRegisterFromExcel } from "./importCashRegisterFromExcel";
-import { insertCashRegisterDaySchema, insertCashRegisterTransactionSchema, insertCashRegisterExpenseItemSchema, insertSalespersonMappingSchema, cashRegisterDays, cashRegisterTransactions, cashRegisterExpenseItems, expenseVouchers, expenseItems, customerAdvances, advanceApplications, insertCustomerAdvanceSchema, insertAdvanceApplicationSchema } from "@shared/schema";
+import { insertCashRegisterDaySchema, insertCashRegisterTransactionSchema, insertCashRegisterExpenseItemSchema, insertSalespersonMappingSchema, cashRegisterDays, cashRegisterTransactions, cashRegisterExpenseItems, expenseVouchers, expenseItems, customerAdvances, advanceApplications, insertCustomerAdvanceSchema, insertAdvanceApplicationSchema, journalEntries } from "@shared/schema";
 import { sql, and, eq, ne, gte, lte, gt, desc, inArray, isNotNull, isNull, or, ilike, type SQL } from "drizzle-orm";
 
 // Simple audit logging function
@@ -7258,6 +7258,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         gatepass: result.autoCreatedGatepass,
         message 
       });
+      
+      // Auto-generate journal entry (non-blocking)
+      try {
+        const { journalForInvoice } = await import('./journal-service');
+        await journalForInvoice(result.invoice);
+      } catch (je) { console.error('[JOURNAL] Invoice auto-entry failed:', je); }
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
@@ -8766,6 +8772,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const payment = await storage.createPayment(validatedData);
       await logAudit(req.user?.id, 'CREATE', 'invoice_payments', payment.id, `Recorded payment of ₹${(payment.amount / 100).toFixed(2)} for invoice ${payment.invoiceId}`);
       res.json({ payment, message: "Payment recorded successfully" });
+      
+      // Auto-generate journal entry (non-blocking)
+      try {
+        const { journalForPayment } = await import('./journal-service');
+        await journalForPayment(payment, invoice);
+      } catch (je) { console.error('[JOURNAL] Payment auto-entry failed:', je); }
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
@@ -8853,6 +8865,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         payment: result.writeOffPayment, 
         message: `Successfully wrote off ₹${(result.outstandingBalance / 100).toFixed(2)}` 
       });
+      
+      // Auto-generate journal entry (non-blocking)
+      try {
+        const { journalForWriteOff } = await import('./journal-service');
+        await journalForWriteOff(result.writeOffPayment, result.invoice);
+      } catch (je) { console.error('[JOURNAL] Write-off auto-entry failed:', je); }
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid input", errors: error.errors });
@@ -9640,6 +9658,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         manualProcessingRequired,
         daysSinceInvoice: daysDifference,
       });
+      
+      // Auto-generate journal entry for credit note (non-blocking)
+      if (creditNoteCreated && creditNoteNumber) {
+        try {
+          const { journalForCreditNote } = await import('./journal-service');
+          const cnList = await db.select().from(creditNotes).where(eq(creditNotes.noteNumber, creditNoteNumber));
+          if (cnList.length > 0) {
+            await journalForCreditNote(cnList[0]);
+          }
+        } catch (je) { console.error('[JOURNAL] Credit note auto-entry failed:', je); }
+      }
     } catch (error) {
       console.error("Error inspecting sales return:", error);
       res.status(500).json({ message: "Failed to inspect sales return" });
@@ -10437,6 +10466,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `Created advance ${advanceNumber} for ₹${(created.amount / 100).toFixed(2)}`);
       
       res.json({ advance: created, message: "Advance payment recorded successfully" });
+      
+      // Auto-generate journal entry (non-blocking)
+      try {
+        const vendor = await storage.getVendor(created.vendorId);
+        const { journalForCustomerAdvance } = await import('./journal-service');
+        await journalForCustomerAdvance(created, vendor?.vendorName || 'Unknown');
+      } catch (je) { console.error('[JOURNAL] Customer advance auto-entry failed:', je); }
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
@@ -10567,6 +10603,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         payment: result.payment,
         message: "Advance applied successfully" 
       });
+      
+      // Auto-generate journal entry (non-blocking)
+      try {
+        const { journalForAdvanceApplication } = await import('./journal-service');
+        const inv = await storage.getInvoice(invoiceId);
+        const vendor = await storage.getVendor(result.advance.vendorId);
+        await journalForAdvanceApplication(result.application, result.advance, inv, vendor?.vendorName || 'Unknown');
+      } catch (je) { console.error('[JOURNAL] Advance application auto-entry failed:', je); }
     } catch (error) {
       if (error instanceof Error) {
         return res.status(400).json({ message: error.message });
@@ -12581,6 +12625,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         debitNoteNumber,
         grandTotal,
       });
+      
+      // Auto-generate journal entry (non-blocking)
+      try {
+        const { journalForDebitNote } = await import('./journal-service');
+        const dnList = await db.select().from(debitNotes).where(eq(debitNotes.noteNumber, debitNoteNumber));
+        if (dnList.length > 0) {
+          await journalForDebitNote(dnList[0]);
+        }
+      } catch (je) { console.error('[JOURNAL] Debit note auto-entry failed:', je); }
     } catch (error) {
       console.error("Error creating correct & debit note:", error);
       res.status(500).json({ message: "Failed to create debit note" });
@@ -12782,6 +12835,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         id: createdNote.id,
         grandTotal,
       });
+      
+      // Auto-generate journal entry (non-blocking)
+      try {
+        const { journalForVendorDebitNote } = await import('./journal-service');
+        const vdnVendor = await storage.getVendor(vendorId);
+        await journalForVendorDebitNote(createdNote, vdnVendor?.vendorName || 'Unknown');
+      } catch (je) { console.error('[JOURNAL] Vendor debit note auto-entry failed:', je); }
     } catch (error) {
       console.error("Error creating vendor debit note:", error);
       res.status(500).json({ message: "Failed to create vendor debit note" });
@@ -16355,6 +16415,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       await logAudit(req.user?.id, 'CREATE', 'expense_vouchers', voucher.id, `Expense voucher created: ${voucherNumber}`);
       res.status(201).json(voucher);
+      
+      // Auto-generate journal entry (non-blocking)
+      try {
+        const { journalForExpenseVoucher } = await import('./journal-service');
+        await journalForExpenseVoucher(voucher);
+      } catch (je) { console.error('[JOURNAL] Expense voucher auto-entry failed:', je); }
     } catch (error: any) {
       console.error('[EXPENSES] Error creating voucher:', error);
       res.status(400).json({ message: error.message || 'Failed to create expense voucher' });
@@ -19500,6 +19566,221 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('[HPCL Migration Preview] Error:', error);
       res.status(500).json({ message: error.message || 'Failed to preview migration' });
+    }
+  });
+
+  // ============================================================
+  // ACCOUNTING / JOURNAL MODULE ROUTES
+  // ============================================================
+
+  // Chart of Accounts CRUD
+  app.get('/api/chart-of-accounts', async (req: any, res) => {
+    try {
+      const accounts = await storage.getAllChartOfAccounts();
+      res.json(accounts);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || 'Failed to fetch chart of accounts' });
+    }
+  });
+
+  app.get('/api/chart-of-accounts/:id', async (req: any, res) => {
+    try {
+      const account = await storage.getChartOfAccount(req.params.id);
+      if (!account) return res.status(404).json({ message: 'Account not found' });
+      res.json(account);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post('/api/chart-of-accounts', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { code, name, accountType, subType, parentId, description } = req.body;
+      if (!code || !name || !accountType) {
+        return res.status(400).json({ message: 'Code, name, and account type are required' });
+      }
+      const existing = await storage.getChartOfAccountByCode(code);
+      if (existing) return res.status(400).json({ message: `Account code ${code} already exists` });
+
+      const account = await storage.createChartOfAccount({ code, name, accountType, subType, parentId, description, isActive: 1, isSystemAccount: 0 });
+      res.status(201).json(account);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.patch('/api/chart-of-accounts/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const account = await storage.getChartOfAccount(req.params.id);
+      if (!account) return res.status(404).json({ message: 'Account not found' });
+
+      const updated = await storage.updateChartOfAccount(req.params.id, req.body);
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.delete('/api/chart-of-accounts/:id', requireRole('admin'), async (req: any, res) => {
+    try {
+      const account = await storage.getChartOfAccount(req.params.id);
+      if (!account) return res.status(404).json({ message: 'Account not found' });
+      if (account.isSystemAccount === 1) return res.status(400).json({ message: 'Cannot delete system account' });
+
+      await storage.deleteChartOfAccount(req.params.id);
+      res.json({ message: 'Account deleted' });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Seed Chart of Accounts (run once or on demand)
+  app.post('/api/chart-of-accounts/seed', requireRole('admin'), async (req: any, res) => {
+    try {
+      const { seedChartOfAccounts } = await import('./journal-service');
+      await seedChartOfAccounts();
+      res.json({ message: 'Chart of Accounts seeded successfully' });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Journal Entries
+  app.get('/api/journal-entries', async (req: any, res) => {
+    try {
+      const { page = '1', pageSize = '25', search, sourceType, dateFrom, dateTo, isAutoGenerated, status } = req.query;
+      const pageNum = Math.max(1, parseInt(page as string) || 1);
+      const pageSizeNum = Math.min(100, Math.max(1, parseInt(pageSize as string) || 25));
+
+      const conditions: any[] = [eq(journalEntries.recordStatus, 1)];
+      if (sourceType) conditions.push(eq(journalEntries.sourceType, sourceType as string));
+      if (status) conditions.push(eq(journalEntries.status, status as string));
+      if (dateFrom) conditions.push(gte(journalEntries.journalDate, dateFrom as string));
+      if (dateTo) conditions.push(lte(journalEntries.journalDate, dateTo as string));
+      if (isAutoGenerated !== undefined) conditions.push(eq(journalEntries.isAutoGenerated, parseInt(isAutoGenerated as string)));
+      if (search) {
+        conditions.push(
+          or(
+            ilike(journalEntries.journalNumber, `%${search}%`),
+            ilike(journalEntries.description, `%${search}%`)
+          )
+        );
+      }
+
+      const whereClause = conditions.length > 1 ? and(...conditions) : conditions[0];
+
+      const [countResult] = await db.select({ count: sql<number>`count(*)::integer` })
+        .from(journalEntries)
+        .where(whereClause);
+      const total = countResult?.count || 0;
+
+      const entries = await db.select()
+        .from(journalEntries)
+        .where(whereClause)
+        .orderBy(desc(journalEntries.journalDate), desc(journalEntries.createdAt))
+        .limit(pageSizeNum)
+        .offset((pageNum - 1) * pageSizeNum);
+
+      res.json({ entries, total, page: pageNum, pageSize: pageSizeNum });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || 'Failed to fetch journal entries' });
+    }
+  });
+
+  app.get('/api/journal-entries/:id', async (req: any, res) => {
+    try {
+      const entry = await storage.getJournalEntry(req.params.id);
+      if (!entry) return res.status(404).json({ message: 'Journal entry not found' });
+
+      const lines = await storage.getJournalLines(entry.id);
+      
+      // Enrich lines with account details
+      const enrichedLines = await Promise.all(lines.map(async (line) => {
+        const account = await storage.getChartOfAccount(line.accountId);
+        return { ...line, accountCode: account?.code, accountName: account?.name, accountType: account?.accountType };
+      }));
+
+      res.json({ ...entry, lines: enrichedLines });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Manual Journal Entry
+  app.post('/api/journal-entries', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { journalDate, description, notes, lines } = req.body;
+
+      if (!journalDate || !description || !lines || !Array.isArray(lines) || lines.length < 2) {
+        return res.status(400).json({ message: 'Journal date, description, and at least 2 lines are required' });
+      }
+
+      // Validate debits = credits
+      const totalDebit = lines.reduce((sum: number, l: any) => sum + (l.debit || 0), 0);
+      const totalCredit = lines.reduce((sum: number, l: any) => sum + (l.credit || 0), 0);
+      if (totalDebit !== totalCredit) {
+        return res.status(400).json({ message: `Debits (${totalDebit}) must equal Credits (${totalCredit})` });
+      }
+      if (totalDebit === 0) {
+        return res.status(400).json({ message: 'Journal entry must have non-zero amounts' });
+      }
+
+      // Resolve account IDs to codes and validate
+      const resolvedLines = [];
+      for (const line of lines) {
+        let accountCode = line.accountCode;
+        if (!accountCode && line.accountId) {
+          const account = await storage.getChartOfAccount(line.accountId);
+          if (!account) return res.status(400).json({ message: `Account ID ${line.accountId} not found` });
+          accountCode = account.code;
+        }
+        if (!accountCode) return res.status(400).json({ message: 'Each line must have an account code or account ID' });
+        const account = await storage.getChartOfAccountByCode(accountCode);
+        if (!account) return res.status(400).json({ message: `Account code ${accountCode} not found` });
+        resolvedLines.push({ ...line, accountCode });
+      }
+
+      const { createJournalWithLines } = await import('./journal-service');
+      const entry = await createJournalWithLines(
+        journalDate,
+        description,
+        resolvedLines.map((l: any) => ({
+          accountCode: l.accountCode,
+          debit: l.debit || 0,
+          credit: l.credit || 0,
+          memo: l.memo,
+          partyType: l.partyType,
+          partyId: l.partyId,
+          partyName: l.partyName,
+        })),
+        {
+          sourceType: 'manual',
+          isAutoGenerated: false,
+          createdBy: req.user?.id,
+          notes,
+          status: 'posted',
+        }
+      );
+
+      if (!entry) return res.status(500).json({ message: 'Failed to create journal entry' });
+
+      res.status(201).json(entry);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || 'Failed to create journal entry' });
+    }
+  });
+
+  // Get journal lines for a journal entry
+  app.get('/api/journal-entries/:id/lines', async (req: any, res) => {
+    try {
+      const lines = await storage.getJournalLines(req.params.id);
+      const enrichedLines = await Promise.all(lines.map(async (line) => {
+        const account = await storage.getChartOfAccount(line.accountId);
+        return { ...line, accountCode: account?.code, accountName: account?.name, accountType: account?.accountType };
+      }));
+      res.json(enrichedLines);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
     }
   });
 

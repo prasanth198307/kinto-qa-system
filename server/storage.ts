@@ -198,6 +198,15 @@ import {
   systemAlerts,
   type SystemAlert,
   type InsertSystemAlert,
+  chartOfAccounts,
+  journalEntries,
+  journalLines,
+  type ChartOfAccount,
+  type InsertChartOfAccount,
+  type JournalEntry,
+  type InsertJournalEntry,
+  type JournalLine,
+  type InsertJournalLine,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, isNotNull, notInArray, inArray, gte, lte, sql, desc } from "drizzle-orm";
@@ -681,6 +690,25 @@ export interface IStorage {
   getSalespersonMappingByName(excelName: string): Promise<SalespersonMapping | undefined>;
   updateSalespersonMapping(id: string, mapping: Partial<InsertSalespersonMapping>): Promise<SalespersonMapping | undefined>;
   deleteSalespersonMapping(id: string): Promise<void>;
+  
+  // Chart of Accounts
+  createChartOfAccount(account: InsertChartOfAccount): Promise<ChartOfAccount>;
+  getAllChartOfAccounts(): Promise<ChartOfAccount[]>;
+  getChartOfAccount(id: string): Promise<ChartOfAccount | undefined>;
+  getChartOfAccountByCode(code: string): Promise<ChartOfAccount | undefined>;
+  updateChartOfAccount(id: string, account: Partial<InsertChartOfAccount>): Promise<ChartOfAccount | undefined>;
+  deleteChartOfAccount(id: string): Promise<void>;
+  
+  // Journal Entries
+  createJournalEntry(entry: InsertJournalEntry): Promise<JournalEntry>;
+  getAllJournalEntries(filters?: { startDate?: string; endDate?: string; sourceType?: string; accountId?: string; status?: string }): Promise<JournalEntry[]>;
+  getJournalEntry(id: string): Promise<JournalEntry | undefined>;
+  getJournalEntryBySource(sourceType: string, sourceId: string): Promise<JournalEntry | undefined>;
+  updateJournalEntry(id: string, entry: Partial<InsertJournalEntry>): Promise<JournalEntry | undefined>;
+  
+  // Journal Lines
+  createJournalLine(line: InsertJournalLine): Promise<JournalLine>;
+  getJournalLines(journalId: string): Promise<JournalLine[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -4295,6 +4323,114 @@ export class DatabaseStorage implements IStorage {
     }
     
     return { oversellProducts };
+  }
+
+  // ============================================================
+  // CHART OF ACCOUNTS
+  // ============================================================
+  
+  async createChartOfAccount(account: InsertChartOfAccount): Promise<ChartOfAccount> {
+    const [created] = await db.insert(chartOfAccounts).values(account).returning();
+    return created;
+  }
+
+  async getAllChartOfAccounts(): Promise<ChartOfAccount[]> {
+    return db.select().from(chartOfAccounts).where(eq(chartOfAccounts.recordStatus, 1)).orderBy(chartOfAccounts.code);
+  }
+
+  async getChartOfAccount(id: string): Promise<ChartOfAccount | undefined> {
+    const [account] = await db.select().from(chartOfAccounts).where(and(eq(chartOfAccounts.id, id), eq(chartOfAccounts.recordStatus, 1))).limit(1);
+    return account;
+  }
+
+  async getChartOfAccountByCode(code: string): Promise<ChartOfAccount | undefined> {
+    const [account] = await db.select().from(chartOfAccounts).where(and(eq(chartOfAccounts.code, code), eq(chartOfAccounts.recordStatus, 1))).limit(1);
+    return account;
+  }
+
+  async updateChartOfAccount(id: string, account: Partial<InsertChartOfAccount>): Promise<ChartOfAccount | undefined> {
+    const [updated] = await db.update(chartOfAccounts).set({ ...account, updatedAt: new Date().toISOString() }).where(eq(chartOfAccounts.id, id)).returning();
+    return updated;
+  }
+
+  async deleteChartOfAccount(id: string): Promise<void> {
+    await db.update(chartOfAccounts).set({ recordStatus: 0, updatedAt: new Date().toISOString() }).where(eq(chartOfAccounts.id, id));
+  }
+
+  // ============================================================
+  // JOURNAL ENTRIES
+  // ============================================================
+  
+  async createJournalEntry(entry: InsertJournalEntry): Promise<JournalEntry> {
+    const [created] = await db.insert(journalEntries).values(entry).returning();
+    return created;
+  }
+
+  async getAllJournalEntries(filters?: { startDate?: string; endDate?: string; sourceType?: string; accountId?: string; status?: string }): Promise<JournalEntry[]> {
+    const conditions = [eq(journalEntries.recordStatus, 1)];
+    
+    if (filters?.startDate) {
+      conditions.push(gte(journalEntries.journalDate, filters.startDate));
+    }
+    if (filters?.endDate) {
+      conditions.push(lte(journalEntries.journalDate, filters.endDate));
+    }
+    if (filters?.sourceType) {
+      conditions.push(eq(journalEntries.sourceType, filters.sourceType));
+    }
+    if (filters?.status) {
+      conditions.push(eq(journalEntries.status, filters.status));
+    }
+    
+    let query = db.select().from(journalEntries).where(and(...conditions)).orderBy(desc(journalEntries.journalDate), desc(journalEntries.createdAt));
+    
+    // If filtering by account, we need to join with journal_lines
+    if (filters?.accountId) {
+      const journalIds = await db.select({ journalId: journalLines.journalId })
+        .from(journalLines)
+        .where(and(eq(journalLines.accountId, filters.accountId), eq(journalLines.recordStatus, 1)));
+      
+      const ids = journalIds.map(j => j.journalId);
+      if (ids.length === 0) return [];
+      conditions.push(inArray(journalEntries.id, ids));
+      return db.select().from(journalEntries).where(and(...conditions)).orderBy(desc(journalEntries.journalDate), desc(journalEntries.createdAt));
+    }
+    
+    return query;
+  }
+
+  async getJournalEntry(id: string): Promise<JournalEntry | undefined> {
+    const [entry] = await db.select().from(journalEntries).where(and(eq(journalEntries.id, id), eq(journalEntries.recordStatus, 1))).limit(1);
+    return entry;
+  }
+
+  async getJournalEntryBySource(sourceType: string, sourceId: string): Promise<JournalEntry | undefined> {
+    const [entry] = await db.select().from(journalEntries).where(
+      and(
+        eq(journalEntries.sourceType, sourceType),
+        eq(journalEntries.sourceId, sourceId),
+        eq(journalEntries.recordStatus, 1)
+      )
+    ).limit(1);
+    return entry;
+  }
+
+  async updateJournalEntry(id: string, entry: Partial<InsertJournalEntry>): Promise<JournalEntry | undefined> {
+    const [updated] = await db.update(journalEntries).set({ ...entry, updatedAt: new Date().toISOString() }).where(eq(journalEntries.id, id)).returning();
+    return updated;
+  }
+
+  // ============================================================
+  // JOURNAL LINES
+  // ============================================================
+  
+  async createJournalLine(line: InsertJournalLine): Promise<JournalLine> {
+    const [created] = await db.insert(journalLines).values(line).returning();
+    return created;
+  }
+
+  async getJournalLines(journalId: string): Promise<JournalLine[]> {
+    return db.select().from(journalLines).where(and(eq(journalLines.journalId, journalId), eq(journalLines.recordStatus, 1)));
   }
 }
 

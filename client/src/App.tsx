@@ -66,7 +66,7 @@ import { ManagerChecklistAssignment } from "@/components/ManagerChecklistAssignm
 import PendingPaymentsDashboard from "@/components/PendingPaymentsDashboard";
 import { OperatorAssignedChecklists } from "@/components/OperatorAssignedChecklists";
 import { VerticalNavSidebar, type NavSection } from "@/components/VerticalNavSidebar";
-import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, ClipboardList, Settings, Calendar, Users, FileText, FileX, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload, FolderOpen, Wallet, Car } from "lucide-react";
+import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, ClipboardList, Settings, Calendar, Users, FileText, FileX, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload, FolderOpen, Wallet, Car, BookOpen } from "lucide-react";
 import SalesDashboard from "@/components/SalesDashboard";
 import VendorAnalytics from "@/pages/vendor-analytics";
 import ReviewerDashboardPage from "@/pages/ReviewerDashboard";
@@ -103,6 +103,10 @@ import RawMaterialDetail from "@/pages/raw-material-detail";
 import RawMaterialTypeDetail from "@/pages/raw-material-type-detail";
 import ProductDetail from "@/pages/product-detail";
 import FinishedGoodDetail from "@/pages/finished-good-detail";
+import ChartOfAccountsPage from "@/pages/chart-of-accounts";
+import JournalEntriesPage from "@/pages/journal-entries";
+import JournalEntryDetailPage from "@/pages/journal-entry-detail";
+import ManualJournalEntryPage from "@/pages/manual-journal-entry";
 
 type Role = 'admin' | 'operator' | 'reviewer' | 'manager';
 
@@ -835,6 +839,14 @@ function AdminDashboard() {
         { id: "cash-register-report", label: "Cash Register Report", icon: FileStack, onClick: () => setLocation('/cash-register-report') },
         { id: "expenses", label: "Expense Vouchers", icon: Wallet, onClick: () => setLocation('/expenses') },
         { id: "documents", label: "Documents", icon: FolderOpen, onClick: () => setLocation('/documents') },
+      ],
+    },
+    {
+      id: "accounting-section",
+      label: "Accounting & Ledger",
+      items: [
+        { id: "chart-of-accounts", label: "Chart of Accounts", icon: BookOpen, onClick: () => setLocation('/chart-of-accounts') },
+        { id: "journal-entries", label: "Journal Entries", icon: FileStack, onClick: () => setLocation('/journal-entries') },
       ],
     },
     {
@@ -1640,6 +1652,14 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       ],
     },
     {
+      id: "accounting-section",
+      label: "Accounting & Ledger",
+      items: [
+        { id: "chart-of-accounts", label: "Chart of Accounts", icon: BookOpen, onClick: () => setLocation('/chart-of-accounts') },
+        { id: "journal-entries", label: "Journal Entries", icon: FileStack, onClick: () => setLocation('/journal-entries') },
+      ],
+    },
+    {
       id: "maintenance-section",
       label: "Maintenance",
       items: [
@@ -1853,6 +1873,62 @@ function CashRegisterPageWrapper() {
       }}
     >
       <CashRegisterPage />
+    </DashboardShell>
+  );
+}
+
+function ChartOfAccountsPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('chart-of-accounts');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  return (
+    <DashboardShell title="Chart of Accounts" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
+      <ChartOfAccountsPage />
+    </DashboardShell>
+  );
+}
+
+function JournalEntriesPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('journal-entries');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  return (
+    <DashboardShell title="Journal Entries" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
+      <JournalEntriesPage />
+    </DashboardShell>
+  );
+}
+
+function JournalEntryDetailPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('journal-entries');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  return (
+    <DashboardShell title="Journal Entry" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
+      <JournalEntryDetailPage />
+    </DashboardShell>
+  );
+}
+
+function ManualJournalEntryPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('journal-entries');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  return (
+    <DashboardShell title="New Journal Entry" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
+      <ManualJournalEntryPage />
     </DashboardShell>
   );
 }
@@ -2590,6 +2666,10 @@ function Router() {
       <ProtectedRoute path="/cash-register" component={CashRegisterPageWrapper} />
       <ProtectedRoute path="/cash-register-report" component={CashRegisterReportWrapper} />
       <ProtectedRoute path="/cash-register/vouchers/print" component={CashRegisterVoucherPrint} />
+      <ProtectedRoute path="/chart-of-accounts" component={ChartOfAccountsPageWrapper} />
+      <ProtectedRoute path="/journal-entries" component={JournalEntriesPageWrapper} />
+      <ProtectedRoute path="/journal-entry/new" component={ManualJournalEntryPageWrapper} />
+      <ProtectedRoute path="/journal-entry/:id" component={JournalEntryDetailPageWrapper} />
       <ProtectedRoute path="/" component={AuthenticatedApp} />
       <Route component={NotFound} />
     </Switch>
