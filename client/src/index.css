@@ -538,9 +538,33 @@
     overflow: visible !important;
   }
 
+  .pt-16 {
+    padding-top: 0 !important;
+  }
+
+  [data-testid="page-trial-balance"],
+  [data-testid="page-profit-loss"] {
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+
+  [data-testid="page-trial-balance"] table,
+  [data-testid="page-profit-loss"] table {
+    font-size: 11px !important;
+    width: 100% !important;
+  }
+
+  [data-testid="page-trial-balance"] .rounded-xl,
+  [data-testid="page-trial-balance"] .rounded-lg,
+  [data-testid="page-profit-loss"] .rounded-xl,
+  [data-testid="page-profit-loss"] .rounded-lg {
+    border: none !important;
+    border-radius: 0 !important;
+  }
+
   @page {
-    margin: 1cm;
-    size: A4 portrait;
+    margin: 0.8cm;
+    size: A4 landscape;
   }
 
   thead {
