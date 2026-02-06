@@ -20309,7 +20309,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   const CATEGORY_RULES: CategoryRule[] = [
-    { pattern: /DEBIT INTEREST/i, category: 'loan_interest', accountCode: '5107', accountName: 'Interest Paid', type: 'debit' },
+    { pattern: /PART PERIOD INTER|DEBIT INTEREST/i, category: 'loan_interest', accountCode: '5107', accountName: 'Interest Paid', type: 'debit' },
+    { pattern: /ARREAR INTEREST/i, category: 'loan_interest', accountCode: '5107', accountName: 'Interest Paid', type: 'debit' },
+    { pattern: /O\.?S\.?\s*DEPOSIT TRAN|DEPOSIT TRANSFER.*(?:Term\s*loan|Repayment|EMI)/i, category: 'loan_repayment', accountCode: '2401', accountName: 'Bank Loan - Term Loan (SBI)', type: 'credit' },
     { pattern: /PENAL CHARGES/i, category: 'penal_charges', accountCode: '5106', accountName: 'Bank Charges / Fees', type: 'debit' },
     { pattern: /TRANSFER CHARGES/i, category: 'bank_charges', accountCode: '5106', accountName: 'Bank Charges / Fees', type: 'debit' },
     { pattern: /INTT ADJ/i, category: 'interest_adjustment', accountCode: '5107', accountName: 'Interest Paid', type: 'both' },

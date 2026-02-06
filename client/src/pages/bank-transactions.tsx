@@ -94,6 +94,13 @@ const CATEGORY_LABELS: Record<string, string> = {
   bulk_posting: "Bulk Posting",
 };
 
+const ACCOUNT_BADGE_STYLES: Record<string, { label: string; className: string }> = {
+  '1002': { label: 'Current A/c', className: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-800' },
+  '1003': { label: 'Savings A/c', className: 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300 border-teal-200 dark:border-teal-800' },
+  '1004': { label: 'Cash Credit', className: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 border-purple-200 dark:border-purple-800' },
+  '2401': { label: 'Term Loan', className: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300 border-orange-200 dark:border-orange-800' },
+};
+
 const STATUS_COLORS: Record<string, string> = {
   needs_review: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
   unmatched: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
@@ -324,7 +331,9 @@ export default function BankTransactionsPage() {
           <SelectContent>
             <SelectItem value="all">All Accounts</SelectItem>
             {bankAccounts.map(a => (
-              <SelectItem key={a.id} value={a.id}>{a.code} - {a.name}</SelectItem>
+              <SelectItem key={a.id} value={a.id}>
+                {ACCOUNT_BADGE_STYLES[a.code]?.label || a.name} ({a.code})
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -399,6 +408,7 @@ export default function BankTransactionsPage() {
                       />
                     </th>
                     <th className="p-2 text-left font-medium">Date</th>
+                    <th className="p-2 text-left font-medium">Account</th>
                     <th className="p-2 text-left font-medium min-w-[300px]">Description</th>
                     <th className="p-2 text-right font-medium">Debit</th>
                     <th className="p-2 text-right font-medium">Credit</th>
@@ -422,6 +432,19 @@ export default function BankTransactionsPage() {
                         )}
                       </td>
                       <td className="p-2 whitespace-nowrap">{txn.txnDate}</td>
+                      <td className="p-2">
+                        {(() => {
+                          const acct = accounts.find(a => a.id === txn.bankAccountId);
+                          const style = acct ? ACCOUNT_BADGE_STYLES[acct.code] : null;
+                          return style ? (
+                            <Badge variant="outline" className={`text-[10px] whitespace-nowrap ${style.className}`} data-testid={`badge-account-${txn.id}`}>
+                              {style.label}
+                            </Badge>
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground">{acct?.name || '—'}</span>
+                          );
+                        })()}
+                      </td>
                       <td className="p-2">
                         <div className="max-w-[350px] truncate" title={txn.description}>{txn.description}</div>
                         {txn.reference && <div className="text-[10px] text-muted-foreground truncate max-w-[350px]">{txn.reference}</div>}
