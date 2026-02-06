@@ -20556,7 +20556,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/bank-transactions/recategorize', async (req: any, res) => {
     try {
       const allTxns = await storage.getBankTransactions({});
-      const uncategorized = allTxns.filter(t => !t.category || t.status === 'unmatched');
+      const uncategorized = allTxns.filter(t => !t.category || t.status === 'unmatched' || !t.matchedAccountId);
       let updated = 0;
       for (const txn of uncategorized) {
         const isDebit = parseFloat(txn.debit || '0') > 0;
