@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Upload, Search, Check, X, Edit2, ArrowUpDown, FileSpreadsheet, CheckSquare, RefreshCw, Building2, ArrowRight, Filter } from "lucide-react";
+import { Upload, Search, Check, X, Edit2, ArrowUpDown, FileSpreadsheet, CheckSquare, RefreshCw, Building2, ArrowRight, Filter, Users, ChevronDown, ChevronUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -125,6 +125,7 @@ export default function BankTransactionsPage() {
   const [uploadBankAccountId, setUploadBankAccountId] = useState("");
   const [accountFilter, setAccountFilter] = useState<string>("all");
   const [importResult, setImportResult] = useState<{ totalRows: number; duplicateCount: number; message: string } | null>(null);
+  const [showDirectorLoans, setShowDirectorLoans] = useState(false);
 
   const { data: imports = [] } = useQuery<BankImport[]>({
     queryKey: ['/api/bank-statement-imports'],
@@ -305,6 +306,19 @@ export default function BankTransactionsPage() {
     posted: filtered.filter(t => t.status === 'posted').length,
   };
 
+  const directorLoanSummary = transactions
+    .filter(t => t.category === 'director_loan' && t.matchedAccountName)
+    .reduce((acc, t) => {
+      const name = t.matchedAccountName!;
+      if (!acc[name]) acc[name] = { name, totalAmount: 0, count: 0 };
+      acc[name].totalAmount += parseFloat(t.credit || '0');
+      acc[name].count += 1;
+      return acc;
+    }, {} as Record<string, { name: string; totalAmount: number; count: number }>);
+
+  const directorLoanEntries = Object.values(directorLoanSummary).sort((a, b) => b.totalAmount - a.totalAmount);
+  const totalDirectorLoans = directorLoanEntries.reduce((s, e) => s + e.totalAmount, 0);
+
   return (
     <div className="p-3 space-y-3 max-w-full">
       <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -332,6 +346,41 @@ export default function BankTransactionsPage() {
           {summaryStats.posted > 0 && <Badge className={STATUS_COLORS.posted}>{summaryStats.posted} Posted</Badge>}
         </div>
       </div>
+
+      {directorLoanEntries.length > 0 && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 pb-0 cursor-pointer" onClick={() => setShowDirectorLoans(!showDirectorLoans)}>
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium" data-testid="text-director-loans-title">Director / Promoter Loans</CardTitle>
+              <Badge variant="secondary" className="text-xs">{directorLoanEntries.length} directors</Badge>
+              <span className="text-sm font-semibold text-green-600 dark:text-green-400" data-testid="text-director-loans-total">
+                Total: {totalDirectorLoans.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
+              </span>
+            </div>
+            <Button size="icon" variant="ghost" data-testid="button-toggle-director-loans">
+              {showDirectorLoans ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </Button>
+          </CardHeader>
+          {showDirectorLoans && (
+            <CardContent className="p-3 pt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                {directorLoanEntries.map((entry) => (
+                  <div key={entry.name} className="flex items-center justify-between p-2 rounded-md bg-muted/50" data-testid={`card-director-${entry.name}`}>
+                    <div>
+                      <p className="text-xs font-medium">{entry.name.replace('Loan - ', '')}</p>
+                      <p className="text-[10px] text-muted-foreground">{entry.count} transaction{entry.count > 1 ? 's' : ''}</p>
+                    </div>
+                    <span className="text-sm font-semibold text-green-600 dark:text-green-400">
+                      {entry.totalAmount.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          )}
+        </Card>
+      )}
 
       <div className="flex items-center gap-2 flex-wrap">
         <div className="relative flex-1 min-w-[200px]">
