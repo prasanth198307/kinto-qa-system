@@ -253,15 +253,19 @@ export async function createJournalWithLines(
 // ============================================================
 
 export async function journalForInvoice(invoice: any): Promise<void> {
-  const subtotal = invoice.subtotal || 0;
-  const cgst = invoice.cgstAmount || 0;
-  const sgst = invoice.sgstAmount || 0;
-  const igst = invoice.igstAmount || 0;
-  const grandTotal = invoice.grandTotal || 0;
+  const subtotal = Number(invoice.subtotal) || 0;
+  const cgst = Number(invoice.cgstAmount) || 0;
+  const sgst = Number(invoice.sgstAmount) || 0;
+  const igst = Number(invoice.igstAmount) || 0;
+  const grandTotal = Number(invoice.grandTotal) || 0;
+
+  if (grandTotal === 0 && subtotal === 0) return;
+
+  const salesRevenue = grandTotal - cgst - sgst - igst;
 
   const lines: JournalLineInput[] = [
     { accountCode: ACCOUNT_CODES.ACCOUNTS_RECEIVABLE, debit: grandTotal, credit: 0, memo: `Invoice ${invoice.invoiceNumber}`, partyType: 'vendor', partyName: invoice.buyerName },
-    { accountCode: ACCOUNT_CODES.SALES_REVENUE, debit: 0, credit: subtotal, memo: `Sales - Invoice ${invoice.invoiceNumber}` },
+    { accountCode: ACCOUNT_CODES.SALES_REVENUE, debit: 0, credit: salesRevenue, memo: `Sales - Invoice ${invoice.invoiceNumber}` },
   ];
 
   if (cgst > 0) lines.push({ accountCode: ACCOUNT_CODES.GST_CGST_PAYABLE, debit: 0, credit: cgst, memo: 'CGST on sale' });
@@ -323,14 +327,16 @@ export async function journalForAdvanceApplication(application: any, advance: an
 }
 
 export async function journalForCreditNote(creditNote: any, invoiceNumber?: string, buyerName?: string): Promise<void> {
-  const subtotal = creditNote.subtotal || 0;
-  const cgst = creditNote.cgstAmount || 0;
-  const sgst = creditNote.sgstAmount || 0;
-  const igst = creditNote.igstAmount || 0;
-  const grandTotal = creditNote.grandTotal || 0;
+  const cgst = Number(creditNote.cgstAmount) || 0;
+  const sgst = Number(creditNote.sgstAmount) || 0;
+  const igst = Number(creditNote.igstAmount) || 0;
+  const grandTotal = Number(creditNote.grandTotal) || 0;
+  const salesReturn = grandTotal - cgst - sgst - igst;
+
+  if (grandTotal === 0) return;
 
   const lines: JournalLineInput[] = [
-    { accountCode: ACCOUNT_CODES.SALES_RETURNS, debit: subtotal, credit: 0, memo: `Credit Note ${creditNote.noteNumber}` },
+    { accountCode: ACCOUNT_CODES.SALES_RETURNS, debit: salesReturn, credit: 0, memo: `Credit Note ${creditNote.noteNumber}` },
   ];
 
   if (cgst > 0) lines.push({ accountCode: ACCOUNT_CODES.GST_CGST_PAYABLE, debit: cgst, credit: 0, memo: 'CGST reversal' });
@@ -412,15 +418,17 @@ export async function journalForDebitNote(debitNote: any): Promise<void> {
 }
 
 export async function journalForVendorDebitNote(debitNote: any, vendorName: string): Promise<void> {
-  const subtotal = debitNote.subtotal || 0;
-  const cgst = debitNote.cgstAmount || 0;
-  const sgst = debitNote.sgstAmount || 0;
-  const igst = debitNote.igstAmount || 0;
-  const grandTotal = debitNote.grandTotal || 0;
+  const cgst = Number(debitNote.cgstAmount) || 0;
+  const sgst = Number(debitNote.sgstAmount) || 0;
+  const igst = Number(debitNote.igstAmount) || 0;
+  const grandTotal = Number(debitNote.grandTotal) || 0;
+  const claimAmount = grandTotal - cgst - sgst - igst;
+
+  if (grandTotal === 0) return;
 
   const lines: JournalLineInput[] = [
     { accountCode: ACCOUNT_CODES.ACCOUNTS_PAYABLE, debit: grandTotal, credit: 0, memo: `Vendor Debit Note ${debitNote.noteNumber}`, partyType: 'vendor', partyName: vendorName },
-    { accountCode: ACCOUNT_CODES.VENDOR_CLAIMS, debit: 0, credit: subtotal, memo: `Claim against ${vendorName}` },
+    { accountCode: ACCOUNT_CODES.VENDOR_CLAIMS, debit: 0, credit: claimAmount, memo: `Claim against ${vendorName}` },
   ];
 
   if (cgst > 0) lines.push({ accountCode: ACCOUNT_CODES.GST_CGST_INPUT, debit: 0, credit: cgst, memo: 'CGST reversal on claim' });
@@ -487,7 +495,7 @@ export async function backfillJournalEntries(): Promise<{
   // 1. Backfill Invoices
   console.log('[BACKFILL] Starting invoices...');
   const allInvoices: any[] = (await db.execute(sql`
-    SELECT id, invoice_number, invoice_date, buyer_name, subtotal, cgst_amount, sgst_amount, igst_amount, grand_total
+    SELECT id, invoice_number, invoice_date, buyer_name, subtotal, cgst_amount, sgst_amount, igst_amount, total_amount
     FROM invoices WHERE record_status = 1 AND status != 'cancelled'
   `)).rows;
 
@@ -503,7 +511,7 @@ export async function backfillJournalEntries(): Promise<{
         cgstAmount: inv.cgst_amount || 0,
         sgstAmount: inv.sgst_amount || 0,
         igstAmount: inv.igst_amount || 0,
-        grandTotal: inv.grand_total || 0,
+        grandTotal: inv.total_amount || 0,
       });
       results.invoices.processed++;
     } catch (e: any) {
