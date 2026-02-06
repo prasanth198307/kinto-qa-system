@@ -75,8 +75,9 @@ const TYPE_COLORS: Record<string, string> = {
   expense: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
 };
 
-function formatAmount(paise: number): string {
-  return `₹${(paise / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
+function formatAmount(paise: number | null | undefined): string {
+  const val = Number(paise) || 0;
+  return `₹${(val / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
 }
 
 export default function ChartOfAccountsPage() {
@@ -203,7 +204,7 @@ export default function ChartOfAccountsPage() {
   const typeTotals = ACCOUNT_TYPES.map(type => ({
     ...type,
     count: groupedAccounts[type.value]?.length || 0,
-    totalBalance: (groupedAccounts[type.value] || []).reduce((sum, a) => sum + a.currentBalance, 0),
+    totalBalance: (groupedAccounts[type.value] || []).reduce((sum, a) => sum + (Number(a.currentBalance) || 0), 0),
   }));
 
   if (isLoading) {

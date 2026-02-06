@@ -19,7 +19,7 @@ import { importVyapaarData, clearImportedData, importPaymentsOnly } from "./vyap
 import { importCreditNotesFromExcel } from "./creditnote-import";
 import { parseExcelFile, commitImport } from "./cashRegisterImport";
 import { importCashRegisterFromExcel } from "./importCashRegisterFromExcel";
-import { insertCashRegisterDaySchema, insertCashRegisterTransactionSchema, insertCashRegisterExpenseItemSchema, insertSalespersonMappingSchema, cashRegisterDays, cashRegisterTransactions, cashRegisterExpenseItems, expenseVouchers, expenseItems, customerAdvances, advanceApplications, insertCustomerAdvanceSchema, insertAdvanceApplicationSchema, journalEntries } from "@shared/schema";
+import { insertCashRegisterDaySchema, insertCashRegisterTransactionSchema, insertCashRegisterExpenseItemSchema, insertSalespersonMappingSchema, cashRegisterDays, cashRegisterTransactions, cashRegisterExpenseItems, expenseVouchers, expenseItems, customerAdvances, advanceApplications, insertCustomerAdvanceSchema, insertAdvanceApplicationSchema, journalEntries, journalLines } from "@shared/schema";
 import { sql, and, eq, ne, gte, lte, gt, desc, inArray, isNotNull, isNull, or, ilike, type SQL } from "drizzle-orm";
 
 // Simple audit logging function
@@ -19698,7 +19698,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/chart-of-accounts', async (req: any, res) => {
     try {
       const accounts = await storage.getAllChartOfAccounts();
-      res.json(accounts);
+
+      const balanceRows = await db.select({
+        accountId: journalLines.accountId,
+        totalDebit: sql<number>`coalesce(sum(${journalLines.debit}), 0)`.as('total_debit'),
+        totalCredit: sql<number>`coalesce(sum(${journalLines.credit}), 0)`.as('total_credit'),
+      })
+        .from(journalLines)
+        .where(eq(journalLines.recordStatus, 1))
+        .groupBy(journalLines.accountId);
+
+      const balanceMap = new Map<string, { totalDebit: number; totalCredit: number }>();
+      for (const row of balanceRows) {
+        balanceMap.set(row.accountId, { totalDebit: Number(row.totalDebit), totalCredit: Number(row.totalCredit) });
+      }
+
+      const accountsWithBalances = accounts.map(account => {
+        const bal = balanceMap.get(account.id) || { totalDebit: 0, totalCredit: 0 };
+        let currentBalance = 0;
+        if (account.accountType === 'asset' || account.accountType === 'expense') {
+          currentBalance = bal.totalDebit - bal.totalCredit;
+        } else {
+          currentBalance = bal.totalCredit - bal.totalDebit;
+        }
+        return { ...account, openingBalance: 0, currentBalance };
+      });
+
+      res.json(accountsWithBalances);
     } catch (error: any) {
       res.status(500).json({ message: error.message || 'Failed to fetch chart of accounts' });
     }
