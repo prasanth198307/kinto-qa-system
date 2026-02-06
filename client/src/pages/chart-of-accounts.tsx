@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, BookOpen, ChevronDown, ChevronRight, Edit, Trash2, Lock } from "lucide-react";
+import { Plus, Search, ChevronDown, ChevronRight, Edit, Trash2, Lock, Calendar } from "lucide-react";
 
 interface ChartAccount {
   id: string;
@@ -23,6 +23,9 @@ interface ChartAccount {
   isActive: number;
   isSystemAccount: number;
   openingBalance: number;
+  periodDebit: number;
+  periodCredit: number;
+  periodMovement: number;
   currentBalance: number;
 }
 
@@ -49,6 +52,8 @@ const SUB_TYPES: Record<string, { value: string; label: string }[]> = {
     { value: "trade_payable", label: "Trade Payable" },
     { value: "tax_payable", label: "Tax Payable" },
     { value: "advance_received", label: "Advance Received" },
+    { value: "advance_liability", label: "Advance Liability" },
+    { value: "gst", label: "GST" },
   ],
   equity: [
     { value: "capital", label: "Capital" },
@@ -75,15 +80,43 @@ const TYPE_COLORS: Record<string, string> = {
   expense: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
 };
 
+function getCurrentFY(): string {
+  const now = new Date();
+  const year = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  return String(year);
+}
+
+function getFYLabel(startYear: string): string {
+  const y = parseInt(startYear);
+  return `FY ${y}-${String(y + 1).slice(2)}`;
+}
+
+function getAvailableFYs(): string[] {
+  const currentFYStart = parseInt(getCurrentFY());
+  const years: string[] = [];
+  for (let y = currentFYStart; y >= currentFYStart - 3; y--) {
+    years.push(String(y));
+  }
+  return years;
+}
+
 function formatAmount(paise: number | null | undefined): string {
   const val = Number(paise) || 0;
-  return `₹${(val / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
+  if (val === 0) return "—";
+  const abs = Math.abs(val);
+  const formatted = `₹${(abs / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
+  return val < 0 ? `(${formatted})` : formatted;
+}
+
+function isBalanceSheet(type: string): boolean {
+  return ['asset', 'liability', 'equity'].includes(type);
 }
 
 export default function ChartOfAccountsPage() {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("all");
+  const [selectedFY, setSelectedFY] = useState(getCurrentFY());
   const [expandedTypes, setExpandedTypes] = useState<Set<string>>(new Set(["asset", "liability", "equity", "revenue", "expense"]));
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editAccount, setEditAccount] = useState<ChartAccount | null>(null);
@@ -98,7 +131,7 @@ export default function ChartOfAccountsPage() {
   });
 
   const { data: accounts = [], isLoading } = useQuery<ChartAccount[]>({
-    queryKey: ["/api/chart-of-accounts"],
+    queryKey: [`/api/chart-of-accounts?fy=${selectedFY}`],
   });
 
   const createMutation = useMutation({
@@ -107,7 +140,7 @@ export default function ChartOfAccountsPage() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/chart-of-accounts"] });
+      queryClient.invalidateQueries({ predicate: (query) => String(query.queryKey[0]).startsWith('/api/chart-of-accounts') });
       toast({ title: "Account created successfully" });
       setDialogOpen(false);
       resetForm();
@@ -123,7 +156,7 @@ export default function ChartOfAccountsPage() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/chart-of-accounts"] });
+      queryClient.invalidateQueries({ predicate: (query) => String(query.queryKey[0]).startsWith('/api/chart-of-accounts') });
       toast({ title: "Account updated successfully" });
       setDialogOpen(false);
       setEditAccount(null);
@@ -140,7 +173,7 @@ export default function ChartOfAccountsPage() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/chart-of-accounts"] });
+      queryClient.invalidateQueries({ predicate: (query) => String(query.queryKey[0]).startsWith('/api/chart-of-accounts') });
       toast({ title: "Account deleted" });
     },
     onError: (err: any) => {
@@ -160,7 +193,7 @@ export default function ChartOfAccountsPage() {
       accountType: account.accountType,
       subType: account.subType || "",
       description: account.description || "",
-      openingBalance: String(account.openingBalance / 100),
+      openingBalance: String((Number(account.openingBalance) || 0) / 100),
     });
     setDialogOpen(true);
   }
@@ -187,7 +220,7 @@ export default function ChartOfAccountsPage() {
   }
 
   const filteredAccounts = accounts.filter(a => {
-    const matchesSearch = !searchQuery || 
+    const matchesSearch = !searchQuery ||
       a.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
       a.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesType = filterType === "all" || a.accountType === filterType;
@@ -215,111 +248,117 @@ export default function ChartOfAccountsPage() {
     );
   }
 
+  const fyLabel = getFYLabel(selectedFY);
+  const fyStartYear = parseInt(selectedFY);
+
   return (
     <div className="p-4 space-y-4 max-w-7xl mx-auto" data-testid="page-chart-of-accounts">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-xl font-semibold" data-testid="text-page-title">Chart of Accounts</h1>
-          <p className="text-sm text-muted-foreground">{accounts.length} accounts configured</p>
+          <p className="text-sm text-muted-foreground">{accounts.length} accounts &middot; {fyLabel} (Apr {fyStartYear} — Mar {fyStartYear + 1})</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setEditAccount(null); resetForm(); } }}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-add-account">
-              <Plus className="w-4 h-4 mr-1" /> Add Account
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>{editAccount ? "Edit Account" : "Add New Account"}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Select value={selectedFY} onValueChange={setSelectedFY}>
+            <SelectTrigger className="w-[140px]" data-testid="select-financial-year">
+              <Calendar className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {getAvailableFYs().map(fy => (
+                <SelectItem key={fy} value={fy}>{getFYLabel(fy)}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setEditAccount(null); resetForm(); } }}>
+            <DialogTrigger asChild>
+              <Button data-testid="button-add-account">
+                <Plus className="w-4 h-4 mr-1" /> Add Account
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>{editAccount ? "Edit Account" : "Add New Account"}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Account Code</Label>
+                    <Input
+                      data-testid="input-account-code"
+                      value={formData.code}
+                      onChange={e => setFormData(p => ({ ...p, code: e.target.value }))}
+                      placeholder="e.g. 1004"
+                      disabled={!!editAccount?.isSystemAccount}
+                    />
+                  </div>
+                  <div>
+                    <Label>Account Type</Label>
+                    <Select
+                      value={formData.accountType}
+                      onValueChange={v => setFormData(p => ({ ...p, accountType: v, subType: "" }))}
+                    >
+                      <SelectTrigger data-testid="select-account-type">
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ACCOUNT_TYPES.map(t => (
+                          <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
                 <div>
-                  <Label>Account Code</Label>
+                  <Label>Account Name</Label>
                   <Input
-                    data-testid="input-account-code"
-                    value={formData.code}
-                    onChange={e => setFormData(p => ({ ...p, code: e.target.value }))}
-                    placeholder="e.g. 1004"
-                    disabled={!!editAccount?.isSystemAccount}
+                    data-testid="input-account-name"
+                    value={formData.name}
+                    onChange={e => setFormData(p => ({ ...p, name: e.target.value }))}
+                    placeholder="Account name"
                   />
                 </div>
+                {formData.accountType && SUB_TYPES[formData.accountType]?.length > 0 && (
+                  <div>
+                    <Label>Sub-Type</Label>
+                    <Select value={formData.subType} onValueChange={v => setFormData(p => ({ ...p, subType: v }))}>
+                      <SelectTrigger data-testid="select-sub-type">
+                        <SelectValue placeholder="Select sub-type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SUB_TYPES[formData.accountType].map(st => (
+                          <SelectItem key={st.value} value={st.value}>{st.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div>
-                  <Label>Account Type</Label>
-                  <Select
-                    value={formData.accountType}
-                    onValueChange={v => setFormData(p => ({ ...p, accountType: v, subType: "" }))}
-                  >
-                    <SelectTrigger data-testid="select-account-type">
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ACCOUNT_TYPES.map(t => (
-                        <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label>Description</Label>
+                  <Textarea
+                    data-testid="input-description"
+                    value={formData.description}
+                    onChange={e => setFormData(p => ({ ...p, description: e.target.value }))}
+                    placeholder="Optional description"
+                    rows={2}
+                  />
                 </div>
               </div>
-              <div>
-                <Label>Account Name</Label>
-                <Input
-                  data-testid="input-account-name"
-                  value={formData.name}
-                  onChange={e => setFormData(p => ({ ...p, name: e.target.value }))}
-                  placeholder="Account name"
-                />
-              </div>
-              {formData.accountType && SUB_TYPES[formData.accountType]?.length > 0 && (
-                <div>
-                  <Label>Sub-Type</Label>
-                  <Select value={formData.subType} onValueChange={v => setFormData(p => ({ ...p, subType: v }))}>
-                    <SelectTrigger data-testid="select-sub-type">
-                      <SelectValue placeholder="Select sub-type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SUB_TYPES[formData.accountType].map(st => (
-                        <SelectItem key={st.value} value={st.value}>{st.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              <div>
-                <Label>Opening Balance (₹)</Label>
-                <Input
-                  data-testid="input-opening-balance"
-                  type="number"
-                  value={formData.openingBalance}
-                  onChange={e => setFormData(p => ({ ...p, openingBalance: e.target.value }))}
-                  step="0.01"
-                />
-              </div>
-              <div>
-                <Label>Description</Label>
-                <Textarea
-                  data-testid="input-description"
-                  value={formData.description}
-                  onChange={e => setFormData(p => ({ ...p, description: e.target.value }))}
-                  placeholder="Optional description"
-                  rows={2}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => { setDialogOpen(false); setEditAccount(null); resetForm(); }}>
-                Cancel
-              </Button>
-              <Button
-                data-testid="button-save-account"
-                onClick={handleSubmit}
-                disabled={createMutation.isPending || updateMutation.isPending || !formData.code || !formData.name || !formData.accountType}
-              >
-                {editAccount ? "Update" : "Create"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => { setDialogOpen(false); setEditAccount(null); resetForm(); }}>
+                  Cancel
+                </Button>
+                <Button
+                  data-testid="button-save-account"
+                  onClick={handleSubmit}
+                  disabled={createMutation.isPending || updateMutation.isPending || !formData.code || !formData.name || !formData.accountType}
+                >
+                  {editAccount ? "Update" : "Create"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="flex items-center gap-3 flex-wrap">
@@ -351,7 +390,8 @@ export default function ChartOfAccountsPage() {
           <Card key={t.value} className="cursor-pointer hover-elevate" onClick={() => setFilterType(filterType === t.value ? "all" : t.value)}>
             <CardContent className="p-3">
               <div className="text-xs text-muted-foreground uppercase">{t.label}</div>
-              <div className="text-lg font-semibold">{t.count}</div>
+              <div className="text-sm font-semibold">{t.count} accounts</div>
+              <div className="text-xs font-mono tabular-nums text-muted-foreground mt-0.5">{formatAmount(t.totalBalance)}</div>
             </CardContent>
           </Card>
         ))}
@@ -362,6 +402,8 @@ export default function ChartOfAccountsPage() {
           const group = groupedAccounts[type.value] || [];
           if (group.length === 0) return null;
           const isExpanded = expandedTypes.has(type.value);
+          const isBs = isBalanceSheet(type.value);
+          const groupTotal = group.reduce((sum, a) => sum + (Number(a.currentBalance) || 0), 0);
 
           return (
             <Card key={type.value}>
@@ -375,30 +417,65 @@ export default function ChartOfAccountsPage() {
                   <span className="font-medium">{type.label}</span>
                   <Badge variant="secondary" className={TYPE_COLORS[type.value]}>{group.length}</Badge>
                 </div>
+                <span className="text-sm font-mono tabular-nums">{formatAmount(groupTotal)}</span>
               </div>
               {isExpanded && (
                 <CardContent className="p-0 border-t">
+                  <div className="hidden sm:grid grid-cols-[1fr_100px_100px_100px_100px_72px] gap-2 px-4 py-1.5 text-xs text-muted-foreground font-medium border-b bg-muted/30">
+                    <span>Account</span>
+                    {isBs && <span className="text-right">Opening</span>}
+                    {!isBs && <span className="text-right">Debit</span>}
+                    <span className="text-right">{isBs ? "Debit" : "Credit"}</span>
+                    <span className="text-right">{isBs ? "Credit" : "Movement"}</span>
+                    <span className="text-right">Closing</span>
+                    <span></span>
+                  </div>
                   <div className="divide-y">
                     {group.map(account => (
                       <div
                         key={account.id}
-                        className="flex items-center justify-between px-4 py-2 hover-elevate"
+                        className="grid grid-cols-1 sm:grid-cols-[1fr_100px_100px_100px_100px_72px] gap-1 sm:gap-2 items-center px-4 py-2 hover-elevate"
                         data-testid={`row-account-${account.code}`}
                       >
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="flex items-center gap-2 min-w-0">
                           <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono shrink-0">{account.code}</code>
                           <span className="text-sm truncate">{account.name}</span>
                           {account.isSystemAccount === 1 && (
                             <Lock className="w-3 h-3 text-muted-foreground shrink-0" />
                           )}
                           {account.subType && (
-                            <span className="text-xs text-muted-foreground hidden sm:inline">
+                            <span className="text-xs text-muted-foreground hidden md:inline">
                               {account.subType.replace(/_/g, " ")}
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className="text-sm font-mono tabular-nums">
+                        {isBs ? (
+                          <>
+                            <span className="text-xs sm:text-sm font-mono tabular-nums text-right text-muted-foreground" data-testid={`opening-${account.code}`}>
+                              {formatAmount(account.openingBalance)}
+                            </span>
+                            <span className="text-xs sm:text-sm font-mono tabular-nums text-right" data-testid={`debit-${account.code}`}>
+                              {formatAmount(account.periodDebit)}
+                            </span>
+                            <span className="text-xs sm:text-sm font-mono tabular-nums text-right" data-testid={`credit-${account.code}`}>
+                              {formatAmount(account.periodCredit)}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-xs sm:text-sm font-mono tabular-nums text-right" data-testid={`debit-${account.code}`}>
+                              {formatAmount(account.periodDebit)}
+                            </span>
+                            <span className="text-xs sm:text-sm font-mono tabular-nums text-right" data-testid={`credit-${account.code}`}>
+                              {formatAmount(account.periodCredit)}
+                            </span>
+                            <span className="text-xs sm:text-sm font-mono tabular-nums text-right" data-testid={`movement-${account.code}`}>
+                              {formatAmount(account.periodMovement)}
+                            </span>
+                          </>
+                        )}
+                        <div className="flex items-center justify-end gap-1">
+                          <span className="text-sm font-mono tabular-nums font-medium" data-testid={`closing-${account.code}`}>
                             {formatAmount(account.currentBalance)}
                           </span>
                           <Button

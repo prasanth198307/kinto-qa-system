@@ -19699,32 +19699,116 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const accounts = await storage.getAllChartOfAccounts();
 
-      const balanceRows = await db.select({
-        accountId: journalLines.accountId,
-        totalDebit: sql<number>`coalesce(sum(${journalLines.debit}), 0)`.as('total_debit'),
-        totalCredit: sql<number>`coalesce(sum(${journalLines.credit}), 0)`.as('total_credit'),
-      })
-        .from(journalLines)
-        .where(eq(journalLines.recordStatus, 1))
-        .groupBy(journalLines.accountId);
+      const fyParam = req.query.fy as string | undefined;
+      let fyStart: string | null = null;
+      let fyEnd: string | null = null;
 
-      const balanceMap = new Map<string, { totalDebit: number; totalCredit: number }>();
-      for (const row of balanceRows) {
-        balanceMap.set(row.accountId, { totalDebit: Number(row.totalDebit), totalCredit: Number(row.totalCredit) });
+      if (fyParam && /^\d{4}$/.test(fyParam)) {
+        const startYear = parseInt(fyParam);
+        fyStart = `${startYear}-04-01`;
+        fyEnd = `${startYear + 1}-03-31`;
       }
 
-      const accountsWithBalances = accounts.map(account => {
-        const bal = balanceMap.get(account.id) || { totalDebit: 0, totalCredit: 0 };
-        let currentBalance = 0;
-        if (account.accountType === 'asset' || account.accountType === 'expense') {
-          currentBalance = bal.totalDebit - bal.totalCredit;
-        } else {
-          currentBalance = bal.totalCredit - bal.totalDebit;
-        }
-        return { ...account, openingBalance: 0, currentBalance };
-      });
+      const isBalanceSheetAccount = (type: string) => ['asset', 'liability', 'equity'].includes(type);
 
-      res.json(accountsWithBalances);
+      if (fyStart && fyEnd) {
+        const openingRows = await db.select({
+          accountId: journalLines.accountId,
+          totalDebit: sql<number>`coalesce(sum(${journalLines.debit}), 0)`.as('total_debit'),
+          totalCredit: sql<number>`coalesce(sum(${journalLines.credit}), 0)`.as('total_credit'),
+        })
+          .from(journalLines)
+          .innerJoin(journalEntries, eq(journalLines.journalId, journalEntries.id))
+          .where(and(
+            eq(journalLines.recordStatus, 1),
+            eq(journalEntries.recordStatus, 1),
+            sql`${journalEntries.journalDate} < ${fyStart}`
+          ))
+          .groupBy(journalLines.accountId);
+
+        const periodRows = await db.select({
+          accountId: journalLines.accountId,
+          totalDebit: sql<number>`coalesce(sum(${journalLines.debit}), 0)`.as('total_debit'),
+          totalCredit: sql<number>`coalesce(sum(${journalLines.credit}), 0)`.as('total_credit'),
+        })
+          .from(journalLines)
+          .innerJoin(journalEntries, eq(journalLines.journalId, journalEntries.id))
+          .where(and(
+            eq(journalLines.recordStatus, 1),
+            eq(journalEntries.recordStatus, 1),
+            sql`${journalEntries.journalDate} >= ${fyStart}`,
+            sql`${journalEntries.journalDate} <= ${fyEnd}`
+          ))
+          .groupBy(journalLines.accountId);
+
+        const openingMap = new Map<string, { totalDebit: number; totalCredit: number }>();
+        for (const row of openingRows) {
+          openingMap.set(row.accountId, { totalDebit: Number(row.totalDebit), totalCredit: Number(row.totalCredit) });
+        }
+        const periodMap = new Map<string, { totalDebit: number; totalCredit: number }>();
+        for (const row of periodRows) {
+          periodMap.set(row.accountId, { totalDebit: Number(row.totalDebit), totalCredit: Number(row.totalCredit) });
+        }
+
+        const accountsWithBalances = accounts.map(account => {
+          const isBs = isBalanceSheetAccount(account.accountType);
+          const isDebitNormal = account.accountType === 'asset' || account.accountType === 'expense';
+
+          const opening = openingMap.get(account.id) || { totalDebit: 0, totalCredit: 0 };
+          const period = periodMap.get(account.id) || { totalDebit: 0, totalCredit: 0 };
+
+          let openingBalance = 0;
+          if (isBs) {
+            openingBalance = isDebitNormal
+              ? opening.totalDebit - opening.totalCredit
+              : opening.totalCredit - opening.totalDebit;
+          }
+
+          const periodMovement = isDebitNormal
+            ? period.totalDebit - period.totalCredit
+            : period.totalCredit - period.totalDebit;
+
+          const closingBalance = openingBalance + periodMovement;
+
+          return {
+            ...account,
+            openingBalance,
+            periodDebit: Number(period.totalDebit) || 0,
+            periodCredit: Number(period.totalCredit) || 0,
+            periodMovement,
+            currentBalance: closingBalance,
+          };
+        });
+
+        res.json(accountsWithBalances);
+      } else {
+        const balanceRows = await db.select({
+          accountId: journalLines.accountId,
+          totalDebit: sql<number>`coalesce(sum(${journalLines.debit}), 0)`.as('total_debit'),
+          totalCredit: sql<number>`coalesce(sum(${journalLines.credit}), 0)`.as('total_credit'),
+        })
+          .from(journalLines)
+          .where(eq(journalLines.recordStatus, 1))
+          .groupBy(journalLines.accountId);
+
+        const balanceMap = new Map<string, { totalDebit: number; totalCredit: number }>();
+        for (const row of balanceRows) {
+          balanceMap.set(row.accountId, { totalDebit: Number(row.totalDebit), totalCredit: Number(row.totalCredit) });
+        }
+
+        const accountsWithBalances = accounts.map(account => {
+          const bal = balanceMap.get(account.id) || { totalDebit: 0, totalCredit: 0 };
+          let currentBalance = 0;
+          if (account.accountType === 'asset' || account.accountType === 'expense') {
+            currentBalance = bal.totalDebit - bal.totalCredit;
+          } else {
+            currentBalance = bal.totalCredit - bal.totalDebit;
+          }
+          return { ...account, openingBalance: 0, periodDebit: Number(bal.totalDebit) || 0, periodCredit: Number(bal.totalCredit) || 0, periodMovement: currentBalance, currentBalance };
+        });
+
+        res.json(accountsWithBalances);
+      }
     } catch (error: any) {
       res.status(500).json({ message: error.message || 'Failed to fetch chart of accounts' });
     }
