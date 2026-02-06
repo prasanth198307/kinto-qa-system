@@ -46,6 +46,13 @@ const SOURCE_LABELS: Record<string, string> = {
   write_off: "Write-Off",
   vendor_debit_note: "Vendor Debit Note",
   vdn_adjustment: "VDN Adjustment",
+  material_receipt: "Material Receipt",
+  material_issuance: "Material Issuance",
+  production_entry: "Production Output",
+  spare_part_receipt: "Spare Part Receipt",
+  spare_part_issuance: "Spare Part Issuance",
+  cash_register_deposit: "Cash Deposit",
+  cash_register_transfer: "Cash Transfer",
   manual: "Manual Entry",
 };
 

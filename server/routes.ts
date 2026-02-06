@@ -2560,6 +2560,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const validatedData = insertSparePartEntrySchema.parse({ ...req.body, sparePartId: id });
       const created = await storage.createSparePartEntry(validatedData);
+
+      // Non-blocking journal entry for spare part receipt
+      try {
+        const part = await storage.getSparePart(id);
+        let vendorName = 'Unknown';
+        if (created.vendorId) {
+          const vendor = await storage.getVendor(created.vendorId);
+          vendorName = vendor?.vendorName || 'Unknown';
+        }
+        const { journalForSparePartReceipt } = await import('./journal-service');
+        await journalForSparePartReceipt(
+          {
+            id: created.id,
+            purchaseDate: created.purchaseDate,
+            quantity: Number(created.quantity),
+            unitPrice: Number(created.unitPrice),
+            gstPercent: Number(created.gstPercent) || 0,
+            gstAmount: Number(created.gstAmount) || 0,
+            totalAmount: Number(created.totalAmount) || 0,
+          },
+          part?.partName || 'Unknown Part',
+          vendorName
+        );
+      } catch (je) {
+        console.error('[JOURNAL] Spare part receipt journal error (non-blocking):', je);
+      }
+
       res.json(created);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -2597,6 +2624,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validatedData = insertSparePartIssuanceSchema.parse(req.body);
       const created = await storage.createSparePartIssuance(validatedData);
+
+      // Non-blocking journal entry for spare part issuance
+      try {
+        const part = await storage.getSparePart(created.sparePartId);
+        const unitPrice = Number(part?.unitPrice) || 0;
+        const { journalForSparePartIssuance } = await import('./journal-service');
+        await journalForSparePartIssuance(
+          {
+            id: created.id,
+            issueDate: created.issueDate,
+            quantity: Number(created.quantity),
+            purpose: created.purpose || undefined,
+          },
+          part?.partName || 'Unknown Part',
+          unitPrice
+        );
+      } catch (je) {
+        console.error('[JOURNAL] Spare part issuance journal error (non-blocking):', je);
+      }
+
       res.json(created);
     } catch (error) {
       if (error instanceof z.ZodError) {
