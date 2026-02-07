@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -124,6 +124,7 @@ export default function BankTransactionsPage() {
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [selectedImportId, setSelectedImportId] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [monthFilter, setMonthFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [editTxn, setEditTxn] = useState<BankTransaction | null>(null);
@@ -290,7 +291,32 @@ export default function BankTransactionsPage() {
     uploadMutation.mutate(formData);
   };
 
+  const availableMonths = useMemo(() => {
+    const monthSet = new Map<string, string>();
+    for (const t of transactions) {
+      if (t.txnDate) {
+        const parts = t.txnDate.split('-');
+        if (parts.length >= 2) {
+          const key = `${parts[0]}-${parts[1]}`;
+          if (!monthSet.has(key)) {
+            const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1);
+            const label = d.toLocaleString('en-IN', { month: 'short', year: 'numeric' });
+            monthSet.set(key, label);
+          }
+        }
+      }
+    }
+    return Array.from(monthSet.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([value, label]) => ({ value, label }));
+  }, [transactions]);
+
   const filtered = transactions.filter(t => {
+    if (monthFilter !== "all" && t.txnDate) {
+      const parts = t.txnDate.split('-');
+      const txnMonth = parts.length >= 2 ? `${parts[0]}-${parts[1]}` : '';
+      if (txnMonth !== monthFilter) return false;
+    }
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       return t.description.toLowerCase().includes(term) || 
@@ -484,6 +510,17 @@ export default function BankTransactionsPage() {
               <SelectItem key={imp.id} value={imp.id}>
                 {imp.accountNumber ? `...${imp.accountNumber.slice(-6)}` : imp.fileName.substring(0, 20)} ({imp.totalRows})
               </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={monthFilter} onValueChange={setMonthFilter}>
+          <SelectTrigger className="w-[160px]" data-testid="select-month-filter">
+            <SelectValue placeholder="All Months" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Months</SelectItem>
+            {availableMonths.map(m => (
+              <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
