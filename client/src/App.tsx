@@ -110,6 +110,7 @@ import ManualJournalEntryPage from "@/pages/manual-journal-entry";
 import TrialBalancePage from "@/pages/trial-balance";
 import ProfitLossPage from "@/pages/profit-loss";
 import BankTransactionsPage from "@/pages/bank-transactions";
+import AdminToolsPage from "@/pages/admin-tools";
 
 type Role = 'admin' | 'operator' | 'reviewer' | 'manager';
 
@@ -1409,6 +1410,7 @@ const navItemToScreenKey: Record<string, string> = {
   // Settings
   'notification-settings': 'notification_settings',
   'data-import': 'data_import',
+  'admin-tools': 'data_import',
 };
 
 // Legacy permission mapping for backward compatibility with default roles
@@ -1484,6 +1486,7 @@ const navItemToScreen: Record<string, string> = {
   // Settings
   'notification-settings': 'User Management',
   'data-import': 'User Management',
+  'admin-tools': 'User Management',
 };
 
 // Permission matrix: which roles can access which screens
@@ -1715,6 +1718,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       items: [
         { id: "notification-settings", label: "Notification Settings", icon: Bell, onClick: () => setLocation('/') },
         { id: "data-import", label: "Data Import", icon: Upload, onClick: () => setLocation('/') },
+        { id: "admin-tools", label: "Admin Tools", icon: Wrench, onClick: () => setLocation('/admin-tools') },
       ],
     },
   ];
@@ -1995,6 +1999,20 @@ function BankTransactionsPageWrapper() {
   return (
     <DashboardShell title="Bank Statements" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
       <BankTransactionsPage />
+    </DashboardShell>
+  );
+}
+
+function AdminToolsPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('admin-tools');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  return (
+    <DashboardShell title="Admin Tools" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
+      <AdminToolsPage />
     </DashboardShell>
   );
 }
@@ -2737,6 +2755,7 @@ function Router() {
       <ProtectedRoute path="/trial-balance" component={TrialBalancePageWrapper} />
       <ProtectedRoute path="/profit-loss" component={ProfitLossPageWrapper} />
       <ProtectedRoute path="/bank-transactions" component={BankTransactionsPageWrapper} />
+      <ProtectedRoute path="/admin-tools" component={AdminToolsPageWrapper} />
       <ProtectedRoute path="/journal-entry/new" component={ManualJournalEntryPageWrapper} />
       <ProtectedRoute path="/journal-entry/:id" component={JournalEntryDetailPageWrapper} />
       <ProtectedRoute path="/" component={AuthenticatedApp} />
