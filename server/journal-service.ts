@@ -396,14 +396,14 @@ export async function journalForInvoice(invoice: any): Promise<void> {
   const cgst = Number(invoice.cgstAmount) || 0;
   const sgst = Number(invoice.sgstAmount) || 0;
   const igst = Number(invoice.igstAmount) || 0;
-  const grandTotal = Number(invoice.grandTotal) || 0;
+  const totalAmount = Number(invoice.totalAmount) || Number(invoice.grandTotal) || 0;
 
-  if (grandTotal === 0 && subtotal === 0) return;
+  if (totalAmount === 0 && subtotal === 0) return;
 
-  const salesRevenue = grandTotal - cgst - sgst - igst;
+  const salesRevenue = totalAmount - cgst - sgst - igst;
 
   const lines: JournalLineInput[] = [
-    { accountCode: ACCOUNT_CODES.ACCOUNTS_RECEIVABLE, debit: grandTotal, credit: 0, memo: `Invoice ${invoice.invoiceNumber}`, partyType: 'vendor', partyName: invoice.buyerName },
+    { accountCode: ACCOUNT_CODES.ACCOUNTS_RECEIVABLE, debit: totalAmount, credit: 0, memo: `Invoice ${invoice.invoiceNumber}`, partyType: 'vendor', partyName: invoice.buyerName },
     { accountCode: ACCOUNT_CODES.SALES_REVENUE, debit: 0, credit: salesRevenue, memo: `Sales - Invoice ${invoice.invoiceNumber}` },
   ];
 
