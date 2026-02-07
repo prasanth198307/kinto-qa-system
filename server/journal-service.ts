@@ -884,6 +884,7 @@ export async function fixInvoiceJournalEntries(): Promise<{
     FROM invoices i
     WHERE i.record_status = 1
       AND i.status != 'cancelled'
+      AND (i.total_amount > 0 OR i.subtotal > 0)
       AND NOT EXISTS (
         SELECT 1 FROM journal_entries je
         WHERE je.source_type = 'invoice' AND je.source_id = i.id AND je.record_status = 1
