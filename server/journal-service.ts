@@ -977,7 +977,7 @@ export async function backfillJournalEntries(): Promise<{
   try {
     const sourceTableMap: Record<string, { table: string; statusFilter?: string }> = {
       invoice: { table: 'invoices', statusFilter: "AND status != 'cancelled'" },
-      payment: { table: 'invoice_payments', statusFilter: "AND (payment_type IS NULL OR payment_type != 'Write-off')" },
+      payment: { table: 'invoice_payments', statusFilter: "AND (payment_type IS NULL OR payment_type NOT IN ('Write-off', 'Adjustment'))" },
       write_off: { table: 'invoice_payments', statusFilter: "AND payment_type = 'Write-off'" },
       credit_note: { table: 'credit_notes' },
       customer_advance: { table: 'customer_advances' },
@@ -1050,14 +1050,15 @@ export async function backfillJournalEntries(): Promise<{
   }
   console.log(`[BACKFILL] Invoices done: ${results.invoices.processed} created, ${results.invoices.skipped} skipped, ${results.invoices.errors} errors`);
 
-  // 2. Backfill Payments (non-write-offs)
+  // 2. Backfill Payments (excludes write-offs and VDN adjustments which have their own journal entries)
   console.log('[BACKFILL] Starting payments...');
   const allPayments: any[] = (await db.execute(sql`
     SELECT p.id, p.invoice_id, p.payment_date, p.amount, p.payment_method, p.reference_number, p.payer_name,
            i.invoice_number, i.buyer_name
     FROM invoice_payments p
     LEFT JOIN invoices i ON p.invoice_id = i.id
-    WHERE p.record_status = 1 AND (p.payment_type IS NULL OR p.payment_type != 'Write-off')
+    WHERE p.record_status = 1 
+      AND (p.payment_type IS NULL OR p.payment_type NOT IN ('Write-off', 'Adjustment'))
   `)).rows;
 
   for (const pmt of allPayments) {
