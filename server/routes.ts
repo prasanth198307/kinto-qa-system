@@ -19928,6 +19928,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Fix misclassified payment journal entries (write-offs/adjustments recorded as payments)
+  app.post('/api/journal-entries/fix-payments', requireRole('admin'), async (req: any, res) => {
+    try {
+      const { fixPaymentJournals } = await import('./journal-service');
+      console.log('[FIX-PAYMENT-JOURNALS] Admin triggered payment journal fix');
+      const results = await fixPaymentJournals();
+      res.json(results);
+    } catch (error: any) {
+      console.error('[FIX-PAYMENT-JOURNALS] Fatal error:', error.message);
+      res.status(500).json({ message: error.message || 'Fix failed' });
+    }
+  });
+
   // Backfill journal entries for existing data
   app.post('/api/journal-entries/backfill', requireRole('admin'), async (req: any, res) => {
     try {

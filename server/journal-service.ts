@@ -925,6 +925,136 @@ export async function fixInvoiceJournalEntries(): Promise<{
   return result;
 }
 
+// ============ FIX: Reclassify write-off/adjustment payment journals ============
+
+export async function fixPaymentJournals(): Promise<{
+  adjustmentsFixed: number;
+  writeOffsFixed: number;
+  errors: number;
+  details: Array<{ id: string; paymentType: string; invoiceNumber: string; amount: number; action: string }>;
+}> {
+  const result = {
+    adjustmentsFixed: 0,
+    writeOffsFixed: 0,
+    errors: 0,
+    details: [] as Array<{ id: string; paymentType: string; invoiceNumber: string; amount: number; action: string }>,
+  };
+
+  // 1. Find Adjustment payments that have incorrect 'payment' journal entries
+  // These should NOT have payment journals — they already have vdn_adjustment journals
+  console.log('[FIX-PAYMENT-JOURNALS] Finding misclassified Adjustment payment journals...');
+  const adjustmentPayments: any[] = (await db.execute(sql`
+    SELECT je.id as journal_id, je.source_id, je.description, je.total_debit,
+           ip.payment_type, ip.amount, i.invoice_number
+    FROM journal_entries je
+    JOIN invoice_payments ip ON je.source_id = ip.id
+    LEFT JOIN invoices i ON ip.invoice_id = i.id
+    WHERE je.record_status = 1 
+      AND je.is_auto_generated = 1
+      AND je.source_type = 'payment'
+      AND ip.payment_type = 'Adjustment'
+      AND ip.record_status = 1
+  `)).rows;
+
+  for (const entry of adjustmentPayments) {
+    try {
+      // Soft-delete the incorrect payment journal entry and its lines
+      await db.execute(sql`UPDATE journal_entries SET record_status = 0 WHERE id = ${entry.journal_id}`);
+      await db.execute(sql`UPDATE journal_lines SET record_status = 0 WHERE journal_id = ${entry.journal_id}`);
+      result.adjustmentsFixed++;
+      result.details.push({
+        id: entry.journal_id,
+        paymentType: 'Adjustment',
+        invoiceNumber: entry.invoice_number || 'Unknown',
+        amount: entry.total_debit || entry.amount || 0,
+        action: 'removed_duplicate',
+      });
+      console.log(`[FIX-PAYMENT-JOURNALS] Removed duplicate payment journal for Adjustment: ${entry.invoice_number}`);
+    } catch (e: any) {
+      result.errors++;
+      console.error(`[FIX-PAYMENT-JOURNALS] Error fixing adjustment ${entry.journal_id}:`, e.message);
+      result.details.push({
+        id: entry.journal_id,
+        paymentType: 'Adjustment',
+        invoiceNumber: entry.invoice_number || 'Unknown',
+        amount: entry.total_debit || 0,
+        action: `error: ${e.message}`,
+      });
+    }
+  }
+
+  // 2. Find Write-off payments that have incorrect 'payment' journal entries
+  // These should have 'write_off' journals (Debit Bad Debts, Credit AR) instead of 'payment' (Debit Bank, Credit AR)
+  console.log('[FIX-PAYMENT-JOURNALS] Finding misclassified Write-off payment journals...');
+  const writeOffPayments: any[] = (await db.execute(sql`
+    SELECT je.id as journal_id, je.source_id, je.description, je.total_debit,
+           ip.id as payment_id, ip.payment_type, ip.amount, ip.payment_date,
+           i.invoice_number, i.buyer_name
+    FROM journal_entries je
+    JOIN invoice_payments ip ON je.source_id = ip.id
+    LEFT JOIN invoices i ON ip.invoice_id = i.id
+    WHERE je.record_status = 1 
+      AND je.is_auto_generated = 1
+      AND je.source_type = 'payment'
+      AND ip.payment_type = 'Write-off'
+      AND ip.record_status = 1
+  `)).rows;
+
+  for (const entry of writeOffPayments) {
+    try {
+      // Check if a correct write_off journal already exists
+      const existingWriteOff: any[] = (await db.execute(sql`
+        SELECT id FROM journal_entries 
+        WHERE source_type = 'write_off' AND source_id = ${entry.payment_id} AND record_status = 1
+        LIMIT 1
+      `)).rows;
+
+      // Soft-delete the incorrect payment journal
+      await db.execute(sql`UPDATE journal_entries SET record_status = 0 WHERE id = ${entry.journal_id}`);
+      await db.execute(sql`UPDATE journal_lines SET record_status = 0 WHERE journal_id = ${entry.journal_id}`);
+
+      // If no correct write_off journal exists, create one
+      if (existingWriteOff.length === 0) {
+        await journalForWriteOff(
+          { id: entry.payment_id, amount: entry.amount || 0, paymentDate: entry.payment_date },
+          { invoiceNumber: entry.invoice_number || 'Unknown', buyerName: entry.buyer_name || 'Unknown' }
+        );
+        result.details.push({
+          id: entry.journal_id,
+          paymentType: 'Write-off',
+          invoiceNumber: entry.invoice_number || 'Unknown',
+          amount: entry.amount || 0,
+          action: 'reclassified',
+        });
+      } else {
+        result.details.push({
+          id: entry.journal_id,
+          paymentType: 'Write-off',
+          invoiceNumber: entry.invoice_number || 'Unknown',
+          amount: entry.amount || 0,
+          action: 'removed_duplicate',
+        });
+      }
+
+      result.writeOffsFixed++;
+      console.log(`[FIX-PAYMENT-JOURNALS] Fixed write-off journal for: ${entry.invoice_number}`);
+    } catch (e: any) {
+      result.errors++;
+      console.error(`[FIX-PAYMENT-JOURNALS] Error fixing write-off ${entry.journal_id}:`, e.message);
+      result.details.push({
+        id: entry.journal_id,
+        paymentType: 'Write-off',
+        invoiceNumber: entry.invoice_number || 'Unknown',
+        amount: entry.amount || 0,
+        action: `error: ${e.message}`,
+      });
+    }
+  }
+
+  console.log(`[FIX-PAYMENT-JOURNALS] Complete: ${result.adjustmentsFixed} adjustments fixed, ${result.writeOffsFixed} write-offs fixed, ${result.errors} errors`);
+  return result;
+}
+
 // ============ BACKFILL: Generate journals for existing data ============
 
 export async function backfillJournalEntries(): Promise<{
