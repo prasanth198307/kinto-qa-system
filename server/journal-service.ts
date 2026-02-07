@@ -795,6 +795,135 @@ export async function journalForSparePartIssuance(
   );
 }
 
+// ============ FIX: Repair broken invoice journal entries ============
+
+export async function fixInvoiceJournalEntries(): Promise<{
+  found: number;
+  deleted: number;
+  regenerated: number;
+  errors: number;
+  details: Array<{ invoiceId: string; invoiceNumber: string; action: string; oldAmount: number; newAmount: number }>;
+}> {
+  const result = {
+    found: 0,
+    deleted: 0,
+    regenerated: 0,
+    errors: 0,
+    details: [] as Array<{ invoiceId: string; invoiceNumber: string; action: string; oldAmount: number; newAmount: number }>,
+  };
+
+  console.log('[FIX-JOURNALS] Starting invoice journal repair...');
+
+  const brokenEntries: any[] = (await db.execute(sql`
+    SELECT je.id as journal_id, je.source_id, je.total_debit, je.total_credit,
+           i.invoice_number, i.total_amount, i.subtotal, i.cgst_amount, i.sgst_amount, i.igst_amount,
+           i.invoice_date, i.buyer_name
+    FROM journal_entries je
+    JOIN invoices i ON je.source_id = i.id
+    WHERE je.source_type = 'invoice'
+      AND je.record_status = 1
+      AND i.record_status = 1
+      AND i.status != 'cancelled'
+      AND (
+        je.total_debit = 0
+        OR je.total_credit = 0
+        OR je.total_debit != i.total_amount
+      )
+  `)).rows;
+
+  result.found = brokenEntries.length;
+  console.log(`[FIX-JOURNALS] Found ${brokenEntries.length} broken invoice journal entries`);
+
+  for (const entry of brokenEntries) {
+    try {
+      const oldAmount = Number(entry.total_debit) || 0;
+      const expectedAmount = Number(entry.total_amount) || 0;
+
+      await db.execute(sql`DELETE FROM journal_lines WHERE journal_id = ${entry.journal_id}`);
+      await db.execute(sql`DELETE FROM journal_entries WHERE id = ${entry.journal_id}`);
+      result.deleted++;
+
+      await journalForInvoice({
+        id: entry.source_id,
+        invoiceNumber: entry.invoice_number,
+        invoiceDate: entry.invoice_date,
+        buyerName: entry.buyer_name || 'Unknown',
+        subtotal: Number(entry.subtotal) || 0,
+        cgstAmount: Number(entry.cgst_amount) || 0,
+        sgstAmount: Number(entry.sgst_amount) || 0,
+        igstAmount: Number(entry.igst_amount) || 0,
+        totalAmount: expectedAmount,
+      });
+      result.regenerated++;
+
+      result.details.push({
+        invoiceId: entry.source_id,
+        invoiceNumber: entry.invoice_number,
+        action: 'fixed',
+        oldAmount,
+        newAmount: expectedAmount,
+      });
+
+      console.log(`[FIX-JOURNALS] Fixed ${entry.invoice_number}: ${oldAmount} -> ${expectedAmount}`);
+    } catch (e: any) {
+      result.errors++;
+      result.details.push({
+        invoiceId: entry.source_id,
+        invoiceNumber: entry.invoice_number,
+        action: `error: ${e.message}`,
+        oldAmount: Number(entry.total_debit) || 0,
+        newAmount: 0,
+      });
+      console.error(`[FIX-JOURNALS] Error fixing ${entry.invoice_number}:`, e.message);
+    }
+  }
+
+  const missingInvoices: any[] = (await db.execute(sql`
+    SELECT i.id, i.invoice_number, i.invoice_date, i.buyer_name,
+           i.subtotal, i.cgst_amount, i.sgst_amount, i.igst_amount, i.total_amount
+    FROM invoices i
+    WHERE i.record_status = 1
+      AND i.status != 'cancelled'
+      AND NOT EXISTS (
+        SELECT 1 FROM journal_entries je
+        WHERE je.source_type = 'invoice' AND je.source_id = i.id AND je.record_status = 1
+      )
+  `)).rows;
+
+  console.log(`[FIX-JOURNALS] Found ${missingInvoices.length} invoices without journal entries`);
+
+  for (const inv of missingInvoices) {
+    try {
+      const expectedAmount = Number(inv.total_amount) || 0;
+      await journalForInvoice({
+        id: inv.id,
+        invoiceNumber: inv.invoice_number,
+        invoiceDate: inv.invoice_date,
+        buyerName: inv.buyer_name || 'Unknown',
+        subtotal: Number(inv.subtotal) || 0,
+        cgstAmount: Number(inv.cgst_amount) || 0,
+        sgstAmount: Number(inv.sgst_amount) || 0,
+        igstAmount: Number(inv.igst_amount) || 0,
+        totalAmount: expectedAmount,
+      });
+      result.regenerated++;
+      result.details.push({
+        invoiceId: inv.id,
+        invoiceNumber: inv.invoice_number,
+        action: 'created_missing',
+        oldAmount: 0,
+        newAmount: expectedAmount,
+      });
+    } catch (e: any) {
+      result.errors++;
+      console.error(`[FIX-JOURNALS] Error creating missing journal for ${inv.invoice_number}:`, e.message);
+    }
+  }
+
+  console.log(`[FIX-JOURNALS] Complete: ${result.found} broken found, ${result.deleted} deleted, ${result.regenerated} regenerated, ${result.errors} errors`);
+  return result;
+}
+
 // ============ BACKFILL: Generate journals for existing data ============
 
 export async function backfillJournalEntries(): Promise<{

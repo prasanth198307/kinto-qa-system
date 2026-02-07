@@ -19883,6 +19883,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Fix broken invoice journal entries (delete wrong ones, regenerate correctly)
+  app.post('/api/journal-entries/fix-invoices', requireRole('admin'), async (req: any, res) => {
+    try {
+      const { fixInvoiceJournalEntries } = await import('./journal-service');
+      console.log('[FIX-JOURNALS] Admin triggered invoice journal fix');
+      const results = await fixInvoiceJournalEntries();
+      res.json(results);
+    } catch (error: any) {
+      console.error('[FIX-JOURNALS] Fatal error:', error.message);
+      res.status(500).json({ message: error.message || 'Fix failed' });
+    }
+  });
+
   // Backfill journal entries for existing data
   app.post('/api/journal-entries/backfill', requireRole('admin'), async (req: any, res) => {
     try {
