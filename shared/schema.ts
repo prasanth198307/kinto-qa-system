@@ -3553,6 +3553,10 @@ export const bankTransactions = pgTable("bank_transactions", {
   duplicateHash: varchar("duplicate_hash", { length: 64 }),
   journalEntryId: varchar("journal_entry_id"),
 
+  reconciledWith: varchar("reconciled_with", { length: 50 }),
+  reconciledSourceId: varchar("reconciled_source_id"),
+  reconciledDetails: text("reconciled_details"),
+
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 }, (table) => [

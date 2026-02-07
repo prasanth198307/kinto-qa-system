@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Upload, Search, Check, X, Edit2, ArrowUpDown, FileSpreadsheet, CheckSquare, RefreshCw, Building2, ArrowRight, Filter, Users, ChevronDown, ChevronUp } from "lucide-react";
+import { Upload, Search, Check, X, Edit2, ArrowUpDown, FileSpreadsheet, CheckSquare, RefreshCw, Building2, ArrowRight, Filter, Users, ChevronDown, ChevronUp, Link as LinkIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -31,6 +31,9 @@ interface BankTransaction {
   memo: string | null;
   status: string;
   journalEntryId: string | null;
+  reconciledWith: string | null;
+  reconciledSourceId: string | null;
+  reconciledDetails: string | null;
   createdAt: string;
 }
 
@@ -107,6 +110,7 @@ const STATUS_COLORS: Record<string, string> = {
   unmatched: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
   approved: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
   posted: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
+  reconciled: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
   ignored: "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300",
 };
 
@@ -126,6 +130,8 @@ export default function BankTransactionsPage() {
   const [accountFilter, setAccountFilter] = useState<string>("all");
   const [importResult, setImportResult] = useState<{ totalRows: number; duplicateCount: number; message: string } | null>(null);
   const [showDirectorLoans, setShowDirectorLoans] = useState(false);
+  const [showManualReconcile, setShowManualReconcile] = useState<BankTransaction | null>(null);
+  const [selectedPaymentId, setSelectedPaymentId] = useState("");
 
   const { data: imports = [] } = useQuery<BankImport[]>({
     queryKey: ['/api/bank-statement-imports'],
@@ -219,6 +225,41 @@ export default function BankTransactionsPage() {
     },
   });
 
+  const reconcileMutation = useMutation({
+    mutationFn: async (bankAccountId?: string) => {
+      const res = await apiRequest('POST', '/api/bank-transactions/reconcile', { bankAccountId: bankAccountId || undefined });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/bank-transactions'] });
+      toast({ title: "Auto-Reconcile Complete", description: data.message });
+    },
+    onError: (err: any) => {
+      toast({ title: "Reconcile Failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const manualReconcileMutation = useMutation({
+    mutationFn: async ({ txnId, sourceType, sourceId }: { txnId: string; sourceType: string; sourceId: string }) => {
+      const res = await apiRequest('POST', `/api/bank-transactions/${txnId}/reconcile-manual`, { sourceType, sourceId });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/bank-transactions'] });
+      setShowManualReconcile(null);
+      setSelectedPaymentId("");
+      toast({ title: "Reconciled", description: data.details });
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const { data: unreconciledPayments } = useQuery<{ payments: any[]; advances: any[] }>({
+    queryKey: ['/api/bank-transactions/unreconciled-payments'],
+    enabled: !!showManualReconcile,
+  });
+
   const handleUpload = () => {
     const file = fileRef.current?.files?.[0];
     if (!file) return toast({ title: "No file selected", variant: "destructive" });
@@ -247,7 +288,7 @@ export default function BankTransactionsPage() {
   };
 
   const toggleSelectAll = () => {
-    const selectable = filtered.filter(t => t.status !== 'posted' && t.status !== 'ignored');
+    const selectable = filtered.filter(t => t.status !== 'posted' && t.status !== 'ignored' && t.status !== 'reconciled');
     if (selectedIds.size === selectable.length) {
       setSelectedIds(new Set());
     } else {
@@ -304,6 +345,7 @@ export default function BankTransactionsPage() {
     unmatched: filtered.filter(t => t.status === 'unmatched').length,
     approved: filtered.filter(t => t.status === 'approved').length,
     posted: filtered.filter(t => t.status === 'posted').length,
+    reconciled: filtered.filter(t => t.status === 'reconciled').length,
   };
 
   const directorLoanSummary = transactions
@@ -327,6 +369,10 @@ export default function BankTransactionsPage() {
           <p className="text-xs text-muted-foreground">Upload bank statements, review & categorize transactions, then post to journal</p>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => reconcileMutation.mutate(accountFilter !== 'all' ? accountFilter : undefined)} disabled={reconcileMutation.isPending} data-testid="button-auto-reconcile">
+            {reconcileMutation.isPending ? <RefreshCw className="w-4 h-4 mr-1 animate-spin" /> : <CheckSquare className="w-4 h-4 mr-1" />}
+            Auto-Reconcile
+          </Button>
           <Button variant="outline" size="sm" onClick={() => recategorizeMutation.mutate()} disabled={recategorizeMutation.isPending} data-testid="button-recategorize">
             {recategorizeMutation.isPending ? <RefreshCw className="w-4 h-4 mr-1 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-1" />}
             Re-categorize
@@ -343,6 +389,7 @@ export default function BankTransactionsPage() {
           {summaryStats.needsReview > 0 && <Badge className={STATUS_COLORS.needs_review}>{summaryStats.needsReview} Review</Badge>}
           {summaryStats.unmatched > 0 && <Badge className={STATUS_COLORS.unmatched}>{summaryStats.unmatched} Unmatched</Badge>}
           {summaryStats.approved > 0 && <Badge className={STATUS_COLORS.approved}>{summaryStats.approved} Approved</Badge>}
+          {summaryStats.reconciled > 0 && <Badge className={STATUS_COLORS.reconciled}>{summaryStats.reconciled} Reconciled</Badge>}
           {summaryStats.posted > 0 && <Badge className={STATUS_COLORS.posted}>{summaryStats.posted} Posted</Badge>}
         </div>
       </div>
@@ -431,6 +478,7 @@ export default function BankTransactionsPage() {
             <SelectItem value="unmatched">Unmatched</SelectItem>
             <SelectItem value="needs_review">Needs Review</SelectItem>
             <SelectItem value="approved">Approved</SelectItem>
+            <SelectItem value="reconciled">Reconciled</SelectItem>
             <SelectItem value="posted">Posted</SelectItem>
             <SelectItem value="ignored">Ignored</SelectItem>
           </SelectContent>
@@ -472,7 +520,7 @@ export default function BankTransactionsPage() {
                   <tr className="border-b bg-muted/50">
                     <th className="p-2 w-8">
                       <Checkbox
-                        checked={selectedIds.size > 0 && selectedIds.size === filtered.filter(t => t.status !== 'posted' && t.status !== 'ignored').length}
+                        checked={selectedIds.size > 0 && selectedIds.size === filtered.filter(t => t.status !== 'posted' && t.status !== 'ignored' && t.status !== 'reconciled').length}
                         onCheckedChange={toggleSelectAll}
                         data-testid="checkbox-select-all"
                       />
@@ -493,7 +541,7 @@ export default function BankTransactionsPage() {
                   {filtered.map((txn) => (
                     <tr key={txn.id} className="border-b hover-elevate" data-testid={`row-txn-${txn.id}`}>
                       <td className="p-2">
-                        {txn.status !== 'posted' && txn.status !== 'ignored' && (
+                        {txn.status !== 'posted' && txn.status !== 'ignored' && txn.status !== 'reconciled' && (
                           <Checkbox
                             checked={selectedIds.has(txn.id)}
                             onCheckedChange={() => toggleSelect(txn.id)}
@@ -541,11 +589,21 @@ export default function BankTransactionsPage() {
                         <Badge className={`text-[10px] ${STATUS_COLORS[txn.status] || ''}`}>
                           {txn.status === 'needs_review' ? 'Review' : txn.status}
                         </Badge>
+                        {txn.status === 'reconciled' && txn.reconciledWith && (
+                          <div className="text-[9px] text-emerald-600 dark:text-emerald-400 mt-0.5" data-testid={`text-reconciled-${txn.id}`}>
+                            {txn.reconciledWith}
+                          </div>
+                        )}
                       </td>
                       <td className="p-2 text-center">
-                        {txn.status !== 'posted' && (
+                        {txn.status !== 'posted' && txn.status !== 'reconciled' && (
                           <Button size="icon" variant="ghost" onClick={() => openEdit(txn)} data-testid={`button-edit-${txn.id}`}>
                             <Edit2 className="w-3 h-3" />
+                          </Button>
+                        )}
+                        {txn.status === 'unmatched' && parseFloat(txn.credit || '0') > 0 && (
+                          <Button size="icon" variant="ghost" onClick={() => { setShowManualReconcile(txn); setSelectedPaymentId(""); }} data-testid={`button-manual-reconcile-${txn.id}`} title="Manual Reconcile">
+                            <LinkIcon className="w-3 h-3" />
                           </Button>
                         )}
                       </td>
@@ -692,6 +750,96 @@ export default function BankTransactionsPage() {
                 <Button onClick={saveEdit} disabled={updateMutation.isPending} data-testid="button-save-edit">
                   {updateMutation.isPending ? <RefreshCw className="w-4 h-4 mr-1 animate-spin" /> : <Check className="w-4 h-4 mr-1" />}
                   Save
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!showManualReconcile} onOpenChange={(open) => { if (!open) { setShowManualReconcile(null); setSelectedPaymentId(""); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Manual Reconcile</DialogTitle>
+            <DialogDescription>
+              Match this bank transaction to an existing payment recorded in the system.
+            </DialogDescription>
+          </DialogHeader>
+          {showManualReconcile && (
+            <div className="space-y-3">
+              <div className="p-2 rounded-md bg-muted text-xs space-y-1">
+                <p><strong>Date:</strong> {showManualReconcile.txnDate}</p>
+                <p><strong>Amount:</strong> {formatAmount(showManualReconcile.credit)} (Credit)</p>
+                <p className="truncate"><strong>Description:</strong> {showManualReconcile.description}</p>
+              </div>
+
+              {unreconciledPayments && (
+                <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                  {unreconciledPayments.payments.length > 0 && (
+                    <>
+                      <Label className="text-xs text-muted-foreground">Invoice Payments</Label>
+                      {unreconciledPayments.payments.map((p: any) => (
+                        <div
+                          key={`payment-${p.id}`}
+                          className={`p-2 rounded-md border text-xs cursor-pointer ${selectedPaymentId === `payment:${p.id}` ? 'border-primary bg-primary/5' : 'hover-elevate'}`}
+                          onClick={() => setSelectedPaymentId(`payment:${p.id}`)}
+                          data-testid={`option-payment-${p.id}`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-medium">{p.customerName || 'Unknown'}</span>
+                            <span className="font-mono text-green-600 dark:text-green-400">
+                              {parseFloat(p.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                          <div className="text-muted-foreground mt-0.5">
+                            {p.paymentDate} {p.paymentMode && `| ${p.paymentMode}`} {p.referenceNumber && `| Ref: ${p.referenceNumber}`}
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                  {unreconciledPayments.advances.length > 0 && (
+                    <>
+                      <Label className="text-xs text-muted-foreground">Customer Advances</Label>
+                      {unreconciledPayments.advances.map((a: any) => (
+                        <div
+                          key={`advance-${a.id}`}
+                          className={`p-2 rounded-md border text-xs cursor-pointer ${selectedPaymentId === `advance:${a.id}` ? 'border-primary bg-primary/5' : 'hover-elevate'}`}
+                          onClick={() => setSelectedPaymentId(`advance:${a.id}`)}
+                          data-testid={`option-advance-${a.id}`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-medium">{a.customerName || 'Unknown'}</span>
+                            <span className="font-mono text-green-600 dark:text-green-400">
+                              {parseFloat(a.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                          <div className="text-muted-foreground mt-0.5">
+                            {a.advanceDate} {a.paymentMode && `| ${a.paymentMode}`} {a.referenceNumber && `| Ref: ${a.referenceNumber}`}
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                  {unreconciledPayments.payments.length === 0 && unreconciledPayments.advances.length === 0 && (
+                    <p className="text-xs text-muted-foreground text-center p-4">No unreconciled payments found.</p>
+                  )}
+                </div>
+              )}
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => { setShowManualReconcile(null); setSelectedPaymentId(""); }} data-testid="button-cancel-reconcile">Cancel</Button>
+                <Button
+                  onClick={() => {
+                    if (!selectedPaymentId || !showManualReconcile) return;
+                    const [sourceType, sourceId] = selectedPaymentId.split(':');
+                    manualReconcileMutation.mutate({ txnId: showManualReconcile.id, sourceType, sourceId });
+                  }}
+                  disabled={!selectedPaymentId || manualReconcileMutation.isPending}
+                  data-testid="button-confirm-reconcile"
+                >
+                  {manualReconcileMutation.isPending ? <RefreshCw className="w-4 h-4 mr-1 animate-spin" /> : <LinkIcon className="w-4 h-4 mr-1" />}
+                  Reconcile
                 </Button>
               </DialogFooter>
             </div>

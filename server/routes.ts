@@ -20611,6 +20611,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const txn = await storage.getBankTransaction(txnId);
           if (!txn) { errors++; errorDetails.push(`Transaction ${txnId} not found`); continue; }
           if (txn.status === 'posted') { continue; }
+          if (txn.status === 'reconciled') { continue; }
           if (!txn.matchedAccountId) { errors++; errorDetails.push(`Transaction ${txnId} has no matched account`); continue; }
 
           const bankAccount = allAccounts.find(a => a.id === txn.bankAccountId);
@@ -20678,6 +20679,301 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       res.json({ posted, errors, errorDetails });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post('/api/bank-transactions/reconcile', async (req: any, res) => {
+    try {
+      const { bankAccountId } = req.body;
+      const allTxns = await storage.getBankTransactions({ bankAccountId });
+      const unreconciledCredits = allTxns.filter(t => {
+        const credit = parseFloat(t.credit || '0');
+        return credit > 0 && t.status !== 'posted' && t.status !== 'reconciled' && !t.reconciledWith;
+      });
+
+      if (unreconciledCredits.length === 0) {
+        return res.json({ matched: 0, total: 0, message: 'No unreconciled credit transactions found' });
+      }
+
+      const allPayments = await db.select({
+        id: invoicePayments.id,
+        invoiceId: invoicePayments.invoiceId,
+        paymentDate: invoicePayments.paymentDate,
+        amount: invoicePayments.amount,
+        paymentMethod: invoicePayments.paymentMethod,
+        referenceNumber: invoicePayments.referenceNumber,
+        paymentType: invoicePayments.paymentType,
+        payerName: invoicePayments.payerName,
+        bankName: invoicePayments.bankName,
+      }).from(invoicePayments).where(
+        and(
+          eq(invoicePayments.recordStatus, 1),
+          sql`${invoicePayments.paymentMethod} NOT IN ('Cash', 'cash')`
+        )
+      );
+
+      const allAdvances = await db.select().from(customerAdvances).where(
+        and(
+          eq(customerAdvances.recordStatus, 1),
+          sql`${customerAdvances.paymentMethod} NOT IN ('Cash', 'cash')`
+        )
+      );
+
+      const existingJournals = await db.select({
+        id: journalEntries.id,
+        sourceType: journalEntries.sourceType,
+        sourceId: journalEntries.sourceId,
+      }).from(journalEntries).where(
+        and(
+          eq(journalEntries.recordStatus, 1),
+          sql`${journalEntries.sourceType} IN ('payment', 'customer_advance')`
+        )
+      );
+
+      const journalMap = new Map<string, string>();
+      for (const je of existingJournals) {
+        if (je.sourceType && je.sourceId) {
+          journalMap.set(`${je.sourceType}:${je.sourceId}`, je.id);
+        }
+      }
+
+      const matchedPaymentIds = new Set<string>();
+      const matchedAdvanceIds = new Set<string>();
+      const existingReconciled = allTxns.filter(t => t.reconciledSourceId);
+      for (const t of existingReconciled) {
+        if (t.reconciledWith === 'invoice_payment') matchedPaymentIds.add(t.reconciledSourceId!);
+        if (t.reconciledWith === 'customer_advance') matchedAdvanceIds.add(t.reconciledSourceId!);
+      }
+
+      let matched = 0;
+
+      for (const txn of unreconciledCredits) {
+        const creditAmt = parseFloat(txn.credit || '0');
+        const creditPaise = Math.round(creditAmt * 100);
+        const txnDateStr = txn.txnDate;
+
+        let bestMatch: { type: string; id: string; details: string; journalId: string | null } | null = null;
+
+        for (const payment of allPayments) {
+          if (matchedPaymentIds.has(payment.id)) continue;
+          if (payment.amount !== creditPaise) continue;
+
+          const payDateStr = payment.paymentDate ? payment.paymentDate.slice(0, 10) : '';
+
+          const refMatch = payment.referenceNumber && txn.description &&
+            txn.description.toLowerCase().includes(payment.referenceNumber.toLowerCase());
+
+          let dateClose = false;
+          if (payDateStr && txnDateStr) {
+            try {
+              const payDate = new Date(payDateStr);
+              const parts = txnDateStr.split('-');
+              const txnDateObj = parts.length === 3 ? new Date(`${parts[0]}-${parts[1]}-${parts[2]}`) : new Date(txnDateStr);
+              const daysDiff = Math.abs((payDate.getTime() - txnDateObj.getTime()) / (1000 * 60 * 60 * 24));
+              dateClose = daysDiff <= 3;
+            } catch {}
+          }
+
+          if (refMatch || dateClose) {
+            const journalId = journalMap.get(`payment:${payment.id}`) || null;
+            const inv = await storage.getInvoice(payment.invoiceId);
+            bestMatch = {
+              type: 'invoice_payment',
+              id: payment.id,
+              details: `Payment for Invoice ${inv?.invoiceNumber || payment.invoiceId} - ${payment.paymentMethod}${payment.referenceNumber ? ' Ref: ' + payment.referenceNumber : ''} - ${payment.payerName || ''}`,
+              journalId,
+            };
+            break;
+          }
+        }
+
+        if (!bestMatch) {
+          for (const advance of allAdvances) {
+            if (matchedAdvanceIds.has(advance.id)) continue;
+            if (advance.amount !== creditPaise) continue;
+
+            const advDateStr = advance.receiptDate || '';
+
+            const refMatch = advance.referenceNumber && txn.description &&
+              txn.description.toLowerCase().includes(advance.referenceNumber.toLowerCase());
+
+            let dateClose = false;
+            if (advDateStr && txnDateStr) {
+              try {
+                const advDate = new Date(advDateStr);
+                const parts = txnDateStr.split('-');
+                const txnDateObj = parts.length === 3 ? new Date(`${parts[0]}-${parts[1]}-${parts[2]}`) : new Date(txnDateStr);
+                const daysDiff = Math.abs((advDate.getTime() - txnDateObj.getTime()) / (1000 * 60 * 60 * 24));
+                dateClose = daysDiff <= 3;
+              } catch {}
+            }
+
+            if (refMatch || dateClose) {
+              const journalId = journalMap.get(`customer_advance:${advance.id}`) || null;
+              const vendor = await storage.getVendor(advance.vendorId);
+              bestMatch = {
+                type: 'customer_advance',
+                id: advance.id,
+                details: `Customer Advance ${advance.advanceNumber} - ${advance.paymentMethod}${advance.referenceNumber ? ' Ref: ' + advance.referenceNumber : ''} - ${vendor?.name || ''}`,
+                journalId,
+              };
+              break;
+            }
+          }
+        }
+
+        if (bestMatch) {
+          const acctReceivable = await storage.getChartOfAccountByCode('1100');
+          await storage.updateBankTransaction(txn.id, {
+            status: 'reconciled',
+            reconciledWith: bestMatch.type,
+            reconciledSourceId: bestMatch.id,
+            reconciledDetails: bestMatch.details,
+            journalEntryId: bestMatch.journalId || undefined,
+            matchedAccountId: acctReceivable?.id || txn.matchedAccountId,
+            matchedAccountName: acctReceivable?.name || 'Accounts Receivable',
+            category: bestMatch.type === 'invoice_payment' ? 'payment_received' : 'advance_received',
+          } as any);
+
+          if (bestMatch.type === 'invoice_payment') matchedPaymentIds.add(bestMatch.id);
+          if (bestMatch.type === 'customer_advance') matchedAdvanceIds.add(bestMatch.id);
+          matched++;
+        }
+      }
+
+      res.json({
+        matched,
+        total: unreconciledCredits.length,
+        message: `Reconciled ${matched} of ${unreconciledCredits.length} credit transactions with existing payments`,
+      });
+    } catch (error: any) {
+      console.error('[Bank Reconcile] Error:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post('/api/bank-transactions/:id/reconcile-manual', async (req: any, res) => {
+    try {
+      const { sourceType, sourceId } = req.body;
+      const txn = await storage.getBankTransaction(req.params.id);
+      if (!txn) return res.status(404).json({ message: 'Transaction not found' });
+
+      let details = '';
+      let journalId: string | null = null;
+
+      if (sourceType === 'invoice_payment') {
+        const allPayments = await db.select().from(invoicePayments).where(eq(invoicePayments.id, sourceId));
+        const payment = allPayments[0];
+        if (!payment) return res.status(404).json({ message: 'Payment not found' });
+        const inv = await storage.getInvoice(payment.invoiceId);
+        details = `Payment for Invoice ${inv?.invoiceNumber || payment.invoiceId} - ${payment.paymentMethod}`;
+
+        const je = await db.select().from(journalEntries).where(
+          and(eq(journalEntries.sourceType, 'payment'), eq(journalEntries.sourceId, sourceId), eq(journalEntries.recordStatus, 1))
+        );
+        journalId = je[0]?.id || null;
+      } else if (sourceType === 'customer_advance') {
+        const allAdvances = await db.select().from(customerAdvances).where(eq(customerAdvances.id, sourceId));
+        const advance = allAdvances[0];
+        if (!advance) return res.status(404).json({ message: 'Advance not found' });
+        const vendor = await storage.getVendor(advance.vendorId);
+        details = `Customer Advance ${advance.advanceNumber} - ${vendor?.name || ''}`;
+
+        const je = await db.select().from(journalEntries).where(
+          and(eq(journalEntries.sourceType, 'customer_advance'), eq(journalEntries.sourceId, sourceId), eq(journalEntries.recordStatus, 1))
+        );
+        journalId = je[0]?.id || null;
+      } else {
+        return res.status(400).json({ message: 'Invalid source type. Use invoice_payment or customer_advance' });
+      }
+
+      const acctReceivable = await storage.getChartOfAccountByCode('1100');
+      await storage.updateBankTransaction(txn.id, {
+        status: 'reconciled',
+        reconciledWith: sourceType,
+        reconciledSourceId: sourceId,
+        reconciledDetails: details,
+        journalEntryId: journalId || undefined,
+        matchedAccountId: acctReceivable?.id || txn.matchedAccountId,
+        matchedAccountName: acctReceivable?.name || 'Accounts Receivable',
+        category: sourceType === 'invoice_payment' ? 'payment_received' : 'advance_received',
+      } as any);
+
+      res.json({ message: 'Transaction reconciled successfully', details });
+    } catch (error: any) {
+      console.error('[Manual Reconcile] Error:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get('/api/bank-transactions/unreconciled-payments', async (req: any, res) => {
+    try {
+      const allTxns = await storage.getBankTransactions({});
+      const reconciledPaymentIds = new Set(
+        allTxns.filter(t => t.reconciledWith === 'invoice_payment' && t.reconciledSourceId)
+          .map(t => t.reconciledSourceId!)
+      );
+      const reconciledAdvanceIds = new Set(
+        allTxns.filter(t => t.reconciledWith === 'customer_advance' && t.reconciledSourceId)
+          .map(t => t.reconciledSourceId!)
+      );
+
+      const payments = await db.select({
+        id: invoicePayments.id,
+        invoiceId: invoicePayments.invoiceId,
+        paymentDate: invoicePayments.paymentDate,
+        amount: invoicePayments.amount,
+        paymentMethod: invoicePayments.paymentMethod,
+        referenceNumber: invoicePayments.referenceNumber,
+        payerName: invoicePayments.payerName,
+      }).from(invoicePayments).where(
+        and(eq(invoicePayments.recordStatus, 1), sql`${invoicePayments.paymentMethod} NOT IN ('Cash', 'cash')`)
+      );
+
+      const advances = await db.select({
+        id: customerAdvances.id,
+        advanceNumber: customerAdvances.advanceNumber,
+        vendorId: customerAdvances.vendorId,
+        receiptDate: customerAdvances.receiptDate,
+        amount: customerAdvances.amount,
+        paymentMethod: customerAdvances.paymentMethod,
+        referenceNumber: customerAdvances.referenceNumber,
+      }).from(customerAdvances).where(
+        and(eq(customerAdvances.recordStatus, 1), sql`${customerAdvances.paymentMethod} NOT IN ('Cash', 'cash')`)
+      );
+
+      const unreconciledPayments = [];
+      for (const p of payments) {
+        if (!reconciledPaymentIds.has(p.id)) {
+          const inv = await storage.getInvoice(p.invoiceId);
+          unreconciledPayments.push({
+            ...p,
+            type: 'invoice_payment',
+            label: `Invoice ${inv?.invoiceNumber || p.invoiceId} - Rs ${(p.amount / 100).toFixed(2)} - ${p.paymentMethod}${p.referenceNumber ? ' (' + p.referenceNumber + ')' : ''}`,
+            amountDisplay: (p.amount / 100).toFixed(2),
+          });
+        }
+      }
+
+      const unreconciledAdvances = [];
+      for (const a of advances) {
+        if (!reconciledAdvanceIds.has(a.id)) {
+          const vendor = await storage.getVendor(a.vendorId);
+          unreconciledAdvances.push({
+            ...a,
+            type: 'customer_advance',
+            label: `${a.advanceNumber} - ${vendor?.name || ''} - Rs ${(a.amount / 100).toFixed(2)} - ${a.paymentMethod}${a.referenceNumber ? ' (' + a.referenceNumber + ')' : ''}`,
+            amountDisplay: (a.amount / 100).toFixed(2),
+          });
+        }
+      }
+
+      res.json({
+        payments: unreconciledPayments,
+        advances: unreconciledAdvances,
+      });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
