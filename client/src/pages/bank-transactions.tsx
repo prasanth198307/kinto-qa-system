@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Upload, Search, Check, X, Edit2, ArrowUpDown, FileSpreadsheet, CheckSquare, RefreshCw, Building2, ArrowRight, Filter, Users, ChevronDown, ChevronUp, Link as LinkIcon } from "lucide-react";
+import { Upload, Search, Check, X, Edit2, ArrowUpDown, FileSpreadsheet, CheckSquare, RefreshCw, Building2, ArrowRight, Filter, Users, ChevronDown, ChevronUp, Link as LinkIcon, Unlink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -253,6 +253,21 @@ export default function BankTransactionsPage() {
       setShowManualReconcile(null);
       setSelectedPaymentId("");
       toast({ title: "Reconciled", description: data.details });
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const unreconcileMutation = useMutation({
+    mutationFn: async (txnId: string) => {
+      const res = await apiRequest('POST', `/api/bank-transactions/${txnId}/unreconcile`);
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/bank-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/bank-transactions/unreconciled-payments'] });
+      toast({ title: "Un-reconciled", description: data.message });
     },
     onError: (err: any) => {
       toast({ title: "Failed", description: err.message, variant: "destructive" });
@@ -613,6 +628,11 @@ export default function BankTransactionsPage() {
                         {txn.status !== 'posted' && txn.status !== 'reconciled' && (parseFloat(txn.credit || '0') > 0 || parseFloat(txn.debit || '0') > 0) && (
                           <Button size="icon" variant="ghost" onClick={() => { setShowManualReconcile(txn); setSelectedPaymentId(""); }} data-testid={`button-manual-reconcile-${txn.id}`} title="Manual Reconcile">
                             <LinkIcon className="w-3 h-3" />
+                          </Button>
+                        )}
+                        {txn.status === 'reconciled' && (
+                          <Button size="icon" variant="ghost" onClick={() => unreconcileMutation.mutate(txn.id)} disabled={unreconcileMutation.isPending} data-testid={`button-unreconcile-${txn.id}`} title="Remove reconciliation">
+                            <Unlink className="w-3 h-3" />
                           </Button>
                         )}
                       </td>

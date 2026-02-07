@@ -21040,6 +21040,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/bank-transactions/:id/unreconcile', async (req: any, res) => {
+    try {
+      const txn = await storage.getBankTransaction(req.params.id);
+      if (!txn) return res.status(404).json({ message: 'Transaction not found' });
+      if (txn.status !== 'reconciled') return res.status(400).json({ message: 'Transaction is not reconciled' });
+
+      await storage.updateBankTransaction(txn.id, {
+        status: 'needs_review',
+        reconciledWith: null,
+        reconciledSourceId: null,
+        reconciledDetails: null,
+        journalEntryId: null,
+      } as any);
+
+      res.json({ message: 'Reconciliation removed. Transaction is now available for review and posting.' });
+    } catch (error: any) {
+      console.error('[Un-Reconcile] Error:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get('/api/bank-transactions/unreconciled-payments', async (req: any, res) => {
     try {
       const allTxns = await storage.getBankTransactions({});
