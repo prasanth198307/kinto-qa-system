@@ -1411,7 +1411,7 @@ const navItemToScreenKey: Record<string, string> = {
   // Settings
   'notification-settings': 'notification_settings',
   'data-import': 'data_import',
-  'admin-tools': 'data_import',
+  'admin-tools': 'admin_tools',
 };
 
 // Legacy permission mapping for backward compatibility with default roles
@@ -1542,6 +1542,14 @@ interface Permission {
 function canAccessNavItemWithDbPermissions(itemId: string, dbPermissions: Permission[]): boolean {
   const screenKey = navItemToScreenKey[itemId];
   if (!screenKey) return false; // If not mapped, hide it for custom roles
+  
+  // Special case: Admin Tools - show if user has admin_tools OR data_import permission (backward compatibility)
+  if (itemId === 'admin-tools') {
+    const hasAdminTools = dbPermissions.find(p => p.screenKey === 'admin_tools')?.canView === true;
+    const hasDataImport = dbPermissions.find(p => p.screenKey === 'data_import')?.canView === true;
+    const hasUsers = dbPermissions.find(p => p.screenKey === 'users')?.canView === true;
+    return hasAdminTools || hasDataImport || hasUsers;
+  }
   
   // Special case: For 'reports' nav item, also check if user has any individual report_* permissions
   if (itemId === 'reports') {
