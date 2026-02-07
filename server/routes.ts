@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import crypto from "crypto";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertPurchaseOrderItemSchema, purchaseOrders, purchaseOrderItems, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, paymentEvidence, salesReturns, salesReturnItems, creditNotes, creditNoteItems, debitNotes, debitNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes, vendors, users, uom, insertDocumentCategorySchema, insertDocumentSchema, insertExpenseCategorySchema, insertExpenseVoucherSchema, insertExpenseItemSchema, insertExpenseAttachmentSchema, rolePermissions, vendorDebitNotes, vendorDebitNoteItems, vendorDebitNoteAdjustments, transporters, vehicles, drivers, insertTransporterSchema, insertVehicleSchema, insertDriverSchema, scrapInventory, insertSparePartEntrySchema, insertSparePartIssuanceSchema, insertScrapInventorySchema } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertPurchaseOrderItemSchema, purchaseOrders, purchaseOrderItems, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, paymentEvidence, salesReturns, salesReturnItems, creditNotes, creditNoteItems, debitNotes, debitNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes, vendors, users, uom, insertDocumentCategorySchema, insertDocumentSchema, insertExpenseCategorySchema, insertExpenseVoucherSchema, insertExpenseItemSchema, insertExpenseAttachmentSchema, rolePermissions, vendorDebitNotes, vendorDebitNoteItems, vendorDebitNoteAdjustments, transporters, vehicles, drivers, insertTransporterSchema, insertVehicleSchema, insertDriverSchema, scrapInventory, insertSparePartEntrySchema, insertSparePartIssuanceSchema, insertScrapInventorySchema, sparePartEntries, sparePartsCatalog } from "@shared/schema";
 import { format } from "date-fns";
 import { z } from "zod";
 import path from "path";
@@ -20688,13 +20688,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { bankAccountId } = req.body;
       const allTxns = await storage.getBankTransactions({ bankAccountId });
+
       const unreconciledCredits = allTxns.filter(t => {
         const credit = parseFloat(t.credit || '0');
         return credit > 0 && t.status !== 'posted' && t.status !== 'reconciled' && !t.reconciledWith;
       });
 
-      if (unreconciledCredits.length === 0) {
-        return res.json({ matched: 0, total: 0, message: 'No unreconciled credit transactions found' });
+      const unreconciledDebits = allTxns.filter(t => {
+        const debit = parseFloat(t.debit || '0');
+        return debit > 0 && t.status !== 'posted' && t.status !== 'reconciled' && !t.reconciledWith;
+      });
+
+      if (unreconciledCredits.length === 0 && unreconciledDebits.length === 0) {
+        return res.json({ matched: 0, total: 0, message: 'No unreconciled transactions found' });
       }
 
       const allPayments = await db.select({
@@ -20721,6 +20727,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         )
       );
 
+      const allSparePartPurchases = await db.select({
+        id: sparePartEntries.id,
+        sparePartId: sparePartEntries.sparePartId,
+        purchaseDate: sparePartEntries.purchaseDate,
+        totalAmount: sparePartEntries.totalAmount,
+        vendorId: sparePartEntries.vendorId,
+        remarks: sparePartEntries.remarks,
+      }).from(sparePartEntries).where(eq(sparePartEntries.recordStatus, 1));
+
+      const allRawMaterialReceipts = await db.select({
+        id: rawMaterials.id,
+        materialCode: rawMaterials.materialCode,
+        materialName: rawMaterials.materialName,
+        currentStock: rawMaterials.currentStock,
+        unitCost: rawMaterials.unitCost,
+        totalCost: rawMaterials.totalCost,
+        totalValuation: rawMaterials.totalValuation,
+        supplier: rawMaterials.supplier,
+        openingDate: rawMaterials.openingDate,
+      }).from(rawMaterials).where(eq(rawMaterials.recordStatus, 1));
+
       const existingJournals = await db.select({
         id: journalEntries.id,
         sourceType: journalEntries.sourceType,
@@ -20728,7 +20755,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }).from(journalEntries).where(
         and(
           eq(journalEntries.recordStatus, 1),
-          sql`${journalEntries.sourceType} IN ('payment', 'customer_advance')`
+          sql`${journalEntries.sourceType} IN ('payment', 'customer_advance', 'material_receipt', 'spare_part_receipt')`
         )
       );
 
@@ -20741,11 +20768,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const matchedPaymentIds = new Set<string>();
       const matchedAdvanceIds = new Set<string>();
+      const matchedSparePartIds = new Set<string>();
+      const matchedRawMaterialIds = new Set<string>();
       const existingReconciled = allTxns.filter(t => t.reconciledSourceId);
       for (const t of existingReconciled) {
         if (t.reconciledWith === 'invoice_payment') matchedPaymentIds.add(t.reconciledSourceId!);
         if (t.reconciledWith === 'customer_advance') matchedAdvanceIds.add(t.reconciledSourceId!);
+        if (t.reconciledWith === 'spare_part_purchase') matchedSparePartIds.add(t.reconciledSourceId!);
+        if (t.reconciledWith === 'raw_material_receipt') matchedRawMaterialIds.add(t.reconciledSourceId!);
       }
+
+      const parseDateClose = (dateStr1: string, dateStr2: string): boolean => {
+        try {
+          const d1Parts = dateStr1.split('-');
+          const d1 = d1Parts.length === 3 ? new Date(`${d1Parts[0]}-${d1Parts[1]}-${d1Parts[2]}`) : new Date(dateStr1);
+          const d2 = new Date(dateStr2);
+          const daysDiff = Math.abs((d1.getTime() - d2.getTime()) / (1000 * 60 * 60 * 24));
+          return daysDiff <= 3;
+        } catch { return false; }
+      };
 
       let matched = 0;
 
@@ -20754,27 +20795,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const creditPaise = Math.round(creditAmt * 100);
         const txnDateStr = txn.txnDate;
 
-        let bestMatch: { type: string; id: string; details: string; journalId: string | null } | null = null;
+        let bestMatch: { type: string; id: string; details: string; journalId: string | null; accountCode: string; accountName: string; category: string } | null = null;
 
         for (const payment of allPayments) {
           if (matchedPaymentIds.has(payment.id)) continue;
           if (payment.amount !== creditPaise) continue;
 
           const payDateStr = payment.paymentDate ? payment.paymentDate.slice(0, 10) : '';
-
           const refMatch = payment.referenceNumber && txn.description &&
             txn.description.toLowerCase().includes(payment.referenceNumber.toLowerCase());
-
-          let dateClose = false;
-          if (payDateStr && txnDateStr) {
-            try {
-              const payDate = new Date(payDateStr);
-              const parts = txnDateStr.split('-');
-              const txnDateObj = parts.length === 3 ? new Date(`${parts[0]}-${parts[1]}-${parts[2]}`) : new Date(txnDateStr);
-              const daysDiff = Math.abs((payDate.getTime() - txnDateObj.getTime()) / (1000 * 60 * 60 * 24));
-              dateClose = daysDiff <= 3;
-            } catch {}
-          }
+          const dateClose = payDateStr && txnDateStr ? parseDateClose(txnDateStr, payDateStr) : false;
 
           if (refMatch || dateClose) {
             const journalId = journalMap.get(`payment:${payment.id}`) || null;
@@ -20784,6 +20814,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               id: payment.id,
               details: `Payment for Invoice ${inv?.invoiceNumber || payment.invoiceId} - ${payment.paymentMethod}${payment.referenceNumber ? ' Ref: ' + payment.referenceNumber : ''} - ${payment.payerName || ''}`,
               journalId,
+              accountCode: '1100',
+              accountName: 'Accounts Receivable',
+              category: 'payment_received',
             };
             break;
           }
@@ -20795,20 +20828,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (advance.amount !== creditPaise) continue;
 
             const advDateStr = advance.receiptDate || '';
-
             const refMatch = advance.referenceNumber && txn.description &&
               txn.description.toLowerCase().includes(advance.referenceNumber.toLowerCase());
-
-            let dateClose = false;
-            if (advDateStr && txnDateStr) {
-              try {
-                const advDate = new Date(advDateStr);
-                const parts = txnDateStr.split('-');
-                const txnDateObj = parts.length === 3 ? new Date(`${parts[0]}-${parts[1]}-${parts[2]}`) : new Date(txnDateStr);
-                const daysDiff = Math.abs((advDate.getTime() - txnDateObj.getTime()) / (1000 * 60 * 60 * 24));
-                dateClose = daysDiff <= 3;
-              } catch {}
-            }
+            const dateClose = advDateStr && txnDateStr ? parseDateClose(txnDateStr, advDateStr) : false;
 
             if (refMatch || dateClose) {
               const journalId = journalMap.get(`customer_advance:${advance.id}`) || null;
@@ -20818,6 +20840,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 id: advance.id,
                 details: `Customer Advance ${advance.advanceNumber} - ${advance.paymentMethod}${advance.referenceNumber ? ' Ref: ' + advance.referenceNumber : ''} - ${vendor?.name || ''}`,
                 journalId,
+                accountCode: '1100',
+                accountName: 'Accounts Receivable',
+                category: 'advance_received',
               };
               break;
             }
@@ -20825,16 +20850,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         if (bestMatch) {
-          const acctReceivable = await storage.getChartOfAccountByCode('1100');
+          const acct = await storage.getChartOfAccountByCode(bestMatch.accountCode);
           await storage.updateBankTransaction(txn.id, {
             status: 'reconciled',
             reconciledWith: bestMatch.type,
             reconciledSourceId: bestMatch.id,
             reconciledDetails: bestMatch.details,
             journalEntryId: bestMatch.journalId || undefined,
-            matchedAccountId: acctReceivable?.id || txn.matchedAccountId,
-            matchedAccountName: acctReceivable?.name || 'Accounts Receivable',
-            category: bestMatch.type === 'invoice_payment' ? 'payment_received' : 'advance_received',
+            matchedAccountId: acct?.id || txn.matchedAccountId,
+            matchedAccountName: acct?.name || bestMatch.accountName,
+            category: bestMatch.category,
           } as any);
 
           if (bestMatch.type === 'invoice_payment') matchedPaymentIds.add(bestMatch.id);
@@ -20843,10 +20868,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      for (const txn of unreconciledDebits) {
+        const debitAmt = parseFloat(txn.debit || '0');
+        const debitPaise = Math.round(debitAmt * 100);
+        const txnDateStr = txn.txnDate;
+
+        let bestMatch: { type: string; id: string; details: string; journalId: string | null; accountCode: string; accountName: string; category: string } | null = null;
+
+        for (const spe of allSparePartPurchases) {
+          if (matchedSparePartIds.has(spe.id)) continue;
+          const speTotal = spe.totalAmount || 0;
+          if (speTotal !== debitPaise) continue;
+
+          const speDateStr = spe.purchaseDate ? spe.purchaseDate.slice(0, 10) : '';
+          const dateClose = speDateStr && txnDateStr ? parseDateClose(txnDateStr, speDateStr) : false;
+
+          if (dateClose) {
+            const journalId = journalMap.get(`spare_part_receipt:${spe.id}`) || null;
+            const sparePart = await db.select({ name: sparePartsCatalog.name }).from(sparePartsCatalog).where(eq(sparePartsCatalog.id, spe.sparePartId));
+            const vendorName = spe.vendorId ? (await storage.getVendor(spe.vendorId))?.name || '' : '';
+            bestMatch = {
+              type: 'spare_part_purchase',
+              id: spe.id,
+              details: `Spare Part: ${sparePart[0]?.name || 'Unknown'} - Rs ${(speTotal / 100).toFixed(2)}${vendorName ? ' - ' + vendorName : ''}`,
+              journalId,
+              accountCode: '1203',
+              accountName: 'Inventory - Spare Parts',
+              category: 'spare_part_purchase',
+            };
+            break;
+          }
+        }
+
+        if (!bestMatch) {
+          for (const mat of allRawMaterialReceipts) {
+            if (matchedRawMaterialIds.has(mat.id)) continue;
+            const matTotal = mat.totalValuation ? Math.round(parseFloat(mat.totalValuation) * 100) : 0;
+            if (matTotal !== debitPaise) continue;
+
+            const matDateStr = mat.openingDate || '';
+            const dateClose = matDateStr && txnDateStr ? parseDateClose(txnDateStr, matDateStr) : false;
+
+            if (dateClose) {
+              const journalId = journalMap.get(`material_receipt:${mat.id}`) || null;
+              bestMatch = {
+                type: 'raw_material_receipt',
+                id: mat.id,
+                details: `Raw Material: ${mat.materialName} (${mat.materialCode}) - Rs ${(matTotal / 100).toFixed(2)}${mat.supplier ? ' - ' + mat.supplier : ''}`,
+                journalId,
+                accountCode: '1200',
+                accountName: 'Inventory - Raw Materials',
+                category: 'raw_material_purchase',
+              };
+              break;
+            }
+          }
+        }
+
+        if (bestMatch) {
+          const acct = await storage.getChartOfAccountByCode(bestMatch.accountCode);
+          await storage.updateBankTransaction(txn.id, {
+            status: 'reconciled',
+            reconciledWith: bestMatch.type,
+            reconciledSourceId: bestMatch.id,
+            reconciledDetails: bestMatch.details,
+            journalEntryId: bestMatch.journalId || undefined,
+            matchedAccountId: acct?.id || txn.matchedAccountId,
+            matchedAccountName: acct?.name || bestMatch.accountName,
+            category: bestMatch.category,
+          } as any);
+
+          if (bestMatch.type === 'spare_part_purchase') matchedSparePartIds.add(bestMatch.id);
+          if (bestMatch.type === 'raw_material_receipt') matchedRawMaterialIds.add(bestMatch.id);
+          matched++;
+        }
+      }
+
+      const totalUnreconciled = unreconciledCredits.length + unreconciledDebits.length;
       res.json({
         matched,
-        total: unreconciledCredits.length,
-        message: `Reconciled ${matched} of ${unreconciledCredits.length} credit transactions with existing payments`,
+        total: totalUnreconciled,
+        message: `Reconciled ${matched} of ${totalUnreconciled} transactions (${unreconciledCredits.length} credits, ${unreconciledDebits.length} debits)`,
       });
     } catch (error: any) {
       console.error('[Bank Reconcile] Error:', error);
@@ -20885,20 +20987,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
           and(eq(journalEntries.sourceType, 'customer_advance'), eq(journalEntries.sourceId, sourceId), eq(journalEntries.recordStatus, 1))
         );
         journalId = je[0]?.id || null;
+      } else if (sourceType === 'spare_part_purchase') {
+        const allSpe = await db.select().from(sparePartEntries).where(eq(sparePartEntries.id, sourceId));
+        const spe = allSpe[0];
+        if (!spe) return res.status(404).json({ message: 'Spare part entry not found' });
+        const sparePart = await db.select({ name: sparePartsCatalog.name }).from(sparePartsCatalog).where(eq(sparePartsCatalog.id, spe.sparePartId));
+        const vendorName = spe.vendorId ? (await storage.getVendor(spe.vendorId))?.name || '' : '';
+        details = `Spare Part: ${sparePart[0]?.name || 'Unknown'} - Rs ${((spe.totalAmount || 0) / 100).toFixed(2)}${vendorName ? ' - ' + vendorName : ''}`;
+
+        const je = await db.select().from(journalEntries).where(
+          and(eq(journalEntries.sourceType, 'spare_part_receipt'), eq(journalEntries.sourceId, sourceId), eq(journalEntries.recordStatus, 1))
+        );
+        journalId = je[0]?.id || null;
+      } else if (sourceType === 'raw_material_receipt') {
+        const allMat = await db.select().from(rawMaterials).where(eq(rawMaterials.id, sourceId));
+        const mat = allMat[0];
+        if (!mat) return res.status(404).json({ message: 'Raw material not found' });
+        details = `Raw Material: ${mat.materialName} (${mat.materialCode})${mat.supplier ? ' - ' + mat.supplier : ''}`;
+
+        const je = await db.select().from(journalEntries).where(
+          and(eq(journalEntries.sourceType, 'material_receipt'), eq(journalEntries.sourceId, sourceId), eq(journalEntries.recordStatus, 1))
+        );
+        journalId = je[0]?.id || null;
       } else {
-        return res.status(400).json({ message: 'Invalid source type. Use invoice_payment or customer_advance' });
+        return res.status(400).json({ message: 'Invalid source type' });
       }
 
-      const acctReceivable = await storage.getChartOfAccountByCode('1100');
+      let matchedAccountCode = '1100';
+      let matchedAccountName = 'Accounts Receivable';
+      let category = 'payment_received';
+      if (sourceType === 'invoice_payment') { category = 'payment_received'; matchedAccountCode = '1100'; matchedAccountName = 'Accounts Receivable'; }
+      else if (sourceType === 'customer_advance') { category = 'advance_received'; matchedAccountCode = '1100'; matchedAccountName = 'Accounts Receivable'; }
+      else if (sourceType === 'spare_part_purchase') { category = 'spare_part_purchase'; matchedAccountCode = '1203'; matchedAccountName = 'Inventory - Spare Parts'; }
+      else if (sourceType === 'raw_material_receipt') { category = 'raw_material_purchase'; matchedAccountCode = '1200'; matchedAccountName = 'Inventory - Raw Materials'; }
+
+      const acct = await storage.getChartOfAccountByCode(matchedAccountCode);
       await storage.updateBankTransaction(txn.id, {
         status: 'reconciled',
         reconciledWith: sourceType,
         reconciledSourceId: sourceId,
         reconciledDetails: details,
         journalEntryId: journalId || undefined,
-        matchedAccountId: acctReceivable?.id || txn.matchedAccountId,
-        matchedAccountName: acctReceivable?.name || 'Accounts Receivable',
-        category: sourceType === 'invoice_payment' ? 'payment_received' : 'advance_received',
+        matchedAccountId: acct?.id || txn.matchedAccountId,
+        matchedAccountName: acct?.name || matchedAccountName,
+        category,
       } as any);
 
       res.json({ message: 'Transaction reconciled successfully', details });
@@ -20917,6 +21049,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       const reconciledAdvanceIds = new Set(
         allTxns.filter(t => t.reconciledWith === 'customer_advance' && t.reconciledSourceId)
+          .map(t => t.reconciledSourceId!)
+      );
+      const reconciledSparePartIds = new Set(
+        allTxns.filter(t => t.reconciledWith === 'spare_part_purchase' && t.reconciledSourceId)
+          .map(t => t.reconciledSourceId!)
+      );
+      const reconciledRawMaterialIds = new Set(
+        allTxns.filter(t => t.reconciledWith === 'raw_material_receipt' && t.reconciledSourceId)
           .map(t => t.reconciledSourceId!)
       );
 
@@ -20944,6 +21084,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         and(eq(customerAdvances.recordStatus, 1), sql`${customerAdvances.paymentMethod} NOT IN ('Cash', 'cash')`)
       );
 
+      const sparePartPurchases = await db.select({
+        id: sparePartEntries.id,
+        sparePartId: sparePartEntries.sparePartId,
+        purchaseDate: sparePartEntries.purchaseDate,
+        totalAmount: sparePartEntries.totalAmount,
+        vendorId: sparePartEntries.vendorId,
+        remarks: sparePartEntries.remarks,
+      }).from(sparePartEntries).where(eq(sparePartEntries.recordStatus, 1));
+
+      const rawMaterialList = await db.select({
+        id: rawMaterials.id,
+        materialCode: rawMaterials.materialCode,
+        materialName: rawMaterials.materialName,
+        totalValuation: rawMaterials.totalValuation,
+        supplier: rawMaterials.supplier,
+        openingDate: rawMaterials.openingDate,
+      }).from(rawMaterials).where(eq(rawMaterials.recordStatus, 1));
+
       const unreconciledPayments = [];
       for (const p of payments) {
         if (!reconciledPaymentIds.has(p.id)) {
@@ -20951,6 +21109,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           unreconciledPayments.push({
             ...p,
             type: 'invoice_payment',
+            customerName: inv?.customerName || p.payerName || '',
             label: `Invoice ${inv?.invoiceNumber || p.invoiceId} - Rs ${(p.amount / 100).toFixed(2)} - ${p.paymentMethod}${p.referenceNumber ? ' (' + p.referenceNumber + ')' : ''}`,
             amountDisplay: (p.amount / 100).toFixed(2),
           });
@@ -20964,8 +21123,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
           unreconciledAdvances.push({
             ...a,
             type: 'customer_advance',
+            customerName: vendor?.name || '',
             label: `${a.advanceNumber} - ${vendor?.name || ''} - Rs ${(a.amount / 100).toFixed(2)} - ${a.paymentMethod}${a.referenceNumber ? ' (' + a.referenceNumber + ')' : ''}`,
             amountDisplay: (a.amount / 100).toFixed(2),
+          });
+        }
+      }
+
+      const unreconciledSpareParts = [];
+      for (const spe of sparePartPurchases) {
+        if (!reconciledSparePartIds.has(spe.id) && spe.totalAmount) {
+          const sparePart = await db.select({ name: sparePartsCatalog.name }).from(sparePartsCatalog).where(eq(sparePartsCatalog.id, spe.sparePartId));
+          const vendorName = spe.vendorId ? (await storage.getVendor(spe.vendorId))?.name || '' : '';
+          unreconciledSpareParts.push({
+            ...spe,
+            type: 'spare_part_purchase',
+            partName: sparePart[0]?.name || 'Unknown',
+            vendorName,
+            amount: spe.totalAmount,
+            amountDisplay: (spe.totalAmount / 100).toFixed(2),
+          });
+        }
+      }
+
+      const unreconciledRawMaterials = [];
+      for (const mat of rawMaterialList) {
+        if (!reconciledRawMaterialIds.has(mat.id) && mat.totalValuation) {
+          const valPaise = Math.round(parseFloat(mat.totalValuation) * 100);
+          unreconciledRawMaterials.push({
+            ...mat,
+            type: 'raw_material_receipt',
+            amount: valPaise,
+            amountDisplay: (valPaise / 100).toFixed(2),
           });
         }
       }
@@ -20973,6 +21162,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         payments: unreconciledPayments,
         advances: unreconciledAdvances,
+        spareParts: unreconciledSpareParts,
+        rawMaterials: unreconciledRawMaterials,
       });
     } catch (error: any) {
       res.status(500).json({ message: error.message });

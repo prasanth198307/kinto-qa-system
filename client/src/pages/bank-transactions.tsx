@@ -96,6 +96,10 @@ const CATEGORY_LABELS: Record<string, string> = {
   imps_reversal: "IMPS Reversal",
   bulk_posting: "Bulk Posting",
   director_loan: "Director / Promoter Loan",
+  payment_received: "Payment Received",
+  advance_received: "Advance Received",
+  spare_part_purchase: "Spare Part Purchase",
+  raw_material_purchase: "Raw Material Purchase",
 };
 
 const ACCOUNT_BADGE_STYLES: Record<string, { label: string; className: string }> = {
@@ -255,7 +259,7 @@ export default function BankTransactionsPage() {
     },
   });
 
-  const { data: unreconciledPayments } = useQuery<{ payments: any[]; advances: any[] }>({
+  const { data: unreconciledPayments } = useQuery<{ payments: any[]; advances: any[]; spareParts: any[]; rawMaterials: any[] }>({
     queryKey: ['/api/bank-transactions/unreconciled-payments'],
     enabled: !!showManualReconcile,
   });
@@ -591,7 +595,12 @@ export default function BankTransactionsPage() {
                         </Badge>
                         {txn.status === 'reconciled' && txn.reconciledWith && (
                           <div className="text-[9px] text-emerald-600 dark:text-emerald-400 mt-0.5" data-testid={`text-reconciled-${txn.id}`}>
-                            {txn.reconciledWith}
+                            {({
+                              invoice_payment: 'Invoice Payment',
+                              customer_advance: 'Customer Advance',
+                              spare_part_purchase: 'Spare Part',
+                              raw_material_receipt: 'Raw Material',
+                            } as Record<string, string>)[txn.reconciledWith] || txn.reconciledWith}
                           </div>
                         )}
                       </td>
@@ -601,7 +610,7 @@ export default function BankTransactionsPage() {
                             <Edit2 className="w-3 h-3" />
                           </Button>
                         )}
-                        {txn.status === 'unmatched' && parseFloat(txn.credit || '0') > 0 && (
+                        {txn.status !== 'posted' && txn.status !== 'reconciled' && (parseFloat(txn.credit || '0') > 0 || parseFloat(txn.debit || '0') > 0) && (
                           <Button size="icon" variant="ghost" onClick={() => { setShowManualReconcile(txn); setSelectedPaymentId(""); }} data-testid={`button-manual-reconcile-${txn.id}`} title="Manual Reconcile">
                             <LinkIcon className="w-3 h-3" />
                           </Button>
@@ -765,65 +774,117 @@ export default function BankTransactionsPage() {
               Match this bank transaction to an existing payment recorded in the system.
             </DialogDescription>
           </DialogHeader>
-          {showManualReconcile && (
+          {showManualReconcile && (() => {
+            const isDebit = parseFloat(showManualReconcile.debit || '0') > 0;
+            const isCredit = parseFloat(showManualReconcile.credit || '0') > 0;
+            return (
             <div className="space-y-3">
               <div className="p-2 rounded-md bg-muted text-xs space-y-1">
                 <p><strong>Date:</strong> {showManualReconcile.txnDate}</p>
-                <p><strong>Amount:</strong> {formatAmount(showManualReconcile.credit)} (Credit)</p>
+                <p><strong>Amount:</strong> {isDebit ? formatAmount(showManualReconcile.debit) + ' (Debit)' : formatAmount(showManualReconcile.credit) + ' (Credit)'}</p>
                 <p className="truncate"><strong>Description:</strong> {showManualReconcile.description}</p>
               </div>
 
               {unreconciledPayments && (
                 <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                  {unreconciledPayments.payments.length > 0 && (
+                  {isCredit && unreconciledPayments.payments.length > 0 && (
                     <>
-                      <Label className="text-xs text-muted-foreground">Invoice Payments</Label>
+                      <Label className="text-xs text-muted-foreground">Invoice Payments (Credits)</Label>
                       {unreconciledPayments.payments.map((p: any) => (
                         <div
-                          key={`payment-${p.id}`}
-                          className={`p-2 rounded-md border text-xs cursor-pointer ${selectedPaymentId === `payment:${p.id}` ? 'border-primary bg-primary/5' : 'hover-elevate'}`}
-                          onClick={() => setSelectedPaymentId(`payment:${p.id}`)}
+                          key={`invoice_payment:${p.id}`}
+                          className={`p-2 rounded-md border text-xs cursor-pointer ${selectedPaymentId === `invoice_payment:${p.id}` ? 'border-primary bg-primary/5' : 'hover-elevate'}`}
+                          onClick={() => setSelectedPaymentId(`invoice_payment:${p.id}`)}
                           data-testid={`option-payment-${p.id}`}
                         >
                           <div className="flex items-center justify-between gap-2">
                             <span className="font-medium">{p.customerName || 'Unknown'}</span>
                             <span className="font-mono text-green-600 dark:text-green-400">
-                              {parseFloat(p.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                              {(p.amount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                             </span>
                           </div>
                           <div className="text-muted-foreground mt-0.5">
-                            {p.paymentDate} {p.paymentMode && `| ${p.paymentMode}`} {p.referenceNumber && `| Ref: ${p.referenceNumber}`}
+                            {p.paymentDate?.slice(0, 10)} {p.paymentMethod && `| ${p.paymentMethod}`} {p.referenceNumber && `| Ref: ${p.referenceNumber}`}
                           </div>
                         </div>
                       ))}
                     </>
                   )}
-                  {unreconciledPayments.advances.length > 0 && (
+                  {isCredit && unreconciledPayments.advances.length > 0 && (
                     <>
-                      <Label className="text-xs text-muted-foreground">Customer Advances</Label>
+                      <Label className="text-xs text-muted-foreground">Customer Advances (Credits)</Label>
                       {unreconciledPayments.advances.map((a: any) => (
                         <div
-                          key={`advance-${a.id}`}
-                          className={`p-2 rounded-md border text-xs cursor-pointer ${selectedPaymentId === `advance:${a.id}` ? 'border-primary bg-primary/5' : 'hover-elevate'}`}
-                          onClick={() => setSelectedPaymentId(`advance:${a.id}`)}
+                          key={`customer_advance:${a.id}`}
+                          className={`p-2 rounded-md border text-xs cursor-pointer ${selectedPaymentId === `customer_advance:${a.id}` ? 'border-primary bg-primary/5' : 'hover-elevate'}`}
+                          onClick={() => setSelectedPaymentId(`customer_advance:${a.id}`)}
                           data-testid={`option-advance-${a.id}`}
                         >
                           <div className="flex items-center justify-between gap-2">
                             <span className="font-medium">{a.customerName || 'Unknown'}</span>
                             <span className="font-mono text-green-600 dark:text-green-400">
-                              {parseFloat(a.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                              {(a.amount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                             </span>
                           </div>
                           <div className="text-muted-foreground mt-0.5">
-                            {a.advanceDate} {a.paymentMode && `| ${a.paymentMode}`} {a.referenceNumber && `| Ref: ${a.referenceNumber}`}
+                            {a.receiptDate?.slice(0, 10)} {a.paymentMethod && `| ${a.paymentMethod}`} {a.referenceNumber && `| Ref: ${a.referenceNumber}`}
                           </div>
                         </div>
                       ))}
                     </>
                   )}
-                  {unreconciledPayments.payments.length === 0 && unreconciledPayments.advances.length === 0 && (
-                    <p className="text-xs text-muted-foreground text-center p-4">No unreconciled payments found.</p>
+                  {isDebit && unreconciledPayments.spareParts && unreconciledPayments.spareParts.length > 0 && (
+                    <>
+                      <Label className="text-xs text-muted-foreground">Spare Part Purchases (Debits)</Label>
+                      {unreconciledPayments.spareParts.map((spe: any) => (
+                        <div
+                          key={`spare_part_purchase:${spe.id}`}
+                          className={`p-2 rounded-md border text-xs cursor-pointer ${selectedPaymentId === `spare_part_purchase:${spe.id}` ? 'border-primary bg-primary/5' : 'hover-elevate'}`}
+                          onClick={() => setSelectedPaymentId(`spare_part_purchase:${spe.id}`)}
+                          data-testid={`option-spare-${spe.id}`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-medium">{spe.partName}</span>
+                            <span className="font-mono text-red-600 dark:text-red-400">
+                              {(spe.amount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                          <div className="text-muted-foreground mt-0.5">
+                            {spe.purchaseDate?.slice(0, 10)} {spe.vendorName && `| ${spe.vendorName}`}
+                          </div>
+                        </div>
+                      ))}
+                    </>
                   )}
+                  {isDebit && unreconciledPayments.rawMaterials && unreconciledPayments.rawMaterials.length > 0 && (
+                    <>
+                      <Label className="text-xs text-muted-foreground">Raw Material Receipts (Debits)</Label>
+                      {unreconciledPayments.rawMaterials.map((mat: any) => (
+                        <div
+                          key={`raw_material_receipt:${mat.id}`}
+                          className={`p-2 rounded-md border text-xs cursor-pointer ${selectedPaymentId === `raw_material_receipt:${mat.id}` ? 'border-primary bg-primary/5' : 'hover-elevate'}`}
+                          onClick={() => setSelectedPaymentId(`raw_material_receipt:${mat.id}`)}
+                          data-testid={`option-rawmat-${mat.id}`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-medium">{mat.materialName} ({mat.materialCode})</span>
+                            <span className="font-mono text-red-600 dark:text-red-400">
+                              {(mat.amount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                          <div className="text-muted-foreground mt-0.5">
+                            {mat.openingDate} {mat.supplier && `| ${mat.supplier}`}
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                  {(() => {
+                    const hasCredits = isCredit && ((unreconciledPayments.payments?.length || 0) > 0 || (unreconciledPayments.advances?.length || 0) > 0);
+                    const hasDebits = isDebit && ((unreconciledPayments.spareParts?.length || 0) > 0 || (unreconciledPayments.rawMaterials?.length || 0) > 0);
+                    if (!hasCredits && !hasDebits) return <p className="text-xs text-muted-foreground text-center p-4">No matching unreconciled records found.</p>;
+                    return null;
+                  })()}
                 </div>
               )}
 
@@ -832,7 +893,9 @@ export default function BankTransactionsPage() {
                 <Button
                   onClick={() => {
                     if (!selectedPaymentId || !showManualReconcile) return;
-                    const [sourceType, sourceId] = selectedPaymentId.split(':');
+                    const colonIdx = selectedPaymentId.indexOf(':');
+                    const sourceType = selectedPaymentId.substring(0, colonIdx);
+                    const sourceId = selectedPaymentId.substring(colonIdx + 1);
                     manualReconcileMutation.mutate({ txnId: showManualReconcile.id, sourceType, sourceId });
                   }}
                   disabled={!selectedPaymentId || manualReconcileMutation.isPending}
@@ -843,7 +906,8 @@ export default function BankTransactionsPage() {
                 </Button>
               </DialogFooter>
             </div>
-          )}
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </div>
