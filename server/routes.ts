@@ -20721,10 +20721,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       const allAdvances = await db.select().from(customerAdvances).where(
-        and(
-          eq(customerAdvances.recordStatus, 1),
-          sql`${customerAdvances.paymentMethod} NOT IN ('Cash', 'cash')`
-        )
+        eq(customerAdvances.recordStatus, 1)
       );
 
       const allSparePartPurchases = await db.select({
@@ -21102,7 +21099,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         paymentMethod: customerAdvances.paymentMethod,
         referenceNumber: customerAdvances.referenceNumber,
       }).from(customerAdvances).where(
-        and(eq(customerAdvances.recordStatus, 1), sql`${customerAdvances.paymentMethod} NOT IN ('Cash', 'cash')`)
+        eq(customerAdvances.recordStatus, 1)
       );
 
       const sparePartPurchases = await db.select({
