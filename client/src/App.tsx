@@ -896,6 +896,7 @@ function AdminDashboard() {
       items: [
         { id: "notification-settings", label: "Notification Settings", icon: Bell },
         { id: "data-import", label: "Data Import", icon: Upload },
+        { id: "admin-tools", label: "Admin Tools", icon: Wrench, onClick: () => setLocation('/admin-tools') },
       ],
     },
   ];
