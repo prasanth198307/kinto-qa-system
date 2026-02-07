@@ -3088,14 +3088,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         debitNotesByInvoice.set(dn.invoiceId, current + dn.grandTotal);
       });
 
+      // Get all payments for write-off separation
+      const allPayments = await storage.getAllPayments();
+      const writeOffsByInvoice = new Map<string, number>();
+      allPayments.forEach(payment => {
+        if (payment.paymentType === 'Write-off') {
+          const current = writeOffsByInvoice.get(payment.invoiceId) || 0;
+          writeOffsByInvoice.set(payment.invoiceId, current + payment.amount);
+        }
+      });
+
       // Calculate outstanding balance for each invoice
       // Formula: outstanding = (totalAmount + debitNotes) - creditNotes - amountReceived
+      // totalPaid = actual payments only (excludes write-offs)
       const invoicesWithBalance = vendorInvoices.map((invoice) => {
-        const totalPaid = invoice.amountReceived || 0;
+        const totalSettled = invoice.amountReceived || 0;
+        const writeOffAmount = writeOffsByInvoice.get(invoice.id) || 0;
+        const totalPaid = totalSettled - writeOffAmount;
         const creditNoteTotal = creditNotesByInvoice.get(invoice.id) || 0;
         const debitNoteTotal = debitNotesByInvoice.get(invoice.id) || 0;
         const effectiveTotal = invoice.totalAmount + debitNoteTotal - creditNoteTotal;
-        const outstanding = Math.max(0, effectiveTotal - totalPaid);
+        const outstanding = Math.max(0, effectiveTotal - totalSettled);
         return { 
           id: invoice.id,
           invoiceNumber: invoice.invoiceNumber,
@@ -3105,6 +3118,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           creditNoteTotal,
           debitNoteTotal,
           totalPaid,
+          writeOffAmount,
           outstanding 
         };
       });
@@ -8675,23 +8689,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         debitNotesByInvoice.set(dn.invoiceId, current + dn.grandTotal);
       });
       
+      // Group payments by invoice, separating write-offs from actual payments
+      const writeOffsByInvoice = new Map<string, number>();
+      const actualPaymentsByInvoice = new Map<string, number>();
+      allPayments.forEach(payment => {
+        if (payment.paymentType === 'Write-off') {
+          const current = writeOffsByInvoice.get(payment.invoiceId) || 0;
+          writeOffsByInvoice.set(payment.invoiceId, current + payment.amount);
+        } else {
+          const current = actualPaymentsByInvoice.get(payment.invoiceId) || 0;
+          actualPaymentsByInvoice.set(payment.invoiceId, current + payment.amount);
+        }
+      });
+
       // Calculate outstanding balance for each invoice
       // Formula: outstanding = (totalAmount + debitNotes) - creditNotes - amountReceived
+      // totalPaid = actual payments only (excludes write-offs)
+      // writeOffAmount = write-off amount (shown separately)
       const invoicesWithBalance = allInvoices.map(invoice => {
-        const totalPaid = invoice.amountReceived || 0;
+        const totalSettled = invoice.amountReceived || 0;
+        const writeOffAmount = writeOffsByInvoice.get(invoice.id) || 0;
+        const totalPaid = totalSettled - writeOffAmount;
         const creditNoteTotal = creditNotesByInvoice.get(invoice.id) || 0;
         const debitNoteTotal = debitNotesByInvoice.get(invoice.id) || 0;
         const effectiveTotal = invoice.totalAmount + debitNoteTotal - creditNoteTotal;
-        const outstandingBalance = Math.max(0, effectiveTotal - totalPaid);
+        const outstandingBalance = Math.max(0, effectiveTotal - totalSettled);
         
         return {
           ...invoice,
           totalPaid,
+          writeOffAmount,
           creditNoteTotal,
           debitNoteTotal,
           effectiveTotal,
           outstandingBalance,
-          isOverpaid: (effectiveTotal - totalPaid) < 0,
+          isOverpaid: (effectiveTotal - totalSettled) < 0,
         };
       });
       

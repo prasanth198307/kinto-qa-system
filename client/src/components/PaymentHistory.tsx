@@ -65,18 +65,25 @@ export default function PaymentHistory({ invoice }: PaymentHistoryProps) {
     return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
   });
 
-  // Calculate running balance for each payment
-  let runningTotal = 0;
+  // Calculate running balance for each payment (separating cash payments from write-offs)
+  let runningPaid = 0;
+  let runningWrittenOff = 0;
   const paymentsWithBalance = sortedPayments.map((payment) => {
-    runningTotal += payment.amount;
+    if (payment.paymentType === 'Write-off') {
+      runningWrittenOff += payment.amount;
+    } else {
+      runningPaid += payment.amount;
+    }
     return {
       ...payment,
-      runningBalance: invoice.totalAmount - runningTotal,
+      runningBalance: invoice.totalAmount - runningPaid - runningWrittenOff,
     };
   });
 
-  const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-  const outstandingBalance = invoice.totalAmount - totalPaid;
+  const writeOffTotal = payments.filter(p => p.paymentType === 'Write-off').reduce((sum, p) => sum + p.amount, 0);
+  const actualPaid = payments.filter(p => p.paymentType !== 'Write-off').reduce((sum, p) => sum + p.amount, 0);
+  const totalSettled = actualPaid + writeOffTotal;
+  const outstandingBalance = Math.max(0, invoice.totalAmount - totalSettled);
 
   if (isLoading) {
     return (
@@ -98,7 +105,7 @@ export default function PaymentHistory({ invoice }: PaymentHistoryProps) {
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Payment Summary */}
-        <div className="grid grid-cols-3 gap-4 p-4 rounded-md border bg-muted/30">
+        <div className={`grid gap-4 p-4 rounded-md border bg-muted/30 ${writeOffTotal > 0 ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3'}`}>
           <div>
             <p className="text-sm text-muted-foreground">Invoice Total</p>
             <p className="text-lg font-semibold" data-testid="text-invoice-total">
@@ -108,9 +115,17 @@ export default function PaymentHistory({ invoice }: PaymentHistoryProps) {
           <div>
             <p className="text-sm text-muted-foreground">Total Paid</p>
             <p className="text-lg font-semibold text-green-600" data-testid="text-payments-total">
-              ₹{(totalPaid / 100).toFixed(2)}
+              ₹{(actualPaid / 100).toFixed(2)}
             </p>
           </div>
+          {writeOffTotal > 0 && (
+            <div>
+              <p className="text-sm text-muted-foreground">Written Off</p>
+              <p className="text-lg font-semibold text-slate-500" data-testid="text-writeoff-total">
+                ₹{(writeOffTotal / 100).toFixed(2)}
+              </p>
+            </div>
+          )}
           <div>
             <p className="text-sm text-muted-foreground">Outstanding</p>
             <p className="text-lg font-semibold text-destructive" data-testid="text-balance-outstanding">
@@ -151,7 +166,13 @@ export default function PaymentHistory({ invoice }: PaymentHistoryProps) {
                       ₹{(payment.amount / 100).toFixed(2)}
                     </TableCell>
                     <TableCell data-testid={`text-payment-type-${payment.id}`}>
-                      <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
+                      <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ${
+                        payment.paymentType === 'Write-off'
+                          ? 'bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-200'
+                          : payment.paymentType === 'Adjustment'
+                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200'
+                          : 'bg-primary/10 text-primary'
+                      }`}>
                         {payment.paymentType}
                       </span>
                     </TableCell>

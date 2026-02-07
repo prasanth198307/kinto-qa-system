@@ -1046,16 +1046,30 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
             <CardTitle>Payment Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Amount Received:</span>
-              <span className="font-medium text-green-600">{formatCurrency(invoice.amountReceived || 0)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Balance Due:</span>
-              <span className="font-medium text-orange-600">
-                {formatCurrency(invoice.totalAmount - (invoice.amountReceived || 0))}
-              </span>
-            </div>
+            {(() => {
+              const writeOffTotal = payments.filter(p => p.paymentType === 'Write-off').reduce((sum, p) => sum + p.amount, 0);
+              const actualReceived = Math.max(0, (invoice.amountReceived || 0) - writeOffTotal);
+              return (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Amount Received:</span>
+                    <span className="font-medium text-green-600">{formatCurrency(actualReceived)}</span>
+                  </div>
+                  {writeOffTotal > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Written Off:</span>
+                      <span className="font-medium text-slate-500">{formatCurrency(writeOffTotal)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Balance Due:</span>
+                    <span className="font-medium text-orange-600">
+                      {formatCurrency(invoice.totalAmount - (invoice.amountReceived || 0))}
+                    </span>
+                  </div>
+                </>
+              );
+            })()}
             {invoice.bankName && (
               <>
                 <Separator />

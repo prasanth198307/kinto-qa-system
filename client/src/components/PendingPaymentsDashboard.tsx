@@ -48,6 +48,7 @@ interface Payment {
 
 interface InvoiceWithBalance extends Invoice {
   totalPaid: number;
+  writeOffAmount: number;
   outstandingBalance: number;
   isOverpaid: boolean;
 }
@@ -206,6 +207,7 @@ export default function PendingPaymentsDashboard({ customerFilter }: PendingPaym
                   <TableHead>Customer</TableHead>
                   <TableHead className="text-right">Total Amount</TableHead>
                   <TableHead className="text-right">Paid</TableHead>
+                  <TableHead className="text-right">Written Off</TableHead>
                   <TableHead className="text-right">Outstanding</TableHead>
                   <TableHead className="text-center">Status</TableHead>
                   <TableHead className="text-center">Actions</TableHead>
@@ -231,6 +233,9 @@ export default function PendingPaymentsDashboard({ customerFilter }: PendingPaym
                       </TableCell>
                       <TableCell className="text-right text-green-600" data-testid={`text-paid-${invoice.id}`}>
                         ₹{(invoice.totalPaid / 100).toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-right text-muted-foreground" data-testid={`text-writeoff-${invoice.id}`}>
+                        {invoice.writeOffAmount > 0 ? `₹${(invoice.writeOffAmount / 100).toFixed(2)}` : '-'}
                       </TableCell>
                       <TableCell className="text-right font-semibold text-destructive" data-testid={`text-outstanding-${invoice.id}`}>
                         ₹{(invoice.outstandingBalance / 100).toFixed(2)}
