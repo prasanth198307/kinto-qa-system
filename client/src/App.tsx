@@ -109,6 +109,7 @@ import JournalEntryDetailPage from "@/pages/journal-entry-detail";
 import ManualJournalEntryPage from "@/pages/manual-journal-entry";
 import TrialBalancePage from "@/pages/trial-balance";
 import ProfitLossPage from "@/pages/profit-loss";
+import BalanceSheetPage from "@/pages/balance-sheet";
 import BankTransactionsPage from "@/pages/bank-transactions";
 import AdminToolsPage from "@/pages/admin-tools";
 
@@ -854,6 +855,7 @@ function AdminDashboard() {
         { id: "bank-transactions", label: "Bank Statements", icon: Landmark, onClick: () => setLocation('/bank-transactions') },
         { id: "trial-balance", label: "Trial Balance", icon: Scale, onClick: () => setLocation('/trial-balance') },
         { id: "profit-loss", label: "Profit & Loss", icon: BarChart3, onClick: () => setLocation('/profit-loss') },
+        { id: "balance-sheet", label: "Balance Sheet", icon: Scale, onClick: () => setLocation('/balance-sheet') },
       ],
     },
     {
@@ -1393,6 +1395,7 @@ const navItemToScreenKey: Record<string, string> = {
   'bank-transactions': 'journal_entries',
   'trial-balance': 'trial_balance',
   'profit-loss': 'profit_loss',
+  'balance-sheet': 'trial_balance',
   // Maintenance
   'maintenance': 'maintenance_plans',
   'pm-history': 'pm_history',
@@ -1469,6 +1472,7 @@ const navItemToScreen: Record<string, string> = {
   'bank-transactions': 'Accounting',
   'trial-balance': 'Accounting',
   'profit-loss': 'Accounting',
+  'balance-sheet': 'Accounting',
   // Maintenance
   'maintenance': 'Maintenance Plans',
   'pm-history': 'PM History',
@@ -1693,6 +1697,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "bank-transactions", label: "Bank Statements", icon: Landmark, onClick: () => setLocation('/bank-transactions') },
         { id: "trial-balance", label: "Trial Balance", icon: Scale, onClick: () => setLocation('/trial-balance') },
         { id: "profit-loss", label: "Profit & Loss", icon: BarChart3, onClick: () => setLocation('/profit-loss') },
+        { id: "balance-sheet", label: "Balance Sheet", icon: Scale, onClick: () => setLocation('/balance-sheet') },
       ],
     },
     {
@@ -1994,6 +1999,20 @@ function ProfitLossPageWrapper() {
   return (
     <DashboardShell title="Profit & Loss" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
       <ProfitLossPage />
+    </DashboardShell>
+  );
+}
+
+function BalanceSheetPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('balance-sheet');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  return (
+    <DashboardShell title="Balance Sheet" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
+      <BalanceSheetPage />
     </DashboardShell>
   );
 }
@@ -2763,6 +2782,7 @@ function Router() {
       <ProtectedRoute path="/journal-entries" component={JournalEntriesPageWrapper} />
       <ProtectedRoute path="/trial-balance" component={TrialBalancePageWrapper} />
       <ProtectedRoute path="/profit-loss" component={ProfitLossPageWrapper} />
+      <ProtectedRoute path="/balance-sheet" component={BalanceSheetPageWrapper} />
       <ProtectedRoute path="/bank-transactions" component={BankTransactionsPageWrapper} />
       <ProtectedRoute path="/admin-tools" component={AdminToolsPageWrapper} />
       <ProtectedRoute path="/journal-entry/new" component={ManualJournalEntryPageWrapper} />

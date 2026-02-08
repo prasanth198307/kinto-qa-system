@@ -201,8 +201,8 @@ export default function JournalEntriesPage() {
     ? ledgerEntries[ledgerEntries.length - 1].runningBalance
     : openingBalance;
 
-  const returnPath = returnTo === "profit-loss" ? "/profit-loss" : "/trial-balance";
-  const returnLabel = returnTo === "profit-loss" ? "Back to Profit & Loss" : "Back to Trial Balance";
+  const returnPath = returnTo === "profit-loss" ? "/profit-loss" : returnTo === "balance-sheet" ? "/balance-sheet" : "/trial-balance";
+  const returnLabel = returnTo === "profit-loss" ? "Back to Profit & Loss" : returnTo === "balance-sheet" ? "Back to Balance Sheet" : "Back to Trial Balance";
 
   function handleBackToSource() {
     if (tbReturnParam) {
