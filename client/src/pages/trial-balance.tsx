@@ -142,14 +142,6 @@ export default function TrialBalancePage() {
   function handleAccountClick(account: ChartAccount) {
     const params = new URLSearchParams();
     params.set("accountId", account.id);
-    if (dateMode === "custom" && isCustomValid) {
-      params.set("dateFrom", customFrom);
-      params.set("dateTo", customTo);
-    } else {
-      const fyDates = getFYDates(selectedFY);
-      params.set("dateFrom", fyDates.start);
-      params.set("dateTo", fyDates.end);
-    }
     params.set("tbReturn", tbUrlParams);
     setLocation(`/journal-entries?${params.toString()}`);
   }
