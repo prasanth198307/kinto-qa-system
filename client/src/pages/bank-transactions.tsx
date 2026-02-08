@@ -9,7 +9,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Upload, Search, Check, X, Edit2, ArrowUpDown, FileSpreadsheet, CheckSquare, RefreshCw, Building2, ArrowRight, Filter, Users, ChevronDown, ChevronUp, Link as LinkIcon, Unlink } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Upload, Search, Check, X, Edit2, ArrowUpDown, FileSpreadsheet, CheckSquare, RefreshCw, Building2, ArrowRight, Filter, Users, ChevronDown, ChevronUp, Link as LinkIcon, Unlink, ChevronsUpDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -137,6 +139,8 @@ export default function BankTransactionsPage() {
   const [showDirectorLoans, setShowDirectorLoans] = useState(false);
   const [showManualReconcile, setShowManualReconcile] = useState<BankTransaction | null>(null);
   const [selectedPaymentId, setSelectedPaymentId] = useState("");
+  const [categoryOpen, setCategoryOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
 
   const { data: imports = [] } = useQuery<BankImport[]>({
     queryKey: ['/api/bank-statement-imports'],
@@ -752,17 +756,34 @@ export default function BankTransactionsPage() {
               </div>
               <div className="space-y-1">
                 <Label>Category</Label>
-                <Select value={editCategory} onValueChange={setEditCategory}>
-                  <SelectTrigger data-testid="select-edit-category">
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">-- No category --</SelectItem>
-                    {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
-                      <SelectItem key={key} value={key}>{label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Popover open={categoryOpen} onOpenChange={setCategoryOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" aria-expanded={categoryOpen} className="w-full justify-between font-normal" data-testid="select-edit-category">
+                      {editCategory && editCategory !== 'none' ? CATEGORY_LABELS[editCategory] || editCategory : "Select category"}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search category..." data-testid="input-search-category" />
+                      <CommandList>
+                        <CommandEmpty>No category found.</CommandEmpty>
+                        <CommandGroup>
+                          <CommandItem value="none" onSelect={() => { setEditCategory("none"); setCategoryOpen(false); }}>
+                            <Check className={`mr-2 h-4 w-4 ${editCategory === 'none' || !editCategory ? 'opacity-100' : 'opacity-0'}`} />
+                            -- No category --
+                          </CommandItem>
+                          {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
+                            <CommandItem key={key} value={label} onSelect={() => { setEditCategory(key); setCategoryOpen(false); }}>
+                              <Check className={`mr-2 h-4 w-4 ${editCategory === key ? 'opacity-100' : 'opacity-0'}`} />
+                              {label}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
               {editCategory === 'director_loan' && (() => {
                 const directorAccounts = accounts.filter(a => a.code.startsWith('2402') && a.code !== '2402');
@@ -789,17 +810,36 @@ export default function BankTransactionsPage() {
               })()}
               <div className="space-y-1">
                 <Label>Map to Account</Label>
-                <Select value={editAccountId} onValueChange={setEditAccountId}>
-                  <SelectTrigger data-testid="select-edit-account">
-                    <SelectValue placeholder="Select account" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">-- Not mapped --</SelectItem>
-                    {accounts.map(a => (
-                      <SelectItem key={a.id} value={a.id}>{a.code} - {a.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Popover open={accountOpen} onOpenChange={setAccountOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" aria-expanded={accountOpen} className="w-full justify-between font-normal" data-testid="select-edit-account">
+                      {editAccountId && editAccountId !== 'none'
+                        ? (() => { const a = accounts.find(a => a.id === editAccountId); return a ? `${a.code} - ${a.name}` : "Select account"; })()
+                        : "Select account"}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search account..." data-testid="input-search-account" />
+                      <CommandList>
+                        <CommandEmpty>No account found.</CommandEmpty>
+                        <CommandGroup>
+                          <CommandItem value="not-mapped" onSelect={() => { setEditAccountId("none"); setAccountOpen(false); }}>
+                            <Check className={`mr-2 h-4 w-4 ${editAccountId === 'none' || !editAccountId ? 'opacity-100' : 'opacity-0'}`} />
+                            -- Not mapped --
+                          </CommandItem>
+                          {accounts.map(a => (
+                            <CommandItem key={a.id} value={`${a.code} ${a.name}`} onSelect={() => { setEditAccountId(a.id); setAccountOpen(false); }}>
+                              <Check className={`mr-2 h-4 w-4 ${editAccountId === a.id ? 'opacity-100' : 'opacity-0'}`} />
+                              {a.code} - {a.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
               <div className="space-y-1">
                 <Label>Memo / Notes</Label>
