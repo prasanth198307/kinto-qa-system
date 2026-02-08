@@ -92,6 +92,7 @@ export default function JournalEntriesPage() {
   const urlDateFrom = urlParams.get("dateFrom") || "";
   const urlDateTo = urlParams.get("dateTo") || "";
   const tbReturnParam = urlParams.get("tbReturn") || "";
+  const returnTo = urlParams.get("returnTo") || "trial-balance";
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterSource, setFilterSource] = useState("all");
@@ -200,11 +201,14 @@ export default function JournalEntriesPage() {
     ? ledgerEntries[ledgerEntries.length - 1].runningBalance
     : openingBalance;
 
-  function handleBackToTrialBalance() {
+  const returnPath = returnTo === "profit-loss" ? "/profit-loss" : "/trial-balance";
+  const returnLabel = returnTo === "profit-loss" ? "Back to Profit & Loss" : "Back to Trial Balance";
+
+  function handleBackToSource() {
     if (tbReturnParam) {
-      setLocation(`/trial-balance?${tbReturnParam}`);
+      setLocation(`${returnPath}?${tbReturnParam}`);
     } else {
-      setLocation("/trial-balance");
+      setLocation(returnPath);
     }
   }
 
@@ -222,10 +226,10 @@ export default function JournalEntriesPage() {
         <Button
           variant="outline"
           size="sm"
-          onClick={handleBackToTrialBalance}
+          onClick={handleBackToSource}
           data-testid="button-back-trial-balance"
         >
-          <ArrowLeft className="w-4 h-4 mr-1" /> Back to Trial Balance
+          <ArrowLeft className="w-4 h-4 mr-1" /> {returnLabel}
         </Button>
       )}
       <div className="flex items-center justify-between gap-4 flex-wrap">
