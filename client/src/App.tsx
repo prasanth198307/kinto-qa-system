@@ -2731,6 +2731,18 @@ function MISDeliveryPageWrapper() {
   );
 }
 
+function ScrollToTop() {
+  const [location] = useLocation();
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    const mainContent = document.querySelector('.flex-1.pt-16');
+    if (mainContent) mainContent.scrollTop = 0;
+  }, [location]);
+  return null;
+}
+
 function Router() {
   return (
     <Switch>
@@ -2798,6 +2810,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <TooltipProvider>
+          <ScrollToTop />
           <Router />
           <Toaster />
         </TooltipProvider>

@@ -123,7 +123,17 @@ export function VerticalNavSidebar({
       onItemClick(item.id);
     }
 
-    window.scrollTo({ top: 0 });
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    const mainContent = document.querySelector('.flex-1.pt-16');
+    if (mainContent) mainContent.scrollTop = 0;
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: 'instant' });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      if (mainContent) mainContent.scrollTop = 0;
+    }, 50);
     
     if (onMobileClose) {
       onMobileClose();
