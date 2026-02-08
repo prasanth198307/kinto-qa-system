@@ -1395,7 +1395,7 @@ const navItemToScreenKey: Record<string, string> = {
   'bank-transactions': 'journal_entries',
   'trial-balance': 'trial_balance',
   'profit-loss': 'profit_loss',
-  'balance-sheet': 'trial_balance',
+  'balance-sheet': 'balance_sheet',
   // Maintenance
   'maintenance': 'maintenance_plans',
   'pm-history': 'pm_history',

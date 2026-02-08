@@ -246,7 +246,7 @@ export async function seedChartOfAccounts(): Promise<void> {
 }
 
 const ACCOUNTING_SCREEN_KEYS = [
-  'chart_of_accounts', 'journal_entries', 'manual_journal_entry', 'trial_balance', 'profit_loss',
+  'chart_of_accounts', 'journal_entries', 'manual_journal_entry', 'trial_balance', 'profit_loss', 'balance_sheet',
   'bank_transactions', 'expenses', 'cash_register', 'documents', 'customer_advances',
   'payment_writeoff', 'vendor_debit_notes', 'dispatch_tracking', 'dispatch_masters',
   'template_management', 'notification_settings', 'cancelled_invoices_report', 'scrap_inventory',
