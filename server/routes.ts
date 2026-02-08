@@ -19997,6 +19997,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
       }
 
+      let isRetainedEarningsMode = false;
+      let plAccountIds: string[] = [];
+      if (accountId) {
+        const acct = await storage.getChartOfAccount(accountId as string);
+        if (acct && acct.code === '3003' && dateFrom) {
+          isRetainedEarningsMode = true;
+          const allAccounts = await storage.getAllChartOfAccounts();
+          plAccountIds = allAccounts
+            .filter(a => a.accountType === 'revenue' || a.accountType === 'expense')
+            .map(a => a.id);
+        }
+      }
+
+      if (isRetainedEarningsMode && plAccountIds.length > 0) {
+        const plJournalIds = db.select({ journalId: journalLines.journalId })
+          .from(journalLines)
+          .where(and(
+            inArray(journalLines.accountId, plAccountIds),
+            eq(journalLines.recordStatus, 1)
+          ));
+        const reConditions: any[] = [
+          eq(journalEntries.recordStatus, 1),
+          sql`${journalEntries.journalDate} < ${dateFrom}`,
+          sql`${journalEntries.id} IN (${plJournalIds})`
+        ];
+
+        const reWhereClause = and(...reConditions);
+        const [reCount] = await db.select({ count: sql<number>`count(*)::integer` })
+          .from(journalEntries)
+          .where(reWhereClause);
+        const total = reCount?.count || 0;
+
+        const entries = await db.select()
+          .from(journalEntries)
+          .where(reWhereClause)
+          .orderBy(asc(journalEntries.journalDate), asc(journalEntries.createdAt))
+          .limit(pageSizeNum)
+          .offset((pageNum - 1) * pageSizeNum);
+
+        const acct = await storage.getChartOfAccount(accountId as string);
+        const accountName = acct ? `${acct.code} - ${acct.name} (Prior FY P&L Entries)` : undefined;
+
+        const entryIds = entries.map(e => e.id);
+        const entryAmounts: Record<string, { debit: number; credit: number }> = {};
+        if (entryIds.length > 0) {
+          const plLines = await db.select({
+            journalId: journalLines.journalId,
+            debit: journalLines.debit,
+            credit: journalLines.credit,
+          })
+            .from(journalLines)
+            .where(and(
+              inArray(journalLines.accountId, plAccountIds),
+              eq(journalLines.recordStatus, 1),
+              inArray(journalLines.journalId, entryIds)
+            ));
+          for (const line of plLines) {
+            if (!entryAmounts[line.journalId]) {
+              entryAmounts[line.journalId] = { debit: 0, credit: 0 };
+            }
+            entryAmounts[line.journalId].debit += line.debit;
+            entryAmounts[line.journalId].credit += line.credit;
+          }
+        }
+
+        res.json({
+          entries, total, page: pageNum, pageSize: pageSizeNum,
+          accountName, openingBalance: 0, entryAmounts,
+        });
+        return;
+      }
+
       if (accountId) {
         const journalIdsForAccount = db.select({ journalId: journalLines.journalId })
           .from(journalLines)
@@ -20033,19 +20105,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         accountName = acct ? `${acct.code} - ${acct.name}` : undefined;
 
         if (dateFrom) {
-          const [obResult] = await db.select({
-            totalDebit: sql<number>`COALESCE(SUM(${journalLines.debit}), 0)::integer`,
-            totalCredit: sql<number>`COALESCE(SUM(${journalLines.credit}), 0)::integer`,
-          })
-            .from(journalLines)
-            .innerJoin(journalEntries, eq(journalLines.journalId, journalEntries.id))
-            .where(and(
-              eq(journalLines.accountId, accountId as string),
-              eq(journalLines.recordStatus, 1),
-              eq(journalEntries.recordStatus, 1),
-              sql`${journalEntries.journalDate} < ${dateFrom}`
-            ));
-          openingBalance = (obResult?.totalDebit || 0) - (obResult?.totalCredit || 0);
+          const isPLAccount = acct && (acct.accountType === 'revenue' || acct.accountType === 'expense');
+          if (isPLAccount) {
+            openingBalance = 0;
+          } else {
+            const [obResult] = await db.select({
+              totalDebit: sql<number>`COALESCE(SUM(${journalLines.debit}), 0)::integer`,
+              totalCredit: sql<number>`COALESCE(SUM(${journalLines.credit}), 0)::integer`,
+            })
+              .from(journalLines)
+              .innerJoin(journalEntries, eq(journalLines.journalId, journalEntries.id))
+              .where(and(
+                eq(journalLines.accountId, accountId as string),
+                eq(journalLines.recordStatus, 1),
+                eq(journalEntries.recordStatus, 1),
+                sql`${journalEntries.journalDate} < ${dateFrom}`
+              ));
+            openingBalance = (obResult?.totalDebit || 0) - (obResult?.totalCredit || 0);
+          }
         }
 
         const entryIds = entries.map(e => e.id);
