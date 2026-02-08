@@ -76,7 +76,7 @@ export default function TrialBalancePage() {
   const [selectedFY, setSelectedFY] = useState(urlFy || getCurrentFY());
   const [customFrom, setCustomFrom] = useState(urlFrom || "");
   const [customTo, setCustomTo] = useState(urlTo || "");
-  const [hideZero, setHideZero] = useState(false);
+  const [hideZero, setHideZero] = useState(true);
   const [, setLocation] = useLocation();
 
   const isCustomValid = dateMode === "custom" && customFrom && customTo && customFrom <= customTo;

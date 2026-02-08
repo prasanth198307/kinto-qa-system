@@ -109,10 +109,12 @@ export default function ProfitLossPage() {
 
   const revenueAccounts = accounts
     .filter(a => a.accountType === "revenue")
+    .filter(a => (Number(a.currentBalance) || 0) !== 0)
     .sort((a, b) => a.code.localeCompare(b.code));
 
   const expenseAccounts = accounts
     .filter(a => a.accountType === "expense")
+    .filter(a => (Number(a.currentBalance) || 0) !== 0)
     .sort((a, b) => a.code.localeCompare(b.code));
 
   function getBalance(account: ChartAccount): number {
