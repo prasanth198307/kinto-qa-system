@@ -1141,6 +1141,15 @@ export async function backfillJournalEntries(): Promise<{
   }
   console.log(`[BACKFILL] Orphan cleanup done: ${orphansRemoved} orphaned entries removed`);
 
+  // 0b. Fix misclassified payment journals (write-offs/adjustments recorded as regular payments)
+  console.log('[BACKFILL] Fixing misclassified payment journals...');
+  try {
+    const fixResult = await fixPaymentJournals();
+    console.log(`[BACKFILL] Payment journal fix: ${fixResult.adjustmentsFixed} adjustments removed, ${fixResult.writeOffsFixed} write-offs reclassified, ${fixResult.errors} errors`);
+  } catch (e: any) {
+    console.error('[BACKFILL] Payment journal fix error:', e.message);
+  }
+
   // Use raw SQL queries to avoid TypeScript column name issues
   // All queries use the actual database column names
 
