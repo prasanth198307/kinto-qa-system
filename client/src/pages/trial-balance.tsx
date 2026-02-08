@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation, useSearch } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Printer, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Calendar, Printer, AlertTriangle, CheckCircle2, ExternalLink } from "lucide-react";
 
 interface ChartAccount {
   id: string;
@@ -39,6 +41,19 @@ function formatAmount(paise: number): string {
   return rupees.toLocaleString("en-IN", { minimumFractionDigits: 2 });
 }
 
+function getFYDates(fy: string): { start: string; end: string } {
+  const y = parseInt(fy);
+  return { start: `${y}-04-01`, end: `${y + 1}-03-31` };
+}
+
+function formatDateDisplay(dateStr: string): string {
+  try {
+    return new Date(dateStr + "T00:00:00").toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  } catch {
+    return dateStr;
+  }
+}
+
 const TYPE_ORDER = ["asset", "liability", "equity", "revenue", "expense"];
 const TYPE_LABELS: Record<string, string> = {
   asset: "Assets",
@@ -49,14 +64,48 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 export default function TrialBalancePage() {
-  const [selectedFY, setSelectedFY] = useState(getCurrentFY());
+  const searchString = useSearch();
+  const urlParams = new URLSearchParams(searchString);
+
+  const urlMode = urlParams.get("mode");
+  const urlFy = urlParams.get("fy");
+  const urlFrom = urlParams.get("fromDate");
+  const urlTo = urlParams.get("toDate");
+
+  const [dateMode, setDateMode] = useState<"fy" | "custom">(urlMode === "custom" ? "custom" : "fy");
+  const [selectedFY, setSelectedFY] = useState(urlFy || getCurrentFY());
+  const [customFrom, setCustomFrom] = useState(urlFrom || "");
+  const [customTo, setCustomTo] = useState(urlTo || "");
   const [hideZero, setHideZero] = useState(false);
+  const [, setLocation] = useLocation();
+
+  const isCustomValid = dateMode === "custom" && customFrom && customTo && customFrom <= customTo;
+
+  const apiQueryParams = (() => {
+    if (dateMode === "custom" && isCustomValid) {
+      return `fromDate=${customFrom}&toDate=${customTo}`;
+    }
+    return `fy=${selectedFY}`;
+  })();
 
   const { data: accounts = [], isLoading } = useQuery<ChartAccount[]>({
-    queryKey: [`/api/chart-of-accounts?fy=${selectedFY}`],
+    queryKey: [`/api/chart-of-accounts?${apiQueryParams}`],
   });
 
-  const fyStart = parseInt(selectedFY);
+  const currentPeriodLabel = (() => {
+    if (dateMode === "custom" && isCustomValid) {
+      return `${formatDateDisplay(customFrom)} to ${formatDateDisplay(customTo)}`;
+    }
+    const fyStart = parseInt(selectedFY);
+    return `Apr ${fyStart} \u2013 Mar ${fyStart + 1}`;
+  })();
+
+  const tbUrlParams = (() => {
+    if (dateMode === "custom" && isCustomValid) {
+      return `mode=custom&fromDate=${customFrom}&toDate=${customTo}`;
+    }
+    return `mode=fy&fy=${selectedFY}`;
+  })();
 
   const rows = accounts
     .filter(a => !hideZero || a.periodDebit !== 0 || a.periodCredit !== 0 || a.currentBalance !== 0)
@@ -90,6 +139,21 @@ export default function TrialBalancePage() {
   const isBalanced = Math.abs(totalDebit - totalCredit) < 1;
   const difference = totalDebit - totalCredit;
 
+  function handleAccountClick(account: ChartAccount) {
+    const params = new URLSearchParams();
+    params.set("accountId", account.id);
+    if (dateMode === "custom" && isCustomValid) {
+      params.set("dateFrom", customFrom);
+      params.set("dateTo", customTo);
+    } else {
+      const fyDates = getFYDates(selectedFY);
+      params.set("dateFrom", fyDates.start);
+      params.set("dateTo", fyDates.end);
+    }
+    params.set("tbReturn", tbUrlParams);
+    setLocation(`/journal-entries?${params.toString()}`);
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64" data-testid="loading-trial-balance">
@@ -108,7 +172,7 @@ export default function TrialBalancePage() {
           <div style={{ fontSize: "11px", color: "#555", marginTop: "2px" }}>Manufacturing Excellence</div>
           <div style={{ fontSize: "16px", fontWeight: "600", marginTop: "10px" }}>Trial Balance</div>
           <div style={{ fontSize: "11px", color: "#555", marginTop: "4px" }}>
-            As at Mar {fyStart + 1} &middot; Financial Year Apr {fyStart} &ndash; Mar {fyStart + 1}
+            {currentPeriodLabel}
           </div>
         </div>
       </div>
@@ -116,7 +180,7 @@ export default function TrialBalancePage() {
       <div className="flex items-center justify-between gap-4 flex-wrap no-print">
         <div>
           <h1 className="text-xl font-semibold" data-testid="text-page-title">Trial Balance</h1>
-          <p className="text-sm text-muted-foreground">As at Mar {fyStart + 1} &middot; Apr {fyStart} &ndash; Mar {fyStart + 1}</p>
+          <p className="text-sm text-muted-foreground">{currentPeriodLabel}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Button
@@ -127,17 +191,51 @@ export default function TrialBalancePage() {
           >
             {hideZero ? "Show All" : "Hide Zero"}
           </Button>
-          <Select value={selectedFY} onValueChange={setSelectedFY}>
-            <SelectTrigger className="w-[160px]" data-testid="select-financial-year">
-              <Calendar className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
+
+          <Select value={dateMode} onValueChange={(v) => setDateMode(v as "fy" | "custom")}>
+            <SelectTrigger className="w-[120px]" data-testid="select-date-mode">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {getAvailableFYs().map(fy => (
-                <SelectItem key={fy} value={fy}>{getFYLabel(fy)}</SelectItem>
-              ))}
+              <SelectItem value="fy">Financial Year</SelectItem>
+              <SelectItem value="custom">Custom Range</SelectItem>
             </SelectContent>
           </Select>
+
+          {dateMode === "fy" && (
+            <Select value={selectedFY} onValueChange={setSelectedFY}>
+              <SelectTrigger className="w-[140px]" data-testid="select-financial-year">
+                <Calendar className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {getAvailableFYs().map(fy => (
+                  <SelectItem key={fy} value={fy}>{getFYLabel(fy)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          {dateMode === "custom" && (
+            <div className="flex items-center gap-1.5">
+              <Input
+                type="date"
+                value={customFrom}
+                onChange={(e) => setCustomFrom(e.target.value)}
+                className="w-[140px]"
+                data-testid="input-date-from"
+              />
+              <span className="text-xs text-muted-foreground">to</span>
+              <Input
+                type="date"
+                value={customTo}
+                onChange={(e) => setCustomTo(e.target.value)}
+                className="w-[140px]"
+                data-testid="input-date-to"
+              />
+            </div>
+          )}
+
           <Button variant="outline" size="sm" onClick={() => window.print()} data-testid="button-print">
             <Printer className="w-4 h-4 mr-1" /> Print
           </Button>
@@ -175,7 +273,7 @@ export default function TrialBalancePage() {
             </thead>
             <tbody>
               {grouped.map(group => (
-                <GroupSection key={group.type} group={group} getDebitCredit={getDebitCredit} />
+                <GroupSection key={group.type} group={group} getDebitCredit={getDebitCredit} onAccountClick={handleAccountClick} />
               ))}
             </tbody>
             <tfoot>
@@ -210,9 +308,10 @@ export default function TrialBalancePage() {
   );
 }
 
-function GroupSection({ group, getDebitCredit }: {
+function GroupSection({ group, getDebitCredit, onAccountClick }: {
   group: { type: string; label: string; accounts: ChartAccount[] };
   getDebitCredit: (a: ChartAccount) => { debit: number; credit: number };
+  onAccountClick: (a: ChartAccount) => void;
 }) {
   let groupDebit = 0;
   let groupCredit = 0;
@@ -238,11 +337,21 @@ function GroupSection({ group, getDebitCredit }: {
       {group.accounts.map(account => {
         const { debit, credit } = getDebitCredit(account);
         return (
-          <tr key={account.id} className="border-b hover-elevate" data-testid={`row-tb-${account.code}`}>
+          <tr
+            key={account.id}
+            className="border-b hover-elevate cursor-pointer group"
+            data-testid={`row-tb-${account.code}`}
+            onClick={() => onAccountClick(account)}
+          >
             <td className="px-4 py-2">
               <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono">{account.code}</code>
             </td>
-            <td className="px-3 py-2 truncate">{account.name}</td>
+            <td className="px-3 py-2 truncate">
+              <span className="underline-offset-2 group-hover:underline flex items-center gap-1" data-testid={`link-account-${account.code}`}>
+                {account.name}
+                <ExternalLink className="w-3 h-3 text-muted-foreground shrink-0 invisible group-hover:visible" />
+              </span>
+            </td>
             <td className="text-right px-4 py-2 font-mono tabular-nums whitespace-nowrap">
               {debit > 0 ? formatAmount(debit) : "-"}
             </td>
