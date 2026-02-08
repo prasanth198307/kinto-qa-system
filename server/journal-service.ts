@@ -119,9 +119,9 @@ const DEFAULT_ACCOUNTS = [
   { code: '2200', name: 'GST Payable - CGST', accountType: 'liability', subType: 'gst', isSystemAccount: 1 },
   { code: '2201', name: 'GST Payable - SGST', accountType: 'liability', subType: 'gst', isSystemAccount: 1 },
   { code: '2202', name: 'GST Payable - IGST', accountType: 'liability', subType: 'gst', isSystemAccount: 1 },
-  { code: '2210', name: 'GST Input Credit - CGST', accountType: 'liability', subType: 'gst_input', isSystemAccount: 1 },
-  { code: '2211', name: 'GST Input Credit - SGST', accountType: 'liability', subType: 'gst_input', isSystemAccount: 1 },
-  { code: '2212', name: 'GST Input Credit - IGST', accountType: 'liability', subType: 'gst_input', isSystemAccount: 1 },
+  { code: '2210', name: 'GST Input Credit - CGST', accountType: 'asset', subType: 'gst_input', isSystemAccount: 1 },
+  { code: '2211', name: 'GST Input Credit - SGST', accountType: 'asset', subType: 'gst_input', isSystemAccount: 1 },
+  { code: '2212', name: 'GST Input Credit - IGST', accountType: 'asset', subType: 'gst_input', isSystemAccount: 1 },
   { code: '2300', name: 'TDS Payable', accountType: 'liability', subType: 'statutory', isSystemAccount: 1 },
   { code: '2301', name: 'TDS Receivable', accountType: 'liability', subType: 'statutory', isSystemAccount: 1 },
   { code: '2400', name: 'Loans Payable', accountType: 'liability', subType: 'loan', isSystemAccount: 1 },
@@ -228,6 +228,15 @@ export async function seedChartOfAccounts(): Promise<void> {
         } as any);
         console.log(`[COA SEED] Created director account: ${dirAcct.code} - ${dirAcct.name}`);
       }
+    }
+  }
+
+  const gstInputCodes = ['2210', '2211', '2212'];
+  for (const code of gstInputCodes) {
+    const acct = await storage.getChartOfAccountByCode(code);
+    if (acct && acct.accountType === 'liability') {
+      await storage.updateChartOfAccount(acct.id, { accountType: 'asset', subType: 'gst_input' });
+      console.log(`[COA SEED] Fixed ${code} ${acct.name}: liability -> asset`);
     }
   }
 

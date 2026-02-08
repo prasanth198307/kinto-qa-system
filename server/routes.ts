@@ -19794,6 +19794,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           periodMap.set(row.accountId, { totalDebit: Number(row.totalDebit), totalCredit: Number(row.totalCredit) });
         }
 
+        let retainedEarningsFromPriorFY = 0;
+        const retainedEarningsAccount = accounts.find(a => a.code === '3003');
+        if (retainedEarningsAccount) {
+          for (const [accountId, opening] of openingMap.entries()) {
+            const acct = accounts.find(a => a.id === accountId);
+            if (acct && !isBalanceSheetAccount(acct.accountType)) {
+              retainedEarningsFromPriorFY += opening.totalCredit - opening.totalDebit;
+            }
+          }
+        }
+
         const accountsWithBalances = accounts.map(account => {
           const isBs = isBalanceSheetAccount(account.accountType);
           const isDebitNormal = account.accountType === 'asset' || account.accountType === 'expense';
@@ -19806,6 +19817,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             openingBalance = isDebitNormal
               ? opening.totalDebit - opening.totalCredit
               : opening.totalCredit - opening.totalDebit;
+          }
+
+          if (retainedEarningsAccount && account.id === retainedEarningsAccount.id) {
+            openingBalance += retainedEarningsFromPriorFY;
           }
 
           const periodMovement = isDebitNormal
