@@ -156,7 +156,7 @@ export default function JournalEntriesPage() {
   if (isLedgerMode) {
     ledgerQueryParams.set("accountId", urlAccountId);
     ledgerQueryParams.set("page", String(page));
-    ledgerQueryParams.set("pageSize", "500");
+    ledgerQueryParams.set("pageSize", "5000");
     if (dateFrom) ledgerQueryParams.set("dateFrom", dateFrom);
     if (dateTo) ledgerQueryParams.set("dateTo", dateTo);
     if (searchQuery) ledgerQueryParams.set("search", searchQuery);
