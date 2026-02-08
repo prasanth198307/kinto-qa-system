@@ -149,14 +149,56 @@ export default function JournalEntriesPage() {
   if (dateTo) queryParams.set("dateTo", dateTo);
   if (urlAccountId) queryParams.set("accountId", urlAccountId);
 
-  const { data, isLoading } = useQuery<{ entries: JournalEntry[]; total: number; page: number; pageSize: number; accountName?: string }>({
-    queryKey: [`/api/journal-entries?${queryParams.toString()}`],
+  const isLedgerMode = !!urlAccountId;
+
+  const ledgerQueryParams = new URLSearchParams();
+  if (isLedgerMode) {
+    ledgerQueryParams.set("accountId", urlAccountId);
+    ledgerQueryParams.set("page", String(page));
+    ledgerQueryParams.set("pageSize", "500");
+    if (dateFrom) ledgerQueryParams.set("dateFrom", dateFrom);
+    if (dateTo) ledgerQueryParams.set("dateTo", dateTo);
+    if (searchQuery) ledgerQueryParams.set("search", searchQuery);
+    if (filterSource !== "all") ledgerQueryParams.set("sourceType", filterSource);
+  }
+
+  const { data, isLoading } = useQuery<{
+    entries: JournalEntry[];
+    total: number;
+    page: number;
+    pageSize: number;
+    accountName?: string;
+    openingBalance?: number;
+    entryAmounts?: Record<string, { debit: number; credit: number }>;
+  }>({
+    queryKey: [isLedgerMode ? `/api/journal-entries?${ledgerQueryParams.toString()}` : `/api/journal-entries?${queryParams.toString()}`],
   });
 
   const entries = data?.entries || [];
   const total = data?.total || 0;
-  const totalPages = Math.ceil(total / pageSize);
+  const totalPages = isLedgerMode ? 1 : Math.ceil(total / pageSize);
   const accountName = data?.accountName;
+  const openingBalance = data?.openingBalance ?? 0;
+  const entryAmounts = data?.entryAmounts || {};
+
+  const ledgerEntries = useMemo(() => {
+    if (!isLedgerMode) return [];
+    const sorted = [...entries].sort((a, b) => {
+      const dateCompare = a.journalDate.localeCompare(b.journalDate);
+      if (dateCompare !== 0) return dateCompare;
+      return a.createdAt.localeCompare(b.createdAt);
+    });
+    let running = openingBalance;
+    return sorted.map(entry => {
+      const amounts = entryAmounts[entry.id] || { debit: 0, credit: 0 };
+      running += amounts.debit - amounts.credit;
+      return { ...entry, accountDebit: amounts.debit, accountCredit: amounts.credit, runningBalance: running };
+    });
+  }, [entries, openingBalance, entryAmounts, isLedgerMode]);
+
+  const closingBalance = ledgerEntries.length > 0
+    ? ledgerEntries[ledgerEntries.length - 1].runningBalance
+    : openingBalance;
 
   function handleBackToTrialBalance() {
     if (tbReturnParam) {
@@ -462,86 +504,176 @@ export default function JournalEntriesPage() {
         />
       </div>
 
-      {entries.length === 0 ? (
+      {isLedgerMode ? (
         <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <BookOpen className="w-12 h-12 text-muted-foreground mb-3" />
-            <p className="text-muted-foreground">No journal entries found</p>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm" data-testid="table-ledger">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">Date</th>
+                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">Particulars</th>
+                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">Voucher Type</th>
+                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">Vch No.</th>
+                    <th className="text-right px-3 py-2 font-medium text-muted-foreground">Debit</th>
+                    <th className="text-right px-3 py-2 font-medium text-muted-foreground">Credit</th>
+                    <th className="text-right px-3 py-2 font-medium text-muted-foreground">Balance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dateFrom && (
+                    <tr className="border-b bg-muted/30 font-medium" data-testid="row-opening-balance">
+                      <td className="px-3 py-2">{formatDate(dateFrom)}</td>
+                      <td className="px-3 py-2" colSpan={3}>Opening Balance</td>
+                      <td className="text-right px-3 py-2 font-mono tabular-nums">
+                        {openingBalance > 0 ? formatAmount(openingBalance) : ""}
+                      </td>
+                      <td className="text-right px-3 py-2 font-mono tabular-nums">
+                        {openingBalance < 0 ? formatAmount(Math.abs(openingBalance)) : ""}
+                      </td>
+                      <td className="text-right px-3 py-2 font-mono tabular-nums whitespace-nowrap">
+                        {formatAmount(Math.abs(openingBalance))} {openingBalance >= 0 ? "Dr" : "Cr"}
+                      </td>
+                    </tr>
+                  )}
+                  {ledgerEntries.length === 0 && !dateFrom ? (
+                    <tr>
+                      <td colSpan={7} className="text-center py-12 text-muted-foreground">
+                        <BookOpen className="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
+                        No journal entries found
+                      </td>
+                    </tr>
+                  ) : (
+                    ledgerEntries.map(entry => (
+                      <tr
+                        key={entry.id}
+                        className="border-b hover-elevate cursor-pointer"
+                        onClick={() => setLocation(`/journal-entry/${entry.id}`)}
+                        data-testid={`row-ledger-${entry.journalNumber}`}
+                      >
+                        <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{formatDate(entry.journalDate)}</td>
+                        <td className="px-3 py-2 truncate max-w-[300px]" title={entry.description}>{entry.description}</td>
+                        <td className="px-3 py-2">
+                          <Badge className={`text-[10px] ${SOURCE_COLORS[entry.sourceType || "manual"] || SOURCE_COLORS.manual}`}>
+                            {SOURCE_LABELS[entry.sourceType || "manual"] || entry.sourceType || "Manual"}
+                          </Badge>
+                        </td>
+                        <td className="px-3 py-2">
+                          <code className="text-xs font-mono">{entry.journalNumber}</code>
+                        </td>
+                        <td className="text-right px-3 py-2 font-mono tabular-nums">
+                          {entry.accountDebit > 0 ? formatAmount(entry.accountDebit) : ""}
+                        </td>
+                        <td className="text-right px-3 py-2 font-mono tabular-nums">
+                          {entry.accountCredit > 0 ? formatAmount(entry.accountCredit) : ""}
+                        </td>
+                        <td className="text-right px-3 py-2 font-mono tabular-nums whitespace-nowrap">
+                          {formatAmount(Math.abs(entry.runningBalance))} {entry.runningBalance >= 0 ? "Dr" : "Cr"}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                  <tr className="border-t-2 bg-muted/30 font-semibold" data-testid="row-closing-balance">
+                    <td className="px-3 py-2" colSpan={4}>Closing Balance</td>
+                    <td className="text-right px-3 py-2 font-mono tabular-nums">
+                      {closingBalance > 0 ? formatAmount(closingBalance) : ""}
+                    </td>
+                    <td className="text-right px-3 py-2 font-mono tabular-nums">
+                      {closingBalance < 0 ? formatAmount(Math.abs(closingBalance)) : ""}
+                    </td>
+                    <td className="text-right px-3 py-2 font-mono tabular-nums whitespace-nowrap">
+                      {formatAmount(Math.abs(closingBalance))} {closingBalance >= 0 ? "Dr" : "Cr"}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-1">
-          <div className="hidden md:grid grid-cols-[120px_100px_1fr_100px_120px_120px_40px] gap-2 px-3 py-2 text-xs font-medium text-muted-foreground uppercase">
-            <span>Number</span>
-            <span>Date</span>
-            <span>Description</span>
-            <span>Source</span>
-            <span className="text-right">Debit</span>
-            <span className="text-right">Credit</span>
-            <span></span>
-          </div>
-          {entries.map(entry => (
-            <Card
-              key={entry.id}
-              className="hover-elevate cursor-pointer"
-              onClick={() => setLocation(`/journal-entry/${entry.id}`)}
-              data-testid={`row-journal-${entry.journalNumber}`}
-            >
-              <CardContent className="p-3">
-                <div className="md:grid md:grid-cols-[120px_100px_1fr_100px_120px_120px_40px] md:gap-2 md:items-center">
-                  <div className="flex items-center gap-2 md:block">
-                    <code className="text-xs font-mono" data-testid={`text-journal-number-${entry.id}`}>
-                      {entry.journalNumber}
-                    </code>
-                    {entry.isAutoGenerated === 1 && (
-                      <Badge variant="outline" className="text-[10px] py-0 md:hidden">Auto</Badge>
-                    )}
-                  </div>
-                  <div className="text-sm text-muted-foreground">{formatDate(entry.journalDate)}</div>
-                  <div className="text-sm truncate" title={entry.description}>{entry.description}</div>
-                  <div>
-                    <Badge className={`text-[10px] ${SOURCE_COLORS[entry.sourceType || "manual"] || SOURCE_COLORS.manual}`}>
-                      {SOURCE_LABELS[entry.sourceType || "manual"] || entry.sourceType || "Manual"}
-                    </Badge>
-                  </div>
-                  <div className="text-sm font-mono text-right tabular-nums">{formatAmount(entry.totalDebit)}</div>
-                  <div className="text-sm font-mono text-right tabular-nums">{formatAmount(entry.totalCredit)}</div>
-                  <div className="flex justify-end">
-                    <Button size="icon" variant="ghost" data-testid={`button-view-${entry.id}`}>
-                      <Eye className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
-                </div>
+        <>
+          {entries.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <BookOpen className="w-12 h-12 text-muted-foreground mb-3" />
+                <p className="text-muted-foreground">No journal entries found</p>
               </CardContent>
             </Card>
-          ))}
-        </div>
-      )}
+          ) : (
+            <div className="space-y-1">
+              <div className="hidden md:grid grid-cols-[120px_100px_1fr_100px_120px_120px_40px] gap-2 px-3 py-2 text-xs font-medium text-muted-foreground uppercase">
+                <span>Number</span>
+                <span>Date</span>
+                <span>Description</span>
+                <span>Source</span>
+                <span className="text-right">Debit</span>
+                <span className="text-right">Credit</span>
+                <span></span>
+              </div>
+              {entries.map(entry => (
+                <Card
+                  key={entry.id}
+                  className="hover-elevate cursor-pointer"
+                  onClick={() => setLocation(`/journal-entry/${entry.id}`)}
+                  data-testid={`row-journal-${entry.journalNumber}`}
+                >
+                  <CardContent className="p-3">
+                    <div className="md:grid md:grid-cols-[120px_100px_1fr_100px_120px_120px_40px] md:gap-2 md:items-center">
+                      <div className="flex items-center gap-2 md:block">
+                        <code className="text-xs font-mono" data-testid={`text-journal-number-${entry.id}`}>
+                          {entry.journalNumber}
+                        </code>
+                        {entry.isAutoGenerated === 1 && (
+                          <Badge variant="outline" className="text-[10px] py-0 md:hidden">Auto</Badge>
+                        )}
+                      </div>
+                      <div className="text-sm text-muted-foreground">{formatDate(entry.journalDate)}</div>
+                      <div className="text-sm truncate" title={entry.description}>{entry.description}</div>
+                      <div>
+                        <Badge className={`text-[10px] ${SOURCE_COLORS[entry.sourceType || "manual"] || SOURCE_COLORS.manual}`}>
+                          {SOURCE_LABELS[entry.sourceType || "manual"] || entry.sourceType || "Manual"}
+                        </Badge>
+                      </div>
+                      <div className="text-sm font-mono text-right tabular-nums">{formatAmount(entry.totalDebit)}</div>
+                      <div className="text-sm font-mono text-right tabular-nums">{formatAmount(entry.totalCredit)}</div>
+                      <div className="flex justify-end">
+                        <Button size="icon" variant="ghost" data-testid={`button-view-${entry.id}`}>
+                          <Eye className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
 
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page <= 1}
-            onClick={() => setPage(p => p - 1)}
-            data-testid="button-prev-page"
-          >
-            Previous
-          </Button>
-          <span className="text-sm text-muted-foreground">
-            Page {page} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page >= totalPages}
-            onClick={() => setPage(p => p + 1)}
-            data-testid="button-next-page"
-          >
-            Next
-          </Button>
-        </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page <= 1}
+                onClick={() => setPage(p => p - 1)}
+                data-testid="button-prev-page"
+              >
+                Previous
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                Page {page} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page >= totalPages}
+                onClick={() => setPage(p => p + 1)}
+                data-testid="button-next-page"
+              >
+                Next
+              </Button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

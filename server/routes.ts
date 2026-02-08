@@ -20006,12 +20006,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .offset((pageNum - 1) * pageSizeNum);
 
       let accountName: string | undefined;
+      let openingBalance: number | undefined;
+      let entryAmounts: Record<string, { debit: number; credit: number }> | undefined;
       if (accountId) {
         const acct = await storage.getChartOfAccount(accountId as string);
         accountName = acct ? `${acct.code} - ${acct.name}` : undefined;
+
+        if (dateFrom) {
+          const [obResult] = await db.select({
+            totalDebit: sql<number>`COALESCE(SUM(${journalLines.debit}), 0)::integer`,
+            totalCredit: sql<number>`COALESCE(SUM(${journalLines.credit}), 0)::integer`,
+          })
+            .from(journalLines)
+            .innerJoin(journalEntries, eq(journalLines.journalId, journalEntries.id))
+            .where(and(
+              eq(journalLines.accountId, accountId as string),
+              eq(journalLines.recordStatus, 1),
+              eq(journalEntries.recordStatus, 1),
+              sql`${journalEntries.journalDate} < ${dateFrom}`
+            ));
+          openingBalance = (obResult?.totalDebit || 0) - (obResult?.totalCredit || 0);
+        }
+
+        const entryIds = entries.map(e => e.id);
+        if (entryIds.length > 0) {
+          const lineAmounts = await db.select({
+            journalId: journalLines.journalId,
+            debit: journalLines.debit,
+            credit: journalLines.credit,
+          })
+            .from(journalLines)
+            .where(and(
+              eq(journalLines.accountId, accountId as string),
+              eq(journalLines.recordStatus, 1),
+              inArray(journalLines.journalId, entryIds)
+            ));
+          entryAmounts = {};
+          for (const line of lineAmounts) {
+            if (!entryAmounts[line.journalId]) {
+              entryAmounts[line.journalId] = { debit: 0, credit: 0 };
+            }
+            entryAmounts[line.journalId].debit += line.debit;
+            entryAmounts[line.journalId].credit += line.credit;
+          }
+        }
       }
 
-      res.json({ entries, total, page: pageNum, pageSize: pageSizeNum, ...(accountName ? { accountName } : {}) });
+      res.json({
+        entries, total, page: pageNum, pageSize: pageSizeNum,
+        ...(accountName ? { accountName } : {}),
+        ...(openingBalance !== undefined ? { openingBalance } : {}),
+        ...(entryAmounts ? { entryAmounts } : {}),
+      });
     } catch (error: any) {
       res.status(500).json({ message: error.message || 'Failed to fetch journal entries' });
     }
