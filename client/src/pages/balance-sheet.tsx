@@ -205,7 +205,7 @@ export default function BalanceSheetPage() {
   const printDate = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 
   return (
-    <div className="p-4 space-y-4 max-w-5xl mx-auto" data-testid="page-balance-sheet">
+    <div className="p-4 space-y-4 max-w-6xl mx-auto" data-testid="page-balance-sheet">
       <div className="hidden print-only" style={{ display: "none" }}>
         <div style={{ textAlign: "center", marginBottom: "16px", borderBottom: "2px solid #000", paddingBottom: "12px" }}>
           <div style={{ fontSize: "18px", fontWeight: "bold", letterSpacing: "1px" }}>KINTO Smart Ops</div>
@@ -224,7 +224,7 @@ export default function BalanceSheetPage() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Select value={dateMode} onValueChange={(v) => setDateMode(v as "fy" | "custom")}>
-            <SelectTrigger className="w-[120px]" data-testid="select-date-mode">
+            <SelectTrigger className="w-[150px]" data-testid="select-date-mode">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -235,7 +235,7 @@ export default function BalanceSheetPage() {
 
           {dateMode === "fy" && (
             <Select value={selectedFY} onValueChange={setSelectedFY}>
-              <SelectTrigger className="w-[140px]" data-testid="select-financial-year">
+              <SelectTrigger className="w-[150px]" data-testid="select-financial-year">
                 <Calendar className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
                 <SelectValue />
               </SelectTrigger>
@@ -315,6 +315,10 @@ export default function BalanceSheetPage() {
         <Card>
           <div className="overflow-x-auto">
             <table className="w-full text-sm" data-testid="table-assets">
+              <colgroup>
+                <col />
+                <col className="w-[160px]" style={{ minWidth: "160px" }} />
+              </colgroup>
               <thead>
                 <tr className="border-b bg-blue-50/50 dark:bg-blue-950/20">
                   <th className="text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wide" colSpan={2}>
@@ -341,6 +345,10 @@ export default function BalanceSheetPage() {
         <Card>
           <div className="overflow-x-auto">
             <table className="w-full text-sm" data-testid="table-liabilities-equity">
+              <colgroup>
+                <col />
+                <col className="w-[160px]" style={{ minWidth: "160px" }} />
+              </colgroup>
               <thead>
                 <tr className="border-b bg-amber-50/50 dark:bg-amber-950/20">
                   <th className="text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wide" colSpan={2}>
