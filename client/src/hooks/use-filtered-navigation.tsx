@@ -74,6 +74,8 @@ const navItemToScreenKey: Record<string, string> = {
   'bank-transactions': 'journal_entries',
   'trial-balance': 'trial_balance',
   'profit-loss': 'profit_loss',
+  'balance-sheet': 'balance_sheet',
+  'admin-tools': 'admin_tools',
 };
 
 const screenPermissions: Record<string, { admin: boolean; manager: boolean; operator: boolean; reviewer: boolean }> = {
@@ -158,6 +160,8 @@ const navItemToScreen: Record<string, string> = {
   'bank-transactions': 'Purchase Orders',
   'trial-balance': 'Purchase Orders',
   'profit-loss': 'Purchase Orders',
+  'balance-sheet': 'Purchase Orders',
+  'admin-tools': 'User Management',
 };
 
 function canAccessNavItemForDefaultRole(itemId: string, role: string): boolean {
@@ -179,6 +183,13 @@ function canAccessNavItemForDefaultRole(itemId: string, role: string): boolean {
 function canAccessNavItemWithDbPermissions(itemId: string, dbPermissions: Permission[]): boolean {
   const screenKey = navItemToScreenKey[itemId];
   if (!screenKey) return false;
+
+  if (itemId === 'admin-tools') {
+    const hasAdminTools = dbPermissions.find(p => p.screenKey === 'admin_tools')?.canView === true;
+    const hasDataImport = dbPermissions.find(p => p.screenKey === 'data_import')?.canView === true;
+    const hasUsers = dbPermissions.find(p => p.screenKey === 'users')?.canView === true;
+    return hasAdminTools || hasDataImport || hasUsers;
+  }
   
   // Special case: For 'reports' nav item, also check if user has any individual report_* permissions
   if (itemId === 'reports') {

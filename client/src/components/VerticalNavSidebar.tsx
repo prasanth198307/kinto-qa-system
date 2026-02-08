@@ -122,6 +122,8 @@ export function VerticalNavSidebar({
       navigate(`/?tab=${item.id}`);
       onItemClick(item.id);
     }
+
+    window.scrollTo({ top: 0 });
     
     if (onMobileClose) {
       onMobileClose();
