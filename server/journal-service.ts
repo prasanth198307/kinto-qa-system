@@ -1364,32 +1364,26 @@ export async function backfillJournalEntries(): Promise<{
   }
   console.log(`[BACKFILL] Vendor Debit Notes done: ${results.vendorDebitNotes.processed} created, ${results.vendorDebitNotes.skipped} skipped, ${results.vendorDebitNotes.errors} errors`);
 
-  // 8. Backfill VDN Adjustments
-  console.log('[BACKFILL] Starting VDN adjustments...');
-  const allAdjs: any[] = (await db.execute(sql`
-    SELECT a.id, a.adjustment_amount, a.adjustment_date, a.vendor_debit_note_id,
-           vdn.note_number, v.vendor_name
-    FROM vendor_debit_note_adjustments a
-    LEFT JOIN vendor_debit_notes vdn ON a.vendor_debit_note_id = vdn.id
-    LEFT JOIN vendors v ON vdn.vendor_id = v.id
-    WHERE a.record_status = 1
-  `)).rows;
-
-  for (const adj of allAdjs) {
-    try {
-      if (await hasJournal('vdn_adjustment', adj.id)) { results.vdnAdjustments.skipped++; continue; }
-      await journalForVDNAdjustment(
-        { id: adj.id, adjustmentAmount: adj.adjustment_amount || 0, adjustmentDate: adj.adjustment_date },
-        { noteNumber: adj.note_number },
-        adj.vendor_name || 'Unknown'
-      );
-      results.vdnAdjustments.processed++;
-    } catch (e: any) {
-      console.error(`[BACKFILL] VDN Adjustment ${adj.id} error:`, e.message);
-      results.vdnAdjustments.errors++;
-    }
+  // 8. Cleanup incorrect VDN Adjustment journal entries
+  // VDN adjustments should NOT have journal entries - the accounting is fully handled
+  // at VDN creation time. Any existing vdn_adjustment entries are incorrect and must be removed.
+  console.log('[BACKFILL] Cleaning up incorrect VDN adjustment journal entries...');
+  try {
+    const deletedLines = await db.execute(sql`
+      DELETE FROM journal_lines WHERE journal_id IN (
+        SELECT id FROM journal_entries WHERE source_type = 'vdn_adjustment'
+      )
+    `);
+    const deletedEntries = await db.execute(sql`
+      DELETE FROM journal_entries WHERE source_type = 'vdn_adjustment'
+    `);
+    const removedCount = deletedEntries.rowCount || 0;
+    results.vdnAdjustments.processed = removedCount;
+    console.log(`[BACKFILL] VDN Adjustments cleanup: ${removedCount} incorrect entries removed`);
+  } catch (e: any) {
+    console.error(`[BACKFILL] VDN Adjustment cleanup error:`, e.message);
+    results.vdnAdjustments.errors++;
   }
-  console.log(`[BACKFILL] VDN Adjustments done: ${results.vdnAdjustments.processed} created, ${results.vdnAdjustments.skipped} skipped, ${results.vdnAdjustments.errors} errors`);
 
   // 9. Backfill Expense Vouchers
   console.log('[BACKFILL] Starting expense vouchers...');
