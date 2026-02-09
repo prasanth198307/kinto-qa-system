@@ -365,19 +365,33 @@ export default function ChartOfAccountsPage() {
                     placeholder="Account name"
                   />
                 </div>
-                {formData.accountType && SUB_TYPES[formData.accountType]?.length > 0 && (
+                {formData.accountType && (
                   <div>
                     <Label>Sub-Type</Label>
-                    <Select value={formData.subType} onValueChange={v => setFormData(p => ({ ...p, subType: v }))}>
-                      <SelectTrigger data-testid="select-sub-type">
-                        <SelectValue placeholder="Select sub-type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SUB_TYPES[formData.accountType].map(st => (
-                          <SelectItem key={st.value} value={st.value}>{st.label}</SelectItem>
+                    <div className="flex gap-2">
+                      <Input
+                        data-testid="input-sub-type"
+                        value={formData.subType}
+                        onChange={e => setFormData(p => ({ ...p, subType: e.target.value }))}
+                        placeholder="Type or select a sub-type"
+                        list={`subtype-options-${formData.accountType}`}
+                      />
+                      <datalist id={`subtype-options-${formData.accountType}`}>
+                        {(SUB_TYPES[formData.accountType] || []).map(st => (
+                          <option key={st.value} value={st.value}>{st.label}</option>
                         ))}
-                      </SelectContent>
-                    </Select>
+                        {accounts
+                          .filter(a => a.accountType === formData.accountType && a.subType)
+                          .map(a => a.subType!)
+                          .filter((v, i, arr) => arr.indexOf(v) === i)
+                          .filter(v => !(SUB_TYPES[formData.accountType] || []).some(st => st.value === v))
+                          .map(st => (
+                            <option key={st} value={st}>{st.replace(/_/g, " ")}</option>
+                          ))
+                        }
+                      </datalist>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">Choose from suggestions or type a new sub-type</p>
                   </div>
                 )}
                 <div>

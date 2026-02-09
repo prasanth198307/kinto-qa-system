@@ -132,6 +132,7 @@ const AVAILABLE_SCREENS: ScreenDefinition[] = [
   { key: 'manual_journal_entry', label: 'Manual Journal Entry', allowedActions: ['view', 'create'] },
   { key: 'trial_balance', label: 'Trial Balance', allowedActions: ['view'] },
   { key: 'profit_loss', label: 'Profit & Loss Statement', allowedActions: ['view'] },
+  { key: 'balance_sheet', label: 'Balance Sheet', allowedActions: ['view'] },
   { key: 'bank_transactions', label: 'Bank Statements & Transactions', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'scrap_inventory', label: 'Scrap Inventory', allowedActions: ['view', 'create', 'edit', 'delete'] },
   

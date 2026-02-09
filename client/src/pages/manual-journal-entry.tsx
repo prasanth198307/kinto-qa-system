@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useLocation, useParams, useSearch } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,10 +34,14 @@ function formatAmount(paise: number): string {
 export default function ManualJournalEntryPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const searchString = useSearch();
+  const editId = new URLSearchParams(searchString).get("edit");
+  const isEditMode = !!editId;
 
   const [journalDate, setJournalDate] = useState(new Date().toISOString().slice(0, 10));
   const [description, setDescription] = useState("");
   const [notes, setNotes] = useState("");
+  const [loaded, setLoaded] = useState(false);
   const [lines, setLines] = useState<JournalLineForm[]>([
     { accountId: "", debit: "", credit: "", memo: "", partyType: "", partyName: "" },
     { accountId: "", debit: "", credit: "", memo: "", partyType: "", partyName: "" },
@@ -47,15 +51,49 @@ export default function ManualJournalEntryPage() {
     queryKey: ["/api/chart-of-accounts"],
   });
 
+  const { data: editEntry } = useQuery<any>({
+    queryKey: ["/api/journal-entries", editId],
+    queryFn: async () => {
+      const res = await fetch(`/api/journal-entries/${editId}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch journal entry");
+      return res.json();
+    },
+    enabled: !!editId,
+  });
+
+  useEffect(() => {
+    if (editEntry && !loaded) {
+      setJournalDate(editEntry.journalDate?.slice(0, 10) || new Date().toISOString().slice(0, 10));
+      setDescription(editEntry.description || "");
+      setNotes(editEntry.notes || "");
+      if (editEntry.lines && editEntry.lines.length > 0) {
+        setLines(editEntry.lines.map((l: any) => ({
+          accountId: l.accountId || "",
+          debit: l.debit ? String(l.debit / 100) : "",
+          credit: l.credit ? String(l.credit / 100) : "",
+          memo: l.memo || "",
+          partyType: l.partyType || "",
+          partyName: l.partyName || "",
+        })));
+      }
+      setLoaded(true);
+    }
+  }, [editEntry, loaded]);
+
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
+      if (isEditMode) {
+        const res = await apiRequest("PUT", `/api/journal-entries/${editId}`, data);
+        return res.json();
+      }
       const res = await apiRequest("POST", "/api/journal-entries", data);
       return res.json();
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/journal-entries"] });
-      toast({ title: "Journal entry created successfully" });
-      setLocation(`/journal-entry/${data.id}`);
+      queryClient.invalidateQueries({ queryKey: ["/api/journal-entries", editId] });
+      toast({ title: isEditMode ? "Journal entry updated successfully" : "Journal entry created successfully" });
+      setLocation(`/journal-entry/${data.id || editId}`);
     },
     onError: (err: any) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -134,8 +172,8 @@ export default function ManualJournalEntryPage() {
           <ArrowLeft className="w-4 h-4" />
         </Button>
         <div>
-          <h1 className="text-xl font-semibold" data-testid="text-page-title">New Manual Journal Entry</h1>
-          <p className="text-sm text-muted-foreground">Create a double-entry journal transaction</p>
+          <h1 className="text-xl font-semibold" data-testid="text-page-title">{isEditMode ? "Edit Journal Entry" : "New Manual Journal Entry"}</h1>
+          <p className="text-sm text-muted-foreground">{isEditMode ? "Modify this journal entry" : "Create a double-entry journal transaction"}</p>
         </div>
       </div>
 
@@ -283,7 +321,7 @@ export default function ManualJournalEntryPage() {
           data-testid="button-save-journal"
         >
           <Save className="w-4 h-4 mr-1" />
-          {createMutation.isPending ? "Saving..." : "Save Journal Entry"}
+          {createMutation.isPending ? "Saving..." : isEditMode ? "Update Journal Entry" : "Save Journal Entry"}
         </Button>
       </div>
     </div>
