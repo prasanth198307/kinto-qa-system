@@ -100,95 +100,126 @@ export const ACCOUNT_CODES = {
   LOANS_RECEIVABLE: '1300',
 };
 
+const HIERARCHY_GROUPS = [
+  { code: '1000', name: 'Assets', accountType: 'asset', parentCode: null, level: 1 },
+  { code: 'G1100', name: 'Non-Current Assets', accountType: 'asset', parentCode: '1000', level: 2 },
+  { code: '1110', name: 'Property, Plant & Equipment', accountType: 'asset', parentCode: 'G1100', level: 3 },
+  { code: '1120', name: 'Accumulated Depreciation', accountType: 'asset', parentCode: 'G1100', level: 3 },
+  { code: '1130', name: 'Capital Work in Progress', accountType: 'asset', parentCode: 'G1100', level: 3 },
+  { code: '1140', name: 'Intangible Assets', accountType: 'asset', parentCode: 'G1100', level: 3 },
+  { code: '1150', name: 'Non-Current Financial Assets', accountType: 'asset', parentCode: 'G1100', level: 3 },
+  { code: 'G1200', name: 'Current Assets', accountType: 'asset', parentCode: '1000', level: 2 },
+  { code: '1210', name: 'Inventories', accountType: 'asset', parentCode: 'G1200', level: 3 },
+  { code: '1220', name: 'Trade Receivables', accountType: 'asset', parentCode: 'G1200', level: 3 },
+  { code: '1230', name: 'Cash & Cash Equivalents', accountType: 'asset', parentCode: 'G1200', level: 3 },
+  { code: '1240', name: 'Short-term Loans & Advances', accountType: 'asset', parentCode: 'G1200', level: 3 },
+  { code: '1250', name: 'Other Current Assets', accountType: 'asset', parentCode: 'G1200', level: 3 },
+
+  { code: '2000', name: 'Liabilities', accountType: 'liability', parentCode: null, level: 1 },
+  { code: 'G2100', name: 'Non-Current Liabilities', accountType: 'liability', parentCode: '2000', level: 2 },
+  { code: '2110', name: 'Long-term Borrowings', accountType: 'liability', parentCode: 'G2100', level: 3 },
+  { code: 'G2200', name: 'Current Liabilities', accountType: 'liability', parentCode: '2000', level: 2 },
+  { code: 'G2210', name: 'Trade Payables', accountType: 'liability', parentCode: 'G2200', level: 3 },
+  { code: '2220', name: 'Short-term Borrowings', accountType: 'liability', parentCode: 'G2200', level: 3 },
+  { code: '2230', name: 'Other Current Liabilities', accountType: 'liability', parentCode: 'G2200', level: 3 },
+  { code: '2240', name: 'Statutory Liabilities', accountType: 'liability', parentCode: 'G2200', level: 3 },
+
+  { code: '3000', name: 'Equity', accountType: 'equity', parentCode: null, level: 1 },
+  { code: '3200', name: 'Reserves & Surplus', accountType: 'equity', parentCode: '3000', level: 2 },
+
+  { code: '4000', name: 'Income', accountType: 'revenue', parentCode: null, level: 1 },
+  { code: '4100', name: 'Revenue from Operations', accountType: 'revenue', parentCode: '4000', level: 2 },
+  { code: '4200', name: 'Other Income', accountType: 'revenue', parentCode: '4000', level: 2 },
+
+  { code: '5000', name: 'Expenses', accountType: 'expense', parentCode: null, level: 1 },
+  { code: 'G5100', name: 'Cost of Goods Sold', accountType: 'expense', parentCode: '5000', level: 2 },
+  { code: 'G5200', name: 'Operating Expenses', accountType: 'expense', parentCode: '5000', level: 2 },
+];
+
 const DEFAULT_ACCOUNTS = [
-  // ASSETS
-  { code: '1001', name: 'Cash-in-Hand', accountType: 'asset', subType: 'current_asset', isSystemAccount: 1 },
-  { code: '1002', name: 'Bank OCC A/c (Current Account)', accountType: 'asset', subType: 'current_asset', isSystemAccount: 1 },
-  { code: '1003', name: 'Bank OD A/c (Savings Account)', accountType: 'asset', subType: 'current_asset', isSystemAccount: 1 },
-  { code: '1004', name: 'Bank OCC A/c (Cash Credit)', accountType: 'asset', subType: 'current_asset', isSystemAccount: 1 },
-  { code: '1100', name: 'Sundry Debtors', accountType: 'asset', subType: 'trade_receivable', isSystemAccount: 1 },
-  { code: '1200', name: 'Stock-in-Hand (Raw Materials)', accountType: 'asset', subType: 'inventory', isSystemAccount: 1 },
-  { code: '1201', name: 'Stock-in-Hand (Finished Goods)', accountType: 'asset', subType: 'inventory', isSystemAccount: 1 },
-  { code: '1202', name: 'Stock-in-Hand (Packing Materials)', accountType: 'asset', subType: 'inventory', isSystemAccount: 1 },
-  { code: '1203', name: 'Stock-in-Hand (Spare Parts)', accountType: 'asset', subType: 'inventory', isSystemAccount: 1 },
-  { code: '1300', name: 'Loans & Advances (Asset)', accountType: 'asset', subType: 'current_asset', isSystemAccount: 1 },
+  { code: '1001', name: 'Cash-in-Hand', accountType: 'asset', subType: 'current_asset', isSystemAccount: 1, parentCode: '1230' },
+  { code: '1002', name: 'Bank OCC A/c (Current Account)', accountType: 'asset', subType: 'current_asset', isSystemAccount: 1, parentCode: '1230' },
+  { code: '1003', name: 'Bank OD A/c (Savings Account)', accountType: 'asset', subType: 'current_asset', isSystemAccount: 1, parentCode: '1230' },
+  { code: '1004', name: 'Bank OCC A/c (Cash Credit)', accountType: 'asset', subType: 'current_asset', isSystemAccount: 1, parentCode: '1230' },
+  { code: '1100', name: 'Sundry Debtors', accountType: 'asset', subType: 'trade_receivable', isSystemAccount: 1, parentCode: '1220' },
+  { code: '1200', name: 'Stock-in-Hand (Raw Materials)', accountType: 'asset', subType: 'inventory', isSystemAccount: 1, parentCode: '1210' },
+  { code: '1201', name: 'Stock-in-Hand (Finished Goods)', accountType: 'asset', subType: 'inventory', isSystemAccount: 1, parentCode: '1210' },
+  { code: '1202', name: 'Stock-in-Hand (Packing Materials)', accountType: 'asset', subType: 'inventory', isSystemAccount: 1, parentCode: '1210' },
+  { code: '1203', name: 'Stock-in-Hand (Spare Parts)', accountType: 'asset', subType: 'inventory', isSystemAccount: 1, parentCode: '1210' },
+  { code: '1300', name: 'Loans & Advances (Asset)', accountType: 'asset', subType: 'current_asset', isSystemAccount: 1, parentCode: '1240' },
 
-  // LIABILITIES
-  { code: '2001', name: 'Sundry Creditors', accountType: 'liability', subType: 'trade_payable', isSystemAccount: 1 },
-  { code: '2100', name: 'Advance from Customers', accountType: 'liability', subType: 'advance_liability', isSystemAccount: 1 },
-  { code: '2200', name: 'Duties & Taxes - CGST Payable', accountType: 'liability', subType: 'gst', isSystemAccount: 1 },
-  { code: '2201', name: 'Duties & Taxes - SGST Payable', accountType: 'liability', subType: 'gst', isSystemAccount: 1 },
-  { code: '2202', name: 'Duties & Taxes - IGST Payable', accountType: 'liability', subType: 'gst', isSystemAccount: 1 },
-  { code: '2210', name: 'Duties & Taxes - CGST Input Credit', accountType: 'asset', subType: 'gst_input', isSystemAccount: 1 },
-  { code: '2211', name: 'Duties & Taxes - SGST Input Credit', accountType: 'asset', subType: 'gst_input', isSystemAccount: 1 },
-  { code: '2212', name: 'Duties & Taxes - IGST Input Credit', accountType: 'asset', subType: 'gst_input', isSystemAccount: 1 },
-  { code: '2300', name: 'Duties & Taxes - TDS Payable', accountType: 'liability', subType: 'statutory', isSystemAccount: 1 },
-  { code: '2301', name: 'Duties & Taxes - TDS Receivable', accountType: 'liability', subType: 'statutory', isSystemAccount: 1 },
-  { code: '2400', name: 'Secured Loans', accountType: 'liability', subType: 'loan', isSystemAccount: 1 },
-  { code: '2401', name: 'Secured Loans - Term Loan (SBI)', accountType: 'liability', subType: 'loan', isSystemAccount: 1 },
-  { code: '2402', name: 'Unsecured Loans', accountType: 'liability', subType: 'loan', isSystemAccount: 1 },
+  { code: '2001', name: 'Sundry Creditors', accountType: 'liability', subType: 'trade_payable', isSystemAccount: 1, parentCode: 'G2210' },
+  { code: '2100', name: 'Advance from Customers', accountType: 'liability', subType: 'advance_liability', isSystemAccount: 1, parentCode: '2230' },
+  { code: '2200', name: 'Duties & Taxes - CGST Payable', accountType: 'liability', subType: 'gst', isSystemAccount: 1, parentCode: '2240' },
+  { code: '2201', name: 'Duties & Taxes - SGST Payable', accountType: 'liability', subType: 'gst', isSystemAccount: 1, parentCode: '2240' },
+  { code: '2202', name: 'Duties & Taxes - IGST Payable', accountType: 'liability', subType: 'gst', isSystemAccount: 1, parentCode: '2240' },
+  { code: '2210', name: 'Duties & Taxes - CGST Input Credit', accountType: 'asset', subType: 'gst_input', isSystemAccount: 1, parentCode: '1250' },
+  { code: '2211', name: 'Duties & Taxes - SGST Input Credit', accountType: 'asset', subType: 'gst_input', isSystemAccount: 1, parentCode: '1250' },
+  { code: '2212', name: 'Duties & Taxes - IGST Input Credit', accountType: 'asset', subType: 'gst_input', isSystemAccount: 1, parentCode: '1250' },
+  { code: '2300', name: 'Duties & Taxes - TDS Payable', accountType: 'liability', subType: 'statutory', isSystemAccount: 1, parentCode: '2240' },
+  { code: '2301', name: 'Duties & Taxes - TDS Receivable', accountType: 'liability', subType: 'statutory', isSystemAccount: 1, parentCode: '1250' },
+  { code: '2400', name: 'Secured Loans', accountType: 'liability', subType: 'loan', isSystemAccount: 1, parentCode: '2110' },
+  { code: '2401', name: 'Secured Loans - Term Loan (SBI)', accountType: 'liability', subType: 'loan', isSystemAccount: 1, parentCode: '2110' },
+  { code: '2402', name: 'Unsecured Loans', accountType: 'liability', subType: 'loan', isSystemAccount: 1, parentCode: '2110' },
 
-  // EQUITY
-  { code: '3001', name: 'Capital Account', accountType: 'equity', subType: 'capital', isSystemAccount: 1 },
-  { code: '3002', name: 'Drawings Account', accountType: 'equity', subType: 'drawings', isSystemAccount: 1 },
-  { code: '3003', name: 'Profit & Loss A/c', accountType: 'equity', subType: 'retained', isSystemAccount: 1 },
+  { code: '3001', name: 'Capital Account', accountType: 'equity', subType: 'capital', isSystemAccount: 1, parentCode: '3000' },
+  { code: '3002', name: 'Drawings Account', accountType: 'equity', subType: 'drawings', isSystemAccount: 1, parentCode: '3000' },
+  { code: '3003', name: 'Profit & Loss A/c', accountType: 'equity', subType: 'retained', isSystemAccount: 1, parentCode: '3200' },
 
-  // REVENUE
-  { code: '4001', name: 'Sales Account', accountType: 'revenue', subType: 'operating', isSystemAccount: 1 },
-  { code: '4002', name: 'Debit Note Income', accountType: 'revenue', subType: 'operating', isSystemAccount: 1 },
-  { code: '4003', name: 'Interest Earned', accountType: 'revenue', subType: 'other_income', isSystemAccount: 1 },
-  { code: '4004', name: 'Other Income', accountType: 'revenue', subType: 'other_income', isSystemAccount: 1 },
+  { code: '4001', name: 'Sales Account', accountType: 'revenue', subType: 'operating', isSystemAccount: 1, parentCode: '4100' },
+  { code: '4002', name: 'Debit Note Income', accountType: 'revenue', subType: 'operating', isSystemAccount: 1, parentCode: '4100' },
+  { code: '4003', name: 'Interest Earned', accountType: 'revenue', subType: 'other_income', isSystemAccount: 1, parentCode: '4200' },
+  { code: '4004', name: 'Other Income', accountType: 'revenue', subType: 'other_income', isSystemAccount: 1, parentCode: '4200' },
 
-  // EXPENSES
-  { code: '5001', name: 'Direct Expenses', accountType: 'expense', subType: 'direct', isSystemAccount: 1 },
-  { code: '5002', name: 'Purchase Account', accountType: 'expense', subType: 'direct', isSystemAccount: 1 },
-  { code: '5003', name: 'Purchases - Packing Materials', accountType: 'expense', subType: 'direct', isSystemAccount: 1 },
-  { code: '5004', name: 'Purchases - Consumables', accountType: 'expense', subType: 'direct', isSystemAccount: 1 },
-  { code: '5005', name: 'Freight Inward / Transport', accountType: 'expense', subType: 'direct', isSystemAccount: 1 },
-  { code: '5006', name: 'Purchase Returns', accountType: 'expense', subType: 'direct', isSystemAccount: 1 },
-  { code: '5100', name: 'Salary & Wages', accountType: 'expense', subType: 'operating', isSystemAccount: 1 },
-  { code: '5101', name: 'Rent', accountType: 'expense', subType: 'operating', isSystemAccount: 1 },
-  { code: '5102', name: 'Electricity & Utilities', accountType: 'expense', subType: 'operating', isSystemAccount: 1 },
-  { code: '5103', name: 'Repairs & Maintenance', accountType: 'expense', subType: 'operating', isSystemAccount: 1 },
-  { code: '5104', name: 'Legal & Professional Fees', accountType: 'expense', subType: 'operating', isSystemAccount: 1 },
-  { code: '5105', name: 'Insurance', accountType: 'expense', subType: 'operating', isSystemAccount: 1 },
-  { code: '5106', name: 'Bank Charges / Fees', accountType: 'expense', subType: 'financial', isSystemAccount: 1 },
-  { code: '5107', name: 'Interest Paid', accountType: 'expense', subType: 'financial', isSystemAccount: 1 },
-  { code: '5108', name: 'Travel Expenses', accountType: 'expense', subType: 'operating', isSystemAccount: 1 },
-  { code: '5109', name: 'Fuel & Vehicle Expenses', accountType: 'expense', subType: 'operating', isSystemAccount: 1 },
-  { code: '5110', name: 'Staff Welfare', accountType: 'expense', subType: 'operating', isSystemAccount: 1 },
-  { code: '5111', name: 'Courier & Shipping', accountType: 'expense', subType: 'operating', isSystemAccount: 1 },
-  { code: '5112', name: 'Printing & Stationery', accountType: 'expense', subType: 'operating', isSystemAccount: 1 },
-  { code: '5113', name: 'Internet & Phone Bills', accountType: 'expense', subType: 'operating', isSystemAccount: 1 },
-  { code: '5114', name: 'Furniture & Fixtures', accountType: 'expense', subType: 'operating', isSystemAccount: 1 },
-  { code: '5115', name: 'Vehicle EMI / Loan Repayment', accountType: 'expense', subType: 'financial', isSystemAccount: 1 },
-  { code: '5116', name: 'Office Supplies', accountType: 'expense', subType: 'operating', isSystemAccount: 1 },
-  { code: '5117', name: 'Spares & Consumables', accountType: 'expense', subType: 'manufacturing', isSystemAccount: 1 },
-  { code: '5118', name: 'Chemicals & Cleaning', accountType: 'expense', subType: 'manufacturing', isSystemAccount: 1 },
-  { code: '5119', name: 'Water Charges', accountType: 'expense', subType: 'operating', isSystemAccount: 1 },
-  { code: '5120', name: 'MSME Charges / Compliance', accountType: 'expense', subType: 'operating', isSystemAccount: 1 },
-  { code: '5121', name: 'Testing & Lab Fees', accountType: 'expense', subType: 'manufacturing', isSystemAccount: 1 },
-  { code: '5122', name: 'Security Charges', accountType: 'expense', subType: 'operating', isSystemAccount: 1 },
-  { code: '5123', name: 'Housekeeping Expenses', accountType: 'expense', subType: 'operating', isSystemAccount: 1 },
-  { code: '5124', name: 'AMC & Service Contracts', accountType: 'expense', subType: 'operating', isSystemAccount: 1 },
-  { code: '5125', name: 'Licence & Renewal Fees', accountType: 'expense', subType: 'operating', isSystemAccount: 1 },
-  { code: '5126', name: 'Loading & Unloading Charges', accountType: 'expense', subType: 'direct', isSystemAccount: 1 },
-  { code: '5127', name: 'Pollution & Environmental Compliance', accountType: 'expense', subType: 'operating', isSystemAccount: 1 },
-  { code: '5128', name: 'Safety Equipment & PPE', accountType: 'expense', subType: 'manufacturing', isSystemAccount: 1 },
-  { code: '5129', name: 'Diesel & Generator Expenses', accountType: 'expense', subType: 'operating', isSystemAccount: 1 },
-  { code: '5130', name: 'Packaging Expenses', accountType: 'expense', subType: 'direct', isSystemAccount: 1 },
-  { code: '5131', name: 'Depreciation', accountType: 'expense', subType: 'other', isSystemAccount: 1 },
-  { code: '5132', name: 'Microbiology Lab Expenses', accountType: 'expense', subType: 'manufacturing', isSystemAccount: 1 },
-  { code: '5133', name: 'Chemical Lab Expenses', accountType: 'expense', subType: 'manufacturing', isSystemAccount: 1 },
-  { code: '5134', name: 'Consultant Fees', accountType: 'expense', subType: 'operating', isSystemAccount: 1 },
-  { code: '5135', name: 'Contract Payments', accountType: 'expense', subType: 'operating', isSystemAccount: 1 },
-  { code: '5136', name: 'Vehicle Contracts / Hiring', accountType: 'expense', subType: 'operating', isSystemAccount: 1 },
-  { code: '5200', name: 'Manufacturing Expenses', accountType: 'expense', subType: 'manufacturing', isSystemAccount: 1 },
-  { code: '5300', name: 'Indirect Expenses', accountType: 'expense', subType: 'operating', isSystemAccount: 1 },
-  { code: '5400', name: 'Miscellaneous Expenses', accountType: 'expense', subType: 'other', isSystemAccount: 1 },
-  { code: '5500', name: 'Bad Debts / Write-offs', accountType: 'expense', subType: 'other', isSystemAccount: 1 },
-  { code: '5600', name: 'Sales Returns', accountType: 'expense', subType: 'adjustment', isSystemAccount: 1 },
-  { code: '5700', name: 'Vendor Claims', accountType: 'expense', subType: 'adjustment', isSystemAccount: 1 },
+  { code: '5001', name: 'Direct Expenses', accountType: 'expense', subType: 'direct', isSystemAccount: 1, parentCode: 'G5100' },
+  { code: '5002', name: 'Purchase Account', accountType: 'expense', subType: 'direct', isSystemAccount: 1, parentCode: 'G5100' },
+  { code: '5003', name: 'Purchases - Packing Materials', accountType: 'expense', subType: 'direct', isSystemAccount: 1, parentCode: 'G5100' },
+  { code: '5004', name: 'Purchases - Consumables', accountType: 'expense', subType: 'direct', isSystemAccount: 1, parentCode: 'G5100' },
+  { code: '5005', name: 'Freight Inward / Transport', accountType: 'expense', subType: 'direct', isSystemAccount: 1, parentCode: 'G5100' },
+  { code: '5006', name: 'Purchase Returns', accountType: 'expense', subType: 'direct', isSystemAccount: 1, parentCode: 'G5100' },
+  { code: '5100', name: 'Salary & Wages', accountType: 'expense', subType: 'operating', isSystemAccount: 1, parentCode: 'G5200' },
+  { code: '5101', name: 'Rent', accountType: 'expense', subType: 'operating', isSystemAccount: 1, parentCode: 'G5200' },
+  { code: '5102', name: 'Electricity & Utilities', accountType: 'expense', subType: 'operating', isSystemAccount: 1, parentCode: 'G5200' },
+  { code: '5103', name: 'Repairs & Maintenance', accountType: 'expense', subType: 'operating', isSystemAccount: 1, parentCode: 'G5200' },
+  { code: '5104', name: 'Legal & Professional Fees', accountType: 'expense', subType: 'operating', isSystemAccount: 1, parentCode: 'G5200' },
+  { code: '5105', name: 'Insurance', accountType: 'expense', subType: 'operating', isSystemAccount: 1, parentCode: 'G5200' },
+  { code: '5106', name: 'Bank Charges / Fees', accountType: 'expense', subType: 'financial', isSystemAccount: 1, parentCode: 'G5200' },
+  { code: '5107', name: 'Interest Paid', accountType: 'expense', subType: 'financial', isSystemAccount: 1, parentCode: 'G5200' },
+  { code: '5108', name: 'Travel Expenses', accountType: 'expense', subType: 'operating', isSystemAccount: 1, parentCode: 'G5200' },
+  { code: '5109', name: 'Fuel & Vehicle Expenses', accountType: 'expense', subType: 'operating', isSystemAccount: 1, parentCode: 'G5200' },
+  { code: '5110', name: 'Staff Welfare', accountType: 'expense', subType: 'operating', isSystemAccount: 1, parentCode: 'G5200' },
+  { code: '5111', name: 'Courier & Shipping', accountType: 'expense', subType: 'operating', isSystemAccount: 1, parentCode: 'G5200' },
+  { code: '5112', name: 'Printing & Stationery', accountType: 'expense', subType: 'operating', isSystemAccount: 1, parentCode: 'G5200' },
+  { code: '5113', name: 'Internet & Phone Bills', accountType: 'expense', subType: 'operating', isSystemAccount: 1, parentCode: 'G5200' },
+  { code: '5114', name: 'Furniture & Fixtures', accountType: 'expense', subType: 'operating', isSystemAccount: 1, parentCode: 'G5200' },
+  { code: '5115', name: 'Vehicle EMI / Loan Repayment', accountType: 'expense', subType: 'financial', isSystemAccount: 1, parentCode: 'G5200' },
+  { code: '5116', name: 'Office Supplies', accountType: 'expense', subType: 'operating', isSystemAccount: 1, parentCode: 'G5200' },
+  { code: '5117', name: 'Spares & Consumables', accountType: 'expense', subType: 'manufacturing', isSystemAccount: 1, parentCode: 'G5200' },
+  { code: '5118', name: 'Chemicals & Cleaning', accountType: 'expense', subType: 'manufacturing', isSystemAccount: 1, parentCode: 'G5200' },
+  { code: '5119', name: 'Water Charges', accountType: 'expense', subType: 'operating', isSystemAccount: 1, parentCode: 'G5200' },
+  { code: '5120', name: 'MSME Charges / Compliance', accountType: 'expense', subType: 'operating', isSystemAccount: 1, parentCode: 'G5200' },
+  { code: '5121', name: 'Testing & Lab Fees', accountType: 'expense', subType: 'manufacturing', isSystemAccount: 1, parentCode: 'G5200' },
+  { code: '5122', name: 'Security Charges', accountType: 'expense', subType: 'operating', isSystemAccount: 1, parentCode: 'G5200' },
+  { code: '5123', name: 'Housekeeping Expenses', accountType: 'expense', subType: 'operating', isSystemAccount: 1, parentCode: 'G5200' },
+  { code: '5124', name: 'AMC & Service Contracts', accountType: 'expense', subType: 'operating', isSystemAccount: 1, parentCode: 'G5200' },
+  { code: '5125', name: 'Licence & Renewal Fees', accountType: 'expense', subType: 'operating', isSystemAccount: 1, parentCode: 'G5200' },
+  { code: '5126', name: 'Loading & Unloading Charges', accountType: 'expense', subType: 'direct', isSystemAccount: 1, parentCode: 'G5100' },
+  { code: '5127', name: 'Pollution & Environmental Compliance', accountType: 'expense', subType: 'operating', isSystemAccount: 1, parentCode: 'G5200' },
+  { code: '5128', name: 'Safety Equipment & PPE', accountType: 'expense', subType: 'manufacturing', isSystemAccount: 1, parentCode: 'G5200' },
+  { code: '5129', name: 'Diesel & Generator Expenses', accountType: 'expense', subType: 'operating', isSystemAccount: 1, parentCode: 'G5200' },
+  { code: '5130', name: 'Packaging Expenses', accountType: 'expense', subType: 'direct', isSystemAccount: 1, parentCode: 'G5100' },
+  { code: '5131', name: 'Depreciation', accountType: 'expense', subType: 'other', isSystemAccount: 1, parentCode: 'G5200' },
+  { code: '5132', name: 'Microbiology Lab Expenses', accountType: 'expense', subType: 'manufacturing', isSystemAccount: 1, parentCode: 'G5200' },
+  { code: '5133', name: 'Chemical Lab Expenses', accountType: 'expense', subType: 'manufacturing', isSystemAccount: 1, parentCode: 'G5200' },
+  { code: '5134', name: 'Consultant Fees', accountType: 'expense', subType: 'operating', isSystemAccount: 1, parentCode: 'G5200' },
+  { code: '5135', name: 'Contract Payments', accountType: 'expense', subType: 'operating', isSystemAccount: 1, parentCode: 'G5200' },
+  { code: '5136', name: 'Vehicle Contracts / Hiring', accountType: 'expense', subType: 'operating', isSystemAccount: 1, parentCode: 'G5200' },
+  { code: '5200', name: 'Manufacturing Expenses', accountType: 'expense', subType: 'manufacturing', isSystemAccount: 1, parentCode: 'G5100' },
+  { code: '5300', name: 'Indirect Expenses', accountType: 'expense', subType: 'operating', isSystemAccount: 1, parentCode: 'G5200' },
+  { code: '5400', name: 'Miscellaneous Expenses', accountType: 'expense', subType: 'other', isSystemAccount: 1, parentCode: 'G5200' },
+  { code: '5500', name: 'Bad Debts / Write-offs', accountType: 'expense', subType: 'other', isSystemAccount: 1, parentCode: 'G5200' },
+  { code: '5600', name: 'Sales Returns', accountType: 'expense', subType: 'adjustment', isSystemAccount: 1, parentCode: 'G5100' },
+  { code: '5700', name: 'Vendor Claims', accountType: 'expense', subType: 'adjustment', isSystemAccount: 1, parentCode: 'G5100' },
 ];
 
 const DIRECTOR_LOAN_ACCOUNTS = [
@@ -204,14 +235,56 @@ const DIRECTOR_LOAN_ACCOUNTS = [
 ];
 
 export async function seedChartOfAccounts(): Promise<void> {
-  for (const account of DEFAULT_ACCOUNTS) {
-    const existing = await storage.getChartOfAccountByCode(account.code);
+  // 1. Seed hierarchy groups first (ordered by level so parents exist before children)
+  for (const group of HIERARCHY_GROUPS) {
+    const existing = await storage.getChartOfAccountByCode(group.code);
     if (!existing) {
-      await storage.createChartOfAccount({ ...account } as any);
-      console.log(`[COA SEED] Created account: ${account.code} - ${account.name}`);
+      const parentId = group.parentCode
+        ? (await storage.getChartOfAccountByCode(group.parentCode))?.id || null
+        : null;
+      await storage.createChartOfAccount({
+        code: group.code,
+        name: group.name,
+        accountType: group.accountType,
+        nodeType: 'group',
+        level: group.level,
+        parentId,
+        isSystemAccount: 1,
+        isActive: 1,
+      } as any);
+      console.log(`[COA SEED] Created group: ${group.code} - ${group.name}`);
     }
   }
 
+  // 2. Seed ledger accounts with parent assignments
+  for (const account of DEFAULT_ACCOUNTS) {
+    const existing = await storage.getChartOfAccountByCode(account.code);
+    if (!existing) {
+      const parentId = account.parentCode
+        ? (await storage.getChartOfAccountByCode(account.parentCode))?.id || null
+        : null;
+      await storage.createChartOfAccount({
+        code: account.code,
+        name: account.name,
+        accountType: account.accountType,
+        subType: account.subType,
+        nodeType: 'ledger',
+        parentId,
+        isSystemAccount: account.isSystemAccount,
+        isActive: 1,
+      } as any);
+      console.log(`[COA SEED] Created account: ${account.code} - ${account.name}`);
+    } else if (!existing.parentId && account.parentCode) {
+      // Fix existing orphan accounts — assign parent if missing
+      const parent = await storage.getChartOfAccountByCode(account.parentCode);
+      if (parent) {
+        await storage.updateChartOfAccount(existing.id, { parentId: parent.id, nodeType: 'ledger' });
+        console.log(`[COA SEED] Assigned parent ${account.parentCode} to existing account: ${account.code} - ${account.name}`);
+      }
+    }
+  }
+
+  // 3. Seed director loan accounts
   for (const dirAcct of DIRECTOR_LOAN_ACCOUNTS) {
     const existing = await storage.getChartOfAccountByCode(dirAcct.code);
     if (!existing) {
@@ -222,6 +295,7 @@ export async function seedChartOfAccounts(): Promise<void> {
           name: dirAcct.name,
           accountType: 'liability',
           subType: 'loan',
+          nodeType: 'ledger',
           parentId: parent.id,
           description: dirAcct.description,
           isSystemAccount: 1,
@@ -231,6 +305,7 @@ export async function seedChartOfAccounts(): Promise<void> {
     }
   }
 
+  // 4. Fix GST Input Credit accounts that may have wrong type
   const gstInputCodes = ['2210', '2211', '2212'];
   for (const code of gstInputCodes) {
     const acct = await storage.getChartOfAccountByCode(code);

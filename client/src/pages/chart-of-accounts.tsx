@@ -241,9 +241,13 @@ export default function ChartOfAccountsPage() {
   }
 
   function handleSubmit() {
+    if (!formData.parentId || formData.parentId === "none") {
+      toast({ title: "Parent group is required", description: "All accounts must belong to a group in the hierarchy.", variant: "destructive" });
+      return;
+    }
     const data: any = {
       ...formData,
-      parentId: formData.parentId || null,
+      parentId: formData.parentId,
     };
     if (editAccount) {
       updateMutation.mutate({ id: editAccount.id, data });
