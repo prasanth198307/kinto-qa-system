@@ -104,7 +104,6 @@ import RawMaterialTypeDetail from "@/pages/raw-material-type-detail";
 import ProductDetail from "@/pages/product-detail";
 import FinishedGoodDetail from "@/pages/finished-good-detail";
 import ChartOfAccountsPage from "@/pages/chart-of-accounts";
-import AccountSubtypesPage from "@/pages/account-subtypes";
 import JournalEntriesPage from "@/pages/journal-entries";
 import JournalEntryDetailPage from "@/pages/journal-entry-detail";
 import ManualJournalEntryPage from "@/pages/manual-journal-entry";
@@ -858,7 +857,6 @@ function AdminDashboard() {
       label: "Accounting & Ledger",
       items: [
         { id: "chart-of-accounts", label: "Chart of Accounts", icon: BookOpen, onClick: () => setLocation('/chart-of-accounts') },
-        { id: "account-subtypes", label: "Account Types", icon: Layers, onClick: () => setLocation('/account-subtypes') },
         { id: "journal-entries", label: "Journal Entries", icon: FileStack, onClick: () => setLocation('/journal-entries') },
         { id: "bank-transactions", label: "Bank Statements", icon: Landmark, onClick: () => setLocation('/bank-transactions') },
         { id: "trial-balance", label: "Trial Balance", icon: Scale, onClick: () => setLocation('/trial-balance') },
@@ -1404,7 +1402,6 @@ const navItemToScreenKey: Record<string, string> = {
   'documents': 'documents',
   // Accounting & Ledger
   'chart-of-accounts': 'chart_of_accounts',
-  'account-subtypes': 'account_subtypes',
   'journal-entries': 'journal_entries',
   'journal-entry-new': 'manual_journal_entry',
   'bank-transactions': 'journal_entries',
@@ -1721,7 +1718,6 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       label: "Accounting & Ledger",
       items: [
         { id: "chart-of-accounts", label: "Chart of Accounts", icon: BookOpen, onClick: () => setLocation('/chart-of-accounts') },
-        { id: "account-subtypes", label: "Account Types", icon: Layers, onClick: () => setLocation('/account-subtypes') },
         { id: "journal-entries", label: "Journal Entries", icon: FileStack, onClick: () => setLocation('/journal-entries') },
         { id: "bank-transactions", label: "Bank Statements", icon: Landmark, onClick: () => setLocation('/bank-transactions') },
         { id: "trial-balance", label: "Trial Balance", icon: Scale, onClick: () => setLocation('/trial-balance') },
@@ -1968,19 +1964,6 @@ function ChartOfAccountsPageWrapper() {
   );
 }
 
-function AccountSubtypesPageWrapper() {
-  const { logoutMutation } = useAuth();
-  const [, setLocation] = useLocation();
-  const [activeView, setActiveView] = useState('account-subtypes');
-  const allNavSections = getAdminNavSections(setLocation);
-  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  return (
-    <DashboardShell title="Account Types" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
-      <AccountSubtypesPage />
-    </DashboardShell>
-  );
-}
 
 function JournalEntriesPageWrapper() {
   const { logoutMutation } = useAuth();
@@ -2924,7 +2907,6 @@ function Router() {
       <ProtectedRoute path="/cash-register-report" component={CashRegisterReportWrapper} />
       <ProtectedRoute path="/cash-register/vouchers/print" component={CashRegisterVoucherPrint} />
       <ProtectedRoute path="/chart-of-accounts" component={ChartOfAccountsPageWrapper} />
-      <ProtectedRoute path="/account-subtypes" component={AccountSubtypesPageWrapper} />
       <ProtectedRoute path="/journal-entries" component={JournalEntriesPageWrapper} />
       <ProtectedRoute path="/trial-balance" component={TrialBalancePageWrapper} />
       <ProtectedRoute path="/profit-loss" component={ProfitLossPageWrapper} />
