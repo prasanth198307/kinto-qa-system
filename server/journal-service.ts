@@ -1177,11 +1177,11 @@ export async function backfillJournalEntries(): Promise<{
         invoiceNumber: inv.invoice_number,
         invoiceDate: inv.invoice_date,
         buyerName: inv.buyer_name || 'Unknown',
-        subtotal: inv.subtotal || 0,
-        cgstAmount: inv.cgst_amount || 0,
-        sgstAmount: inv.sgst_amount || 0,
-        igstAmount: inv.igst_amount || 0,
-        grandTotal: inv.total_amount || 0,
+        subtotal: Number(inv.subtotal) || 0,
+        cgstAmount: Number(inv.cgst_amount) || 0,
+        sgstAmount: Number(inv.sgst_amount) || 0,
+        igstAmount: Number(inv.igst_amount) || 0,
+        totalAmount: Number(inv.total_amount) || 0,
       });
       results.invoices.processed++;
     } catch (e: any) {
