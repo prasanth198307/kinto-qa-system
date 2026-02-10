@@ -157,6 +157,7 @@ const navItemToScreen: Record<string, string> = {
   'notification-settings': 'User Management',
   'data-import': 'User Management',
   'chart-of-accounts': 'Purchase Orders',
+  'account-subtypes': 'Purchase Orders',
   'journal-entries': 'Purchase Orders',
   'bank-transactions': 'Purchase Orders',
   'trial-balance': 'Purchase Orders',

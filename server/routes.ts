@@ -20026,10 +20026,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Also migrate any custom subtypes already in chart_of_accounts
+      // Skip if subType is already a UUID (already migrated to reference subtype ID)
+      const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       const allAccounts = await storage.getAllChartOfAccounts();
       let migrated = 0;
       for (const acct of allAccounts) {
-        if (acct.subType) {
+        if (acct.subType && !uuidPattern.test(acct.subType)) {
           const exists = await storage.getAccountSubtypeByName(acct.accountType, acct.subType);
           if (!exists) {
             const label = acct.subType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());

@@ -190,7 +190,7 @@ export default function AccountSubtypesPage() {
                 </div>
                 <div className="divide-y">
                   {items
-                    .sort((a, b) => a.name.localeCompare(b.name))
+                    .sort((a, b) => a.label.localeCompare(b.label))
                     .map(st => (
                     <div
                       key={st.id}
