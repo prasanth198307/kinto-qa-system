@@ -207,6 +207,10 @@ const endpointToScreenKey: Record<string, string> = {
   '/api/trial-balance': 'trial_balance',
   '/api/profit-loss': 'profit_loss',
   '/api/bank-transactions': 'bank_transactions',
+  '/api/ledger': 'ledger_view',
+  '/api/day-book': 'day_book',
+  '/api/aging-report': 'aging_report',
+  '/api/cash-flow-statement': 'cash_flow_statement',
 
   // MIS (Management Information System)
   '/api/mis/kpi-dashboard': 'mis_dashboard',
@@ -21543,6 +21547,490 @@ export async function registerRoutes(app: Express): Promise<Server> {
         rawMaterials: unreconciledRawMaterials,
       });
     } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // ============================================================
+  // LEDGER ACCOUNT VIEW - All transactions for a specific account
+  // ============================================================
+  app.get('/api/ledger/:accountId', async (req: any, res) => {
+    try {
+      const { accountId } = req.params;
+      const fyParam = req.query.fy as string | undefined;
+      const fromDate = req.query.fromDate as string | undefined;
+      const toDate = req.query.toDate as string | undefined;
+
+      const account = await storage.getChartOfAccount(accountId);
+      if (!account) return res.status(404).json({ message: 'Account not found' });
+
+      let dateStart: string;
+      let dateEnd: string;
+      if (fromDate && toDate) {
+        dateStart = fromDate;
+        dateEnd = toDate;
+      } else {
+        const now = new Date();
+        const startYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+        const fy = fyParam && /^\d{4}$/.test(fyParam) ? parseInt(fyParam) : startYear;
+        dateStart = `${fy}-04-01`;
+        dateEnd = `${fy + 1}-03-31`;
+      }
+
+      const isDebitNormal = account.accountType === 'asset' || account.accountType === 'expense';
+      const isBs = ['asset', 'liability', 'equity'].includes(account.accountType);
+
+      let openingBalance = 0;
+      if (isBs) {
+        const openingRows = await db.select({
+          totalDebit: sql<number>`coalesce(sum(${journalLines.debit}), 0)`,
+          totalCredit: sql<number>`coalesce(sum(${journalLines.credit}), 0)`,
+        })
+          .from(journalLines)
+          .innerJoin(journalEntries, eq(journalLines.journalId, journalEntries.id))
+          .where(and(
+            eq(journalLines.accountId, accountId),
+            eq(journalLines.recordStatus, 1),
+            eq(journalEntries.recordStatus, 1),
+            sql`${journalEntries.journalDate} < ${dateStart}`
+          ));
+        const od = Number(openingRows[0]?.totalDebit) || 0;
+        const oc = Number(openingRows[0]?.totalCredit) || 0;
+        openingBalance = isDebitNormal ? od - oc : oc - od;
+      }
+
+      const rows = await db.select({
+        lineId: journalLines.id,
+        journalId: journalEntries.id,
+        journalNumber: journalEntries.journalNumber,
+        journalDate: journalEntries.journalDate,
+        description: journalEntries.description,
+        sourceType: journalEntries.sourceType,
+        sourceId: journalEntries.sourceId,
+        debit: journalLines.debit,
+        credit: journalLines.credit,
+        memo: journalLines.memo,
+        partyName: journalLines.partyName,
+      })
+        .from(journalLines)
+        .innerJoin(journalEntries, eq(journalLines.journalId, journalEntries.id))
+        .where(and(
+          eq(journalLines.accountId, accountId),
+          eq(journalLines.recordStatus, 1),
+          eq(journalEntries.recordStatus, 1),
+          sql`${journalEntries.journalDate} >= ${dateStart}`,
+          sql`${journalEntries.journalDate} <= ${dateEnd}`
+        ))
+        .orderBy(sql`${journalEntries.journalDate} ASC, ${journalEntries.journalNumber} ASC`);
+
+      let runningBalance = openingBalance;
+      const transactions = rows.map(row => {
+        const d = Number(row.debit) || 0;
+        const c = Number(row.credit) || 0;
+        runningBalance += isDebitNormal ? (d - c) : (c - d);
+        return { ...row, debit: d, credit: c, balance: runningBalance };
+      });
+
+      res.json({
+        account: { id: account.id, code: account.code, name: account.name, accountType: account.accountType },
+        openingBalance,
+        closingBalance: runningBalance,
+        transactions,
+        periodDebit: transactions.reduce((s, t) => s + t.debit, 0),
+        periodCredit: transactions.reduce((s, t) => s + t.credit, 0),
+      });
+    } catch (error: any) {
+      console.error("Error fetching ledger:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // ============================================================
+  // DAY BOOK - All journal entries for a given date range
+  // ============================================================
+  app.get('/api/day-book', async (req: any, res) => {
+    try {
+      const fromDate = (req.query.fromDate as string) || new Date().toISOString().split('T')[0];
+      const toDate = (req.query.toDate as string) || fromDate;
+      const sourceType = req.query.sourceType as string | undefined;
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
+
+      const conditions = [
+        eq(journalEntries.recordStatus, 1),
+        sql`${journalEntries.journalDate} >= ${fromDate}`,
+        sql`${journalEntries.journalDate} <= ${toDate}`,
+      ];
+      if (sourceType && sourceType !== 'all') {
+        conditions.push(eq(journalEntries.sourceType, sourceType));
+      }
+
+      const countResult = await db.select({ count: sql<number>`count(*)` })
+        .from(journalEntries)
+        .where(and(...conditions));
+      const totalCount = Number(countResult[0]?.count) || 0;
+
+      const entries = await db.select()
+        .from(journalEntries)
+        .where(and(...conditions))
+        .orderBy(sql`${journalEntries.journalDate} DESC, ${journalEntries.journalNumber} DESC`)
+        .limit(limit)
+        .offset((page - 1) * limit);
+
+      const journalIds = entries.map(e => e.id);
+      let linesMap = new Map<string, any[]>();
+      if (journalIds.length > 0) {
+        const allLines = await db.select({
+          lineId: journalLines.id,
+          journalId: journalLines.journalId,
+          accountId: journalLines.accountId,
+          debit: journalLines.debit,
+          credit: journalLines.credit,
+          memo: journalLines.memo,
+          partyName: journalLines.partyName,
+          accountCode: chartOfAccounts.code,
+          accountName: chartOfAccounts.name,
+        })
+          .from(journalLines)
+          .innerJoin(chartOfAccounts, eq(journalLines.accountId, chartOfAccounts.id))
+          .where(and(
+            sql`${journalLines.journalId} IN (${sql.join(journalIds.map(id => sql`${id}`), sql`, `)})`,
+            eq(journalLines.recordStatus, 1)
+          ));
+        for (const line of allLines) {
+          const existing = linesMap.get(line.journalId) || [];
+          existing.push(line);
+          linesMap.set(line.journalId, existing);
+        }
+      }
+
+      const result = entries.map(entry => ({
+        ...entry,
+        totalDebit: Number(entry.totalDebit) || 0,
+        totalCredit: Number(entry.totalCredit) || 0,
+        lines: (linesMap.get(entry.id) || []).map(l => ({
+          ...l,
+          debit: Number(l.debit) || 0,
+          credit: Number(l.credit) || 0,
+        })),
+      }));
+
+      const sourceTypes = await db.selectDistinct({ sourceType: journalEntries.sourceType })
+        .from(journalEntries)
+        .where(eq(journalEntries.recordStatus, 1));
+
+      res.json({
+        entries: result,
+        totalCount,
+        page,
+        limit,
+        totalPages: Math.ceil(totalCount / limit),
+        sourceTypes: sourceTypes.map(s => s.sourceType).filter(Boolean).sort(),
+      });
+    } catch (error: any) {
+      console.error("Error fetching day book:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // ============================================================
+  // OUTSTANDING / AGING REPORT - Receivables and Payables aging
+  // ============================================================
+  app.get('/api/aging-report', async (req: any, res) => {
+    try {
+      const type = (req.query.type as string) || 'receivable';
+      const asOfDate = (req.query.asOfDate as string) || new Date().toISOString().split('T')[0];
+
+      if (type === 'receivable') {
+        const invoices = await db.execute(sql`
+          SELECT i.id, i."invoiceNumber" as "invoiceNumber", i."invoiceDate" as "invoiceDate",
+                 i."totalAmount" as "totalAmount", i."paidAmount" as "paidAmount",
+                 v.name as "vendorName", v.id as "vendorId"
+          FROM invoices i
+          LEFT JOIN vendors v ON i."vendorId" = v.id
+          WHERE i."recordStatus" = 1 AND i.status != 'cancelled'
+            AND COALESCE(i."paidAmount", 0) < i."totalAmount"
+            AND i."invoiceDate" <= ${asOfDate}
+          ORDER BY i."invoiceDate" ASC
+        `);
+
+        const asOf = new Date(asOfDate);
+        const rows = (invoices.rows || []).map((inv: any) => {
+          const outstanding = Number(inv.totalAmount) - Number(inv.paidAmount || 0);
+          const invDate = new Date(inv.invoiceDate);
+          const daysOld = Math.floor((asOf.getTime() - invDate.getTime()) / (1000 * 60 * 60 * 24));
+          let bucket = 'current';
+          if (daysOld > 90) bucket = 'over90';
+          else if (daysOld > 60) bucket = '61_90';
+          else if (daysOld > 30) bucket = '31_60';
+          else if (daysOld > 0) bucket = '1_30';
+          return {
+            id: inv.id,
+            invoiceNumber: inv.invoiceNumber,
+            invoiceDate: inv.invoiceDate,
+            vendorName: inv.vendorName || 'Unknown',
+            vendorId: inv.vendorId,
+            totalAmount: Number(inv.totalAmount),
+            paidAmount: Number(inv.paidAmount || 0),
+            outstanding,
+            daysOld,
+            bucket,
+          };
+        });
+
+        const byVendor = new Map<string, any>();
+        for (const row of rows) {
+          const key = row.vendorName;
+          if (!byVendor.has(key)) {
+            byVendor.set(key, { vendorName: key, vendorId: row.vendorId, current: 0, d1_30: 0, d31_60: 0, d61_90: 0, over90: 0, total: 0, invoices: [] });
+          }
+          const entry = byVendor.get(key)!;
+          entry.total += row.outstanding;
+          entry.invoices.push(row);
+          if (row.bucket === 'current') entry.current += row.outstanding;
+          else if (row.bucket === '1_30') entry.d1_30 += row.outstanding;
+          else if (row.bucket === '31_60') entry.d31_60 += row.outstanding;
+          else if (row.bucket === '61_90') entry.d61_90 += row.outstanding;
+          else if (row.bucket === 'over90') entry.over90 += row.outstanding;
+        }
+
+        const summary = { current: 0, d1_30: 0, d31_60: 0, d61_90: 0, over90: 0, total: 0 };
+        for (const v of byVendor.values()) {
+          summary.current += v.current;
+          summary.d1_30 += v.d1_30;
+          summary.d31_60 += v.d31_60;
+          summary.d61_90 += v.d61_90;
+          summary.over90 += v.over90;
+          summary.total += v.total;
+        }
+
+        res.json({
+          type: 'receivable',
+          asOfDate,
+          vendors: Array.from(byVendor.values()).sort((a, b) => b.total - a.total),
+          summary,
+        });
+      } else {
+        const pos = await db.execute(sql`
+          SELECT po.id, po."poNumber" as "poNumber", po."orderDate" as "orderDate",
+                 po."totalAmount" as "totalAmount",
+                 COALESCE(po."paidAmount", 0) as "paidAmount",
+                 v.name as "vendorName", v.id as "vendorId"
+          FROM purchase_orders po
+          LEFT JOIN vendors v ON po."vendorId" = v.id
+          WHERE po."recordStatus" = 1 AND po.status != 'cancelled'
+            AND COALESCE(po."paidAmount", 0) < po."totalAmount"
+            AND po."orderDate" <= ${asOfDate}
+          ORDER BY po."orderDate" ASC
+        `);
+
+        const asOf = new Date(asOfDate);
+        const rows = (pos.rows || []).map((po: any) => {
+          const outstanding = Number(po.totalAmount) - Number(po.paidAmount || 0);
+          const poDate = new Date(po.orderDate);
+          const daysOld = Math.floor((asOf.getTime() - poDate.getTime()) / (1000 * 60 * 60 * 24));
+          let bucket = 'current';
+          if (daysOld > 90) bucket = 'over90';
+          else if (daysOld > 60) bucket = '61_90';
+          else if (daysOld > 30) bucket = '31_60';
+          else if (daysOld > 0) bucket = '1_30';
+          return {
+            id: po.id,
+            poNumber: po.poNumber,
+            orderDate: po.orderDate,
+            vendorName: po.vendorName || 'Unknown',
+            vendorId: po.vendorId,
+            totalAmount: Number(po.totalAmount),
+            paidAmount: Number(po.paidAmount || 0),
+            outstanding,
+            daysOld,
+            bucket,
+          };
+        });
+
+        const byVendor = new Map<string, any>();
+        for (const row of rows) {
+          const key = row.vendorName;
+          if (!byVendor.has(key)) {
+            byVendor.set(key, { vendorName: key, vendorId: row.vendorId, current: 0, d1_30: 0, d31_60: 0, d61_90: 0, over90: 0, total: 0, orders: [] });
+          }
+          const entry = byVendor.get(key)!;
+          entry.total += row.outstanding;
+          entry.orders.push(row);
+          if (row.bucket === 'current') entry.current += row.outstanding;
+          else if (row.bucket === '1_30') entry.d1_30 += row.outstanding;
+          else if (row.bucket === '31_60') entry.d31_60 += row.outstanding;
+          else if (row.bucket === '61_90') entry.d61_90 += row.outstanding;
+          else if (row.bucket === 'over90') entry.over90 += row.outstanding;
+        }
+
+        const summary = { current: 0, d1_30: 0, d31_60: 0, d61_90: 0, over90: 0, total: 0 };
+        for (const v of byVendor.values()) {
+          summary.current += v.current;
+          summary.d1_30 += v.d1_30;
+          summary.d31_60 += v.d31_60;
+          summary.d61_90 += v.d61_90;
+          summary.over90 += v.over90;
+          summary.total += v.total;
+        }
+
+        res.json({
+          type: 'payable',
+          asOfDate,
+          vendors: Array.from(byVendor.values()).sort((a, b) => b.total - a.total),
+          summary,
+        });
+      }
+    } catch (error: any) {
+      console.error("Error fetching aging report:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // ============================================================
+  // CASH FLOW STATEMENT - Operating/Investing/Financing activities
+  // ============================================================
+  app.get('/api/cash-flow-statement', async (req: any, res) => {
+    try {
+      const fyParam = req.query.fy as string | undefined;
+      const fromDate = req.query.fromDate as string | undefined;
+      const toDate = req.query.toDate as string | undefined;
+
+      let dateStart: string;
+      let dateEnd: string;
+      if (fromDate && toDate) {
+        dateStart = fromDate;
+        dateEnd = toDate;
+      } else {
+        const now = new Date();
+        const startYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+        const fy = fyParam && /^\d{4}$/.test(fyParam) ? parseInt(fyParam) : startYear;
+        dateStart = `${fy}-04-01`;
+        dateEnd = `${fy + 1}-03-31`;
+      }
+
+      const accounts = await storage.getAllChartOfAccounts();
+      const cashBankCodes = new Set<string>();
+      const cashBankIds = new Set<string>();
+      for (const a of accounts) {
+        if (a.code.startsWith('1101') || a.code.startsWith('1102') || a.code === '1100' ||
+            a.name.toLowerCase().includes('cash') || a.name.toLowerCase().includes('bank')) {
+          if (a.accountType === 'asset') {
+            cashBankCodes.add(a.code);
+            cashBankIds.add(a.id);
+          }
+        }
+      }
+
+      let openingCash = 0;
+      const openingRows = await db.select({
+        accountId: journalLines.accountId,
+        totalDebit: sql<number>`coalesce(sum(${journalLines.debit}), 0)`,
+        totalCredit: sql<number>`coalesce(sum(${journalLines.credit}), 0)`,
+      })
+        .from(journalLines)
+        .innerJoin(journalEntries, eq(journalLines.journalId, journalEntries.id))
+        .where(and(
+          eq(journalLines.recordStatus, 1),
+          eq(journalEntries.recordStatus, 1),
+          sql`${journalEntries.journalDate} < ${dateStart}`,
+          sql`${journalLines.accountId} IN (${sql.join([...cashBankIds].map(id => sql`${id}`), sql`, `)})`
+        ))
+        .groupBy(journalLines.accountId);
+
+      for (const row of openingRows) {
+        openingCash += Number(row.totalDebit) - Number(row.totalCredit);
+      }
+
+      const periodLines = await db.select({
+        journalId: journalEntries.id,
+        journalDate: journalEntries.journalDate,
+        sourceType: journalEntries.sourceType,
+        description: journalEntries.description,
+        lineAccountId: journalLines.accountId,
+        debit: journalLines.debit,
+        credit: journalLines.credit,
+      })
+        .from(journalLines)
+        .innerJoin(journalEntries, eq(journalLines.journalId, journalEntries.id))
+        .where(and(
+          eq(journalLines.recordStatus, 1),
+          eq(journalEntries.recordStatus, 1),
+          sql`${journalEntries.journalDate} >= ${dateStart}`,
+          sql`${journalEntries.journalDate} <= ${dateEnd}`
+        ));
+
+      const journalMap = new Map<string, { sourceType: string | null; lines: any[] }>();
+      for (const line of periodLines) {
+        if (!journalMap.has(line.journalId)) {
+          journalMap.set(line.journalId, { sourceType: line.sourceType, lines: [] });
+        }
+        journalMap.get(line.journalId)!.lines.push(line);
+      }
+
+      let operating = 0, investing = 0, financing = 0;
+      const operatingItems: any[] = [];
+      const investingItems: any[] = [];
+      const financingItems: any[] = [];
+
+      const accountMap = new Map<string, typeof accounts[0]>();
+      for (const a of accounts) accountMap.set(a.id, a);
+
+      for (const [jId, jData] of journalMap.entries()) {
+        const cashLines = jData.lines.filter(l => cashBankIds.has(l.lineAccountId));
+        if (cashLines.length === 0) continue;
+
+        const cashNetDebit = cashLines.reduce((s: number, l: any) => s + Number(l.debit) - Number(l.credit), 0);
+        const nonCashLines = jData.lines.filter(l => !cashBankIds.has(l.lineAccountId));
+
+        let category = 'operating';
+        for (const ncl of nonCashLines) {
+          const acct = accountMap.get(ncl.lineAccountId);
+          if (!acct) continue;
+          if (acct.code.startsWith('15') || acct.code.startsWith('16') || acct.subType === 'fixed_asset') {
+            category = 'investing';
+            break;
+          }
+          if (acct.code.startsWith('24') || acct.code.startsWith('30') || acct.code.startsWith('31') ||
+              acct.accountType === 'equity' || acct.subType === 'long_term_liability') {
+            category = 'financing';
+            break;
+          }
+        }
+
+        const sourceLabel = jData.sourceType || 'other';
+        const item = { source: sourceLabel, amount: cashNetDebit, journalId: jId };
+        if (category === 'operating') { operating += cashNetDebit; operatingItems.push(item); }
+        else if (category === 'investing') { investing += cashNetDebit; investingItems.push(item); }
+        else { financing += cashNetDebit; financingItems.push(item); }
+      }
+
+      const groupBySource = (items: any[]) => {
+        const grouped = new Map<string, number>();
+        for (const item of items) {
+          grouped.set(item.source, (grouped.get(item.source) || 0) + item.amount);
+        }
+        return Array.from(grouped.entries()).map(([source, amount]) => ({ source, amount })).sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+      };
+
+      const closingCash = openingCash + operating + investing + financing;
+
+      res.json({
+        dateStart,
+        dateEnd,
+        openingCash,
+        operating: { total: operating, items: groupBySource(operatingItems) },
+        investing: { total: investing, items: groupBySource(investingItems) },
+        financing: { total: financing, items: groupBySource(financingItems) },
+        netChange: operating + investing + financing,
+        closingCash,
+        cashAccounts: [...cashBankIds].map(id => {
+          const a = accountMap.get(id);
+          return a ? { id: a.id, code: a.code, name: a.name } : null;
+        }).filter(Boolean),
+      });
+    } catch (error: any) {
+      console.error("Error fetching cash flow statement:", error);
       res.status(500).json({ message: error.message });
     }
   });

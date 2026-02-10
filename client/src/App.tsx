@@ -112,6 +112,10 @@ import TrialBalancePage from "@/pages/trial-balance";
 import ProfitLossPage from "@/pages/profit-loss";
 import BalanceSheetPage from "@/pages/balance-sheet";
 import BankTransactionsPage from "@/pages/bank-transactions";
+import LedgerViewPage from "@/pages/ledger-view";
+import DayBookPage from "@/pages/day-book";
+import AgingReportPage from "@/pages/aging-report";
+import CashFlowStatementPage from "@/pages/cash-flow-statement";
 import AdminToolsPage from "@/pages/admin-tools";
 
 type Role = 'admin' | 'operator' | 'reviewer' | 'manager';
@@ -858,6 +862,10 @@ function AdminDashboard() {
         { id: "trial-balance", label: "Trial Balance", icon: Scale, onClick: () => setLocation('/trial-balance') },
         { id: "profit-loss", label: "Profit & Loss", icon: BarChart3, onClick: () => setLocation('/profit-loss') },
         { id: "balance-sheet", label: "Balance Sheet", icon: Scale, onClick: () => setLocation('/balance-sheet') },
+        { id: "ledger-view", label: "Ledger View", icon: BookOpen, onClick: () => setLocation('/ledger-view') },
+        { id: "day-book", label: "Day Book", icon: FileStack, onClick: () => setLocation('/day-book') },
+        { id: "aging-report", label: "Outstanding/Aging", icon: AlertTriangle, onClick: () => setLocation('/aging-report') },
+        { id: "cash-flow-statement", label: "Cash Flow Statement", icon: TrendingUp, onClick: () => setLocation('/cash-flow-statement') },
       ],
     },
     {
@@ -1399,6 +1407,10 @@ const navItemToScreenKey: Record<string, string> = {
   'trial-balance': 'trial_balance',
   'profit-loss': 'profit_loss',
   'balance-sheet': 'balance_sheet',
+  'ledger-view': 'ledger_view',
+  'day-book': 'day_book',
+  'aging-report': 'aging_report',
+  'cash-flow-statement': 'cash_flow_statement',
   // Maintenance
   'maintenance': 'maintenance_plans',
   'pm-history': 'pm_history',
@@ -1477,6 +1489,10 @@ const navItemToScreen: Record<string, string> = {
   'trial-balance': 'Accounting',
   'profit-loss': 'Accounting',
   'balance-sheet': 'Accounting',
+  'ledger-view': 'Accounting',
+  'day-book': 'Accounting',
+  'aging-report': 'Accounting',
+  'cash-flow-statement': 'Accounting',
   // Maintenance
   'maintenance': 'Maintenance Plans',
   'pm-history': 'PM History',
@@ -1703,6 +1719,10 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "trial-balance", label: "Trial Balance", icon: Scale, onClick: () => setLocation('/trial-balance') },
         { id: "profit-loss", label: "Profit & Loss", icon: BarChart3, onClick: () => setLocation('/profit-loss') },
         { id: "balance-sheet", label: "Balance Sheet", icon: Scale, onClick: () => setLocation('/balance-sheet') },
+        { id: "ledger-view", label: "Ledger View", icon: BookOpen, onClick: () => setLocation('/ledger-view') },
+        { id: "day-book", label: "Day Book", icon: FileStack, onClick: () => setLocation('/day-book') },
+        { id: "aging-report", label: "Outstanding/Aging", icon: AlertTriangle, onClick: () => setLocation('/aging-report') },
+        { id: "cash-flow-statement", label: "Cash Flow Statement", icon: TrendingUp, onClick: () => setLocation('/cash-flow-statement') },
       ],
     },
     {
@@ -2046,6 +2066,62 @@ function BankTransactionsPageWrapper() {
   return (
     <DashboardShell title="Bank Statements" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
       <BankTransactionsPage />
+    </DashboardShell>
+  );
+}
+
+function LedgerViewPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('ledger-view');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  return (
+    <DashboardShell title="Ledger View" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
+      <LedgerViewPage />
+    </DashboardShell>
+  );
+}
+
+function DayBookPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('day-book');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  return (
+    <DashboardShell title="Day Book" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
+      <DayBookPage />
+    </DashboardShell>
+  );
+}
+
+function AgingReportPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('aging-report');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  return (
+    <DashboardShell title="Outstanding / Aging Report" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
+      <AgingReportPage />
+    </DashboardShell>
+  );
+}
+
+function CashFlowStatementPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('cash-flow-statement');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  return (
+    <DashboardShell title="Cash Flow Statement" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
+      <CashFlowStatementPage />
     </DashboardShell>
   );
 }
@@ -2816,6 +2892,10 @@ function Router() {
       <ProtectedRoute path="/profit-loss" component={ProfitLossPageWrapper} />
       <ProtectedRoute path="/balance-sheet" component={BalanceSheetPageWrapper} />
       <ProtectedRoute path="/bank-transactions" component={BankTransactionsPageWrapper} />
+      <ProtectedRoute path="/ledger-view" component={LedgerViewPageWrapper} />
+      <ProtectedRoute path="/day-book" component={DayBookPageWrapper} />
+      <ProtectedRoute path="/aging-report" component={AgingReportPageWrapper} />
+      <ProtectedRoute path="/cash-flow-statement" component={CashFlowStatementPageWrapper} />
       <ProtectedRoute path="/admin-tools" component={AdminToolsPageWrapper} />
       <ProtectedRoute path="/journal-entry/new" component={ManualJournalEntryPageWrapper} />
       <ProtectedRoute path="/journal-entry/:id" component={JournalEntryDetailPageWrapper} />

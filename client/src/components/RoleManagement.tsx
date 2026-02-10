@@ -135,6 +135,10 @@ const AVAILABLE_SCREENS: ScreenDefinition[] = [
   { key: 'profit_loss', label: 'Profit & Loss Statement', allowedActions: ['view'] },
   { key: 'balance_sheet', label: 'Balance Sheet', allowedActions: ['view'] },
   { key: 'bank_transactions', label: 'Bank Statements & Transactions', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'ledger_view', label: 'Ledger View', allowedActions: ['view'] },
+  { key: 'day_book', label: 'Day Book', allowedActions: ['view'] },
+  { key: 'aging_report', label: 'Outstanding / Aging Report', allowedActions: ['view'] },
+  { key: 'cash_flow_statement', label: 'Cash Flow Statement', allowedActions: ['view'] },
   { key: 'scrap_inventory', label: 'Scrap Inventory', allowedActions: ['view', 'create', 'edit', 'delete'] },
   
   // System & Configuration

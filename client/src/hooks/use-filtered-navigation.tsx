@@ -76,6 +76,10 @@ const navItemToScreenKey: Record<string, string> = {
   'trial-balance': 'trial_balance',
   'profit-loss': 'profit_loss',
   'balance-sheet': 'balance_sheet',
+  'ledger-view': 'ledger_view',
+  'day-book': 'day_book',
+  'aging-report': 'aging_report',
+  'cash-flow-statement': 'cash_flow_statement',
   'admin-tools': 'admin_tools',
 };
 
@@ -97,6 +101,9 @@ const screenPermissions: Record<string, { admin: boolean; manager: boolean; oper
   'Review Checklists': { admin: true, manager: false, operator: false, reviewer: true },
   'Final Approval': { admin: true, manager: true, operator: false, reviewer: false },
   'MIS Reports': { admin: true, manager: true, operator: false, reviewer: false },
+  'Accounting & Ledger': { admin: true, manager: true, operator: false, reviewer: false },
+  'Accounting': { admin: true, manager: true, operator: false, reviewer: false },
+  'Spare Parts Stock': { admin: true, manager: true, operator: false, reviewer: false },
 };
 
 const navItemToScreen: Record<string, string> = {
@@ -163,6 +170,10 @@ const navItemToScreen: Record<string, string> = {
   'trial-balance': 'Accounting & Ledger',
   'profit-loss': 'Accounting & Ledger',
   'balance-sheet': 'Accounting & Ledger',
+  'ledger-view': 'Accounting & Ledger',
+  'day-book': 'Accounting & Ledger',
+  'aging-report': 'Accounting & Ledger',
+  'cash-flow-statement': 'Accounting & Ledger',
   'admin-tools': 'User Management',
 };
 
