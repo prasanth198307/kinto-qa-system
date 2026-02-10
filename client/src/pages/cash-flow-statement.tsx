@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Download, Calendar, ChevronDown, ChevronRight, TrendingUp, TrendingDown, ArrowDown, ArrowUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -187,16 +188,26 @@ function SectionBlock({
 export default function CashFlowStatementPage() {
   const { toast } = useToast();
   const [selectedFY, setSelectedFY] = useState(getCurrentFY());
+  const [dateMode, setDateMode] = useState<"fy" | "custom">("fy");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     operating: true,
     investing: false,
     financing: false,
   });
 
-  const apiUrl = `/api/cash-flow-statement?fy=${selectedFY}`;
+  const isCustomValid = dateMode === "custom" && customFrom && customTo && customFrom <= customTo;
+
+  const apiUrl = (() => {
+    if (dateMode === "custom" && isCustomValid) {
+      return `/api/cash-flow-statement?fromDate=${customFrom}&toDate=${customTo}`;
+    }
+    return `/api/cash-flow-statement?fy=${selectedFY}`;
+  })();
 
   const { data, isLoading, isError } = useQuery<CashFlowData>({
-    queryKey: ["/api/cash-flow-statement", selectedFY],
+    queryKey: ["/api/cash-flow-statement", dateMode, selectedFY, customFrom, customTo],
     queryFn: async () => {
       const res = await fetch(apiUrl, { credentials: 'include' });
       if (!res.ok) throw new Error("Failed to fetch cash flow statement");
@@ -216,9 +227,12 @@ export default function CashFlowStatementPage() {
       return val === 0 ? 0 : Number((val / 100).toFixed(2));
     };
 
+    const periodStr = dateMode === "custom" && isCustomValid
+      ? `${formatDateDisplay(data.dateStart)} to ${formatDateDisplay(data.dateEnd)}`
+      : `${getFYLabel(selectedFY)} (${formatDateDisplay(data.dateStart)} to ${formatDateDisplay(data.dateEnd)})`;
     const rows: (string | number | null)[][] = [
       ["KINTO Smart Ops - Cash Flow Statement"],
-      [`${getFYLabel(selectedFY)} (${formatDateDisplay(data.dateStart)} to ${formatDateDisplay(data.dateEnd)})`],
+      [periodStr],
       [],
       ["Category", "Source", "Amount (Rs.)"],
       [],
@@ -289,6 +303,9 @@ export default function CashFlowStatementPage() {
 
   const periodLabel = `${formatDateDisplay(data.dateStart)} to ${formatDateDisplay(data.dateEnd)}`;
   const netIsPositive = data.netChange >= 0;
+  const displayPeriod = dateMode === "custom" && isCustomValid
+    ? periodLabel
+    : `${getFYLabel(selectedFY)} \u00b7 ${periodLabel}`;
 
   return (
     <div className="p-4 space-y-4 max-w-5xl mx-auto" data-testid="page-cash-flow-statement">
@@ -296,23 +313,54 @@ export default function CashFlowStatementPage() {
         <div>
           <h1 className="text-xl font-semibold" data-testid="text-page-title">Cash Flow Statement</h1>
           <p className="text-sm text-muted-foreground" data-testid="text-period-label">
-            {getFYLabel(selectedFY)} &middot; {periodLabel}
+            {displayPeriod}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <Select value={selectedFY} onValueChange={setSelectedFY}>
-            <SelectTrigger className="w-[150px]" data-testid="select-financial-year">
-              <Calendar className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
+          <Select value={dateMode} onValueChange={(v) => setDateMode(v as "fy" | "custom")}>
+            <SelectTrigger className="w-[120px]" data-testid="select-date-mode">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {getAvailableFYs().map(fy => (
-                <SelectItem key={fy} value={fy} data-testid={`option-fy-${fy}`}>
-                  {getFYLabel(fy)}
-                </SelectItem>
-              ))}
+              <SelectItem value="fy">By FY</SelectItem>
+              <SelectItem value="custom">Custom</SelectItem>
             </SelectContent>
           </Select>
+
+          {dateMode === "fy" && (
+            <Select value={selectedFY} onValueChange={setSelectedFY}>
+              <SelectTrigger className="w-[150px]" data-testid="select-financial-year">
+                <Calendar className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {getAvailableFYs().map(fy => (
+                  <SelectItem key={fy} value={fy} data-testid={`option-fy-${fy}`}>
+                    {getFYLabel(fy)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          {dateMode === "custom" && (
+            <>
+              <Input
+                type="date"
+                value={customFrom}
+                onChange={(e) => setCustomFrom(e.target.value)}
+                className="w-[150px]"
+                data-testid="input-custom-from"
+              />
+              <Input
+                type="date"
+                value={customTo}
+                onChange={(e) => setCustomTo(e.target.value)}
+                className="w-[150px]"
+                data-testid="input-custom-to"
+              />
+            </>
+          )}
 
           <Button variant="outline" size="sm" onClick={handleExcelDownload} data-testid="button-download-excel">
             <Download className="w-4 h-4 mr-1" /> Excel

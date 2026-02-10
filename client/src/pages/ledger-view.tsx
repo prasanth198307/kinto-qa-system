@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useSearch } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -83,12 +84,36 @@ function formatDate(dateStr: string): string {
 
 export default function LedgerViewPage() {
   const { toast } = useToast();
+  const searchString = useSearch();
+  const urlParams = useMemo(() => new URLSearchParams(searchString), [searchString]);
+  const urlAccountId = urlParams.get("accountId") || "";
+  const urlFromDate = urlParams.get("fromDate") || "";
+  const urlToDate = urlParams.get("toDate") || "";
+
+  const hasCustomUrlDates = !!urlFromDate && !!urlToDate;
+
   const [selectedFY, setSelectedFY] = useState(getCurrentFY());
-  const [selectedAccountId, setSelectedAccountId] = useState<string>("");
+  const [selectedAccountId, setSelectedAccountId] = useState<string>(urlAccountId);
   const [accountPopoverOpen, setAccountPopoverOpen] = useState(false);
-  const [dateMode, setDateMode] = useState<"fy" | "custom">("fy");
-  const [customFrom, setCustomFrom] = useState("");
-  const [customTo, setCustomTo] = useState("");
+  const [dateMode, setDateMode] = useState<"fy" | "custom">(hasCustomUrlDates ? "custom" : "fy");
+  const [customFrom, setCustomFrom] = useState(urlFromDate);
+  const [customTo, setCustomTo] = useState(urlToDate);
+
+  const prevSearchRef = useRef(searchString);
+  useEffect(() => {
+    if (prevSearchRef.current === searchString) return;
+    prevSearchRef.current = searchString;
+    const params = new URLSearchParams(searchString);
+    const accId = params.get("accountId") || "";
+    const from = params.get("fromDate") || "";
+    const to = params.get("toDate") || "";
+    if (accId) setSelectedAccountId(accId);
+    if (from && to) {
+      setDateMode("custom");
+      setCustomFrom(from);
+      setCustomTo(to);
+    }
+  }, [searchString]);
 
   const { data: accountsList = [], isLoading: accountsLoading } = useQuery<AccountListItem[]>({
     queryKey: ["/api/chart-of-accounts-list"],
