@@ -93,6 +93,18 @@ function isBalanceSheet(type: string): boolean {
   return ['asset', 'liability', 'equity', 'Assets', 'Liabilities', 'Equity'].includes(type);
 }
 
+const oldToNewTypeMap: Record<string, string> = {
+  asset: 'Assets',
+  liability: 'Liabilities',
+  equity: 'Equity',
+  revenue: 'Income',
+  expense: 'Expenses',
+};
+
+function normalizeAccountType(type: string): string {
+  return oldToNewTypeMap[type] || type;
+}
+
 function buildTree(accounts: ChartAccount[], expandedIds: Set<string>): TreeNode[] {
   const accountMap = new Map<string, TreeNode>();
   const roots: TreeNode[] = [];
@@ -284,7 +296,10 @@ export default function ChartOfAccountsPage() {
 
   async function downloadExcel() {
     const XLSX = await import('xlsx');
-    const typeLabel = (t: string) => ACCOUNT_TYPES.find(at => at.value === t)?.label || t;
+    const typeLabel = (t: string) => {
+      const normalized = normalizeAccountType(t);
+      return ACCOUNT_TYPES.find(at => normalizeAccountType(at.value) === normalized)?.label || t;
+    };
     const rows = accounts
       .sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }))
       .map(a => ({
@@ -314,7 +329,8 @@ export default function ChartOfAccountsPage() {
     let result = accounts.map(a => ({ ...a, nodeType: a.nodeType || 'ledger', level: a.level || 1 }));
 
     if (filterType !== "all") {
-      result = result.filter(a => a.accountType === filterType);
+      const normalizedFilter = normalizeAccountType(filterType);
+      result = result.filter(a => normalizeAccountType(a.accountType) === normalizedFilter);
     }
 
     if (searchQuery) {
@@ -347,11 +363,12 @@ export default function ChartOfAccountsPage() {
 
   const typeTotals = useMemo(() => {
     return ACCOUNT_TYPES.map(type => {
-      const accts = accounts.filter(a => a.accountType === type.value && (a.nodeType || 'ledger') === 'ledger');
+      const normalizedValue = normalizeAccountType(type.value);
+      const accts = accounts.filter(a => normalizeAccountType(a.accountType) === normalizedValue && (a.nodeType || 'ledger') === 'ledger');
       return {
         ...type,
         count: accts.length,
-        groupCount: accounts.filter(a => a.accountType === type.value && (a.nodeType || 'ledger') === 'group').length,
+        groupCount: accounts.filter(a => normalizeAccountType(a.accountType) === normalizedValue && (a.nodeType || 'ledger') === 'group').length,
         totalBalance: accts.reduce((sum, a) => sum + (Number(a.currentBalance) || 0), 0),
       };
     });
@@ -499,7 +516,7 @@ export default function ChartOfAccountsPage() {
                   </Popover>
                   {formData.parentId && formData.parentId !== "__none__" && formData.accountType && (
                     <p className="text-xs text-muted-foreground mt-1">
-                      Type: {ACCOUNT_TYPES.find(t => t.value === formData.accountType)?.label || formData.accountType} (inherited from parent)
+                      Type: {ACCOUNT_TYPES.find(t => normalizeAccountType(t.value) === normalizeAccountType(formData.accountType))?.label || formData.accountType} (inherited from parent)
                     </p>
                   )}
                 </div>

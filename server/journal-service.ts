@@ -340,6 +340,27 @@ export async function seedChartOfAccounts(): Promise<void> {
     }
   }
 
+  // 5. Normalize old-format accountType values to new capitalized format
+  const typeNormalizationMap: Record<string, string> = {
+    asset: 'Assets',
+    liability: 'Liabilities',
+    equity: 'Equity',
+    revenue: 'Income',
+    expense: 'Expenses',
+  };
+  const allAccounts = await db.select().from(chartOfAccounts).where(eq(chartOfAccounts.recordStatus, 1));
+  let normalizedCount = 0;
+  for (const acct of allAccounts) {
+    const newType = typeNormalizationMap[acct.accountType];
+    if (newType) {
+      await storage.updateChartOfAccount(acct.id, { accountType: newType });
+      normalizedCount++;
+    }
+  }
+  if (normalizedCount > 0) {
+    console.log(`[COA SEED] Normalized ${normalizedCount} accounts from old to new accountType format`);
+  }
+
   console.log('[COA SEED] Chart of Accounts seeding complete');
 
   await seedAccountingPermissions();
