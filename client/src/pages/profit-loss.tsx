@@ -1,25 +1,30 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation, useSearch } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Printer, TrendingUp, TrendingDown, ExternalLink, LayoutList, Columns2, Download } from "lucide-react";
+import { Calendar, Printer, TrendingUp, TrendingDown, ExternalLink, LayoutList, Columns2, Download, ChevronDown, ChevronRight, Expand, Shrink } from "lucide-react";
 import { exportToExcel } from "@/lib/excel-export";
 
-interface ChartAccount {
+interface TreeNode {
   id: string;
   code: string;
   name: string;
   accountType: string;
-  subType: string | null;
-  subTypeLabel: string | null;
+  nodeType: string;
+  level: number;
+  parentId: string | null;
   openingBalance: number;
   periodDebit: number;
   periodCredit: number;
-  periodMovement: number;
-  currentBalance: number;
+  closingBalance: number;
+  children: TreeNode[];
+}
+
+interface GroupSummaryResponse {
+  tree: TreeNode[];
 }
 
 function getCurrentFY(): string {
@@ -57,23 +62,43 @@ function formatDateDisplay(dateStr: string): string {
   }
 }
 
-const REVENUE_SUB_ORDER = ["operating", "direct_income", "indirect_income", "other_income"];
-const EXPENSE_SUB_ORDER = ["direct", "direct_expense", "manufacturing", "operating", "indirect_expense", "financial", "administrative", "adjustment", "other"];
+function collectAllGroupIds(nodes: TreeNode[]): string[] {
+  const ids: string[] = [];
+  for (const node of nodes) {
+    if (node.nodeType === 'group') {
+      ids.push(node.id);
+      ids.push(...collectAllGroupIds(node.children));
+    }
+  }
+  return ids;
+}
 
-const SUB_TYPE_LABELS: Record<string, string> = {
-  operating: "Sales Accounts",
-  direct_income: "Direct Income",
-  indirect_income: "Indirect Income",
-  other_income: "Other Income",
-  direct: "Direct Expenses",
-  direct_expense: "Direct Expenses",
-  manufacturing: "Manufacturing Expenses",
-  indirect_expense: "Indirect Expenses",
-  financial: "Financial Expenses",
-  administrative: "Administrative Expenses",
-  adjustment: "Adjustment Entries",
-  other: "Other Expenses",
-};
+function filterTreeByType(tree: TreeNode[], accountType: string): TreeNode[] {
+  return tree.filter(n => n.accountType === accountType);
+}
+
+function hasNonZeroBalance(node: TreeNode): boolean {
+  if (node.nodeType === 'ledger') return node.closingBalance !== 0;
+  return node.children.some(hasNonZeroBalance);
+}
+
+function pruneZeroNodes(nodes: TreeNode[]): TreeNode[] {
+  return nodes
+    .filter(hasNonZeroBalance)
+    .map(n => n.nodeType === 'group' ? { ...n, children: pruneZeroNodes(n.children) } : n);
+}
+
+function sumLedgerBalances(nodes: TreeNode[]): number {
+  let total = 0;
+  for (const node of nodes) {
+    if (node.nodeType === 'ledger') {
+      total += node.closingBalance;
+    } else {
+      total += sumLedgerBalances(node.children);
+    }
+  }
+  return total;
+}
 
 export default function ProfitLossPage() {
   const searchString = useSearch();
@@ -88,20 +113,32 @@ export default function ProfitLossPage() {
   const [customFrom, setCustomFrom] = useState(urlFrom || "");
   const [customTo, setCustomTo] = useState(urlTo || "");
   const [viewMode, setViewMode] = useState<"vertical" | "tally">("vertical");
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const [, setLocation] = useLocation();
 
   const isCustomValid = dateMode === "custom" && customFrom && customTo && customFrom <= customTo;
 
-  const apiQueryParams = (() => {
+  const { fromDate, toDate } = (() => {
     if (dateMode === "custom" && isCustomValid) {
-      return `fromDate=${customFrom}&toDate=${customTo}`;
+      return { fromDate: customFrom, toDate: customTo };
     }
-    return `fy=${selectedFY}`;
+    const dates = getFYDates(selectedFY);
+    return { fromDate: dates.start, toDate: dates.end };
   })();
 
-  const { data: accounts = [], isLoading } = useQuery<ChartAccount[]>({
-    queryKey: [`/api/chart-of-accounts?${apiQueryParams}`],
+  const { data: summaryData, isLoading } = useQuery<GroupSummaryResponse>({
+    queryKey: [`/api/group-summary?fromDate=${fromDate}&toDate=${toDate}`],
   });
+
+  const tree = summaryData?.tree || [];
+
+  const revenueTree = useMemo(() => pruneZeroNodes(filterTreeByType(tree, 'revenue')), [tree]);
+  const expenseTree = useMemo(() => pruneZeroNodes(filterTreeByType(tree, 'expense')), [tree]);
+
+  const totalRevenue = useMemo(() => sumLedgerBalances(revenueTree), [revenueTree]);
+  const totalExpenses = useMemo(() => sumLedgerBalances(expenseTree), [expenseTree]);
+  const netProfit = totalRevenue - totalExpenses;
+  const isProfit = netProfit >= 0;
 
   const currentPeriodLabel = (() => {
     if (dateMode === "custom" && isCustomValid) {
@@ -111,114 +148,31 @@ export default function ProfitLossPage() {
     return `Apr ${fyStart} \u2013 Mar ${fyStart + 1}`;
   })();
 
-  const revenueAccounts = accounts
-    .filter(a => a.accountType === "revenue")
-    .filter(a => (Number(a.currentBalance) || 0) !== 0)
-    .sort((a, b) => a.code.localeCompare(b.code));
-
-  const expenseAccounts = accounts
-    .filter(a => a.accountType === "expense")
-    .filter(a => (Number(a.currentBalance) || 0) !== 0)
-    .sort((a, b) => a.code.localeCompare(b.code));
-
-  function getBalance(account: ChartAccount): number {
-    return Number(account.currentBalance) || 0;
-  }
-
-  function groupBySubType(accs: ChartAccount[], order: string[]) {
-    const grouped: { subType: string; label: string; accounts: ChartAccount[]; total: number }[] = [];
-    const seen = new Set<string>();
-
-    for (const st of order) {
-      const matching = accs.filter(a => (a.subType || "other") === st);
-      if (matching.length > 0) {
-        seen.add(st);
-        const total = matching.reduce((sum, a) => sum + getBalance(a), 0);
-        const apiLabel = matching[0]?.subTypeLabel;
-        grouped.push({ subType: st, label: apiLabel || SUB_TYPE_LABELS[st] || st.replace(/_/g, " "), accounts: matching, total });
-      }
-    }
-
-    const remaining = accs.filter(a => !seen.has(a.subType || "other"));
-    if (remaining.length > 0) {
-      const total = remaining.reduce((sum, a) => sum + getBalance(a), 0);
-      const apiLabel = remaining[0]?.subTypeLabel;
-      grouped.push({ subType: "uncategorized", label: apiLabel || "Other", accounts: remaining, total });
-    }
-
-    return grouped;
-  }
-
-  const revenueGroups = groupBySubType(revenueAccounts, REVENUE_SUB_ORDER);
-  const expenseGroups = groupBySubType(expenseAccounts, EXPENSE_SUB_ORDER);
-
-  const totalRevenue = revenueAccounts.reduce((sum, a) => sum + getBalance(a), 0);
-  const totalExpenses = expenseAccounts.reduce((sum, a) => sum + getBalance(a), 0);
-  const netProfit = totalRevenue - totalExpenses;
-  const isProfit = netProfit >= 0;
-
-  const grossRevenue = revenueGroups.find(g => ["operating", "direct_income"].includes(g.subType))?.total || totalRevenue;
-  const cogs = expenseGroups.find(g => g.subType === "direct")?.total || 0;
-  const grossProfit = grossRevenue - cogs;
-
-  function handleExcelDownload() {
-    const fmtRupees = (paise: number) => paise === 0 ? 0 : Number((paise / 100).toFixed(2));
-    const data: (string | number | null)[][] = [
-      ["KINTO Smart Ops - Profit & Loss Statement"],
-      [currentPeriodLabel],
-      [],
-      ["Code", "Account Name", "Category", "Amount (Rs.)"],
-      [],
-      ["REVENUE", "", "", ""],
-    ];
-
-    for (const group of revenueGroups) {
-      if (group.accounts.length > 1) {
-        data.push(["", group.label, "", ""]);
-      }
-      for (const account of group.accounts) {
-        const bal = getBalance(account);
-        data.push([account.code, account.name, group.label, bal !== 0 ? fmtRupees(bal) : 0]);
-      }
-      if (group.accounts.length > 1) {
-        data.push(["", `Subtotal - ${group.label}`, "", fmtRupees(group.total)]);
-      }
-    }
-    data.push(["", "Total Revenue", "", fmtRupees(totalRevenue)]);
-    data.push([]);
-    data.push(["EXPENSES", "", "", ""]);
-
-    for (const group of expenseGroups) {
-      if (group.accounts.length > 1) {
-        data.push(["", group.label, "", ""]);
-      }
-      for (const account of group.accounts) {
-        const bal = getBalance(account);
-        data.push([account.code, account.name, group.label, bal !== 0 ? fmtRupees(bal) : 0]);
-      }
-      if (group.accounts.length > 1) {
-        data.push(["", `Subtotal - ${group.label}`, "", fmtRupees(group.total)]);
-      }
-    }
-    data.push(["", "Total Expenses", "", fmtRupees(totalExpenses)]);
-
-    if (grossProfit !== netProfit) {
-      data.push([]);
-      data.push(["", "Gross Profit", "", fmtRupees(grossProfit)]);
-    }
-
-    data.push([]);
-    data.push(["", `Net ${isProfit ? "Profit" : "Loss"}`, "", fmtRupees(netProfit)]);
-
-    exportToExcel({
-      filename: `Profit_Loss_${currentPeriodLabel.replace(/[^a-zA-Z0-9]/g, "_")}.xlsx`,
-      sheets: [{ name: "Profit & Loss", data }],
+  function toggleNode(id: string) {
+    setExpandedNodes(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
     });
   }
 
-  function handleAccountClick(account: ChartAccount) {
+  function expandAll() {
+    const allIds = [
+      ...collectAllGroupIds(revenueTree),
+      ...collectAllGroupIds(expenseTree),
+    ];
+    setExpandedNodes(new Set(allIds));
+  }
+
+  function collapseAll() {
+    setExpandedNodes(new Set());
+  }
+
+  function handleAccountClick(node: TreeNode) {
+    if (node.nodeType === 'group') return;
     const params = new URLSearchParams();
-    params.set("accountId", account.id);
+    params.set("accountId", node.id);
     if (dateMode === "custom" && isCustomValid) {
       params.set("dateFrom", customFrom);
       params.set("dateTo", customTo);
@@ -233,6 +187,44 @@ export default function ProfitLossPage() {
     params.set("tbReturn", plReturnParams);
     params.set("returnTo", "profit-loss");
     setLocation(`/journal-entries?${params.toString()}`);
+  }
+
+  function handleExcelDownload() {
+    const fmtRupees = (paise: number) => paise === 0 ? 0 : Number((paise / 100).toFixed(2));
+    const data: (string | number | null)[][] = [
+      ["KINTO Smart Ops - Profit & Loss Statement"],
+      [currentPeriodLabel],
+      [],
+      ["Code", "Account Name", "Amount (Rs.)"],
+      [],
+      ["REVENUE", "", ""],
+    ];
+
+    function addTreeRows(nodes: TreeNode[], indent: number) {
+      for (const node of nodes) {
+        const prefix = "  ".repeat(indent);
+        if (node.nodeType === 'group') {
+          data.push([node.code, `${prefix}${node.name}`, fmtRupees(node.closingBalance)]);
+          addTreeRows(node.children, indent + 1);
+        } else {
+          data.push([node.code, `${prefix}${node.name}`, fmtRupees(node.closingBalance)]);
+        }
+      }
+    }
+
+    addTreeRows(revenueTree, 1);
+    data.push(["", "Total Revenue", fmtRupees(totalRevenue)]);
+    data.push([]);
+    data.push(["EXPENSES", "", ""]);
+    addTreeRows(expenseTree, 1);
+    data.push(["", "Total Expenses", fmtRupees(totalExpenses)]);
+    data.push([]);
+    data.push(["", `Net ${isProfit ? "Profit" : "Loss"}`, fmtRupees(netProfit)]);
+
+    exportToExcel({
+      filename: `Profit_Loss_${currentPeriodLabel.replace(/[^a-zA-Z0-9]/g, "_")}.xlsx`,
+      sheets: [{ name: "Profit & Loss", data }],
+    });
   }
 
   if (isLoading) {
@@ -284,6 +276,13 @@ export default function ProfitLossPage() {
               <Columns2 className="w-4 h-4 mr-1" /> T-Format
             </Button>
           </div>
+
+          <Button variant="outline" size="sm" onClick={expandAll} data-testid="button-expand-all">
+            <Expand className="w-4 h-4 mr-1" /> Expand All
+          </Button>
+          <Button variant="outline" size="sm" onClick={collapseAll} data-testid="button-collapse-all">
+            <Shrink className="w-4 h-4 mr-1" /> Collapse All
+          </Button>
 
           <Select value={dateMode} onValueChange={(v) => setDateMode(v as "fy" | "custom")}>
             <SelectTrigger className="w-[120px]" data-testid="select-date-mode">
@@ -376,26 +375,26 @@ export default function ProfitLossPage() {
 
       {viewMode === "tally" ? (
         <TallyView
-          revenueGroups={revenueGroups}
-          expenseGroups={expenseGroups}
+          revenueTree={revenueTree}
+          expenseTree={expenseTree}
           totalRevenue={totalRevenue}
           totalExpenses={totalExpenses}
-          grossProfit={grossProfit}
           netProfit={netProfit}
           isProfit={isProfit}
-          getBalance={getBalance}
+          expandedNodes={expandedNodes}
+          toggleNode={toggleNode}
           onAccountClick={handleAccountClick}
         />
       ) : (
         <VerticalView
-          revenueGroups={revenueGroups}
-          expenseGroups={expenseGroups}
+          revenueTree={revenueTree}
+          expenseTree={expenseTree}
           totalRevenue={totalRevenue}
           totalExpenses={totalExpenses}
-          grossProfit={grossProfit}
           netProfit={netProfit}
           isProfit={isProfit}
-          getBalance={getBalance}
+          expandedNodes={expandedNodes}
+          toggleNode={toggleNode}
           onAccountClick={handleAccountClick}
         />
       )}
@@ -410,18 +409,91 @@ export default function ProfitLossPage() {
 }
 
 interface ViewProps {
-  revenueGroups: { subType: string; label: string; accounts: ChartAccount[]; total: number }[];
-  expenseGroups: { subType: string; label: string; accounts: ChartAccount[]; total: number }[];
+  revenueTree: TreeNode[];
+  expenseTree: TreeNode[];
   totalRevenue: number;
   totalExpenses: number;
-  grossProfit: number;
   netProfit: number;
   isProfit: boolean;
-  getBalance: (a: ChartAccount) => number;
-  onAccountClick: (a: ChartAccount) => void;
+  expandedNodes: Set<string>;
+  toggleNode: (id: string) => void;
+  onAccountClick: (node: TreeNode) => void;
 }
 
-function VerticalView({ revenueGroups, expenseGroups, totalRevenue, totalExpenses, grossProfit, netProfit, isProfit, getBalance, onAccountClick }: ViewProps) {
+function TreeRows({ nodes, depth, expandedNodes, toggleNode, onAccountClick }: {
+  nodes: TreeNode[];
+  depth: number;
+  expandedNodes: Set<string>;
+  toggleNode: (id: string) => void;
+  onAccountClick: (node: TreeNode) => void;
+}) {
+  return (
+    <>
+      {nodes.map(node => {
+        const isGroup = node.nodeType === 'group';
+        const isExpanded = expandedNodes.has(node.id);
+        const hasChildren = isGroup && node.children.length > 0;
+        const paddingLeft = 16 + depth * 20;
+
+        return (
+          <tr key={node.id} data-testid={`row-pl-${node.code}`}>
+            <td colSpan={2}>
+              <div
+                className={`flex items-center justify-between px-4 py-1.5 ${
+                  isGroup
+                    ? 'font-medium cursor-pointer hover-elevate'
+                    : 'cursor-pointer hover-elevate group'
+                }`}
+                style={{ paddingLeft: `${paddingLeft}px` }}
+                onClick={() => isGroup ? (hasChildren && toggleNode(node.id)) : onAccountClick(node)}
+              >
+                <div className="flex items-center gap-1.5 min-w-0">
+                  {isGroup ? (
+                    <>
+                      {hasChildren && (isExpanded
+                        ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                        : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                      )}
+                      <span className="text-xs text-muted-foreground font-mono shrink-0">{node.code}</span>
+                      <span className="truncate">{node.name}</span>
+                      {hasChildren && (
+                        <span className="text-xs text-muted-foreground">({node.children.length})</span>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono shrink-0">{node.code}</code>
+                      <span className="truncate group-hover:underline underline-offset-2">{node.name}</span>
+                      <ExternalLink className="w-3 h-3 text-muted-foreground shrink-0 invisible group-hover:visible" />
+                    </>
+                  )}
+                </div>
+                <div className={`font-mono tabular-nums whitespace-nowrap text-right ${isGroup ? 'font-medium' : ''}`}>
+                  {formatAmount(node.closingBalance)}
+                </div>
+              </div>
+              {isGroup && isExpanded && hasChildren && (
+                <table className="w-full">
+                  <tbody>
+                    <TreeRows
+                      nodes={node.children}
+                      depth={depth + 1}
+                      expandedNodes={expandedNodes}
+                      toggleNode={toggleNode}
+                      onAccountClick={onAccountClick}
+                    />
+                  </tbody>
+                </table>
+              )}
+            </td>
+          </tr>
+        );
+      })}
+    </>
+  );
+}
+
+function VerticalView({ revenueTree, expenseTree, totalRevenue, totalExpenses, netProfit, isProfit, expandedNodes, toggleNode, onAccountClick }: ViewProps) {
   return (
     <Card>
       <div className="overflow-x-auto">
@@ -437,9 +509,7 @@ function VerticalView({ revenueGroups, expenseGroups, totalRevenue, totalExpense
               <td className="px-4 py-2.5 font-semibold uppercase text-xs tracking-wide" colSpan={2}>Revenue</td>
             </tr>
 
-            {revenueGroups.map(group => (
-              <SubTypeSection key={group.subType} group={group} getBalance={getBalance} onAccountClick={onAccountClick} />
-            ))}
+            <TreeRows nodes={revenueTree} depth={1} expandedNodes={expandedNodes} toggleNode={toggleNode} onAccountClick={onAccountClick} />
 
             <tr className="border-t-2 bg-muted/30 font-semibold">
               <td className="px-4 py-2.5">Total Revenue</td>
@@ -454,9 +524,7 @@ function VerticalView({ revenueGroups, expenseGroups, totalRevenue, totalExpense
               <td className="px-4 py-2.5 font-semibold uppercase text-xs tracking-wide" colSpan={2}>Expenses</td>
             </tr>
 
-            {expenseGroups.map(group => (
-              <SubTypeSection key={group.subType} group={group} getBalance={getBalance} onAccountClick={onAccountClick} />
-            ))}
+            <TreeRows nodes={expenseTree} depth={1} expandedNodes={expandedNodes} toggleNode={toggleNode} onAccountClick={onAccountClick} />
 
             <tr className="border-t-2 bg-muted/30 font-semibold">
               <td className="px-4 py-2.5">Total Expenses</td>
@@ -464,18 +532,6 @@ function VerticalView({ revenueGroups, expenseGroups, totalRevenue, totalExpense
                 {formatAmount(totalExpenses)}
               </td>
             </tr>
-
-            {grossProfit !== netProfit && (
-              <>
-                <tr className="h-2" />
-                <tr className="border-t bg-muted/20">
-                  <td className="px-4 py-2 text-muted-foreground">Gross Profit</td>
-                  <td className="text-right px-4 py-2 font-mono tabular-nums text-muted-foreground whitespace-nowrap">
-                    {formatAmount(grossProfit)}
-                  </td>
-                </tr>
-              </>
-            )}
 
             <tr className="h-2" />
 
@@ -494,7 +550,7 @@ function VerticalView({ revenueGroups, expenseGroups, totalRevenue, totalExpense
   );
 }
 
-function TallyView({ revenueGroups, expenseGroups, totalRevenue, totalExpenses, grossProfit, netProfit, isProfit, getBalance, onAccountClick }: ViewProps) {
+function TallyView({ revenueTree, expenseTree, totalRevenue, totalExpenses, netProfit, isProfit, expandedNodes, toggleNode, onAccountClick }: ViewProps) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-3" data-testid="table-profit-loss-tally">
       <Card>
@@ -508,9 +564,7 @@ function TallyView({ revenueGroups, expenseGroups, totalRevenue, totalExpenses, 
               </tr>
             </thead>
             <tbody>
-              {revenueGroups.map(group => (
-                <TallySubTypeSection key={group.subType} group={group} getBalance={getBalance} onAccountClick={onAccountClick} />
-              ))}
+              <TreeRows nodes={revenueTree} depth={0} expandedNodes={expandedNodes} toggleNode={toggleNode} onAccountClick={onAccountClick} />
 
               <tr className="border-t-2 bg-muted/30 font-semibold">
                 <td className="px-4 py-2.5">Total Revenue</td>
@@ -518,15 +572,6 @@ function TallyView({ revenueGroups, expenseGroups, totalRevenue, totalExpenses, 
                   {formatAmount(totalRevenue)}
                 </td>
               </tr>
-
-              {grossProfit !== netProfit && (
-                <tr className="border-t bg-muted/10">
-                  <td className="px-4 py-2 text-muted-foreground text-xs">Gross Profit</td>
-                  <td className="text-right px-4 py-2 font-mono tabular-nums text-muted-foreground text-xs whitespace-nowrap">
-                    {formatAmount(grossProfit)}
-                  </td>
-                </tr>
-              )}
 
               {!isProfit && (
                 <tr className="bg-red-50/50 dark:bg-red-950/20">
@@ -539,7 +584,7 @@ function TallyView({ revenueGroups, expenseGroups, totalRevenue, totalExpenses, 
 
               <tr className={`border-t-2 font-bold ${isProfit ? "bg-green-50/80 dark:bg-green-950/30" : "bg-muted/30"}`}>
                 <td className="px-4 py-3">Grand Total</td>
-                <td className={`text-right px-4 py-3 font-mono tabular-nums whitespace-nowrap`}>
+                <td className="text-right px-4 py-3 font-mono tabular-nums whitespace-nowrap">
                   {formatAmount(isProfit ? totalRevenue : totalRevenue + Math.abs(netProfit))}
                 </td>
               </tr>
@@ -559,9 +604,7 @@ function TallyView({ revenueGroups, expenseGroups, totalRevenue, totalExpenses, 
               </tr>
             </thead>
             <tbody>
-              {expenseGroups.map(group => (
-                <TallySubTypeSection key={group.subType} group={group} getBalance={getBalance} onAccountClick={onAccountClick} />
-              ))}
+              <TreeRows nodes={expenseTree} depth={0} expandedNodes={expandedNodes} toggleNode={toggleNode} onAccountClick={onAccountClick} />
 
               <tr className="border-t-2 bg-muted/30 font-semibold">
                 <td className="px-4 py-2.5">Total Expenses</td>
@@ -581,7 +624,7 @@ function TallyView({ revenueGroups, expenseGroups, totalRevenue, totalExpenses, 
 
               <tr className={`border-t-2 font-bold ${isProfit ? "bg-muted/30" : "bg-red-50/80 dark:bg-red-950/30"}`}>
                 <td className="px-4 py-3">Grand Total</td>
-                <td className={`text-right px-4 py-3 font-mono tabular-nums whitespace-nowrap`}>
+                <td className="text-right px-4 py-3 font-mono tabular-nums whitespace-nowrap">
                   {formatAmount(isProfit ? totalExpenses + netProfit : totalExpenses)}
                 </td>
               </tr>
@@ -590,95 +633,5 @@ function TallyView({ revenueGroups, expenseGroups, totalRevenue, totalExpenses, 
         </div>
       </Card>
     </div>
-  );
-}
-
-function SubTypeSection({ group, getBalance, onAccountClick }: {
-  group: { subType: string; label: string; accounts: ChartAccount[]; total: number };
-  getBalance: (a: ChartAccount) => number;
-  onAccountClick: (a: ChartAccount) => void;
-}) {
-  return (
-    <>
-      {group.accounts.length > 1 && (
-        <tr className="bg-muted/10">
-          <td className="px-4 py-1.5 pl-6 text-xs font-medium text-muted-foreground uppercase tracking-wide">{group.label}</td>
-          <td></td>
-        </tr>
-      )}
-      {group.accounts.map(account => {
-        const bal = getBalance(account);
-        return (
-          <tr
-            key={account.id}
-            className="border-b hover-elevate cursor-pointer group"
-            onClick={() => onAccountClick(account)}
-            data-testid={`row-pl-${account.code}`}
-          >
-            <td className="px-4 py-2 pl-8">
-              <div className="flex items-center gap-2">
-                <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono shrink-0">{account.code}</code>
-                <span className="truncate group-hover:underline underline-offset-2">{account.name}</span>
-                <ExternalLink className="w-3 h-3 text-muted-foreground shrink-0 invisible group-hover:visible" />
-              </div>
-            </td>
-            <td className="text-right px-4 py-2 font-mono tabular-nums whitespace-nowrap">
-              {bal !== 0 ? formatAmount(bal) : "-"}
-            </td>
-          </tr>
-        );
-      })}
-      {group.accounts.length > 1 && (
-        <tr className="border-b bg-muted/5">
-          <td className="px-4 py-1.5 pl-8 text-xs text-muted-foreground">Subtotal - {group.label}</td>
-          <td className="text-right px-4 py-1.5 font-mono tabular-nums text-xs text-muted-foreground whitespace-nowrap">
-            {formatAmount(group.total)}
-          </td>
-        </tr>
-      )}
-    </>
-  );
-}
-
-function TallySubTypeSection({ group, getBalance, onAccountClick }: {
-  group: { subType: string; label: string; accounts: ChartAccount[]; total: number };
-  getBalance: (a: ChartAccount) => number;
-  onAccountClick: (a: ChartAccount) => void;
-}) {
-  return (
-    <>
-      {group.accounts.length > 1 && (
-        <tr className="bg-muted/10">
-          <td className="px-4 py-1.5 pl-5 text-xs font-medium text-muted-foreground uppercase tracking-wide">{group.label}</td>
-          <td></td>
-        </tr>
-      )}
-      {group.accounts.map(account => {
-        const bal = getBalance(account);
-        return (
-          <tr
-            key={account.id}
-            className="border-b hover-elevate cursor-pointer group"
-            onClick={() => onAccountClick(account)}
-            data-testid={`row-tally-${account.code}`}
-          >
-            <td className="px-4 py-1.5 pl-7">
-              <span className="truncate group-hover:underline underline-offset-2 text-sm">{account.name}</span>
-            </td>
-            <td className="text-right px-4 py-1.5 font-mono tabular-nums whitespace-nowrap text-sm">
-              {bal !== 0 ? formatAmount(bal) : "-"}
-            </td>
-          </tr>
-        );
-      })}
-      {group.accounts.length > 1 && (
-        <tr className="border-b bg-muted/5">
-          <td className="px-4 py-1 pl-7 text-xs text-muted-foreground">Subtotal</td>
-          <td className="text-right px-4 py-1 font-mono tabular-nums text-xs text-muted-foreground whitespace-nowrap">
-            {formatAmount(group.total)}
-          </td>
-        </tr>
-      )}
-    </>
   );
 }

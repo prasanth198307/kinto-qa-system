@@ -1,25 +1,30 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation, useSearch } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Printer, ExternalLink, Scale, Download } from "lucide-react";
+import { Calendar, Printer, ExternalLink, Scale, Download, ChevronDown, ChevronRight, Expand, Shrink } from "lucide-react";
 import { exportToExcel } from "@/lib/excel-export";
 
-interface ChartAccount {
+interface TreeNode {
   id: string;
   code: string;
   name: string;
   accountType: string;
-  subType: string | null;
-  subTypeLabel: string | null;
+  nodeType: string;
+  level: number;
+  parentId: string | null;
   openingBalance: number;
   periodDebit: number;
   periodCredit: number;
-  periodMovement: number;
-  currentBalance: number;
+  closingBalance: number;
+  children: TreeNode[];
+}
+
+interface GroupSummaryResponse {
+  tree: TreeNode[];
 }
 
 function getCurrentFY(): string {
@@ -57,32 +62,43 @@ function formatDateDisplay(dateStr: string): string {
   }
 }
 
-const ASSET_SUB_ORDER = ["current_asset", "bank", "cash", "fixed_asset", "trade_receivable", "inventory", "gst_input"];
-const LIABILITY_SUB_ORDER = ["trade_payable", "advance_liability", "advance_received", "current_liability", "gst", "statutory", "tax_payable", "loan", "long_term_liability"];
-const EQUITY_SUB_ORDER = ["capital", "retained", "reserves", "drawings"];
+function collectAllGroupIds(nodes: TreeNode[]): string[] {
+  const ids: string[] = [];
+  for (const node of nodes) {
+    if (node.nodeType === 'group') {
+      ids.push(node.id);
+      ids.push(...collectAllGroupIds(node.children));
+    }
+  }
+  return ids;
+}
 
-const SUB_TYPE_LABELS: Record<string, string> = {
-  current_asset: "Current Assets",
-  bank: "Bank Accounts",
-  cash: "Cash-in-Hand",
-  fixed_asset: "Fixed Assets",
-  trade_receivable: "Sundry Debtors",
-  inventory: "Stock-in-Hand",
-  gst_input: "Duties & Taxes (Input)",
-  trade_payable: "Sundry Creditors",
-  advance_liability: "Advance from Customers",
-  advance_received: "Advance Received",
-  current_liability: "Current Liabilities",
-  gst: "Duties & Taxes (GST)",
-  statutory: "Statutory Liabilities",
-  tax_payable: "Tax Payable",
-  loan: "Secured Loans",
-  long_term_liability: "Long-term Liabilities",
-  capital: "Capital Account",
-  retained: "Profit & Loss A/c",
-  reserves: "Reserves & Surplus",
-  drawings: "Drawings Account",
-};
+function filterTreeByType(tree: TreeNode[], accountType: string): TreeNode[] {
+  return tree.filter(n => n.accountType === accountType);
+}
+
+function hasNonZeroBalance(node: TreeNode): boolean {
+  if (node.nodeType === 'ledger') return node.closingBalance !== 0;
+  return node.children.some(hasNonZeroBalance);
+}
+
+function pruneZeroNodes(nodes: TreeNode[]): TreeNode[] {
+  return nodes
+    .filter(hasNonZeroBalance)
+    .map(n => n.nodeType === 'group' ? { ...n, children: pruneZeroNodes(n.children) } : n);
+}
+
+function sumLedgerBalances(nodes: TreeNode[]): number {
+  let total = 0;
+  for (const node of nodes) {
+    if (node.nodeType === 'ledger') {
+      total += node.closingBalance;
+    } else {
+      total += sumLedgerBalances(node.children);
+    }
+  }
+  return total;
+}
 
 export default function BalanceSheetPage() {
   const searchString = useSearch();
@@ -96,20 +112,39 @@ export default function BalanceSheetPage() {
   const [selectedFY, setSelectedFY] = useState(urlFy || getCurrentFY());
   const [customFrom, setCustomFrom] = useState(urlFrom || "");
   const [customTo, setCustomTo] = useState(urlTo || "");
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const [, setLocation] = useLocation();
 
   const isCustomValid = dateMode === "custom" && customFrom && customTo && customFrom <= customTo;
 
-  const apiQueryParams = (() => {
+  const { fromDate, toDate } = (() => {
     if (dateMode === "custom" && isCustomValid) {
-      return `fromDate=${customFrom}&toDate=${customTo}`;
+      return { fromDate: customFrom, toDate: customTo };
     }
-    return `fy=${selectedFY}`;
+    const dates = getFYDates(selectedFY);
+    return { fromDate: dates.start, toDate: dates.end };
   })();
 
-  const { data: accounts = [], isLoading } = useQuery<ChartAccount[]>({
-    queryKey: [`/api/chart-of-accounts?${apiQueryParams}`],
+  const { data: summaryData, isLoading } = useQuery<GroupSummaryResponse>({
+    queryKey: [`/api/group-summary?fromDate=${fromDate}&toDate=${toDate}`],
   });
+
+  const tree = summaryData?.tree || [];
+
+  const assetTree = useMemo(() => pruneZeroNodes(filterTreeByType(tree, 'asset')), [tree]);
+  const liabilityTree = useMemo(() => pruneZeroNodes(filterTreeByType(tree, 'liability')), [tree]);
+  const equityTree = useMemo(() => pruneZeroNodes(filterTreeByType(tree, 'equity')), [tree]);
+  const revenueTree = useMemo(() => filterTreeByType(tree, 'revenue'), [tree]);
+  const expenseTree = useMemo(() => filterTreeByType(tree, 'expense'), [tree]);
+
+  const totalAssets = useMemo(() => sumLedgerBalances(assetTree), [assetTree]);
+  const totalLiabilities = useMemo(() => sumLedgerBalances(liabilityTree), [liabilityTree]);
+  const totalEquity = useMemo(() => sumLedgerBalances(equityTree), [equityTree]);
+  const totalRevenue = useMemo(() => sumLedgerBalances(revenueTree), [revenueTree]);
+  const totalExpenses = useMemo(() => sumLedgerBalances(expenseTree), [expenseTree]);
+  const netProfitLoss = totalRevenue - totalExpenses;
+  const totalLiabilitiesAndEquity = totalLiabilities + totalEquity + netProfitLoss;
+  const isBalanced = Math.abs(totalAssets - totalLiabilitiesAndEquity) < 1;
 
   const currentPeriodLabel = (() => {
     if (dateMode === "custom" && isCustomValid) {
@@ -126,128 +161,32 @@ export default function BalanceSheetPage() {
     return getFYLabel(selectedFY);
   })();
 
-  const revenueAccounts = accounts.filter(a => a.accountType === "revenue");
-  const expenseAccounts = accounts.filter(a => a.accountType === "expense");
-  const totalRevenue = revenueAccounts.reduce((sum, a) => sum + (Number(a.currentBalance) || 0), 0);
-  const totalExpenses = expenseAccounts.reduce((sum, a) => sum + (Number(a.currentBalance) || 0), 0);
-  const netProfitLoss = totalRevenue - totalExpenses;
-
-  const assetAccounts = accounts
-    .filter(a => a.accountType === "asset")
-    .sort((a, b) => a.code.localeCompare(b.code));
-
-  const liabilityAccounts = accounts
-    .filter(a => a.accountType === "liability")
-    .sort((a, b) => a.code.localeCompare(b.code));
-
-  const equityAccounts = accounts
-    .filter(a => a.accountType === "equity")
-    .sort((a, b) => a.code.localeCompare(b.code));
-
-  function getBalance(account: ChartAccount): number {
-    return Number(account.currentBalance) || 0;
-  }
-
-  function getNormalBalance(account: ChartAccount): number {
-    return getBalance(account);
-  }
-
-  function groupBySubType(accs: ChartAccount[], order: string[]) {
-    const grouped: { subType: string; label: string; accounts: ChartAccount[]; total: number }[] = [];
-    const seen = new Set<string>();
-
-    for (const st of order) {
-      const matching = accs.filter(a => (a.subType || "other") === st);
-      if (matching.length > 0) {
-        seen.add(st);
-        const total = matching.reduce((sum, a) => sum + getNormalBalance(a), 0);
-        const apiLabel = matching[0]?.subTypeLabel;
-        grouped.push({ subType: st, label: apiLabel || SUB_TYPE_LABELS[st] || st.replace(/_/g, " "), accounts: matching, total });
-      }
-    }
-
-    const remaining = accs.filter(a => !seen.has(a.subType || "other"));
-    if (remaining.length > 0) {
-      const total = remaining.reduce((sum, a) => sum + getNormalBalance(a), 0);
-      const apiLabel = remaining[0]?.subTypeLabel;
-      grouped.push({ subType: "other", label: apiLabel || "Other", accounts: remaining, total });
-    }
-
-    return grouped;
-  }
-
-  const assetGroups = groupBySubType(assetAccounts, ASSET_SUB_ORDER);
-  const liabilityGroups = groupBySubType(liabilityAccounts, LIABILITY_SUB_ORDER);
-  const equityGroups = groupBySubType(equityAccounts, EQUITY_SUB_ORDER);
-
-  const totalAssets = assetAccounts.reduce((sum, a) => sum + getNormalBalance(a), 0);
-  const totalLiabilities = liabilityAccounts.reduce((sum, a) => sum + getNormalBalance(a), 0);
-  const totalEquity = equityAccounts.reduce((sum, a) => sum + getNormalBalance(a), 0);
-  const totalLiabilitiesAndEquity = totalLiabilities + totalEquity + netProfitLoss;
-
-  const isBalanced = Math.abs(totalAssets - totalLiabilitiesAndEquity) < 1;
-
-  function handleExcelDownload() {
-    const fmtRupees = (paise: number) => paise === 0 ? 0 : Number((paise / 100).toFixed(2));
-    const data: (string | number | null)[][] = [
-      ["KINTO Smart Ops - Balance Sheet"],
-      [`${currentPeriodLabel} (${periodSubLabel})`],
-      [],
-      ["Code", "Account Name", "Category", "Amount (Rs.)"],
-      [],
-      ["ASSETS", "", "", ""],
-    ];
-
-    for (const group of assetGroups) {
-      const visibleAccounts = group.accounts.filter(a => getNormalBalance(a) !== 0);
-      if (visibleAccounts.length === 0) continue;
-      data.push(["", group.label, "", ""]);
-      for (const account of visibleAccounts) {
-        data.push([account.code, account.name, group.label, fmtRupees(getNormalBalance(account))]);
-      }
-      data.push(["", `Subtotal - ${group.label}`, "", fmtRupees(group.total)]);
-    }
-    data.push(["", "Total Assets", "", fmtRupees(totalAssets)]);
-
-    data.push([]);
-    data.push(["LIABILITIES", "", "", ""]);
-    for (const group of liabilityGroups) {
-      const visibleAccounts = group.accounts.filter(a => getNormalBalance(a) !== 0);
-      if (visibleAccounts.length === 0) continue;
-      data.push(["", group.label, "", ""]);
-      for (const account of visibleAccounts) {
-        data.push([account.code, account.name, group.label, fmtRupees(getNormalBalance(account))]);
-      }
-      data.push(["", `Subtotal - ${group.label}`, "", fmtRupees(group.total)]);
-    }
-    data.push(["", "Total Liabilities", "", fmtRupees(totalLiabilities)]);
-
-    data.push([]);
-    data.push(["EQUITY", "", "", ""]);
-    for (const group of equityGroups) {
-      const visibleAccounts = group.accounts.filter(a => getNormalBalance(a) !== 0);
-      if (visibleAccounts.length === 0) continue;
-      data.push(["", group.label, "", ""]);
-      for (const account of visibleAccounts) {
-        data.push([account.code, account.name, group.label, fmtRupees(getNormalBalance(account))]);
-      }
-      data.push(["", `Subtotal - ${group.label}`, "", fmtRupees(group.total)]);
-    }
-    data.push(["", `Current Period Net ${netProfitLoss >= 0 ? "Profit" : "Loss"}`, "", fmtRupees(netProfitLoss)]);
-    data.push(["", "Total Equity", "", fmtRupees(totalEquity + netProfitLoss)]);
-
-    data.push([]);
-    data.push(["", "Total Liabilities & Equity", "", fmtRupees(totalLiabilitiesAndEquity)]);
-
-    exportToExcel({
-      filename: `Balance_Sheet_${periodSubLabel.replace(/[^a-zA-Z0-9]/g, "_")}.xlsx`,
-      sheets: [{ name: "Balance Sheet", data }],
+  function toggleNode(id: string) {
+    setExpandedNodes(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
     });
   }
 
-  function handleAccountClick(account: ChartAccount) {
+  function expandAll() {
+    const allIds = [
+      ...collectAllGroupIds(assetTree),
+      ...collectAllGroupIds(liabilityTree),
+      ...collectAllGroupIds(equityTree),
+    ];
+    setExpandedNodes(new Set(allIds));
+  }
+
+  function collapseAll() {
+    setExpandedNodes(new Set());
+  }
+
+  function handleAccountClick(node: TreeNode) {
+    if (node.nodeType === 'group') return;
     const params = new URLSearchParams();
-    params.set("accountId", account.id);
+    params.set("accountId", node.id);
     if (dateMode === "custom" && isCustomValid) {
       params.set("dateFrom", customFrom);
       params.set("dateTo", customTo);
@@ -262,6 +201,50 @@ export default function BalanceSheetPage() {
     params.set("tbReturn", bsReturnParams);
     params.set("returnTo", "balance-sheet");
     setLocation(`/journal-entries?${params.toString()}`);
+  }
+
+  function handleExcelDownload() {
+    const fmtRupees = (paise: number) => paise === 0 ? 0 : Number((paise / 100).toFixed(2));
+    const data: (string | number | null)[][] = [
+      ["KINTO Smart Ops - Balance Sheet"],
+      [`${currentPeriodLabel} (${periodSubLabel})`],
+      [],
+      ["Code", "Account Name", "Amount (Rs.)"],
+      [],
+      ["ASSETS", "", ""],
+    ];
+
+    function addTreeRows(nodes: TreeNode[], indent: number) {
+      for (const node of nodes) {
+        const prefix = "  ".repeat(indent);
+        data.push([node.code, `${prefix}${node.name}`, fmtRupees(node.closingBalance)]);
+        if (node.nodeType === 'group') {
+          addTreeRows(node.children, indent + 1);
+        }
+      }
+    }
+
+    addTreeRows(assetTree, 1);
+    data.push(["", "Total Assets", fmtRupees(totalAssets)]);
+
+    data.push([]);
+    data.push(["LIABILITIES", "", ""]);
+    addTreeRows(liabilityTree, 1);
+    data.push(["", "Total Liabilities", fmtRupees(totalLiabilities)]);
+
+    data.push([]);
+    data.push(["EQUITY", "", ""]);
+    addTreeRows(equityTree, 1);
+    data.push(["", `Current Period Net ${netProfitLoss >= 0 ? "Profit" : "Loss"}`, fmtRupees(netProfitLoss)]);
+    data.push(["", "Total Equity", fmtRupees(totalEquity + netProfitLoss)]);
+
+    data.push([]);
+    data.push(["", "Total Liabilities & Equity", fmtRupees(totalLiabilitiesAndEquity)]);
+
+    exportToExcel({
+      filename: `Balance_Sheet_${periodSubLabel.replace(/[^a-zA-Z0-9]/g, "_")}.xlsx`,
+      sheets: [{ name: "Balance Sheet", data }],
+    });
   }
 
   if (isLoading) {
@@ -293,6 +276,13 @@ export default function BalanceSheetPage() {
           <p className="text-sm text-muted-foreground">{currentPeriodLabel} &middot; {periodSubLabel}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" size="sm" onClick={expandAll} data-testid="button-expand-all">
+            <Expand className="w-4 h-4 mr-1" /> Expand All
+          </Button>
+          <Button variant="outline" size="sm" onClick={collapseAll} data-testid="button-collapse-all">
+            <Shrink className="w-4 h-4 mr-1" /> Collapse All
+          </Button>
+
           <Select value={dateMode} onValueChange={(v) => setDateMode(v as "fy" | "custom")}>
             <SelectTrigger className="w-[150px]" data-testid="select-date-mode">
               <SelectValue />
@@ -400,9 +390,7 @@ export default function BalanceSheetPage() {
                 </tr>
               </thead>
               <tbody>
-                {assetGroups.map(group => (
-                  <AccountGroupSection key={group.subType} group={group} getNormalBalance={getNormalBalance} onAccountClick={handleAccountClick} />
-                ))}
+                <BSTreeRows nodes={assetTree} depth={0} expandedNodes={expandedNodes} toggleNode={toggleNode} onAccountClick={handleAccountClick} />
 
                 <tr className="border-t-2 bg-muted/30 font-semibold">
                   <td className="px-4 py-2.5">Total Assets</td>
@@ -430,9 +418,7 @@ export default function BalanceSheetPage() {
                 </tr>
               </thead>
               <tbody>
-                {liabilityGroups.map(group => (
-                  <AccountGroupSection key={group.subType} group={group} getNormalBalance={getNormalBalance} onAccountClick={handleAccountClick} />
-                ))}
+                <BSTreeRows nodes={liabilityTree} depth={0} expandedNodes={expandedNodes} toggleNode={toggleNode} onAccountClick={handleAccountClick} />
 
                 <tr className="border-t-2 bg-muted/30 font-semibold">
                   <td className="px-4 py-2.5">Total Liabilities</td>
@@ -449,9 +435,7 @@ export default function BalanceSheetPage() {
                   </td>
                 </tr>
 
-                {equityGroups.map(group => (
-                  <AccountGroupSection key={group.subType} group={group} getNormalBalance={getNormalBalance} onAccountClick={handleAccountClick} />
-                ))}
+                <BSTreeRows nodes={equityTree} depth={0} expandedNodes={expandedNodes} toggleNode={toggleNode} onAccountClick={handleAccountClick} />
 
                 <tr className="border-t bg-muted/20">
                   <td className="px-4 py-2 pl-8 italic text-muted-foreground">
@@ -492,40 +476,71 @@ export default function BalanceSheetPage() {
   );
 }
 
-function AccountGroupSection({ group, getNormalBalance, onAccountClick }: {
-  group: { subType: string; label: string; accounts: ChartAccount[]; total: number };
-  getNormalBalance: (a: ChartAccount) => number;
-  onAccountClick: (a: ChartAccount) => void;
+function BSTreeRows({ nodes, depth, expandedNodes, toggleNode, onAccountClick }: {
+  nodes: TreeNode[];
+  depth: number;
+  expandedNodes: Set<string>;
+  toggleNode: (id: string) => void;
+  onAccountClick: (node: TreeNode) => void;
 }) {
-  const visibleAccounts = group.accounts.filter(a => getNormalBalance(a) !== 0);
-  if (visibleAccounts.length === 0) return null;
-
   return (
     <>
-      <tr className="bg-muted/10">
-        <td className="px-4 py-1.5 pl-6 text-xs font-medium text-muted-foreground uppercase tracking-wide">{group.label}</td>
-        <td className="text-right px-4 py-1.5 text-xs font-medium font-mono tabular-nums text-muted-foreground whitespace-nowrap">
-          {formatAmount(group.total)}
-        </td>
-      </tr>
-      {visibleAccounts.map(account => {
-        const bal = getNormalBalance(account);
+      {nodes.map(node => {
+        const isGroup = node.nodeType === 'group';
+        const isExpanded = expandedNodes.has(node.id);
+        const hasChildren = isGroup && node.children.length > 0;
+        const paddingLeft = 16 + depth * 20;
+
         return (
-          <tr
-            key={account.id}
-            className="border-b hover-elevate cursor-pointer group"
-            onClick={() => onAccountClick(account)}
-            data-testid={`row-bs-${account.code}`}
-          >
-            <td className="px-4 py-2 pl-8">
-              <div className="flex items-center gap-2">
-                <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono shrink-0">{account.code}</code>
-                <span className="truncate group-hover:underline underline-offset-2">{account.name}</span>
-                <ExternalLink className="w-3 h-3 text-muted-foreground shrink-0 invisible group-hover:visible" />
+          <tr key={node.id} data-testid={`row-bs-${node.code}`}>
+            <td colSpan={2}>
+              <div
+                className={`flex items-center justify-between px-4 py-1.5 ${
+                  isGroup
+                    ? 'font-medium cursor-pointer hover-elevate'
+                    : 'cursor-pointer hover-elevate group'
+                }`}
+                style={{ paddingLeft: `${paddingLeft}px` }}
+                onClick={() => isGroup ? (hasChildren && toggleNode(node.id)) : onAccountClick(node)}
+              >
+                <div className="flex items-center gap-1.5 min-w-0">
+                  {isGroup ? (
+                    <>
+                      {hasChildren && (isExpanded
+                        ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                        : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                      )}
+                      <span className="text-xs text-muted-foreground font-mono shrink-0">{node.code}</span>
+                      <span className="truncate">{node.name}</span>
+                      {hasChildren && (
+                        <span className="text-xs text-muted-foreground">({node.children.length})</span>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono shrink-0">{node.code}</code>
+                      <span className="truncate group-hover:underline underline-offset-2">{node.name}</span>
+                      <ExternalLink className="w-3 h-3 text-muted-foreground shrink-0 invisible group-hover:visible" />
+                    </>
+                  )}
+                </div>
+                <div className={`font-mono tabular-nums whitespace-nowrap text-right ${isGroup ? 'font-medium' : ''}`}>
+                  {formatAmount(node.closingBalance)}
+                </div>
               </div>
-            </td>
-            <td className="text-right px-4 py-2 font-mono tabular-nums whitespace-nowrap">
-              {formatAmount(bal)}
+              {isGroup && isExpanded && hasChildren && (
+                <table className="w-full">
+                  <tbody>
+                    <BSTreeRows
+                      nodes={node.children}
+                      depth={depth + 1}
+                      expandedNodes={expandedNodes}
+                      toggleNode={toggleNode}
+                      onAccountClick={onAccountClick}
+                    />
+                  </tbody>
+                </table>
+              )}
             </td>
           </tr>
         );
