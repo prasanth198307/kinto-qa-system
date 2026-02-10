@@ -14,6 +14,7 @@ interface ChartAccount {
   name: string;
   accountType: string;
   subType: string | null;
+  subTypeLabel: string | null;
   openingBalance: number;
   periodDebit: number;
   periodCredit: number;

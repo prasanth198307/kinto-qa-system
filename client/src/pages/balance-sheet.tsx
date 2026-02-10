@@ -14,6 +14,7 @@ interface ChartAccount {
   name: string;
   accountType: string;
   subType: string | null;
+  subTypeLabel: string | null;
   openingBalance: number;
   periodDebit: number;
   periodCredit: number;
@@ -56,23 +57,31 @@ function formatDateDisplay(dateStr: string): string {
   }
 }
 
-const ASSET_SUB_ORDER = ["current_asset", "trade_receivable", "inventory", "gst_input"];
-const LIABILITY_SUB_ORDER = ["trade_payable", "advance_liability", "gst", "statutory", "loan"];
-const EQUITY_SUB_ORDER = ["capital", "retained", "drawings"];
+const ASSET_SUB_ORDER = ["current_asset", "bank", "cash", "fixed_asset", "trade_receivable", "inventory", "gst_input"];
+const LIABILITY_SUB_ORDER = ["trade_payable", "advance_liability", "advance_received", "current_liability", "gst", "statutory", "tax_payable", "loan", "long_term_liability"];
+const EQUITY_SUB_ORDER = ["capital", "retained", "reserves", "drawings"];
 
 const SUB_TYPE_LABELS: Record<string, string> = {
-  current_asset: "Cash & Bank",
-  trade_receivable: "Trade Receivables",
-  inventory: "Inventories",
-  gst_input: "GST Input Credit",
-  trade_payable: "Trade Payables",
+  current_asset: "Current Assets",
+  bank: "Bank Accounts",
+  cash: "Cash-in-Hand",
+  fixed_asset: "Fixed Assets",
+  trade_receivable: "Sundry Debtors",
+  inventory: "Stock-in-Hand",
+  gst_input: "Duties & Taxes (Input)",
+  trade_payable: "Sundry Creditors",
   advance_liability: "Advance from Customers",
-  gst: "GST Payable",
+  advance_received: "Advance Received",
+  current_liability: "Current Liabilities",
+  gst: "Duties & Taxes (GST)",
   statutory: "Statutory Liabilities",
-  loan: "Loans",
-  capital: "Capital",
-  retained: "Retained Earnings",
-  drawings: "Drawings",
+  tax_payable: "Tax Payable",
+  loan: "Secured Loans",
+  long_term_liability: "Long-term Liabilities",
+  capital: "Capital Account",
+  retained: "Profit & Loss A/c",
+  reserves: "Reserves & Surplus",
+  drawings: "Drawings Account",
 };
 
 export default function BalanceSheetPage() {
@@ -152,14 +161,16 @@ export default function BalanceSheetPage() {
       if (matching.length > 0) {
         seen.add(st);
         const total = matching.reduce((sum, a) => sum + getNormalBalance(a), 0);
-        grouped.push({ subType: st, label: SUB_TYPE_LABELS[st] || st.replace(/_/g, " "), accounts: matching, total });
+        const apiLabel = matching[0]?.subTypeLabel;
+        grouped.push({ subType: st, label: apiLabel || SUB_TYPE_LABELS[st] || st.replace(/_/g, " "), accounts: matching, total });
       }
     }
 
     const remaining = accs.filter(a => !seen.has(a.subType || "other"));
     if (remaining.length > 0) {
       const total = remaining.reduce((sum, a) => sum + getNormalBalance(a), 0);
-      grouped.push({ subType: "other", label: "Other", accounts: remaining, total });
+      const apiLabel = remaining[0]?.subTypeLabel;
+      grouped.push({ subType: "other", label: apiLabel || "Other", accounts: remaining, total });
     }
 
     return grouped;

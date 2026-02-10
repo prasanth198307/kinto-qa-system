@@ -58,6 +58,7 @@ interface VarianceItem {
   accountName: string;
   accountType: string;
   subType: string | null;
+  subTypeLabel: string | null;
   monthly: { month: string; budgeted: number; actual: number; variance: number }[];
   totalBudgeted: number;
   totalActual: number;

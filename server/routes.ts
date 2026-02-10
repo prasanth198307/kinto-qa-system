@@ -19755,6 +19755,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const accounts = await storage.getAllChartOfAccounts();
 
+      const allSubtypes = await db.select().from(accountSubtypes).where(eq(accountSubtypes.recordStatus, 1));
+      const subtypeIdMap = new Map(allSubtypes.map(s => [s.id, s]));
+
       const fyParam = req.query.fy as string | undefined;
       const fromDateParam = req.query.fromDate as string | undefined;
       const toDateParam = req.query.toDate as string | undefined;
@@ -19846,8 +19849,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           const closingBalance = openingBalance + periodMovement;
 
+          const stRecord = subtypeIdMap.get(account.subType || '');
           return {
             ...account,
+            subType: stRecord?.name || account.subType || 'other',
+            subTypeLabel: stRecord?.label || null,
             openingBalance,
             periodDebit: Number(period.totalDebit) || 0,
             periodCredit: Number(period.totalCredit) || 0,
@@ -19880,7 +19886,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } else {
             currentBalance = bal.totalCredit - bal.totalDebit;
           }
-          return { ...account, openingBalance: 0, periodDebit: Number(bal.totalDebit) || 0, periodCredit: Number(bal.totalCredit) || 0, periodMovement: currentBalance, currentBalance };
+          const stRec = subtypeIdMap.get(account.subType || '');
+          return { ...account, subType: stRec?.name || account.subType || 'other', subTypeLabel: stRec?.label || null, openingBalance: 0, periodDebit: Number(bal.totalDebit) || 0, periodCredit: Number(bal.totalCredit) || 0, periodMovement: currentBalance, currentBalance };
         });
 
         res.json(accountsWithBalances);
@@ -22372,6 +22379,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const fyStart = `${fy}-04-01`;
       const fyEnd = `${parseInt(fy) + 1}-03-31`;
       
+      const allSubtypesForBudget = await db.select().from(accountSubtypes).where(eq(accountSubtypes.recordStatus, 1));
+      const subtypeIdMapForBudget = new Map(allSubtypesForBudget.map(s => [s.id, s]));
+
       const items = await db.select({
         id: budgetItems.id,
         accountId: budgetItems.accountId,
@@ -22444,12 +22454,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const totalBudgeted = monthlyData.reduce((s, d) => s + d.budgeted, 0);
         const totalActual = monthlyData.reduce((s, d) => s + d.actual, 0);
         
+        const stRecBudget = subtypeIdMapForBudget.get(item.subType || '');
         return {
           accountId: item.accountId,
           accountCode: item.accountCode,
           accountName: item.accountName,
           accountType: item.accountType,
-          subType: item.subType,
+          subType: stRecBudget?.name || item.subType || 'other',
+          subTypeLabel: stRecBudget?.label || null,
           monthly: monthlyData,
           totalBudgeted,
           totalActual,

@@ -14,6 +14,7 @@ interface ChartAccount {
   name: string;
   accountType: string;
   subType: string | null;
+  subTypeLabel: string | null;
   openingBalance: number;
   periodDebit: number;
   periodCredit: number;
@@ -57,18 +58,20 @@ function formatDateDisplay(dateStr: string): string {
 }
 
 const REVENUE_SUB_ORDER = ["operating", "direct_income", "indirect_income", "other_income"];
-const EXPENSE_SUB_ORDER = ["direct", "manufacturing", "operating", "financial", "administrative", "adjustment", "other"];
+const EXPENSE_SUB_ORDER = ["direct", "direct_expense", "manufacturing", "operating", "indirect_expense", "financial", "administrative", "adjustment", "other"];
 
 const SUB_TYPE_LABELS: Record<string, string> = {
-  operating: "Operating Income",
+  operating: "Sales Accounts",
   direct_income: "Direct Income",
   indirect_income: "Indirect Income",
   other_income: "Other Income",
-  direct: "Cost of Goods / Direct Expenses",
+  direct: "Direct Expenses",
+  direct_expense: "Direct Expenses",
   manufacturing: "Manufacturing Expenses",
+  indirect_expense: "Indirect Expenses",
   financial: "Financial Expenses",
   administrative: "Administrative Expenses",
-  adjustment: "Adjustments",
+  adjustment: "Adjustment Entries",
   other: "Other Expenses",
 };
 
@@ -131,14 +134,16 @@ export default function ProfitLossPage() {
       if (matching.length > 0) {
         seen.add(st);
         const total = matching.reduce((sum, a) => sum + getBalance(a), 0);
-        grouped.push({ subType: st, label: SUB_TYPE_LABELS[st] || st.replace(/_/g, " "), accounts: matching, total });
+        const apiLabel = matching[0]?.subTypeLabel;
+        grouped.push({ subType: st, label: apiLabel || SUB_TYPE_LABELS[st] || st.replace(/_/g, " "), accounts: matching, total });
       }
     }
 
     const remaining = accs.filter(a => !seen.has(a.subType || "other"));
     if (remaining.length > 0) {
       const total = remaining.reduce((sum, a) => sum + getBalance(a), 0);
-      grouped.push({ subType: "uncategorized", label: "Other", accounts: remaining, total });
+      const apiLabel = remaining[0]?.subTypeLabel;
+      grouped.push({ subType: "uncategorized", label: apiLabel || "Other", accounts: remaining, total });
     }
 
     return grouped;
