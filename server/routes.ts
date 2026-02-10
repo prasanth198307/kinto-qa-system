@@ -22246,9 +22246,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         children: TreeNode[];
       }
 
+      const isBalanceSheetType = (type: string) => ['asset', 'liability', 'equity', 'Assets', 'Liabilities', 'Equity'].includes(type);
+
       const nodeMap = new Map<string, TreeNode>();
       for (const account of accounts) {
         const isDebitNatural = ['asset', 'Assets', 'expense', 'Expenses'].includes(account.accountType);
+        const isBsAccount = isBalanceSheetType(account.accountType);
         let openingBalance = 0;
         let periodDebit = 0;
         let periodCredit = 0;
@@ -22257,7 +22260,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (account.nodeType === 'ledger') {
           const opening = openingMap.get(account.id) || { debit: 0, credit: 0 };
           const period = movementMap.get(account.id) || { debit: 0, credit: 0 };
-          openingBalance = isDebitNatural ? (opening.debit - opening.credit) : (opening.credit - opening.debit);
+          if (isBsAccount) {
+            openingBalance = isDebitNatural ? (opening.debit - opening.credit) : (opening.credit - opening.debit);
+          }
           periodDebit = period.debit;
           periodCredit = period.credit;
           const periodNet = isDebitNatural ? (period.debit - period.credit) : (period.credit - period.debit);
