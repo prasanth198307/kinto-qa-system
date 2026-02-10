@@ -74,7 +74,7 @@ function formatDateDisplay(dateStr: string): string {
 }
 
 function isDebitNormal(type: string) {
-  return ["asset", "expense"].includes(type);
+  return ["asset", "expense", "Assets", "Expenses"].includes(type);
 }
 
 function getDebitCredit(accountType: string, balance: number): { debit: number; credit: number } {
