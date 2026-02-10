@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Upload, Search, Check, X, Edit2, ArrowUpDown, FileSpreadsheet, CheckSquare, RefreshCw, Building2, ArrowRight, Filter, Users, ChevronDown, ChevronUp, Link as LinkIcon, Unlink, ChevronsUpDown } from "lucide-react";
+import { groupAccountsByParent } from "@/lib/account-hierarchy";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -58,6 +59,9 @@ interface ChartAccount {
   name: string;
   accountType: string;
   subType: string;
+  nodeType?: string;
+  parentId?: string | null;
+  level?: number;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -717,7 +721,7 @@ export default function BankTransactionsPage() {
                   <SelectContent>
                     {bankAccounts.length > 0 ? bankAccounts.map(a => (
                       <SelectItem key={a.id} value={a.id}>{a.code} - {a.name}</SelectItem>
-                    )) : accounts.filter(a => a.accountType === 'asset').map(a => (
+                    )) : accounts.filter(a => a.nodeType !== 'group' && a.accountType === 'asset').map(a => (
                       <SelectItem key={a.id} value={a.id}>{a.code} - {a.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -829,13 +833,17 @@ export default function BankTransactionsPage() {
                             <Check className={`mr-2 h-4 w-4 ${editAccountId === 'none' || !editAccountId ? 'opacity-100' : 'opacity-0'}`} />
                             -- Not mapped --
                           </CommandItem>
-                          {accounts.map(a => (
-                            <CommandItem key={a.id} value={`${a.code} ${a.name}`} onSelect={() => { setEditAccountId(a.id); setAccountOpen(false); }}>
-                              <Check className={`mr-2 h-4 w-4 ${editAccountId === a.id ? 'opacity-100' : 'opacity-0'}`} />
-                              {a.code} - {a.name}
-                            </CommandItem>
-                          ))}
                         </CommandGroup>
+                        {groupAccountsByParent(accounts).map(group => (
+                          <CommandGroup key={group.label} heading={group.label}>
+                            {group.accounts.map(a => (
+                              <CommandItem key={a.id} value={`${a.code} ${a.name}`} onSelect={() => { setEditAccountId(a.id); setAccountOpen(false); }}>
+                                <Check className={`mr-2 h-4 w-4 ${editAccountId === a.id ? 'opacity-100' : 'opacity-0'}`} />
+                                {a.code} - {a.name}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        ))}
                       </CommandList>
                     </Command>
                   </PopoverContent>

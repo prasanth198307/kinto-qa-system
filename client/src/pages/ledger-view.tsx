@@ -9,12 +9,16 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
 import { Calendar, Download, Search, Check, ChevronsUpDown, BookOpen } from "lucide-react";
+import { groupAccountsByParent } from "@/lib/account-hierarchy";
 
 interface AccountListItem {
   id: string;
   code: string;
   name: string;
   accountType: string;
+  nodeType?: string;
+  parentId?: string | null;
+  level?: number;
 }
 
 interface LedgerTransaction {
@@ -253,24 +257,25 @@ export default function LedgerViewPage() {
               <CommandInput placeholder="Search by code or name..." data-testid="input-search-account" />
               <CommandList>
                 <CommandEmpty>No account found.</CommandEmpty>
-                <CommandGroup>
-                  {accountsList.map(account => (
-                    <CommandItem
-                      key={account.id}
-                      value={`${account.code} ${account.name}`}
-                      onSelect={() => {
-                        setSelectedAccountId(account.id);
-                        setAccountPopoverOpen(false);
-                      }}
-                      data-testid={`option-account-${account.code}`}
-                    >
-                      <Check className={`mr-2 h-4 w-4 ${selectedAccountId === account.id ? "opacity-100" : "opacity-0"}`} />
-                      <code className="text-xs bg-muted px-1 py-0.5 rounded font-mono mr-2 shrink-0">{account.code}</code>
-                      <span className="truncate">{account.name}</span>
-                      <Badge variant="secondary" className="ml-auto text-[10px] shrink-0">{account.accountType}</Badge>
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
+                {groupAccountsByParent(accountsList).map(group => (
+                  <CommandGroup key={group.label} heading={group.label}>
+                    {group.accounts.map(account => (
+                      <CommandItem
+                        key={account.id}
+                        value={`${account.code} ${account.name}`}
+                        onSelect={() => {
+                          setSelectedAccountId(account.id);
+                          setAccountPopoverOpen(false);
+                        }}
+                        data-testid={`option-account-${account.code}`}
+                      >
+                        <Check className={`mr-2 h-4 w-4 ${selectedAccountId === account.id ? "opacity-100" : "opacity-0"}`} />
+                        <code className="text-xs bg-muted px-1 py-0.5 rounded font-mono mr-2 shrink-0">{account.code}</code>
+                        <span className="truncate">{account.name}</span>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                ))}
               </CommandList>
             </Command>
           </PopoverContent>

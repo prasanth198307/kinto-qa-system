@@ -1485,7 +1485,6 @@ const navItemToScreen: Record<string, string> = {
   'documents': 'Inventory Management',
   // Accounting & Ledger
   'chart-of-accounts': 'Accounting',
-  'account-subtypes': 'Accounting',
   'journal-entries': 'Accounting',
   'journal-entry-new': 'Accounting',
   'bank-transactions': 'Accounting',

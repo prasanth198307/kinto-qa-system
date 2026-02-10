@@ -10,12 +10,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Plus, Trash2, Save, AlertTriangle, Check } from "lucide-react";
+import { groupAccountsByParent } from "@/lib/account-hierarchy";
 
 interface ChartAccount {
   id: string;
   code: string;
   name: string;
   accountType: string;
+  nodeType?: string;
+  parentId?: string | null;
+  level?: number;
 }
 
 interface JournalLineForm {
@@ -158,14 +162,7 @@ export default function ManualJournalEntryPage() {
     });
   }
 
-  const groupedAccounts = accounts
-    .filter(acc => (acc as any).nodeType !== 'group')
-    .reduce((groups, acc) => {
-      const type = acc.accountType;
-      if (!groups[type]) groups[type] = [];
-      groups[type].push(acc);
-      return groups;
-    }, {} as Record<string, ChartAccount[]>);
+  const hierarchyGroups = groupAccountsByParent(accounts);
 
   return (
     <div className="p-4 space-y-4 max-w-5xl mx-auto" data-testid="page-manual-journal">
@@ -218,10 +215,10 @@ export default function ManualJournalEntryPage() {
                     <SelectValue placeholder="Select account" />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(groupedAccounts).map(([type, accs]) => (
-                      <div key={type}>
-                        <div className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase">{type}</div>
-                        {accs.sort((a, b) => a.code.localeCompare(b.code)).map(acc => (
+                    {hierarchyGroups.map(group => (
+                      <div key={group.label}>
+                        <div className="px-2 py-1 text-xs font-semibold text-muted-foreground">{group.label}</div>
+                        {group.accounts.map(acc => (
                           <SelectItem key={acc.id} value={acc.id}>
                             {acc.code} - {acc.name}
                           </SelectItem>
