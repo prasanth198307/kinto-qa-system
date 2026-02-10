@@ -3573,3 +3573,27 @@ export const insertBankTransactionSchema = createInsertSchema(bankTransactions).
 
 export type InsertBankTransaction = z.infer<typeof insertBankTransactionSchema>;
 export type BankTransaction = typeof bankTransactions.$inferSelect;
+
+// ============================================================
+// Account Subtypes - Managed list of sub-types for Chart of Accounts
+// ============================================================
+export const accountSubtypes = pgTable("account_subtypes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  accountType: varchar("account_type", { length: 50 }).notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  label: varchar("label", { length: 150 }).notNull(),
+  isSystem: integer("is_system").default(0).notNull(),
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+}, (table) => [
+  index("ast_type_idx").on(table.accountType),
+]);
+
+export const insertAccountSubtypeSchema = createInsertSchema(accountSubtypes).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+});
+
+export type InsertAccountSubtype = z.infer<typeof insertAccountSubtypeSchema>;
+export type AccountSubtype = typeof accountSubtypes.$inferSelect;

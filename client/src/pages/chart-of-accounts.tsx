@@ -37,40 +37,13 @@ const ACCOUNT_TYPES = [
   { value: "expense", label: "Expense" },
 ];
 
-const SUB_TYPES: Record<string, { value: string; label: string }[]> = {
-  asset: [
-    { value: "current_asset", label: "Current Asset" },
-    { value: "fixed_asset", label: "Fixed Asset" },
-    { value: "trade_receivable", label: "Trade Receivable" },
-    { value: "inventory", label: "Inventory" },
-    { value: "bank", label: "Bank" },
-    { value: "cash", label: "Cash" },
-  ],
-  liability: [
-    { value: "current_liability", label: "Current Liability" },
-    { value: "long_term_liability", label: "Long Term Liability" },
-    { value: "trade_payable", label: "Trade Payable" },
-    { value: "tax_payable", label: "Tax Payable" },
-    { value: "advance_received", label: "Advance Received" },
-    { value: "advance_liability", label: "Advance Liability" },
-    { value: "gst", label: "GST" },
-  ],
-  equity: [
-    { value: "capital", label: "Capital" },
-    { value: "reserves", label: "Reserves" },
-    { value: "drawings", label: "Drawings" },
-  ],
-  revenue: [
-    { value: "direct_income", label: "Direct Income" },
-    { value: "indirect_income", label: "Indirect Income" },
-  ],
-  expense: [
-    { value: "direct_expense", label: "Direct Expense" },
-    { value: "indirect_expense", label: "Indirect Expense" },
-    { value: "manufacturing", label: "Manufacturing" },
-    { value: "administrative", label: "Administrative" },
-  ],
-};
+interface AccountSubtype {
+  id: string;
+  accountType: string;
+  name: string;
+  label: string;
+  isSystem: number;
+}
 
 function getCurrentFY(): string {
   const now = new Date();
@@ -132,6 +105,9 @@ export default function ChartOfAccountsPage() {
   const [expandedTypes, setExpandedTypes] = useState<Set<string>>(new Set(["asset", "liability", "equity", "revenue", "expense"]));
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editAccount, setEditAccount] = useState<ChartAccount | null>(null);
+  const [addingNewSubtype, setAddingNewSubtype] = useState(false);
+  const [newSubtypeName, setNewSubtypeName] = useState("");
+  const [newSubtypeLabel, setNewSubtypeLabel] = useState("");
 
   const [formData, setFormData] = useState({
     code: "",
@@ -144,6 +120,44 @@ export default function ChartOfAccountsPage() {
 
   const { data: accounts = [], isLoading } = useQuery<ChartAccount[]>({
     queryKey: [`/api/chart-of-accounts?fy=${selectedFY}`],
+  });
+
+  const { data: subtypes = [] } = useQuery<AccountSubtype[]>({
+    queryKey: ['/api/account-subtypes'],
+  });
+
+  const filteredSubtypes = subtypes.filter(st => st.accountType === formData.accountType);
+
+  const createSubtypeMutation = useMutation({
+    mutationFn: async (data: { accountType: string; name: string; label: string }) => {
+      const res = await apiRequest("POST", "/api/account-subtypes", data);
+      return res.json();
+    },
+    onSuccess: (created: AccountSubtype) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/account-subtypes'] });
+      setFormData(p => ({ ...p, subType: created.name }));
+      setAddingNewSubtype(false);
+      setNewSubtypeName("");
+      setNewSubtypeLabel("");
+      toast({ title: "Sub-type created" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const deleteSubtypeMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("DELETE", `/api/account-subtypes/${id}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/account-subtypes'] });
+      toast({ title: "Sub-type deleted" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
   });
 
   const createMutation = useMutation({
@@ -195,6 +209,9 @@ export default function ChartOfAccountsPage() {
 
   function resetForm() {
     setFormData({ code: "", name: "", accountType: "", subType: "", description: "", openingBalance: "0" });
+    setAddingNewSubtype(false);
+    setNewSubtypeName("");
+    setNewSubtypeLabel("");
   }
 
   function openEditDialog(account: ChartAccount) {
@@ -343,7 +360,7 @@ export default function ChartOfAccountsPage() {
                     <Label>Account Type</Label>
                     <Select
                       value={formData.accountType}
-                      onValueChange={v => setFormData(p => ({ ...p, accountType: v, subType: "" }))}
+                      onValueChange={v => { setFormData(p => ({ ...p, accountType: v, subType: "" })); setAddingNewSubtype(false); }}
                     >
                       <SelectTrigger data-testid="select-account-type">
                         <SelectValue placeholder="Select type" />
@@ -368,30 +385,97 @@ export default function ChartOfAccountsPage() {
                 {formData.accountType && (
                   <div>
                     <Label>Sub-Type</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        data-testid="input-sub-type"
-                        value={formData.subType}
-                        onChange={e => setFormData(p => ({ ...p, subType: e.target.value }))}
-                        placeholder="Type or select a sub-type"
-                        list={`subtype-options-${formData.accountType}`}
-                      />
-                      <datalist id={`subtype-options-${formData.accountType}`}>
-                        {(SUB_TYPES[formData.accountType] || []).map(st => (
-                          <option key={st.value} value={st.value}>{st.label}</option>
-                        ))}
-                        {accounts
-                          .filter(a => a.accountType === formData.accountType && a.subType)
-                          .map(a => a.subType!)
-                          .filter((v, i, arr) => arr.indexOf(v) === i)
-                          .filter(v => !(SUB_TYPES[formData.accountType] || []).some(st => st.value === v))
-                          .map(st => (
-                            <option key={st} value={st}>{st.replace(/_/g, " ")}</option>
-                          ))
-                        }
-                      </datalist>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">Choose from suggestions or type a new sub-type</p>
+                    {!addingNewSubtype ? (
+                      <div className="flex gap-2 items-start">
+                        <div className="flex-1">
+                          <Select
+                            value={formData.subType}
+                            onValueChange={v => {
+                              if (v === "__add_new__") {
+                                setAddingNewSubtype(true);
+                              } else {
+                                setFormData(p => ({ ...p, subType: v }));
+                              }
+                            }}
+                          >
+                            <SelectTrigger data-testid="select-sub-type">
+                              <SelectValue placeholder="Select sub-type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {filteredSubtypes.map(st => (
+                                <SelectItem key={st.id} value={st.name}>{st.label}</SelectItem>
+                              ))}
+                              <SelectItem value="__add_new__">+ Add New Sub-Type</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {formData.subType && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setFormData(p => ({ ...p, subType: "" }))}
+                            data-testid="button-clear-subtype"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-2 border rounded-md p-3">
+                        <p className="text-xs font-medium">Create New Sub-Type</p>
+                        <Input
+                          data-testid="input-new-subtype-name"
+                          value={newSubtypeName}
+                          onChange={e => {
+                            const val = e.target.value.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+                            setNewSubtypeName(val);
+                            if (!newSubtypeLabel || newSubtypeLabel === newSubtypeName.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())) {
+                              setNewSubtypeLabel(val.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()));
+                            }
+                          }}
+                          placeholder="name_in_snake_case"
+                        />
+                        <Input
+                          data-testid="input-new-subtype-label"
+                          value={newSubtypeLabel}
+                          onChange={e => setNewSubtypeLabel(e.target.value)}
+                          placeholder="Display Label"
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => {
+                              if (newSubtypeName && newSubtypeLabel) {
+                                createSubtypeMutation.mutate({
+                                  accountType: formData.accountType,
+                                  name: newSubtypeName,
+                                  label: newSubtypeLabel,
+                                });
+                              }
+                            }}
+                            disabled={!newSubtypeName || !newSubtypeLabel || createSubtypeMutation.isPending}
+                            data-testid="button-save-new-subtype"
+                          >
+                            Save
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setAddingNewSubtype(false);
+                              setNewSubtypeName("");
+                              setNewSubtypeLabel("");
+                            }}
+                            data-testid="button-cancel-new-subtype"
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
                 <div>
@@ -517,7 +601,7 @@ export default function ChartOfAccountsPage() {
                                 )}
                                 {account.subType && (
                                   <span className="text-xs text-muted-foreground hidden lg:inline shrink-0">
-                                    {account.subType.replace(/_/g, " ")}
+                                    {subtypes.find(st => st.name === account.subType && st.accountType === account.accountType)?.label || account.subType.replace(/_/g, " ")}
                                   </span>
                                 )}
                               </div>

@@ -139,6 +139,55 @@ app.use((req, res, next) => {
     console.error('[COA SEED ERROR]', error);
   }
 
+  // Seed Account Subtypes on startup
+  try {
+    const { storage } = await import("./storage");
+    const predefined = [
+      { accountType: "asset", name: "current_asset", label: "Current Asset" },
+      { accountType: "asset", name: "fixed_asset", label: "Fixed Asset" },
+      { accountType: "asset", name: "trade_receivable", label: "Trade Receivable" },
+      { accountType: "asset", name: "inventory", label: "Inventory" },
+      { accountType: "asset", name: "bank", label: "Bank" },
+      { accountType: "asset", name: "cash", label: "Cash" },
+      { accountType: "liability", name: "current_liability", label: "Current Liability" },
+      { accountType: "liability", name: "long_term_liability", label: "Long Term Liability" },
+      { accountType: "liability", name: "trade_payable", label: "Trade Payable" },
+      { accountType: "liability", name: "tax_payable", label: "Tax Payable" },
+      { accountType: "liability", name: "advance_received", label: "Advance Received" },
+      { accountType: "liability", name: "advance_liability", label: "Advance Liability" },
+      { accountType: "liability", name: "gst", label: "GST" },
+      { accountType: "equity", name: "capital", label: "Capital" },
+      { accountType: "equity", name: "reserves", label: "Reserves" },
+      { accountType: "equity", name: "drawings", label: "Drawings" },
+      { accountType: "revenue", name: "direct_income", label: "Direct Income" },
+      { accountType: "revenue", name: "indirect_income", label: "Indirect Income" },
+      { accountType: "expense", name: "direct_expense", label: "Direct Expense" },
+      { accountType: "expense", name: "indirect_expense", label: "Indirect Expense" },
+      { accountType: "expense", name: "manufacturing", label: "Manufacturing" },
+      { accountType: "expense", name: "administrative", label: "Administrative" },
+    ];
+    for (const st of predefined) {
+      const exists = await storage.getAccountSubtypeByName(st.accountType, st.name);
+      if (!exists) {
+        await storage.createAccountSubtype({ ...st, isSystem: 1 });
+      }
+    }
+    // Migrate custom subtypes from chart_of_accounts
+    const allAccounts = await storage.getAllChartOfAccounts();
+    for (const acct of allAccounts) {
+      if (acct.subType) {
+        const exists = await storage.getAccountSubtypeByName(acct.accountType, acct.subType);
+        if (!exists) {
+          const label = acct.subType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+          await storage.createAccountSubtype({ accountType: acct.accountType, name: acct.subType, label, isSystem: 0 });
+        }
+      }
+    }
+    console.log('[SUBTYPE SEED] Account subtypes seeding complete');
+  } catch (error) {
+    console.error('[SUBTYPE SEED ERROR]', error);
+  }
+
   const port = parseInt(process.env.PORT || "5000", 10);
   server.listen(port, "0.0.0.0", () => {
     log(`🚀 Server running on port ${port}`);

@@ -203,6 +203,7 @@ import {
   journalLines,
   bankStatementImports,
   bankTransactions,
+  accountSubtypes,
   type ChartOfAccount,
   type InsertChartOfAccount,
   type JournalEntry,
@@ -213,6 +214,8 @@ import {
   type InsertBankStatementImport,
   type BankTransaction,
   type InsertBankTransaction,
+  type AccountSubtype,
+  type InsertAccountSubtype,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, isNotNull, notInArray, inArray, gte, lte, sql, desc } from "drizzle-orm";
@@ -728,6 +731,12 @@ export interface IStorage {
   getBankTransaction(id: string): Promise<BankTransaction | undefined>;
   updateBankTransaction(id: string, data: Partial<InsertBankTransaction>): Promise<BankTransaction | undefined>;
   getBankTransactionByHash(hash: string, bankAccountId: string): Promise<BankTransaction | undefined>;
+
+  // Account Subtypes
+  getAccountSubtypes(accountType?: string): Promise<AccountSubtype[]>;
+  createAccountSubtype(data: InsertAccountSubtype): Promise<AccountSubtype>;
+  deleteAccountSubtype(id: string): Promise<void>;
+  getAccountSubtypeByName(accountType: string, name: string): Promise<AccountSubtype | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -4510,6 +4519,28 @@ export class DatabaseStorage implements IStorage {
       )
     ).limit(1);
     return txn;
+  }
+  // Account Subtypes
+  async getAccountSubtypes(accountType?: string): Promise<AccountSubtype[]> {
+    const conditions = [eq(accountSubtypes.recordStatus, 1)];
+    if (accountType) conditions.push(eq(accountSubtypes.accountType, accountType));
+    return db.select().from(accountSubtypes).where(and(...conditions)).orderBy(accountSubtypes.accountType, accountSubtypes.label);
+  }
+
+  async createAccountSubtype(data: InsertAccountSubtype): Promise<AccountSubtype> {
+    const [created] = await db.insert(accountSubtypes).values(data).returning();
+    return created;
+  }
+
+  async deleteAccountSubtype(id: string): Promise<void> {
+    await db.update(accountSubtypes).set({ recordStatus: 0 }).where(eq(accountSubtypes.id, id));
+  }
+
+  async getAccountSubtypeByName(accountType: string, name: string): Promise<AccountSubtype | undefined> {
+    const [found] = await db.select().from(accountSubtypes).where(
+      and(eq(accountSubtypes.accountType, accountType), eq(accountSubtypes.name, name), eq(accountSubtypes.recordStatus, 1))
+    ).limit(1);
+    return found;
   }
 }
 
