@@ -19909,12 +19909,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/chart-of-accounts', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const { code, name, accountType, parentId, description, nodeType, level } = req.body;
-      if (!code || !name || !accountType) {
-        return res.status(400).json({ message: 'Code, name, and account type are required' });
+      if (!code || !name) {
+        return res.status(400).json({ message: 'Code and name are required' });
       }
       const resolvedNodeType = nodeType || 'ledger';
       if (!parentId && resolvedNodeType === 'ledger') {
         return res.status(400).json({ message: 'Parent group is required. Ledger accounts must belong to a parent group.' });
+      }
+      let resolvedAccountType = accountType;
+      if (!resolvedAccountType && parentId) {
+        const parent = await storage.getChartOfAccount(parentId);
+        if (parent) resolvedAccountType = parent.accountType;
+      }
+      if (!resolvedAccountType) {
+        const nameLower = name.toLowerCase();
+        if (nameLower.includes('asset') || nameLower.includes('receivable') || nameLower.includes('inventory') || nameLower.includes('cash') || nameLower.includes('bank') || nameLower.includes('property') || nameLower.includes('equipment')) resolvedAccountType = 'asset';
+        else if (nameLower.includes('liabilit') || nameLower.includes('payable') || nameLower.includes('loan') || nameLower.includes('provision')) resolvedAccountType = 'liability';
+        else if (nameLower.includes('equity') || nameLower.includes('capital') || nameLower.includes('reserve') || nameLower.includes('retained')) resolvedAccountType = 'equity';
+        else if (nameLower.includes('revenue') || nameLower.includes('income') || nameLower.includes('sale')) resolvedAccountType = 'revenue';
+        else if (nameLower.includes('expense') || nameLower.includes('cost')) resolvedAccountType = 'expense';
+        else resolvedAccountType = 'asset';
       }
       const existing = await storage.getChartOfAccountByCode(code);
       if (existing) return res.status(400).json({ message: `Account code ${code} already exists` });
@@ -19929,7 +19943,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const account = await storage.createChartOfAccount({ code, name, accountType, parentId, description, isActive: 1, isSystemAccount: 0, nodeType: resolvedNodeType, level: resolvedLevel });
+      const account = await storage.createChartOfAccount({ code, name, accountType: resolvedAccountType, parentId, description, isActive: 1, isSystemAccount: 0, nodeType: resolvedNodeType, level: resolvedLevel });
       res.status(201).json(account);
     } catch (error: any) {
       res.status(500).json({ message: error.message });

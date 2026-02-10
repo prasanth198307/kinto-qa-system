@@ -498,21 +498,6 @@ export default function ChartOfAccountsPage() {
                       Type: {ACCOUNT_TYPES.find(t => t.value === formData.accountType)?.label || formData.accountType} (inherited from parent)
                     </p>
                   )}
-                  {formData.parentId === "__none__" && (
-                    <div className="mt-2">
-                      <Label>Account Type</Label>
-                      <Select value={formData.accountType} onValueChange={v => setFormData(p => ({ ...p, accountType: v }))}>
-                        <SelectTrigger data-testid="select-account-type">
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {ACCOUNT_TYPES.map(t => (
-                            <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
                 </div>
                 <div>
                   <Label>Account Name</Label>
