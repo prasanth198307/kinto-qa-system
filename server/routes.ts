@@ -19922,13 +19922,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (parent) resolvedAccountType = parent.accountType;
       }
       if (!resolvedAccountType) {
-        const nameLower = name.toLowerCase();
-        if (nameLower.includes('asset') || nameLower.includes('receivable') || nameLower.includes('inventory') || nameLower.includes('cash') || nameLower.includes('bank') || nameLower.includes('property') || nameLower.includes('equipment')) resolvedAccountType = 'asset';
-        else if (nameLower.includes('liabilit') || nameLower.includes('payable') || nameLower.includes('loan') || nameLower.includes('provision')) resolvedAccountType = 'liability';
-        else if (nameLower.includes('equity') || nameLower.includes('capital') || nameLower.includes('reserve') || nameLower.includes('retained')) resolvedAccountType = 'equity';
-        else if (nameLower.includes('revenue') || nameLower.includes('income') || nameLower.includes('sale')) resolvedAccountType = 'revenue';
-        else if (nameLower.includes('expense') || nameLower.includes('cost')) resolvedAccountType = 'expense';
-        else resolvedAccountType = 'asset';
+        resolvedAccountType = name;
       }
       const existing = await storage.getChartOfAccountByCode(code);
       if (existing) return res.status(400).json({ message: `Account code ${code} already exists` });
