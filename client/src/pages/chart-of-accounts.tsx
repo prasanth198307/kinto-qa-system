@@ -433,10 +433,9 @@ export default function ChartOfAccountsPage() {
                     }}
                   >
                     <SelectTrigger data-testid="select-parent-account">
-                      <SelectValue placeholder="None (top-level)" />
+                      <SelectValue placeholder="Select parent group" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">None (top-level)</SelectItem>
                       {groupAccounts
                         .filter(g => !editAccount || g.id !== editAccount.id)
                         .map(g => (
@@ -450,24 +449,6 @@ export default function ChartOfAccountsPage() {
                     <p className="text-xs text-muted-foreground mt-1">
                       Type: {ACCOUNT_TYPES.find(t => t.value === formData.accountType)?.label || formData.accountType} (inherited from parent)
                     </p>
-                  )}
-                  {(!formData.parentId || formData.parentId === "none") && (
-                    <div className="mt-2">
-                      <Label className="text-xs">Account Type (required for top-level)</Label>
-                      <Select
-                        value={formData.accountType}
-                        onValueChange={v => setFormData(p => ({ ...p, accountType: v }))}
-                      >
-                        <SelectTrigger data-testid="select-account-type">
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {ACCOUNT_TYPES.map(t => (
-                            <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
                   )}
                 </div>
                 <div>
@@ -497,7 +478,7 @@ export default function ChartOfAccountsPage() {
                 <Button
                   data-testid="button-save-account"
                   onClick={handleSubmit}
-                  disabled={createMutation.isPending || updateMutation.isPending || !formData.code || !formData.name || !formData.accountType}
+                  disabled={createMutation.isPending || updateMutation.isPending || !formData.code || !formData.name || (!formData.parentId || formData.parentId === "none")}
                 >
                   {editAccount ? "Update" : "Create"}
                 </Button>
