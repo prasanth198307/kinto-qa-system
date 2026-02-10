@@ -19909,14 +19909,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/chart-of-accounts', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
-      const { code, name, accountType, parentId, description } = req.body;
+      const { code, name, accountType, parentId, description, nodeType, level } = req.body;
       if (!code || !name || !accountType) {
         return res.status(400).json({ message: 'Code, name, and account type are required' });
       }
       const existing = await storage.getChartOfAccountByCode(code);
       if (existing) return res.status(400).json({ message: `Account code ${code} already exists` });
 
-      const account = await storage.createChartOfAccount({ code, name, accountType, parentId, description, isActive: 1, isSystemAccount: 0 });
+      const resolvedNodeType = nodeType || 'ledger';
+      let resolvedLevel = level || 1;
+      if (parentId) {
+        const parent = await storage.getChartOfAccount(parentId);
+        if (parent) {
+          if (parent.nodeType !== 'group') {
+            return res.status(400).json({ message: 'Parent account must be a Group (non-postable) account' });
+          }
+          resolvedLevel = (parent.level || 1) + 1;
+        }
+      }
+
+      const account = await storage.createChartOfAccount({ code, name, accountType, parentId, description, isActive: 1, isSystemAccount: 0, nodeType: resolvedNodeType, level: resolvedLevel });
       res.status(201).json(account);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -19940,6 +19952,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const account = await storage.getChartOfAccount(req.params.id);
       if (!account) return res.status(404).json({ message: 'Account not found' });
       if (account.isSystemAccount === 1) return res.status(400).json({ message: 'Cannot delete system account' });
+
+      if (account.nodeType === 'group') {
+        const allAccounts = await storage.getAllChartOfAccounts();
+        const children = allAccounts.filter(a => a.parentId === account.id);
+        if (children.length > 0) {
+          return res.status(400).json({ message: `Cannot delete group "${account.name}" — it has ${children.length} child account(s). Move or delete them first.` });
+        }
+      }
 
       await storage.deleteChartOfAccount(req.params.id);
       res.json({ message: 'Account deleted' });
@@ -20510,18 +20530,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Journal entry must have non-zero amounts' });
       }
 
-      // Resolve account IDs to codes and validate
       const resolvedLines = [];
       for (const line of lines) {
         let accountCode = line.accountCode;
         if (!accountCode && line.accountId) {
           const account = await storage.getChartOfAccount(line.accountId);
           if (!account) return res.status(400).json({ message: `Account ID ${line.accountId} not found` });
+          if (account.nodeType === 'group') {
+            return res.status(400).json({ message: `Cannot post to Group account "${account.name}" (${account.code}). Only Ledger accounts are postable.` });
+          }
           accountCode = account.code;
         }
         if (!accountCode) return res.status(400).json({ message: 'Each line must have an account code or account ID' });
         const account = await storage.getChartOfAccountByCode(accountCode);
         if (!account) return res.status(400).json({ message: `Account code ${accountCode} not found` });
+        if (account.nodeType === 'group') {
+          return res.status(400).json({ message: `Cannot post to Group account "${account.name}" (${account.code}). Only Ledger accounts are postable.` });
+        }
         resolvedLines.push({ ...line, accountCode });
       }
 
@@ -22047,8 +22072,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/chart-of-accounts-list', async (req: any, res) => {
     try {
       const accounts = await storage.getAllChartOfAccounts();
-      res.json(accounts.map(a => {
-        return { id: a.id, code: a.code, name: a.name, accountType: a.accountType };
+      const nodeTypeFilter = req.query.nodeType as string | undefined;
+      let filtered = accounts;
+      if (nodeTypeFilter) {
+        filtered = accounts.filter(a => a.nodeType === nodeTypeFilter);
+      }
+      res.json(filtered.map(a => {
+        return { id: a.id, code: a.code, name: a.name, accountType: a.accountType, nodeType: a.nodeType || 'ledger', level: a.level || 1, parentId: a.parentId };
       }));
     } catch (error: any) {
       res.status(500).json({ message: error.message });

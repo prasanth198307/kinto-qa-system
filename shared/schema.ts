@@ -3400,6 +3400,8 @@ export const chartOfAccounts = pgTable("chart_of_accounts", {
   code: varchar("code", { length: 20 }).unique().notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   accountType: varchar("account_type", { length: 50 }).notNull(), // asset, liability, equity, revenue, expense
+  nodeType: varchar("node_type", { length: 10 }).default('ledger').notNull(), // 'group' = non-postable, 'ledger' = postable
+  level: integer("level").default(1).notNull(), // hierarchy depth: 1 = top-level, 2 = sub-group, etc.
   subType: varchar("sub_type", { length: 100 }), // e.g. current_asset, fixed_asset, trade_receivable, etc.
   parentId: varchar("parent_id"),
   description: text("description"),
@@ -3411,6 +3413,7 @@ export const chartOfAccounts = pgTable("chart_of_accounts", {
 }, (table) => [
   index("coa_type_idx").on(table.accountType),
   index("coa_parent_idx").on(table.parentId),
+  index("coa_node_type_idx").on(table.nodeType),
 ]);
 
 export const insertChartOfAccountSchema = createInsertSchema(chartOfAccounts).omit({

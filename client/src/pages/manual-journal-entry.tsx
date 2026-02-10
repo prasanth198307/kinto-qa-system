@@ -158,12 +158,14 @@ export default function ManualJournalEntryPage() {
     });
   }
 
-  const groupedAccounts = accounts.reduce((groups, acc) => {
-    const type = acc.accountType;
-    if (!groups[type]) groups[type] = [];
-    groups[type].push(acc);
-    return groups;
-  }, {} as Record<string, ChartAccount[]>);
+  const groupedAccounts = accounts
+    .filter(acc => (acc as any).nodeType !== 'group')
+    .reduce((groups, acc) => {
+      const type = acc.accountType;
+      if (!groups[type]) groups[type] = [];
+      groups[type].push(acc);
+      return groups;
+    }, {} as Record<string, ChartAccount[]>);
 
   return (
     <div className="p-4 space-y-4 max-w-5xl mx-auto" data-testid="page-manual-journal">

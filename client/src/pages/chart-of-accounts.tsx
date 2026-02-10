@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,13 +10,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, ChevronDown, ChevronRight, Edit, Trash2, Lock, Calendar, Download } from "lucide-react";
+import { Plus, Search, ChevronDown, ChevronRight, Edit, Trash2, Lock, Calendar, Download, FolderOpen, Folder, BookOpen } from "lucide-react";
 
 interface ChartAccount {
   id: string;
   code: string;
   name: string;
   accountType: string;
+  nodeType: string;
+  level: number;
   parentId: string | null;
   description: string | null;
   isActive: number;
@@ -26,6 +28,11 @@ interface ChartAccount {
   periodCredit: number;
   periodMovement: number;
   currentBalance: number;
+}
+
+interface TreeNode extends ChartAccount {
+  children: TreeNode[];
+  isExpanded: boolean;
 }
 
 const ACCOUNT_TYPES_FALLBACK = [
@@ -45,11 +52,6 @@ function getCurrentFY(): string {
 function getFYLabel(startYear: string): string {
   const y = parseInt(startYear);
   return `FY ${y}-${String(y + 1).slice(2)}`;
-}
-
-function getFYShortLabel(startYear: string): string {
-  const y = parseInt(startYear);
-  return `${y}-${String(y + 1).slice(2)}`;
 }
 
 function getAvailableFYs(): string[] {
@@ -88,12 +90,68 @@ function isBalanceSheet(type: string): boolean {
   return ['asset', 'liability', 'equity'].includes(type);
 }
 
+function buildTree(accounts: ChartAccount[], expandedIds: Set<string>): TreeNode[] {
+  const accountMap = new Map<string, TreeNode>();
+  const roots: TreeNode[] = [];
+
+  for (const a of accounts) {
+    accountMap.set(a.id, { ...a, children: [], isExpanded: expandedIds.has(a.id) });
+  }
+
+  for (const node of accountMap.values()) {
+    if (node.parentId && accountMap.has(node.parentId)) {
+      accountMap.get(node.parentId)!.children.push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+
+  const sortNodes = (nodes: TreeNode[]) => {
+    nodes.sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }));
+    nodes.forEach(n => sortNodes(n.children));
+  };
+  sortNodes(roots);
+
+  return roots;
+}
+
+function computeGroupTotals(node: TreeNode): { opening: number; debit: number; credit: number; closing: number } {
+  if (node.nodeType === 'ledger') {
+    return {
+      opening: Number(node.openingBalance) || 0,
+      debit: Number(node.periodDebit) || 0,
+      credit: Number(node.periodCredit) || 0,
+      closing: Number(node.currentBalance) || 0,
+    };
+  }
+  let opening = 0, debit = 0, credit = 0, closing = 0;
+  for (const child of node.children) {
+    const ct = computeGroupTotals(child);
+    opening += ct.opening;
+    debit += ct.debit;
+    credit += ct.credit;
+    closing += ct.closing;
+  }
+  return { opening, debit, credit, closing };
+}
+
+function flattenVisible(nodes: TreeNode[], expandedIds: Set<string>, depth: number = 0): { node: TreeNode; depth: number }[] {
+  const result: { node: TreeNode; depth: number }[] = [];
+  for (const node of nodes) {
+    result.push({ node, depth });
+    if (node.nodeType === 'group' && expandedIds.has(node.id)) {
+      result.push(...flattenVisible(node.children, expandedIds, depth + 1));
+    }
+  }
+  return result;
+}
+
 export default function ChartOfAccountsPage() {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [selectedFY, setSelectedFY] = useState(getCurrentFY());
-  const [expandedTypes, setExpandedTypes] = useState<Set<string>>(new Set(["asset", "liability", "equity", "revenue", "expense"]));
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editAccount, setEditAccount] = useState<ChartAccount | null>(null);
 
@@ -101,8 +159,9 @@ export default function ChartOfAccountsPage() {
     code: "",
     name: "",
     accountType: "",
+    nodeType: "ledger",
+    parentId: "",
     description: "",
-    openingBalance: "0",
   });
 
   const { data: accounts = [], isLoading } = useQuery<ChartAccount[]>({
@@ -165,7 +224,7 @@ export default function ChartOfAccountsPage() {
   });
 
   function resetForm() {
-    setFormData({ code: "", name: "", accountType: "", description: "", openingBalance: "0" });
+    setFormData({ code: "", name: "", accountType: "", nodeType: "ledger", parentId: "", description: "" });
   }
 
   function openEditDialog(account: ChartAccount) {
@@ -174,16 +233,17 @@ export default function ChartOfAccountsPage() {
       code: account.code,
       name: account.name,
       accountType: account.accountType,
+      nodeType: account.nodeType || 'ledger',
+      parentId: account.parentId || "",
       description: account.description || "",
-      openingBalance: String((Number(account.openingBalance) || 0) / 100),
     });
     setDialogOpen(true);
   }
 
   function handleSubmit() {
-    const data = {
+    const data: any = {
       ...formData,
-      openingBalance: Math.round(parseFloat(formData.openingBalance || "0") * 100),
+      parentId: formData.parentId || null,
     };
     if (editAccount) {
       updateMutation.mutate({ id: editAccount.id, data });
@@ -192,24 +252,35 @@ export default function ChartOfAccountsPage() {
     }
   }
 
-  function toggleType(type: string) {
-    setExpandedTypes(prev => {
+  function toggleExpand(id: string) {
+    setExpandedIds(prev => {
       const next = new Set(prev);
-      if (next.has(type)) next.delete(type);
-      else next.add(type);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
+  }
+
+  function expandAll() {
+    const groupIds = accounts.filter(a => (a.nodeType || 'ledger') === 'group').map(a => a.id);
+    setExpandedIds(new Set(groupIds));
+  }
+
+  function collapseAll() {
+    setExpandedIds(new Set());
   }
 
   async function downloadExcel() {
     const XLSX = await import('xlsx');
     const typeLabel = (t: string) => ACCOUNT_TYPES.find(at => at.value === t)?.label || t;
     const rows = accounts
-      .sort((a, b) => a.code.localeCompare(b.code))
+      .sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }))
       .map(a => ({
         'Account Code': a.code,
         'Account Name': a.name,
         'Type': typeLabel(a.accountType),
+        'Node Type': (a.nodeType || 'ledger') === 'group' ? 'Group' : 'Ledger',
+        'Level': a.level || 1,
         'Opening Balance': (Number(a.openingBalance) || 0) / 100,
         'Period Debit': (Number(a.periodDebit) || 0) / 100,
         'Period Credit': (Number(a.periodCredit) || 0) / 100,
@@ -218,13 +289,8 @@ export default function ChartOfAccountsPage() {
 
     const ws = XLSX.utils.json_to_sheet(rows);
     ws['!cols'] = [
-      { wch: 14 },
-      { wch: 40 },
-      { wch: 12 },
-      { wch: 16 },
-      { wch: 16 },
-      { wch: 16 },
-      { wch: 16 },
+      { wch: 14 }, { wch: 40 }, { wch: 12 }, { wch: 10 }, { wch: 6 },
+      { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 },
     ];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Chart of Accounts');
@@ -232,26 +298,54 @@ export default function ChartOfAccountsPage() {
     toast({ title: "Downloaded", description: "Chart of Accounts exported as Excel (.xlsx)" });
   }
 
-  const filteredAccounts = accounts.filter(a => {
-    const matchesSearch = !searchQuery ||
-      a.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      a.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = filterType === "all" || a.accountType === filterType;
-    return matchesSearch && matchesType;
-  });
+  const filteredAccounts = useMemo(() => {
+    let result = accounts.map(a => ({ ...a, nodeType: a.nodeType || 'ledger', level: a.level || 1 }));
 
-  const groupedAccounts = ACCOUNT_TYPES.reduce((groups, type) => {
-    groups[type.value] = filteredAccounts
-      .filter(a => a.accountType === type.value)
-      .sort((a, b) => a.code.localeCompare(b.code));
-    return groups;
-  }, {} as Record<string, ChartAccount[]>);
+    if (filterType !== "all") {
+      result = result.filter(a => a.accountType === filterType);
+    }
 
-  const typeTotals = ACCOUNT_TYPES.map(type => ({
-    ...type,
-    count: groupedAccounts[type.value]?.length || 0,
-    totalBalance: (groupedAccounts[type.value] || []).reduce((sum, a) => sum + (Number(a.currentBalance) || 0), 0),
-  }));
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      const matchingIds = new Set<string>();
+      result.forEach(a => {
+        if (a.code.toLowerCase().includes(q) || a.name.toLowerCase().includes(q)) {
+          matchingIds.add(a.id);
+          let parentId = a.parentId;
+          while (parentId) {
+            matchingIds.add(parentId);
+            const parent = result.find(x => x.id === parentId);
+            parentId = parent?.parentId || null;
+          }
+        }
+      });
+      result = result.filter(a => matchingIds.has(a.id));
+    }
+
+    return result;
+  }, [accounts, filterType, searchQuery]);
+
+  const tree = useMemo(() => buildTree(filteredAccounts, expandedIds), [filteredAccounts, expandedIds]);
+  const visibleRows = useMemo(() => flattenVisible(tree, expandedIds), [tree, expandedIds]);
+
+  const groupAccounts = useMemo(() =>
+    accounts.filter(a => (a.nodeType || 'ledger') === 'group').sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true })),
+    [accounts]
+  );
+
+  const typeTotals = useMemo(() => {
+    return ACCOUNT_TYPES.map(type => {
+      const accts = accounts.filter(a => a.accountType === type.value && (a.nodeType || 'ledger') === 'ledger');
+      return {
+        ...type,
+        count: accts.length,
+        groupCount: accounts.filter(a => a.accountType === type.value && (a.nodeType || 'ledger') === 'group').length,
+        totalBalance: accts.reduce((sum, a) => sum + (Number(a.currentBalance) || 0), 0),
+      };
+    });
+  }, [accounts, ACCOUNT_TYPES]);
+
+  const fyStartYear = parseInt(selectedFY);
 
   if (isLoading) {
     return (
@@ -261,14 +355,16 @@ export default function ChartOfAccountsPage() {
     );
   }
 
-  const fyStartYear = parseInt(selectedFY);
-
   return (
     <div className="p-4 space-y-4 max-w-7xl mx-auto" data-testid="page-chart-of-accounts">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-xl font-semibold" data-testid="text-page-title">Chart of Accounts</h1>
-          <p className="text-sm text-muted-foreground">{accounts.length} accounts &middot; Apr {fyStartYear} &ndash; Mar {fyStartYear + 1}</p>
+          <p className="text-sm text-muted-foreground">
+            {accounts.filter(a => (a.nodeType || 'ledger') === 'ledger').length} ledgers,{" "}
+            {accounts.filter(a => (a.nodeType || 'ledger') === 'group').length} groups
+            &middot; Apr {fyStartYear} &ndash; Mar {fyStartYear + 1}
+          </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Select value={selectedFY} onValueChange={setSelectedFY}>
@@ -283,7 +379,7 @@ export default function ChartOfAccountsPage() {
             </SelectContent>
           </Select>
           <Button variant="outline" onClick={downloadExcel} data-testid="button-download-coa">
-            <Download className="w-4 h-4 mr-1" /> Download Excel
+            <Download className="w-4 h-4 mr-1" /> Excel
           </Button>
           <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setEditAccount(null); resetForm(); } }}>
             <DialogTrigger asChild>
@@ -308,6 +404,23 @@ export default function ChartOfAccountsPage() {
                     />
                   </div>
                   <div>
+                    <Label>Node Type</Label>
+                    <Select
+                      value={formData.nodeType}
+                      onValueChange={v => setFormData(p => ({ ...p, nodeType: v }))}
+                    >
+                      <SelectTrigger data-testid="select-node-type">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="group">Group (non-postable)</SelectItem>
+                        <SelectItem value="ledger">Ledger (postable)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
                     <Label>Account Type</Label>
                     <Select
                       value={formData.accountType}
@@ -320,6 +433,28 @@ export default function ChartOfAccountsPage() {
                         {ACCOUNT_TYPES.map(t => (
                           <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
                         ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Parent Group</Label>
+                    <Select
+                      value={formData.parentId}
+                      onValueChange={v => setFormData(p => ({ ...p, parentId: v }))}
+                    >
+                      <SelectTrigger data-testid="select-parent-account">
+                        <SelectValue placeholder="None (top-level)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None (top-level)</SelectItem>
+                        {groupAccounts
+                          .filter(g => !editAccount || g.id !== editAccount.id)
+                          .filter(g => !formData.accountType || g.accountType === formData.accountType)
+                          .map(g => (
+                            <SelectItem key={g.id} value={g.id}>
+                              {"  ".repeat((g.level || 1) - 1)}{g.code} - {g.name}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -383,6 +518,12 @@ export default function ChartOfAccountsPage() {
             ))}
           </SelectContent>
         </Select>
+        <Button variant="outline" size="sm" onClick={expandAll} data-testid="button-expand-all">
+          Expand All
+        </Button>
+        <Button variant="outline" size="sm" onClick={collapseAll} data-testid="button-collapse-all">
+          Collapse All
+        </Button>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
@@ -390,7 +531,8 @@ export default function ChartOfAccountsPage() {
           <Card key={t.value} className="cursor-pointer hover-elevate" onClick={() => setFilterType(filterType === t.value ? "all" : t.value)}>
             <CardContent className="p-3">
               <div className="text-xs text-muted-foreground uppercase tracking-wide">{t.label}</div>
-              <div className="text-sm font-semibold mt-0.5">{t.count} accounts</div>
+              <div className="text-sm font-semibold mt-0.5">{t.count} ledgers</div>
+              <div className="text-xs text-muted-foreground">{t.groupCount} groups</div>
               <div className="text-xs text-muted-foreground mt-0.5 font-mono tabular-nums">
                 {t.totalBalance !== 0 ? `\u20B9${formatAmountCompact(t.totalBalance)}` : "-"}
               </div>
@@ -399,118 +541,114 @@ export default function ChartOfAccountsPage() {
         ))}
       </div>
 
-      <div className="space-y-3">
-        {ACCOUNT_TYPES.filter(type => filterType === "all" || filterType === type.value).map(type => {
-          const group = groupedAccounts[type.value] || [];
-          if (group.length === 0) return null;
-          const isExpanded = expandedTypes.has(type.value);
-          const isBs = isBalanceSheet(type.value);
-          const groupTotal = group.reduce((sum, a) => sum + (Number(a.currentBalance) || 0), 0);
+      <Card>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm" data-testid="table-coa-tree">
+            <thead>
+              <tr className="border-b bg-muted/30">
+                <th className="text-left px-4 py-2 text-xs font-medium text-muted-foreground whitespace-nowrap">Account</th>
+                <th className="text-center px-2 py-2 text-xs font-medium text-muted-foreground whitespace-nowrap w-[70px]">Type</th>
+                <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground whitespace-nowrap w-[120px]">Debit</th>
+                <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground whitespace-nowrap w-[120px]">Credit</th>
+                <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground whitespace-nowrap w-[130px]">Closing</th>
+                <th className="w-[60px] px-2"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {visibleRows.map(({ node, depth }) => {
+                const isGroup = node.nodeType === 'group';
+                const isExpanded = expandedIds.has(node.id);
+                const isBs = isBalanceSheet(node.accountType);
+                const totals = isGroup ? computeGroupTotals(node) : null;
 
-          return (
-            <Card key={type.value}>
-              <div
-                className="flex items-center justify-between p-3 cursor-pointer hover-elevate"
-                onClick={() => toggleType(type.value)}
-                data-testid={`toggle-type-${type.value}`}
-              >
-                <div className="flex items-center gap-2">
-                  {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                  <span className="font-medium">{type.label}</span>
-                  <Badge variant="secondary">{group.length}</Badge>
-                </div>
-                <span className="text-sm font-mono tabular-nums font-medium">{formatAmount(groupTotal)}</span>
-              </div>
-              {isExpanded && (
-                <CardContent className="p-0 border-t">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm" data-testid={`table-${type.value}`}>
-                      <thead>
-                        <tr className="border-b bg-muted/30">
-                          <th className="text-left px-4 py-2 text-xs font-medium text-muted-foreground whitespace-nowrap">Account</th>
-                          {isBs && (
-                            <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground whitespace-nowrap w-[130px]">Opening</th>
-                          )}
-                          <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground whitespace-nowrap w-[130px]">Debit</th>
-                          <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground whitespace-nowrap w-[130px]">Credit</th>
-                          {!isBs && (
-                            <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground whitespace-nowrap w-[130px]">Net Movement</th>
-                          )}
-                          <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground whitespace-nowrap w-[130px]">Closing</th>
-                          <th className="w-[60px] px-2"></th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y">
-                        {group.map(account => (
-                          <tr
-                            key={account.id}
-                            className="hover-elevate"
-                            data-testid={`row-account-${account.code}`}
+                return (
+                  <tr
+                    key={node.id}
+                    className={`hover-elevate ${isGroup ? 'bg-muted/20 font-medium' : ''}`}
+                    data-testid={`row-account-${node.code}`}
+                  >
+                    <td className="px-4 py-2">
+                      <div
+                        className="flex items-center gap-1.5 min-w-0 cursor-pointer"
+                        style={{ paddingLeft: `${depth * 20}px` }}
+                        onClick={() => isGroup && toggleExpand(node.id)}
+                      >
+                        {isGroup ? (
+                          <button
+                            className="flex-shrink-0 p-0.5 rounded hover-elevate"
+                            onClick={(e) => { e.stopPropagation(); toggleExpand(node.id); }}
+                            data-testid={`toggle-${node.code}`}
                           >
-                            <td className="px-4 py-2.5">
-                              <div className="flex items-center gap-2 min-w-0">
-                                <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono shrink-0">{account.code}</code>
-                                <span className="truncate">{account.name}</span>
-                                {account.isSystemAccount === 1 && (
-                                  <Lock className="w-3 h-3 text-muted-foreground shrink-0" />
-                                )}
-                              </div>
-                            </td>
-                            {isBs && (
-                              <td className="text-right px-3 py-2.5 font-mono tabular-nums text-muted-foreground whitespace-nowrap" data-testid={`opening-${account.code}`}>
-                                {formatAmount(account.openingBalance)}
-                              </td>
-                            )}
-                            <td className="text-right px-3 py-2.5 font-mono tabular-nums whitespace-nowrap" data-testid={`debit-${account.code}`}>
-                              {formatAmount(account.periodDebit)}
-                            </td>
-                            <td className="text-right px-3 py-2.5 font-mono tabular-nums whitespace-nowrap" data-testid={`credit-${account.code}`}>
-                              {formatAmount(account.periodCredit)}
-                            </td>
-                            {!isBs && (
-                              <td className="text-right px-3 py-2.5 font-mono tabular-nums whitespace-nowrap" data-testid={`movement-${account.code}`}>
-                                {formatAmount(account.periodMovement)}
-                              </td>
-                            )}
-                            <td className="text-right px-3 py-2.5 font-mono tabular-nums font-medium whitespace-nowrap" data-testid={`closing-${account.code}`}>
-                              {formatAmount(account.currentBalance)}
-                            </td>
-                            <td className="px-2 py-2.5">
-                              <div className="flex items-center gap-0.5 justify-end">
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  onClick={(e) => { e.stopPropagation(); openEditDialog(account); }}
-                                  data-testid={`button-edit-${account.code}`}
-                                >
-                                  <Edit className="w-3.5 h-3.5" />
-                                </Button>
-                                {account.isSystemAccount !== 1 && (
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      if (confirm("Delete this account?")) deleteMutation.mutate(account.id);
-                                    }}
-                                    data-testid={`button-delete-${account.code}`}
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </Button>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </CardContent>
+                            {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                          </button>
+                        ) : (
+                          <span className="w-5 flex-shrink-0" />
+                        )}
+                        {isGroup ? (
+                          isExpanded ? <FolderOpen className="w-4 h-4 text-amber-500 flex-shrink-0" /> : <Folder className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                        ) : (
+                          <BookOpen className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                        )}
+                        <code className="text-xs bg-muted px-1 py-0.5 rounded font-mono shrink-0">{node.code}</code>
+                        <span className={`truncate ${isGroup ? 'text-sm' : 'text-sm'}`}>{node.name}</span>
+                        {node.isSystemAccount === 1 && (
+                          <Lock className="w-3 h-3 text-muted-foreground shrink-0" />
+                        )}
+                      </div>
+                    </td>
+                    <td className="text-center px-2 py-2">
+                      <Badge variant={isGroup ? "outline" : "secondary"} className="text-[10px] px-1.5">
+                        {isGroup ? "GRP" : "LDG"}
+                      </Badge>
+                    </td>
+                    <td className="text-right px-3 py-2 font-mono tabular-nums whitespace-nowrap" data-testid={`debit-${node.code}`}>
+                      {isGroup ? formatAmount(totals?.debit) : formatAmount(node.periodDebit)}
+                    </td>
+                    <td className="text-right px-3 py-2 font-mono tabular-nums whitespace-nowrap" data-testid={`credit-${node.code}`}>
+                      {isGroup ? formatAmount(totals?.credit) : formatAmount(node.periodCredit)}
+                    </td>
+                    <td className="text-right px-3 py-2 font-mono tabular-nums font-medium whitespace-nowrap" data-testid={`closing-${node.code}`}>
+                      {isGroup ? formatAmount(totals?.closing) : formatAmount(node.currentBalance)}
+                    </td>
+                    <td className="px-2 py-2">
+                      <div className="flex items-center gap-0.5 justify-end" style={{ visibility: 'visible' }}>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={(e) => { e.stopPropagation(); openEditDialog(node); }}
+                          data-testid={`button-edit-${node.code}`}
+                        >
+                          <Edit className="w-3.5 h-3.5" />
+                        </Button>
+                        {node.isSystemAccount !== 1 && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (confirm("Delete this account?")) deleteMutation.mutate(node.id);
+                            }}
+                            data-testid={`button-delete-${node.code}`}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {visibleRows.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="text-center py-8 text-muted-foreground">
+                    {searchQuery ? "No accounts match your search" : "No accounts found. Click 'Add Account' to create one."}
+                  </td>
+                </tr>
               )}
-            </Card>
-          );
-        })}
-      </div>
+            </tbody>
+          </table>
+        </div>
+      </Card>
     </div>
   );
 }
