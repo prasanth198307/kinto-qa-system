@@ -19,7 +19,7 @@ import { importVyapaarData, clearImportedData, importPaymentsOnly } from "./vyap
 import { importCreditNotesFromExcel } from "./creditnote-import";
 import { parseExcelFile, commitImport } from "./cashRegisterImport";
 import { importCashRegisterFromExcel } from "./importCashRegisterFromExcel";
-import { insertCashRegisterDaySchema, insertCashRegisterTransactionSchema, insertCashRegisterExpenseItemSchema, insertSalespersonMappingSchema, cashRegisterDays, cashRegisterTransactions, cashRegisterExpenseItems, expenseVouchers, expenseItems, customerAdvances, advanceApplications, insertCustomerAdvanceSchema, insertAdvanceApplicationSchema, journalEntries, journalLines, chartOfAccounts } from "@shared/schema";
+import { insertCashRegisterDaySchema, insertCashRegisterTransactionSchema, insertCashRegisterExpenseItemSchema, insertSalespersonMappingSchema, cashRegisterDays, cashRegisterTransactions, cashRegisterExpenseItems, expenseVouchers, expenseItems, customerAdvances, advanceApplications, insertCustomerAdvanceSchema, insertAdvanceApplicationSchema, journalEntries, journalLines, chartOfAccounts, budgets, budgetItems } from "@shared/schema";
 import { sql, and, eq, ne, gte, lte, gt, asc, desc, inArray, isNotNull, isNull, or, ilike, type SQL } from "drizzle-orm";
 
 // Simple audit logging function
@@ -211,6 +211,9 @@ const endpointToScreenKey: Record<string, string> = {
   '/api/day-book': 'day_book',
   '/api/aging-report': 'aging_report',
   '/api/cash-flow-statement': 'cash_flow_statement',
+  '/api/group-summary': 'group_summary',
+  '/api/budgets': 'budget_variance',
+  '/api/budget-variance': 'budget_variance',
 
   // MIS (Management Information System)
   '/api/mis/kpi-dashboard': 'mis_dashboard',
@@ -22042,6 +22045,419 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return { id: a.id, code: a.code, name: a.name, accountType: a.accountType };
       }));
     } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // ============================================================
+  // GROUP SUMMARY - Tally-style account group totals
+  // ============================================================
+  app.get('/api/group-summary', async (req: any, res) => {
+    try {
+      const fromDate = req.query.fromDate as string;
+      const toDate = req.query.toDate as string;
+      
+      if (!fromDate || !toDate) {
+        return res.status(400).json({ message: 'fromDate and toDate are required' });
+      }
+
+      const accounts = await db.select()
+        .from(chartOfAccounts)
+        .where(and(
+          eq(chartOfAccounts.recordStatus, 1),
+          eq(chartOfAccounts.isActive, 1)
+        ))
+        .orderBy(chartOfAccounts.code);
+
+      const movements = await db.select({
+        accountId: journalLines.accountId,
+        totalDebit: sql<number>`COALESCE(SUM(${journalLines.debit}), 0)`,
+        totalCredit: sql<number>`COALESCE(SUM(${journalLines.credit}), 0)`,
+      })
+        .from(journalLines)
+        .innerJoin(journalEntries, eq(journalLines.journalId, journalEntries.id))
+        .where(and(
+          eq(journalEntries.recordStatus, 1),
+          eq(journalLines.recordStatus, 1),
+          eq(journalEntries.status, 'posted'),
+          sql`${journalEntries.journalDate} >= ${fromDate}`,
+          sql`${journalEntries.journalDate} <= ${toDate}`,
+        ))
+        .groupBy(journalLines.accountId);
+
+      const movementMap = new Map(movements.map(m => [m.accountId, { debit: Number(m.totalDebit), credit: Number(m.totalCredit) }]));
+
+      const openingMovements = await db.select({
+        accountId: journalLines.accountId,
+        totalDebit: sql<number>`COALESCE(SUM(${journalLines.debit}), 0)`,
+        totalCredit: sql<number>`COALESCE(SUM(${journalLines.credit}), 0)`,
+      })
+        .from(journalLines)
+        .innerJoin(journalEntries, eq(journalLines.journalId, journalEntries.id))
+        .where(and(
+          eq(journalEntries.recordStatus, 1),
+          eq(journalLines.recordStatus, 1),
+          eq(journalEntries.status, 'posted'),
+          sql`${journalEntries.journalDate} < ${fromDate}`,
+        ))
+        .groupBy(journalLines.accountId);
+
+      const openingMap = new Map(openingMovements.map(m => [m.accountId, { debit: Number(m.totalDebit), credit: Number(m.totalCredit) }]));
+
+      const groupMap = new Map<string, {
+        accountType: string;
+        subType: string;
+        accounts: Array<{
+          id: string;
+          code: string;
+          name: string;
+          openingBalance: number;
+          periodDebit: number;
+          periodCredit: number;
+          closingBalance: number;
+        }>;
+        totalOpening: number;
+        totalDebit: number;
+        totalCredit: number;
+        totalClosing: number;
+      }>();
+
+      for (const account of accounts) {
+        const key = `${account.accountType}::${account.subType || 'other'}`;
+        const opening = openingMap.get(account.id) || { debit: 0, credit: 0 };
+        const period = movementMap.get(account.id) || { debit: 0, credit: 0 };
+
+        const isDebitNatural = ['asset', 'expense'].includes(account.accountType);
+        const openingBalance = isDebitNatural 
+          ? (opening.debit - opening.credit) 
+          : (opening.credit - opening.debit);
+        const periodNet = isDebitNatural 
+          ? (period.debit - period.credit) 
+          : (period.credit - period.debit);
+        const closingBalance = openingBalance + periodNet;
+
+        if (!groupMap.has(key)) {
+          groupMap.set(key, {
+            accountType: account.accountType,
+            subType: account.subType || 'other',
+            accounts: [],
+            totalOpening: 0,
+            totalDebit: 0,
+            totalCredit: 0,
+            totalClosing: 0,
+          });
+        }
+
+        const group = groupMap.get(key)!;
+        group.accounts.push({
+          id: account.id,
+          code: account.code,
+          name: account.name,
+          openingBalance,
+          periodDebit: period.debit,
+          periodCredit: period.credit,
+          closingBalance,
+        });
+        group.totalOpening += openingBalance;
+        group.totalDebit += period.debit;
+        group.totalCredit += period.credit;
+        group.totalClosing += closingBalance;
+      }
+
+      const typeOrder = ['asset', 'liability', 'equity', 'revenue', 'expense'];
+      const groups = Array.from(groupMap.values()).sort((a, b) => {
+        const typeCompare = typeOrder.indexOf(a.accountType) - typeOrder.indexOf(b.accountType);
+        if (typeCompare !== 0) return typeCompare;
+        return a.subType.localeCompare(b.subType);
+      });
+
+      const typeTotals = typeOrder.map(type => {
+        const typeGroups = groups.filter(g => g.accountType === type);
+        return {
+          accountType: type,
+          totalOpening: typeGroups.reduce((s, g) => s + g.totalOpening, 0),
+          totalDebit: typeGroups.reduce((s, g) => s + g.totalDebit, 0),
+          totalCredit: typeGroups.reduce((s, g) => s + g.totalCredit, 0),
+          totalClosing: typeGroups.reduce((s, g) => s + g.totalClosing, 0),
+          groupCount: typeGroups.length,
+          accountCount: typeGroups.reduce((s, g) => s + g.accounts.length, 0),
+        };
+      });
+
+      res.json({ groups, typeTotals });
+    } catch (error: any) {
+      console.error("Error fetching group summary:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // ============================================================
+  // BUDGET & VARIANCE - Budget CRUD and Variance Report
+  // ============================================================
+  
+  app.get('/api/budgets', async (req: any, res) => {
+    try {
+      const fy = req.query.fy as string;
+      const conditions = [eq(budgets.recordStatus, 1)];
+      if (fy) conditions.push(eq(budgets.financialYear, fy));
+      
+      const result = await db.select().from(budgets)
+        .where(and(...conditions))
+        .orderBy(sql`${budgets.financialYear} DESC, ${budgets.createdAt} DESC`);
+      
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+  
+  app.get('/api/budgets/:id', async (req: any, res) => {
+    try {
+      const budget = await db.select().from(budgets)
+        .where(and(eq(budgets.id, req.params.id), eq(budgets.recordStatus, 1)))
+        .limit(1);
+      
+      if (!budget.length) return res.status(404).json({ message: 'Budget not found' });
+      
+      const items = await db.select({
+        id: budgetItems.id,
+        budgetId: budgetItems.budgetId,
+        accountId: budgetItems.accountId,
+        apr: budgetItems.apr,
+        may: budgetItems.may,
+        jun: budgetItems.jun,
+        jul: budgetItems.jul,
+        aug: budgetItems.aug,
+        sep: budgetItems.sep,
+        oct: budgetItems.oct,
+        nov: budgetItems.nov,
+        dec: budgetItems.dec,
+        jan: budgetItems.jan,
+        feb: budgetItems.feb,
+        mar: budgetItems.mar,
+        accountCode: chartOfAccounts.code,
+        accountName: chartOfAccounts.name,
+        accountType: chartOfAccounts.accountType,
+      })
+        .from(budgetItems)
+        .innerJoin(chartOfAccounts, eq(budgetItems.accountId, chartOfAccounts.id))
+        .where(and(eq(budgetItems.budgetId, req.params.id), eq(budgetItems.recordStatus, 1)))
+        .orderBy(chartOfAccounts.code);
+      
+      res.json({ ...budget[0], items });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+  
+  app.post('/api/budgets', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { name, financialYear, periodType, notes, items } = req.body;
+      
+      if (!name || !financialYear) {
+        return res.status(400).json({ message: 'Name and financial year are required' });
+      }
+      
+      const [budget] = await db.insert(budgets).values({
+        name,
+        financialYear,
+        periodType: periodType || 'monthly',
+        notes,
+        status: 'active',
+        createdBy: req.user?.id,
+      }).returning();
+      
+      if (items && items.length > 0) {
+        const itemValues = items.map((item: any) => ({
+          budgetId: budget.id,
+          accountId: item.accountId,
+          apr: item.apr || 0,
+          may: item.may || 0,
+          jun: item.jun || 0,
+          jul: item.jul || 0,
+          aug: item.aug || 0,
+          sep: item.sep || 0,
+          oct: item.oct || 0,
+          nov: item.nov || 0,
+          dec: item.dec || 0,
+          jan: item.jan || 0,
+          feb: item.feb || 0,
+          mar: item.mar || 0,
+        }));
+        await db.insert(budgetItems).values(itemValues);
+      }
+      
+      res.json(budget);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+  
+  app.put('/api/budgets/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { name, notes, items } = req.body;
+      
+      await db.update(budgets).set({
+        name: name || undefined,
+        notes,
+        updatedAt: new Date().toISOString(),
+      }).where(eq(budgets.id, req.params.id));
+      
+      if (items) {
+        await db.update(budgetItems).set({ recordStatus: 0 })
+          .where(eq(budgetItems.budgetId, req.params.id));
+        
+        if (items.length > 0) {
+          const itemValues = items.map((item: any) => ({
+            budgetId: req.params.id,
+            accountId: item.accountId,
+            apr: item.apr || 0,
+            may: item.may || 0,
+            jun: item.jun || 0,
+            jul: item.jul || 0,
+            aug: item.aug || 0,
+            sep: item.sep || 0,
+            oct: item.oct || 0,
+            nov: item.nov || 0,
+            dec: item.dec || 0,
+            jan: item.jan || 0,
+            feb: item.feb || 0,
+            mar: item.mar || 0,
+          }));
+          await db.insert(budgetItems).values(itemValues);
+        }
+      }
+      
+      res.json({ message: 'Budget updated' });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+  
+  app.delete('/api/budgets/:id', requireRole('admin'), async (req: any, res) => {
+    try {
+      await db.update(budgets).set({ recordStatus: 0 })
+        .where(eq(budgets.id, req.params.id));
+      await db.update(budgetItems).set({ recordStatus: 0 })
+        .where(eq(budgetItems.budgetId, req.params.id));
+      res.json({ message: 'Budget deleted' });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+  
+  app.get('/api/budget-variance', async (req: any, res) => {
+    try {
+      const budgetId = req.query.budgetId as string;
+      if (!budgetId) return res.status(400).json({ message: 'budgetId is required' });
+      
+      const budget = await db.select().from(budgets)
+        .where(and(eq(budgets.id, budgetId), eq(budgets.recordStatus, 1)))
+        .limit(1);
+      
+      if (!budget.length) return res.status(404).json({ message: 'Budget not found' });
+      
+      const fy = budget[0].financialYear;
+      const fyStart = `${fy}-04-01`;
+      const fyEnd = `${parseInt(fy) + 1}-03-31`;
+      
+      const items = await db.select({
+        id: budgetItems.id,
+        accountId: budgetItems.accountId,
+        apr: budgetItems.apr, may: budgetItems.may, jun: budgetItems.jun,
+        jul: budgetItems.jul, aug: budgetItems.aug, sep: budgetItems.sep,
+        oct: budgetItems.oct, nov: budgetItems.nov, dec: budgetItems.dec,
+        jan: budgetItems.jan, feb: budgetItems.feb, mar: budgetItems.mar,
+        accountCode: chartOfAccounts.code,
+        accountName: chartOfAccounts.name,
+        accountType: chartOfAccounts.accountType,
+        subType: chartOfAccounts.subType,
+      })
+        .from(budgetItems)
+        .innerJoin(chartOfAccounts, eq(budgetItems.accountId, chartOfAccounts.id))
+        .where(and(eq(budgetItems.budgetId, budgetId), eq(budgetItems.recordStatus, 1)))
+        .orderBy(chartOfAccounts.code);
+      
+      const actuals = items.length > 0 ? await db.select({
+        accountId: journalLines.accountId,
+        month: sql<string>`TO_CHAR(${journalEntries.journalDate}::date, 'Mon')`,
+        monthNum: sql<number>`EXTRACT(MONTH FROM ${journalEntries.journalDate}::date)`,
+        totalDebit: sql<number>`COALESCE(SUM(${journalLines.debit}), 0)`,
+        totalCredit: sql<number>`COALESCE(SUM(${journalLines.credit}), 0)`,
+      })
+        .from(journalLines)
+        .innerJoin(journalEntries, eq(journalLines.journalId, journalEntries.id))
+        .where(and(
+          eq(journalEntries.recordStatus, 1),
+          eq(journalLines.recordStatus, 1),
+          eq(journalEntries.status, 'posted'),
+          sql`${journalEntries.journalDate} >= ${fyStart}`,
+          sql`${journalEntries.journalDate} <= ${fyEnd}`,
+          sql`${journalLines.accountId} IN (${sql.join(items.map(i => sql`${i.accountId}`), sql`, `)})`
+        ))
+        .groupBy(journalLines.accountId, sql`TO_CHAR(${journalEntries.journalDate}::date, 'Mon')`, sql`EXTRACT(MONTH FROM ${journalEntries.journalDate}::date)`) : [];
+      
+      const monthToCol: Record<number, string> = {
+        4: 'apr', 5: 'may', 6: 'jun', 7: 'jul', 8: 'aug', 9: 'sep',
+        10: 'oct', 11: 'nov', 12: 'dec', 1: 'jan', 2: 'feb', 3: 'mar'
+      };
+      
+      const actualsMap = new Map<string, Record<string, number>>();
+      for (const a of actuals) {
+        const col = monthToCol[Number(a.monthNum)];
+        if (!col) continue;
+        if (!actualsMap.has(a.accountId)) {
+          actualsMap.set(a.accountId, { apr: 0, may: 0, jun: 0, jul: 0, aug: 0, sep: 0, oct: 0, nov: 0, dec: 0, jan: 0, feb: 0, mar: 0 });
+        }
+        const map = actualsMap.get(a.accountId)!;
+        const accountItem = items.find(i => i.accountId === a.accountId);
+        if (accountItem && ['revenue', 'liability', 'equity'].includes(accountItem.accountType)) {
+          map[col] += (Number(a.totalCredit) - Number(a.totalDebit));
+        } else {
+          map[col] += (Number(a.totalDebit) - Number(a.totalCredit));
+        }
+      }
+      
+      const months = ['apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec', 'jan', 'feb', 'mar'];
+      
+      const varianceItems = items.map(item => {
+        const actual = actualsMap.get(item.accountId) || { apr: 0, may: 0, jun: 0, jul: 0, aug: 0, sep: 0, oct: 0, nov: 0, dec: 0, jan: 0, feb: 0, mar: 0 };
+        
+        const monthlyData = months.map(m => ({
+          month: m,
+          budgeted: Number((item as any)[m]) || 0,
+          actual: actual[m] || 0,
+          variance: (actual[m] || 0) - (Number((item as any)[m]) || 0),
+        }));
+        
+        const totalBudgeted = monthlyData.reduce((s, d) => s + d.budgeted, 0);
+        const totalActual = monthlyData.reduce((s, d) => s + d.actual, 0);
+        
+        return {
+          accountId: item.accountId,
+          accountCode: item.accountCode,
+          accountName: item.accountName,
+          accountType: item.accountType,
+          subType: item.subType,
+          monthly: monthlyData,
+          totalBudgeted,
+          totalActual,
+          totalVariance: totalActual - totalBudgeted,
+          variancePercent: totalBudgeted !== 0 ? ((totalActual - totalBudgeted) / Math.abs(totalBudgeted)) * 100 : 0,
+        };
+      });
+      
+      res.json({
+        budget: budget[0],
+        items: varianceItems,
+        summary: {
+          totalBudgeted: varianceItems.reduce((s, i) => s + i.totalBudgeted, 0),
+          totalActual: varianceItems.reduce((s, i) => s + i.totalActual, 0),
+          totalVariance: varianceItems.reduce((s, i) => s + i.totalVariance, 0),
+        },
+      });
+    } catch (error: any) {
+      console.error("Error fetching budget variance:", error);
       res.status(500).json({ message: error.message });
     }
   });

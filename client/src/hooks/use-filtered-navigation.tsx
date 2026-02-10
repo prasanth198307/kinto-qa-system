@@ -80,6 +80,8 @@ const navItemToScreenKey: Record<string, string> = {
   'day-book': 'day_book',
   'aging-report': 'aging_report',
   'cash-flow-statement': 'cash_flow_statement',
+  'group-summary': 'group_summary',
+  'budget-variance': 'budget_variance',
   'admin-tools': 'admin_tools',
 };
 
@@ -172,6 +174,8 @@ const navItemToScreen: Record<string, string> = {
   'day-book': 'Accounting & Ledger',
   'aging-report': 'Accounting & Ledger',
   'cash-flow-statement': 'Accounting & Ledger',
+  'group-summary': 'Accounting & Ledger',
+  'budget-variance': 'Accounting & Ledger',
   'admin-tools': 'User Management',
 };
 

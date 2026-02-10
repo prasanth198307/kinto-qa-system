@@ -139,6 +139,8 @@ const AVAILABLE_SCREENS: ScreenDefinition[] = [
   { key: 'day_book', label: 'Day Book', allowedActions: ['view'] },
   { key: 'aging_report', label: 'Outstanding / Aging Report', allowedActions: ['view'] },
   { key: 'cash_flow_statement', label: 'Cash Flow Statement', allowedActions: ['view'] },
+  { key: 'group_summary', label: 'Group Summary', allowedActions: ['view'] },
+  { key: 'budget_variance', label: 'Budget & Variance', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'scrap_inventory', label: 'Scrap Inventory', allowedActions: ['view', 'create', 'edit', 'delete'] },
   
   // System & Configuration

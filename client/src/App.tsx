@@ -116,6 +116,8 @@ import LedgerViewPage from "@/pages/ledger-view";
 import DayBookPage from "@/pages/day-book";
 import AgingReportPage from "@/pages/aging-report";
 import CashFlowStatementPage from "@/pages/cash-flow-statement";
+import GroupSummaryPage from "@/pages/group-summary";
+import BudgetVariancePage from "@/pages/budget-variance";
 import AdminToolsPage from "@/pages/admin-tools";
 
 type Role = 'admin' | 'operator' | 'reviewer' | 'manager';
@@ -866,6 +868,8 @@ function AdminDashboard() {
         { id: "day-book", label: "Day Book", icon: FileStack, onClick: () => setLocation('/day-book') },
         { id: "aging-report", label: "Outstanding/Aging", icon: AlertTriangle, onClick: () => setLocation('/aging-report') },
         { id: "cash-flow-statement", label: "Cash Flow Statement", icon: TrendingUp, onClick: () => setLocation('/cash-flow-statement') },
+        { id: "group-summary", label: "Group Summary", icon: Layers, onClick: () => setLocation('/group-summary') },
+        { id: "budget-variance", label: "Budget & Variance", icon: Scale, onClick: () => setLocation('/budget-variance') },
       ],
     },
     {
@@ -1411,6 +1415,8 @@ const navItemToScreenKey: Record<string, string> = {
   'day-book': 'day_book',
   'aging-report': 'aging_report',
   'cash-flow-statement': 'cash_flow_statement',
+  'group-summary': 'group_summary',
+  'budget-variance': 'budget_variance',
   // Maintenance
   'maintenance': 'maintenance_plans',
   'pm-history': 'pm_history',
@@ -1493,6 +1499,8 @@ const navItemToScreen: Record<string, string> = {
   'day-book': 'Accounting',
   'aging-report': 'Accounting',
   'cash-flow-statement': 'Accounting',
+  'group-summary': 'Accounting',
+  'budget-variance': 'Accounting',
   // Maintenance
   'maintenance': 'Maintenance Plans',
   'pm-history': 'PM History',
@@ -1723,6 +1731,8 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "day-book", label: "Day Book", icon: FileStack, onClick: () => setLocation('/day-book') },
         { id: "aging-report", label: "Outstanding/Aging", icon: AlertTriangle, onClick: () => setLocation('/aging-report') },
         { id: "cash-flow-statement", label: "Cash Flow Statement", icon: TrendingUp, onClick: () => setLocation('/cash-flow-statement') },
+        { id: "group-summary", label: "Group Summary", icon: Layers, onClick: () => setLocation('/group-summary') },
+        { id: "budget-variance", label: "Budget & Variance", icon: Scale, onClick: () => setLocation('/budget-variance') },
       ],
     },
     {
@@ -2122,6 +2132,34 @@ function CashFlowStatementPageWrapper() {
   return (
     <DashboardShell title="Cash Flow Statement" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
       <CashFlowStatementPage />
+    </DashboardShell>
+  );
+}
+
+function GroupSummaryPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('group-summary');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  return (
+    <DashboardShell title="Group Summary" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
+      <GroupSummaryPage />
+    </DashboardShell>
+  );
+}
+
+function BudgetVariancePageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('budget-variance');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  return (
+    <DashboardShell title="Budget & Variance" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
+      <BudgetVariancePage />
     </DashboardShell>
   );
 }
@@ -2896,6 +2934,8 @@ function Router() {
       <ProtectedRoute path="/day-book" component={DayBookPageWrapper} />
       <ProtectedRoute path="/aging-report" component={AgingReportPageWrapper} />
       <ProtectedRoute path="/cash-flow-statement" component={CashFlowStatementPageWrapper} />
+      <ProtectedRoute path="/group-summary" component={GroupSummaryPageWrapper} />
+      <ProtectedRoute path="/budget-variance" component={BudgetVariancePageWrapper} />
       <ProtectedRoute path="/admin-tools" component={AdminToolsPageWrapper} />
       <ProtectedRoute path="/journal-entry/new" component={ManualJournalEntryPageWrapper} />
       <ProtectedRoute path="/journal-entry/:id" component={JournalEntryDetailPageWrapper} />

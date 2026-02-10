@@ -3617,3 +3617,53 @@ export const insertAccountSubtypeSchema = createInsertSchema(accountSubtypes).om
 
 export type InsertAccountSubtype = z.infer<typeof insertAccountSubtypeSchema>;
 export type AccountSubtype = typeof accountSubtypes.$inferSelect;
+
+// Budget Master - Annual/periodic budgets
+// ============================================================
+export const budgets = pgTable("budgets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 255 }).notNull(),
+  financialYear: varchar("financial_year", { length: 10 }).notNull(),
+  periodType: varchar("period_type", { length: 20 }).default('monthly').notNull(),
+  status: varchar("status", { length: 20 }).default('draft').notNull(),
+  notes: text("notes"),
+  createdBy: varchar("created_by").references(() => users.id),
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
+});
+
+export const insertBudgetSchema = createInsertSchema(budgets).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertBudget = z.infer<typeof insertBudgetSchema>;
+export type Budget = typeof budgets.$inferSelect;
+
+// Budget Line Items - per-account budget allocations
+// ============================================================
+export const budgetItems = pgTable("budget_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  budgetId: varchar("budget_id").references(() => budgets.id).notNull(),
+  accountId: varchar("account_id").references(() => chartOfAccounts.id).notNull(),
+  apr: integer("apr").default(0).notNull(),
+  may: integer("may").default(0).notNull(),
+  jun: integer("jun").default(0).notNull(),
+  jul: integer("jul").default(0).notNull(),
+  aug: integer("aug").default(0).notNull(),
+  sep: integer("sep").default(0).notNull(),
+  oct: integer("oct").default(0).notNull(),
+  nov: integer("nov").default(0).notNull(),
+  dec: integer("dec").default(0).notNull(),
+  jan: integer("jan").default(0).notNull(),
+  feb: integer("feb").default(0).notNull(),
+  mar: integer("mar").default(0).notNull(),
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+}, (table) => [
+  index("bi_budget_idx").on(table.budgetId),
+  index("bi_account_idx").on(table.accountId),
+]);
