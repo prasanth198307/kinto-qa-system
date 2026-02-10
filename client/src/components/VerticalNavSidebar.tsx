@@ -163,11 +163,35 @@ export function VerticalNavSidebar({
   const sidebarContent = (
     <div 
       className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-visible"
+      tabIndex={0}
       style={{
         scrollbarWidth: 'thin',
         scrollbarColor: 'hsl(var(--muted-foreground) / 0.3) transparent',
         WebkitOverflowScrolling: 'touch',
-        touchAction: 'pan-y'
+        touchAction: 'pan-y',
+        outline: 'none',
+      }}
+      onKeyDown={(e) => {
+        const container = e.currentTarget;
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          container.scrollBy({ top: 60, behavior: 'smooth' });
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          container.scrollBy({ top: -60, behavior: 'smooth' });
+        } else if (e.key === 'PageDown') {
+          e.preventDefault();
+          container.scrollBy({ top: 300, behavior: 'smooth' });
+        } else if (e.key === 'PageUp') {
+          e.preventDefault();
+          container.scrollBy({ top: -300, behavior: 'smooth' });
+        } else if (e.key === 'Home') {
+          e.preventDefault();
+          container.scrollTo({ top: 0, behavior: 'smooth' });
+        } else if (e.key === 'End') {
+          e.preventDefault();
+          container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+        }
       }}
     >
       <div className="space-y-1">
