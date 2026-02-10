@@ -245,13 +245,13 @@ export default function ChartOfAccountsPage() {
   }
 
   function handleSubmit() {
-    if (formData.nodeType === "ledger" && (!formData.parentId || formData.parentId === "none")) {
+    if (formData.nodeType === "ledger" && (!formData.parentId || formData.parentId === "__none__")) {
       toast({ title: "Parent group is required", description: "Ledger accounts must belong to a parent group.", variant: "destructive" });
       return;
     }
     const data: any = {
       ...formData,
-      parentId: formData.parentId || null,
+      parentId: formData.parentId === "__none__" ? null : (formData.parentId || null),
     };
     if (editAccount) {
       updateMutation.mutate({ id: editAccount.id, data });
@@ -438,12 +438,14 @@ export default function ChartOfAccountsPage() {
                         className="w-full justify-between font-normal"
                         data-testid="select-parent-account"
                       >
-                        {formData.parentId
-                          ? (() => {
-                              const sel = groupAccounts.find(g => g.id === formData.parentId);
-                              return sel ? `${sel.code} - ${sel.name}` : "Select parent group";
-                            })()
-                          : "Select parent group"}
+                        {formData.parentId === "__none__"
+                          ? "None (top-level group)"
+                          : formData.parentId
+                            ? (() => {
+                                const sel = groupAccounts.find(g => g.id === formData.parentId);
+                                return sel ? `${sel.code} - ${sel.name}` : "Select parent group";
+                              })()
+                            : "Select parent group"}
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
@@ -455,13 +457,13 @@ export default function ChartOfAccountsPage() {
                           <CommandGroup>
                             {formData.nodeType === "group" && (
                               <CommandItem
-                                value="__none__"
+                                value="none top-level group"
                                 onSelect={() => {
-                                  setFormData(p => ({ ...p, parentId: "", accountType: "" }));
+                                  setFormData(p => ({ ...p, parentId: "__none__", accountType: "" }));
                                   setParentPickerOpen(false);
                                 }}
                               >
-                                <Check className={cn("mr-2 h-4 w-4", !formData.parentId ? "opacity-100" : "opacity-0")} />
+                                <Check className={cn("mr-2 h-4 w-4", formData.parentId === "__none__" ? "opacity-100" : "opacity-0")} />
                                 None (top-level group)
                               </CommandItem>
                             )}
@@ -491,7 +493,7 @@ export default function ChartOfAccountsPage() {
                       </Command>
                     </PopoverContent>
                   </Popover>
-                  {formData.parentId && (
+                  {formData.parentId && formData.parentId !== "__none__" && (
                     <p className="text-xs text-muted-foreground mt-1">
                       Type: {ACCOUNT_TYPES.find(t => t.value === formData.accountType)?.label || formData.accountType} (inherited from parent)
                     </p>
