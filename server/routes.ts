@@ -20306,6 +20306,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return `${y}${m}${day}`;
       }
 
+      const allAccounts = await db.select()
+        .from(chartOfAccounts)
+        .where(and(
+          eq(chartOfAccounts.recordStatus, 1),
+          eq(chartOfAccounts.isActive, 1)
+        ))
+        .orderBy(chartOfAccounts.code);
+
+      const accountMap = new Map(allAccounts.map(a => [a.id, a]));
+
+      const tallyGroupMap: Record<string, string> = {
+        asset: 'Capital Account',
+        liability: 'Current Liabilities',
+        equity: 'Capital Account',
+        revenue: 'Sales Accounts',
+        expense: 'Indirect Expenses',
+      };
+
+      function getParentName(account: typeof allAccounts[0]): string {
+        if (account.parentId) {
+          const parent = accountMap.get(account.parentId);
+          if (parent) return parent.name;
+        }
+        return tallyGroupMap[account.accountType] || 'Suspense A/c';
+      }
+
+      let masters = '';
+      const groups = allAccounts.filter(a => a.nodeType === 'group');
+      const ledgers = allAccounts.filter(a => a.nodeType === 'ledger');
+
+      for (const group of groups) {
+        const parentName = getParentName(group);
+        masters += `
+        <GROUP NAME="${escapeXml(group.name)}" ACTION="Create">
+          <NAME.LIST>
+            <NAME>${escapeXml(group.name)}</NAME>
+          </NAME.LIST>
+          <PARENT>${escapeXml(parentName)}</PARENT>
+        </GROUP>`;
+      }
+
+      for (const ledger of ledgers) {
+        const parentName = getParentName(ledger);
+        masters += `
+        <LEDGER NAME="${escapeXml(ledger.name)}" ACTION="Create">
+          <NAME.LIST>
+            <NAME>${escapeXml(ledger.name)}</NAME>
+          </NAME.LIST>
+          <PARENT>${escapeXml(parentName)}</PARENT>
+        </LEDGER>`;
+      }
+
       const entryIds = entries.map(e => e.id);
       const allLines = entryIds.length > 0
         ? await db.select({
@@ -20379,7 +20431,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     <VERSION>1</VERSION>
     <TALLYREQUEST>Import</TALLYREQUEST>
     <TYPE>Data</TYPE>
-    <ID>Vouchers</ID>
+    <ID>All Masters and Vouchers</ID>
   </HEADER>
   <BODY>
     <DESC>
@@ -20388,7 +20440,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       </STATICVARIABLES>
     </DESC>
     <DATA>
-      <TALLYMESSAGE xmlns:UDF="TallyUDF">${vouchers}
+      <TALLYMESSAGE xmlns:UDF="TallyUDF">${masters}${vouchers}
       </TALLYMESSAGE>
     </DATA>
   </BODY>
@@ -20422,6 +20474,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(journalEntries)
         .where(whereClause)
         .orderBy(journalEntries.journalDate, journalEntries.journalNumber);
+
+      const allAccounts = await db.select()
+        .from(chartOfAccounts)
+        .where(and(
+          eq(chartOfAccounts.recordStatus, 1),
+          eq(chartOfAccounts.isActive, 1)
+        ));
+      const accountLookup = new Map(allAccounts.map(a => [a.id, a]));
+
+      function getGroupPath(accountId: string): string {
+        const account = accountLookup.get(accountId);
+        if (!account || !account.parentId) return '';
+        const parts: string[] = [];
+        let current = accountLookup.get(account.parentId);
+        while (current) {
+          parts.unshift(current.name);
+          current = current.parentId ? accountLookup.get(current.parentId) : undefined;
+        }
+        return parts.join(' > ');
+      }
 
       const entryIds = entries.map(e => e.id);
       const allLines = entryIds.length > 0
@@ -20457,7 +20529,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return str;
       }
 
-      let csv = 'Date,Voucher Type,Voucher Number,Account Code,Account Name,Debit,Credit,Description\n';
+      let csv = 'Date,Voucher Type,Voucher Number,Account Code,Account Name,Parent Group,Group Path,Debit,Credit,Description\n';
 
       const sourceTypeLabels: Record<string, string> = {
         invoice: 'Sales', payment: 'Receipt', customer_advance: 'Receipt',
@@ -20478,7 +20550,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         for (const line of lines) {
           const debitAmt = (line.debit || 0) / 100;
           const creditAmt = (line.credit || 0) / 100;
-          csv += `${dateStr},${escapeCsv(vchType)},${escapeCsv(entry.journalNumber)},${escapeCsv(line.accountCode || '')},${escapeCsv(line.accountName || '')},${debitAmt > 0 ? debitAmt.toFixed(2) : ''},${creditAmt > 0 ? creditAmt.toFixed(2) : ''},${escapeCsv(entry.description || '')}\n`;
+          const acct = accountLookup.get(line.accountId);
+          const parentGroup = acct?.parentId ? (accountLookup.get(acct.parentId)?.name || '') : '';
+          const groupPath = getGroupPath(line.accountId);
+          csv += `${dateStr},${escapeCsv(vchType)},${escapeCsv(entry.journalNumber)},${escapeCsv(line.accountCode || '')},${escapeCsv(line.accountName || '')},${escapeCsv(parentGroup)},${escapeCsv(groupPath)},${debitAmt > 0 ? debitAmt.toFixed(2) : ''},${creditAmt > 0 ? creditAmt.toFixed(2) : ''},${escapeCsv(entry.description || '')}\n`;
         }
       }
 
