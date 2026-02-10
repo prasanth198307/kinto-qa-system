@@ -7178,8 +7178,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`[REISSUE] Inventory check passed for all ${items.length} items`);
       }
       
-      // Generate invoice number
-      const invoiceNumber = `INV-${Date.now()}`;
+      // Generate GST-compliant invoice number: INV-YYYYMMDD-NNN (16 chars max)
+      const invDate = validatedHeader.invoiceDate ? new Date(validatedHeader.invoiceDate) : new Date();
+      const invDateStr = invDate.toISOString().slice(0, 10).replace(/-/g, '');
+      const dayStart = invDate.toISOString().slice(0, 10);
+      const existingCount: any = (await db.execute(sql`
+        SELECT COUNT(*)::INTEGER as cnt FROM invoices 
+        WHERE invoice_number LIKE ${'INV-' + invDateStr + '-%'}
+        AND record_status = 1
+      `)).rows;
+      const seq = (Number(existingCount[0]?.cnt) || 0) + 1;
+      const invoiceNumber = `INV-${invDateStr}-${String(seq).padStart(3, '0')}`;
       const invoiceData = {
         ...validatedHeader,
         invoiceDate: validatedHeader.invoiceDate ? new Date(validatedHeader.invoiceDate).toISOString() : new Date().toISOString(),
