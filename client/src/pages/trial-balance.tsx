@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation, useSearch } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Printer, AlertTriangle, CheckCircle2, ExternalLink, Download } from "lucide-react";
+import { Calendar, Printer, AlertTriangle, CheckCircle2, ExternalLink, Download, ChevronDown, ChevronRight } from "lucide-react";
 import { exportToExcel } from "@/lib/excel-export";
 
 interface ChartAccount {
@@ -13,6 +13,9 @@ interface ChartAccount {
   code: string;
   name: string;
   accountType: string;
+  nodeType?: string;
+  level?: number;
+  parentId?: string | null;
   subType: string | null;
   subTypeLabel: string | null;
   openingBalance: number;
@@ -20,6 +23,20 @@ interface ChartAccount {
   periodCredit: number;
   periodMovement: number;
   currentBalance: number;
+}
+
+interface TreeNode {
+  id: string;
+  code: string;
+  name: string;
+  accountType: string;
+  nodeType: string;
+  level: number;
+  parentId: string | null;
+  currentBalance: number;
+  debit: number;
+  credit: number;
+  children: TreeNode[];
 }
 
 function getCurrentFY(): string {
@@ -56,14 +73,17 @@ function formatDateDisplay(dateStr: string): string {
   }
 }
 
-const TYPE_ORDER = ["asset", "liability", "equity", "revenue", "expense"];
-const TYPE_LABELS: Record<string, string> = {
-  asset: "Assets",
-  liability: "Liabilities",
-  equity: "Equity",
-  revenue: "Revenue",
-  expense: "Expenses",
-};
+function isDebitNormal(type: string) {
+  return ["asset", "expense"].includes(type);
+}
+
+function getDebitCredit(accountType: string, balance: number): { debit: number; credit: number } {
+  if (balance === 0) return { debit: 0, credit: 0 };
+  if (isDebitNormal(accountType)) {
+    return balance >= 0 ? { debit: balance, credit: 0 } : { debit: 0, credit: Math.abs(balance) };
+  }
+  return balance >= 0 ? { debit: 0, credit: balance } : { debit: Math.abs(balance), credit: 0 };
+}
 
 export default function TrialBalancePage() {
   const searchString = useSearch();
@@ -79,6 +99,8 @@ export default function TrialBalancePage() {
   const [customFrom, setCustomFrom] = useState(urlFrom || "");
   const [customTo, setCustomTo] = useState(urlTo || "");
   const [hideZero, setHideZero] = useState(true);
+  const [viewMode, setViewMode] = useState<"flat" | "tree">("tree");
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const [, setLocation] = useLocation();
 
   const isCustomValid = dateMode === "custom" && customFrom && customTo && customFrom <= customTo;
@@ -109,74 +131,131 @@ export default function TrialBalancePage() {
     return `mode=fy&fy=${selectedFY}`;
   })();
 
-  const rows = accounts
-    .filter(a => !hideZero || a.periodDebit !== 0 || a.periodCredit !== 0 || a.currentBalance !== 0)
-    .sort((a, b) => a.code.localeCompare(b.code));
+  const { tree, flatRows, totalDebit, totalCredit } = useMemo(() => {
+    const ledgerAccounts = accounts.filter(a => (a.nodeType || 'ledger') === 'ledger');
+    const allAccounts = accounts;
 
-  const grouped = TYPE_ORDER.map(type => ({
-    type,
-    label: TYPE_LABELS[type],
-    accounts: rows.filter(a => a.accountType === type),
-  })).filter(g => g.accounts.length > 0);
+    const rows = ledgerAccounts
+      .filter(a => !hideZero || a.periodDebit !== 0 || a.periodCredit !== 0 || a.currentBalance !== 0)
+      .sort((a, b) => a.code.localeCompare(b.code));
 
-  const isDebitNormal = (type: string) => ["asset", "expense"].includes(type);
+    let td = 0;
+    let tc = 0;
+    rows.forEach(a => {
+      const { debit, credit } = getDebitCredit(a.accountType, Number(a.currentBalance) || 0);
+      td += debit;
+      tc += credit;
+    });
 
-  function getDebitCredit(account: ChartAccount) {
-    const bal = Number(account.currentBalance) || 0;
-    if (bal === 0) return { debit: 0, credit: 0 };
-    if (isDebitNormal(account.accountType)) {
-      return bal >= 0 ? { debit: bal, credit: 0 } : { debit: 0, credit: Math.abs(bal) };
+    const nodeMap = new Map<string, TreeNode>();
+    for (const account of allAccounts) {
+      const bal = Number(account.currentBalance) || 0;
+      const { debit, credit } = account.nodeType === 'ledger' || !account.nodeType
+        ? getDebitCredit(account.accountType, bal)
+        : { debit: 0, credit: 0 };
+
+      nodeMap.set(account.id, {
+        id: account.id,
+        code: account.code,
+        name: account.name,
+        accountType: account.accountType,
+        nodeType: account.nodeType || 'ledger',
+        level: account.level || 1,
+        parentId: account.parentId || null,
+        currentBalance: bal,
+        debit,
+        credit,
+        children: [],
+      });
     }
-    return bal >= 0 ? { debit: 0, credit: bal } : { debit: Math.abs(bal), credit: 0 };
-  }
 
-  let totalDebit = 0;
-  let totalCredit = 0;
-  rows.forEach(a => {
-    const { debit, credit } = getDebitCredit(a);
-    totalDebit += debit;
-    totalCredit += credit;
-  });
+    const roots: TreeNode[] = [];
+    for (const node of Array.from(nodeMap.values())) {
+      if (node.parentId && nodeMap.has(node.parentId)) {
+        nodeMap.get(node.parentId)!.children.push(node);
+      } else if (!node.parentId) {
+        roots.push(node);
+      } else {
+        roots.push(node);
+      }
+    }
+
+    function sortNodes(nodes: TreeNode[]) {
+      nodes.sort((a, b) => a.code.localeCompare(b.code));
+      nodes.forEach(n => sortNodes(n.children));
+    }
+    sortNodes(roots);
+
+    function aggregateTree(node: TreeNode): void {
+      if (node.nodeType === 'group') {
+        node.debit = 0;
+        node.credit = 0;
+        node.currentBalance = 0;
+        for (const child of node.children) {
+          aggregateTree(child);
+          node.debit += child.debit;
+          node.credit += child.credit;
+          node.currentBalance += child.currentBalance;
+        }
+      }
+    }
+    roots.forEach(aggregateTree);
+
+    function filterZeroNodes(nodes: TreeNode[]): TreeNode[] {
+      if (!hideZero) return nodes;
+      return nodes
+        .map(node => {
+          if (node.nodeType === 'group') {
+            const filteredChildren = filterZeroNodes(node.children);
+            if (filteredChildren.length === 0) return null;
+            return { ...node, children: filteredChildren };
+          }
+          if (node.debit === 0 && node.credit === 0 && node.currentBalance === 0) return null;
+          return node;
+        })
+        .filter(Boolean) as TreeNode[];
+    }
+
+    return {
+      tree: filterZeroNodes(roots),
+      flatRows: rows,
+      totalDebit: td,
+      totalCredit: tc,
+    };
+  }, [accounts, hideZero]);
 
   const isBalanced = Math.abs(totalDebit - totalCredit) < 1;
   const difference = totalDebit - totalCredit;
 
-  function handleExcelDownload() {
-    const fmtRupees = (paise: number) => paise === 0 ? 0 : Number((paise / 100).toFixed(2));
-    const data: (string | number | null)[][] = [
-      ["KINTO Smart Ops - Trial Balance"],
-      [currentPeriodLabel],
-      [],
-      ["Code", "Account Name", "Account Type", "Debit (Rs.)", "Credit (Rs.)"],
-    ];
-
-    for (const group of grouped) {
-      data.push([group.label, "", "", "", ""]);
-      for (const account of group.accounts) {
-        const { debit, credit } = getDebitCredit(account);
-        data.push([
-          account.code,
-          account.name,
-          TYPE_LABELS[account.accountType] || account.accountType,
-          debit > 0 ? fmtRupees(debit) : 0,
-          credit > 0 ? fmtRupees(credit) : 0,
-        ]);
-      }
-    }
-
-    data.push([]);
-    data.push(["", "Total", "", fmtRupees(totalDebit), fmtRupees(totalCredit)]);
-    if (!isBalanced) {
-      data.push(["", "Difference", "", fmtRupees(Math.abs(difference)), ""]);
-    }
-
-    exportToExcel({
-      filename: `Trial_Balance_${currentPeriodLabel.replace(/[^a-zA-Z0-9]/g, "_")}.xlsx`,
-      sheets: [{ name: "Trial Balance", data }],
+  function toggleNode(id: string) {
+    setExpandedNodes(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
     });
   }
 
-  function handleAccountClick(account: ChartAccount) {
+  function expandAll() {
+    const allGroupIds = new Set<string>();
+    function collectIds(nodes: TreeNode[]) {
+      for (const n of nodes) {
+        if (n.nodeType === 'group' && n.children.length > 0) {
+          allGroupIds.add(n.id);
+          collectIds(n.children);
+        }
+      }
+    }
+    collectIds(tree);
+    setExpandedNodes(allGroupIds);
+  }
+
+  function collapseAll() {
+    setExpandedNodes(new Set());
+  }
+
+  function handleAccountClick(account: { id: string; accountType?: string; nodeType?: string }) {
+    if (account.nodeType === 'group') return;
     const params = new URLSearchParams();
     params.set("accountId", account.id);
     if (dateMode === "custom" && isCustomValid) {
@@ -189,6 +268,57 @@ export default function TrialBalancePage() {
     }
     params.set("tbReturn", tbUrlParams);
     setLocation(`/journal-entries?${params.toString()}`);
+  }
+
+  function handleExcelDownload() {
+    const fmtRupees = (paise: number) => paise === 0 ? 0 : Number((paise / 100).toFixed(2));
+    const data: (string | number | null)[][] = [
+      ["KINTO Smart Ops - Trial Balance"],
+      [currentPeriodLabel],
+      [],
+      ["Code", "Account Name", "Debit (Rs.)", "Credit (Rs.)"],
+    ];
+
+    const addTreeNode = (node: TreeNode, indent: number) => {
+      const prefix = "  ".repeat(indent);
+      const typeLabel = node.nodeType === 'group' ? '[G]' : '';
+      data.push([
+        node.code,
+        `${prefix}${node.name} ${typeLabel}`,
+        node.debit > 0 ? fmtRupees(node.debit) : 0,
+        node.credit > 0 ? fmtRupees(node.credit) : 0,
+      ]);
+      for (const child of node.children) {
+        addTreeNode(child, indent + 1);
+      }
+    };
+
+    if (viewMode === "tree") {
+      for (const root of tree) {
+        addTreeNode(root, 0);
+      }
+    } else {
+      for (const account of flatRows) {
+        const { debit, credit } = getDebitCredit(account.accountType, Number(account.currentBalance) || 0);
+        data.push([
+          account.code,
+          account.name,
+          debit > 0 ? fmtRupees(debit) : 0,
+          credit > 0 ? fmtRupees(credit) : 0,
+        ]);
+      }
+    }
+
+    data.push([]);
+    data.push(["", "Total", fmtRupees(totalDebit), fmtRupees(totalCredit)]);
+    if (!isBalanced) {
+      data.push(["", "Difference", fmtRupees(Math.abs(difference)), ""]);
+    }
+
+    exportToExcel({
+      filename: `Trial_Balance_${currentPeriodLabel.replace(/[^a-zA-Z0-9]/g, "_")}.xlsx`,
+      sheets: [{ name: "Trial Balance", data }],
+    });
   }
 
   if (isLoading) {
@@ -220,6 +350,38 @@ export default function TrialBalancePage() {
           <p className="text-sm text-muted-foreground">{currentPeriodLabel}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center border rounded-md overflow-visible">
+            <Button
+              variant={viewMode === "flat" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("flat")}
+              className="rounded-r-none no-default-hover-elevate"
+              data-testid="button-view-flat"
+            >
+              Flat
+            </Button>
+            <Button
+              variant={viewMode === "tree" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("tree")}
+              className="rounded-l-none no-default-hover-elevate"
+              data-testid="button-view-tree"
+            >
+              Tree
+            </Button>
+          </div>
+
+          {viewMode === "tree" && (
+            <>
+              <Button variant="outline" size="sm" onClick={expandAll} data-testid="button-expand-all">
+                Expand All
+              </Button>
+              <Button variant="outline" size="sm" onClick={collapseAll} data-testid="button-collapse-all">
+                Collapse All
+              </Button>
+            </>
+          )}
+
           <Button
             variant={hideZero ? "default" : "outline"}
             size="sm"
@@ -305,20 +467,58 @@ export default function TrialBalancePage() {
           <table className="w-full text-sm" data-testid="table-trial-balance">
             <thead>
               <tr className="border-b bg-muted/30">
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground w-[80px]">Code</th>
-                <th className="text-left px-3 py-2.5 text-xs font-medium text-muted-foreground">Account Name</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">
+                  {viewMode === "tree" ? "Group / Account" : "Account"}
+                </th>
                 <th className="text-right px-4 py-2.5 text-xs font-medium text-muted-foreground w-[150px]">Debit ({"\u20B9"})</th>
                 <th className="text-right px-4 py-2.5 text-xs font-medium text-muted-foreground w-[150px]">Credit ({"\u20B9"})</th>
               </tr>
             </thead>
             <tbody>
-              {grouped.map(group => (
-                <GroupSection key={group.type} group={group} getDebitCredit={getDebitCredit} onAccountClick={handleAccountClick} />
-              ))}
+              {viewMode === "tree" ? (
+                tree.map(root => (
+                  <TBTreeRow
+                    key={root.id}
+                    node={root}
+                    depth={0}
+                    expandedNodes={expandedNodes}
+                    onToggle={toggleNode}
+                    onAccountClick={handleAccountClick}
+                  />
+                ))
+              ) : (
+                flatRows.map(account => {
+                  const { debit, credit } = getDebitCredit(account.accountType, Number(account.currentBalance) || 0);
+                  return (
+                    <tr
+                      key={account.id}
+                      className="border-b hover-elevate cursor-pointer group"
+                      data-testid={`row-tb-${account.code}`}
+                      onClick={() => handleAccountClick(account)}
+                    >
+                      <td className="px-4 py-2">
+                        <div className="flex items-center gap-2">
+                          <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono">{account.code}</code>
+                          <span className="underline-offset-2 group-hover:underline flex items-center gap-1">
+                            {account.name}
+                            <ExternalLink className="w-3 h-3 text-muted-foreground shrink-0 invisible group-hover:visible" />
+                          </span>
+                        </div>
+                      </td>
+                      <td className="text-right px-4 py-2 font-mono tabular-nums whitespace-nowrap">
+                        {debit > 0 ? formatAmount(debit) : "-"}
+                      </td>
+                      <td className="text-right px-4 py-2 font-mono tabular-nums whitespace-nowrap">
+                        {credit > 0 ? formatAmount(credit) : "-"}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
             <tfoot>
               <tr className="border-t-2 bg-muted/50 font-semibold">
-                <td className="px-4 py-3" colSpan={2}>Total</td>
+                <td className="px-4 py-3">Total</td>
                 <td className="text-right px-4 py-3 font-mono tabular-nums whitespace-nowrap" data-testid="total-debit">
                   {"\u20B9"}{formatAmount(totalDebit)}
                 </td>
@@ -328,7 +528,7 @@ export default function TrialBalancePage() {
               </tr>
               {!isBalanced && (
                 <tr className="bg-destructive/5">
-                  <td className="px-4 py-2 text-destructive text-xs" colSpan={2}>Difference</td>
+                  <td className="px-4 py-2 text-destructive text-xs">Difference</td>
                   <td className="text-right px-4 py-2 font-mono tabular-nums text-destructive text-xs whitespace-nowrap" colSpan={2}>
                     {"\u20B9"}{formatAmount(Math.abs(difference))}
                   </td>
@@ -348,59 +548,76 @@ export default function TrialBalancePage() {
   );
 }
 
-function GroupSection({ group, getDebitCredit, onAccountClick }: {
-  group: { type: string; label: string; accounts: ChartAccount[] };
-  getDebitCredit: (a: ChartAccount) => { debit: number; credit: number };
-  onAccountClick: (a: ChartAccount) => void;
+function TBTreeRow({
+  node,
+  depth,
+  expandedNodes,
+  onToggle,
+  onAccountClick,
+}: {
+  node: TreeNode;
+  depth: number;
+  expandedNodes: Set<string>;
+  onToggle: (id: string) => void;
+  onAccountClick: (node: { id: string; nodeType?: string }) => void;
 }) {
-  let groupDebit = 0;
-  let groupCredit = 0;
-  group.accounts.forEach(a => {
-    const { debit, credit } = getDebitCredit(a);
-    groupDebit += debit;
-    groupCredit += credit;
-  });
+  const isGroup = node.nodeType === 'group';
+  const isExpanded = expandedNodes.has(node.id);
+  const hasChildren = isGroup && node.children.length > 0;
+  const paddingLeft = 12 + depth * 20;
+
+  const isTopLevel = depth === 0;
+  const bgClass = isTopLevel
+    ? "bg-muted/20 font-semibold"
+    : isGroup
+    ? "font-medium"
+    : "";
 
   return (
     <>
-      <tr className="bg-muted/20">
-        <td className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground" colSpan={2}>
-          {group.label}
+      <tr
+        className={`border-b ${bgClass} ${hasChildren ? "cursor-pointer" : ""} ${!isGroup ? "cursor-pointer hover-elevate group" : "hover-elevate"}`}
+        onClick={() => {
+          if (hasChildren) onToggle(node.id);
+          else if (!isGroup) onAccountClick(node);
+        }}
+        data-testid={`row-tb-${node.code}`}
+      >
+        <td className="px-4 py-2" style={{ paddingLeft: `${paddingLeft}px` }}>
+          <div className="flex items-center gap-1.5">
+            {hasChildren ? (
+              isExpanded ? <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" /> : <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+            ) : (
+              <span className="w-4 shrink-0" />
+            )}
+            <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono shrink-0">{node.code}</code>
+            <span className="truncate underline-offset-2 group-hover:underline">{node.name}</span>
+            {isGroup && (
+              <span className="text-xs text-muted-foreground shrink-0">({node.children.length})</span>
+            )}
+            {!isGroup && (
+              <ExternalLink className="w-3 h-3 text-muted-foreground shrink-0 invisible group-hover:visible" />
+            )}
+          </div>
         </td>
-        <td className="text-right px-4 py-2 text-xs font-semibold font-mono tabular-nums text-muted-foreground whitespace-nowrap">
-          {groupDebit > 0 ? `\u20B9${formatAmount(groupDebit)}` : ""}
+        <td className="text-right px-4 py-2 font-mono tabular-nums whitespace-nowrap">
+          {node.debit > 0 ? formatAmount(node.debit) : "-"}
         </td>
-        <td className="text-right px-4 py-2 text-xs font-semibold font-mono tabular-nums text-muted-foreground whitespace-nowrap">
-          {groupCredit > 0 ? `\u20B9${formatAmount(groupCredit)}` : ""}
+        <td className="text-right px-4 py-2 font-mono tabular-nums whitespace-nowrap">
+          {node.credit > 0 ? formatAmount(node.credit) : "-"}
         </td>
       </tr>
-      {group.accounts.map(account => {
-        const { debit, credit } = getDebitCredit(account);
-        return (
-          <tr
-            key={account.id}
-            className="border-b hover-elevate cursor-pointer group"
-            data-testid={`row-tb-${account.code}`}
-            onClick={() => onAccountClick(account)}
-          >
-            <td className="px-4 py-2">
-              <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono">{account.code}</code>
-            </td>
-            <td className="px-3 py-2 truncate">
-              <span className="underline-offset-2 group-hover:underline flex items-center gap-1" data-testid={`link-account-${account.code}`}>
-                {account.name}
-                <ExternalLink className="w-3 h-3 text-muted-foreground shrink-0 invisible group-hover:visible" />
-              </span>
-            </td>
-            <td className="text-right px-4 py-2 font-mono tabular-nums whitespace-nowrap">
-              {debit > 0 ? formatAmount(debit) : "-"}
-            </td>
-            <td className="text-right px-4 py-2 font-mono tabular-nums whitespace-nowrap">
-              {credit > 0 ? formatAmount(credit) : "-"}
-            </td>
-          </tr>
-        );
-      })}
+
+      {isExpanded && node.children.map(child => (
+        <TBTreeRow
+          key={child.id}
+          node={child}
+          depth={depth + 1}
+          expandedNodes={expandedNodes}
+          onToggle={onToggle}
+          onAccountClick={onAccountClick}
+        />
+      ))}
     </>
   );
 }

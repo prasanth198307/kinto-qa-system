@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,40 +8,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar, Download, ChevronDown, ChevronRight, ExternalLink } from "lucide-react";
 import { exportToExcel } from "@/lib/excel-export";
 
-interface GroupAccount {
+interface TreeNode {
   id: string;
   code: string;
   name: string;
+  accountType: string;
+  nodeType: string;
+  level: number;
+  parentId: string | null;
   openingBalance: number;
   periodDebit: number;
   periodCredit: number;
   closingBalance: number;
-}
-
-interface AccountGroup {
-  accountType: string;
-  subType: string;
-  subTypeLabel: string;
-  accounts: GroupAccount[];
-  totalOpening: number;
-  totalDebit: number;
-  totalCredit: number;
-  totalClosing: number;
-}
-
-interface TypeTotal {
-  accountType: string;
-  totalOpening: number;
-  totalDebit: number;
-  totalCredit: number;
-  totalClosing: number;
-  groupCount: number;
-  accountCount: number;
+  children: TreeNode[];
 }
 
 interface GroupSummaryResponse {
-  groups: AccountGroup[];
-  typeTotals: TypeTotal[];
+  tree: TreeNode[];
 }
 
 function getCurrentFY(): string {
@@ -78,26 +61,14 @@ function formatDateDisplay(dateStr: string): string {
   }
 }
 
-const TYPE_ORDER = ["asset", "liability", "equity", "revenue", "expense"];
-const TYPE_LABELS: Record<string, string> = {
-  asset: "Assets",
-  liability: "Liabilities",
-  equity: "Equity",
-  revenue: "Revenue",
-  expense: "Expenses",
-};
-
-function getSubTypeLabel(group: AccountGroup): string {
-  return group.subTypeLabel || group.subType.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
-}
-
 export default function GroupSummaryPage() {
   const [, setLocation] = useLocation();
   const [dateMode, setDateMode] = useState<"fy" | "custom">("fy");
   const [selectedFY, setSelectedFY] = useState(getCurrentFY());
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+  const [hideZero, setHideZero] = useState(false);
 
   const isCustomValid = dateMode === "custom" && customFrom && customTo && customFrom <= customTo;
 
@@ -126,68 +97,96 @@ export default function GroupSummaryPage() {
     return `Apr ${fyStart} \u2013 Mar ${fyStart + 1}`;
   })();
 
-  function toggleGroup(key: string) {
-    setExpandedGroups(prev => {
+  function toggleNode(id: string) {
+    setExpandedNodes(prev => {
       const next = new Set(prev);
-      if (next.has(key)) {
-        next.delete(key);
+      if (next.has(id)) {
+        next.delete(id);
       } else {
-        next.add(key);
+        next.add(id);
       }
       return next;
     });
   }
 
-  function handleAccountClick(account: GroupAccount) {
-    const params = new URLSearchParams();
-    params.set("accountId", account.id);
-    params.set("fromDate", fromDate);
-    params.set("toDate", toDate);
-    setLocation(`/ledger-view?${params.toString()}`);
+  function expandAll() {
+    if (!data) return;
+    const allGroupIds = new Set<string>();
+    function collectGroupIds(nodes: TreeNode[]) {
+      for (const node of nodes) {
+        if (node.nodeType === 'group' && node.children.length > 0) {
+          allGroupIds.add(node.id);
+          collectGroupIds(node.children);
+        }
+      }
+    }
+    collectGroupIds(data.tree);
+    setExpandedNodes(allGroupIds);
   }
+
+  function collapseAll() {
+    setExpandedNodes(new Set());
+  }
+
+  function handleAccountClick(node: TreeNode) {
+    if (node.nodeType === 'ledger') {
+      const params = new URLSearchParams();
+      params.set("accountId", node.id);
+      params.set("fromDate", fromDate);
+      params.set("toDate", toDate);
+      setLocation(`/ledger-view?${params.toString()}`);
+    }
+  }
+
+  const filteredTree = useMemo(() => {
+    if (!data || !hideZero) return data?.tree || [];
+    function filterNodes(nodes: TreeNode[]): TreeNode[] {
+      return nodes
+        .map(node => {
+          if (node.nodeType === 'group') {
+            const filteredChildren = filterNodes(node.children);
+            if (filteredChildren.length === 0) return null;
+            return { ...node, children: filteredChildren };
+          }
+          if (node.closingBalance === 0 && node.periodDebit === 0 && node.periodCredit === 0 && node.openingBalance === 0) {
+            return null;
+          }
+          return node;
+        })
+        .filter(Boolean) as TreeNode[];
+    }
+    return filterNodes(data.tree);
+  }, [data, hideZero]);
 
   function handleExcelDownload() {
     if (!data) return;
     const fmtRupees = (paise: number) => paise === 0 ? 0 : Number((paise / 100).toFixed(2));
     const rows: (string | number | null)[][] = [
-      ["KINTO Smart Ops - Group Summary"],
+      ["KINTO Smart Ops - Group Summary (Hierarchical)"],
       [currentPeriodLabel],
       [],
-      ["Group", "Opening Balance (Rs.)", "Period Debit (Rs.)", "Period Credit (Rs.)", "Closing Balance (Rs.)"],
+      ["Code", "Account / Group Name", "Type", "Opening Balance (Rs.)", "Period Debit (Rs.)", "Period Credit (Rs.)", "Closing Balance (Rs.)"],
     ];
 
-    for (const typeName of TYPE_ORDER) {
-      const typeGroups = data.groups.filter(g => g.accountType === typeName);
-      if (typeGroups.length === 0) continue;
-      rows.push([TYPE_LABELS[typeName], "", "", "", ""]);
-      for (const group of typeGroups) {
-        rows.push([
-          `  ${getSubTypeLabel(group)}`,
-          fmtRupees(group.totalOpening),
-          fmtRupees(group.totalDebit),
-          fmtRupees(group.totalCredit),
-          fmtRupees(group.totalClosing),
-        ]);
-        for (const account of group.accounts) {
-          rows.push([
-            `    ${account.code} - ${account.name}`,
-            fmtRupees(account.openingBalance),
-            fmtRupees(account.periodDebit),
-            fmtRupees(account.periodCredit),
-            fmtRupees(account.closingBalance),
-          ]);
-        }
+    function addNodeToExcel(node: TreeNode, indent: number) {
+      const prefix = "  ".repeat(indent);
+      const typeLabel = node.nodeType === 'group' ? '[G]' : '';
+      rows.push([
+        node.code,
+        `${prefix}${node.name} ${typeLabel}`,
+        node.accountType,
+        fmtRupees(node.openingBalance),
+        fmtRupees(node.periodDebit),
+        fmtRupees(node.periodCredit),
+        fmtRupees(node.closingBalance),
+      ]);
+      for (const child of node.children) {
+        addNodeToExcel(child, indent + 1);
       }
-      const typeTotal = data.typeTotals.find(t => t.accountType === typeName);
-      if (typeTotal) {
-        rows.push([
-          `Total ${TYPE_LABELS[typeName]}`,
-          fmtRupees(typeTotal.totalOpening),
-          fmtRupees(typeTotal.totalDebit),
-          fmtRupees(typeTotal.totalCredit),
-          fmtRupees(typeTotal.totalClosing),
-        ]);
-      }
+    }
+
+    for (const root of filteredTree) {
+      addNodeToExcel(root, 0);
       rows.push([]);
     }
 
@@ -205,9 +204,6 @@ export default function GroupSummaryPage() {
     );
   }
 
-  const groups = data?.groups || [];
-  const typeTotals = data?.typeTotals || [];
-
   return (
     <div className="p-4 space-y-4 max-w-6xl mx-auto" data-testid="page-group-summary">
       <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -216,6 +212,22 @@ export default function GroupSummaryPage() {
           <p className="text-sm text-muted-foreground" data-testid="text-period-label">{currentPeriodLabel}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant={hideZero ? "default" : "outline"}
+            size="sm"
+            onClick={() => setHideZero(!hideZero)}
+            data-testid="button-hide-zero"
+          >
+            {hideZero ? "Show All" : "Hide Zero"}
+          </Button>
+
+          <Button variant="outline" size="sm" onClick={expandAll} data-testid="button-expand-all">
+            Expand All
+          </Button>
+          <Button variant="outline" size="sm" onClick={collapseAll} data-testid="button-collapse-all">
+            Collapse All
+          </Button>
+
           <Select value={dateMode} onValueChange={(v) => setDateMode(v as "fy" | "custom")}>
             <SelectTrigger className="w-[120px]" data-testid="select-date-mode">
               <SelectValue />
@@ -273,31 +285,23 @@ export default function GroupSummaryPage() {
               <thead>
                 <tr className="border-b bg-muted/50">
                   <th className="text-left p-3 font-medium">Group / Account</th>
-                  <th className="text-right p-3 font-medium w-[130px]">Opening Bal.</th>
-                  <th className="text-right p-3 font-medium w-[130px]">Debit</th>
-                  <th className="text-right p-3 font-medium w-[130px]">Credit</th>
-                  <th className="text-right p-3 font-medium w-[130px]">Closing Bal.</th>
+                  <th className="text-right p-3 font-medium w-[120px]">Opening</th>
+                  <th className="text-right p-3 font-medium w-[120px]">Debit</th>
+                  <th className="text-right p-3 font-medium w-[120px]">Credit</th>
+                  <th className="text-right p-3 font-medium w-[120px]">Closing</th>
                 </tr>
               </thead>
               <tbody>
-                {TYPE_ORDER.map(typeName => {
-                  const typeGroups = groups.filter(g => g.accountType === typeName);
-                  const typeTotal = typeTotals.find(t => t.accountType === typeName);
-                  if (!typeTotal || (typeTotal.groupCount === 0 && typeTotal.accountCount === 0)) return null;
-
-                  return (
-                    <GroupTypeSection
-                      key={typeName}
-                      typeName={typeName}
-                      typeLabel={TYPE_LABELS[typeName]}
-                      typeGroups={typeGroups}
-                      typeTotal={typeTotal}
-                      expandedGroups={expandedGroups}
-                      onToggleGroup={toggleGroup}
-                      onAccountClick={handleAccountClick}
-                    />
-                  );
-                })}
+                {filteredTree.map(root => (
+                  <TreeRow
+                    key={root.id}
+                    node={root}
+                    depth={0}
+                    expandedNodes={expandedNodes}
+                    onToggle={toggleNode}
+                    onAccountClick={handleAccountClick}
+                  />
+                ))}
               </tbody>
             </table>
           </div>
@@ -307,112 +311,83 @@ export default function GroupSummaryPage() {
   );
 }
 
-function GroupTypeSection({
-  typeName,
-  typeLabel,
-  typeGroups,
-  typeTotal,
-  expandedGroups,
-  onToggleGroup,
-  onAccountClick,
-}: {
-  typeName: string;
-  typeLabel: string;
-  typeGroups: AccountGroup[];
-  typeTotal: TypeTotal;
-  expandedGroups: Set<string>;
-  onToggleGroup: (key: string) => void;
-  onAccountClick: (account: GroupAccount) => void;
-}) {
-  return (
-    <>
-      <tr className="border-b bg-muted/30" data-testid={`row-type-header-${typeName}`}>
-        <td colSpan={5} className="p-3 font-semibold text-base">
-          {typeLabel}
-        </td>
-      </tr>
-
-      {typeGroups.map(group => {
-        const groupKey = `${group.accountType}::${group.subType}`;
-        const isExpanded = expandedGroups.has(groupKey);
-        const subLabel = getSubTypeLabel(group);
-
-        return (
-          <GroupRow
-            key={groupKey}
-            group={group}
-            groupKey={groupKey}
-            subLabel={subLabel}
-            isExpanded={isExpanded}
-            onToggle={() => onToggleGroup(groupKey)}
-            onAccountClick={onAccountClick}
-          />
-        );
-      })}
-
-      <tr className="border-b bg-muted/20 font-semibold" data-testid={`row-type-total-${typeName}`}>
-        <td className="p-3 pl-6">Total {typeLabel}</td>
-        <td className="text-right p-3">{formatAmount(typeTotal.totalOpening)}</td>
-        <td className="text-right p-3">{formatAmount(typeTotal.totalDebit)}</td>
-        <td className="text-right p-3">{formatAmount(typeTotal.totalCredit)}</td>
-        <td className="text-right p-3">{formatAmount(typeTotal.totalClosing)}</td>
-      </tr>
-
-      <tr className="h-2" />
-    </>
-  );
-}
-
-function GroupRow({
-  group,
-  groupKey,
-  subLabel,
-  isExpanded,
+function TreeRow({
+  node,
+  depth,
+  expandedNodes,
   onToggle,
   onAccountClick,
 }: {
-  group: AccountGroup;
-  groupKey: string;
-  subLabel: string;
-  isExpanded: boolean;
-  onToggle: () => void;
-  onAccountClick: (account: GroupAccount) => void;
+  node: TreeNode;
+  depth: number;
+  expandedNodes: Set<string>;
+  onToggle: (id: string) => void;
+  onAccountClick: (node: TreeNode) => void;
 }) {
+  const isGroup = node.nodeType === 'group';
+  const isExpanded = expandedNodes.has(node.id);
+  const hasChildren = isGroup && node.children.length > 0;
+  const paddingLeft = 12 + depth * 20;
+
+  const isTopLevel = depth === 0;
+  const bgClass = isTopLevel
+    ? "bg-muted/30 font-semibold"
+    : isGroup
+    ? "bg-muted/10 font-medium"
+    : "";
+
+  const textSize = isTopLevel ? "text-base" : depth === 1 ? "text-sm" : "text-sm";
+
   return (
     <>
       <tr
-        className="border-b cursor-pointer hover-elevate"
-        onClick={onToggle}
-        data-testid={`row-group-${groupKey}`}
+        className={`border-b ${bgClass} ${hasChildren ? "cursor-pointer" : ""} ${!isGroup ? "cursor-pointer hover-elevate group" : "hover-elevate"}`}
+        onClick={() => {
+          if (hasChildren) onToggle(node.id);
+          else if (!isGroup) onAccountClick(node);
+        }}
+        data-testid={`row-${node.nodeType}-${node.code}`}
       >
-        <td className="p-3 pl-6 flex items-center gap-2">
-          {isExpanded ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
-          <span className="font-medium">{subLabel}</span>
-          <span className="text-xs text-muted-foreground">({group.accounts.length})</span>
+        <td className={`p-2.5 ${textSize}`} style={{ paddingLeft: `${paddingLeft}px` }}>
+          <div className="flex items-center gap-1.5">
+            {hasChildren ? (
+              isExpanded ? <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" /> : <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+            ) : (
+              <span className="w-4 shrink-0" />
+            )}
+            <code className="text-xs bg-muted px-1 py-0.5 rounded font-mono shrink-0">{node.code}</code>
+            <span className="truncate">{node.name}</span>
+            {isGroup && (
+              <span className="text-xs text-muted-foreground shrink-0">({node.children.length})</span>
+            )}
+            {!isGroup && (
+              <ExternalLink className="w-3 h-3 text-muted-foreground shrink-0 invisible group-hover:visible" />
+            )}
+          </div>
         </td>
-        <td className="text-right p-3">{formatAmount(group.totalOpening)}</td>
-        <td className="text-right p-3">{formatAmount(group.totalDebit)}</td>
-        <td className="text-right p-3">{formatAmount(group.totalCredit)}</td>
-        <td className="text-right p-3">{formatAmount(group.totalClosing)}</td>
+        <td className="text-right p-2.5 font-mono tabular-nums whitespace-nowrap">
+          {formatAmount(node.openingBalance)}
+        </td>
+        <td className="text-right p-2.5 font-mono tabular-nums whitespace-nowrap">
+          {formatAmount(node.periodDebit)}
+        </td>
+        <td className="text-right p-2.5 font-mono tabular-nums whitespace-nowrap">
+          {formatAmount(node.periodCredit)}
+        </td>
+        <td className="text-right p-2.5 font-mono tabular-nums whitespace-nowrap">
+          {formatAmount(node.closingBalance)}
+        </td>
       </tr>
 
-      {isExpanded && group.accounts.map(account => (
-        <tr
-          key={account.id}
-          className="border-b text-muted-foreground cursor-pointer hover-elevate"
-          onClick={() => onAccountClick(account)}
-          data-testid={`row-account-${account.id}`}
-        >
-          <td className="p-2 pl-14 flex items-center gap-1.5">
-            <code className="text-xs bg-muted px-1 py-0.5 rounded font-mono">{account.code}</code>
-            <span>{account.name}</span>
-            <ExternalLink className="w-3 h-3 invisible group-hover:visible" />
-          </td>
-          <td className="text-right p-2">{formatAmount(account.openingBalance)}</td>
-          <td className="text-right p-2">{formatAmount(account.periodDebit)}</td>
-          <td className="text-right p-2">{formatAmount(account.periodCredit)}</td>
-          <td className="text-right p-2">{formatAmount(account.closingBalance)}</td>
-        </tr>
+      {isExpanded && node.children.map(child => (
+        <TreeRow
+          key={child.id}
+          node={child}
+          depth={depth + 1}
+          expandedNodes={expandedNodes}
+          onToggle={onToggle}
+          onAccountClick={onAccountClick}
+        />
       ))}
     </>
   );

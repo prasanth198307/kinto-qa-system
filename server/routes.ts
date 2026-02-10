@@ -22086,7 +22086,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================================
-  // GROUP SUMMARY - Tally-style account group totals
+  // GROUP SUMMARY - Tally-style hierarchical account group totals using COA tree
   // ============================================================
   app.get('/api/group-summary', async (req: any, res) => {
     try {
@@ -22096,11 +22096,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!fromDate || !toDate) {
         return res.status(400).json({ message: 'fromDate and toDate are required' });
       }
-
-      const subtypes = await db.select()
-        .from(accountSubtypes)
-        .where(eq(accountSubtypes.recordStatus, 1));
-      const subtypeMap = new Map(subtypes.map(s => [s.id, s]));
 
       const accounts = await db.select()
         .from(chartOfAccounts)
@@ -22145,93 +22140,112 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const openingMap = new Map(openingMovements.map(m => [m.accountId, { debit: Number(m.totalDebit), credit: Number(m.totalCredit) }]));
 
-      const groupMap = new Map<string, {
+      const accountMap = new Map(accounts.map(a => [a.id, a]));
+
+      interface TreeNode {
+        id: string;
+        code: string;
+        name: string;
         accountType: string;
-        subType: string;
-        subTypeLabel: string;
-        accounts: Array<{
-          id: string;
-          code: string;
-          name: string;
-          openingBalance: number;
-          periodDebit: number;
-          periodCredit: number;
-          closingBalance: number;
-        }>;
-        totalOpening: number;
-        totalDebit: number;
-        totalCredit: number;
-        totalClosing: number;
-      }>();
+        nodeType: string;
+        level: number;
+        parentId: string | null;
+        openingBalance: number;
+        periodDebit: number;
+        periodCredit: number;
+        closingBalance: number;
+        children: TreeNode[];
+      }
 
+      const nodeMap = new Map<string, TreeNode>();
       for (const account of accounts) {
-        const subTypeId = account.subType || '';
-        const subtypeRecord = subtypeMap.get(subTypeId);
-        const subTypeName = subtypeRecord?.name || 'other';
-        const subTypeLabel = subtypeRecord?.label || subTypeName.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-        const key = `${account.accountType}::${subTypeName}`;
-        const opening = openingMap.get(account.id) || { debit: 0, credit: 0 };
-        const period = movementMap.get(account.id) || { debit: 0, credit: 0 };
-
         const isDebitNatural = ['asset', 'expense'].includes(account.accountType);
-        const openingBalance = isDebitNatural 
-          ? (opening.debit - opening.credit) 
-          : (opening.credit - opening.debit);
-        const periodNet = isDebitNatural 
-          ? (period.debit - period.credit) 
-          : (period.credit - period.debit);
-        const closingBalance = openingBalance + periodNet;
+        let openingBalance = 0;
+        let periodDebit = 0;
+        let periodCredit = 0;
+        let closingBalance = 0;
 
-        if (!groupMap.has(key)) {
-          groupMap.set(key, {
-            accountType: account.accountType,
-            subType: subTypeName,
-            subTypeLabel: subTypeLabel,
-            accounts: [],
-            totalOpening: 0,
-            totalDebit: 0,
-            totalCredit: 0,
-            totalClosing: 0,
-          });
+        if (account.nodeType === 'ledger') {
+          const opening = openingMap.get(account.id) || { debit: 0, credit: 0 };
+          const period = movementMap.get(account.id) || { debit: 0, credit: 0 };
+          openingBalance = isDebitNatural ? (opening.debit - opening.credit) : (opening.credit - opening.debit);
+          periodDebit = period.debit;
+          periodCredit = period.credit;
+          const periodNet = isDebitNatural ? (period.debit - period.credit) : (period.credit - period.debit);
+          closingBalance = openingBalance + periodNet;
         }
 
-        const group = groupMap.get(key)!;
-        group.accounts.push({
+        nodeMap.set(account.id, {
           id: account.id,
           code: account.code,
           name: account.name,
+          accountType: account.accountType,
+          nodeType: account.nodeType || 'ledger',
+          level: account.level || 1,
+          parentId: account.parentId || null,
           openingBalance,
-          periodDebit: period.debit,
-          periodCredit: period.credit,
+          periodDebit,
+          periodCredit,
           closingBalance,
+          children: [],
         });
-        group.totalOpening += openingBalance;
-        group.totalDebit += period.debit;
-        group.totalCredit += period.credit;
-        group.totalClosing += closingBalance;
       }
 
-      const typeOrder = ['asset', 'liability', 'equity', 'revenue', 'expense'];
-      const groups = Array.from(groupMap.values()).sort((a, b) => {
-        const typeCompare = typeOrder.indexOf(a.accountType) - typeOrder.indexOf(b.accountType);
-        if (typeCompare !== 0) return typeCompare;
-        return a.subType.localeCompare(b.subType);
-      });
+      const roots: TreeNode[] = [];
+      for (const node of nodeMap.values()) {
+        if (node.parentId && nodeMap.has(node.parentId)) {
+          nodeMap.get(node.parentId)!.children.push(node);
+        } else if (!node.parentId) {
+          roots.push(node);
+        } else {
+          roots.push(node);
+        }
+      }
 
-      const typeTotals = typeOrder.map(type => {
-        const typeGroups = groups.filter(g => g.accountType === type);
+      function sortChildren(node: TreeNode) {
+        node.children.sort((a, b) => a.code.localeCompare(b.code));
+        node.children.forEach(sortChildren);
+      }
+      roots.sort((a, b) => a.code.localeCompare(b.code));
+      roots.forEach(sortChildren);
+
+      function aggregateTotals(node: TreeNode): void {
+        if (node.nodeType === 'group') {
+          node.openingBalance = 0;
+          node.periodDebit = 0;
+          node.periodCredit = 0;
+          node.closingBalance = 0;
+          for (const child of node.children) {
+            aggregateTotals(child);
+            node.openingBalance += child.openingBalance;
+            node.periodDebit += child.periodDebit;
+            node.periodCredit += child.periodCredit;
+            node.closingBalance += child.closingBalance;
+          }
+        }
+      }
+      roots.forEach(aggregateTotals);
+
+      function flattenTree(node: TreeNode): any {
         return {
-          accountType: type,
-          totalOpening: typeGroups.reduce((s, g) => s + g.totalOpening, 0),
-          totalDebit: typeGroups.reduce((s, g) => s + g.totalDebit, 0),
-          totalCredit: typeGroups.reduce((s, g) => s + g.totalCredit, 0),
-          totalClosing: typeGroups.reduce((s, g) => s + g.totalClosing, 0),
-          groupCount: typeGroups.length,
-          accountCount: typeGroups.reduce((s, g) => s + g.accounts.length, 0),
+          id: node.id,
+          code: node.code,
+          name: node.name,
+          accountType: node.accountType,
+          nodeType: node.nodeType,
+          level: node.level,
+          parentId: node.parentId,
+          openingBalance: node.openingBalance,
+          periodDebit: node.periodDebit,
+          periodCredit: node.periodCredit,
+          closingBalance: node.closingBalance,
+          children: node.children.map(flattenTree),
         };
-      });
+      }
 
-      res.json({ groups, typeTotals });
+      const tree = roots.map(flattenTree);
+
+      res.json({ tree });
     } catch (error: any) {
       console.error("Error fetching group summary:", error);
       res.status(500).json({ message: error.message });
