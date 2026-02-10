@@ -5,7 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Printer, ExternalLink, Scale } from "lucide-react";
+import { Calendar, Printer, ExternalLink, Scale, Download } from "lucide-react";
+import { exportToExcel } from "@/lib/excel-export";
 
 interface ChartAccount {
   id: string;
@@ -175,6 +176,64 @@ export default function BalanceSheetPage() {
 
   const isBalanced = Math.abs(totalAssets - totalLiabilitiesAndEquity) < 1;
 
+  function handleExcelDownload() {
+    const fmtRupees = (paise: number) => paise === 0 ? 0 : Number((paise / 100).toFixed(2));
+    const data: (string | number | null)[][] = [
+      ["KINTO Smart Ops - Balance Sheet"],
+      [`${currentPeriodLabel} (${periodSubLabel})`],
+      [],
+      ["Code", "Account Name", "Category", "Amount (Rs.)"],
+      [],
+      ["ASSETS", "", "", ""],
+    ];
+
+    for (const group of assetGroups) {
+      const visibleAccounts = group.accounts.filter(a => getNormalBalance(a) !== 0);
+      if (visibleAccounts.length === 0) continue;
+      data.push(["", group.label, "", ""]);
+      for (const account of visibleAccounts) {
+        data.push([account.code, account.name, group.label, fmtRupees(getNormalBalance(account))]);
+      }
+      data.push(["", `Subtotal - ${group.label}`, "", fmtRupees(group.total)]);
+    }
+    data.push(["", "Total Assets", "", fmtRupees(totalAssets)]);
+
+    data.push([]);
+    data.push(["LIABILITIES", "", "", ""]);
+    for (const group of liabilityGroups) {
+      const visibleAccounts = group.accounts.filter(a => getNormalBalance(a) !== 0);
+      if (visibleAccounts.length === 0) continue;
+      data.push(["", group.label, "", ""]);
+      for (const account of visibleAccounts) {
+        data.push([account.code, account.name, group.label, fmtRupees(getNormalBalance(account))]);
+      }
+      data.push(["", `Subtotal - ${group.label}`, "", fmtRupees(group.total)]);
+    }
+    data.push(["", "Total Liabilities", "", fmtRupees(totalLiabilities)]);
+
+    data.push([]);
+    data.push(["EQUITY", "", "", ""]);
+    for (const group of equityGroups) {
+      const visibleAccounts = group.accounts.filter(a => getNormalBalance(a) !== 0);
+      if (visibleAccounts.length === 0) continue;
+      data.push(["", group.label, "", ""]);
+      for (const account of visibleAccounts) {
+        data.push([account.code, account.name, group.label, fmtRupees(getNormalBalance(account))]);
+      }
+      data.push(["", `Subtotal - ${group.label}`, "", fmtRupees(group.total)]);
+    }
+    data.push(["", `Current Period Net ${netProfitLoss >= 0 ? "Profit" : "Loss"}`, "", fmtRupees(netProfitLoss)]);
+    data.push(["", "Total Equity", "", fmtRupees(totalEquity + netProfitLoss)]);
+
+    data.push([]);
+    data.push(["", "Total Liabilities & Equity", "", fmtRupees(totalLiabilitiesAndEquity)]);
+
+    exportToExcel({
+      filename: `Balance_Sheet_${periodSubLabel.replace(/[^a-zA-Z0-9]/g, "_")}.xlsx`,
+      sheets: [{ name: "Balance Sheet", data }],
+    });
+  }
+
   function handleAccountClick(account: ChartAccount) {
     const params = new URLSearchParams();
     params.set("accountId", account.id);
@@ -267,6 +326,9 @@ export default function BalanceSheetPage() {
             </div>
           )}
 
+          <Button variant="outline" size="sm" onClick={handleExcelDownload} data-testid="button-download-excel">
+            <Download className="w-4 h-4 mr-1" /> Excel
+          </Button>
           <Button variant="outline" size="sm" onClick={() => window.print()} data-testid="button-print">
             <Printer className="w-4 h-4 mr-1" /> Print
           </Button>

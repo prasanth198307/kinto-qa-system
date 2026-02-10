@@ -5,7 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Printer, AlertTriangle, CheckCircle2, ExternalLink } from "lucide-react";
+import { Calendar, Printer, AlertTriangle, CheckCircle2, ExternalLink, Download } from "lucide-react";
+import { exportToExcel } from "@/lib/excel-export";
 
 interface ChartAccount {
   id: string;
@@ -139,6 +140,41 @@ export default function TrialBalancePage() {
   const isBalanced = Math.abs(totalDebit - totalCredit) < 1;
   const difference = totalDebit - totalCredit;
 
+  function handleExcelDownload() {
+    const fmtRupees = (paise: number) => paise === 0 ? 0 : Number((paise / 100).toFixed(2));
+    const data: (string | number | null)[][] = [
+      ["KINTO Smart Ops - Trial Balance"],
+      [currentPeriodLabel],
+      [],
+      ["Code", "Account Name", "Account Type", "Debit (Rs.)", "Credit (Rs.)"],
+    ];
+
+    for (const group of grouped) {
+      data.push([group.label, "", "", "", ""]);
+      for (const account of group.accounts) {
+        const { debit, credit } = getDebitCredit(account);
+        data.push([
+          account.code,
+          account.name,
+          TYPE_LABELS[account.accountType] || account.accountType,
+          debit > 0 ? fmtRupees(debit) : 0,
+          credit > 0 ? fmtRupees(credit) : 0,
+        ]);
+      }
+    }
+
+    data.push([]);
+    data.push(["", "Total", "", fmtRupees(totalDebit), fmtRupees(totalCredit)]);
+    if (!isBalanced) {
+      data.push(["", "Difference", "", fmtRupees(Math.abs(difference)), ""]);
+    }
+
+    exportToExcel({
+      filename: `Trial_Balance_${currentPeriodLabel.replace(/[^a-zA-Z0-9]/g, "_")}.xlsx`,
+      sheets: [{ name: "Trial Balance", data }],
+    });
+  }
+
   function handleAccountClick(account: ChartAccount) {
     const params = new URLSearchParams();
     params.set("accountId", account.id);
@@ -236,6 +272,9 @@ export default function TrialBalancePage() {
             </div>
           )}
 
+          <Button variant="outline" size="sm" onClick={handleExcelDownload} data-testid="button-download-excel">
+            <Download className="w-4 h-4 mr-1" /> Excel
+          </Button>
           <Button variant="outline" size="sm" onClick={() => window.print()} data-testid="button-print">
             <Printer className="w-4 h-4 mr-1" /> Print
           </Button>

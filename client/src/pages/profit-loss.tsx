@@ -5,7 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Printer, TrendingUp, TrendingDown, ExternalLink, LayoutList, Columns2 } from "lucide-react";
+import { Calendar, Printer, TrendingUp, TrendingDown, ExternalLink, LayoutList, Columns2, Download } from "lucide-react";
+import { exportToExcel } from "@/lib/excel-export";
 
 interface ChartAccount {
   id: string;
@@ -155,6 +156,61 @@ export default function ProfitLossPage() {
   const cogs = expenseGroups.find(g => g.subType === "direct")?.total || 0;
   const grossProfit = grossRevenue - cogs;
 
+  function handleExcelDownload() {
+    const fmtRupees = (paise: number) => paise === 0 ? 0 : Number((paise / 100).toFixed(2));
+    const data: (string | number | null)[][] = [
+      ["KINTO Smart Ops - Profit & Loss Statement"],
+      [currentPeriodLabel],
+      [],
+      ["Code", "Account Name", "Category", "Amount (Rs.)"],
+      [],
+      ["REVENUE", "", "", ""],
+    ];
+
+    for (const group of revenueGroups) {
+      if (group.accounts.length > 1) {
+        data.push(["", group.label, "", ""]);
+      }
+      for (const account of group.accounts) {
+        const bal = getBalance(account);
+        data.push([account.code, account.name, group.label, bal !== 0 ? fmtRupees(bal) : 0]);
+      }
+      if (group.accounts.length > 1) {
+        data.push(["", `Subtotal - ${group.label}`, "", fmtRupees(group.total)]);
+      }
+    }
+    data.push(["", "Total Revenue", "", fmtRupees(totalRevenue)]);
+    data.push([]);
+    data.push(["EXPENSES", "", "", ""]);
+
+    for (const group of expenseGroups) {
+      if (group.accounts.length > 1) {
+        data.push(["", group.label, "", ""]);
+      }
+      for (const account of group.accounts) {
+        const bal = getBalance(account);
+        data.push([account.code, account.name, group.label, bal !== 0 ? fmtRupees(bal) : 0]);
+      }
+      if (group.accounts.length > 1) {
+        data.push(["", `Subtotal - ${group.label}`, "", fmtRupees(group.total)]);
+      }
+    }
+    data.push(["", "Total Expenses", "", fmtRupees(totalExpenses)]);
+
+    if (grossProfit !== netProfit) {
+      data.push([]);
+      data.push(["", "Gross Profit", "", fmtRupees(grossProfit)]);
+    }
+
+    data.push([]);
+    data.push(["", `Net ${isProfit ? "Profit" : "Loss"}`, "", fmtRupees(netProfit)]);
+
+    exportToExcel({
+      filename: `Profit_Loss_${currentPeriodLabel.replace(/[^a-zA-Z0-9]/g, "_")}.xlsx`,
+      sheets: [{ name: "Profit & Loss", data }],
+    });
+  }
+
   function handleAccountClick(account: ChartAccount) {
     const params = new URLSearchParams();
     params.set("accountId", account.id);
@@ -268,6 +324,9 @@ export default function ProfitLossPage() {
             </div>
           )}
 
+          <Button variant="outline" size="sm" onClick={handleExcelDownload} data-testid="button-download-excel">
+            <Download className="w-4 h-4 mr-1" /> Excel
+          </Button>
           <Button variant="outline" size="sm" onClick={() => window.print()} data-testid="button-print">
             <Printer className="w-4 h-4 mr-1" /> Print
           </Button>
