@@ -19772,7 +19772,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         fyEnd = `${startYear + 1}-03-31`;
       }
 
-      const isBalanceSheetAccount = (type: string) => ['asset', 'liability', 'equity'].includes(type);
+      const isBalanceSheetAccount = (type: string) => ['asset', 'liability', 'equity', 'Assets', 'Liabilities', 'Equity'].includes(type);
 
       if (fyStart && fyEnd) {
         const openingRows = await db.select({
@@ -19826,7 +19826,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const accountsWithBalances = accounts.map(account => {
           const isBs = isBalanceSheetAccount(account.accountType);
-          const isDebitNormal = account.accountType === 'asset' || account.accountType === 'expense';
+          const isDebitNormal = ['asset', 'Assets', 'expense', 'Expenses'].includes(account.accountType);
 
           const opening = openingMap.get(account.id) || { totalDebit: 0, totalCredit: 0 };
           const period = periodMap.get(account.id) || { totalDebit: 0, totalCredit: 0 };
@@ -19880,7 +19880,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const accountsWithBalances = accounts.map(account => {
           const bal = balanceMap.get(account.id) || { totalDebit: 0, totalCredit: 0 };
           let currentBalance = 0;
-          if (account.accountType === 'asset' || account.accountType === 'expense') {
+          if (['asset', 'Assets', 'expense', 'Expenses'].includes(account.accountType)) {
             currentBalance = bal.totalDebit - bal.totalCredit;
           } else {
             currentBalance = bal.totalCredit - bal.totalDebit;
@@ -20103,7 +20103,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isRetainedEarningsMode = true;
           const allAccounts = await storage.getAllChartOfAccounts();
           plAccountIds = allAccounts
-            .filter(a => a.accountType === 'revenue' || a.accountType === 'expense')
+            .filter(a => ['revenue', 'Income', 'expense', 'Expenses'].includes(a.accountType))
             .map(a => a.id);
         }
       }
@@ -20203,7 +20203,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         accountName = acct ? `${acct.code} - ${acct.name}` : undefined;
 
         if (dateFrom) {
-          const isPLAccount = acct && (acct.accountType === 'revenue' || acct.accountType === 'expense');
+          const isPLAccount = acct && ['revenue', 'Income', 'expense', 'Expenses'].includes(acct.accountType);
           if (isPLAccount) {
             openingBalance = 0;
           } else {
@@ -21696,8 +21696,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         dateEnd = `${fy + 1}-03-31`;
       }
 
-      const isDebitNormal = account.accountType === 'asset' || account.accountType === 'expense';
-      const isBs = ['asset', 'liability', 'equity'].includes(account.accountType);
+      const isDebitNormal = ['asset', 'Assets', 'expense', 'Expenses'].includes(account.accountType);
+      const isBs = ['asset', 'liability', 'equity', 'Assets', 'Liabilities', 'Equity'].includes(account.accountType);
 
       let openingBalance = 0;
       if (isBs) {
@@ -22033,7 +22033,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (const a of accounts) {
         if (a.code.startsWith('1101') || a.code.startsWith('1102') || a.code === '1100' ||
             a.name.toLowerCase().includes('cash') || a.name.toLowerCase().includes('bank')) {
-          if (a.accountType === 'asset') {
+          if (a.accountType === 'asset' || a.accountType === 'Assets') {
             cashBankCodes.add(a.code);
             cashBankIds.add(a.id);
           }
@@ -22243,7 +22243,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const nodeMap = new Map<string, TreeNode>();
       for (const account of accounts) {
-        const isDebitNatural = ['asset', 'expense'].includes(account.accountType);
+        const isDebitNatural = ['asset', 'Assets', 'expense', 'Expenses'].includes(account.accountType);
         let openingBalance = 0;
         let periodDebit = 0;
         let periodCredit = 0;
@@ -22559,7 +22559,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         const map = actualsMap.get(a.accountId)!;
         const accountItem = items.find(i => i.accountId === a.accountId);
-        if (accountItem && ['revenue', 'liability', 'equity'].includes(accountItem.accountType)) {
+        if (accountItem && ['revenue', 'Income', 'liability', 'Liabilities', 'equity', 'Equity'].includes(accountItem.accountType)) {
           map[col] += (Number(a.totalCredit) - Number(a.totalDebit));
         } else {
           map[col] += (Number(a.totalDebit) - Number(a.totalCredit));

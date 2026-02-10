@@ -132,8 +132,8 @@ export default function ProfitLossPage() {
 
   const tree = summaryData?.tree || [];
 
-  const revenueTree = useMemo(() => pruneZeroNodes(filterTreeByType(tree, 'revenue')), [tree]);
-  const expenseTree = useMemo(() => pruneZeroNodes(filterTreeByType(tree, 'expense')), [tree]);
+  const revenueTree = useMemo(() => pruneZeroNodes(filterTreeByType(tree, 'Income')), [tree]);
+  const expenseTree = useMemo(() => pruneZeroNodes(filterTreeByType(tree, 'Expenses')), [tree]);
 
   const totalRevenue = useMemo(() => sumLedgerBalances(revenueTree), [revenueTree]);
   const totalExpenses = useMemo(() => sumLedgerBalances(expenseTree), [expenseTree]);

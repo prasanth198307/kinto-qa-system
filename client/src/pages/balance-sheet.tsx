@@ -131,11 +131,11 @@ export default function BalanceSheetPage() {
 
   const tree = summaryData?.tree || [];
 
-  const assetTree = useMemo(() => pruneZeroNodes(filterTreeByType(tree, 'asset')), [tree]);
-  const liabilityTree = useMemo(() => pruneZeroNodes(filterTreeByType(tree, 'liability')), [tree]);
-  const equityTree = useMemo(() => pruneZeroNodes(filterTreeByType(tree, 'equity')), [tree]);
-  const revenueTree = useMemo(() => filterTreeByType(tree, 'revenue'), [tree]);
-  const expenseTree = useMemo(() => filterTreeByType(tree, 'expense'), [tree]);
+  const assetTree = useMemo(() => pruneZeroNodes(filterTreeByType(tree, 'Assets')), [tree]);
+  const liabilityTree = useMemo(() => pruneZeroNodes(filterTreeByType(tree, 'Liabilities')), [tree]);
+  const equityTree = useMemo(() => pruneZeroNodes(filterTreeByType(tree, 'Equity')), [tree]);
+  const revenueTree = useMemo(() => filterTreeByType(tree, 'Income'), [tree]);
+  const expenseTree = useMemo(() => filterTreeByType(tree, 'Expenses'), [tree]);
 
   const totalAssets = useMemo(() => sumLedgerBalances(assetTree), [assetTree]);
   const totalLiabilities = useMemo(() => sumLedgerBalances(liabilityTree), [liabilityTree]);

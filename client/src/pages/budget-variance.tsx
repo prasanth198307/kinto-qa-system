@@ -97,7 +97,7 @@ function formatAmount(paise: number): string {
 }
 
 function isFavorable(variance: number, accountType: string): boolean {
-  if (['expense', 'asset'].includes(accountType)) {
+  if (['expense', 'asset', 'Expenses', 'Assets'].includes(accountType)) {
     return variance <= 0;
   }
   return variance >= 0;

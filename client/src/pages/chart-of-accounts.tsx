@@ -90,7 +90,7 @@ function formatAmountCompact(paise: number | null | undefined): string {
 }
 
 function isBalanceSheet(type: string): boolean {
-  return ['asset', 'liability', 'equity'].includes(type);
+  return ['asset', 'liability', 'equity', 'Assets', 'Liabilities', 'Equity'].includes(type);
 }
 
 function buildTree(accounts: ChartAccount[], expandedIds: Set<string>): TreeNode[] {
@@ -172,13 +172,17 @@ export default function ChartOfAccountsPage() {
     queryKey: [`/api/chart-of-accounts?fy=${selectedFY}`],
   });
 
-  interface AccountTypeEntry { id: string; name: string; label: string; isSystem: number; }
-  const { data: accountTypesRaw = [] } = useQuery<AccountTypeEntry[]>({
-    queryKey: ['/api/account-types'],
-  });
-  const ACCOUNT_TYPES = accountTypesRaw.length > 0
-    ? accountTypesRaw.map(t => ({ value: t.name, label: t.label }))
-    : ACCOUNT_TYPES_FALLBACK;
+  const topLevelGroups = useMemo(() =>
+    accounts
+      .filter(a => (a.nodeType || 'ledger') === 'group' && !a.parentId)
+      .sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true })),
+    [accounts]
+  );
+
+  const ACCOUNT_TYPES = useMemo(() =>
+    topLevelGroups.map(g => ({ value: g.accountType, label: g.name })),
+    [topLevelGroups]
+  );
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {

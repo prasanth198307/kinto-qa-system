@@ -721,7 +721,7 @@ export default function BankTransactionsPage() {
                   <SelectContent>
                     {bankAccounts.length > 0 ? bankAccounts.map(a => (
                       <SelectItem key={a.id} value={a.id}>{a.code} - {a.name}</SelectItem>
-                    )) : accounts.filter(a => a.nodeType !== 'group' && a.accountType === 'asset').map(a => (
+                    )) : accounts.filter(a => a.nodeType !== 'group' && (a.accountType === 'asset' || a.accountType === 'Assets')).map(a => (
                       <SelectItem key={a.id} value={a.id}>{a.code} - {a.name}</SelectItem>
                     ))}
                   </SelectContent>
