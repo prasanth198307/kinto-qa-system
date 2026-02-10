@@ -19737,8 +19737,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/chart-of-accounts', async (req: any, res) => {
     try {
       const accounts = await storage.getAllChartOfAccounts();
-      const allSubtypes = await storage.getAccountSubtypes();
-      const subtypeMap = new Map(allSubtypes.map(st => [st.id, st]));
 
       const fyParam = req.query.fy as string | undefined;
       const fromDateParam = req.query.fromDate as string | undefined;
@@ -19831,12 +19829,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           const closingBalance = openingBalance + periodMovement;
 
-          const resolvedSubtype = account.subType ? subtypeMap.get(account.subType) : null;
           return {
             ...account,
-            subTypeId: account.subType,
-            subType: resolvedSubtype?.name || account.subType,
-            subTypeLabel: resolvedSubtype?.label || null,
             openingBalance,
             periodDebit: Number(period.totalDebit) || 0,
             periodCredit: Number(period.totalCredit) || 0,
@@ -19869,8 +19863,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } else {
             currentBalance = bal.totalCredit - bal.totalDebit;
           }
-          const resolvedSubtype = account.subType ? subtypeMap.get(account.subType) : null;
-          return { ...account, subTypeId: account.subType, subType: resolvedSubtype?.name || account.subType, subTypeLabel: resolvedSubtype?.label || null, openingBalance: 0, periodDebit: Number(bal.totalDebit) || 0, periodCredit: Number(bal.totalCredit) || 0, periodMovement: currentBalance, currentBalance };
+          return { ...account, openingBalance: 0, periodDebit: Number(bal.totalDebit) || 0, periodCredit: Number(bal.totalCredit) || 0, periodMovement: currentBalance, currentBalance };
         });
 
         res.json(accountsWithBalances);
@@ -19892,14 +19885,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/chart-of-accounts', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
-      const { code, name, accountType, subType, parentId, description } = req.body;
+      const { code, name, accountType, parentId, description } = req.body;
       if (!code || !name || !accountType) {
         return res.status(400).json({ message: 'Code, name, and account type are required' });
       }
       const existing = await storage.getChartOfAccountByCode(code);
       if (existing) return res.status(400).json({ message: `Account code ${code} already exists` });
 
-      const account = await storage.createChartOfAccount({ code, name, accountType, subType, parentId, description, isActive: 1, isSystemAccount: 0 });
+      const account = await storage.createChartOfAccount({ code, name, accountType, parentId, description, isActive: 1, isSystemAccount: 0 });
       res.status(201).json(account);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -19942,7 +19935,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Account Subtypes CRUD
   // Account Types CRUD
   app.get('/api/account-types', async (req: any, res) => {
     try {
@@ -19987,109 +19979,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/account-subtypes', async (req: any, res) => {
-    try {
-      const { accountType } = req.query;
-      const subtypes = await storage.getAccountSubtypes(accountType as string | undefined);
-      res.json(subtypes);
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
-    }
-  });
-
-  app.post('/api/account-subtypes', requireRole('admin', 'manager'), async (req: any, res) => {
-    try {
-      const { accountType, name, label } = req.body;
-      if (!accountType || !name || !label) {
-        return res.status(400).json({ message: 'accountType, name, and label are required' });
-      }
-      const existing = await storage.getAccountSubtypeByName(accountType, name);
-      if (existing) {
-        return res.status(400).json({ message: 'This sub-type already exists for this account type' });
-      }
-      const created = await storage.createAccountSubtype({ accountType, name, label, isSystem: 0 });
-      res.json(created);
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
-    }
-  });
-
-  app.delete('/api/account-subtypes/:id', requireRole('admin'), async (req: any, res) => {
-    try {
-      const allAccounts = await storage.getAllChartOfAccounts();
-      const allSubtypes = await storage.getAccountSubtypes();
-      const subtype = allSubtypes.find(st => st.id === req.params.id);
-      if (!subtype) {
-        return res.status(404).json({ message: 'Sub-type not found' });
-      }
-      const inUse = allAccounts.some(a => a.accountType === subtype.accountType && a.subType === subtype.name);
-      if (inUse) {
-        return res.status(400).json({ message: 'Cannot delete sub-type that is in use by existing accounts' });
-      }
-      await storage.deleteAccountSubtype(req.params.id);
-      res.json({ message: 'Sub-type deleted' });
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
-    }
-  });
-
-  app.post('/api/account-subtypes/seed', requireRole('admin'), async (req: any, res) => {
-    try {
-      const predefined: { accountType: string; name: string; label: string }[] = [
-        { accountType: "asset", name: "current_asset", label: "Current Asset" },
-        { accountType: "asset", name: "fixed_asset", label: "Fixed Asset" },
-        { accountType: "asset", name: "trade_receivable", label: "Trade Receivable" },
-        { accountType: "asset", name: "inventory", label: "Inventory" },
-        { accountType: "asset", name: "bank", label: "Bank" },
-        { accountType: "asset", name: "cash", label: "Cash" },
-        { accountType: "liability", name: "current_liability", label: "Current Liability" },
-        { accountType: "liability", name: "long_term_liability", label: "Long Term Liability" },
-        { accountType: "liability", name: "trade_payable", label: "Trade Payable" },
-        { accountType: "liability", name: "tax_payable", label: "Tax Payable" },
-        { accountType: "liability", name: "advance_received", label: "Advance Received" },
-        { accountType: "liability", name: "advance_liability", label: "Advance Liability" },
-        { accountType: "liability", name: "gst", label: "GST" },
-        { accountType: "equity", name: "capital", label: "Capital" },
-        { accountType: "equity", name: "reserves", label: "Reserves" },
-        { accountType: "equity", name: "drawings", label: "Drawings" },
-        { accountType: "revenue", name: "direct_income", label: "Direct Income" },
-        { accountType: "revenue", name: "indirect_income", label: "Indirect Income" },
-        { accountType: "expense", name: "direct_expense", label: "Direct Expense" },
-        { accountType: "expense", name: "indirect_expense", label: "Indirect Expense" },
-        { accountType: "expense", name: "manufacturing", label: "Manufacturing" },
-        { accountType: "expense", name: "administrative", label: "Administrative" },
-      ];
-
-      let seeded = 0;
-      for (const st of predefined) {
-        const exists = await storage.getAccountSubtypeByName(st.accountType, st.name);
-        if (!exists) {
-          await storage.createAccountSubtype({ ...st, isSystem: 1 });
-          seeded++;
-        }
-      }
-
-      // Also migrate any custom subtypes already in chart_of_accounts
-      // Skip if subType is already a UUID (already migrated to reference subtype ID)
-      const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      const allAccounts = await storage.getAllChartOfAccounts();
-      let migrated = 0;
-      for (const acct of allAccounts) {
-        if (acct.subType && !uuidPattern.test(acct.subType)) {
-          const exists = await storage.getAccountSubtypeByName(acct.accountType, acct.subType);
-          if (!exists) {
-            const label = acct.subType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-            await storage.createAccountSubtype({ accountType: acct.accountType, name: acct.subType, label, isSystem: 0 });
-            migrated++;
-          }
-        }
-      }
-
-      res.json({ message: `Seeded ${seeded} predefined + migrated ${migrated} custom subtypes` });
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
-    }
-  });
 
   // Fix broken invoice journal entries (delete wrong ones, regenerate correctly)
   app.post('/api/journal-entries/fix-invoices', requireRole('admin'), async (req: any, res) => {
@@ -21651,11 +21540,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/chart-of-accounts-list', async (req: any, res) => {
     try {
       const accounts = await storage.getAllChartOfAccounts();
-      const allSubtypes = await storage.getAccountSubtypes();
-      const stMap = new Map(allSubtypes.map(st => [st.id, st]));
       res.json(accounts.map(a => {
-        const resolved = a.subType ? stMap.get(a.subType) : null;
-        return { id: a.id, code: a.code, name: a.name, accountType: a.accountType, subType: resolved?.name || a.subType, subTypeId: a.subType };
+        return { id: a.id, code: a.code, name: a.name, accountType: a.accountType };
       }));
     } catch (error: any) {
       res.status(500).json({ message: error.message });

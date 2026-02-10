@@ -152,56 +152,7 @@ app.use((req, res, next) => {
     console.error('[TYPE SEED ERROR]', error);
   }
 
-  // Seed Account Subtypes (before COA, since COA seeding resolves subtype IDs)
-  try {
-    const { storage } = await import("./storage");
-    const predefined = [
-      { accountType: "asset", name: "current_asset", label: "Current Asset" },
-      { accountType: "asset", name: "fixed_asset", label: "Fixed Asset" },
-      { accountType: "asset", name: "trade_receivable", label: "Trade Receivable" },
-      { accountType: "asset", name: "inventory", label: "Inventory" },
-      { accountType: "asset", name: "bank", label: "Bank" },
-      { accountType: "asset", name: "cash", label: "Cash" },
-      { accountType: "asset", name: "gst_input", label: "GST Input Credit" },
-      { accountType: "liability", name: "current_liability", label: "Current Liability" },
-      { accountType: "liability", name: "long_term_liability", label: "Long Term Liability" },
-      { accountType: "liability", name: "trade_payable", label: "Trade Payable" },
-      { accountType: "liability", name: "tax_payable", label: "Tax Payable" },
-      { accountType: "liability", name: "advance_received", label: "Advance Received" },
-      { accountType: "liability", name: "advance_liability", label: "Advance Liability" },
-      { accountType: "liability", name: "gst", label: "GST" },
-      { accountType: "liability", name: "statutory", label: "Statutory" },
-      { accountType: "liability", name: "loan", label: "Loan" },
-      { accountType: "equity", name: "capital", label: "Capital" },
-      { accountType: "equity", name: "reserves", label: "Reserves" },
-      { accountType: "equity", name: "drawings", label: "Drawings" },
-      { accountType: "equity", name: "retained", label: "Retained Earnings" },
-      { accountType: "revenue", name: "direct_income", label: "Direct Income" },
-      { accountType: "revenue", name: "indirect_income", label: "Indirect Income" },
-      { accountType: "revenue", name: "operating", label: "Operating" },
-      { accountType: "revenue", name: "other_income", label: "Other Income" },
-      { accountType: "expense", name: "direct_expense", label: "Direct Expense" },
-      { accountType: "expense", name: "indirect_expense", label: "Indirect Expense" },
-      { accountType: "expense", name: "manufacturing", label: "Manufacturing" },
-      { accountType: "expense", name: "administrative", label: "Administrative" },
-      { accountType: "expense", name: "direct", label: "Direct" },
-      { accountType: "expense", name: "operating", label: "Operating" },
-      { accountType: "expense", name: "financial", label: "Financial" },
-      { accountType: "expense", name: "other", label: "Other" },
-      { accountType: "expense", name: "adjustment", label: "Adjustment" },
-    ];
-    for (const st of predefined) {
-      const exists = await storage.getAccountSubtypeByName(st.accountType, st.name);
-      if (!exists) {
-        await storage.createAccountSubtype({ ...st, isSystem: 1 });
-      }
-    }
-    console.log('[SUBTYPE SEED] Account subtypes seeding complete');
-  } catch (error) {
-    console.error('[SUBTYPE SEED ERROR]', error);
-  }
-
-  // Seed Chart of Accounts on startup (after subtypes are seeded)
+  // Seed Chart of Accounts on startup
   try {
     const { seedChartOfAccounts } = await import("./journal-service");
     await seedChartOfAccounts();

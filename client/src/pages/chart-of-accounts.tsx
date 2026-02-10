@@ -17,9 +17,6 @@ interface ChartAccount {
   code: string;
   name: string;
   accountType: string;
-  subType: string | null;
-  subTypeId: string | null;
-  subTypeLabel: string | null;
   parentId: string | null;
   description: string | null;
   isActive: number;
