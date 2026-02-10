@@ -100,7 +100,7 @@ export default function DayBookPage() {
   const { data, isLoading } = useQuery<DayBookResponse>({
     queryKey: ["/api/day-book", fromDate, toDate, sourceType, page],
     queryFn: async () => {
-      const res = await fetch(`/api/day-book?${queryParams}`);
+      const res = await fetch(`/api/day-book?${queryParams}`, { credentials: 'include' });
       if (!res.ok) throw new Error("Failed to fetch day book");
       return res.json();
     },

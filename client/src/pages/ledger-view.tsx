@@ -100,7 +100,12 @@ export default function LedgerViewPage() {
   })();
 
   const { data: ledgerData, isLoading: ledgerLoading } = useQuery<LedgerResponse>({
-    queryKey: ["/api/ledger", selectedAccountId, { ...(dateMode === "custom" && isCustomValid ? { fromDate: customFrom, toDate: customTo } : { fy: selectedFY }) }],
+    queryKey: ["/api/ledger", selectedAccountId, dateMode, selectedFY, customFrom, customTo],
+    queryFn: async () => {
+      const res = await fetch(`/api/ledger/${selectedAccountId}?${queryParams}`, { credentials: 'include' });
+      if (!res.ok) throw new Error("Failed to fetch ledger data");
+      return res.json();
+    },
     enabled: !!selectedAccountId,
   });
 

@@ -102,8 +102,6 @@ const screenPermissions: Record<string, { admin: boolean; manager: boolean; oper
   'Final Approval': { admin: true, manager: true, operator: false, reviewer: false },
   'MIS Reports': { admin: true, manager: true, operator: false, reviewer: false },
   'Accounting & Ledger': { admin: true, manager: true, operator: false, reviewer: false },
-  'Accounting': { admin: true, manager: true, operator: false, reviewer: false },
-  'Spare Parts Stock': { admin: true, manager: true, operator: false, reviewer: false },
 };
 
 const navItemToScreen: Record<string, string> = {

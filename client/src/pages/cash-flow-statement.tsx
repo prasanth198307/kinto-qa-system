@@ -198,7 +198,7 @@ export default function CashFlowStatementPage() {
   const { data, isLoading, isError } = useQuery<CashFlowData>({
     queryKey: ["/api/cash-flow-statement", selectedFY],
     queryFn: async () => {
-      const res = await fetch(apiUrl);
+      const res = await fetch(apiUrl, { credentials: 'include' });
       if (!res.ok) throw new Error("Failed to fetch cash flow statement");
       return res.json();
     },
