@@ -19913,8 +19913,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Code, name, and account type are required' });
       }
       const resolvedNodeType = nodeType || 'ledger';
-      if (!parentId && resolvedNodeType === 'ledger') {
-        return res.status(400).json({ message: 'Parent group is required. Ledger accounts must belong to a group in the hierarchy.' });
+      if (!parentId) {
+        return res.status(400).json({ message: 'Parent group is required. All accounts must belong to a parent group.' });
       }
       const existing = await storage.getChartOfAccountByCode(code);
       if (existing) return res.status(400).json({ message: `Account code ${code} already exists` });

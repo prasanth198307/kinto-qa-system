@@ -428,7 +428,7 @@ export default function ChartOfAccountsPage() {
                   </div>
                 </div>
                 <div>
-                  <Label>Parent Group {formData.nodeType === "group" ? "(optional)" : ""}</Label>
+                  <Label>Parent Group</Label>
                   <Popover open={parentPickerOpen} onOpenChange={setParentPickerOpen}>
                     <PopoverTrigger asChild>
                       <Button
@@ -453,18 +453,6 @@ export default function ChartOfAccountsPage() {
                         <CommandList>
                           <CommandEmpty>No group found.</CommandEmpty>
                           <CommandGroup>
-                            {formData.nodeType === "group" && (
-                              <CommandItem
-                                value="__none__"
-                                onSelect={() => {
-                                  setFormData(p => ({ ...p, parentId: "", accountType: "" }));
-                                  setParentPickerOpen(false);
-                                }}
-                              >
-                                <Check className={cn("mr-2 h-4 w-4", !formData.parentId ? "opacity-100" : "opacity-0")} />
-                                None (top-level group)
-                              </CommandItem>
-                            )}
                             {groupAccounts
                               .filter(g => !editAccount || g.id !== editAccount.id)
                               .map(g => (
