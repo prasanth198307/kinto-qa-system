@@ -245,13 +245,13 @@ export default function ChartOfAccountsPage() {
   }
 
   function handleSubmit() {
-    if (!formData.parentId || formData.parentId === "none") {
-      toast({ title: "Parent group is required", description: "All accounts must belong to a parent group in the hierarchy.", variant: "destructive" });
+    if (formData.nodeType === "ledger" && (!formData.parentId || formData.parentId === "none")) {
+      toast({ title: "Parent group is required", description: "Ledger accounts must belong to a parent group.", variant: "destructive" });
       return;
     }
     const data: any = {
       ...formData,
-      parentId: formData.parentId,
+      parentId: formData.parentId || null,
     };
     if (editAccount) {
       updateMutation.mutate({ id: editAccount.id, data });
@@ -453,6 +453,18 @@ export default function ChartOfAccountsPage() {
                         <CommandList>
                           <CommandEmpty>No group found.</CommandEmpty>
                           <CommandGroup>
+                            {formData.nodeType === "group" && (
+                              <CommandItem
+                                value="__none__"
+                                onSelect={() => {
+                                  setFormData(p => ({ ...p, parentId: "", accountType: "" }));
+                                  setParentPickerOpen(false);
+                                }}
+                              >
+                                <Check className={cn("mr-2 h-4 w-4", !formData.parentId ? "opacity-100" : "opacity-0")} />
+                                None (top-level group)
+                              </CommandItem>
+                            )}
                             {groupAccounts
                               .filter(g => !editAccount || g.id !== editAccount.id)
                               .map(g => (
@@ -512,7 +524,7 @@ export default function ChartOfAccountsPage() {
                 <Button
                   data-testid="button-save-account"
                   onClick={handleSubmit}
-                  disabled={createMutation.isPending || updateMutation.isPending || !formData.code || !formData.name || !formData.parentId}
+                  disabled={createMutation.isPending || updateMutation.isPending || !formData.code || !formData.name || (formData.nodeType === "ledger" && !formData.parentId)}
                 >
                   {editAccount ? "Update" : "Create"}
                 </Button>
