@@ -21753,15 +21753,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (type === 'receivable') {
         const invoices = await db.execute(sql`
-          SELECT i.id, i."invoiceNumber" as "invoiceNumber", i."invoiceDate" as "invoiceDate",
-                 i."totalAmount" as "totalAmount", i."paidAmount" as "paidAmount",
-                 v.name as "vendorName", v.id as "vendorId"
+          SELECT i.id, i.invoice_number as "invoiceNumber", i.invoice_date as "invoiceDate",
+                 i.total_amount as "totalAmount", i.amount_received as "paidAmount",
+                 i.buyer_name as "vendorName"
           FROM invoices i
-          LEFT JOIN vendors v ON i."vendorId" = v.id
-          WHERE i."recordStatus" = 1 AND i.status != 'cancelled'
-            AND COALESCE(i."paidAmount", 0) < i."totalAmount"
-            AND i."invoiceDate" <= ${asOfDate}
-          ORDER BY i."invoiceDate" ASC
+          WHERE i.record_status = 1 AND i.status != 'cancelled'
+            AND COALESCE(i.amount_received, 0) < i.total_amount
+            AND i.invoice_date <= ${asOfDate}
+          ORDER BY i.invoice_date ASC
         `);
 
         const asOf = new Date(asOfDate);
@@ -21822,16 +21821,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       } else {
         const pos = await db.execute(sql`
-          SELECT po.id, po."poNumber" as "poNumber", po."orderDate" as "orderDate",
-                 po."totalAmount" as "totalAmount",
-                 COALESCE(po."paidAmount", 0) as "paidAmount",
-                 v.name as "vendorName", v.id as "vendorId"
+          SELECT po.id, po.po_number as "poNumber", po.po_date as "orderDate",
+                 po.total_amount as "totalAmount",
+                 0 as "paidAmount",
+                 COALESCE(v.vendor_name, po.vendor_name, 'Unknown') as "vendorName", v.id as "vendorId"
           FROM purchase_orders po
-          LEFT JOIN vendors v ON po."vendorId" = v.id
-          WHERE po."recordStatus" = 1 AND po.status != 'cancelled'
-            AND COALESCE(po."paidAmount", 0) < po."totalAmount"
-            AND po."orderDate" <= ${asOfDate}
-          ORDER BY po."orderDate" ASC
+          LEFT JOIN vendors v ON po.vendor_id = v.id
+          WHERE po.record_status = 1 AND po.status != 'cancelled'
+            AND po.total_amount > 0
+            AND po.po_date <= ${asOfDate}
+          ORDER BY po.po_date ASC
         `);
 
         const asOf = new Date(asOfDate);
