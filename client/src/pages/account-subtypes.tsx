@@ -93,11 +93,12 @@ export default function AccountSubtypesPage() {
   }
 
   function handleSubmit() {
-    if (!formData.accountType || !formData.name || !formData.label) {
-      toast({ title: "All fields are required", variant: "destructive" });
+    if (!formData.accountType || !formData.label) {
+      toast({ title: "Please select account type and enter a name", variant: "destructive" });
       return;
     }
-    createMutation.mutate(formData);
+    const autoName = formData.name || formData.label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+    createMutation.mutate({ ...formData, name: autoName });
   }
 
   function handleNameChange(value: string) {
@@ -257,24 +258,13 @@ export default function AccountSubtypesPage() {
               </Select>
             </div>
             <div>
-              <Label>Display Label</Label>
+              <Label>Sub-Type Name</Label>
               <Input
                 value={formData.label}
                 onChange={e => handleLabelChange(e.target.value)}
                 placeholder="e.g. Fixed Asset"
                 data-testid="input-label"
               />
-            </div>
-            <div>
-              <Label>System Name</Label>
-              <Input
-                value={formData.name}
-                onChange={e => handleNameChange(e.target.value)}
-                placeholder="e.g. fixed_asset"
-                className="font-mono text-sm"
-                data-testid="input-name"
-              />
-              <p className="text-xs text-muted-foreground mt-1">Lowercase with underscores, used internally</p>
             </div>
           </div>
           <DialogFooter>
