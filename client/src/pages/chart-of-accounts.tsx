@@ -18,6 +18,8 @@ interface ChartAccount {
   name: string;
   accountType: string;
   subType: string | null;
+  subTypeId: string | null;
+  subTypeLabel: string | null;
   parentId: string | null;
   description: string | null;
   isActive: number;
@@ -135,7 +137,7 @@ export default function ChartOfAccountsPage() {
     },
     onSuccess: (created: AccountSubtype) => {
       queryClient.invalidateQueries({ queryKey: ['/api/account-subtypes'] });
-      setFormData(p => ({ ...p, subType: created.name }));
+      setFormData(p => ({ ...p, subType: created.id }));
       setAddingNewSubtype(false);
       setNewSubtypeName("");
       setNewSubtypeLabel("");
@@ -220,7 +222,7 @@ export default function ChartOfAccountsPage() {
       code: account.code,
       name: account.name,
       accountType: account.accountType,
-      subType: account.subType || "",
+      subType: account.subTypeId || "",
       description: account.description || "",
       openingBalance: String((Number(account.openingBalance) || 0) / 100),
     });
@@ -403,7 +405,7 @@ export default function ChartOfAccountsPage() {
                             </SelectTrigger>
                             <SelectContent>
                               {filteredSubtypes.map(st => (
-                                <SelectItem key={st.id} value={st.name}>{st.label}</SelectItem>
+                                <SelectItem key={st.id} value={st.id}>{st.label}</SelectItem>
                               ))}
                               <SelectItem value="__add_new__">+ Add New Sub-Type</SelectItem>
                             </SelectContent>
@@ -601,7 +603,7 @@ export default function ChartOfAccountsPage() {
                                 )}
                                 {account.subType && (
                                   <span className="text-xs text-muted-foreground hidden lg:inline shrink-0">
-                                    {subtypes.find(st => st.name === account.subType && st.accountType === account.accountType)?.label || account.subType.replace(/_/g, " ")}
+                                    {account.subTypeLabel || account.subType.replace(/_/g, " ")}
                                   </span>
                                 )}
                               </div>

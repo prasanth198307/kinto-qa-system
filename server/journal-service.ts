@@ -204,10 +204,21 @@ const DIRECTOR_LOAN_ACCOUNTS = [
 ];
 
 export async function seedChartOfAccounts(): Promise<void> {
+  const allSubtypes = await storage.getAccountSubtypes();
+  const subtypeLookup = new Map<string, string>();
+  for (const st of allSubtypes) {
+    subtypeLookup.set(`${st.accountType}:${st.name}`, st.id);
+  }
+
+  const resolveSubtypeId = (accountType: string, subtypeName: string): string => {
+    return subtypeLookup.get(`${accountType}:${subtypeName}`) || subtypeName;
+  };
+
   for (const account of DEFAULT_ACCOUNTS) {
     const existing = await storage.getChartOfAccountByCode(account.code);
     if (!existing) {
-      await storage.createChartOfAccount(account as any);
+      const resolvedSubType = resolveSubtypeId(account.accountType, account.subType);
+      await storage.createChartOfAccount({ ...account, subType: resolvedSubType } as any);
       console.log(`[COA SEED] Created account: ${account.code} - ${account.name}`);
     }
   }
@@ -217,11 +228,12 @@ export async function seedChartOfAccounts(): Promise<void> {
     if (!existing) {
       const parent = await storage.getChartOfAccountByCode(dirAcct.parentCode);
       if (parent) {
+        const resolvedSubType = resolveSubtypeId('liability', 'loan');
         await storage.createChartOfAccount({
           code: dirAcct.code,
           name: dirAcct.name,
           accountType: 'liability',
-          subType: 'loan',
+          subType: resolvedSubType,
           parentId: parent.id,
           description: dirAcct.description,
           isSystemAccount: 1,
@@ -235,7 +247,8 @@ export async function seedChartOfAccounts(): Promise<void> {
   for (const code of gstInputCodes) {
     const acct = await storage.getChartOfAccountByCode(code);
     if (acct && acct.accountType === 'liability') {
-      await storage.updateChartOfAccount(acct.id, { accountType: 'asset', subType: 'gst_input' });
+      const resolvedSubType = resolveSubtypeId('asset', 'gst_input');
+      await storage.updateChartOfAccount(acct.id, { accountType: 'asset', subType: resolvedSubType });
       console.log(`[COA SEED] Fixed ${code} ${acct.name}: liability -> asset`);
     }
   }

@@ -19737,6 +19737,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/chart-of-accounts', async (req: any, res) => {
     try {
       const accounts = await storage.getAllChartOfAccounts();
+      const allSubtypes = await storage.getAccountSubtypes();
+      const subtypeMap = new Map(allSubtypes.map(st => [st.id, st]));
 
       const fyParam = req.query.fy as string | undefined;
       const fromDateParam = req.query.fromDate as string | undefined;
@@ -19829,8 +19831,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           const closingBalance = openingBalance + periodMovement;
 
+          const resolvedSubtype = account.subType ? subtypeMap.get(account.subType) : null;
           return {
             ...account,
+            subTypeId: account.subType,
+            subType: resolvedSubtype?.name || account.subType,
+            subTypeLabel: resolvedSubtype?.label || null,
             openingBalance,
             periodDebit: Number(period.totalDebit) || 0,
             periodCredit: Number(period.totalCredit) || 0,
@@ -19863,7 +19869,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } else {
             currentBalance = bal.totalCredit - bal.totalDebit;
           }
-          return { ...account, openingBalance: 0, periodDebit: Number(bal.totalDebit) || 0, periodCredit: Number(bal.totalCredit) || 0, periodMovement: currentBalance, currentBalance };
+          const resolvedSubtype = account.subType ? subtypeMap.get(account.subType) : null;
+          return { ...account, subTypeId: account.subType, subType: resolvedSubtype?.name || account.subType, subTypeLabel: resolvedSubtype?.label || null, openingBalance: 0, periodDebit: Number(bal.totalDebit) || 0, periodCredit: Number(bal.totalCredit) || 0, periodMovement: currentBalance, currentBalance };
         });
 
         res.json(accountsWithBalances);
@@ -21598,7 +21605,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/chart-of-accounts-list', async (req: any, res) => {
     try {
       const accounts = await storage.getAllChartOfAccounts();
-      res.json(accounts.map(a => ({ id: a.id, code: a.code, name: a.name, accountType: a.accountType, subType: a.subType })));
+      const allSubtypes = await storage.getAccountSubtypes();
+      const stMap = new Map(allSubtypes.map(st => [st.id, st]));
+      res.json(accounts.map(a => {
+        const resolved = a.subType ? stMap.get(a.subType) : null;
+        return { id: a.id, code: a.code, name: a.name, accountType: a.accountType, subType: resolved?.name || a.subType, subTypeId: a.subType };
+      }));
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
