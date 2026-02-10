@@ -264,6 +264,12 @@ async function seedAccountingPermissions(): Promise<void> {
       'ledger_view', 'day_book', 'aging_report', 'cash_flow_statement', 'group_summary',
     ]);
 
+    const ACCOUNTING_ONLY_KEYS = new Set([
+      'chart_of_accounts', 'account_subtypes', 'journal_entries', 'manual_journal_entry',
+      'trial_balance', 'profit_loss', 'balance_sheet',
+      'ledger_view', 'day_book', 'aging_report', 'cash_flow_statement', 'group_summary', 'budget_variance',
+    ]);
+
     for (const role of allRoles) {
       const existingPerms = await storage.getRolePermissions(role.id);
       const existingKeys = new Set(existingPerms.map(p => p.screenKey));
@@ -271,44 +277,48 @@ async function seedAccountingPermissions(): Promise<void> {
       const isAdmin = roleLower === 'admin';
       const isManager = roleLower === 'manager' || roleLower.includes('manager');
 
-      for (const screenKey of ACCOUNTING_SCREEN_KEYS) {
-        if (!existingKeys.has(screenKey)) {
-          if (isAdmin) {
+      const hasAnyAccountingPerm = Array.from(ACCOUNTING_ONLY_KEYS).some(k => existingKeys.has(k));
+      
+      const keysToSeed = hasAnyAccountingPerm
+        ? ACCOUNTING_SCREEN_KEYS.filter(k => !existingKeys.has(k) && !ACCOUNTING_ONLY_KEYS.has(k))
+        : ACCOUNTING_SCREEN_KEYS.filter(k => !existingKeys.has(k));
+
+      for (const screenKey of keysToSeed) {
+        if (isAdmin) {
+          await storage.createRolePermission({
+            roleId: role.id,
+            screenKey,
+            canView: 1,
+            canCreate: viewOnlyScreens.has(screenKey) ? 0 : 1,
+            canEdit: viewOnlyScreens.has(screenKey) ? 0 : 1,
+            canDelete: viewOnlyScreens.has(screenKey) ? 0 : 1,
+          });
+        } else if (isManager) {
+          await storage.createRolePermission({
+            roleId: role.id,
+            screenKey,
+            canView: 1,
+            canCreate: viewOnlyScreens.has(screenKey) ? 0 : 1,
+            canEdit: viewOnlyScreens.has(screenKey) ? 0 : (screenKey === 'manual_journal_entry' ? 0 : 1),
+            canDelete: 0,
+          });
+        } else {
+          const accountingViewScreens = new Set([
+            'ledger_view', 'day_book', 'aging_report', 'cash_flow_statement', 'group_summary', 'budget_variance',
+          ]);
+          if (accountingViewScreens.has(screenKey)) {
             await storage.createRolePermission({
               roleId: role.id,
               screenKey,
               canView: 1,
-              canCreate: viewOnlyScreens.has(screenKey) ? 0 : 1,
-              canEdit: viewOnlyScreens.has(screenKey) ? 0 : 1,
-              canDelete: viewOnlyScreens.has(screenKey) ? 0 : 1,
-            });
-          } else if (isManager) {
-            await storage.createRolePermission({
-              roleId: role.id,
-              screenKey,
-              canView: 1,
-              canCreate: viewOnlyScreens.has(screenKey) ? 0 : 1,
-              canEdit: viewOnlyScreens.has(screenKey) ? 0 : (screenKey === 'manual_journal_entry' ? 0 : 1),
+              canCreate: 0,
+              canEdit: 0,
               canDelete: 0,
             });
-          } else {
-            const accountingViewScreens = new Set([
-              'ledger_view', 'day_book', 'aging_report', 'cash_flow_statement', 'group_summary', 'budget_variance',
-            ]);
-            if (accountingViewScreens.has(screenKey)) {
-              await storage.createRolePermission({
-                roleId: role.id,
-                screenKey,
-                canView: 1,
-                canCreate: 0,
-                canEdit: 0,
-                canDelete: 0,
-              });
-            }
-            continue;
           }
-          console.log(`[COA SEED] Added ${screenKey} permission for role ${role.name}`);
+          continue;
         }
+        console.log(`[COA SEED] Added ${screenKey} permission for role ${role.name}`);
       }
     }
   } catch (err) {
