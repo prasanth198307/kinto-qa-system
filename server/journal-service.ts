@@ -238,10 +238,10 @@ export async function seedChartOfAccounts(): Promise<void> {
   // 1. Seed hierarchy groups first (ordered by level so parents exist before children)
   for (const group of HIERARCHY_GROUPS) {
     const existing = await storage.getChartOfAccountByCode(group.code);
+    const parentId = group.parentCode
+      ? (await storage.getChartOfAccountByCode(group.parentCode))?.id || null
+      : null;
     if (!existing) {
-      const parentId = group.parentCode
-        ? (await storage.getChartOfAccountByCode(group.parentCode))?.id || null
-        : null;
       await storage.createChartOfAccount({
         code: group.code,
         name: group.name,
@@ -253,16 +253,26 @@ export async function seedChartOfAccounts(): Promise<void> {
         isActive: 1,
       } as any);
       console.log(`[COA SEED] Created group: ${group.code} - ${group.name}`);
+    } else {
+      // Update existing account to ensure nodeType, level, and parentId are correct
+      const updates: any = {};
+      if (existing.nodeType !== 'group') updates.nodeType = 'group';
+      if (existing.level !== group.level) updates.level = group.level;
+      if (!existing.parentId && parentId) updates.parentId = parentId;
+      if (Object.keys(updates).length > 0) {
+        await storage.updateChartOfAccount(existing.id, updates);
+        console.log(`[COA SEED] Updated group: ${group.code} - ${group.name} (${Object.keys(updates).join(', ')})`);
+      }
     }
   }
 
   // 2. Seed ledger accounts with parent assignments
   for (const account of DEFAULT_ACCOUNTS) {
     const existing = await storage.getChartOfAccountByCode(account.code);
+    const parentId = account.parentCode
+      ? (await storage.getChartOfAccountByCode(account.parentCode))?.id || null
+      : null;
     if (!existing) {
-      const parentId = account.parentCode
-        ? (await storage.getChartOfAccountByCode(account.parentCode))?.id || null
-        : null;
       await storage.createChartOfAccount({
         code: account.code,
         name: account.name,
@@ -274,12 +284,19 @@ export async function seedChartOfAccounts(): Promise<void> {
         isActive: 1,
       } as any);
       console.log(`[COA SEED] Created account: ${account.code} - ${account.name}`);
-    } else if (!existing.parentId && account.parentCode) {
-      // Fix existing orphan accounts — assign parent if missing
-      const parent = await storage.getChartOfAccountByCode(account.parentCode);
-      if (parent) {
-        await storage.updateChartOfAccount(existing.id, { parentId: parent.id, nodeType: 'ledger' });
-        console.log(`[COA SEED] Assigned parent ${account.parentCode} to existing account: ${account.code} - ${account.name}`);
+    } else {
+      // Update existing accounts — fix parentId, nodeType, level for legacy data
+      const updates: any = {};
+      if (!existing.parentId && parentId) updates.parentId = parentId;
+      if (existing.nodeType !== 'ledger') updates.nodeType = 'ledger';
+      if (parentId) {
+        const parent = await storage.getChartOfAccount(parentId);
+        const expectedLevel = parent ? (parent.level || 1) + 1 : 1;
+        if (existing.level !== expectedLevel) updates.level = expectedLevel;
+      }
+      if (Object.keys(updates).length > 0) {
+        await storage.updateChartOfAccount(existing.id, updates);
+        console.log(`[COA SEED] Updated account: ${account.code} - ${account.name} (${Object.keys(updates).join(', ')})`);
       }
     }
   }
@@ -287,8 +304,8 @@ export async function seedChartOfAccounts(): Promise<void> {
   // 3. Seed director loan accounts
   for (const dirAcct of DIRECTOR_LOAN_ACCOUNTS) {
     const existing = await storage.getChartOfAccountByCode(dirAcct.code);
+    const parent = await storage.getChartOfAccountByCode(dirAcct.parentCode);
     if (!existing) {
-      const parent = await storage.getChartOfAccountByCode(dirAcct.parentCode);
       if (parent) {
         await storage.createChartOfAccount({
           code: dirAcct.code,
@@ -301,6 +318,14 @@ export async function seedChartOfAccounts(): Promise<void> {
           isSystemAccount: 1,
         } as any);
         console.log(`[COA SEED] Created director account: ${dirAcct.code} - ${dirAcct.name}`);
+      }
+    } else if (parent) {
+      const updates: any = {};
+      if (!existing.parentId) updates.parentId = parent.id;
+      if (existing.nodeType !== 'ledger') updates.nodeType = 'ledger';
+      if (Object.keys(updates).length > 0) {
+        await storage.updateChartOfAccount(existing.id, updates);
+        console.log(`[COA SEED] Updated director account: ${dirAcct.code} - ${dirAcct.name} (${Object.keys(updates).join(', ')})`);
       }
     }
   }
