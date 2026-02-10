@@ -4,12 +4,9 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, Trash2, Lock, Layers } from "lucide-react";
+import { Plus, Search, Trash2, Lock, Layers, X } from "lucide-react";
 
 interface AccountSubtype {
   id: string;
@@ -46,13 +43,8 @@ export default function AccountSubtypesPage() {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("all");
-  const [dialogOpen, setDialogOpen] = useState(false);
-
-  const [formData, setFormData] = useState({
-    accountType: "",
-    name: "",
-    label: "",
-  });
+  const [addingToType, setAddingToType] = useState<string | null>(null);
+  const [newLabel, setNewLabel] = useState("");
 
   const { data: subtypes = [], isLoading } = useQuery<AccountSubtype[]>({
     queryKey: ["/api/account-subtypes"],
@@ -66,7 +58,8 @@ export default function AccountSubtypesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/account-subtypes"] });
       toast({ title: "Sub-type created successfully" });
-      closeDialog();
+      setAddingToType(null);
+      setNewLabel("");
     },
     onError: (err: any) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -87,31 +80,13 @@ export default function AccountSubtypesPage() {
     },
   });
 
-  function closeDialog() {
-    setDialogOpen(false);
-    setFormData({ accountType: "", name: "", label: "" });
-  }
-
-  function handleSubmit() {
-    if (!formData.accountType || !formData.label) {
-      toast({ title: "Please select account type and enter a name", variant: "destructive" });
+  function handleAdd(accountType: string) {
+    if (!newLabel.trim()) {
+      toast({ title: "Please enter a sub-type name", variant: "destructive" });
       return;
     }
-    const autoName = formData.name || formData.label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
-    createMutation.mutate({ ...formData, name: autoName });
-  }
-
-  function handleNameChange(value: string) {
-    const sanitized = value.toLowerCase().replace(/[^a-z0-9_]/g, "_");
-    setFormData(p => ({ ...p, name: sanitized }));
-  }
-
-  function handleLabelChange(value: string) {
-    setFormData(p => ({ ...p, label: value }));
-    if (!formData.name) {
-      const autoName = value.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
-      setFormData(p => ({ ...p, name: autoName, label: value }));
-    }
+    const autoName = newLabel.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+    createMutation.mutate({ accountType, name: autoName, label: newLabel.trim() });
   }
 
   const filtered = subtypes.filter(st => {
@@ -123,9 +98,10 @@ export default function AccountSubtypesPage() {
     return true;
   });
 
-  const grouped = ACCOUNT_TYPES.reduce<Record<string, AccountSubtype[]>>((acc, type) => {
-    const items = filtered.filter(st => st.accountType === type.value);
-    if (items.length > 0) acc[type.value] = items;
+  const typesToShow = filterType === "all" ? ACCOUNT_TYPES : ACCOUNT_TYPES.filter(t => t.value === filterType);
+
+  const grouped = typesToShow.reduce<Record<string, AccountSubtype[]>>((acc, type) => {
+    acc[type.value] = filtered.filter(st => st.accountType === type.value);
     return acc;
   }, {});
 
@@ -136,10 +112,6 @@ export default function AccountSubtypesPage() {
           <h2 className="text-lg font-semibold" data-testid="text-page-title">Account Sub-Types</h2>
           <p className="text-sm text-muted-foreground">Manage the sub-type categories used in Chart of Accounts</p>
         </div>
-        <Button onClick={() => setDialogOpen(true)} data-testid="button-add-subtype">
-          <Plus className="w-4 h-4 mr-1.5" />
-          Add Sub-Type
-        </Button>
       </div>
 
       <div className="flex flex-wrap gap-2 items-center">
@@ -153,128 +125,110 @@ export default function AccountSubtypesPage() {
             data-testid="input-search"
           />
         </div>
-        <Select value={filterType} onValueChange={setFilterType}>
-          <SelectTrigger className="w-[160px]" data-testid="select-filter-type">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
-            {ACCOUNT_TYPES.map(t => (
-              <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         </div>
-      ) : filtered.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
-            No sub-types found
-          </CardContent>
-        </Card>
       ) : (
         <div className="space-y-4">
           {Object.entries(grouped).map(([accountType, items]) => (
             <Card key={accountType}>
               <CardContent className="p-0">
-                <div className="px-4 py-3 border-b flex items-center gap-2">
-                  <Badge variant={typeBadgeVariant(accountType)} className="text-xs">
-                    {typeLabel(accountType)}
-                  </Badge>
-                  <span className="text-sm text-muted-foreground">
-                    {items.length} sub-type{items.length !== 1 ? "s" : ""}
-                  </span>
+                <div className="px-4 py-3 border-b flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Badge variant={typeBadgeVariant(accountType)} className="text-xs">
+                      {typeLabel(accountType)}
+                    </Badge>
+                    <span className="text-sm text-muted-foreground">
+                      {items.length} sub-type{items.length !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setAddingToType(addingToType === accountType ? null : accountType);
+                      setNewLabel("");
+                    }}
+                    data-testid={`button-add-${accountType}`}
+                  >
+                    {addingToType === accountType ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                  </Button>
                 </div>
-                <div className="divide-y">
-                  {items
-                    .sort((a, b) => a.label.localeCompare(b.label))
-                    .map(st => (
-                    <div
-                      key={st.id}
-                      className="flex items-center justify-between px-4 py-2.5 gap-3"
-                      data-testid={`row-subtype-${st.id}`}
+
+                {addingToType === accountType && (
+                  <div className="flex items-center gap-2 px-4 py-2.5 border-b bg-muted/30">
+                    <Input
+                      value={newLabel}
+                      onChange={e => setNewLabel(e.target.value)}
+                      placeholder={`New ${typeLabel(accountType)} sub-type name...`}
+                      className="flex-1"
+                      autoFocus
+                      onKeyDown={e => { if (e.key === "Enter") handleAdd(accountType); }}
+                      data-testid="input-new-subtype"
+                    />
+                    <Button
+                      onClick={() => handleAdd(accountType)}
+                      disabled={createMutation.isPending}
+                      data-testid="button-save-subtype"
                     >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <Layers className="w-4 h-4 text-muted-foreground shrink-0" />
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-medium text-sm" data-testid={`text-label-${st.id}`}>{st.label}</span>
-                            {st.isSystem === 1 && (
-                              <Lock className="w-3 h-3 text-muted-foreground shrink-0" />
-                            )}
+                      {createMutation.isPending ? "Adding..." : "Add"}
+                    </Button>
+                  </div>
+                )}
+
+                <div className="divide-y">
+                  {items.length === 0 && addingToType !== accountType ? (
+                    <div className="px-4 py-4 text-sm text-muted-foreground text-center">
+                      No sub-types yet
+                    </div>
+                  ) : (
+                    items
+                      .sort((a, b) => a.label.localeCompare(b.label))
+                      .map(st => (
+                      <div
+                        key={st.id}
+                        className="flex items-center justify-between px-4 py-2.5 gap-3"
+                        data-testid={`row-subtype-${st.id}`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <Layers className="w-4 h-4 text-muted-foreground shrink-0" />
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-medium text-sm" data-testid={`text-label-${st.id}`}>{st.label}</span>
+                              {st.isSystem === 1 && (
+                                <Lock className="w-3 h-3 text-muted-foreground shrink-0" />
+                              )}
+                            </div>
                           </div>
-                          <span className="text-xs text-muted-foreground font-mono" data-testid={`text-name-${st.id}`}>{st.name}</span>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          {st.isSystem !== 1 && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                if (confirm(`Delete sub-type "${st.label}"? This will fail if any accounts use it.`)) {
+                                  deleteMutation.mutate(st.id);
+                                }
+                              }}
+                              data-testid={`button-delete-${st.id}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        {st.isSystem !== 1 && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              if (confirm(`Delete sub-type "${st.label}"? This will fail if any accounts use it.`)) {
-                                deleteMutation.mutate(st.id);
-                              }
-                            }}
-                            data-testid={`button-delete-${st.id}`}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
       )}
-
-      <Dialog open={dialogOpen} onOpenChange={v => { if (!v) closeDialog(); }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Add New Sub-Type</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Account Type</Label>
-              <Select
-                value={formData.accountType}
-                onValueChange={v => setFormData(p => ({ ...p, accountType: v }))}
-              >
-                <SelectTrigger data-testid="input-account-type">
-                  <SelectValue placeholder="Select account type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ACCOUNT_TYPES.map(t => (
-                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Sub-Type Name</Label>
-              <Input
-                value={formData.label}
-                onChange={e => handleLabelChange(e.target.value)}
-                placeholder="e.g. Fixed Asset"
-                data-testid="input-label"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={closeDialog} data-testid="button-cancel">Cancel</Button>
-            <Button onClick={handleSubmit} disabled={createMutation.isPending} data-testid="button-save">
-              {createMutation.isPending ? "Creating..." : "Create"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
