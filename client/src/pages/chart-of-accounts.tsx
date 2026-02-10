@@ -245,13 +245,13 @@ export default function ChartOfAccountsPage() {
   }
 
   function handleSubmit() {
-    if (formData.nodeType === "ledger" && (!formData.parentId || formData.parentId === "none")) {
-      toast({ title: "Parent group is required", description: "Ledger accounts must belong to a group in the hierarchy.", variant: "destructive" });
+    if (!formData.parentId || formData.parentId === "none") {
+      toast({ title: "Parent group is required", description: "All accounts must belong to a parent group in the hierarchy.", variant: "destructive" });
       return;
     }
     const data: any = {
       ...formData,
-      parentId: formData.parentId || null,
+      parentId: formData.parentId,
     };
     if (editAccount) {
       updateMutation.mutate({ id: editAccount.id, data });
@@ -491,25 +491,11 @@ export default function ChartOfAccountsPage() {
                       </Command>
                     </PopoverContent>
                   </Popover>
-                  {formData.parentId ? (
+                  {formData.parentId && (
                     <p className="text-xs text-muted-foreground mt-1">
                       Type: {ACCOUNT_TYPES.find(t => t.value === formData.accountType)?.label || formData.accountType} (inherited from parent)
                     </p>
-                  ) : formData.nodeType === "group" ? (
-                    <div className="mt-2">
-                      <Label>Account Type</Label>
-                      <Select value={formData.accountType} onValueChange={v => setFormData(p => ({ ...p, accountType: v }))}>
-                        <SelectTrigger data-testid="select-account-type">
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {ACCOUNT_TYPES.map(t => (
-                            <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  ) : null}
+                  )}
                 </div>
                 <div>
                   <Label>Account Name</Label>
@@ -538,7 +524,7 @@ export default function ChartOfAccountsPage() {
                 <Button
                   data-testid="button-save-account"
                   onClick={handleSubmit}
-                  disabled={createMutation.isPending || updateMutation.isPending || !formData.code || !formData.name || !formData.accountType || (formData.nodeType === "ledger" && (!formData.parentId || formData.parentId === "none"))}
+                  disabled={createMutation.isPending || updateMutation.isPending || !formData.code || !formData.name || !formData.parentId}
                 >
                   {editAccount ? "Update" : "Create"}
                 </Button>
