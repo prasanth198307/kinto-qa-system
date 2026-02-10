@@ -140,6 +140,14 @@ const permissions: Permission[] = [
     operator: false,
     reviewer: false,
   },
+  {
+    screen: "Accounting",
+    description: "Chart of Accounts, Account Sub-Types, Journal Entries, Trial Balance, P&L, Balance Sheet",
+    admin: true,
+    manager: true,
+    operator: false,
+    reviewer: false,
+  },
 ];
 
 const roleColors = {

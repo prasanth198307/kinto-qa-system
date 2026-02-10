@@ -69,6 +69,7 @@ const navItemToScreenKey: Record<string, string> = {
   'notification-settings': 'notification_settings',
   'data-import': 'data_import',
   'chart-of-accounts': 'chart_of_accounts',
+  'account-subtypes': 'account_subtypes',
   'journal-entries': 'journal_entries',
   'journal-entry-new': 'manual_journal_entry',
   'bank-transactions': 'journal_entries',
