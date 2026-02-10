@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import crypto from "crypto";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertPurchaseOrderItemSchema, purchaseOrders, purchaseOrderItems, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, paymentEvidence, salesReturns, salesReturnItems, creditNotes, creditNoteItems, debitNotes, debitNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes, vendors, users, uom, insertDocumentCategorySchema, insertDocumentSchema, insertExpenseCategorySchema, insertExpenseVoucherSchema, insertExpenseItemSchema, insertExpenseAttachmentSchema, rolePermissions, vendorDebitNotes, vendorDebitNoteItems, vendorDebitNoteAdjustments, transporters, vehicles, drivers, insertTransporterSchema, insertVehicleSchema, insertDriverSchema, scrapInventory, insertSparePartEntrySchema, insertSparePartIssuanceSchema, insertScrapInventorySchema, sparePartEntries, sparePartsCatalog } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertPurchaseOrderItemSchema, purchaseOrders, purchaseOrderItems, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, paymentEvidence, salesReturns, salesReturnItems, creditNotes, creditNoteItems, debitNotes, debitNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes, vendors, users, uom, insertDocumentCategorySchema, insertDocumentSchema, insertExpenseCategorySchema, insertExpenseVoucherSchema, insertExpenseItemSchema, insertExpenseAttachmentSchema, rolePermissions, vendorDebitNotes, vendorDebitNoteItems, vendorDebitNoteAdjustments, transporters, vehicles, drivers, insertTransporterSchema, insertVehicleSchema, insertDriverSchema, scrapInventory, insertSparePartEntrySchema, insertSparePartIssuanceSchema, insertScrapInventorySchema, sparePartEntries, sparePartsCatalog, accountSubtypes } from "@shared/schema";
 import { format } from "date-fns";
 import { z } from "zod";
 import path from "path";
@@ -22061,6 +22061,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'fromDate and toDate are required' });
       }
 
+      const subtypes = await db.select()
+        .from(accountSubtypes)
+        .where(eq(accountSubtypes.recordStatus, 1));
+      const subtypeMap = new Map(subtypes.map(s => [s.id, s]));
+
       const accounts = await db.select()
         .from(chartOfAccounts)
         .where(and(
@@ -22107,6 +22112,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const groupMap = new Map<string, {
         accountType: string;
         subType: string;
+        subTypeLabel: string;
         accounts: Array<{
           id: string;
           code: string;
@@ -22123,7 +22129,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }>();
 
       for (const account of accounts) {
-        const key = `${account.accountType}::${account.subType || 'other'}`;
+        const subTypeId = account.subType || '';
+        const subtypeRecord = subtypeMap.get(subTypeId);
+        const subTypeName = subtypeRecord?.name || 'other';
+        const subTypeLabel = subtypeRecord?.label || subTypeName.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        const key = `${account.accountType}::${subTypeName}`;
         const opening = openingMap.get(account.id) || { debit: 0, credit: 0 };
         const period = movementMap.get(account.id) || { debit: 0, credit: 0 };
 
@@ -22139,7 +22149,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!groupMap.has(key)) {
           groupMap.set(key, {
             accountType: account.accountType,
-            subType: account.subType || 'other',
+            subType: subTypeName,
+            subTypeLabel: subTypeLabel,
             accounts: [],
             totalOpening: 0,
             totalDebit: 0,

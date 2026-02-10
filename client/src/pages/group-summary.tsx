@@ -21,6 +21,7 @@ interface GroupAccount {
 interface AccountGroup {
   accountType: string;
   subType: string;
+  subTypeLabel: string;
   accounts: GroupAccount[];
   totalOpening: number;
   totalDebit: number;
@@ -86,44 +87,8 @@ const TYPE_LABELS: Record<string, string> = {
   expense: "Expenses",
 };
 
-const SUBTYPE_LABELS: Record<string, Record<string, string>> = {
-  asset: {
-    current_asset: "Current Assets",
-    trade_receivable: "Sundry Debtors",
-    inventory: "Stock-in-Hand",
-    gst_input: "Duties & Taxes (Input Credit)",
-    other: "Other Assets",
-  },
-  liability: {
-    trade_payable: "Sundry Creditors",
-    gst: "Duties & Taxes (GST)",
-    loan: "Secured/Unsecured Loans",
-    statutory: "Statutory Liabilities",
-    advance_liability: "Advance from Customers",
-    other: "Other Liabilities",
-  },
-  equity: {
-    capital: "Capital Account",
-    drawings: "Drawings Account",
-    retained: "Profit & Loss A/c",
-    other: "Other Equity",
-  },
-  revenue: {
-    operating: "Sales & Operating Income",
-    other_income: "Other Income",
-    other: "Other Revenue",
-  },
-  expense: {
-    direct: "Direct Expenses",
-    operating: "Indirect Expenses",
-    administrative: "Administrative Expenses",
-    financial: "Financial Expenses",
-    other: "Other Expenses",
-  },
-};
-
-function getSubTypeLabel(accountType: string, subType: string): string {
-  return SUBTYPE_LABELS[accountType]?.[subType] || subType.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+function getSubTypeLabel(group: AccountGroup): string {
+  return group.subTypeLabel || group.subType.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
 }
 
 export default function GroupSummaryPage() {
@@ -197,7 +162,7 @@ export default function GroupSummaryPage() {
       rows.push([TYPE_LABELS[typeName], "", "", "", ""]);
       for (const group of typeGroups) {
         rows.push([
-          `  ${getSubTypeLabel(group.accountType, group.subType)}`,
+          `  ${getSubTypeLabel(group)}`,
           fmtRupees(group.totalOpening),
           fmtRupees(group.totalDebit),
           fmtRupees(group.totalCredit),
@@ -370,7 +335,7 @@ function GroupTypeSection({
       {typeGroups.map(group => {
         const groupKey = `${group.accountType}::${group.subType}`;
         const isExpanded = expandedGroups.has(groupKey);
-        const subLabel = getSubTypeLabel(group.accountType, group.subType);
+        const subLabel = getSubTypeLabel(group);
 
         return (
           <GroupRow
