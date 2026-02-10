@@ -419,45 +419,56 @@ export default function ChartOfAccountsPage() {
                     </Select>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label>Account Type</Label>
-                    <Select
-                      value={formData.accountType}
-                      onValueChange={v => setFormData(p => ({ ...p, accountType: v }))}
-                    >
-                      <SelectTrigger data-testid="select-account-type">
-                        <SelectValue placeholder="Select type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ACCOUNT_TYPES.map(t => (
-                          <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                <div>
+                  <Label>Parent Group</Label>
+                  <Select
+                    value={formData.parentId}
+                    onValueChange={v => {
+                      const parent = groupAccounts.find(g => g.id === v);
+                      setFormData(p => ({
+                        ...p,
+                        parentId: v,
+                        accountType: parent ? parent.accountType : p.accountType,
+                      }));
+                    }}
+                  >
+                    <SelectTrigger data-testid="select-parent-account">
+                      <SelectValue placeholder="None (top-level)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None (top-level)</SelectItem>
+                      {groupAccounts
+                        .filter(g => !editAccount || g.id !== editAccount.id)
+                        .map(g => (
+                          <SelectItem key={g.id} value={g.id}>
+                            {"  ".repeat((g.level || 1) - 1)}{g.code} - {g.name}
+                          </SelectItem>
                         ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Parent Group</Label>
-                    <Select
-                      value={formData.parentId}
-                      onValueChange={v => setFormData(p => ({ ...p, parentId: v }))}
-                    >
-                      <SelectTrigger data-testid="select-parent-account">
-                        <SelectValue placeholder="None (top-level)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">None (top-level)</SelectItem>
-                        {groupAccounts
-                          .filter(g => !editAccount || g.id !== editAccount.id)
-                          .filter(g => !formData.accountType || g.accountType === formData.accountType)
-                          .map(g => (
-                            <SelectItem key={g.id} value={g.id}>
-                              {"  ".repeat((g.level || 1) - 1)}{g.code} - {g.name}
-                            </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {formData.parentId && formData.parentId !== "none" && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Type: {ACCOUNT_TYPES.find(t => t.value === formData.accountType)?.label || formData.accountType} (inherited from parent)
+                    </p>
+                  )}
+                  {(!formData.parentId || formData.parentId === "none") && (
+                    <div className="mt-2">
+                      <Label className="text-xs">Account Type (required for top-level)</Label>
+                      <Select
+                        value={formData.accountType}
+                        onValueChange={v => setFormData(p => ({ ...p, accountType: v }))}
+                      >
+                        <SelectTrigger data-testid="select-account-type">
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ACCOUNT_TYPES.map(t => (
+                            <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
                           ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <Label>Account Name</Label>
