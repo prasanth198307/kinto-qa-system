@@ -19943,6 +19943,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Account Subtypes CRUD
+  // Account Types CRUD
+  app.get('/api/account-types', async (req: any, res) => {
+    try {
+      const types = await storage.getAccountTypes();
+      res.json(types);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post('/api/account-types', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { name, label } = req.body;
+      if (!name || !label) {
+        return res.status(400).json({ message: 'name and label are required' });
+      }
+      const existing = await storage.getAccountTypeByName(name);
+      if (existing) {
+        return res.status(409).json({ message: `Account type "${label}" already exists` });
+      }
+      const created = await storage.createAccountType({ name, label, isSystem: 0 });
+      res.json(created);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.delete('/api/account-types/:id', requireRole('admin'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const types = await storage.getAccountTypes();
+      const theType = types.find(t => t.id === id);
+      if (!theType) return res.status(404).json({ message: 'Account type not found' });
+      if (theType.isSystem === 1) return res.status(403).json({ message: 'Cannot delete system account type' });
+      const allAccounts = await storage.getAllChartOfAccounts();
+      const inUse = allAccounts.some(a => a.accountType === theType.name);
+      if (inUse) return res.status(409).json({ message: `Cannot delete: account type "${theType.label}" is used by existing accounts` });
+      await storage.deleteAccountType(id);
+      res.json({ message: 'Deleted' });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get('/api/account-subtypes', async (req: any, res) => {
     try {
       const { accountType } = req.query;

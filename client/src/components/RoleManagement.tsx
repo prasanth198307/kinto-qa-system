@@ -128,7 +128,7 @@ const AVAILABLE_SCREENS: ScreenDefinition[] = [
   
   // Accounting & Ledger
   { key: 'chart_of_accounts', label: 'Chart of Accounts', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'account_subtypes', label: 'Account Sub-Types', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'account_subtypes', label: 'Account Types', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'journal_entries', label: 'Journal Entries', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'manual_journal_entry', label: 'Manual Journal Entry', allowedActions: ['view', 'create'] },
   { key: 'trial_balance', label: 'Trial Balance', allowedActions: ['view'] },

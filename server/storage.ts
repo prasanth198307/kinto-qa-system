@@ -203,6 +203,7 @@ import {
   journalLines,
   bankStatementImports,
   bankTransactions,
+  accountTypes,
   accountSubtypes,
   type ChartOfAccount,
   type InsertChartOfAccount,
@@ -214,6 +215,8 @@ import {
   type InsertBankStatementImport,
   type BankTransaction,
   type InsertBankTransaction,
+  type AccountType,
+  type InsertAccountType,
   type AccountSubtype,
   type InsertAccountSubtype,
 } from "@shared/schema";
@@ -731,6 +734,12 @@ export interface IStorage {
   getBankTransaction(id: string): Promise<BankTransaction | undefined>;
   updateBankTransaction(id: string, data: Partial<InsertBankTransaction>): Promise<BankTransaction | undefined>;
   getBankTransactionByHash(hash: string, bankAccountId: string): Promise<BankTransaction | undefined>;
+
+  // Account Types
+  getAccountTypes(): Promise<AccountType[]>;
+  createAccountType(data: InsertAccountType): Promise<AccountType>;
+  deleteAccountType(id: string): Promise<void>;
+  getAccountTypeByName(name: string): Promise<AccountType | undefined>;
 
   // Account Subtypes
   getAccountSubtypes(accountType?: string): Promise<AccountSubtype[]>;
@@ -4520,6 +4529,27 @@ export class DatabaseStorage implements IStorage {
     ).limit(1);
     return txn;
   }
+  // Account Types
+  async getAccountTypes(): Promise<AccountType[]> {
+    return db.select().from(accountTypes).where(eq(accountTypes.recordStatus, 1)).orderBy(accountTypes.label);
+  }
+
+  async createAccountType(data: InsertAccountType): Promise<AccountType> {
+    const [created] = await db.insert(accountTypes).values(data).returning();
+    return created;
+  }
+
+  async deleteAccountType(id: string): Promise<void> {
+    await db.update(accountTypes).set({ recordStatus: 0 }).where(eq(accountTypes.id, id));
+  }
+
+  async getAccountTypeByName(name: string): Promise<AccountType | undefined> {
+    const [found] = await db.select().from(accountTypes).where(
+      and(eq(accountTypes.name, name), eq(accountTypes.recordStatus, 1))
+    ).limit(1);
+    return found;
+  }
+
   // Account Subtypes
   async getAccountSubtypes(accountType?: string): Promise<AccountSubtype[]> {
     const conditions = [eq(accountSubtypes.recordStatus, 1)];

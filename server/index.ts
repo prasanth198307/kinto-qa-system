@@ -131,7 +131,28 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // Seed Account Subtypes FIRST (before COA, since COA seeding resolves subtype IDs)
+  // Seed Account Types FIRST
+  try {
+    const { storage } = await import("./storage");
+    const defaultTypes = [
+      { name: "asset", label: "Asset" },
+      { name: "liability", label: "Liability" },
+      { name: "equity", label: "Equity" },
+      { name: "revenue", label: "Revenue" },
+      { name: "expense", label: "Expense" },
+    ];
+    for (const t of defaultTypes) {
+      const exists = await storage.getAccountTypeByName(t.name);
+      if (!exists) {
+        await storage.createAccountType({ ...t, isSystem: 1 });
+      }
+    }
+    console.log('[TYPE SEED] Account types seeding complete');
+  } catch (error) {
+    console.error('[TYPE SEED ERROR]', error);
+  }
+
+  // Seed Account Subtypes (before COA, since COA seeding resolves subtype IDs)
   try {
     const { storage } = await import("./storage");
     const predefined = [

@@ -31,7 +31,7 @@ interface ChartAccount {
   currentBalance: number;
 }
 
-const ACCOUNT_TYPES = [
+const ACCOUNT_TYPES_FALLBACK = [
   { value: "asset", label: "Asset" },
   { value: "liability", label: "Liability" },
   { value: "equity", label: "Equity" },
@@ -127,6 +127,14 @@ export default function ChartOfAccountsPage() {
   const { data: subtypes = [] } = useQuery<AccountSubtype[]>({
     queryKey: ['/api/account-subtypes'],
   });
+
+  interface AccountTypeEntry { id: string; name: string; label: string; isSystem: number; }
+  const { data: accountTypesRaw = [] } = useQuery<AccountTypeEntry[]>({
+    queryKey: ['/api/account-types'],
+  });
+  const ACCOUNT_TYPES = accountTypesRaw.length > 0
+    ? accountTypesRaw.map(t => ({ value: t.name, label: t.label }))
+    : ACCOUNT_TYPES_FALLBACK;
 
   const filteredSubtypes = subtypes.filter(st => st.accountType === formData.accountType);
 

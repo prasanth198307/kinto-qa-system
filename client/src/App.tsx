@@ -852,7 +852,7 @@ function AdminDashboard() {
       label: "Accounting & Ledger",
       items: [
         { id: "chart-of-accounts", label: "Chart of Accounts", icon: BookOpen, onClick: () => setLocation('/chart-of-accounts') },
-        { id: "account-subtypes", label: "Account Sub-Types", icon: Layers, onClick: () => setLocation('/account-subtypes') },
+        { id: "account-subtypes", label: "Account Types", icon: Layers, onClick: () => setLocation('/account-subtypes') },
         { id: "journal-entries", label: "Journal Entries", icon: FileStack, onClick: () => setLocation('/journal-entries') },
         { id: "bank-transactions", label: "Bank Statements", icon: Landmark, onClick: () => setLocation('/bank-transactions') },
         { id: "trial-balance", label: "Trial Balance", icon: Scale, onClick: () => setLocation('/trial-balance') },
@@ -1697,7 +1697,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       label: "Accounting & Ledger",
       items: [
         { id: "chart-of-accounts", label: "Chart of Accounts", icon: BookOpen, onClick: () => setLocation('/chart-of-accounts') },
-        { id: "account-subtypes", label: "Account Sub-Types", icon: Layers, onClick: () => setLocation('/account-subtypes') },
+        { id: "account-subtypes", label: "Account Types", icon: Layers, onClick: () => setLocation('/account-subtypes') },
         { id: "journal-entries", label: "Journal Entries", icon: FileStack, onClick: () => setLocation('/journal-entries') },
         { id: "bank-transactions", label: "Bank Statements", icon: Landmark, onClick: () => setLocation('/bank-transactions') },
         { id: "trial-balance", label: "Trial Balance", icon: Scale, onClick: () => setLocation('/trial-balance') },
@@ -1946,7 +1946,7 @@ function AccountSubtypesPageWrapper() {
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
   if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
   return (
-    <DashboardShell title="Account Sub-Types" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
+    <DashboardShell title="Account Types" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
       <AccountSubtypesPage />
     </DashboardShell>
   );

@@ -3575,6 +3575,26 @@ export type InsertBankTransaction = z.infer<typeof insertBankTransactionSchema>;
 export type BankTransaction = typeof bankTransactions.$inferSelect;
 
 // ============================================================
+// Account Types - Managed list of account types for Chart of Accounts (Asset, Liability, etc.)
+// ============================================================
+export const accountTypes = pgTable("account_types", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 100 }).notNull().unique(),
+  label: varchar("label", { length: 150 }).notNull(),
+  isSystem: integer("is_system").default(0).notNull(),
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+});
+
+export const insertAccountTypeSchema = createInsertSchema(accountTypes).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+});
+
+export type InsertAccountType = z.infer<typeof insertAccountTypeSchema>;
+export type AccountType = typeof accountTypes.$inferSelect;
+
 // Account Subtypes - Managed list of sub-types for Chart of Accounts
 // ============================================================
 export const accountSubtypes = pgTable("account_subtypes", {
