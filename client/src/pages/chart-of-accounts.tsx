@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { cn } from "@/lib/utils";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,7 +11,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, ChevronDown, ChevronRight, Edit, Trash2, Lock, Calendar, Download, FolderOpen, Folder, BookOpen } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Plus, Search, ChevronDown, ChevronRight, Edit, Trash2, Lock, Calendar, Download, FolderOpen, Folder, BookOpen, Check, ChevronsUpDown } from "lucide-react";
 
 interface ChartAccount {
   id: string;
@@ -154,6 +157,7 @@ export default function ChartOfAccountsPage() {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editAccount, setEditAccount] = useState<ChartAccount | null>(null);
+  const [parentPickerOpen, setParentPickerOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     code: "",
@@ -241,13 +245,13 @@ export default function ChartOfAccountsPage() {
   }
 
   function handleSubmit() {
-    if (!formData.parentId || formData.parentId === "none") {
-      toast({ title: "Parent group is required", description: "All accounts must belong to a group in the hierarchy.", variant: "destructive" });
+    if (formData.nodeType === "ledger" && (!formData.parentId || formData.parentId === "none")) {
+      toast({ title: "Parent group is required", description: "Ledger accounts must belong to a group in the hierarchy.", variant: "destructive" });
       return;
     }
     const data: any = {
       ...formData,
-      parentId: formData.parentId,
+      parentId: formData.parentId || null,
     };
     if (editAccount) {
       updateMutation.mutate({ id: editAccount.id, data });
@@ -424,36 +428,88 @@ export default function ChartOfAccountsPage() {
                   </div>
                 </div>
                 <div>
-                  <Label>Parent Group</Label>
-                  <Select
-                    value={formData.parentId}
-                    onValueChange={v => {
-                      const parent = groupAccounts.find(g => g.id === v);
-                      setFormData(p => ({
-                        ...p,
-                        parentId: v,
-                        accountType: parent ? parent.accountType : p.accountType,
-                      }));
-                    }}
-                  >
-                    <SelectTrigger data-testid="select-parent-account">
-                      <SelectValue placeholder="Select parent group" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {groupAccounts
-                        .filter(g => !editAccount || g.id !== editAccount.id)
-                        .map(g => (
-                          <SelectItem key={g.id} value={g.id}>
-                            {"  ".repeat((g.level || 1) - 1)}{g.code} - {g.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                  {formData.parentId && formData.parentId !== "none" && (
+                  <Label>Parent Group {formData.nodeType === "group" ? "(optional)" : ""}</Label>
+                  <Popover open={parentPickerOpen} onOpenChange={setParentPickerOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={parentPickerOpen}
+                        className="w-full justify-between font-normal"
+                        data-testid="select-parent-account"
+                      >
+                        {formData.parentId
+                          ? (() => {
+                              const sel = groupAccounts.find(g => g.id === formData.parentId);
+                              return sel ? `${sel.code} - ${sel.name}` : "Select parent group";
+                            })()
+                          : "Select parent group"}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Search groups..." data-testid="input-search-parent" />
+                        <CommandList>
+                          <CommandEmpty>No group found.</CommandEmpty>
+                          <CommandGroup>
+                            {formData.nodeType === "group" && (
+                              <CommandItem
+                                value="__none__"
+                                onSelect={() => {
+                                  setFormData(p => ({ ...p, parentId: "", accountType: "" }));
+                                  setParentPickerOpen(false);
+                                }}
+                              >
+                                <Check className={cn("mr-2 h-4 w-4", !formData.parentId ? "opacity-100" : "opacity-0")} />
+                                None (top-level group)
+                              </CommandItem>
+                            )}
+                            {groupAccounts
+                              .filter(g => !editAccount || g.id !== editAccount.id)
+                              .map(g => (
+                                <CommandItem
+                                  key={g.id}
+                                  value={`${g.code} ${g.name}`}
+                                  onSelect={() => {
+                                    setFormData(p => ({
+                                      ...p,
+                                      parentId: g.id,
+                                      accountType: g.accountType || p.accountType,
+                                    }));
+                                    setParentPickerOpen(false);
+                                  }}
+                                >
+                                  <Check className={cn("mr-2 h-4 w-4", formData.parentId === g.id ? "opacity-100" : "opacity-0")} />
+                                  <span style={{ paddingLeft: `${((g.level || 1) - 1) * 12}px` }}>
+                                    {g.code} - {g.name}
+                                  </span>
+                                </CommandItem>
+                              ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  {formData.parentId ? (
                     <p className="text-xs text-muted-foreground mt-1">
                       Type: {ACCOUNT_TYPES.find(t => t.value === formData.accountType)?.label || formData.accountType} (inherited from parent)
                     </p>
-                  )}
+                  ) : formData.nodeType === "group" ? (
+                    <div className="mt-2">
+                      <Label>Account Type</Label>
+                      <Select value={formData.accountType} onValueChange={v => setFormData(p => ({ ...p, accountType: v }))}>
+                        <SelectTrigger data-testid="select-account-type">
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ACCOUNT_TYPES.map(t => (
+                            <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : null}
                 </div>
                 <div>
                   <Label>Account Name</Label>
@@ -482,7 +538,7 @@ export default function ChartOfAccountsPage() {
                 <Button
                   data-testid="button-save-account"
                   onClick={handleSubmit}
-                  disabled={createMutation.isPending || updateMutation.isPending || !formData.code || !formData.name || (!formData.parentId || formData.parentId === "none")}
+                  disabled={createMutation.isPending || updateMutation.isPending || !formData.code || !formData.name || !formData.accountType || (formData.nodeType === "ledger" && (!formData.parentId || formData.parentId === "none"))}
                 >
                   {editAccount ? "Update" : "Create"}
                 </Button>

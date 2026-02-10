@@ -19912,13 +19912,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!code || !name || !accountType) {
         return res.status(400).json({ message: 'Code, name, and account type are required' });
       }
-      if (!parentId) {
-        return res.status(400).json({ message: 'Parent group is required. All accounts must belong to a group in the hierarchy.' });
+      const resolvedNodeType = nodeType || 'ledger';
+      if (!parentId && resolvedNodeType === 'ledger') {
+        return res.status(400).json({ message: 'Parent group is required. Ledger accounts must belong to a group in the hierarchy.' });
       }
       const existing = await storage.getChartOfAccountByCode(code);
       if (existing) return res.status(400).json({ message: `Account code ${code} already exists` });
-
-      const resolvedNodeType = nodeType || 'ledger';
       let resolvedLevel = level || 1;
       if (parentId) {
         const parent = await storage.getChartOfAccount(parentId);
