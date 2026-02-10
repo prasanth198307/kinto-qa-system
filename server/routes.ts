@@ -20327,10 +20327,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const tallyGroupMap: Record<string, string> = {
         asset: 'Capital Account',
+        Assets: 'Capital Account',
         liability: 'Current Liabilities',
+        Liabilities: 'Current Liabilities',
         equity: 'Capital Account',
+        Equity: 'Capital Account',
         revenue: 'Sales Accounts',
+        Income: 'Sales Accounts',
         expense: 'Indirect Expenses',
+        Expenses: 'Indirect Expenses',
       };
 
       function getParentName(account: typeof allAccounts[0]): string {
