@@ -2656,8 +2656,9 @@ export type ProductionReconciliationItem = typeof productionReconciliationItems.
 // Document Categories - Types of documents that can be stored
 export const documentCategories = pgTable("document_categories", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: varchar("name", { length: 100 }).notNull().unique(),
+  name: varchar("name", { length: 100 }).notNull(),
   description: text("description"),
+  parentId: varchar("parent_id"),
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),

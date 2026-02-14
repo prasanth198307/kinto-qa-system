@@ -16195,6 +16195,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch('/api/documents/move', isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { documentIds, targetCategoryId } = req.body;
+      if (!documentIds || !Array.isArray(documentIds) || documentIds.length === 0) {
+        return res.status(400).json({ message: 'documentIds array is required' });
+      }
+      const categoryId = targetCategoryId || null;
+      const results = [];
+      for (const docId of documentIds) {
+        const updated = await storage.updateDocument(docId, { categoryId });
+        if (updated) results.push(updated);
+      }
+      await logAudit(req.user?.id, 'UPDATE', 'documents', documentIds.join(','), `Moved ${results.length} documents to folder ${categoryId || 'root'}`);
+      res.json({ moved: results.length });
+    } catch (error: any) {
+      console.error('[DOCUMENTS] Error moving documents:', error);
+      res.status(500).json({ message: error.message || 'Failed to move documents' });
+    }
+  });
+
   app.delete('/api/document-categories/:id', isAuthenticated, requireRole('admin'), async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
