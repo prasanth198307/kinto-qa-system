@@ -19,6 +19,7 @@ import { importVyapaarData, clearImportedData, importPaymentsOnly } from "./vyap
 import { importCreditNotesFromExcel } from "./creditnote-import";
 import { parseExcelFile, commitImport } from "./cashRegisterImport";
 import { importCashRegisterFromExcel } from "./importCashRegisterFromExcel";
+import archiver from "archiver";
 import { insertCashRegisterDaySchema, insertCashRegisterTransactionSchema, insertCashRegisterExpenseItemSchema, insertSalespersonMappingSchema, cashRegisterDays, cashRegisterTransactions, cashRegisterExpenseItems, expenseVouchers, expenseItems, customerAdvances, advanceApplications, insertCustomerAdvanceSchema, insertAdvanceApplicationSchema, journalEntries, journalLines, chartOfAccounts, budgets, budgetItems } from "@shared/schema";
 import { sql, and, eq, ne, gte, lte, gt, asc, desc, inArray, isNotNull, isNull, or, ilike, type SQL } from "drizzle-orm";
 
@@ -16404,7 +16405,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Create ZIP archive
-      const archiver = require('archiver');
       const archive = archiver('zip', { zlib: { level: 5 } });
       
       res.setHeader('Content-Type', 'application/zip');
@@ -17936,7 +17936,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const dayMap = new Map(daysInRange.map(d => [d.id, d.registerDate]));
       
       // Set up ZIP response
-      const archiver = require('archiver');
       const archive = archiver('zip', { zlib: { level: 5 } });
       
       // Generate filename based on date range
