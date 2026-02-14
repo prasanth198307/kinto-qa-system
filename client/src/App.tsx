@@ -849,6 +849,12 @@ function AdminDashboard() {
         { id: "cash-register", label: "Daily Cash Register", icon: Calculator, onClick: () => setLocation('/cash-register') },
         { id: "cash-register-report", label: "Cash Register Report", icon: FileStack, onClick: () => setLocation('/cash-register-report') },
         { id: "expenses", label: "Expense Vouchers", icon: Wallet, onClick: () => setLocation('/expenses') },
+      ],
+    },
+    {
+      id: "documents-section",
+      label: "Documents",
+      items: [
         { id: "documents", label: "Documents", icon: FolderOpen, onClick: () => setLocation('/documents') },
       ],
     },
@@ -1709,6 +1715,12 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "cash-register", label: "Daily Cash Register", icon: Calculator, onClick: () => setLocation('/cash-register') },
         { id: "cash-register-report", label: "Cash Register Report", icon: FileStack, onClick: () => setLocation('/cash-register-report') },
         { id: "expenses", label: "Expense Vouchers", icon: Wallet, onClick: () => setLocation('/expenses') },
+      ],
+    },
+    {
+      id: "documents-section",
+      label: "Documents",
+      items: [
         { id: "documents", label: "Documents", icon: FolderOpen, onClick: () => setLocation('/documents') },
       ],
     },
