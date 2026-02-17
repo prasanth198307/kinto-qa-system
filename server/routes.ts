@@ -17174,7 +17174,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               gstAmount: 0,
               netAmount: amountInPaise,
               payeeName: parsed.partyName || day.salespersonName,
-              notes: `Cash Register Expense: ${expenseDescription}`,
+              purpose: `Cash Register Expense: ${expenseDescription}`,
               submittedBy: req.user?.id,
               submittedAt: new Date().toISOString(),
             });
