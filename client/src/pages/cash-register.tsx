@@ -107,9 +107,9 @@ export default function CashRegisterPage() {
   const [pageSize, setPageSize] = useState(25);
   
   // New transaction form states
-  const [newCashReceived, setNewCashReceived] = useState({ amount: '', reference: '', description: '', sourceType: 'sale_cash' });
+  const [newCashReceived, setNewCashReceived] = useState({ amount: '', reference: '', description: '', sourceType: 'sale_cash', partyName: '' });
   // Support multiple expense line items - each will create its own voucher
-  const [expenseItems, setExpenseItems] = useState([{ amount: '', reference: '', description: '' }]);
+  const [expenseItems, setExpenseItems] = useState([{ amount: '', reference: '', description: '', partyName: '' }]);
   const [newTransfer, setNewTransfer] = useState({ amount: '', transferTo: '', description: '' });
   const [isAddingCash, setIsAddingCash] = useState(false);
   const [isAddingExpense, setIsAddingExpense] = useState(false);
@@ -332,7 +332,7 @@ export default function CashRegisterPage() {
   });
 
   // Edit transaction state
-  const [editingTransaction, setEditingTransaction] = useState<{ id: string; type: string; amount: string; reference: string; description: string; transferTo: string; sourceType: string } | null>(null);
+  const [editingTransaction, setEditingTransaction] = useState<{ id: string; type: string; amount: string; reference: string; description: string; transferTo: string; sourceType: string; partyName: string } | null>(null);
 
   const startEditTransaction = (txn: CashRegisterTransaction & { items?: CashRegisterExpenseItem[] }) => {
     setEditingTransaction({
@@ -343,6 +343,7 @@ export default function CashRegisterPage() {
       description: txn.description || '',
       transferTo: txn.transferTo || '',
       sourceType: txn.sourceType || 'sale_cash',
+      partyName: txn.partyName || '',
     });
   };
 
@@ -355,6 +356,7 @@ export default function CashRegisterPage() {
       description: editingTransaction.description,
       transferTo: editingTransaction.transferTo,
       sourceType: editingTransaction.sourceType,
+      partyName: editingTransaction.partyName || undefined,
     });
   };
 
@@ -490,6 +492,7 @@ export default function CashRegisterPage() {
       reference: newCashReceived.reference,
       description: newCashReceived.description,
       sourceType: newCashReceived.sourceType,
+      partyName: newCashReceived.partyName || undefined,
     });
   };
 
@@ -532,6 +535,7 @@ export default function CashRegisterPage() {
           amount: Math.round(parseFloat(item.amount)),
           reference: item.reference,
           description: item.description,
+          partyName: item.partyName || undefined,
         });
       }
       
@@ -542,7 +546,7 @@ export default function CashRegisterPage() {
         title: "Success", 
         description: `${validItems.length} expense${validItems.length > 1 ? 's' : ''} added with individual vouchers` 
       });
-      setExpenseItems([{ amount: '', reference: '', description: '' }]);
+      setExpenseItems([{ amount: '', reference: '', description: '', partyName: '' }]);
       setIsAddingExpense(false);
     } catch (error: any) {
       toast({ title: "Error", description: error.message || "Failed to add expenses", variant: "destructive" });
@@ -553,7 +557,7 @@ export default function CashRegisterPage() {
   
   // Add new expense line item
   const addExpenseLineItem = () => {
-    setExpenseItems(prev => [...prev, { amount: '', reference: '', description: '' }]);
+    setExpenseItems(prev => [...prev, { amount: '', reference: '', description: '', partyName: '' }]);
   };
   
   // Remove expense line item
@@ -822,6 +826,12 @@ export default function CashRegisterPage() {
                     </Select>
                   </div>
                   <Input
+                    placeholder="Received From (e.g., Customer Name)"
+                    value={newCashReceived.partyName}
+                    onChange={(e) => setNewCashReceived(prev => ({ ...prev, partyName: e.target.value }))}
+                    data-testid="input-cash-party"
+                  />
+                  <Input
                     placeholder="Reference (optional)"
                     value={newCashReceived.reference}
                     onChange={(e) => setNewCashReceived(prev => ({ ...prev, reference: e.target.value }))}
@@ -860,6 +870,7 @@ export default function CashRegisterPage() {
                               </Badge>
                             )}
                           </div>
+                          {txn.partyName && <div className="text-xs font-medium">From: {txn.partyName}</div>}
                           {txn.reference && <div className="text-xs text-muted-foreground">{txn.reference}</div>}
                           {txn.description && <div className="text-xs text-muted-foreground">{txn.description}</div>}
                           {txn.documentName && (
@@ -948,6 +959,12 @@ export default function CashRegisterPage() {
                           />
                         </div>
                         <Input
+                          placeholder="Paid To (e.g., Vendor Name, Shop Name)"
+                          value={item.partyName}
+                          onChange={(e) => updateExpenseLineItem(index, 'partyName', e.target.value)}
+                          data-testid={`input-expense-party-${index}`}
+                        />
+                        <Input
                           placeholder="Description (optional)"
                           value={item.description}
                           onChange={(e) => updateExpenseLineItem(index, 'description', e.target.value)}
@@ -1018,6 +1035,7 @@ export default function CashRegisterPage() {
                       <div key={txn.id} className="flex items-center justify-between p-2 border rounded-md hover-elevate" data-testid={`txn-expense-${txn.id}`}>
                         <div className="flex-1">
                           <div className="font-medium text-red-600">{formatCurrency(expenseTotal)}</div>
+                          {txn.partyName && <div className="text-xs font-medium">Paid To: {txn.partyName}</div>}
                           {txn.reference && <div className="text-xs text-muted-foreground">{txn.reference}</div>}
                           {txn.description && <div className="text-xs text-muted-foreground">{txn.description}</div>}
                           <div className="flex items-center gap-2 mt-1">
@@ -1439,6 +1457,21 @@ export default function CashRegisterPage() {
                       onChange={(e) => setEditingTransaction(prev => prev ? { ...prev, transferTo: e.target.value } : null)}
                       placeholder="e.g., TULASI, Bank"
                       data-testid="input-edit-transfer-to"
+                    />
+                  </div>
+                )}
+                
+                {(editingTransaction.type === 'cash_received' || editingTransaction.type === 'expense') && (
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-party-name">
+                      {editingTransaction.type === 'cash_received' ? 'Received From' : 'Paid To'}
+                    </Label>
+                    <Input
+                      id="edit-party-name"
+                      value={editingTransaction.partyName}
+                      onChange={(e) => setEditingTransaction(prev => prev ? { ...prev, partyName: e.target.value } : null)}
+                      placeholder={editingTransaction.type === 'cash_received' ? 'e.g., Customer Name' : 'e.g., Vendor Name, Shop Name'}
+                      data-testid="input-edit-party-name"
                     />
                   </div>
                 )}

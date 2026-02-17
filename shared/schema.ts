@@ -2946,6 +2946,9 @@ export const cashRegisterTransactions = pgTable("cash_register_transactions", {
   // Source type for cash_received: 'secondary_sale', 'sale_cash', 'upi', 'bank_transfer', 'other'
   sourceType: varchar("source_type", { length: 50 }),
   
+  // Party name: "Received From" for cash_received, "Paid To" for expenses
+  partyName: varchar("party_name", { length: 200 }),
+  
   // For transfers
   transferTo: varchar("transfer_to", { length: 100 }), // e.g., "TULASI"
   
