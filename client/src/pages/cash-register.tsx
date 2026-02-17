@@ -1188,11 +1188,14 @@ export default function CashRegisterPage() {
         {isDayOpen && (
           <Card className="bg-primary/5">
             <CardContent className="pt-4">
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div>
                   <h3 className="font-medium">Close This Day</h3>
                   <p className="text-sm text-muted-foreground">
-                    Expected closing balance: {formatCurrency(calculatedClosing)}. Reconcile and close to carry forward.
+                    {transactions.length === 0 
+                      ? `No transactions today. Closing balance will be ${formatCurrency(selectedDay.openingBalance)}.`
+                      : `Expected closing balance: ${formatCurrency(calculatedClosing)}. Reconcile and close to carry forward.`
+                    }
                   </p>
                   {(selectedDay as any).hasDiscrepancy === 1 && (
                     <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
@@ -1201,6 +1204,24 @@ export default function CashRegisterPage() {
                     </p>
                   )}
                 </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {transactions.length === 0 && (
+                    <Button
+                      variant="secondary"
+                      data-testid="button-close-no-txn"
+                      disabled={(selectedDay as any).hasDiscrepancy === 1 || closeDayMutation.isPending}
+                      onClick={() => {
+                        closeDayMutation.mutate({
+                          dayId: selectedDay.id.toString(),
+                          actualClosingBalance: selectedDay.openingBalance,
+                          varianceNotes: 'No transactions - day closed with opening balance',
+                        });
+                      }}
+                    >
+                      <Lock className="w-4 h-4 mr-2" />
+                      {closeDayMutation.isPending ? 'Closing...' : 'Close (No Transactions)'}
+                    </Button>
+                  )}
                 <Dialog open={isReconcileOpen} onOpenChange={(open) => {
                   setIsReconcileOpen(open);
                   if (open) {
@@ -1215,7 +1236,7 @@ export default function CashRegisterPage() {
                       disabled={(selectedDay as any).hasDiscrepancy === 1}
                     >
                       <Lock className="w-4 h-4 mr-2" />
-                      Close Day
+                      {transactions.length === 0 ? 'Reconcile & Close' : 'Close Day'}
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-md">
@@ -1358,6 +1379,7 @@ export default function CashRegisterPage() {
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
+                </div>
               </div>
             </CardContent>
           </Card>
