@@ -2897,6 +2897,9 @@ export const cashRegisterDays = pgTable("cash_register_days", {
   
   notes: text("notes"),
   
+  // Holiday flag - mark day as holiday/Sunday (opening = closing, no transactions)
+  isHoliday: integer("is_holiday").default(0).notNull(), // 1 = holiday/Sunday
+  
   // Discrepancy tracking - JSON with validation issues
   hasDiscrepancy: integer("has_discrepancy").default(0).notNull(), // 1 = has issues
   discrepancyDetails: jsonb("discrepancy_details"), // { items_mismatch: true, balance_mismatch: true, details: [...] }

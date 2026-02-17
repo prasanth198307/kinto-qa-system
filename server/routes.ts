@@ -16897,9 +16897,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdBy: req.user?.id,
       });
       
-      // Check if there are any open imported days - must close all imported data first
       const allDays = await storage.getCashRegisterDays();
-      const openImportedDays = allDays.filter(d => 
+      const activeDays = allDays.filter(d => d.recordStatus === 1);
+      
+      // Check if there are any open imported days - must close all imported data first
+      const openImportedDays = activeDays.filter(d => 
         d.status === 'open' && d.importedFromFile
       );
       
@@ -16922,9 +16924,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Validate date sequencing if there are existing days
+      if (activeDays.length > 0) {
+        const sortedDays = [...activeDays].sort((a, b) => 
+          new Date(b.registerDate).getTime() - new Date(a.registerDate).getTime()
+        );
+        const lastDay = sortedDays[0];
+        const lastDate = new Date(lastDay.registerDate);
+        const newDate = new Date(parsed.registerDate);
+        
+        // New date must be after the last day
+        if (newDate <= lastDate) {
+          return res.status(400).json({ 
+            message: `Date must be after the last entry (${lastDay.registerDate})` 
+          });
+        }
+        
+        // Last day must be closed or locked before creating a new one
+        if (lastDay.status === 'open') {
+          return res.status(400).json({ 
+            message: `Previous day (${lastDay.registerDate}) must be closed before creating a new day` 
+          });
+        }
+      }
+      
+      // If holiday, set closing balance = opening balance and auto-close
+      if (parsed.isHoliday === 1) {
+        parsed.closingBalance = parsed.openingBalance;
+        (parsed as any).status = 'closed';
+      }
+      
       const day = await storage.createCashRegisterDay(parsed);
       await logAudit(req.user?.id, 'CREATE', 'cash_register_days', day.id, 
-        `Cash register day created for ${day.salespersonName} on ${day.registerDate}`);
+        `Cash register day created for ${day.salespersonName} on ${day.registerDate}${parsed.isHoliday === 1 ? ' (Holiday)' : ''}`);
       res.status(201).json(day);
     } catch (error: any) {
       console.error('[CASH_REGISTER] Error creating day:', error);

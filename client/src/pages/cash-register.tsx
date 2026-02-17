@@ -128,30 +128,62 @@ export default function CashRegisterPage() {
     queryKey: ['/api/cash-register/days'],
   });
 
-  // Get previous day's closing balance for new day creation
-  const getPreviousDayClosingBalance = () => {
-    if (days.length === 0) return 0;
-    const sortedDays = [...days].sort((a, b) => 
+  // New Day dialog states
+  const [newDayDate, setNewDayDate] = useState('');
+  const [newDayIsHoliday, setNewDayIsHoliday] = useState(false);
+
+  // Get active days (matching backend logic)
+  const activeDays = days.filter(d => d.recordStatus === 1);
+
+  // Get last day info for validation and auto-fill
+  const getLastDay = () => {
+    if (activeDays.length === 0) return null;
+    const sortedDays = [...activeDays].sort((a, b) => 
       new Date(b.registerDate).getTime() - new Date(a.registerDate).getTime()
     );
-    return sortedDays[0].closingBalance;
+    return sortedDays[0];
+  };
+
+  const getNextAvailableDate = () => {
+    const lastDay = getLastDay();
+    if (!lastDay) return format(new Date(), 'yyyy-MM-dd');
+    const lastDate = new Date(lastDay.registerDate);
+    lastDate.setDate(lastDate.getDate() + 1);
+    return format(lastDate, 'yyyy-MM-dd');
+  };
+
+  const getOpeningBalance = () => {
+    const lastDay = getLastDay();
+    return lastDay ? lastDay.closingBalance : 0;
+  };
+
+  const canCreateNewDay = () => {
+    const lastDay = getLastDay();
+    if (!lastDay) return { allowed: true, reason: '' };
+    if (lastDay.status === 'open') {
+      return { allowed: false, reason: `Previous day (${lastDay.registerDate}) must be closed first` };
+    }
+    return { allowed: true, reason: '' };
   };
 
   // Create new day mutation
   const createDayMutation = useMutation({
-    mutationFn: async (data: { registerDate: string; openingBalance: number }) => {
+    mutationFn: async (data: { registerDate: string; openingBalance: number; isHoliday: number }) => {
       const response = await apiRequest('POST', '/api/cash-register/days', {
         ...data,
-        salespersonName: 'BUSINESS', // Default salesperson name for daily tracking
+        salespersonName: 'BUSINESS',
       });
       return response.json();
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/cash-register/days'] });
-      toast({ title: "Success", description: "New day created" });
+      toast({ title: "Success", description: data.isHoliday === 1 ? "Holiday day created and auto-closed" : "New day created" });
       setIsCreateOpen(false);
-      // Open the newly created day
-      viewDayDetails(data.id);
+      setNewDayDate('');
+      setNewDayIsHoliday(false);
+      if (data.isHoliday !== 1) {
+        viewDayDetails(data.id);
+      }
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -326,12 +358,35 @@ export default function CashRegisterPage() {
     });
   };
 
+  const handleOpenNewDayDialog = () => {
+    const createCheck = canCreateNewDay();
+    if (!createCheck.allowed) {
+      toast({ title: "Cannot create new day", description: createCheck.reason, variant: "destructive" });
+      return;
+    }
+    setNewDayDate(getNextAvailableDate());
+    setNewDayIsHoliday(false);
+    setIsCreateOpen(true);
+  };
+
   const handleCreateNewDay = () => {
-    const today = format(new Date(), 'yyyy-MM-dd');
-    const openingBalance = getPreviousDayClosingBalance();
+    if (!newDayDate) {
+      toast({ title: "Error", description: "Please select a date", variant: "destructive" });
+      return;
+    }
+    const lastDay = getLastDay();
+    if (lastDay) {
+      const lastDate = new Date(lastDay.registerDate);
+      const selectedDate = new Date(newDayDate);
+      if (selectedDate <= lastDate) {
+        toast({ title: "Error", description: `Date must be after ${lastDay.registerDate}`, variant: "destructive" });
+        return;
+      }
+    }
     createDayMutation.mutate({
-      registerDate: today,
-      openingBalance: openingBalance,
+      registerDate: newDayDate,
+      openingBalance: getOpeningBalance(),
+      isHoliday: newDayIsHoliday ? 1 : 0,
     });
   };
 
@@ -1625,10 +1680,87 @@ export default function CashRegisterPage() {
           </Dialog>
           )}
 
-          <Button onClick={handleCreateNewDay} disabled={createDayMutation.isPending} data-testid="button-new-day">
+          <Button onClick={handleOpenNewDayDialog} disabled={createDayMutation.isPending} data-testid="button-new-day">
             <Plus className="w-4 h-4 mr-2" />
             New Day
           </Button>
+
+          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Create New Day</DialogTitle>
+                <DialogDescription>
+                  {days.length === 0
+                    ? "This will be the first entry in your cash register."
+                    : `Last entry: ${getLastDay()?.registerDate} (${getLastDay()?.status})`}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-day-date">Date</Label>
+                  <Input
+                    id="new-day-date"
+                    type="date"
+                    value={newDayDate}
+                    min={getLastDay() ? (() => { const d = new Date(getLastDay()!.registerDate); d.setDate(d.getDate() + 1); return format(d, 'yyyy-MM-dd'); })() : undefined}
+                    onChange={(e) => setNewDayDate(e.target.value)}
+                    data-testid="input-new-day-date"
+                  />
+                  {newDayDate && getLastDay() && (() => {
+                    const lastDate = new Date(getLastDay()!.registerDate);
+                    const selected = new Date(newDayDate);
+                    const diffDays = Math.round((selected.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+                    if (diffDays > 1) {
+                      return (
+                        <p className="text-sm text-muted-foreground flex items-center gap-1">
+                          <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
+                          Gap of {diffDays - 1} day(s) from last entry. Create holiday entries for skipped days to maintain continuity.
+                        </p>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Opening Balance</Label>
+                  <div className="text-lg font-semibold">
+                    {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(getOpeningBalance())}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {days.length === 0 ? "Starting balance (no previous day)" : "Auto-filled from previous day's closing balance"}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id="new-day-holiday"
+                    checked={newDayIsHoliday}
+                    onChange={(e) => setNewDayIsHoliday(e.target.checked)}
+                    className="h-4 w-4 rounded border-border"
+                    data-testid="checkbox-holiday"
+                  />
+                  <div>
+                    <Label htmlFor="new-day-holiday" className="cursor-pointer">Mark as Holiday / Sunday</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Opening and closing balance will be the same. Day will be auto-closed.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <DialogFooter className="gap-2">
+                <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
+                <Button
+                  onClick={handleCreateNewDay}
+                  disabled={createDayMutation.isPending || !newDayDate}
+                  data-testid="button-confirm-new-day"
+                >
+                  {createDayMutation.isPending ? 'Creating...' : newDayIsHoliday ? 'Create Holiday' : 'Create Day'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -1751,7 +1883,10 @@ export default function CashRegisterPage() {
                         data-testid={`row-day-${day.id}`}
                       >
                         <TableCell>
-                          <div className="font-medium">{format(new Date(day.registerDate), 'EEE, MMM d, yyyy')}</div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{format(new Date(day.registerDate), 'EEE, MMM d, yyyy')}</span>
+                            {day.isHoliday === 1 && <Badge variant="secondary" className="text-xs">Holiday</Badge>}
+                          </div>
                         </TableCell>
                         <TableCell className="text-right">{formatCurrency(day.openingBalance)}</TableCell>
                         <TableCell className="text-right text-green-600">+{formatCurrency(day.totalCashReceived)}</TableCell>
