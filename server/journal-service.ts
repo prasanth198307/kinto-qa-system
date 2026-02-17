@@ -1318,6 +1318,7 @@ export async function backfillJournalEntries(): Promise<{
   for (const inv of allInvoices) {
     try {
       if (await hasJournal('invoice', inv.id)) { results.invoices.skipped++; continue; }
+      console.log(`[BACKFILL] Creating journal for invoice ${inv.invoice_number} (id: ${inv.id})`);
       await journalForInvoice({
         id: inv.id,
         invoiceNumber: inv.invoice_number,
