@@ -84,22 +84,49 @@ export default function CashRegisterVoucherPrint() {
     // Always use A5 size (half of A4) - 2 vouchers per A4 page
     const vouchersPerPage = 2;
     
+    const getFinancialYear = (dateStr: string) => {
+      const d = new Date(dateStr);
+      const month = d.getMonth(); // 0-based
+      const year = d.getFullYear();
+      if (month >= 3) { // April onwards
+        return `${year}-${(year + 1).toString().slice(-2)}`;
+      }
+      return `${year - 1}-${year.toString().slice(-2)}`;
+    };
+
+    const getVoucherType = (paymentMode: string) => {
+      if (paymentMode === 'cash') return 'CASH';
+      if (paymentMode === 'bank_transfer' || paymentMode === 'cheque') return 'BANK';
+      if (paymentMode === 'upi') return 'UPI';
+      return paymentMode.replace('_', ' ').toUpperCase();
+    };
+
     const generateVoucherHTML = (voucher: VoucherWithItems) => {
-      // A5 height = 148.5mm, with margins = ~128mm usable
-      // Each voucher fits in bottom half of A5 area
+      const fy = getFinancialYear(voucher.voucherDate);
+      const voucherType = getVoucherType(voucher.paymentMode);
+      const printedAt = format(new Date(), 'dd/MM/yyyy hh:mm a');
+      const hasGST = voucher.gstAmount > 0;
+      
       return `
         <div class="voucher-container">
           <div class="voucher">
             <div class="header">
               <div class="company-name">Inmoisture Private Limited</div>
-              <div class="document-title">EXPENSE VOUCHER</div>
+              <div class="company-details">
+                Plot No. 123, Industrial Area, Hyderabad, Telangana - 500032
+              </div>
+              <div class="company-details">GSTIN: 36AABCI1234A1Z5</div>
+              <div class="document-title-row">
+                <span class="document-title">${voucherType} EXPENSE VOUCHER</span>
+                <span class="fy-label">F.Y. ${fy}</span>
+              </div>
             </div>
             
             <div class="info-grid">
               <div class="info-row">
                 <div class="info-item">
                   <span class="label">Voucher No:</span>
-                  <span class="value">${voucher.voucherNumber}</span>
+                  <span class="value voucher-no">${voucher.voucherNumber}</span>
                 </div>
                 <div class="info-item">
                   <span class="label">Date:</span>
@@ -109,7 +136,7 @@ export default function CashRegisterVoucherPrint() {
               <div class="info-row">
                 <div class="info-item">
                   <span class="label">Paid To:</span>
-                  <span class="value">${voucher.payeeName}</span>
+                  <span class="value paid-to">${voucher.payeeName || '-'}</span>
                 </div>
                 <div class="info-item">
                   <span class="label">Payment Mode:</span>
@@ -119,8 +146,16 @@ export default function CashRegisterVoucherPrint() {
               ${voucher.transactionReference ? `
               <div class="info-row">
                 <div class="info-item full-width">
-                  <span class="label">Reference:</span>
+                  <span class="label">Txn Ref / Cheque No:</span>
                   <span class="value">${voucher.transactionReference}</span>
+                </div>
+              </div>
+              ` : ''}
+              ${voucher.bankName ? `
+              <div class="info-row">
+                <div class="info-item full-width">
+                  <span class="label">Bank:</span>
+                  <span class="value">${voucher.bankName}</span>
                 </div>
               </div>
               ` : ''}
@@ -129,10 +164,10 @@ export default function CashRegisterVoucherPrint() {
             <table class="items-table">
               <thead>
                 <tr>
-                  <th style="width: 8%">#</th>
-                  <th style="width: 52%">Description</th>
-                  <th style="width: 20%" class="right">Amount</th>
-                  <th style="width: 20%" class="right">GST</th>
+                  <th style="width: 6%">#</th>
+                  <th style="width: ${hasGST ? '50%' : '70%'}">Particulars</th>
+                  <th style="width: ${hasGST ? '22%' : '24%'}" class="right">Amount (Rs.)</th>
+                  ${hasGST ? `<th style="width: 22%" class="right">GST (Rs.)</th>` : ''}
                 </tr>
               </thead>
               <tbody>
@@ -141,19 +176,29 @@ export default function CashRegisterVoucherPrint() {
                     <td>${idx + 1}</td>
                     <td>${item.description}</td>
                     <td class="right">${formatCurrencyPlain(item.amount)}</td>
-                    <td class="right">${formatCurrencyPlain(item.gstAmount)}</td>
+                    ${hasGST ? `<td class="right">${formatCurrencyPlain(item.gstAmount)}</td>` : ''}
                   </tr>
                 `).join('')}
+                ${voucher.items.length < 3 ? Array(3 - voucher.items.length).fill('').map(() => `
+                  <tr class="empty-row">
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    ${hasGST ? '<td>&nbsp;</td>' : ''}
+                  </tr>
+                `).join('') : ''}
               </tbody>
               <tfoot>
+                ${hasGST ? `
                 <tr class="subtotal-row">
                   <td colspan="2" class="right">Subtotal:</td>
                   <td class="right">${formatCurrencyPlain(voucher.subtotal)}</td>
                   <td class="right">${formatCurrencyPlain(voucher.gstAmount)}</td>
                 </tr>
+                ` : ''}
                 <tr class="total-row">
                   <td colspan="2" class="right"><strong>Total Amount:</strong></td>
-                  <td colspan="2" class="right"><strong>${formatCurrency(voucher.totalAmount)}</strong></td>
+                  <td colspan="${hasGST ? '2' : '1'}" class="right"><strong>${formatCurrency(voucher.totalAmount)}</strong></td>
                 </tr>
               </tfoot>
             </table>
@@ -164,8 +209,8 @@ export default function CashRegisterVoucherPrint() {
             </div>
 
             ${voucher.purpose ? `
-            <div class="purpose">
-              <span class="label">Purpose:</span>
+            <div class="narration">
+              <span class="label">Narration:</span>
               <span class="value">${voucher.purpose}</span>
             </div>
             ` : ''}
@@ -173,16 +218,22 @@ export default function CashRegisterVoucherPrint() {
             <div class="signatures">
               <div class="signature-box">
                 <div class="signature-line"></div>
-                <div class="signature-label">Receiver's Signature</div>
+                <div class="signature-label">Received By</div>
+                ${voucher.payeeName ? `<div class="signature-name">(${voucher.payeeName})</div>` : ''}
               </div>
               <div class="signature-box">
                 <div class="signature-line"></div>
-                <div class="signature-label">Cashier's Signature</div>
+                <div class="signature-label">Prepared By</div>
               </div>
               <div class="signature-box">
                 <div class="signature-line"></div>
-                <div class="signature-label">Approved By</div>
+                <div class="signature-label">Authorized By</div>
               </div>
+            </div>
+
+            <div class="print-footer">
+              <span>Printed on: ${printedAt}</span>
+              <span>This is a computer-generated voucher</span>
             </div>
           </div>
         </div>
@@ -281,13 +332,37 @@ export default function CashRegisterVoucherPrint() {
             .company-name {
               font-size: 14px;
               font-weight: bold;
-              margin-bottom: 1px;
+              letter-spacing: 0.5px;
+              margin-bottom: 0;
+            }
+
+            .company-details {
+              font-size: 7.5px;
+              color: #555;
+              line-height: 1.3;
+            }
+
+            .document-title-row {
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              gap: 12px;
+              margin-top: 3px;
             }
 
             .document-title {
               font-size: 11px;
               font-weight: bold;
               color: #333;
+              letter-spacing: 1px;
+              border: 1px solid #999;
+              padding: 1px 8px;
+            }
+
+            .fy-label {
+              font-size: 8px;
+              font-weight: bold;
+              color: #555;
             }
 
             .info-grid {
@@ -365,13 +440,30 @@ export default function CashRegisterVoucherPrint() {
               margin-right: 4px;
             }
 
-            .purpose {
-              margin-bottom: 6px;
-              padding: 3px 0;
-              font-size: 9px;
+            .info-item .value.voucher-no {
+              font-weight: bold;
+              color: #000;
             }
 
-            .purpose .label {
+            .info-item .value.paid-to {
+              font-weight: bold;
+              color: #000;
+              text-transform: uppercase;
+            }
+
+            .items-table .empty-row td {
+              height: 16px;
+            }
+
+            .narration {
+              margin-bottom: 4px;
+              padding: 3px 6px;
+              font-size: 9px;
+              border: 1px solid #ddd;
+              background: #fafafa;
+            }
+
+            .narration .label {
               font-weight: bold;
               margin-right: 4px;
             }
@@ -400,6 +492,22 @@ export default function CashRegisterVoucherPrint() {
               font-size: 9px;
               font-weight: bold;
               color: #333;
+            }
+
+            .signature-name {
+              font-size: 7px;
+              color: #666;
+              margin-top: 1px;
+            }
+
+            .print-footer {
+              display: flex;
+              justify-content: space-between;
+              margin-top: 5px;
+              padding-top: 3px;
+              border-top: 1px solid #ddd;
+              font-size: 6.5px;
+              color: #999;
             }
 
             @media print {
