@@ -628,7 +628,7 @@ export async function journalForCreditNote(creditNote: any, invoiceNumber?: stri
 export async function journalForExpenseVoucher(voucher: any): Promise<void> {
   const totalAmount = voucher.totalAmount || 0;
   const gstAmount = voucher.gstAmount || 0;
-  const subtotal = voucher.subtotal || 0;
+  const subtotal = voucher.subtotal || (totalAmount - gstAmount) || 0;
   const method = (voucher.paymentMode || '').toLowerCase();
   const accountCode = (method === 'cash') ? ACCOUNT_CODES.CASH_IN_HAND : ACCOUNT_CODES.BANK_CURRENT;
 

@@ -17170,13 +17170,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
               voucherDate: day.registerDate,
               status: 'submitted',
               paymentMode: 'cash',
+              subtotal: amountInPaise,
               totalAmount: amountInPaise,
               gstAmount: 0,
-              netAmount: amountInPaise,
               payeeName: parsed.partyName || day.salespersonName,
               purpose: `Cash Register Expense: ${expenseDescription}`,
-              submittedBy: req.user?.id,
-              submittedAt: new Date().toISOString(),
+              preparedBy: req.user?.id,
             });
             
             // Create expense line item so description appears on printed voucher
