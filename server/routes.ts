@@ -17164,6 +17164,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const voucherNumber = `EV-CR-${day.registerDate.replace(/-/g, '')}-${Date.now().toString().slice(-4)}`;
             // Cash Register stores in rupees, expense_vouchers table uses paise
             const amountInPaise = amount * 100;
+            const expenseDescription = parsed.reference || parsed.description || 'Cash Register Expense';
             const voucher = await storage.createExpenseVoucher({
               voucherNumber,
               voucherDate: day.registerDate,
@@ -17173,10 +17174,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
               gstAmount: 0,
               netAmount: amountInPaise,
               payeeName: parsed.partyName || day.salespersonName,
-              notes: `Cash Register Expense: ${parsed.reference || parsed.description || 'Expense'}`,
+              notes: `Cash Register Expense: ${expenseDescription}`,
               submittedBy: req.user?.id,
               submittedAt: new Date().toISOString(),
             });
+            
+            // Create expense line item so description appears on printed voucher
+            try {
+              await storage.createExpenseItem({
+                voucherId: voucher.id,
+                description: expenseDescription,
+                amount: amountInPaise,
+              });
+            } catch (itemErr) {
+              console.error('[CASH_REGISTER] Error creating expense item:', itemErr);
+            }
             
             // Link transaction to voucher
             await storage.updateCashRegisterTransaction(transaction.id, {
