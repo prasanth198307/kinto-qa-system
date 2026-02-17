@@ -12076,12 +12076,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Calculate totals across all filtered vendors
+      // Only count parent/standalone vendors to avoid double-counting (parents already include child invoices)
+      const childVendorIds = new Set(activeVendors.filter(v => v.parentVendorId).map(v => v.id));
+      const parentOnlySummaries = vendorSummaries.filter(v => !childVendorIds.has(v.id));
       const totals = {
         totalVendors: vendorSummaries.length,
-        totalInvoiced: vendorSummaries.reduce((sum, v) => sum + v.totalInvoiced, 0),
-        totalReceived: vendorSummaries.reduce((sum, v) => sum + v.totalReceived, 0),
-        totalOutstanding: vendorSummaries.reduce((sum, v) => sum + v.outstanding, 0),
-        vendorsWithBalance: vendorSummaries.filter(v => v.outstanding > 0).length,
+        totalInvoiced: parentOnlySummaries.reduce((sum, v) => sum + v.totalInvoiced, 0),
+        totalReceived: parentOnlySummaries.reduce((sum, v) => sum + v.totalReceived, 0),
+        totalOutstanding: parentOnlySummaries.reduce((sum, v) => sum + v.outstanding, 0),
+        vendorsWithBalance: parentOnlySummaries.filter(v => v.outstanding > 0).length,
       };
       
       // Paginate
@@ -13813,18 +13816,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }));
 
       // Calculate summary statistics (from full dataset)
+      // Only count parent/standalone vendors to avoid double-counting (parents already include child data)
+      const parentOnlyAnalytics = vendorAnalytics.filter(v => !v.isChild);
       const summary = {
         totalVendors: vendorAnalytics.length,
-        activeVendors: vendorAnalytics.filter(v => v.totalOrders > 0).length,
-        totalRevenue: vendorAnalytics.reduce((sum, v) => sum + v.totalRevenue, 0),
-        totalOutstanding: vendorAnalytics.reduce((sum, v) => sum + v.outstandingBalance, 0),
-        totalOrders: vendorAnalytics.reduce((sum, v) => sum + v.totalOrders, 0),
+        activeVendors: parentOnlyAnalytics.filter(v => v.totalOrders > 0).length,
+        totalRevenue: parentOnlyAnalytics.reduce((sum, v) => sum + v.totalRevenue, 0),
+        totalOutstanding: parentOnlyAnalytics.reduce((sum, v) => sum + v.outstandingBalance, 0),
+        totalOrders: parentOnlyAnalytics.reduce((sum, v) => sum + v.totalOrders, 0),
       };
 
-      // Vendor type breakdown - count vendors by primary type to avoid revenue double-counting
+      // Vendor type breakdown - only count parent/standalone vendors to avoid double-counting
       const typeBreakdown: Record<string, { count: Set<string>; revenue: number }> = {};
-      vendorAnalytics.forEach(vendor => {
-        // Only count revenue for the primary type to avoid double-counting
+      parentOnlyAnalytics.forEach(vendor => {
         if (vendor.primaryType) {
           if (!typeBreakdown[vendor.primaryType]) {
             typeBreakdown[vendor.primaryType] = { count: new Set(), revenue: 0 };
