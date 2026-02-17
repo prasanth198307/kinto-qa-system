@@ -390,9 +390,9 @@ export default function PrintableExpenseVoucher({ voucher }: PrintableExpenseVou
                   <td>${index + 1}</td>
                   <td>${item.description}</td>
                   <td>${getCategoryName(item.categoryId)}</td>
-                  <td class="number">${item.quantity}</td>
-                  <td class="number">${formatCurrency(item.unitPrice)}</td>
-                  <td class="number">${formatCurrency(item.gstAmount)}</td>
+                  <td class="number">${item.quantity > 1 ? item.quantity : '-'}</td>
+                  <td class="number">${item.unitPrice > 0 ? formatCurrency(item.unitPrice) : '-'}</td>
+                  <td class="number">${item.gstAmount > 0 ? formatCurrency(item.gstAmount) : '-'}</td>
                   <td class="number">${formatCurrency(item.amount + item.gstAmount)}</td>
                 </tr>
               `).join('')}
