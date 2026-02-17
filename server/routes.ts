@@ -12026,9 +12026,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
       }
       
-      // Get all invoices for aggregation
+      // Get all invoices for aggregation (exclude cancelled)
       const allInvoices = await storage.getAllInvoices();
-      const activeInvoices = allInvoices.filter(inv => inv.recordStatus === 1);
+      const activeInvoices = allInvoices.filter(inv => inv.recordStatus === 1 && inv.status !== 'cancelled');
       
       // Get all credit notes
       const allCreditNotes = await db.select()
@@ -12056,11 +12056,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Find child vendors of this parent
         const childVendors = activeVendors.filter(v => v.parentVendorId === vendor.id);
         const vendorIdsToInclude = [vendor.id, ...childVendors.map(cv => cv.id)];
-        const vendorNamesToInclude = [vendor.vendorName, ...childVendors.map(cv => cv.vendorName)];
+        const vendorNamesToInclude = [
+          vendor.vendorName,
+          vendor.shipToName || '',
+          ...childVendors.map(cv => cv.vendorName),
+          ...childVendors.map(cv => cv.shipToName || '')
+        ].filter(Boolean);
         
-        // Get invoices for this vendor family (parent + children) - case insensitive match
+        // Get invoices for this vendor family (parent + children) - case insensitive match on buyerName and shipToName
         const vendorInvoices = activeInvoices.filter(inv => 
-          vendorNamesToInclude.some(name => name.toLowerCase() === inv.buyerName.toLowerCase())
+          vendorNamesToInclude.some(name => 
+            name.toLowerCase() === inv.buyerName?.toLowerCase() ||
+            name.toLowerCase() === inv.shipToName?.toLowerCase()
+          )
         );
         
         // Get invoice IDs for this vendor family
@@ -13609,7 +13617,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         yearInvoices = allInvoices.filter(inv => {
           const invDate = new Date(inv.invoiceDate);
-          return invDate >= fromDate && invDate <= toDate && inv.recordStatus === 1;
+          return invDate >= fromDate && invDate <= toDate && inv.recordStatus === 1 && inv.status !== 'cancelled';
         });
         currentYear = fromDate.getFullYear(); // Use start year for display
       } else {
@@ -13618,7 +13626,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         yearInvoices = allInvoices.filter(inv => {
           const invYear = new Date(inv.invoiceDate).getFullYear();
-          return invYear === currentYear && inv.recordStatus === 1;
+          return invYear === currentYear && inv.recordStatus === 1 && inv.status !== 'cancelled';
         });
       }
 
@@ -13821,7 +13829,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Find invoices for this vendor (or vendor family if parent) using buyerName or shipToName
         const vendorInvoices = allInvoices.filter(inv => 
-          inv.recordStatus === 1 && (
+          inv.recordStatus === 1 && inv.status !== 'cancelled' && (
             vendorNamesToInclude.some(name => 
               name.toLowerCase() === inv.buyerName?.toLowerCase() ||
               name.toLowerCase() === inv.shipToName?.toLowerCase()
