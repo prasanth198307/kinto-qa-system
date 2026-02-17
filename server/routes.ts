@@ -17221,7 +17221,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       await storage.updateCashRegisterDay(dayId, updates);
       
-      // Auto-generate journal entries for deposit/transfer transactions (non-blocking)
+      // Auto-generate journal entries for deposit/transfer/cash_received transactions (non-blocking)
       if (parsed.transactionType === 'deposit') {
         try {
           const { journalForCashRegisterDeposit } = await import('./journal-service');
@@ -17232,6 +17232,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const { journalForCashRegisterTransfer } = await import('./journal-service');
           await journalForCashRegisterTransfer(transaction, day);
         } catch (je) { console.error('[JOURNAL] Cash register transfer journal failed:', je); }
+      } else if (parsed.transactionType === 'cash_received') {
+        try {
+          const { journalForCashRegisterCashReceived } = await import('./journal-service');
+          await journalForCashRegisterCashReceived(transaction, day);
+        } catch (je) { console.error('[JOURNAL] Cash register cash received journal failed:', je); }
       }
       
       res.status(201).json(transaction);

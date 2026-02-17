@@ -420,7 +420,7 @@ export default function CashRegisterPage() {
       const result = await response.json();
       toast({ 
         title: "Journal Backfill Complete", 
-        description: `Deposits: ${result.cashRegisterDeposits?.processed || 0} created, ${result.cashRegisterDeposits?.skipped || 0} skipped. Transfers: ${result.cashRegisterTransfers?.processed || 0} created, ${result.cashRegisterTransfers?.skipped || 0} skipped. Expense Vouchers: ${result.expenseVouchers?.processed || 0} created, ${result.expenseVouchers?.skipped || 0} skipped.`
+        description: `Deposits: ${result.cashRegisterDeposits?.processed || 0} created, ${result.cashRegisterDeposits?.skipped || 0} skipped. Cash Received: ${result.cashRegisterCashReceived?.processed || 0} created, ${result.cashRegisterCashReceived?.skipped || 0} skipped. Transfers: ${result.cashRegisterTransfers?.processed || 0} created, ${result.cashRegisterTransfers?.skipped || 0} skipped. Expenses: ${result.cashRegisterExpenses?.processed || 0} created, ${result.cashRegisterExpenses?.skipped || 0} skipped.`
       });
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
