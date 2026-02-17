@@ -1157,7 +1157,7 @@ export default function CashRegisterPage() {
                       <div key={txn.id} className="flex items-center justify-between p-2 border rounded-md hover-elevate" data-testid={`txn-transfer-${txn.id}`}>
                         <div className="flex-1">
                           <div className="font-medium text-blue-600">{formatCurrency(txn.amount)}</div>
-                          {txn.transferTo && <div className="text-xs font-medium">To: {txn.transferTo}</div>}
+                          {txn.transferTo && <div className="text-xs font-medium">Paid To: {txn.transferTo}</div>}
                           {txn.description && <div className="text-xs text-muted-foreground">{txn.description}</div>}
                           {txn.documentName && (
                             <a href={txn.documentPath || '#'} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 flex items-center gap-1 mt-1">
