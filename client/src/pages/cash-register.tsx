@@ -23,7 +23,7 @@ import {
   Wallet, ArrowUpRight, ArrowDownRight, RefreshCw, FileSpreadsheet,
   AlertCircle, TrendingUp, TrendingDown, DollarSign, CheckCircle2, Lock,
   AlertTriangle, Edit, Save, Trash2, PiggyBank, ArrowLeft, ChevronRight,
-  Paperclip, FileText, CreditCard, Banknote, Printer
+  Paperclip, FileText, CreditCard, Banknote, Printer, BookOpen
 } from "lucide-react";
 import type { CashRegisterDay, CashRegisterTransaction, CashRegisterExpenseItem, PaginationMeta } from "@shared/schema";
 import { DataTablePagination } from "@/components/DataTablePagination";
@@ -103,6 +103,7 @@ export default function CashRegisterPage() {
   const [isImporting, setIsImporting] = useState(false);
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
+  const [isBackfillingJournals, setIsBackfillingJournals] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   
@@ -409,6 +410,22 @@ export default function CashRegisterPage() {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
       setIsClearing(false);
+    }
+  };
+
+  const handleBackfillJournals = async () => {
+    try {
+      setIsBackfillingJournals(true);
+      const response = await apiRequest('POST', '/api/journal-entries/backfill', {});
+      const result = await response.json();
+      toast({ 
+        title: "Journal Backfill Complete", 
+        description: `Deposits: ${result.cashRegisterDeposits?.processed || 0} created, ${result.cashRegisterDeposits?.skipped || 0} skipped. Transfers: ${result.cashRegisterTransfers?.processed || 0} created, ${result.cashRegisterTransfers?.skipped || 0} skipped. Expense Vouchers: ${result.expenseVouchers?.processed || 0} created, ${result.expenseVouchers?.skipped || 0} skipped.`
+      });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setIsBackfillingJournals(false);
     }
   };
 
@@ -1537,6 +1554,18 @@ export default function CashRegisterPage() {
           </div>
         </div>
         <div className="flex gap-2">
+          {hasAdminAccess && (
+            <Button 
+              variant="outline" 
+              onClick={handleBackfillJournals}
+              disabled={isBackfillingJournals}
+              data-testid="button-backfill-journals"
+            >
+              <BookOpen className="w-4 h-4 mr-2" />
+              {isBackfillingJournals ? "Processing..." : "Post Missing Journals"}
+            </Button>
+          )}
+          
           {hasAdminAccess && days.length > 0 && (
             <AlertDialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
               <AlertDialogTrigger asChild>
