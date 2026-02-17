@@ -97,7 +97,7 @@ export default function PrintableSalesReturn({ salesReturn }: PrintableSalesRetu
   };
 
   const generatePrintHTML = (): string => {
-    const totalQuantity = items.reduce((sum, item) => sum + (item.quantityReturned || 0), 0);
+    const totalQuantity = items.reduce((sum, item) => sum + (item.verifiedQuantity ?? item.quantityReturned ?? 0), 0);
     const totalCredit = items.reduce((sum, item) => sum + (item.creditAmount || 0), 0);
 
     return `
@@ -347,7 +347,9 @@ export default function PrintableSalesReturn({ salesReturn }: PrintableSalesRetu
                   <td>${index + 1}</td>
                   <td>${getProductName(item.productId)}</td>
                   <td>${item.batchNumber || '-'}</td>
-                  <td class="number">${item.quantityReturned}</td>
+                  <td class="number">${item.verifiedQuantity != null && item.verifiedQuantity !== item.quantityReturned 
+                    ? `<span style="text-decoration: line-through; color: #999;">${item.quantityReturned}</span> ${item.verifiedQuantity}` 
+                    : item.quantityReturned}</td>
                   <td>${item.conditionOnReceipt || '-'}</td>
                   <td>${getDispositionLabel(item.disposition)}</td>
                   <td class="number">${formatCurrency(item.creditAmount)}</td>

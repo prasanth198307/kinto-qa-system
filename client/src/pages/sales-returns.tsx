@@ -216,8 +216,8 @@ export default function SalesReturnsPage() {
   });
 
   const inspectMutation = useMutation({
-    mutationFn: async ({ id, inspections }: { id: string; inspections: any[] }) => {
-      return apiRequest('PATCH', `/api/sales-returns/${id}/inspect`, { inspections });
+    mutationFn: async ({ id, inspections, verifiedQuantities }: { id: string; inspections: any[]; verifiedQuantities?: Record<string, { verified: number; varianceReason?: string }> }) => {
+      return apiRequest('PATCH', `/api/sales-returns/${id}/inspect`, { inspections, verifiedQuantities });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/sales-returns'] });
@@ -742,8 +742,8 @@ export default function SalesReturnsPage() {
           {selectedReturn && (
             <InspectionForm
               returnRecord={selectedReturn}
-              onSubmit={(inspections) => {
-                inspectMutation.mutate({ id: selectedReturn.id, inspections });
+              onSubmit={(inspections, verifiedQuantities) => {
+                inspectMutation.mutate({ id: selectedReturn.id, inspections, verifiedQuantities });
               }}
               isPending={inspectMutation.isPending}
             />
@@ -754,15 +754,17 @@ export default function SalesReturnsPage() {
   );
 }
 
-function InspectionForm({ returnRecord, onSubmit, isPending }: { returnRecord: any; onSubmit: (inspections: any[]) => void; isPending: boolean }) {
+function InspectionForm({ returnRecord, onSubmit, isPending }: { returnRecord: any; onSubmit: (inspections: any[], verifiedQuantities?: Record<string, { verified: number; varianceReason?: string }>) => void; isPending: boolean }) {
   const { toast } = useToast();
   
   const [inspections, setInspections] = useState(
     returnRecord.items.map((item: any) => ({
       itemId: item.id,
       productId: item.productId,
-      totalQuantity: item.quantityReturned,
-      restockQty: item.quantityReturned, // Default all to restock
+      reportedQuantity: item.quantityReturned,
+      verifiedQuantity: item.quantityReturned, // Default: same as reported
+      varianceReason: '',
+      restockQty: item.quantityReturned,
       scrapQty: 0,
       repackQty: 0,
       condition: 'good' as 'good' | 'damaged' | 'mixed',
@@ -770,22 +772,35 @@ function InspectionForm({ returnRecord, onSubmit, isPending }: { returnRecord: a
     }))
   );
 
+  const updateVerifiedQuantity = (index: number, value: number) => {
+    const updated = [...inspections];
+    const item = updated[index];
+    item.verifiedQuantity = Math.max(0, value);
+    item.restockQty = item.verifiedQuantity;
+    item.scrapQty = 0;
+    item.repackQty = 0;
+    item.condition = 'good';
+    setInspections(updated);
+  };
+
+  const updateVarianceReason = (index: number, value: string) => {
+    const updated = [...inspections];
+    updated[index].varianceReason = value;
+    setInspections(updated);
+  };
+
   const updateQuantity = (index: number, field: 'restockQty' | 'scrapQty' | 'repackQty', value: number) => {
     const updated = [...inspections];
     const item = updated[index];
-    const total = item.totalQuantity;
+    const total = item.verifiedQuantity;
     
-    // Update the specified field
     item[field] = Math.max(0, Math.min(value, total));
     
-    // Calculate remaining after this field
     const otherFields = (['restockQty', 'scrapQty', 'repackQty'] as const).filter(f => f !== field);
     const remaining = total - item[field];
     
-    // If only one other field has value, adjust it; otherwise distribute to first field
     const otherSum = otherFields.reduce((sum, f) => sum + item[f], 0);
     if (otherSum > remaining) {
-      // Need to reduce other fields
       let excess = otherSum - remaining;
       for (const f of otherFields) {
         if (item[f] > 0 && excess > 0) {
@@ -796,7 +811,6 @@ function InspectionForm({ returnRecord, onSubmit, isPending }: { returnRecord: a
       }
     }
     
-    // Update condition based on quantities
     if (item.scrapQty > 0 && item.restockQty > 0) {
       item.condition = 'mixed';
     } else if (item.scrapQty > 0 || item.repackQty > 0) {
@@ -809,16 +823,21 @@ function InspectionForm({ returnRecord, onSubmit, isPending }: { returnRecord: a
   };
 
   const getRowValidation = (item: any) => {
+    if (item.verifiedQuantity <= 0) {
+      return { valid: false, message: 'Verified qty must be > 0' };
+    }
     const total = item.restockQty + item.scrapQty + item.repackQty;
-    const expected = item.totalQuantity;
+    const expected = item.verifiedQuantity;
     if (total !== expected) {
-      return { valid: false, message: `Total (${total}) must equal ${expected}` };
+      return { valid: false, message: `Split total (${total}) must equal verified qty (${expected})` };
+    }
+    if (item.verifiedQuantity !== item.reportedQuantity && !item.varianceReason.trim()) {
+      return { valid: false, message: 'Variance reason required' };
     }
     return { valid: true, message: '' };
   };
 
   const handleSubmit = () => {
-    // Validate all rows
     for (let i = 0; i < inspections.length; i++) {
       const validation = getRowValidation(inspections[i]);
       if (!validation.valid) {
@@ -831,11 +850,21 @@ function InspectionForm({ returnRecord, onSubmit, isPending }: { returnRecord: a
       }
     }
     
-    // Convert to the format expected by the backend
-    // Create multiple inspection entries for split quantities
     const flatInspections: any[] = [];
+    const verifiedQuantities: Record<string, { verified: number; varianceReason?: string }> = {};
     
     for (const item of inspections) {
+      if (item.verifiedQuantity !== item.reportedQuantity) {
+        verifiedQuantities[item.itemId] = {
+          verified: item.verifiedQuantity,
+          varianceReason: item.varianceReason || undefined,
+        };
+      } else {
+        verifiedQuantities[item.itemId] = {
+          verified: item.verifiedQuantity,
+        };
+      }
+      
       if (item.restockQty > 0) {
         flatInspections.push({
           itemId: item.itemId,
@@ -866,114 +895,155 @@ function InspectionForm({ returnRecord, onSubmit, isPending }: { returnRecord: a
       }
     }
     
-    onSubmit(flatInspections);
+    onSubmit(flatInspections, verifiedQuantities);
   };
 
   return (
     <div className="space-y-4">
       <div className="bg-muted/50 p-3 rounded-lg text-sm">
-        <p className="font-medium mb-1">Split Disposition</p>
+        <p className="font-medium mb-1">Verify & Split Disposition</p>
         <p className="text-muted-foreground">
-          For each returned item, specify how many units should go to each category.
-          The total must equal the returned quantity.
+          First verify the actual quantity received (may differ from what customer reported).
+          Then split verified units across restock, scrap, or repack categories.
         </p>
       </div>
       
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Product</TableHead>
-            <TableHead>Batch</TableHead>
-            <TableHead className="text-center">Total Qty</TableHead>
-            <TableHead className="text-center bg-green-50 dark:bg-green-950/30">
-              <div className="flex flex-col items-center">
-                <Package className="h-4 w-4 text-green-600 mb-1" />
-                <span>Restock</span>
-              </div>
-            </TableHead>
-            <TableHead className="text-center bg-red-50 dark:bg-red-950/30">
-              <div className="flex flex-col items-center">
-                <Trash2 className="h-4 w-4 text-red-600 mb-1" />
-                <span>Scrap</span>
-              </div>
-            </TableHead>
-            <TableHead className="text-center bg-amber-50 dark:bg-amber-950/30">
-              <div className="flex flex-col items-center">
-                <Package className="h-4 w-4 text-amber-600 mb-1" />
-                <span>Repack</span>
-              </div>
-            </TableHead>
-            <TableHead>Status</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {returnRecord.items.map((item: any, index: number) => {
-            const inspection = inspections[index];
-            const validation = getRowValidation(inspection);
-            
-            return (
-              <TableRow key={item.id} className={!validation.valid ? "bg-red-50 dark:bg-red-950/20" : ""}>
-                <TableCell className="font-medium">{item.productName}</TableCell>
-                <TableCell className="text-muted-foreground">{item.batchNumber || '-'}</TableCell>
-                <TableCell className="text-center font-bold">{item.quantityReturned}</TableCell>
-                <TableCell className="bg-green-50/50 dark:bg-green-950/20">
-                  <Input
-                    type="number"
-                    min={0}
-                    max={item.quantityReturned}
-                    value={inspection.restockQty}
-                    onChange={(e) => updateQuantity(index, 'restockQty', parseInt(e.target.value) || 0)}
-                    className="w-20 text-center mx-auto"
-                    data-testid={`input-restock-qty-${index}`}
-                  />
-                </TableCell>
-                <TableCell className="bg-red-50/50 dark:bg-red-950/20">
-                  <Input
-                    type="number"
-                    min={0}
-                    max={item.quantityReturned}
-                    value={inspection.scrapQty}
-                    onChange={(e) => updateQuantity(index, 'scrapQty', parseInt(e.target.value) || 0)}
-                    className="w-20 text-center mx-auto"
-                    data-testid={`input-scrap-qty-${index}`}
-                  />
-                </TableCell>
-                <TableCell className="bg-amber-50/50 dark:bg-amber-950/20">
-                  <Input
-                    type="number"
-                    min={0}
-                    max={item.quantityReturned}
-                    value={inspection.repackQty}
-                    onChange={(e) => updateQuantity(index, 'repackQty', parseInt(e.target.value) || 0)}
-                    className="w-20 text-center mx-auto"
-                    data-testid={`input-repack-qty-${index}`}
-                  />
-                </TableCell>
-                <TableCell>
-                  {validation.valid ? (
-                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                      <CheckCircle className="h-3 w-3 mr-1" />
-                      Valid
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-                      <AlertCircle className="h-3 w-3 mr-1" />
-                      {validation.message}
-                    </Badge>
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Product</TableHead>
+              <TableHead>Batch</TableHead>
+              <TableHead className="text-center">Reported</TableHead>
+              <TableHead className="text-center bg-blue-50 dark:bg-blue-950/30">
+                <div className="flex flex-col items-center">
+                  <CheckCircle className="h-4 w-4 text-blue-600 mb-1" />
+                  <span>Verified</span>
+                </div>
+              </TableHead>
+              <TableHead className="text-center bg-green-50 dark:bg-green-950/30">
+                <div className="flex flex-col items-center">
+                  <Package className="h-4 w-4 text-green-600 mb-1" />
+                  <span>Restock</span>
+                </div>
+              </TableHead>
+              <TableHead className="text-center bg-red-50 dark:bg-red-950/30">
+                <div className="flex flex-col items-center">
+                  <Trash2 className="h-4 w-4 text-red-600 mb-1" />
+                  <span>Scrap</span>
+                </div>
+              </TableHead>
+              <TableHead className="text-center bg-amber-50 dark:bg-amber-950/30">
+                <div className="flex flex-col items-center">
+                  <Package className="h-4 w-4 text-amber-600 mb-1" />
+                  <span>Repack</span>
+                </div>
+              </TableHead>
+              <TableHead>Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {returnRecord.items.map((item: any, index: number) => {
+              const inspection = inspections[index];
+              const validation = getRowValidation(inspection);
+              const hasVariance = inspection.verifiedQuantity !== inspection.reportedQuantity;
+              
+              return (
+                <>
+                  <TableRow key={item.id} className={!validation.valid ? "bg-red-50 dark:bg-red-950/20" : ""}>
+                    <TableCell className="font-medium">{item.productName}</TableCell>
+                    <TableCell className="text-muted-foreground">{item.batchNumber || '-'}</TableCell>
+                    <TableCell className="text-center text-muted-foreground">{item.quantityReturned}</TableCell>
+                    <TableCell className="bg-blue-50/50 dark:bg-blue-950/20">
+                      <Input
+                        type="number"
+                        min={0}
+                        value={inspection.verifiedQuantity}
+                        onChange={(e) => updateVerifiedQuantity(index, parseInt(e.target.value) || 0)}
+                        className={`w-20 text-center mx-auto ${hasVariance ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/30' : ''}`}
+                        data-testid={`input-verified-qty-${index}`}
+                      />
+                    </TableCell>
+                    <TableCell className="bg-green-50/50 dark:bg-green-950/20">
+                      <Input
+                        type="number"
+                        min={0}
+                        max={inspection.verifiedQuantity}
+                        value={inspection.restockQty}
+                        onChange={(e) => updateQuantity(index, 'restockQty', parseInt(e.target.value) || 0)}
+                        className="w-20 text-center mx-auto"
+                        data-testid={`input-restock-qty-${index}`}
+                      />
+                    </TableCell>
+                    <TableCell className="bg-red-50/50 dark:bg-red-950/20">
+                      <Input
+                        type="number"
+                        min={0}
+                        max={inspection.verifiedQuantity}
+                        value={inspection.scrapQty}
+                        onChange={(e) => updateQuantity(index, 'scrapQty', parseInt(e.target.value) || 0)}
+                        className="w-20 text-center mx-auto"
+                        data-testid={`input-scrap-qty-${index}`}
+                      />
+                    </TableCell>
+                    <TableCell className="bg-amber-50/50 dark:bg-amber-950/20">
+                      <Input
+                        type="number"
+                        min={0}
+                        max={inspection.verifiedQuantity}
+                        value={inspection.repackQty}
+                        onChange={(e) => updateQuantity(index, 'repackQty', parseInt(e.target.value) || 0)}
+                        className="w-20 text-center mx-auto"
+                        data-testid={`input-repack-qty-${index}`}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      {validation.valid ? (
+                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Valid
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                          <AlertCircle className="h-3 w-3 mr-1" />
+                          {validation.message}
+                        </Badge>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                  {hasVariance && (
+                    <TableRow key={`${item.id}-variance`} className="bg-amber-50/30 dark:bg-amber-950/10">
+                      <TableCell colSpan={8}>
+                        <div className="flex items-center gap-3 py-1">
+                          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300 shrink-0">
+                            <AlertCircle className="h-3 w-3 mr-1" />
+                            Variance: {inspection.verifiedQuantity - inspection.reportedQuantity > 0 ? '+' : ''}{inspection.verifiedQuantity - inspection.reportedQuantity}
+                          </Badge>
+                          <Input
+                            placeholder="Reason for difference (e.g., 'Loose bottles - only 8 instead of 12 per case')"
+                            value={inspection.varianceReason}
+                            onChange={(e) => updateVarianceReason(index, e.target.value)}
+                            className="flex-1"
+                            data-testid={`input-variance-reason-${index}`}
+                          />
+                        </div>
+                      </TableCell>
+                    </TableRow>
                   )}
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+                </>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
       
-      <div className="flex items-center justify-between pt-4 border-t">
+      <div className="flex items-center justify-between gap-4 pt-4 border-t flex-wrap">
         <div className="text-sm text-muted-foreground">
           <span className="font-medium">Legend:</span>{' '}
-          <span className="text-green-600">Restock</span> = Good condition, return to finished goods |{' '}
-          <span className="text-red-600">Scrap</span> = Damaged, create scrap record |{' '}
-          <span className="text-amber-600">Repack</span> = Needs repacking before sale
+          <span className="text-blue-600">Verified</span> = Actual count |{' '}
+          <span className="text-green-600">Restock</span> = Good, return to inventory |{' '}
+          <span className="text-red-600">Scrap</span> = Damaged |{' '}
+          <span className="text-amber-600">Repack</span> = Needs repacking
         </div>
         <div className="flex gap-2">
           <Button onClick={handleSubmit} disabled={isPending} data-testid="button-submit-inspection">

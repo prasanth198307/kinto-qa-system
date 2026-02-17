@@ -9488,7 +9488,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const { id } = req.params;
-      const { inspections } = req.body; // Array of {itemId, condition, disposition}
+      const { inspections, verifiedQuantities } = req.body; // inspections: Array of {itemId, condition, disposition, quantity}, verifiedQuantities: Record<itemId, {verified, varianceReason}>
       
       if (!inspections || !Array.isArray(inspections)) {
         return res.status(400).json({ message: "Inspection data required" });
@@ -9650,7 +9650,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
         
-        // Update salesReturnItems with the primary disposition (or 'mixed' if multiple)
+        // Update salesReturnItems with the primary disposition, verified quantity, and variance reason
         for (const [itemId, dispositions] of Object.entries(itemDispositions)) {
           const uniqueDispositions = [...new Set(dispositions)];
           const primaryDisposition = uniqueDispositions.length > 1 ? 'mixed' : uniqueDispositions[0];
@@ -9658,18 +9658,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const hasGood = dispositions.includes('restock');
           const condition = hasScrap && hasGood ? 'mixed' : (hasScrap ? 'damaged' : 'good');
           
+          const updateData: any = {
+            conditionOnReceipt: condition,
+            disposition: primaryDisposition,
+            updatedAt: new Date().toISOString(),
+          };
+          
+          // Store verified quantity (may differ from customer-reported quantity)
+          // Always fetch current item to recalculate creditAmount based on verified qty
+          const [currentItem] = await tx.select().from(salesReturnItems)
+            .where(eq(salesReturnItems.id, itemId));
+          
+          if (verifiedQuantities && verifiedQuantities[itemId]) {
+            const vq = verifiedQuantities[itemId];
+            if (vq.verified !== undefined && vq.verified !== null) {
+              updateData.verifiedQuantity = vq.verified;
+              // Recalculate creditAmount using verified quantity
+              const safeUnitPrice = currentItem?.unitPrice || 0;
+              updateData.creditAmount = safeUnitPrice * vq.verified;
+            }
+            if (vq.varianceReason) {
+              updateData.varianceReason = vq.varianceReason;
+            }
+          } else if (currentItem) {
+            // Even if no explicit verifiedQuantities sent, set verifiedQuantity = quantityReturned for completeness
+            updateData.verifiedQuantity = currentItem.quantityReturned;
+          }
+          
           await tx.update(salesReturnItems)
-            .set({
-              conditionOnReceipt: condition,
-              disposition: primaryDisposition,
-              updatedAt: new Date().toISOString(),
-            })
+            .set(updateData)
             .where(eq(salesReturnItems.id, itemId));
         }
         
         // Determine credit note handling: BOTH same month AND within 30 days required for auto
         const shouldAutoGenerateCreditNote = isSameMonth && isWithinOneMonth;
         const requiresManualProcessing = !shouldAutoGenerateCreditNote;
+        
+        // Recalculate totalCreditAmount based on verified quantities
+        const updatedReturnItems = await tx.select().from(salesReturnItems)
+          .where(and(
+            eq(salesReturnItems.returnId, id),
+            eq(salesReturnItems.recordStatus, 1)
+          ));
+        const recalcTotalCredit = updatedReturnItems.reduce((sum, ri) => sum + (ri.creditAmount || 0), 0);
         
         // Update return status with appropriate credit note status
         await tx.update(salesReturns)
@@ -9678,6 +9709,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             inspectedDate: new Date().toISOString(),
             inspectedBy: req.user?.id,
             creditNoteStatus: shouldAutoGenerateCreditNote ? 'auto_created' : 'manual_required',
+            totalCreditAmount: recalcTotalCredit,
             updatedAt: new Date().toISOString(),
           })
           .where(eq(salesReturns.id, id));
@@ -9708,9 +9740,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           let igstAmount = 0;
           
           // Create credit note items and calculate totals
+          // Use verifiedQuantity (actual inspector count) when available, otherwise fall back to reported quantity
           const creditNoteItems_data = [];
           for (const returnItem of returnItems) {
-            const itemSubtotal = returnItem.unitPrice * returnItem.quantityReturned;
+            const effectiveQty = returnItem.verifiedQuantity ?? returnItem.quantityReturned;
+            const itemSubtotal = returnItem.unitPrice * effectiveQty;
             subtotal += itemSubtotal;
             
             // Calculate GST based on invoice item rates
@@ -9736,7 +9770,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 productId: returnItem.productId,
                 invoiceItemId: invoiceItem.id,
                 description: invoiceItem.description || '',
-                quantity: returnItem.quantityReturned,
+                quantity: effectiveQty,
                 unitPrice: returnItem.unitPrice,
                 discountAmount: 0,
                 taxableValue: itemSubtotal,

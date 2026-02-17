@@ -2213,7 +2213,11 @@ export const salesReturnItems = pgTable("sales_return_items", {
   
   productId: varchar("product_id").references(() => products.id).notNull(),
   batchNumber: varchar("batch_number", { length: 255 }),
-  quantityReturned: integer("quantity_returned").notNull(),
+  quantityReturned: integer("quantity_returned").notNull(), // Customer-reported quantity
+  
+  // Verified quantity during inspection (may differ from customer-reported)
+  verifiedQuantity: integer("verified_quantity"), // Actual count by inspector
+  varianceReason: varchar("variance_reason", { length: 255 }), // Why verified != reported (e.g., "Loose bottles - 8 instead of 12")
   
   // Original invoice item reference for max quantity validation
   invoiceItemId: varchar("invoice_item_id").references(() => invoiceItems.id),
