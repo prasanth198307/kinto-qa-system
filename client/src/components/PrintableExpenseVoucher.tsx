@@ -9,16 +9,17 @@ interface PrintableExpenseVoucherProps {
 }
 
 export default function PrintableExpenseVoucher({ voucher }: PrintableExpenseVoucherProps) {
-  const { data: items = [], isLoading: itemsLoading } = useQuery<ExpenseItem[]>({
-    queryKey: ['/api/expense-items', voucher.id],
+  const { data: voucherDetail, isLoading: itemsLoading } = useQuery<{ items: ExpenseItem[] }>({
+    queryKey: ['/api/expense-vouchers', voucher.id],
     queryFn: async () => {
-      const res = await fetch(`/api/expense-items?voucherId=${voucher.id}`, {
+      const res = await fetch(`/api/expense-vouchers/${voucher.id}`, {
         credentials: 'include',
       });
-      if (!res.ok) throw new Error('Failed to fetch expense items');
+      if (!res.ok) throw new Error('Failed to fetch expense voucher details');
       return res.json();
     },
   });
+  const items = voucherDetail?.items || [];
 
   const { data: categories = [], isLoading: categoriesLoading } = useQuery<ExpenseCategory[]>({
     queryKey: ['/api/expense-categories'],
