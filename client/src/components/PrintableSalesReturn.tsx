@@ -347,9 +347,19 @@ export default function PrintableSalesReturn({ salesReturn }: PrintableSalesRetu
                   <td>${index + 1}</td>
                   <td>${getProductName(item.productId)}</td>
                   <td>${item.batchNumber || '-'}</td>
-                  <td class="number">${item.verifiedQuantity != null && item.verifiedQuantity !== item.quantityReturned 
-                    ? `<span style="text-decoration: line-through; color: #999;">${item.quantityReturned}</span> ${item.verifiedQuantity}` 
-                    : item.quantityReturned}</td>
+                  <td class="number">${(() => {
+                    const bpc = item.bottlesPerCase || 1;
+                    const cases = item.casesReturned || 0;
+                    const loose = item.looseBottlesReturned || 0;
+                    const qtyDisplay = cases > 0 && loose > 0 
+                      ? `${cases} cases + ${loose} bottles (${item.quantityReturned})`
+                      : cases > 0 ? `${cases} cases (${item.quantityReturned})`
+                      : `${item.quantityReturned} bottles`;
+                    if (item.verifiedQuantity != null && item.verifiedQuantity !== item.quantityReturned) {
+                      return `<span style="text-decoration: line-through; color: #999;">${qtyDisplay}</span> ${item.verifiedQuantity}`;
+                    }
+                    return qtyDisplay;
+                  })()}</td>
                   <td>${item.conditionOnReceipt || '-'}</td>
                   <td>${getDispositionLabel(item.disposition)}</td>
                   <td class="number">${formatCurrency(item.creditAmount)}</td>

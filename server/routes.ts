@@ -8426,10 +8426,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Merge batch numbers into items
       // Only auto-fill if there's exactly one unique batch for the product
+      // Fetch product details for derivedValuePerBase (bottles per case)
+      const productIds = [...new Set(items.map(i => i.productId))];
+      const productDetails: Record<string, any> = {};
+      for (const pid of productIds) {
+        const product = await storage.getProduct(pid);
+        if (product) {
+          productDetails[pid] = {
+            name: product.productName,
+            derivedValuePerBase: product.derivedValuePerBase ? Number(product.derivedValuePerBase) : null,
+            baseUnit: product.baseUnit,
+            derivedUnit: product.derivedUnit,
+          };
+        }
+      }
+      
       const itemsWithBatch = items.map(item => {
         const batches = batchMap[item.productId] || [];
         return {
           ...item,
+          product: productDetails[item.productId] || null,
           // Only auto-fill when exactly one batch available for this product
           batchNumber: batches.length === 1 ? batches[0] : null,
           // Provide all available batches for user to choose if multiple
@@ -9324,21 +9340,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Server-side max quantity validation: fetch invoice items and validate quantities
       const invoiceItemsList = await storage.getInvoiceItems(header.invoiceId);
-      const invoiceItemMap = new Map<string, number>();
+      const invoiceItemMap = new Map<string, { quantity: number; productId: string }>();
       invoiceItemsList.forEach((ii: any) => {
-        invoiceItemMap.set(ii.productId, ii.quantity);
+        invoiceItemMap.set(ii.productId, { quantity: ii.quantity, productId: ii.productId });
       });
       
       for (const item of items) {
-        const maxQty = invoiceItemMap.get(item.productId) || 0;
-        if (item.quantityReturned > maxQty) {
+        const invoiceItem = invoiceItemMap.get(item.productId);
+        const maxCases = invoiceItem?.quantity || 0;
+        const bpc = item.bottlesPerCase || 1;
+        const maxBottles = maxCases * bpc;
+        const totalBottles = ((item.casesReturned || 0) * bpc) + (item.looseBottlesReturned || 0);
+        
+        // Ensure quantityReturned matches calculated total
+        item.quantityReturned = totalBottles;
+        
+        if (totalBottles > maxBottles) {
           return res.status(400).json({ 
-            message: `Cannot return more than invoiced quantity for product ${item.productName || item.productId}. Max: ${maxQty}, Requested: ${item.quantityReturned}` 
+            message: `Cannot return more than invoiced for ${item.productName || item.productId}. Max: ${maxBottles} bottles (${maxCases} cases), Returning: ${totalBottles} bottles` 
           });
         }
-        if (item.quantityReturned < 1) {
+        if (totalBottles < 1) {
           return res.status(400).json({ 
-            message: `Quantity must be at least 1 for product ${item.productName || item.productId}` 
+            message: `Must return at least 1 bottle for product ${item.productName || item.productId}` 
+          });
+        }
+        if ((item.looseBottlesReturned || 0) >= bpc) {
+          return res.status(400).json({ 
+            message: `Loose bottles (${item.looseBottlesReturned}) must be less than bottles per case (${bpc}) for ${item.productName || item.productId}. Use full cases instead.` 
           });
         }
       }
@@ -9348,12 +9377,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create return items using storage
       for (const item of items) {
-        // Calculate creditAmount if not provided: creditAmount = quantityReturned * unitPrice
-        const creditAmount = item.creditAmount ?? (item.quantityReturned * (item.unitPrice || 0));
+        const bpc = item.bottlesPerCase || 1;
+        const totalBottles = item.quantityReturned;
+        // Credit = totalBottles * (unitPrice per case / bottles per case) = proportional credit
+        // Use Math.floor to avoid over-crediting (conservative rounding in paise)
+        const creditAmount = item.creditAmount ?? Math.floor(totalBottles * ((item.unitPrice || 0) / bpc));
         
         const validatedItem = insertSalesReturnItemSchema.parse({
           ...item,
           returnId: salesReturn.id,
+          casesReturned: item.casesReturned || 0,
+          looseBottlesReturned: item.looseBottlesReturned || 0,
+          bottlesPerCase: bpc,
           creditAmount,
         });
         await storage.createSalesReturnItem(validatedItem);

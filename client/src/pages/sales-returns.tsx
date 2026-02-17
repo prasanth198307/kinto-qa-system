@@ -34,10 +34,14 @@ const createReturnSchema = z.object({
     productId: z.string().min(1, "Product is required"),
     productName: z.string().min(1),
     batchNumber: z.string().optional(),
-    availableBatches: z.array(z.string()).optional(), // Multiple batches from gatepass
-    quantityReturned: z.coerce.number().min(1, "Quantity must be at least 1"),
-    maxQuantity: z.coerce.number().optional(), // Max quantity from invoice
-    unitPrice: z.coerce.number().optional(), // Unit price from invoice
+    availableBatches: z.array(z.string()).optional(),
+    casesReturned: z.coerce.number().min(0, "Cases cannot be negative"),
+    looseBottlesReturned: z.coerce.number().min(0, "Bottles cannot be negative").default(0),
+    quantityReturned: z.coerce.number().min(0), // Auto-calculated total bottles
+    bottlesPerCase: z.coerce.number().optional(), // From product master
+    maxQuantityCases: z.coerce.number().optional(), // Invoice qty in cases
+    maxQuantityBottles: z.coerce.number().optional(), // Max total bottles (cases × bottlesPerCase)
+    unitPrice: z.coerce.number().optional(), // Unit price per case from invoice
     returnReason: z.string().min(1, "Reason is required"),
   })).min(1, "At least one item is required"),
 });
@@ -50,7 +54,7 @@ interface InvoiceItem {
   description?: string;
   quantity: number;
   unitPrice: number;
-  product?: { name: string };
+  product?: { name: string; derivedValuePerBase?: number; baseUnit?: string; derivedUnit?: string };
 }
 
 const inspectSchema = z.object({
@@ -141,16 +145,24 @@ export default function SalesReturnsPage() {
       // Convert invoice items to return items with max quantity validation
       // Auto-fill batch number if exactly one available from gatepass
       // Store availableBatches for items with multiple batches (for dropdown)
-      const returnItems = items.map((item) => ({
-        productId: item.productId,
-        productName: item.product?.name || item.description || 'Unknown Product',
-        batchNumber: item.batchNumber || '', // Auto-fill from gatepass if exactly one batch available
-        availableBatches: item.availableBatches || [], // Store multiple batches for selection
-        quantityReturned: 1,
-        maxQuantity: item.quantity,
-        unitPrice: item.unitPrice,
-        returnReason: '',
-      }));
+      const returnItems = items.map((item) => {
+        const bottlesPerCase = item.product?.derivedValuePerBase || 1;
+        const maxTotalBottles = item.quantity * bottlesPerCase;
+        return {
+          productId: item.productId,
+          productName: item.product?.name || item.description || 'Unknown Product',
+          batchNumber: item.batchNumber || '',
+          availableBatches: item.availableBatches || [],
+          casesReturned: 0,
+          looseBottlesReturned: 0,
+          quantityReturned: 0, // Will be auto-calculated: cases × bottlesPerCase + loose
+          bottlesPerCase,
+          maxQuantityCases: item.quantity,
+          maxQuantityBottles: maxTotalBottles,
+          unitPrice: item.unitPrice,
+          returnReason: '',
+        };
+      });
       
       replace(returnItems);
       const batchCount = items.filter(i => i.batchNumber).length;
@@ -260,6 +272,27 @@ export default function SalesReturnsPage() {
   };
 
   const onSubmit = (data: CreateReturnForm) => {
+    // Validate: total bottles must not exceed max, and at least 1 bottle returned per item
+    for (const item of data.items) {
+      const bpc = item.bottlesPerCase || 1;
+      const totalBottles = ((item.casesReturned || 0) * bpc) + (item.looseBottlesReturned || 0);
+      const maxBottles = item.maxQuantityBottles || ((item.maxQuantityCases || 0) * bpc);
+      
+      if (totalBottles <= 0) {
+        toast({ title: "Invalid quantity", description: `${item.productName}: Must return at least 1 bottle`, variant: "destructive" });
+        return;
+      }
+      if (totalBottles > maxBottles) {
+        toast({ title: "Quantity exceeds invoice", description: `${item.productName}: Returning ${totalBottles} bottles but invoice has only ${maxBottles}`, variant: "destructive" });
+        return;
+      }
+      if ((item.looseBottlesReturned || 0) >= bpc) {
+        toast({ title: "Invalid loose bottles", description: `${item.productName}: Loose bottles (${item.looseBottlesReturned}) should be less than ${bpc} (bottles per case)`, variant: "destructive" });
+        return;
+      }
+      // Update quantityReturned to total bottles for backend
+      item.quantityReturned = totalBottles;
+    }
     createMutation.mutate(data);
   };
 
@@ -484,21 +517,30 @@ export default function SalesReturnsPage() {
                   )}
 
                   {fields.map((field, index) => {
-                    const maxQty = form.watch(`items.${index}.maxQuantity`) || 0;
-                    const currentQty = form.watch(`items.${index}.quantityReturned`) || 0;
+                    const maxCases = form.watch(`items.${index}.maxQuantityCases`) || 0;
+                    const bpc = form.watch(`items.${index}.bottlesPerCase`) || 1;
+                    const hasCaseConversion = bpc > 1; // Product has case/bottle conversion
+                    const maxBottles = form.watch(`items.${index}.maxQuantityBottles`) || (maxCases * bpc);
+                    const cases = form.watch(`items.${index}.casesReturned`) || 0;
+                    const loose = form.watch(`items.${index}.looseBottlesReturned`) || 0;
+                    const totalBottles = (cases * bpc) + loose;
                     const unitPrice = form.watch(`items.${index}.unitPrice`) || 0;
-                    const isOverMax = currentQty > maxQty;
+                    const isOverMax = totalBottles > maxBottles;
+                    const isLooseOverCase = hasCaseConversion && loose >= bpc;
+                    const creditAmount = Math.floor(totalBottles * (unitPrice / bpc));
                     
                     return (
                     <Card key={field.id} className={isOverMax ? "border-destructive" : ""}>
                       <CardContent className="pt-6 space-y-4">
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1 space-y-4">
-                            <div className="flex items-center justify-between">
+                            <div className="flex items-center justify-between flex-wrap gap-1">
                               <div>
                                 <span className="font-medium">{form.watch(`items.${index}.productName`)}</span>
                                 <span className="text-sm text-muted-foreground ml-2">
-                                  (Max: {maxQty} @ {(unitPrice / 100).toFixed(2)}/unit)
+                                  {hasCaseConversion 
+                                    ? `(Invoiced: ${maxCases} cases × ${bpc} = ${maxBottles} bottles @ ${(unitPrice / 100).toFixed(2)}/case)`
+                                    : `(Invoiced: ${maxCases} units @ ${(unitPrice / 100).toFixed(2)}/unit)`}
                                 </span>
                               </div>
                               <Button
@@ -512,32 +554,122 @@ export default function SalesReturnsPage() {
                               </Button>
                             </div>
                             
-                            <div className="grid grid-cols-3 gap-4">
+                            {hasCaseConversion ? (
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                               <FormField
                                 control={form.control}
-                                name={`items.${index}.quantityReturned`}
-                                render={({ field }) => (
+                                name={`items.${index}.casesReturned`}
+                                render={({ field: caseField }) => (
                                   <FormItem>
-                                    <FormLabel>Qty to Return</FormLabel>
+                                    <FormLabel>Full Cases</FormLabel>
                                     <FormControl>
                                       <Input 
                                         type="number" 
-                                        min={1}
-                                        max={maxQty}
-                                        {...field} 
-                                        className={isOverMax ? "border-destructive" : ""}
-                                        data-testid={`input-quantity-${index}`} 
+                                        min={0}
+                                        max={maxCases}
+                                        {...caseField} 
+                                        onChange={(e) => {
+                                          caseField.onChange(e);
+                                          const newCases = Number(e.target.value) || 0;
+                                          form.setValue(`items.${index}.quantityReturned`, (newCases * bpc) + loose);
+                                        }}
+                                        data-testid={`input-cases-${index}`} 
                                       />
                                     </FormControl>
-                                    {isOverMax && (
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={form.control}
+                                name={`items.${index}.looseBottlesReturned`}
+                                render={({ field: looseField }) => (
+                                  <FormItem>
+                                    <FormLabel>Loose Bottles</FormLabel>
+                                    <FormControl>
+                                      <Input 
+                                        type="number" 
+                                        min={0}
+                                        max={bpc - 1}
+                                        {...looseField} 
+                                        onChange={(e) => {
+                                          looseField.onChange(e);
+                                          const newLoose = Number(e.target.value) || 0;
+                                          form.setValue(`items.${index}.quantityReturned`, (cases * bpc) + newLoose);
+                                        }}
+                                        className={isLooseOverCase ? "border-destructive" : ""}
+                                        data-testid={`input-loose-bottles-${index}`} 
+                                      />
+                                    </FormControl>
+                                    {isLooseOverCase && (
                                       <p className="text-xs text-destructive">
-                                        Cannot exceed {maxQty}
+                                        Max {bpc - 1} loose (use full cases instead)
                                       </p>
                                     )}
                                     <FormMessage />
                                   </FormItem>
                                 )}
                               />
+                              <div>
+                                <Label className="text-sm font-medium">Total Bottles</Label>
+                                <div className={`mt-2 text-lg font-semibold ${isOverMax ? 'text-destructive' : ''}`} data-testid={`text-total-bottles-${index}`}>
+                                  {totalBottles}
+                                </div>
+                                {isOverMax && (
+                                  <p className="text-xs text-destructive">
+                                    Exceeds max {maxBottles}
+                                  </p>
+                                )}
+                              </div>
+                              <div>
+                                <Label className="text-sm font-medium">Credit Amount</Label>
+                                <div className="mt-2 text-sm text-muted-foreground" data-testid={`text-credit-amount-${index}`}>
+                                  {(creditAmount / 100).toFixed(2)}
+                                </div>
+                              </div>
+                            </div>
+                            ) : (
+                            <div className="grid grid-cols-3 gap-4">
+                              <FormField
+                                control={form.control}
+                                name={`items.${index}.casesReturned`}
+                                render={({ field: caseField }) => (
+                                  <FormItem>
+                                    <FormLabel>Qty to Return</FormLabel>
+                                    <FormControl>
+                                      <Input 
+                                        type="number" 
+                                        min={0}
+                                        max={maxCases}
+                                        {...caseField} 
+                                        onChange={(e) => {
+                                          caseField.onChange(e);
+                                          const newCases = Number(e.target.value) || 0;
+                                          form.setValue(`items.${index}.quantityReturned`, newCases);
+                                        }}
+                                        className={isOverMax ? "border-destructive" : ""}
+                                        data-testid={`input-cases-${index}`} 
+                                      />
+                                    </FormControl>
+                                    {isOverMax && (
+                                      <p className="text-xs text-destructive">
+                                        Cannot exceed {maxCases}
+                                      </p>
+                                    )}
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              <div>
+                                <Label className="text-sm font-medium">Credit Amount</Label>
+                                <div className="mt-2 text-sm text-muted-foreground" data-testid={`text-credit-amount-${index}`}>
+                                  {(creditAmount / 100).toFixed(2)}
+                                </div>
+                              </div>
+                            </div>
+                            )}
+                            
+                            <div className="grid grid-cols-2 gap-4">
                               <FormField
                                 control={form.control}
                                 name={`items.${index}.batchNumber`}
@@ -953,7 +1085,13 @@ function InspectionForm({ returnRecord, onSubmit, isPending }: { returnRecord: a
                   <TableRow key={item.id} className={!validation.valid ? "bg-red-50 dark:bg-red-950/20" : ""}>
                     <TableCell className="font-medium">{item.productName}</TableCell>
                     <TableCell className="text-muted-foreground">{item.batchNumber || '-'}</TableCell>
-                    <TableCell className="text-center text-muted-foreground">{item.quantityReturned}</TableCell>
+                    <TableCell className="text-center text-muted-foreground">
+                      {item.casesReturned > 0 && item.looseBottlesReturned > 0 
+                        ? `${item.casesReturned}C + ${item.looseBottlesReturned}B (${item.quantityReturned})`
+                        : item.casesReturned > 0 
+                          ? `${item.casesReturned}C (${item.quantityReturned})`
+                          : `${item.quantityReturned}`}
+                    </TableCell>
                     <TableCell className="bg-blue-50/50 dark:bg-blue-950/20">
                       <Input
                         type="number"
