@@ -9395,6 +9395,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get sales returns for a specific invoice
+  app.get('/api/sales-returns/by-invoice/:invoiceId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { invoiceId } = req.params;
+      const returns = await storage.getSalesReturnsByInvoice(invoiceId);
+      res.json(returns);
+    } catch (error) {
+      console.error("Error fetching sales returns by invoice:", error);
+      res.status(500).json({ message: "Failed to fetch sales returns" });
+    }
+  });
+
   // Create new sales return
   app.post('/api/sales-returns', requireRole('admin', 'manager'), async (req: any, res) => {
     try {

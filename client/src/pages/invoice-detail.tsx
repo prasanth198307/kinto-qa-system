@@ -15,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Edit, Mail, FileText, Printer, Star, Receipt, RefreshCw, Calculator, CreditCard, Lock, PackageCheck, PenTool, XCircle } from "lucide-react";
+import { ArrowLeft, Edit, Mail, FileText, Printer, Star, Receipt, RefreshCw, Calculator, CreditCard, Lock, PackageCheck, PenTool, XCircle, AlertTriangle } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -222,6 +222,20 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
     },
     enabled: !!id,
   });
+
+  // Fetch sales returns for this invoice
+  const { data: invoiceSalesReturns = [] } = useQuery<any[]>({
+    queryKey: ['/api/sales-returns/by-invoice', id],
+    queryFn: async () => {
+      const res = await fetch(`/api/sales-returns/by-invoice/${id}`, { credentials: 'include' });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!id,
+  });
+
+  // A "full return" blocks cancel/reissue and credit note actions to prevent double-crediting
+  const hasFullReturn = invoiceSalesReturns.some((r: any) => r.returnType === 'full');
 
   // Restore invoice mutation
   const restoreInvoiceMutation = useMutation({
@@ -518,13 +532,15 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
   const isActiveInvoice = invoice && Number(invoice.recordStatus) === 1;
   
   // Cancel & Reissue - only for current month invoices (and invoice must be loaded and active)
-  const canCancelAndReissue = canManageInvoices && isActiveInvoice && currentMonthCheck;
+  // Blocked when a full sales return exists — goods are already back, no need to cancel/reissue
+  const canCancelAndReissue = canManageInvoices && isActiveInvoice && currentMonthCheck && !hasFullReturn;
   
   // Credit Notes - only for previous month invoices (GST compliance) and active invoices
+  // Blocked when a full sales return exists — credit would already have been issued via the return workflow
   // IMPORTANT: Only show these buttons when invoice is fully loaded AND is from a previous month AND is active
-  const canCreateCreditNote = canManageCreditNotes && isActiveInvoice && isOldInvoice;
-  const canCorrectAndCredit = canManageCreditNotes && isActiveInvoice && isOldInvoice;
-  const canCorrectAndDebit = canManageDebitNotes && isActiveInvoice && isOldInvoice;
+  const canCreateCreditNote = canManageCreditNotes && isActiveInvoice && isOldInvoice && !hasFullReturn;
+  const canCorrectAndCredit = canManageCreditNotes && isActiveInvoice && isOldInvoice && !hasFullReturn;
+  const canCorrectAndDebit = canManageDebitNotes && isActiveInvoice && isOldInvoice && !hasFullReturn;
 
   return (
     <>
@@ -738,6 +754,19 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
           )}
         </div>
       </div>
+
+      {/* Full Return Banner */}
+      {hasFullReturn && isActiveInvoice && (
+        <div className="flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 p-4">
+          <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+          <div>
+            <p className="font-medium text-amber-800 dark:text-amber-300">Full Sales Return on Record</p>
+            <p className="text-sm text-amber-700 dark:text-amber-400 mt-0.5">
+              A full return has been registered against this invoice. Cancel &amp; Reissue, Credit Note, and Debit Note actions are disabled to prevent double-crediting. Manage this through the Sales Returns module.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Invoice Summary */}
       <div className="grid gap-6 md:grid-cols-2">
