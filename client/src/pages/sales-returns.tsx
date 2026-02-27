@@ -1053,12 +1053,14 @@ function InspectionForm({ returnRecord, onSubmit, isPending }: { returnRecord: a
 
   return (
     <div className="space-y-4">
-      <div className="bg-muted/50 p-3 rounded-lg text-sm">
-        <p className="font-medium mb-1">Verify & Split Disposition</p>
-        <p className="text-muted-foreground">
-          First verify the actual quantity received (may differ from what customer reported).
-          Then split verified units across restock, scrap, or repack categories.
-        </p>
+      <div className="bg-muted/50 p-3 rounded-lg text-sm space-y-1">
+        <p className="font-medium">Verify & Split Disposition</p>
+        <p className="text-muted-foreground">First verify the actual quantity received, then split across categories.</p>
+        <ul className="text-muted-foreground space-y-0.5 mt-1">
+          <li><span className="text-green-700 font-medium">Restock</span> — Full cases only. Added back to inventory immediately.</li>
+          <li><span className="text-amber-700 font-medium">Repack</span> — Loose bottles or items needing relabeling. Held physically; <strong>not</strong> added to inventory until physically repacked into full cases.</li>
+          <li><span className="text-red-700 font-medium">Scrap</span> — Damaged or unsalvageable. Written off as loss.</li>
+        </ul>
       </div>
       
       <div className="overflow-x-auto">
@@ -1091,6 +1093,7 @@ function InspectionForm({ returnRecord, onSubmit, isPending }: { returnRecord: a
                 <div className="flex flex-col items-center">
                   <Package className="h-4 w-4 text-amber-600 mb-1" />
                   <span>Repack</span>
+                  <span className="text-xs text-muted-foreground font-normal">(hold, not inventory)</span>
                 </div>
               </TableHead>
               <TableHead>Status</TableHead>
@@ -1205,9 +1208,9 @@ function InspectionForm({ returnRecord, onSubmit, isPending }: { returnRecord: a
         <div className="text-sm text-muted-foreground">
           <span className="font-medium">Legend:</span>{' '}
           <span className="text-blue-600">Verified</span> = Actual count |{' '}
-          <span className="text-green-600">Restock</span> = Full cases only — returned to inventory |{' '}
-          <span className="text-red-600">Scrap</span> = Damaged |{' '}
-          <span className="text-amber-600">Repack</span> = Loose bottles or items needing repacking
+          <span className="text-green-600">Restock</span> = Full cases back to inventory |{' '}
+          <span className="text-red-600">Scrap</span> = Damaged, written off |{' '}
+          <span className="text-amber-600">Repack</span> = Loose bottles held physically — not added to inventory until repacked into full cases
         </div>
         <div className="flex gap-2">
           <Button onClick={handleSubmit} disabled={isPending} data-testid="button-submit-inspection">

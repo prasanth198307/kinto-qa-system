@@ -9614,24 +9614,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
               console.warn(`[INVENTORY] Skipping restock for product ${item.productId} - product not found in master data`);
             }
           } else if (inspection.disposition === 'repack') {
-            // Items needing repacking - add to finished goods with 'pending' quality status
-            // Keep original batch number - physical label unchanged
-            if (product) {
-              await tx.insert(finishedGoods).values([{
-                productId: item.productId,
-                batchNumber: originalBatch, // Keep original batch - bottle label unchanged
-                productionDate: new Date().toISOString(),
-                quantity: processQtyCases, // Store in CASES (same unit as production/invoice)
-                qualityStatus: 'pending', // Pending until repacked
-                remarks: `Returned goods - Needs repacking before sale`,
-                source: 'sales_return_repack', // Track source for reporting
-                salesReturnItemId: item.id, // Link to sales return item for traceability
-                createdBy: req.user?.id,
-              }]);
-              console.log(`[INVENTORY] Added ${processQtyCases} cases (${processQtyBottles} bottles) of product ${item.productId} batch ${originalBatch} for repacking (Sales Return)`);
-            } else {
-              console.warn(`[INVENTORY] Skipping repack for product ${item.productId} - product not found in master data`);
-            }
+            // Repack items (loose bottles or items needing relabeling/repacking) are NOT stored in
+            // finished goods. They are physically held and must be repacked into full cases first.
+            // The disposition is recorded on the salesReturnItem for manual follow-up.
+            // A finished goods entry is created only after the physical repacking is complete.
+            console.log(`[INVENTORY] Repack noted: ${processQtyBottles} bottles of product ${item.productId} batch ${originalBatch} — awaiting physical repacking, NOT added to finished goods`);
           } else if (inspection.disposition === 'scrap' || inspection.condition === 'damaged') {
             // Create scrap inventory record ONLY - damaged items should NOT go to finished goods
             if (product) {
