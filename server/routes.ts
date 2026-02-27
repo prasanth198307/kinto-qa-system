@@ -9581,7 +9581,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const processQtyBottles = inspection.quantity || item.quantityReturned;
           // Convert bottles to CASES for finished_goods/scrap (inventory is tracked in cases)
           const bpc = item.bottlesPerCase || 1;
-          const processQtyCases = Math.round(processQtyBottles / bpc);
+          // Restock: Math.floor — loose bottles cannot form a case and must not enter finished goods
+          // Repack/Scrap: Math.round — best approximation for partial quantities
+          const processQtyCases = inspection.disposition === 'restock'
+            ? Math.floor(processQtyBottles / bpc)
+            : Math.round(processQtyBottles / bpc);
           
           // Get product details
           const [product] = await tx.select().from(products)

@@ -890,28 +890,39 @@ function InspectionForm({ returnRecord, onSubmit, isPending }: { returnRecord: a
   const { toast } = useToast();
   
   const [inspections, setInspections] = useState(
-    returnRecord.items.map((item: any) => ({
-      itemId: item.id,
-      productId: item.productId,
-      reportedQuantity: item.quantityReturned,
-      verifiedQuantity: item.quantityReturned, // Default: same as reported
-      varianceReason: '',
-      restockQty: item.quantityReturned,
-      scrapQty: 0,
-      repackQty: 0,
-      condition: 'good' as 'good' | 'damaged' | 'mixed',
-      damageReason: '',
-    }))
+    returnRecord.items.map((item: any) => {
+      const bpc = item.bottlesPerCase || 1;
+      const qty = item.quantityReturned;
+      const fullCaseBottles = Math.floor(qty / bpc) * bpc;
+      const looseBottles = qty % bpc;
+      return {
+        itemId: item.id,
+        productId: item.productId,
+        bottlesPerCase: bpc,
+        reportedQuantity: qty,
+        verifiedQuantity: qty,
+        varianceReason: '',
+        restockQty: fullCaseBottles,   // Only full cases can be restocked
+        scrapQty: 0,
+        repackQty: looseBottles,       // Loose bottles default to repack
+        condition: looseBottles > 0 ? 'damaged' as const : 'good' as const,
+        damageReason: '',
+      };
+    })
   );
 
   const updateVerifiedQuantity = (index: number, value: number) => {
     const updated = [...inspections];
     const item = updated[index];
+    const bpc = item.bottlesPerCase || 1;
     item.verifiedQuantity = Math.max(0, value);
-    item.restockQty = item.verifiedQuantity;
+    // Auto-split: full cases → restock, loose bottles → repack
+    const fullCaseBottles = Math.floor(item.verifiedQuantity / bpc) * bpc;
+    const looseBottles = item.verifiedQuantity % bpc;
+    item.restockQty = fullCaseBottles;
     item.scrapQty = 0;
-    item.repackQty = 0;
-    item.condition = 'good';
+    item.repackQty = looseBottles;
+    item.condition = looseBottles > 0 ? 'damaged' : 'good';
     setInspections(updated);
   };
 
@@ -925,8 +936,14 @@ function InspectionForm({ returnRecord, onSubmit, isPending }: { returnRecord: a
     const updated = [...inspections];
     const item = updated[index];
     const total = item.verifiedQuantity;
+    const bpc = item.bottlesPerCase || 1;
     
-    item[field] = Math.max(0, Math.min(value, total));
+    let actualValue = Math.max(0, Math.min(value, total));
+    // Restock only accepts full cases — snap down to nearest case multiple
+    if (field === 'restockQty') {
+      actualValue = Math.floor(actualValue / bpc) * bpc;
+    }
+    item[field] = actualValue;
     
     const otherFields = (['restockQty', 'scrapQty', 'repackQty'] as const).filter(f => f !== field);
     const remaining = total - item[field];
@@ -957,6 +974,10 @@ function InspectionForm({ returnRecord, onSubmit, isPending }: { returnRecord: a
   const getRowValidation = (item: any) => {
     if (item.verifiedQuantity <= 0) {
       return { valid: false, message: 'Verified qty must be > 0' };
+    }
+    const bpc = item.bottlesPerCase || 1;
+    if (item.restockQty > 0 && item.restockQty % bpc !== 0) {
+      return { valid: false, message: `Restock must be full cases only (multiples of ${bpc} bottles)` };
     }
     const total = item.restockQty + item.scrapQty + item.repackQty;
     const expected = item.verifiedQuantity;
@@ -1057,6 +1078,7 @@ function InspectionForm({ returnRecord, onSubmit, isPending }: { returnRecord: a
                 <div className="flex flex-col items-center">
                   <Package className="h-4 w-4 text-green-600 mb-1" />
                   <span>Restock</span>
+                  <span className="text-xs text-muted-foreground font-normal">(full cases only)</span>
                 </div>
               </TableHead>
               <TableHead className="text-center bg-red-50 dark:bg-red-950/30">
@@ -1103,15 +1125,19 @@ function InspectionForm({ returnRecord, onSubmit, isPending }: { returnRecord: a
                       />
                     </TableCell>
                     <TableCell className="bg-green-50/50 dark:bg-green-950/20">
-                      <Input
-                        type="number"
-                        min={0}
-                        max={inspection.verifiedQuantity}
-                        value={inspection.restockQty}
-                        onChange={(e) => updateQuantity(index, 'restockQty', parseInt(e.target.value) || 0)}
-                        className="w-20 text-center mx-auto"
-                        data-testid={`input-restock-qty-${index}`}
-                      />
+                      <div className="flex flex-col items-center gap-1">
+                        <Input
+                          type="number"
+                          min={0}
+                          max={Math.floor(inspection.verifiedQuantity / (inspection.bottlesPerCase || 1)) * (inspection.bottlesPerCase || 1)}
+                          step={inspection.bottlesPerCase || 1}
+                          value={inspection.restockQty}
+                          onChange={(e) => updateQuantity(index, 'restockQty', parseInt(e.target.value) || 0)}
+                          className="w-20 text-center mx-auto"
+                          data-testid={`input-restock-qty-${index}`}
+                        />
+                        <span className="text-xs text-muted-foreground">{Math.round(inspection.restockQty / (inspection.bottlesPerCase || 1))} cases</span>
+                      </div>
                     </TableCell>
                     <TableCell className="bg-red-50/50 dark:bg-red-950/20">
                       <Input
@@ -1179,9 +1205,9 @@ function InspectionForm({ returnRecord, onSubmit, isPending }: { returnRecord: a
         <div className="text-sm text-muted-foreground">
           <span className="font-medium">Legend:</span>{' '}
           <span className="text-blue-600">Verified</span> = Actual count |{' '}
-          <span className="text-green-600">Restock</span> = Good, return to inventory |{' '}
+          <span className="text-green-600">Restock</span> = Full cases only — returned to inventory |{' '}
           <span className="text-red-600">Scrap</span> = Damaged |{' '}
-          <span className="text-amber-600">Repack</span> = Needs repacking
+          <span className="text-amber-600">Repack</span> = Loose bottles or items needing repacking
         </div>
         <div className="flex gap-2">
           <Button onClick={handleSubmit} disabled={isPending} data-testid="button-submit-inspection">
