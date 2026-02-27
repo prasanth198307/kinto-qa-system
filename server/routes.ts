@@ -4889,6 +4889,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Soft delete the issuance (items are cascade soft-deleted or remain linked)
       await storage.deleteRawMaterialIssuance(id);
+
+      // Reverse the journal entry for this issuance (non-blocking)
+      try {
+        const existingJournal = await storage.getJournalEntryBySource('material_issuance', id);
+        if (existingJournal) {
+          await storage.deleteJournalEntry(existingJournal.id);
+          console.log(`[JOURNAL] Reversed raw material issuance journal ${existingJournal.id} for deleted issuance ${id}`);
+        }
+      } catch (journalError) {
+        console.error('[JOURNAL] Non-blocking error reversing issuance journal on delete:', journalError);
+      }
       
       res.json({ 
         message: "Raw material issuance deleted successfully", 
@@ -9196,6 +9207,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/invoice-payments/:id', requireRole('admin'), async (req: any, res) => {
     try {
       const { id } = req.params;
+      // Reverse journal before deleting (non-blocking)
+      try {
+        const existingJournal = await storage.getJournalEntryBySource('payment', id);
+        if (existingJournal) {
+          await storage.deleteJournalEntry(existingJournal.id);
+          console.log(`[JOURNAL] Reversed payment journal ${existingJournal.id} due to hard-delete of payment ${id}`);
+        }
+      } catch (journalError) {
+        console.error('[JOURNAL] Non-blocking error reversing payment journal on delete:', journalError);
+      }
       await storage.deletePayment(id);
       await logAudit(req.user?.id, 'DELETE', 'invoice_payments', id, 'Deleted payment record');
       res.json({ message: "Payment deleted successfully" });
@@ -14355,6 +14376,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
         .where(eq(invoices.id, payment.invoiceId));
 
+      // Reverse the journal entry for this payment (non-blocking)
+      try {
+        const existingJournal = await storage.getJournalEntryBySource('payment', id);
+        if (existingJournal) {
+          await storage.deleteJournalEntry(existingJournal.id);
+          console.log(`[JOURNAL] Reversed payment journal ${existingJournal.id} due to cancellation of payment ${id}`);
+        }
+      } catch (journalError) {
+        console.error('[JOURNAL] Non-blocking error reversing payment journal on cancellation:', journalError);
+      }
+
       await logAudit(
         req.user?.id,
         'UPDATE',
@@ -17659,6 +17691,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       await storage.updateCashRegisterDay(day.id, updates);
       
+      // Reverse any journal entry for this transaction (non-blocking)
+      try {
+        const sourceTypeMap: Record<string, string> = {
+          deposit: 'cash_register_deposit',
+          cash_received: 'cash_register_cash_received',
+          transfer: 'cash_register_transfer',
+          expense: 'expense_voucher', // expense journals are linked to the voucher, not the transaction
+        };
+        const sourceType = sourceTypeMap[transaction.transactionType];
+        if (sourceType && sourceType !== 'expense_voucher') {
+          const existingJournal = await storage.getJournalEntryBySource(sourceType, id);
+          if (existingJournal) {
+            await storage.deleteJournalEntry(existingJournal.id);
+            console.log(`[JOURNAL] Reversed ${sourceType} journal ${existingJournal.id} due to transaction delete`);
+          }
+        }
+        // For expense type: the journal is linked to the expense voucher (convertedToVoucherId)
+        // That voucher's journal will be reversed separately if the voucher is deleted
+      } catch (journalError) {
+        console.error('[JOURNAL] Non-blocking error reversing cash register transaction journal:', journalError);
+      }
+
       // Delete the transaction
       await storage.deleteCashRegisterTransaction(id);
       
