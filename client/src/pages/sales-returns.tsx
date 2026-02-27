@@ -1143,26 +1143,40 @@ function InspectionForm({ returnRecord, onSubmit, isPending }: { returnRecord: a
                       </div>
                     </TableCell>
                     <TableCell className="bg-red-50/50 dark:bg-red-950/20">
-                      <Input
-                        type="number"
-                        min={0}
-                        max={inspection.verifiedQuantity}
-                        value={inspection.scrapQty}
-                        onChange={(e) => updateQuantity(index, 'scrapQty', parseInt(e.target.value) || 0)}
-                        className="w-20 text-center mx-auto"
-                        data-testid={`input-scrap-qty-${index}`}
-                      />
+                      <div className="flex flex-col items-center gap-1">
+                        <Input
+                          type="number"
+                          min={0}
+                          max={inspection.verifiedQuantity}
+                          value={inspection.scrapQty}
+                          onChange={(e) => updateQuantity(index, 'scrapQty', parseInt(e.target.value) || 0)}
+                          className="w-20 text-center mx-auto"
+                          data-testid={`input-scrap-qty-${index}`}
+                        />
+                        <span className="text-xs text-muted-foreground">
+                          {inspection.scrapQty % (inspection.bottlesPerCase || 1) === 0
+                            ? `${Math.floor(inspection.scrapQty / (inspection.bottlesPerCase || 1))} cases`
+                            : `${Math.floor(inspection.scrapQty / (inspection.bottlesPerCase || 1))}C + ${inspection.scrapQty % (inspection.bottlesPerCase || 1)}B`}
+                        </span>
+                      </div>
                     </TableCell>
                     <TableCell className="bg-amber-50/50 dark:bg-amber-950/20">
-                      <Input
-                        type="number"
-                        min={0}
-                        max={inspection.verifiedQuantity}
-                        value={inspection.repackQty}
-                        onChange={(e) => updateQuantity(index, 'repackQty', parseInt(e.target.value) || 0)}
-                        className="w-20 text-center mx-auto"
-                        data-testid={`input-repack-qty-${index}`}
-                      />
+                      <div className="flex flex-col items-center gap-1">
+                        <Input
+                          type="number"
+                          min={0}
+                          max={inspection.verifiedQuantity}
+                          value={inspection.repackQty}
+                          onChange={(e) => updateQuantity(index, 'repackQty', parseInt(e.target.value) || 0)}
+                          className="w-20 text-center mx-auto"
+                          data-testid={`input-repack-qty-${index}`}
+                        />
+                        <span className="text-xs text-muted-foreground">
+                          {inspection.repackQty % (inspection.bottlesPerCase || 1) === 0
+                            ? `${Math.floor(inspection.repackQty / (inspection.bottlesPerCase || 1))} cases`
+                            : `${Math.floor(inspection.repackQty / (inspection.bottlesPerCase || 1))}C + ${inspection.repackQty % (inspection.bottlesPerCase || 1)}B`}
+                        </span>
+                      </div>
                     </TableCell>
                     <TableCell>
                       {validation.valid ? (
