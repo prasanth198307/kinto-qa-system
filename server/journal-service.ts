@@ -285,11 +285,12 @@ export async function seedChartOfAccounts(): Promise<void> {
       } as any);
       console.log(`[COA SEED] Created account: ${account.code} - ${account.name}`);
     } else {
-      // Update existing accounts — fix parentId, nodeType, level for legacy data
+      // Update existing accounts — only fix parentId and level for legacy data.
+      // NEVER overwrite nodeType — user may have intentionally converted a ledger to group.
       const updates: any = {};
       if (!existing.parentId && parentId) updates.parentId = parentId;
-      if (existing.nodeType !== 'ledger') updates.nodeType = 'ledger';
-      if (parentId) {
+      if (parentId && existing.nodeType === 'ledger') {
+        // Only fix level if it's still a ledger (don't recalculate level for user-converted groups)
         const parent = await storage.getChartOfAccount(parentId);
         const expectedLevel = parent ? (parent.level || 1) + 1 : 1;
         if (existing.level !== expectedLevel) updates.level = expectedLevel;
@@ -322,7 +323,7 @@ export async function seedChartOfAccounts(): Promise<void> {
     } else if (parent) {
       const updates: any = {};
       if (!existing.parentId) updates.parentId = parent.id;
-      if (existing.nodeType !== 'ledger') updates.nodeType = 'ledger';
+      // NEVER overwrite nodeType — user may have intentionally converted this account
       if (Object.keys(updates).length > 0) {
         await storage.updateChartOfAccount(existing.id, updates);
         console.log(`[COA SEED] Updated director account: ${dirAcct.code} - ${dirAcct.name} (${Object.keys(updates).join(', ')})`);
