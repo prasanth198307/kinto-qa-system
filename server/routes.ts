@@ -9614,11 +9614,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
               console.warn(`[INVENTORY] Skipping restock for product ${item.productId} - product not found in master data`);
             }
           } else if (inspection.disposition === 'repack') {
-            // Repack items (loose bottles or items needing relabeling/repacking) are NOT stored in
-            // finished goods. They are physically held and must be repacked into full cases first.
-            // The disposition is recorded on the salesReturnItem for manual follow-up.
-            // A finished goods entry is created only after the physical repacking is complete.
-            console.log(`[INVENTORY] Repack noted: ${processQtyBottles} bottles of product ${item.productId} batch ${originalBatch} — awaiting physical repacking, NOT added to finished goods`);
+            // Repack items: only FULL CASES are queued in finished_goods as 'pending'.
+            // Loose bottles (remainder after floor division) cannot form a case and are not stored.
+            // When "Mark Repack Done" is confirmed in the repacking queue, status flips to 'approved'.
+            const repackCases = Math.floor(processQtyBottles / bpc);
+            const looseBottlesNotStored = processQtyBottles % bpc;
+            if (product && repackCases > 0) {
+              await tx.insert(finishedGoods).values([{
+                productId: item.productId,
+                batchNumber: originalBatch,
+                productionDate: new Date().toISOString(),
+                quantity: repackCases, // Full cases only — loose bottles excluded
+                qualityStatus: 'pending',
+                remarks: `Awaiting repacking — ${repackCases} case(s) from sales return${looseBottlesNotStored > 0 ? `. ${looseBottlesNotStored} loose bottle(s) not stored (cannot form a full case).` : ''}`,
+                source: 'sales_return_repack',
+                salesReturnItemId: item.id,
+                createdBy: req.user?.id,
+              }]);
+              console.log(`[INVENTORY] Repack queued: ${repackCases} cases of product ${item.productId} (${looseBottlesNotStored} loose bottle(s) excluded — cannot form a case)`);
+            } else if (looseBottlesNotStored > 0 && repackCases === 0) {
+              // Only loose bottles — nothing stored, just log
+              console.log(`[INVENTORY] Repack: ${looseBottlesNotStored} loose bottle(s) of product ${item.productId} — cannot form a case, not stored in inventory`);
+            }
           } else if (inspection.disposition === 'scrap' || inspection.condition === 'damaged') {
             // Create scrap inventory record ONLY - damaged items should NOT go to finished goods
             if (product) {

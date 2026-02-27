@@ -1551,7 +1551,7 @@ function RepackingQueueSection() {
           )}
         </CardTitle>
         <p className="text-sm text-muted-foreground">
-          Items waiting to be repacked before they can be sold
+          Items waiting to be physically repacked. Only full cases are queued — loose bottles that cannot form a full case are not tracked here.
         </p>
       </CardHeader>
       <CardContent>
@@ -1567,9 +1567,9 @@ function RepackingQueueSection() {
               <TableRow>
                 <TableHead>Product</TableHead>
                 <TableHead>Batch Number</TableHead>
-                <TableHead className="text-right">Quantity</TableHead>
+                <TableHead className="text-right">Cases to Add</TableHead>
                 <TableHead>Added On</TableHead>
-                <TableHead>Remarks</TableHead>
+                <TableHead>Notes</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -1587,12 +1587,15 @@ function RepackingQueueSection() {
                   <TableCell>
                     <Badge variant="outline">{item.batchNumber}</Badge>
                   </TableCell>
-                  <TableCell className="text-right font-medium">{item.quantity}</TableCell>
+                  <TableCell className="text-right">
+                    <span className="font-medium">{item.quantity}</span>
+                    <span className="text-xs text-muted-foreground ml-1">cases</span>
+                  </TableCell>
                   <TableCell>
                     {item.createdAt ? format(new Date(item.createdAt), 'dd MMM yyyy') : '-'}
                   </TableCell>
-                  <TableCell className="max-w-xs truncate">
-                    {item.remarks || '-'}
+                  <TableCell className="max-w-xs">
+                    <span className="text-sm text-muted-foreground">{item.remarks || '-'}</span>
                   </TableCell>
                   <TableCell>
                     <Button
@@ -1621,7 +1624,9 @@ function RepackingQueueSection() {
             <DialogHeader>
               <DialogTitle>Complete Repacking</DialogTitle>
               <DialogDescription>
-                Record the repacking completion for {selectedItem?.productName} (Batch: {selectedItem?.batchNumber})
+                Confirm physical repacking is done for <strong>{selectedItem?.productName}</strong> (Batch: {selectedItem?.batchNumber}).
+                This will add <strong>{selectedItem?.quantity} case(s)</strong> to finished goods inventory as approved stock.
+                Any loose bottles that could not form a full case were already excluded when this item was queued.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
