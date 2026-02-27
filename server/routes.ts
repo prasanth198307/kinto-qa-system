@@ -4296,67 +4296,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Repacking Queue - Get items pending repacking
+  // Reads directly from salesReturnItems — items only enter finished_goods when marking done
   app.get('/api/repacking-queue', isAuthenticated, async (req: any, res) => {
     try {
-      // Get finished goods from sales return repack source with pending quality status
       const pendingRepack = await db.select({
-        id: finishedGoods.id,
-        productId: finishedGoods.productId,
-        batchNumber: finishedGoods.batchNumber,
-        quantity: finishedGoods.quantity,
-        qualityStatus: finishedGoods.qualityStatus,
-        remarks: finishedGoods.remarks,
-        source: finishedGoods.source,
-        salesReturnItemId: finishedGoods.salesReturnItemId,
-        createdAt: finishedGoods.createdAt,
+        id: salesReturnItems.id,
+        productId: salesReturnItems.productId,
+        batchNumber: salesReturnItems.batchNumber,
+        repackBottles: salesReturnItems.repackBottles,
+        bottlesPerCase: salesReturnItems.bottlesPerCase,
+        repackStatus: salesReturnItems.repackStatus,
+        remarks: salesReturnItems.remarks,
+        returnId: salesReturnItems.returnId,
+        createdAt: salesReturnItems.createdAt,
         productName: products.productName,
         productCode: products.productCode,
       })
-        .from(finishedGoods)
-        .leftJoin(products, eq(finishedGoods.productId, products.id))
+        .from(salesReturnItems)
+        .leftJoin(products, eq(salesReturnItems.productId, products.id))
         .where(and(
-          eq(finishedGoods.qualityStatus, 'pending'),
-          eq(finishedGoods.recordStatus, 1),
-          eq(finishedGoods.source, 'sales_return_repack') // Use source field for precise filtering
+          eq(salesReturnItems.repackStatus, 'pending'),
+          eq(salesReturnItems.recordStatus, 1)
         ))
-        .orderBy(desc(finishedGoods.createdAt));
+        .orderBy(desc(salesReturnItems.createdAt));
       
-      res.json(pendingRepack);
+      // Add derived field: full cases that will go to finished_goods when marked done
+      const result = pendingRepack.map(row => ({
+        ...row,
+        casesToAdd: Math.floor((row.repackBottles || 0) / (row.bottlesPerCase || 1)),
+        looseBottlesExcluded: (row.repackBottles || 0) % (row.bottlesPerCase || 1),
+      }));
+
+      res.json(result);
     } catch (error) {
       console.error("Error fetching repacking queue:", error);
       res.status(500).json({ message: "Failed to fetch repacking queue" });
     }
   });
 
-  // Mark item as repacked (move to approved inventory)
+  // Mark item as repacked — NOW inserts into finished_goods for the first time
   app.patch('/api/repacking-queue/:id/complete', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
       const { remarks, repackingDate } = req.body;
       
-      // Get the current item
-      const [item] = await db.select().from(finishedGoods).where(eq(finishedGoods.id, id));
-      if (!item) {
+      // id is the salesReturnItem id
+      const [item] = await db.select().from(salesReturnItems)
+        .leftJoin(products, eq(salesReturnItems.productId, products.id))
+        .where(eq(salesReturnItems.id, id))
+        .then(rows => rows);
+
+      if (!item || !item.sales_return_items) {
         return res.status(404).json({ message: "Item not found" });
       }
+
+      const sri = item.sales_return_items;
       
-      // Use provided repacking date or default to now
+      if (sri.repackStatus !== 'pending') {
+        return res.status(400).json({ message: "Item is not pending repacking" });
+      }
+
+      const bpc = sri.bottlesPerCase || 1;
+      const repackBottles = sri.repackBottles || 0;
+      const casesToAdd = Math.floor(repackBottles / bpc);
+      const looseExcluded = repackBottles % bpc;
       const completionDate = repackingDate ? new Date(repackingDate) : new Date();
+      const originalBatch = sri.batchNumber || 'RETURN';
+
+      await db.transaction(async (tx) => {
+        // Only now insert into finished_goods — physical repacking is confirmed done
+        if (casesToAdd > 0) {
+          await tx.insert(finishedGoods).values([{
+            productId: sri.productId,
+            batchNumber: originalBatch,
+            productionDate: completionDate.toISOString(),
+            quantity: casesToAdd,
+            qualityStatus: 'approved',
+            remarks: remarks || `Repacking completed on ${format(completionDate, 'dd MMM yyyy')}${looseExcluded > 0 ? `. ${looseExcluded} loose bottle(s) excluded.` : ''}`,
+            source: 'sales_return_repack',
+            salesReturnItemId: sri.id,
+            repackingDate: completionDate,
+            createdBy: req.user?.id,
+          }]);
+        }
+
+        // Mark the salesReturnItem as completed
+        await tx.update(salesReturnItems)
+          .set({
+            repackStatus: 'completed',
+            repackCompletedAt: completionDate.toISOString(),
+            updatedAt: new Date().toISOString(),
+          })
+          .where(eq(salesReturnItems.id, id));
+      });
+
+      console.log(`[REPACKING] salesReturnItem ${id} batch ${originalBatch} — ${casesToAdd} cases added to finished goods (${looseExcluded} loose bottles excluded)`);
       
-      // Update to approved status - keep ORIGINAL batch number (physical label doesn't change)
-      await db.update(finishedGoods)
-        .set({
-          qualityStatus: 'approved',
-          // batchNumber stays the same - physical label on bottle unchanged
-          repackingDate: completionDate,
-          remarks: remarks || `Repacking completed on ${format(completionDate, 'dd MMM yyyy')}`,
-          updatedAt: new Date(),
-        })
-        .where(eq(finishedGoods.id, id));
-      
-      console.log(`[REPACKING] Item ${id} batch ${item.batchNumber} marked as repacked on ${format(completionDate, 'dd MMM yyyy')} and approved for sale`);
-      
-      res.json({ message: "Item marked as repacked successfully", batchNumber: item.batchNumber, repackingDate: completionDate });
+      res.json({ message: "Repacking completed and inventory updated", casesAdded: casesToAdd, looseBottlesExcluded: looseExcluded });
     } catch (error) {
       console.error("Error completing repacking:", error);
       res.status(500).json({ message: "Failed to complete repacking" });
@@ -9614,28 +9650,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
               console.warn(`[INVENTORY] Skipping restock for product ${item.productId} - product not found in master data`);
             }
           } else if (inspection.disposition === 'repack') {
-            // Repack items: only FULL CASES are queued in finished_goods as 'pending'.
-            // Loose bottles (remainder after floor division) cannot form a case and are not stored.
-            // When "Mark Repack Done" is confirmed in the repacking queue, status flips to 'approved'.
-            const repackCases = Math.floor(processQtyBottles / bpc);
-            const looseBottlesNotStored = processQtyBottles % bpc;
-            if (product && repackCases > 0) {
-              await tx.insert(finishedGoods).values([{
-                productId: item.productId,
-                batchNumber: originalBatch,
-                productionDate: new Date().toISOString(),
-                quantity: repackCases, // Full cases only — loose bottles excluded
-                qualityStatus: 'pending',
-                remarks: `Awaiting repacking — ${repackCases} case(s) from sales return${looseBottlesNotStored > 0 ? `. ${looseBottlesNotStored} loose bottle(s) not stored (cannot form a full case).` : ''}`,
-                source: 'sales_return_repack',
-                salesReturnItemId: item.id,
-                createdBy: req.user?.id,
-              }]);
-              console.log(`[INVENTORY] Repack queued: ${repackCases} cases of product ${item.productId} (${looseBottlesNotStored} loose bottle(s) excluded — cannot form a case)`);
-            } else if (looseBottlesNotStored > 0 && repackCases === 0) {
-              // Only loose bottles — nothing stored, just log
-              console.log(`[INVENTORY] Repack: ${looseBottlesNotStored} loose bottle(s) of product ${item.productId} — cannot form a case, not stored in inventory`);
-            }
+            // Repack items: DO NOT insert into finished_goods yet.
+            // Physical repacking has not happened. Mark the salesReturnItem with repackStatus='pending'
+            // and store the bottle count. Only when "Mark Repacked" is confirmed in the repacking queue
+            // will the cases be inserted into finished_goods as approved stock.
+            const looseBottles = processQtyBottles % bpc;
+            const fullCases = Math.floor(processQtyBottles / bpc);
+            await tx.update(salesReturnItems)
+              .set({
+                repackStatus: 'pending',
+                repackBottles: processQtyBottles, // Store bottle count for queue display
+                updatedAt: new Date().toISOString(),
+              })
+              .where(eq(salesReturnItems.id, item.id));
+            console.log(`[REPACK] Queued for repacking: ${processQtyBottles} bottles (${fullCases} full cases + ${looseBottles} loose) of product ${item.productId} — NOT yet in finished goods`);
           } else if (inspection.disposition === 'scrap' || inspection.condition === 'damaged') {
             // Create scrap inventory record ONLY - damaged items should NOT go to finished goods
             if (product) {

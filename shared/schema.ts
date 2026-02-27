@@ -2250,6 +2250,11 @@ export const salesReturnItems = pgTable("sales_return_items", {
   expiryDate: timestamp("expiry_date", { mode: 'string' }),
   isNearExpiry: integer("is_near_expiry").default(0), // 1 if product is near expiry (< 30 days)
   
+  // Repack tracking — set during inspection, cleared when repacking is confirmed done
+  repackStatus: varchar("repack_status", { length: 20 }), // 'pending' | 'completed' | null
+  repackBottles: integer("repack_bottles"), // Bottle count queued for repacking (set at inspection time)
+  repackCompletedAt: timestamp("repack_completed_at", { mode: 'string' }), // When repacking was marked done
+
   remarks: text("remarks"),
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),

@@ -1588,8 +1588,15 @@ function RepackingQueueSection() {
                     <Badge variant="outline">{item.batchNumber}</Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <span className="font-medium">{item.quantity}</span>
-                    <span className="text-xs text-muted-foreground ml-1">cases</span>
+                    <div>
+                      <span className="font-medium">{item.casesToAdd}</span>
+                      <span className="text-xs text-muted-foreground ml-1">cases</span>
+                    </div>
+                    {item.looseBottlesExcluded > 0 && (
+                      <div className="text-xs text-muted-foreground">
+                        +{item.looseBottlesExcluded} loose (excluded)
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell>
                     {item.createdAt ? format(new Date(item.createdAt), 'dd MMM yyyy') : '-'}
@@ -1625,8 +1632,10 @@ function RepackingQueueSection() {
               <DialogTitle>Complete Repacking</DialogTitle>
               <DialogDescription>
                 Confirm physical repacking is done for <strong>{selectedItem?.productName}</strong> (Batch: {selectedItem?.batchNumber}).
-                This will add <strong>{selectedItem?.quantity} case(s)</strong> to finished goods inventory as approved stock.
-                Any loose bottles that could not form a full case were already excluded when this item was queued.
+                This will add <strong>{selectedItem?.casesToAdd} case(s)</strong> to finished goods inventory as approved stock.
+                {selectedItem?.looseBottlesExcluded > 0 && (
+                  <span> {selectedItem.looseBottlesExcluded} loose bottle(s) cannot form a full case and will not be added.</span>
+                )}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
