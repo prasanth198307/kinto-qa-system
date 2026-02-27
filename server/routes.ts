@@ -17510,6 +17510,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Recalculate day discrepancy to update items_mismatch flag
         await recalculateDayDiscrepancy(day.id);
+
+        // Update linked expense voucher and regenerate journal
+        if (transaction.convertedToVoucherId) {
+          try {
+            const newAmountInPaise = newAmount * 100;
+            // Update the expense voucher totals
+            await storage.updateExpenseVoucher(transaction.convertedToVoucherId, {
+              subtotal: newAmountInPaise,
+              totalAmount: newAmountInPaise,
+            });
+
+            // Update the voucher's expense line items
+            const voucherExpenseItems = await storage.getExpenseItems(transaction.convertedToVoucherId);
+            if (voucherExpenseItems.length === 1) {
+              await storage.updateExpenseItem(voucherExpenseItems[0].id, { amount: newAmountInPaise });
+            } else if (voucherExpenseItems.length > 1) {
+              // Distribute proportionally
+              const totalItemAmount = voucherExpenseItems.reduce((sum, item) => sum + item.amount, 0);
+              if (totalItemAmount > 0) {
+                let allocatedTotal = 0;
+                for (let i = 0; i < voucherExpenseItems.length; i++) {
+                  const itemNewAmount = i === voucherExpenseItems.length - 1
+                    ? newAmountInPaise - allocatedTotal
+                    : Math.round(newAmountInPaise * (voucherExpenseItems[i].amount / totalItemAmount));
+                  if (i < voucherExpenseItems.length - 1) allocatedTotal += itemNewAmount;
+                  await storage.updateExpenseItem(voucherExpenseItems[i].id, { amount: itemNewAmount });
+                }
+              }
+            }
+
+            // Delete existing journal for this voucher and recreate with updated amounts
+            const existingJournal = await storage.getJournalEntryBySource('expense', transaction.convertedToVoucherId);
+            if (existingJournal) {
+              await storage.deleteJournalEntry(existingJournal.id);
+            }
+            const updatedVoucher = await storage.getExpenseVoucher(transaction.convertedToVoucherId);
+            if (updatedVoucher) {
+              const { journalForExpenseVoucher } = await import('./journal-service');
+              await journalForExpenseVoucher(updatedVoucher);
+            }
+          } catch (voucherErr) {
+            console.error('[CASH_REGISTER] Error updating expense voucher/journal on transaction edit:', voucherErr);
+          }
+        }
       }
       
       await logAudit(req.user?.id, 'UPDATE', 'cash_register_transactions', id, 

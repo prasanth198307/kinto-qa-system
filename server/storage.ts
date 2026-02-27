@@ -722,6 +722,7 @@ export interface IStorage {
   createJournalLine(line: InsertJournalLine): Promise<JournalLine>;
   getJournalLines(journalId: string): Promise<JournalLine[]>;
   deleteJournalLinesByJournalId(journalId: string): Promise<void>;
+  deleteJournalEntry(id: string): Promise<void>;
 
   // Bank Statement Imports
   createBankStatementImport(imp: InsertBankStatementImport): Promise<BankStatementImport>;
@@ -4472,6 +4473,11 @@ export class DatabaseStorage implements IStorage {
 
   async deleteJournalLinesByJournalId(journalId: string): Promise<void> {
     await db.update(journalLines).set({ recordStatus: 0 }).where(eq(journalLines.journalId, journalId));
+  }
+
+  async deleteJournalEntry(id: string): Promise<void> {
+    await db.update(journalLines).set({ recordStatus: 0 }).where(eq(journalLines.journalId, id));
+    await db.update(journalEntries).set({ recordStatus: 0 }).where(eq(journalEntries.id, id));
   }
 
   // ============================================================
