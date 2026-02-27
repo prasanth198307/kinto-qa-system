@@ -9577,7 +9577,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (!item) continue;
           
           // Use the quantity from the inspection (for split dispositions) or fall back to item quantity
-          const processQty = inspection.quantity || item.quantityReturned;
+          // processQty is always in BOTTLES (inspection form uses bottles)
+          const processQtyBottles = inspection.quantity || item.quantityReturned;
+          // Convert bottles to CASES for finished_goods/scrap (inventory is tracked in cases)
+          const bpc = item.bottlesPerCase || 1;
+          const processQtyCases = Math.round(processQtyBottles / bpc);
           
           // Get product details
           const [product] = await tx.select().from(products)
@@ -9594,14 +9598,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 productId: item.productId,
                 batchNumber: originalBatch, // Keep original batch - bottle label unchanged
                 productionDate: new Date().toISOString(),
-                quantity: processQty,
+                quantity: processQtyCases, // Store in CASES (same unit as production/invoice)
                 qualityStatus: 'approved',
                 remarks: `Returned goods from sales return - Good condition`,
                 source: 'sales_return_restock', // Track source for reporting
                 salesReturnItemId: item.id, // Link to sales return item for traceability
                 createdBy: req.user?.id,
               }]);
-              console.log(`[INVENTORY] Restocked ${processQty} units of product ${item.productId} batch ${originalBatch} (Sales Return - Good condition)`);
+              console.log(`[INVENTORY] Restocked ${processQtyCases} cases (${processQtyBottles} bottles) of product ${item.productId} batch ${originalBatch} (Sales Return - Good condition)`);
             } else {
               console.warn(`[INVENTORY] Skipping restock for product ${item.productId} - product not found in master data`);
             }
@@ -9613,21 +9617,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 productId: item.productId,
                 batchNumber: originalBatch, // Keep original batch - bottle label unchanged
                 productionDate: new Date().toISOString(),
-                quantity: processQty,
+                quantity: processQtyCases, // Store in CASES (same unit as production/invoice)
                 qualityStatus: 'pending', // Pending until repacked
                 remarks: `Returned goods - Needs repacking before sale`,
                 source: 'sales_return_repack', // Track source for reporting
                 salesReturnItemId: item.id, // Link to sales return item for traceability
                 createdBy: req.user?.id,
               }]);
-              console.log(`[INVENTORY] Added ${processQty} units of product ${item.productId} batch ${originalBatch} for repacking (Sales Return)`);
+              console.log(`[INVENTORY] Added ${processQtyCases} cases (${processQtyBottles} bottles) of product ${item.productId} batch ${originalBatch} for repacking (Sales Return)`);
             } else {
               console.warn(`[INVENTORY] Skipping repack for product ${item.productId} - product not found in master data`);
             }
           } else if (inspection.disposition === 'scrap' || inspection.condition === 'damaged') {
             // Create scrap inventory record ONLY - damaged items should NOT go to finished goods
             if (product) {
-              console.log(`[INVENTORY] Recorded ${processQty} damaged units of product ${item.productId} (Sales Return)`);
+              console.log(`[INVENTORY] Recorded ${processQtyCases} cases (${processQtyBottles} bottles) damaged for product ${item.productId} (Sales Return)`);
               
               // Generate scrap number with atomic sequence
               const today = format(new Date(), 'yyyyMMdd');
@@ -9639,7 +9643,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const seq = scrapCountResult.rows?.[0]?.next_seq || 1;
               const scrapNumber = `SCRAP-${today}-${String(seq).padStart(3, '0')}`;
               
-              // Calculate costs with robust fallback to prevent NaN
+              // Calculate costs per CASE (unitPrice and unitCost are per case)
               let unitCost = 0;
               const sellingPrice = item.unitPrice || 0;
               
@@ -9651,8 +9655,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 unitCost = product.costPrice;
               }
               
-              const totalCostValue = unitCost * processQty;
-              const totalSellingValue = sellingPrice * processQty;
+              // Cost calculations use CASES since unitCost/sellingPrice are per case
+              const totalCostValue = unitCost * processQtyCases;
+              const totalSellingValue = sellingPrice * processQtyCases;
               
               // Create scrap inventory record for loss tracking
               await tx.insert(scrapInventory).values({
@@ -9664,7 +9669,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 productId: item.productId,
                 productName: product.productName,
                 batchNumber: item.batchNumber,
-                quantity: processQty,
+                quantity: processQtyCases, // Store in CASES
                 unitCost,
                 sellingPrice,
                 totalCostValue,
@@ -9677,7 +9682,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 createdBy: req.user?.id,
               });
               
-              console.log(`[INVENTORY] Recorded ${processQty} damaged units of product ${item.productId} (Sales Return)`);
+              console.log(`[INVENTORY] Recorded ${processQtyCases} cases damaged for product ${item.productId} (Sales Return)`);
               console.log(`[SCRAP] Created scrap record ${scrapNumber} with loss amount ${totalCostValue / 100} INR`);
             } else {
               console.warn(`[INVENTORY] Skipping damaged goods record for product ${item.productId} - product not found in master data`);
@@ -9708,9 +9713,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const vq = verifiedQuantities[itemId];
             if (vq.verified !== undefined && vq.verified !== null) {
               updateData.verifiedQuantity = vq.verified;
-              // Recalculate creditAmount using verified quantity
+              // Recalculate creditAmount using verified quantity (bottles) and price per case
+              // vq.verified is in BOTTLES; unitPrice is per CASE — must prorate per bottle
               const safeUnitPrice = currentItem?.unitPrice || 0;
-              updateData.creditAmount = safeUnitPrice * vq.verified;
+              const safeBpc = currentItem?.bottlesPerCase || 1;
+              updateData.creditAmount = Math.floor(vq.verified * (safeUnitPrice / safeBpc));
             }
             if (vq.varianceReason) {
               updateData.varianceReason = vq.varianceReason;
