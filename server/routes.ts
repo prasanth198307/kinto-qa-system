@@ -4838,6 +4838,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return { ...issuance, items: updatedItems };
       });
       
+      // Update journal: delete old entry and recreate with current items (non-blocking)
+      try {
+        const existingJournal = await storage.getJournalEntryBySource('material_issuance', id);
+        if (existingJournal) {
+          await storage.deleteJournalEntry(existingJournal.id);
+        }
+        if (result.items && result.items.length > 0) {
+          // Build materialNames map for journal memo
+          const materialNames: Record<string, string> = {};
+          for (const item of result.items) {
+            if (item.rawMaterialId) {
+              const mat = await storage.getRawMaterial(item.rawMaterialId);
+              if (mat) materialNames[item.rawMaterialId] = mat.name;
+            }
+          }
+          const { journalForRawMaterialIssuance } = await import('./journal-service');
+          await journalForRawMaterialIssuance(result, result.items, materialNames);
+          console.log(`[JOURNAL] Recreated raw material issuance journal for issuance ${id} after edit`);
+        }
+      } catch (journalError) {
+        console.error('[JOURNAL] Non-blocking error updating issuance journal after edit:', journalError);
+      }
+
       res.json({ issuance: result, message: "Issuance updated successfully" });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -14305,6 +14328,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Fetch updated payment
       const [updatedPayment] = await db.select().from(invoicePayments).where(eq(invoicePayments.id, id));
+
+      // Update journal: delete old entry and recreate with latest payment data (non-blocking)
+      try {
+        const existingJournal = await storage.getJournalEntryBySource('payment', id);
+        if (existingJournal) {
+          await storage.deleteJournalEntry(existingJournal.id);
+        }
+        const [linkedInvoice] = await db.select().from(invoices).where(eq(invoices.id, updatedPayment.invoiceId));
+        if (linkedInvoice) {
+          const { journalForPayment } = await import('./journal-service');
+          await journalForPayment(updatedPayment, linkedInvoice);
+          console.log(`[JOURNAL] Recreated payment journal for payment ${id} after edit`);
+        }
+      } catch (journalError) {
+        console.error('[JOURNAL] Non-blocking error updating payment journal after edit:', journalError);
+      }
 
       res.json({ payment: updatedPayment, message: "Payment updated successfully" });
     } catch (error) {
