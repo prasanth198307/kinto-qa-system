@@ -22472,6 +22472,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const accountMap = new Map(accounts.map(a => [a.id, a]));
 
+      // Retained Earnings rollup: sum all prior-period P&L (non-BS) account movements
+      // into the Retained Earnings account (code 3003) so the balance sheet balances.
+      const isBalanceSheetType2 = (type: string) => ['asset', 'liability', 'equity', 'Assets', 'Liabilities', 'Equity'].includes(type);
+      const retainedEarningsAccount = accounts.find(a => a.code === '3003');
+      let priorPLNet = 0;
+      for (const [accountId, opening] of openingMap.entries()) {
+        const acct = accountMap.get(accountId);
+        if (acct && !isBalanceSheetType2(acct.accountType)) {
+          // credit - debit: positive for revenue (credit-normal), negative for expenses (debit-normal)
+          priorPLNet += opening.credit - opening.debit;
+        }
+      }
+
       interface TreeNode {
         id: string;
         code: string;
@@ -22524,6 +22537,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           closingBalance,
           children: [],
         });
+      }
+
+      // Apply prior-period P&L net to Retained Earnings node (opening + closing both increase)
+      if (retainedEarningsAccount && priorPLNet !== 0) {
+        const reNode = nodeMap.get(retainedEarningsAccount.id);
+        if (reNode) {
+          reNode.openingBalance += priorPLNet;
+          reNode.closingBalance += priorPLNet;
+        }
       }
 
       const roots: TreeNode[] = [];
