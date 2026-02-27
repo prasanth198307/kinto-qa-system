@@ -9783,10 +9783,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Create credit note items and calculate totals
           // Use verifiedQuantity (actual inspector count) when available, otherwise fall back to reported quantity
+          // NOTE: verifiedQuantity and quantityReturned are in BOTTLES; unitPrice is per CASE
+          // Convert to cases before calculating amounts to match invoice item units
           const creditNoteItems_data = [];
           for (const returnItem of returnItems) {
-            const effectiveQty = returnItem.verifiedQuantity ?? returnItem.quantityReturned;
-            const itemSubtotal = returnItem.unitPrice * effectiveQty;
+            const effectiveQtyBottles = returnItem.verifiedQuantity ?? returnItem.quantityReturned;
+            const itemBpc = returnItem.bottlesPerCase || 1;
+            // Convert bottles → cases (inventory and invoice items are tracked in cases)
+            const effectiveQtyCases = Math.round(effectiveQtyBottles / itemBpc);
+            const itemSubtotal = returnItem.unitPrice * effectiveQtyCases; // price per case × cases
             subtotal += itemSubtotal;
             
             // Calculate GST based on invoice item rates
@@ -9812,8 +9817,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 productId: returnItem.productId,
                 invoiceItemId: invoiceItem.id,
                 description: invoiceItem.description || '',
-                quantity: effectiveQty,
-                unitPrice: returnItem.unitPrice,
+                quantity: effectiveQtyCases, // Store in CASES (same unit as invoice items)
+                unitPrice: returnItem.unitPrice, // Price per case
                 discountAmount: 0,
                 taxableValue: itemSubtotal,
                 cgstRate: safeCgstRate,
