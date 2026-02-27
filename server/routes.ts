@@ -10973,6 +10973,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `Cancelled advance ${advance.advanceNumber}`);
       
       res.json({ advance: updated, message: "Advance cancelled successfully" });
+
+      // Reverse the journal entry for this advance (non-blocking)
+      try {
+        const existingJournal = await storage.getJournalEntryBySource('customer_advance', id);
+        if (existingJournal) {
+          await storage.deleteJournalEntry(existingJournal.id);
+          console.log(`[JOURNAL] Reversed customer advance journal for advance ${id} (${advance.advanceNumber})`);
+        }
+      } catch (journalError) {
+        console.error('[JOURNAL] Non-blocking error reversing advance journal on cancel:', journalError);
+      }
     } catch (error) {
       console.error("Error cancelling advance:", error);
       res.status(500).json({ message: "Failed to cancel advance" });
