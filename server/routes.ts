@@ -17753,24 +17753,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       await storage.updateCashRegisterDay(day.id, updates);
       
-      // Reverse any journal entry for this transaction (non-blocking)
+      // Reverse journal entries and clean up linked records (non-blocking)
       try {
-        const sourceTypeMap: Record<string, string> = {
-          deposit: 'cash_register_deposit',
-          cash_received: 'cash_register_cash_received',
-          transfer: 'cash_register_transfer',
-          expense: 'expense_voucher', // expense journals are linked to the voucher, not the transaction
-        };
-        const sourceType = sourceTypeMap[transaction.transactionType];
-        if (sourceType && sourceType !== 'expense_voucher') {
-          const existingJournal = await storage.getJournalEntryBySource(sourceType, id);
-          if (existingJournal) {
-            await storage.deleteJournalEntry(existingJournal.id);
-            console.log(`[JOURNAL] Reversed ${sourceType} journal ${existingJournal.id} due to transaction delete`);
+        if (transaction.transactionType === 'expense' && transaction.convertedToVoucherId) {
+          // Delete the expense voucher's journal entry
+          const expenseJournal = await storage.getJournalEntryBySource('expense', transaction.convertedToVoucherId);
+          if (expenseJournal) {
+            await storage.deleteJournalEntry(expenseJournal.id);
+            console.log(`[JOURNAL] Reversed expense voucher journal ${expenseJournal.id} due to cash register transaction delete`);
+          }
+          // Soft-delete the linked expense voucher itself
+          await storage.deleteExpenseVoucher(transaction.convertedToVoucherId);
+          console.log(`[CASH_REGISTER] Soft-deleted linked expense voucher ${transaction.convertedToVoucherId}`);
+        } else {
+          const sourceTypeMap: Record<string, string> = {
+            deposit: 'cash_register_deposit',
+            cash_received: 'cash_register_cash_received',
+            transfer: 'cash_register_transfer',
+          };
+          const sourceType = sourceTypeMap[transaction.transactionType];
+          if (sourceType) {
+            const existingJournal = await storage.getJournalEntryBySource(sourceType, id);
+            if (existingJournal) {
+              await storage.deleteJournalEntry(existingJournal.id);
+              console.log(`[JOURNAL] Reversed ${sourceType} journal ${existingJournal.id} due to transaction delete`);
+            }
           }
         }
-        // For expense type: the journal is linked to the expense voucher (convertedToVoucherId)
-        // That voucher's journal will be reversed separately if the voucher is deleted
       } catch (journalError) {
         console.error('[JOURNAL] Non-blocking error reversing cash register transaction journal:', journalError);
       }
