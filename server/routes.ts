@@ -10296,6 +10296,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============ SCRAP INVENTORY API ============
+
+  // Create direct scrap record from finished goods (admin/manager only)
+  app.post('/api/scrap-inventory/direct', requireRole('admin', 'Admin', 'manager', 'Manager'), async (req: any, res) => {
+    try {
+      const { productId, productName, batchNumber, quantity, unitCost, damageReason, conditionDescription, remarks, scrapDate } = req.body;
+
+      if (!productId || !productName || !quantity || !damageReason) {
+        return res.status(400).json({ message: "productId, productName, quantity, and damageReason are required" });
+      }
+
+      const qty = parseInt(quantity);
+      if (isNaN(qty) || qty <= 0) {
+        return res.status(400).json({ message: "Quantity must be a positive integer" });
+      }
+
+      // Validate available stock in finished goods for this product+batch
+      const stockConditions: any[] = [
+        eq(finishedGoods.productId, productId),
+        eq(finishedGoods.qualityStatus, 'approved'),
+        eq(finishedGoods.recordStatus, 1),
+      ];
+      if (batchNumber) stockConditions.push(eq(finishedGoods.batchNumber, batchNumber));
+
+      const stockRows = await db.select().from(finishedGoods).where(and(...stockConditions));
+      const totalAvailable = stockRows.reduce((sum: number, r: any) => sum + (Number(r.quantity) || 0), 0);
+
+      if (totalAvailable < qty) {
+        return res.status(400).json({ message: `Insufficient stock. Available: ${totalAvailable}, Requested: ${qty}` });
+      }
+
+      const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const seqResult = await db.execute(sql`
+        SELECT COALESCE(MAX(CAST(SUBSTRING(scrap_number FROM 15 FOR 3) AS INTEGER)), 0) + 1 as next_seq
+        FROM scrap_inventory
+        WHERE scrap_number LIKE ${'SCRAP-' + today + '-%'}
+      `);
+      const seq = (seqResult as any).rows?.[0]?.next_seq || 1;
+      const scrapNumber = `SCRAP-${today}-${String(seq).padStart(3, '0')}`;
+
+      const unitCostPaise = Math.round((parseFloat(unitCost) || 0) * 100);
+      const totalCostValue = unitCostPaise * qty;
+
+      const [created] = await db.insert(scrapInventory).values({
+        scrapNumber,
+        scrapDate: scrapDate ? new Date(scrapDate).toISOString() : new Date().toISOString(),
+        salesReturnId: null,
+        salesReturnItemId: null,
+        invoiceId: null,
+        productId,
+        productName,
+        batchNumber: batchNumber || null,
+        quantity: qty,
+        unitCost: unitCostPaise,
+        sellingPrice: 0,
+        totalCostValue,
+        totalSellingValue: 0,
+        lossAmount: totalCostValue,
+        damageReason,
+        conditionDescription: conditionDescription || null,
+        approvalStatus: 'pending',
+        processedStatus: 'pending',
+        gstReversal: 0,
+        gstReversalStatus: 'not_applicable',
+        remarks: remarks || null,
+        recordStatus: 1,
+        createdBy: req.user?.id,
+      }).returning();
+
+      await logAudit(req.user?.id, 'CREATE', 'scrap_inventory', created.id, `Direct scrap request: ${scrapNumber} - ${productName} x${qty}`);
+      res.status(201).json(created);
+    } catch (error) {
+      console.error("Error creating direct scrap:", error);
+      res.status(500).json({ message: "Failed to create scrap record" });
+    }
+  });
+
   // Get all scrap inventory records with optional filters (manager+ only)
   app.get('/api/scrap-inventory', requireRole('admin', 'Admin', 'manager', 'Manager', 'AccountsManager'), async (req: any, res) => {
     try {
@@ -10685,7 +10761,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
         .where(eq(scrapInventory.id, id))
         .returning();
-      
+
+      // For direct scraps (no sales return), deduct finished goods stock on approval
+      if (action === 'approve' && !scrap.salesReturnId) {
+        const fgConditions: any[] = [
+          eq(finishedGoods.productId, scrap.productId),
+          eq(finishedGoods.qualityStatus, 'approved'),
+          eq(finishedGoods.recordStatus, 1),
+        ];
+        if (scrap.batchNumber) fgConditions.push(eq(finishedGoods.batchNumber, scrap.batchNumber));
+
+        const fgRows = await db.select().from(finishedGoods).where(and(...fgConditions)).orderBy(finishedGoods.productionDate);
+        let remaining = Number(scrap.quantity);
+        for (const row of fgRows) {
+          if (remaining <= 0) break;
+          const rowQty = Number(row.quantity) || 0;
+          const deduct = Math.min(rowQty, remaining);
+          const newQty = rowQty - deduct;
+          await db.update(finishedGoods)
+            .set({ quantity: newQty, updatedAt: new Date().toISOString() })
+            .where(eq(finishedGoods.id, row.id));
+          remaining -= deduct;
+        }
+
+        // Create journal entry for scrap loss (non-blocking)
+        try {
+          const { journalForDirectScrap } = await import('./journal-service');
+          await journalForDirectScrap(updated);
+        } catch (e) {
+          console.error('[JOURNAL] Direct scrap journal error:', e);
+        }
+      }
+
       await logAudit(req.user?.id, 'UPDATE', 'scrap_inventory', id, `${action === 'approve' ? 'Approved' : 'Rejected'} scrap record ${scrap.scrapNumber}`);
       
       res.json({ message: `Scrap record ${action === 'approve' ? 'approved' : 'rejected'} successfully`, scrap: updated });

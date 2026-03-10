@@ -49,7 +49,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Pencil, Trash2, Search, Package, Layers, Box, CheckCircle, Users, Minus, Check, X, Printer, CalendarIcon, AlertTriangle, ArrowLeft } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Package, Layers, Box, CheckCircle, Users, Minus, Check, X, Printer, CalendarIcon, AlertTriangle, ArrowLeft, Recycle } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format, parseISO, isWithinInterval } from "date-fns";
@@ -4108,12 +4108,15 @@ function FinishedGoodsTab({ searchTerm, onSearchChange }: { searchTerm: string; 
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'detail' | 'consolidated'>('detail');
   const [expandedBatch, setExpandedBatch] = useState<string | null>(null);
+  const [isScrapDialogOpen, setIsScrapDialogOpen] = useState(false);
+  const [scrapItem, setScrapItem] = useState<FinishedGood | null>(null);
   const itemsPerPage = 10;
   
   // Permission checks - 100% database driven
   const canCreate = hasPermission('finished_goods', 'create');
   const canEdit = hasPermission('finished_goods', 'edit');
   const canDelete = hasPermission('finished_goods', 'delete');
+  const canScrap = hasPermission('scrap_inventory', 'create');
 
   // Filter states
   const [qualityStatusFilter, setQualityStatusFilter] = useState<string>('all');
@@ -4243,6 +4246,32 @@ function FinishedGoodsTab({ searchTerm, onSearchChange }: { searchTerm: string; 
       toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
+
+  const scrapMutation = useMutation({
+    mutationFn: async (data: {
+      productId: string; productName: string; batchNumber?: string;
+      quantity: number; unitCost: number; damageReason: string;
+      conditionDescription?: string; remarks?: string; scrapDate: string;
+    }) => {
+      return await apiRequest('POST', '/api/scrap-inventory/direct', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/finished-goods'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/finished-goods/consolidated'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/scrap-inventory'] });
+      toast({ title: "Scrap Request Created", description: "Pending manager approval. Stock will be deducted upon approval." });
+      setIsScrapDialogOpen(false);
+      setScrapItem(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleRecordScrap = (item: FinishedGood) => {
+    setScrapItem(item);
+    setIsScrapDialogOpen(true);
+  };
 
   // Helper to get product name
   const getProductNameById = (productId: string) => {
@@ -4801,6 +4830,18 @@ function FinishedGoodsTab({ searchTerm, onSearchChange }: { searchTerm: string; 
                             <Pencil className="h-4 w-4" />
                           </Button>
                         )}
+                        {canScrap && item.qualityStatus === 'approved' && item.quantity > 0 && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => { e.stopPropagation(); handleRecordScrap(item); }}
+                            title="Record Scrap"
+                            data-testid={`button-scrap-${item.id}`}
+                            className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                          >
+                            <Recycle className="h-4 w-4" />
+                          </Button>
+                        )}
                         {canDelete && (
                           <Button
                             variant="ghost"
@@ -4883,7 +4924,213 @@ function FinishedGoodsTab({ searchTerm, onSearchChange }: { searchTerm: string; 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <RecordScrapDialog
+        open={isScrapDialogOpen}
+        onOpenChange={(open) => { setIsScrapDialogOpen(open); if (!open) setScrapItem(null); }}
+        item={scrapItem}
+        products={products}
+        onSubmit={(data) => scrapMutation.mutate(data)}
+        isLoading={scrapMutation.isPending}
+      />
     </div>
+  );
+}
+
+function RecordScrapDialog({
+  open, onOpenChange, item, products, onSubmit, isLoading
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  item: FinishedGood | null;
+  products: Product[];
+  onSubmit: (data: any) => void;
+  isLoading: boolean;
+}) {
+  const scrapFormSchema = z.object({
+    quantity: z.number().int().min(1, "Must be at least 1"),
+    scrapDate: z.string().min(1, "Date is required"),
+    damageReason: z.string().min(1, "Reason is required"),
+    unitCost: z.number().min(0, "Cannot be negative"),
+    conditionDescription: z.string().optional(),
+    remarks: z.string().optional(),
+  });
+
+  const form = useForm<z.infer<typeof scrapFormSchema>>({
+    resolver: zodResolver(scrapFormSchema),
+    defaultValues: {
+      quantity: 1,
+      scrapDate: format(new Date(), 'yyyy-MM-dd'),
+      damageReason: '',
+      unitCost: 0,
+      conditionDescription: '',
+      remarks: '',
+    },
+  });
+
+  useEffect(() => {
+    if (open && item) {
+      form.reset({
+        quantity: 1,
+        scrapDate: format(new Date(), 'yyyy-MM-dd'),
+        damageReason: '',
+        unitCost: 0,
+        conditionDescription: '',
+        remarks: '',
+      });
+    }
+  }, [open, item]);
+
+  if (!item) return null;
+
+  const product = products.find(p => p.id === item.productId);
+  const productName = product?.productName || 'Unknown Product';
+
+  const handleSubmit = (values: z.infer<typeof scrapFormSchema>) => {
+    onSubmit({
+      productId: item.productId,
+      productName,
+      batchNumber: item.batchNumber || undefined,
+      quantity: values.quantity,
+      unitCost: values.unitCost,
+      damageReason: values.damageReason,
+      conditionDescription: values.conditionDescription || undefined,
+      remarks: values.remarks || undefined,
+      scrapDate: values.scrapDate,
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Recycle className="h-5 w-5 text-orange-600" />
+            Record Scrap
+          </DialogTitle>
+          <DialogDescription>
+            Submit a scrap request for finished goods. A manager must approve before stock is deducted.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid grid-cols-2 gap-3 p-3 rounded-md bg-muted/50 text-sm mb-2">
+          <div>
+            <span className="text-muted-foreground">Product</span>
+            <p className="font-medium">{productName}</p>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Batch</span>
+            <p className="font-medium">{item.batchNumber || '—'}</p>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Available Qty</span>
+            <p className="font-medium">{item.quantity}</p>
+          </div>
+        </div>
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <FormField control={form.control} name="quantity" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Quantity to Scrap</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={item.quantity}
+                      {...field}
+                      onChange={e => field.onChange(parseInt(e.target.value) || 0)}
+                      data-testid="input-scrap-quantity"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="scrapDate" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Scrap Date</FormLabel>
+                  <FormControl>
+                    <Input type="date" {...field} data-testid="input-scrap-date" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            </div>
+
+            <FormField control={form.control} name="damageReason" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Reason for Scrap</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger data-testid="select-scrap-reason">
+                      <SelectValue placeholder="Select reason..." />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="manufacturing_defect">Manufacturing Defect</SelectItem>
+                    <SelectItem value="damage_in_warehouse">Damage in Warehouse</SelectItem>
+                    <SelectItem value="expired">Expired / Shelf Life</SelectItem>
+                    <SelectItem value="quality_rejection">Quality Rejection</SelectItem>
+                    <SelectItem value="transport">Transport Damage</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )} />
+
+            <FormField control={form.control} name="unitCost" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Unit Cost (₹)</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    placeholder="0.00"
+                    {...field}
+                    onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
+                    data-testid="input-scrap-unit-cost"
+                  />
+                </FormControl>
+                <FormDescription className="text-xs">Used to calculate the financial loss for accounting.</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )} />
+
+            <FormField control={form.control} name="conditionDescription" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Condition Description <span className="text-muted-foreground text-xs">(optional)</span></FormLabel>
+                <FormControl>
+                  <Textarea {...field} placeholder="Describe the condition of the goods..." rows={2} data-testid="textarea-scrap-condition" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+
+            <FormField control={form.control} name="remarks" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Remarks <span className="text-muted-foreground text-xs">(optional)</span></FormLabel>
+                <FormControl>
+                  <Textarea {...field} placeholder="Any additional notes..." rows={2} data-testid="textarea-scrap-remarks" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} data-testid="button-cancel-scrap">
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isLoading} variant="destructive" data-testid="button-submit-scrap">
+                {isLoading ? "Submitting..." : "Submit Scrap Request"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
