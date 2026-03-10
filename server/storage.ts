@@ -4625,7 +4625,12 @@ export class DatabaseStorage implements IStorage {
       ));
     }
     if (status) {
-      whereClauses.push(eq(salesOrders.status, status));
+      const statuses = status.split(',').map(s => s.trim()).filter(Boolean);
+      if (statuses.length === 1) {
+        whereClauses.push(eq(salesOrders.status, statuses[0]));
+      } else if (statuses.length > 1) {
+        whereClauses.push(inArray(salesOrders.status, statuses));
+      }
     }
 
     const where = and(...whereClauses);

@@ -174,9 +174,9 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
   });
 
   const { data: confirmedSalesOrders = [] } = useQuery<any[]>({
-    queryKey: ['/api/sales-orders', { status: 'confirmed', pageSize: 100 }],
+    queryKey: ['/api/sales-orders', { status: 'confirmed,partially_invoiced', pageSize: 100 }],
     queryFn: async () => {
-      const res = await fetch('/api/sales-orders?status=confirmed&pageSize=100', { credentials: 'include' });
+      const res = await fetch('/api/sales-orders?status=confirmed,partially_invoiced&pageSize=100', { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch sales orders');
       const json = await res.json();
       return json.data || [];
@@ -1265,59 +1265,70 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
 
       <form onSubmit={handleFormSubmit} className="space-y-4">
         {/* Sales Order Picker (New Invoices Only) */}
-        {!invoice && confirmedSalesOrders.length > 0 && (
+        {!invoice && (
           <div className="bg-muted/30 p-3 rounded-md border border-dashed border-muted-foreground/30">
             <Label className="text-xs font-medium uppercase text-muted-foreground mb-2 block">
-              Import from Sales Order
+              Link to Sales Order (Optional)
             </Label>
-            <Popover open={soPickerOpen} onOpenChange={setSoPickerOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={soPickerOpen}
-                  className="w-full justify-between h-9 text-sm"
-                  data-testid="button-so-picker"
-                >
-                  {watchedSalesOrderId
-                    ? confirmedSalesOrders.find((so: any) => so.id === watchedSalesOrderId)?.soNumber
-                    : "Select a confirmed sales order..."}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[400px] p-0" align="start">
-                <Command>
-                  <CommandInput placeholder="Search SO number or buyer..." />
-                  <CommandList>
-                    <CommandEmpty>No confirmed sales orders found.</CommandEmpty>
-                    <CommandGroup>
-                      {confirmedSalesOrders.map((so: any) => (
-                        <CommandItem
-                          key={so.id}
-                          value={`${so.soNumber} ${so.buyerName}`}
-                          onSelect={() => {
-                            handleSOSelection(so.id);
-                            setSoPickerOpen(false);
-                          }}
-                          data-testid={`so-option-${so.id}`}
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              watchedSalesOrderId === so.id ? "opacity-100" : "opacity-0"
-                            )}
-                          />
-                          <div className="flex flex-col">
-                            <span className="font-medium">{so.soNumber}</span>
-                            <span className="text-xs text-muted-foreground">{so.buyerName} - ₹{(so.totalAmount / 100).toLocaleString()}</span>
-                          </div>
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
+            {confirmedSalesOrders.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">
+                No confirmed or partially-invoiced sales orders available. Create and confirm a Sales Order first to link it here.
+              </p>
+            ) : (
+              <Popover open={soPickerOpen} onOpenChange={setSoPickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={soPickerOpen}
+                    className="w-full justify-between h-9 text-sm"
+                    data-testid="button-so-picker"
+                  >
+                    {watchedSalesOrderId
+                      ? confirmedSalesOrders.find((so: any) => so.id === watchedSalesOrderId)?.soNumber
+                      : "Select a sales order to import buyer & items..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[400px] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search SO number or buyer..." />
+                    <CommandList>
+                      <CommandEmpty>No matching sales orders found.</CommandEmpty>
+                      <CommandGroup>
+                        {confirmedSalesOrders.map((so: any) => (
+                          <CommandItem
+                            key={so.id}
+                            value={`${so.soNumber} ${so.buyerName}`}
+                            onSelect={() => {
+                              handleSOSelection(so.id);
+                              setSoPickerOpen(false);
+                            }}
+                            data-testid={`so-option-${so.id}`}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                watchedSalesOrderId === so.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            <div className="flex flex-col">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">{so.soNumber}</span>
+                                {so.status === 'partially_invoiced' && (
+                                  <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium">Partial</span>
+                                )}
+                              </div>
+                              <span className="text-xs text-muted-foreground">{so.buyerName} — ₹{(so.totalAmount / 100).toLocaleString()}</span>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            )}
           </div>
         )}
 
