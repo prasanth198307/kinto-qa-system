@@ -103,8 +103,8 @@ export const ACCOUNT_CODES = {
 // ============================================================
 // PARTY-WISE SUB-LEDGER HELPER
 // Creates (or retrieves) a customer-specific ledger account
-// under Sundry Debtors (1100) so each party has its own line
-// in the Trial Balance and Ledger Drilldown.
+// under Sundry Debtors (1100) and Sundry Creditors (2001) so each party
+// has its own line in the Trial Balance and Ledger Drilldown.
 // ============================================================
 async function getOrCreateDebtorAccount(partyName: string): Promise<string> {
   if (!partyName || !partyName.trim()) return ACCOUNT_CODES.ACCOUNTS_RECEIVABLE;
@@ -149,6 +149,52 @@ async function getOrCreateDebtorAccount(partyName: string): Promise<string> {
   } as any);
 
   console.log(`[COA] Auto-created debtor sub-ledger: ${newCode} - ${normalized}`);
+  return newCode;
+}
+
+async function getOrCreateCreditorAccount(partyName: string): Promise<string> {
+  if (!partyName || !partyName.trim()) return ACCOUNT_CODES.ACCOUNTS_PAYABLE;
+
+  const normalized = partyName.trim();
+  const parent = await storage.getChartOfAccountByCode(ACCOUNT_CODES.ACCOUNTS_PAYABLE);
+  if (!parent) return ACCOUNT_CODES.ACCOUNTS_PAYABLE;
+
+  // Look for an existing sub-ledger account with this exact name under 2001
+  const existing = await db
+    .select()
+    .from(chartOfAccounts)
+    .where(
+      and(
+        eq(chartOfAccounts.parentId, parent.id),
+        sql`lower(trim(${chartOfAccounts.name})) = lower(trim(${normalized}))`,
+        eq(chartOfAccounts.recordStatus, 1)
+      )
+    )
+    .limit(1);
+
+  if (existing.length > 0) return existing[0].code;
+
+  // Count existing children to generate a sequential code
+  const countResult = await db
+    .select({ cnt: sql<number>`count(*)` })
+    .from(chartOfAccounts)
+    .where(and(eq(chartOfAccounts.parentId, parent.id), eq(chartOfAccounts.recordStatus, 1)));
+
+  const seq = (Number(countResult[0]?.cnt) || 0) + 1;
+  const newCode = `${ACCOUNT_CODES.ACCOUNTS_PAYABLE}-${String(seq).padStart(3, '0')}`;
+
+  await storage.createChartOfAccount({
+    code: newCode,
+    name: normalized,
+    accountType: 'Liabilities',
+    subType: 'trade_payable',
+    nodeType: 'ledger',
+    parentId: parent.id,
+    isSystemAccount: 0,
+    isActive: 1,
+  } as any);
+
+  console.log(`[COA] Auto-created creditor sub-ledger: ${newCode} - ${normalized}`);
   return newCode;
 }
 
@@ -359,6 +405,13 @@ export async function seedChartOfAccounts(): Promise<void> {
   if (sundryDebtors && sundryDebtors.nodeType !== 'group') {
     await storage.updateChartOfAccount(sundryDebtors.id, { nodeType: 'group' });
     console.log('[COA SEED] Upgraded Sundry Debtors (1100) to group for party-wise sub-ledger support');
+  }
+
+  // 2c. Upgrade Sundry Creditors (2001) to group so vendor sub-ledgers can be created under it
+  const sundryCreditors = await storage.getChartOfAccountByCode(ACCOUNT_CODES.ACCOUNTS_PAYABLE);
+  if (sundryCreditors && sundryCreditors.nodeType !== 'group') {
+    await storage.updateChartOfAccount(sundryCreditors.id, { nodeType: 'group' });
+    console.log('[COA SEED] Upgraded Sundry Creditors (2001) to group for party-wise sub-ledger support');
   }
 
   // 3. Seed director loan accounts
@@ -764,8 +817,9 @@ export async function journalForVendorDebitNote(debitNote: any, vendorName: stri
 
   if (grandTotal === 0) return;
 
+  const creditorAccountCode = await getOrCreateCreditorAccount(vendorName);
   const lines: JournalLineInput[] = [
-    { accountCode: ACCOUNT_CODES.ACCOUNTS_PAYABLE, debit: grandTotal, credit: 0, memo: `Vendor Debit Note ${debitNote.noteNumber}`, partyType: 'vendor', partyName: vendorName },
+    { accountCode: creditorAccountCode, debit: grandTotal, credit: 0, memo: `Vendor Debit Note ${debitNote.noteNumber}`, partyType: 'vendor', partyName: vendorName },
     { accountCode: ACCOUNT_CODES.VENDOR_CLAIMS, debit: 0, credit: claimAmount, memo: `Claim against ${vendorName}` },
   ];
 
@@ -924,7 +978,8 @@ export async function journalForRawMaterialReceipt(material: any): Promise<void>
     lines.push({ accountCode: ACCOUNT_CODES.GST_SGST_INPUT, debit: sgst, credit: 0, memo: 'SGST Input on purchase' });
   }
 
-  lines.push({ accountCode: ACCOUNT_CODES.ACCOUNTS_PAYABLE, debit: 0, credit: totalPayable, memo: `Purchase of ${material.materialName}`, partyType: 'vendor', partyName: material.supplier || 'Unknown' });
+  const rawMatCreditorCode = await getOrCreateCreditorAccount(material.supplier || 'Unknown Vendor');
+  lines.push({ accountCode: rawMatCreditorCode, debit: 0, credit: totalPayable, memo: `Purchase of ${material.materialName}`, partyType: 'vendor', partyName: material.supplier || 'Unknown Vendor' });
 
   const receiptDate = material.receivedDate || material.openingDate || material.createdAt;
 
@@ -965,10 +1020,11 @@ export async function journalForSparePartReceipt(
     lines.push({ accountCode: ACCOUNT_CODES.GST_SGST_INPUT, debit: sgst, credit: 0, memo: 'SGST Input on spare part purchase' });
   }
 
+  const sparePartCreditorCode = await getOrCreateCreditorAccount(vendorName || 'Unknown Vendor');
   lines.push({
-    accountCode: ACCOUNT_CODES.ACCOUNTS_PAYABLE, debit: 0, credit: totalPayable,
+    accountCode: sparePartCreditorCode, debit: 0, credit: totalPayable,
     memo: `Purchase of spare part: ${partName}`,
-    partyType: 'vendor', partyName: vendorName || 'Unknown',
+    partyType: 'vendor', partyName: vendorName || 'Unknown Vendor',
   });
 
   await createJournalWithLines(
@@ -2009,5 +2065,58 @@ export async function rectifyDebtorJournalLines(): Promise<{ updated: number; sk
   }
 
   console.log(`[RECTIFY] === COMPLETE === ${results.updated} updated, ${results.skipped} skipped (no party name), ${results.errors} errors`);
+  return results;
+}
+
+export async function rectifyCreditorJournalLines(): Promise<{ updated: number; skipped: number; errors: number }> {
+  const results = { updated: 0, skipped: 0, errors: 0 };
+
+  // Get the generic 2001 account
+  const genericAccount = await storage.getChartOfAccountByCode(ACCOUNT_CODES.ACCOUNTS_PAYABLE);
+  if (!genericAccount) {
+    console.log('[RECTIFY CREDITORS] Sundry Creditors (2001) account not found — nothing to do');
+    return results;
+  }
+
+  // Find all active journal lines still pointing to the generic 2001 account
+  const genericLines: any[] = (await db.execute(sql`
+    SELECT id, party_name FROM journal_lines
+    WHERE account_id = ${genericAccount.id}
+      AND record_status = 1
+  `)).rows;
+
+  console.log(`[RECTIFY CREDITORS] Found ${genericLines.length} journal line(s) pointing to generic Sundry Creditors (2001)`);
+
+  for (const line of genericLines) {
+    try {
+      const partyName = line.party_name;
+      if (!partyName || !partyName.trim()) {
+        results.skipped++;
+        continue;
+      }
+
+      const partyCode = await getOrCreateCreditorAccount(partyName.trim());
+      if (partyCode === ACCOUNT_CODES.ACCOUNTS_PAYABLE) {
+        results.skipped++;
+        continue;
+      }
+
+      const partyAccount = await storage.getChartOfAccountByCode(partyCode);
+      if (!partyAccount) {
+        results.skipped++;
+        continue;
+      }
+
+      await db.execute(sql`
+        UPDATE journal_lines SET account_id = ${partyAccount.id} WHERE id = ${line.id}
+      `);
+      results.updated++;
+    } catch (err: any) {
+      console.error(`[RECTIFY CREDITORS] Error processing line ${line.id}:`, err.message);
+      results.errors++;
+    }
+  }
+
+  console.log(`[RECTIFY CREDITORS] === COMPLETE === ${results.updated} updated, ${results.skipped} skipped, ${results.errors} errors`);
   return results;
 }

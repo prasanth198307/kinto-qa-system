@@ -172,6 +172,18 @@ app.use((req, res, next) => {
     console.error('[DEBTOR RECTIFY ERROR]', error);
   }
 
+  // Auto-migrate any journal lines still pointing at the generic Sundry Creditors (2001)
+  // to per-vendor sub-ledger accounts. Safe to run on every startup — idempotent.
+  try {
+    const { rectifyCreditorJournalLines } = await import("./journal-service");
+    const result = await rectifyCreditorJournalLines();
+    if (result.updated > 0) {
+      console.log(`[CREDITOR RECTIFY] Migrated ${result.updated} journal lines to vendor sub-accounts (${result.errors} errors)`);
+    }
+  } catch (error) {
+    console.error('[CREDITOR RECTIFY ERROR]', error);
+  }
+
   const port = parseInt(process.env.PORT || "5000", 10);
   server.listen(port, "0.0.0.0", () => {
     log(`🚀 Server running on port ${port}`);

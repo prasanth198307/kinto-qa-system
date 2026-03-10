@@ -20706,6 +20706,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/journal-entries/rectify-creditors', requireRole('admin'), async (req: any, res) => {
+    try {
+      const { rectifyCreditorJournalLines } = await import('./journal-service');
+      console.log('[RECTIFY CREDITORS] Admin triggered creditor journal rectification');
+      const results = await rectifyCreditorJournalLines();
+      res.json(results);
+    } catch (error: any) {
+      console.error('[RECTIFY CREDITORS] Fatal error:', error.message);
+      res.status(500).json({ message: error.message || 'Rectification failed' });
+    }
+  });
+
   // Journal Entries
   app.get('/api/journal-entries', async (req: any, res) => {
     try {
