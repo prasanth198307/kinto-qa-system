@@ -10250,7 +10250,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const { journalForCreditNote } = await import('./journal-service');
           const cnList = await db.select().from(creditNotes).where(eq(creditNotes.noteNumber, creditNoteNumber));
           if (cnList.length > 0) {
-            await journalForCreditNote(cnList[0]);
+            await journalForCreditNote(cnList[0], invoice.invoiceNumber, invoice.buyerName);
           }
         } catch (je) { console.error('[JOURNAL] Credit note auto-entry failed:', je); }
       }
