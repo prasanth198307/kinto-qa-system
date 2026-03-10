@@ -7,6 +7,7 @@ import {
   FileText, 
   CheckCircle2, 
   ArrowRight, 
+  ArrowLeft,
   MoreVertical,
   Calendar as CalendarIcon,
   Filter,
@@ -242,11 +243,22 @@ export default function SalesOrdersPage() {
       <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />
       <main className="container mx-auto p-6 mt-16">
         <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Sales Orders</h1>
-            <p className="text-muted-foreground mt-1">
-              Manage pre-invoice purchase requests from customers.
-            </p>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate('/')}
+              className="print:hidden"
+              data-testid="button-back"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Sales Orders</h1>
+              <p className="text-muted-foreground mt-1">
+                Manage pre-invoice purchase requests from customers.
+              </p>
+            </div>
           </div>
           <Dialog open={isNewSoDialogOpen} onOpenChange={setIsNewSoDialogOpen}>
             <DialogTrigger asChild>
