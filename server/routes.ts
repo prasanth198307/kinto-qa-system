@@ -12984,7 +12984,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { journalForDebitNote } = await import('./journal-service');
         const dnList = await db.select().from(debitNotes).where(eq(debitNotes.noteNumber, debitNoteNumber));
         if (dnList.length > 0) {
-          await journalForDebitNote(dnList[0]);
+          const dnInvoice = await storage.getInvoice(dnList[0].invoiceId);
+          await journalForDebitNote(dnList[0], dnInvoice?.buyerName);
         }
       } catch (je) { console.error('[JOURNAL] Debit note auto-entry failed:', je); }
     } catch (error) {

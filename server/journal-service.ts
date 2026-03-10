@@ -100,6 +100,58 @@ export const ACCOUNT_CODES = {
   LOANS_RECEIVABLE: '1300',
 };
 
+// ============================================================
+// PARTY-WISE SUB-LEDGER HELPER
+// Creates (or retrieves) a customer-specific ledger account
+// under Sundry Debtors (1100) so each party has its own line
+// in the Trial Balance and Ledger Drilldown.
+// ============================================================
+async function getOrCreateDebtorAccount(partyName: string): Promise<string> {
+  if (!partyName || !partyName.trim()) return ACCOUNT_CODES.ACCOUNTS_RECEIVABLE;
+
+  const normalized = partyName.trim();
+  const parent = await storage.getChartOfAccountByCode(ACCOUNT_CODES.ACCOUNTS_RECEIVABLE);
+  if (!parent) return ACCOUNT_CODES.ACCOUNTS_RECEIVABLE;
+
+  // Look for an existing sub-ledger account with this exact name under 1100
+  const existing = await db
+    .select()
+    .from(chartOfAccounts)
+    .where(
+      and(
+        eq(chartOfAccounts.parentId, parent.id),
+        sql`lower(trim(${chartOfAccounts.name})) = lower(trim(${normalized}))`,
+        eq(chartOfAccounts.recordStatus, 1)
+      )
+    )
+    .limit(1);
+
+  if (existing.length > 0) return existing[0].code;
+
+  // Count existing children to generate a sequential code
+  const countResult = await db
+    .select({ cnt: sql<number>`count(*)` })
+    .from(chartOfAccounts)
+    .where(and(eq(chartOfAccounts.parentId, parent.id), eq(chartOfAccounts.recordStatus, 1)));
+
+  const seq = (Number(countResult[0]?.cnt) || 0) + 1;
+  const newCode = `${ACCOUNT_CODES.ACCOUNTS_RECEIVABLE}-${String(seq).padStart(3, '0')}`;
+
+  await storage.createChartOfAccount({
+    code: newCode,
+    name: normalized,
+    accountType: 'Assets',
+    subType: 'trade_receivable',
+    nodeType: 'ledger',
+    parentId: parent.id,
+    isSystemAccount: 0,
+    isActive: 1,
+  } as any);
+
+  console.log(`[COA] Auto-created debtor sub-ledger: ${newCode} - ${normalized}`);
+  return newCode;
+}
+
 const HIERARCHY_GROUPS = [
   { code: '1000', name: 'Assets', accountType: 'Assets', parentCode: null, level: 1 },
   { code: 'G1100', name: 'Non-Current Assets', accountType: 'Assets', parentCode: '1000', level: 2 },
@@ -300,6 +352,13 @@ export async function seedChartOfAccounts(): Promise<void> {
         console.log(`[COA SEED] Updated account: ${account.code} - ${account.name} (${Object.keys(updates).join(', ')})`);
       }
     }
+  }
+
+  // 2b. Upgrade Sundry Debtors (1100) to group so party sub-ledgers can be created under it
+  const sundryDebtors = await storage.getChartOfAccountByCode(ACCOUNT_CODES.ACCOUNTS_RECEIVABLE);
+  if (sundryDebtors && sundryDebtors.nodeType !== 'group') {
+    await storage.updateChartOfAccount(sundryDebtors.id, { nodeType: 'group' });
+    console.log('[COA SEED] Upgraded Sundry Debtors (1100) to group for party-wise sub-ledger support');
   }
 
   // 3. Seed director loan accounts
@@ -535,9 +594,10 @@ export async function journalForInvoice(invoice: any): Promise<void> {
   if (totalAmount === 0 && subtotal === 0) return;
 
   const salesRevenue = totalAmount - cgst - sgst - igst;
+  const debtorAccountCode = await getOrCreateDebtorAccount(invoice.buyerName);
 
   const lines: JournalLineInput[] = [
-    { accountCode: ACCOUNT_CODES.ACCOUNTS_RECEIVABLE, debit: totalAmount, credit: 0, memo: `Invoice ${invoice.invoiceNumber}`, partyType: 'vendor', partyName: invoice.buyerName },
+    { accountCode: debtorAccountCode, debit: totalAmount, credit: 0, memo: `Invoice ${invoice.invoiceNumber}`, partyType: 'vendor', partyName: invoice.buyerName },
     { accountCode: ACCOUNT_CODES.SALES_REVENUE, debit: 0, credit: salesRevenue, memo: `Sales - Invoice ${invoice.invoiceNumber}` },
   ];
 
@@ -557,13 +617,14 @@ export async function journalForPayment(payment: any, invoice: any): Promise<voi
   const amount = payment.amount || 0;
   const method = (payment.paymentMethod || '').toLowerCase();
   const accountCode = (method === 'cash') ? ACCOUNT_CODES.CASH_IN_HAND : ACCOUNT_CODES.BANK_CURRENT;
+  const debtorAccountCode = await getOrCreateDebtorAccount(invoice?.buyerName || payment.payerName || '');
 
   await createJournalWithLines(
     payment.paymentDate ? payment.paymentDate.slice(0, 10) : new Date().toISOString().slice(0, 10),
     `Payment received: ${invoice?.invoiceNumber || 'Unknown'} - ${payment.paymentMethod}${payment.referenceNumber ? ` (${payment.referenceNumber})` : ''}`,
     [
       { accountCode, debit: amount, credit: 0, memo: `${payment.paymentMethod} payment${payment.referenceNumber ? ' Ref: ' + payment.referenceNumber : ''}`, partyType: 'vendor', partyName: payment.payerName || invoice?.buyerName },
-      { accountCode: ACCOUNT_CODES.ACCOUNTS_RECEIVABLE, debit: 0, credit: amount, memo: `Payment against Invoice ${invoice?.invoiceNumber || ''}`, partyType: 'vendor', partyName: invoice?.buyerName },
+      { accountCode: debtorAccountCode, debit: 0, credit: amount, memo: `Payment against Invoice ${invoice?.invoiceNumber || ''}`, partyType: 'vendor', partyName: invoice?.buyerName },
     ],
     { sourceType: 'payment', sourceId: payment.id, isAutoGenerated: true }
   );
@@ -587,13 +648,14 @@ export async function journalForCustomerAdvance(advance: any, vendorName: string
 
 export async function journalForAdvanceApplication(application: any, advance: any, invoice: any, vendorName: string): Promise<void> {
   const amount = application.appliedAmount || 0;
+  const debtorAccountCode = await getOrCreateDebtorAccount(vendorName);
 
   await createJournalWithLines(
     application.applicationDate || new Date().toISOString().slice(0, 10),
     `Advance applied: ${advance?.advanceNumber || ''} to Invoice ${invoice?.invoiceNumber || ''}`,
     [
       { accountCode: ACCOUNT_CODES.CUSTOMER_ADVANCES, debit: amount, credit: 0, memo: `Advance ${advance?.advanceNumber} applied`, partyType: 'vendor', partyName: vendorName },
-      { accountCode: ACCOUNT_CODES.ACCOUNTS_RECEIVABLE, debit: 0, credit: amount, memo: `Against Invoice ${invoice?.invoiceNumber}`, partyType: 'vendor', partyName: vendorName },
+      { accountCode: debtorAccountCode, debit: 0, credit: amount, memo: `Against Invoice ${invoice?.invoiceNumber}`, partyType: 'vendor', partyName: vendorName },
     ],
     { sourceType: 'advance_application', sourceId: application.id, isAutoGenerated: true }
   );
@@ -616,7 +678,8 @@ export async function journalForCreditNote(creditNote: any, invoiceNumber?: stri
   if (sgst > 0) lines.push({ accountCode: ACCOUNT_CODES.GST_SGST_PAYABLE, debit: sgst, credit: 0, memo: 'SGST reversal' });
   if (igst > 0) lines.push({ accountCode: ACCOUNT_CODES.GST_IGST_PAYABLE, debit: igst, credit: 0, memo: 'IGST reversal' });
 
-  lines.push({ accountCode: ACCOUNT_CODES.ACCOUNTS_RECEIVABLE, debit: 0, credit: grandTotal, memo: `Credit Note ${creditNote.noteNumber}${invoiceNumber ? ' against ' + invoiceNumber : ''}`, partyType: 'vendor', partyName: buyerName });
+  const debtorAccountCode = await getOrCreateDebtorAccount(buyerName || '');
+  lines.push({ accountCode: debtorAccountCode, debit: 0, credit: grandTotal, memo: `Credit Note ${creditNote.noteNumber}${invoiceNumber ? ' against ' + invoiceNumber : ''}`, partyType: 'vendor', partyName: buyerName });
 
   await createJournalWithLines(
     creditNote.creditDate || new Date().toISOString().slice(0, 10),
@@ -654,27 +717,29 @@ export async function journalForExpenseVoucher(voucher: any): Promise<void> {
 
 export async function journalForWriteOff(payment: any, invoice: any): Promise<void> {
   const amount = payment.amount || 0;
+  const debtorAccountCode = await getOrCreateDebtorAccount(invoice?.buyerName || '');
 
   await createJournalWithLines(
     payment.paymentDate ? payment.paymentDate.slice(0, 10) : new Date().toISOString().slice(0, 10),
     `Payment Write-off: Invoice ${invoice?.invoiceNumber || ''} - ${invoice?.buyerName || ''}`,
     [
       { accountCode: ACCOUNT_CODES.BAD_DEBTS, debit: amount, credit: 0, memo: `Write-off for Invoice ${invoice?.invoiceNumber || ''}` },
-      { accountCode: ACCOUNT_CODES.ACCOUNTS_RECEIVABLE, debit: 0, credit: amount, memo: `Write-off balance`, partyType: 'vendor', partyName: invoice?.buyerName },
+      { accountCode: debtorAccountCode, debit: 0, credit: amount, memo: `Write-off balance`, partyType: 'vendor', partyName: invoice?.buyerName },
     ],
     { sourceType: 'write_off', sourceId: payment.id, isAutoGenerated: true }
   );
 }
 
-export async function journalForDebitNote(debitNote: any): Promise<void> {
+export async function journalForDebitNote(debitNote: any, buyerName?: string): Promise<void> {
   const subtotal = debitNote.subtotal || 0;
   const cgst = debitNote.cgstAmount || 0;
   const sgst = debitNote.sgstAmount || 0;
   const igst = debitNote.igstAmount || 0;
   const grandTotal = debitNote.grandTotal || 0;
+  const debtorAccountCode = await getOrCreateDebtorAccount(buyerName || '');
 
   const lines: JournalLineInput[] = [
-    { accountCode: ACCOUNT_CODES.ACCOUNTS_RECEIVABLE, debit: grandTotal, credit: 0, memo: `Debit Note ${debitNote.noteNumber}` },
+    { accountCode: debtorAccountCode, debit: grandTotal, credit: 0, memo: `Debit Note ${debitNote.noteNumber}` },
     { accountCode: ACCOUNT_CODES.DEBIT_NOTE_INCOME, debit: 0, credit: subtotal, memo: `Corrective debit note ${debitNote.noteNumber}` },
   ];
 
