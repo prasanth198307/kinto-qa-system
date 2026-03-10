@@ -107,7 +107,7 @@ export default function SalesOrderDetail() {
         <div className="flex-1 p-6 mt-16 max-w-4xl mx-auto w-full">
           <Card className="p-8 text-center">
             <h2 className="text-2xl font-bold text-destructive mb-4">Sales Order Not Found</h2>
-            <Button onClick={() => setLocation('/sales-orders')}>
+            <Button onClick={() => setLocation('/?tab=sales-orders')}>
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Sales Orders
             </Button>
@@ -145,7 +145,7 @@ export default function SalesOrderDetail() {
         {/* Header Section */}
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => setLocation('/sales-orders')}>
+            <Button variant="ghost" size="icon" onClick={() => setLocation('/?tab=sales-orders')}>
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div>

@@ -260,6 +260,8 @@ function ReviewerDashboard() {
     switch (activeView) {
       case 'overview':
         return <ReviewerDashboardPage />;
+      case 'sales-orders':
+        return <SalesOrdersPage showHeader={false} />;
       default:
         return <ReviewerDashboardPage />;
     }
@@ -300,7 +302,7 @@ function ManagerDashboard() {
     
     if (tab) {
       // Map valid tab values to activeView
-      const validTabs = ['invoices', 'gatepasses', 'raw-material-issuance'];
+      const validTabs = ['invoices', 'gatepasses', 'raw-material-issuance', 'sales-orders'];
       if (validTabs.includes(tab)) {
         setActiveView(tab);
       }
@@ -381,6 +383,8 @@ function ManagerDashboard() {
         return <DispatchTracking showHeader={false} />;
       case 'cancelled-invoices':
         return <CancelledInvoices showHeader={false} />;
+      case 'sales-orders':
+        return <SalesOrdersPage showHeader={false} />;
       case 'write-off-report':
         return <WriteOffReport />;
       case 'reports':
@@ -435,7 +439,7 @@ function CustomRoleDashboard({ roleName }: { roleName: string }) {
     const tab = params.get('tab');
     
     if (tab) {
-      const validTabs = ['overview', 'invoices', 'gatepasses', 'raw-material-issuance', 'products', 'inventory', 'production', 'finished-goods', 'raw-materials', 'checklists', 'users', 'machines', 'maintenance', 'reports', 'sales-dashboard', 'vendor-analytics'];
+      const validTabs = ['overview', 'invoices', 'gatepasses', 'raw-material-issuance', 'products', 'inventory', 'production', 'finished-goods', 'raw-materials', 'checklists', 'users', 'machines', 'maintenance', 'reports', 'sales-dashboard', 'vendor-analytics', 'sales-orders'];
       if (validTabs.includes(tab)) {
         setActiveView(tab);
       }
@@ -638,6 +642,8 @@ function CustomRoleDashboard({ roleName }: { roleName: string }) {
         return <CreditNotes />;
       case 'cancelled-invoices':
         return <CancelledInvoices showHeader={false} />;
+      case 'sales-orders':
+        return <SalesOrdersPage showHeader={false} />;
       case 'write-off-report':
         return <WriteOffReport />;
       case 'dispatch-tracking':
@@ -709,7 +715,7 @@ function AdminDashboard() {
     
     if (tab) {
       // Map valid tab values to activeView - include all tab values used in navigation
-      const validTabs = ['overview', 'invoices', 'gatepasses', 'raw-material-issuance', 'products', 'inventory', 'production', 'finished-goods', 'raw-materials', 'checklists', 'users', 'machines', 'maintenance', 'reports', 'sales-dashboard', 'vendor-analytics'];
+      const validTabs = ['overview', 'invoices', 'gatepasses', 'raw-material-issuance', 'products', 'inventory', 'production', 'finished-goods', 'raw-materials', 'checklists', 'users', 'machines', 'maintenance', 'reports', 'sales-dashboard', 'vendor-analytics', 'sales-orders'];
       if (validTabs.includes(tab)) {
         setActiveView(tab);
       }
@@ -1685,7 +1691,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       id: "finance-section",
       label: "Finance & Sales",
       items: [
-        { id: "sales-orders", label: "Sales Orders", icon: ClipboardList, onClick: () => setLocation('/sales-orders') },
+        { id: "sales-orders", label: "Sales Orders", icon: ClipboardList },
         { id: "invoices", label: "Sales Invoices", icon: Receipt, onClick: () => setLocation('/') },
         { id: "vendor-history", label: "Vendor History", icon: History, onClick: () => setLocation('/vendor-history') },
         { id: "vendor-debit-notes", label: "Vendor Debit Notes", icon: FileX, onClick: () => setLocation('/vendor-debit-notes') },
