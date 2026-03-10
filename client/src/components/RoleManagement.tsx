@@ -111,6 +111,7 @@ const AVAILABLE_SCREENS: ScreenDefinition[] = [
   { key: 'production_entries', label: 'Production Entries', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'production_reconciliations', label: 'Production Reconciliation', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'production_management', label: 'Production Management', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'sales_orders', label: 'Sales Orders', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'gatepasses', label: 'Gatepasses', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'invoices', label: 'Sales Invoices', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'credit_notes', label: 'Credit Notes', allowedActions: ['view', 'create', 'edit', 'delete'] },
