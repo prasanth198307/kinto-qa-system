@@ -160,6 +160,18 @@ app.use((req, res, next) => {
     console.error('[COA SEED ERROR]', error);
   }
 
+  // Auto-migrate any journal lines still pointing at the generic Sundry Debtors (1100)
+  // to per-party sub-ledger accounts. Safe to run on every startup — idempotent.
+  try {
+    const { rectifyDebtorJournalLines } = await import("./journal-service");
+    const result = await rectifyDebtorJournalLines();
+    if (result.updated > 0) {
+      console.log(`[DEBTOR RECTIFY] Migrated ${result.updated} journal lines to party sub-accounts (${result.errors} errors)`);
+    }
+  } catch (error) {
+    console.error('[DEBTOR RECTIFY ERROR]', error);
+  }
+
   const port = parseInt(process.env.PORT || "5000", 10);
   server.listen(port, "0.0.0.0", () => {
     log(`🚀 Server running on port ${port}`);
