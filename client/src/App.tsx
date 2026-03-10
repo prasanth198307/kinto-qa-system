@@ -806,7 +806,7 @@ function AdminDashboard() {
       id: "finance-section",
       label: "Finance & Sales",
       items: [
-        { id: "sales-orders", label: "Sales Orders", icon: ClipboardList, onClick: () => setLocation('/sales-orders') },
+        { id: "sales-orders", label: "Sales Orders", icon: ClipboardList },
         { id: "invoices", label: "Sales Invoices", icon: Receipt },
         { id: "vendor-history", label: "Vendor History", icon: History, onClick: () => setLocation('/vendor-history') },
         { id: "vendor-debit-notes", label: "Vendor Debit Notes", icon: FileX, onClick: () => setLocation('/vendor-debit-notes') },
@@ -1060,6 +1060,8 @@ function AdminDashboard() {
         return <CancelledInvoices showHeader={false} />;
       case 'write-off-report':
         return <WriteOffReport />;
+      case 'sales-orders':
+        return <SalesOrdersPage showHeader={false} />;
       case 'dispatch-tracking':
         return <DispatchTracking showHeader={false} />;
       case 'machine-startup-reminders':

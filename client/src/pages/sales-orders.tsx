@@ -106,9 +106,9 @@ const salesOrderItemSchema = z.object({
 });
 
 const salesOrderSchema = z.object({
-  buyerName: z.string().min(1, "Buyer name is required"),
+  buyerName: z.string().optional(),
   soDate: z.string().min(1, "Date is required"),
-  vendorId: z.string().optional(),
+  vendorId: z.string().min(1, "Customer is required"),
   buyerGstin: z.string().optional(),
   buyerAddress: z.string().optional(),
   buyerContact: z.string().optional(),
@@ -123,7 +123,7 @@ const salesOrderSchema = z.object({
 
 type SalesOrderFormValues = z.infer<typeof salesOrderSchema>;
 
-export default function SalesOrdersPage() {
+export default function SalesOrdersPage({ showHeader = true }: { showHeader?: boolean }) {
   const [location, navigate] = useLocation();
   const { toast } = useToast();
   const { user, logoutMutation } = useAuth();
@@ -147,10 +147,13 @@ export default function SalesOrdersPage() {
 
   const createSoMutation = useMutation({
     mutationFn: async (values: SalesOrderFormValues) => {
+      // Derive buyerName from selected vendor if not set explicitly
+      const selectedVendor = vendors.find(v => v.id === values.vendorId);
+      const resolvedBuyerName = values.buyerName || selectedVendor?.vendorName || '';
       // Map form values to API expected format
       const payload = {
         header: {
-          buyerName: values.buyerName,
+          buyerName: resolvedBuyerName,
           soDate: values.soDate,
           vendorId: values.vendorId || null,
           buyerGstin: values.buyerGstin || null,
@@ -238,12 +241,11 @@ export default function SalesOrdersPage() {
     }).format(amountPaise / 100);
   };
 
-  return (
-    <div className="min-h-screen bg-background">
-      <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />
-      <main className="container mx-auto p-6 mt-16">
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center gap-3">
+  const pageContent = (
+    <div className={showHeader ? "container mx-auto p-6 mt-16" : "p-4"}>
+      <div className="flex justify-between items-center mb-6">
+        <div className="flex items-center gap-3">
+          {showHeader && (
             <Button
               variant="ghost"
               size="icon"
@@ -253,13 +255,14 @@ export default function SalesOrdersPage() {
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">Sales Orders</h1>
-              <p className="text-muted-foreground mt-1">
-                Manage pre-invoice purchase requests from customers.
-              </p>
-            </div>
+          )}
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Sales Orders</h1>
+            <p className="text-muted-foreground mt-1">
+              Manage pre-invoice purchase requests from customers.
+            </p>
           </div>
+        </div>
           <Dialog open={isNewSoDialogOpen} onOpenChange={setIsNewSoDialogOpen}>
             <DialogTrigger asChild>
               <Button data-testid="button-new-sales-order">
@@ -276,36 +279,10 @@ export default function SalesOrdersPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
-                      name="buyerName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Buyer Name *</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Enter customer name" {...field} data-testid="input-buyer-name" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="soDate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Order Date *</FormLabel>
-                          <FormControl>
-                            <Input type="date" {...field} data-testid="input-so-date" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
                       name="vendorId"
                       render={({ field }) => (
                         <FormItem className="flex flex-col">
-                          <FormLabel>Linked Vendor (Optional)</FormLabel>
+                          <FormLabel>Customer / Buyer *</FormLabel>
                           <Popover>
                             <PopoverTrigger asChild>
                               <FormControl>
@@ -358,6 +335,19 @@ export default function SalesOrdersPage() {
                               </Command>
                             </PopoverContent>
                           </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="soDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Order Date *</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} data-testid="input-so-date" />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -686,7 +676,15 @@ export default function SalesOrdersPage() {
             />
           </div>
         </Card>
-      </main>
+    </div>
+  );
+
+  if (!showHeader) return pageContent;
+
+  return (
+    <div className="min-h-screen bg-background">
+      <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />
+      {pageContent}
     </div>
   );
 }
