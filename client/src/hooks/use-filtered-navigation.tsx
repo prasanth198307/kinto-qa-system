@@ -35,6 +35,7 @@ const navItemToScreenKey: Record<string, string> = {
   'production-reconciliations': 'production_reconciliations',
   'production-reconciliation-report': 'production_reconciliation_report',
   'variance-analytics': 'variance_analytics',
+  'sales-orders': 'sales_orders',
   'invoices': 'invoices',
   'vendor-history': 'vendors',
   'pending-payments': 'pending_payments',

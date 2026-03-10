@@ -1948,3 +1948,66 @@ export async function backfillJournalEntries(): Promise<{
   console.log(`[BACKFILL] === COMPLETE === Total: ${results.total.processed} created, ${results.total.skipped} skipped, ${results.total.errors} errors, ${orphansRemoved} orphans removed`);
   return { ...results, orphansRemoved };
 }
+
+// ============================================================
+// RECTIFY DEBTOR JOURNAL LINES
+// Migrates old journal lines that posted directly to the
+// generic Sundry Debtors (1100) account to the correct
+// party-specific sub-ledger accounts.
+// ============================================================
+export async function rectifyDebtorJournalLines(): Promise<{ updated: number; skipped: number; errors: number }> {
+  const results = { updated: 0, skipped: 0, errors: 0 };
+
+  // Get the generic 1100 account
+  const genericAccount = await storage.getChartOfAccountByCode(ACCOUNT_CODES.ACCOUNTS_RECEIVABLE);
+  if (!genericAccount) {
+    console.log('[RECTIFY] Sundry Debtors (1100) account not found — nothing to do');
+    return results;
+  }
+
+  // Find all active journal lines still pointing to the generic 1100 account
+  const genericLines: any[] = (await db.execute(sql`
+    SELECT id, party_name FROM journal_lines
+    WHERE account_id = ${genericAccount.id}
+      AND record_status = 1
+  `)).rows;
+
+  console.log(`[RECTIFY] Found ${genericLines.length} journal line(s) pointing to generic Sundry Debtors (1100)`);
+
+  for (const line of genericLines) {
+    try {
+      const partyName = line.party_name;
+      if (!partyName || !partyName.trim()) {
+        results.skipped++;
+        continue;
+      }
+
+      // Get or create the party-specific sub-account
+      const partyCode = await getOrCreateDebtorAccount(partyName.trim());
+      if (partyCode === ACCOUNT_CODES.ACCOUNTS_RECEIVABLE) {
+        // Could not create sub-account — leave as-is
+        results.skipped++;
+        continue;
+      }
+
+      // Fetch the sub-account id
+      const partyAccount = await storage.getChartOfAccountByCode(partyCode);
+      if (!partyAccount) {
+        results.skipped++;
+        continue;
+      }
+
+      // Update the journal line to use the party-specific account
+      await db.execute(sql`
+        UPDATE journal_lines SET account_id = ${partyAccount.id} WHERE id = ${line.id}
+      `);
+      results.updated++;
+    } catch (err: any) {
+      console.error(`[RECTIFY] Error processing line ${line.id}:`, err.message);
+      results.errors++;
+    }
+  }
+
+  console.log(`[RECTIFY] === COMPLETE === ${results.updated} updated, ${results.skipped} skipped (no party name), ${results.errors} errors`);
+  return results;
+}

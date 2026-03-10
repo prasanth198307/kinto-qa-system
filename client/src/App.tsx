@@ -68,6 +68,8 @@ import { OperatorAssignedChecklists } from "@/components/OperatorAssignedCheckli
 import { VerticalNavSidebar, type NavSection } from "@/components/VerticalNavSidebar";
 import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, ClipboardList, Settings, Calendar, Users, FileText, FileX, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload, FolderOpen, Wallet, Car, BookOpen, Scale, BarChart3, Landmark } from "lucide-react";
 import SalesDashboard from "@/components/SalesDashboard";
+import SalesOrdersPage from "@/pages/sales-orders";
+import SalesOrderDetailPage from "@/pages/sales-order-detail";
 import VendorAnalytics from "@/pages/vendor-analytics";
 import ReviewerDashboardPage from "@/pages/ReviewerDashboard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -1680,6 +1682,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       id: "finance-section",
       label: "Finance & Sales",
       items: [
+        { id: "sales-orders", label: "Sales Orders", icon: ClipboardList, onClick: () => setLocation('/sales-orders') },
         { id: "invoices", label: "Sales Invoices", icon: Receipt, onClick: () => setLocation('/') },
         { id: "vendor-history", label: "Vendor History", icon: History, onClick: () => setLocation('/vendor-history') },
         { id: "vendor-debit-notes", label: "Vendor Debit Notes", icon: FileX, onClick: () => setLocation('/vendor-debit-notes') },
@@ -2888,6 +2891,8 @@ function Router() {
       <ProtectedRoute path="/vendor-history" component={VendorHistoryPage} />
       <ProtectedRoute path="/vendor-history/:vendorId" component={VendorHistoryDetailPage} />
       <ProtectedRoute path="/invoice/:id" component={InvoiceDetailPageWrapper} />
+      <ProtectedRoute path="/sales-orders" component={SalesOrdersPage} />
+      <ProtectedRoute path="/sales-orders/:id" component={SalesOrderDetailPage} />
       <ProtectedRoute path="/raw-material/:id" component={RawMaterialDetailWrapper} />
       <ProtectedRoute path="/raw-material-type/:id" component={RawMaterialTypeDetailWrapper} />
       <ProtectedRoute path="/product/:id" component={ProductDetailWrapper} />

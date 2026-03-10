@@ -104,6 +104,8 @@ export default function JournalEntriesPage() {
   const pageSize = 25;
   const [showBackfillDialog, setShowBackfillDialog] = useState(false);
   const [backfillResults, setBackfillResults] = useState<any>(null);
+  const [showRectifyDialog, setShowRectifyDialog] = useState(false);
+  const [rectifyResults, setRectifyResults] = useState<any>(null);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [exportDateFrom, setExportDateFrom] = useState("");
   const [exportDateTo, setExportDateTo] = useState("");
@@ -133,6 +135,28 @@ export default function JournalEntriesPage() {
       toast({
         title: "Backfill Failed",
         description: err.message || "Could not run backfill. Make sure you are logged in as Admin.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const rectifyDebtorsMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/journal-entries/rectify-debtors");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setRectifyResults(data);
+      queryClient.invalidateQueries({ queryKey: ["/api/journal-entries"] });
+      toast({
+        title: "Rectification Complete",
+        description: `${data.updated || 0} lines moved to party accounts, ${data.skipped || 0} skipped, ${data.errors || 0} errors.`,
+      });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Rectification Failed",
+        description: err.message || "Could not run rectification.",
         variant: "destructive",
       });
     },
@@ -252,6 +276,15 @@ export default function JournalEntriesPage() {
               data-testid="button-backfill"
             >
               <RefreshCw className="w-4 h-4 mr-1" /> Backfill Missing Entries
+            </Button>
+          )}
+          {isAdmin && (
+            <Button
+              variant="outline"
+              onClick={() => { setRectifyResults(null); setShowRectifyDialog(true); }}
+              data-testid="button-rectify-debtors"
+            >
+              <RefreshCw className="w-4 h-4 mr-1" /> Rectify Party Accounts
             </Button>
           )}
           <Button

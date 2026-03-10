@@ -15,7 +15,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Edit, Mail, FileText, Printer, Star, Receipt, RefreshCw, Calculator, CreditCard, Lock, PackageCheck, PenTool, XCircle, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Edit, Mail, FileText, Printer, Star, Receipt, RefreshCw, Calculator, CreditCard, Lock, PackageCheck, PenTool, XCircle, AlertTriangle, ClipboardList } from "lucide-react";
+import { Link } from "wouter";
 import {
   Select,
   SelectContent,
@@ -234,6 +235,18 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
     enabled: !!id,
   });
 
+  // Fetch linked Sales Order if exists
+  const { data: linkedSalesOrder } = useQuery<any>({
+    queryKey: ['/api/sales-orders', invoice?.salesOrderId],
+    queryFn: async () => {
+      if (!invoice?.salesOrderId) return null;
+      const res = await fetch(`/api/sales-orders/${invoice.salesOrderId}`, { credentials: 'include' });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!invoice?.salesOrderId,
+  });
+
   // A "full return" blocks cancel/reissue and credit note actions to prevent double-crediting
   const hasFullReturn = invoiceSalesReturns.some((r: any) => r.returnType === 'full');
 
@@ -407,6 +420,11 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
   const vendorTypes = matchingVendor 
     ? safeVendorTypeAssignments.filter(a => a.vendorId === matchingVendor.id)
     : [];
+
+  const { data: salesOrder } = useQuery<any>({
+    queryKey: ['/api/sales-orders', invoice?.salesOrderId],
+    enabled: !!invoice?.salesOrderId,
+  });
 
   if (isLoadingInvoice) {
     return (
@@ -799,6 +817,22 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
                   data-testid="link-gatepass"
                 >
                   {relatedGatepass.gatepassNumber}
+                </Button>
+              </div>
+            )}
+            {invoice.salesOrderId && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Sales Order:</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto p-0"
+                  asChild
+                  data-testid="link-sales-order"
+                >
+                  <Link href={`/sales-orders/${invoice.salesOrderId}`}>
+                    {salesOrder?.soNumber || 'View Sales Order'}
+                  </Link>
                 </Button>
               </div>
             )}

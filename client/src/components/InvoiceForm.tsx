@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,6 +38,7 @@ interface AvailableStockResponse {
 }
 
 const invoiceFormSchema = z.object({
+  salesOrderId: z.string().optional(),
   gatepassId: z.string().optional(),
   invoiceDate: z.string(),
   invoiceTemplateId: z.string().optional(),
@@ -113,6 +115,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
   const [showPrintPreview, setShowPrintPreview] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(invoice?.templateId || "");
   const [selectedVendorId, setSelectedVendorId] = useState<string>("");
+  const [soPickerOpen, setSoPickerOpen] = useState(false);
   const [shipToDifferentAddress, setShipToDifferentAddress] = useState(
     !!(invoice?.shipToName || invoice?.shipToAddress || invoice?.shipToCity || invoice?.shipToState || invoice?.shipToPincode)
   );
@@ -168,6 +171,17 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
 
   const { data: termsConditionsList = [] } = useQuery<TermsConditions[]>({
     queryKey: ['/api/terms-conditions'],
+  });
+
+  const { data: confirmedSalesOrders = [] } = useQuery<any[]>({
+    queryKey: ['/api/sales-orders', { status: 'confirmed', pageSize: 100 }],
+    queryFn: async () => {
+      const res = await fetch('/api/sales-orders?status=confirmed&pageSize=100', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch sales orders');
+      const json = await res.json();
+      return json.data || [];
+    },
+    enabled: !invoice, // Only for new invoices
   });
 
   // Find default template and terms & conditions
@@ -662,6 +676,75 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
     name: "items",
   });
 
+  const watchedSalesOrderId = form.watch("salesOrderId");
+  const linkedSO = useMemo(() => {
+    if (!watchedSalesOrderId) return null;
+    return confirmedSalesOrders.find((so: any) => so.id === watchedSalesOrderId);
+  }, [watchedSalesOrderId, confirmedSalesOrders]);
+
+  const handleSOSelection = async (soId: string) => {
+    const so = confirmedSalesOrders.find((s: any) => s.id === soId);
+    if (!so) return;
+
+    try {
+      // Fetch full SO with items
+      const res = await fetch(`/api/sales-orders/${soId}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch sales order details');
+      const soDetail = await res.json();
+
+      form.setValue("salesOrderId", soId);
+      form.setValue("buyerName", soDetail.buyerName || "");
+      form.setValue("buyerGstin", soDetail.buyerGstin || "");
+      form.setValue("buyerAddress", soDetail.buyerAddress || "");
+      
+      form.setValue("shipToName", soDetail.shipToName || "");
+      form.setValue("shipToAddress", soDetail.shipToAddress || "");
+      form.setValue("shipToCity", soDetail.shipToCity || "");
+      form.setValue("shipToState", soDetail.shipToState || "");
+      form.setValue("shipToPincode", soDetail.shipToPin || "");
+
+      if (soDetail.items && soDetail.items.length > 0) {
+        const invoiceItems = soDetail.items.map((item: any) => {
+          const igstRate = Number(item.igstRate) || 0;
+          const cgstRate = Number(item.cgstRate) || 0;
+          const sgstRate = Number(item.sgstRate) || 0;
+          const gstRate = igstRate > 0 ? igstRate : (cgstRate + sgstRate);
+          
+          return {
+            productId: item.productId,
+            description: item.description || "",
+            hsnCode: item.hsnCode || "",
+            quantity: item.quantity,
+            unitPrice: (item.unitPrice || 0) / 100, // Convert from paise
+            gstRate: Number(gstRate), // numeric in DB is percentage (e.g. 18.00)
+            transportRatePerCase: 0,
+            batchNumber: "",
+          };
+        });
+        replace(invoiceItems);
+      }
+
+      toast({
+        title: "Sales Order Linked",
+        description: `Pre-filled form with data from ${soDetail.soNumber}`,
+      });
+    } catch (error) {
+      console.error("Error pre-filling from SO:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load sales order details",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const clearSOLink = () => {
+    form.setValue("salesOrderId", "");
+    toast({
+      description: "Sales order link removed",
+    });
+  };
+
   // Sync field array when pending items exist (needed for reissue mode)
   // This ensures useFieldArray picks up items after form.reset()
   useEffect(() => {
@@ -1149,6 +1232,21 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-semibold">Generate GST Invoice</h2>
         <div className="flex gap-2">
+          {/* Sales Order Link Status */}
+          {!invoice && linkedSO && (
+            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 gap-1 flex items-center h-8">
+              <FileText className="w-3 h-3" />
+              Linked to {linkedSO.soNumber}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-4 w-4 ml-1 p-0 hover:bg-transparent"
+                onClick={clearSOLink}
+              >
+                <X className="w-3 h-3" />
+              </Button>
+            </Badge>
+          )}
           <Button 
             variant="outline" 
             size="sm" 
@@ -1166,6 +1264,63 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       </div>
 
       <form onSubmit={handleFormSubmit} className="space-y-4">
+        {/* Sales Order Picker (New Invoices Only) */}
+        {!invoice && confirmedSalesOrders.length > 0 && (
+          <div className="bg-muted/30 p-3 rounded-md border border-dashed border-muted-foreground/30">
+            <Label className="text-xs font-medium uppercase text-muted-foreground mb-2 block">
+              Import from Sales Order
+            </Label>
+            <Popover open={soPickerOpen} onOpenChange={setSoPickerOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={soPickerOpen}
+                  className="w-full justify-between h-9 text-sm"
+                  data-testid="button-so-picker"
+                >
+                  {watchedSalesOrderId
+                    ? confirmedSalesOrders.find((so: any) => so.id === watchedSalesOrderId)?.soNumber
+                    : "Select a confirmed sales order..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[400px] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Search SO number or buyer..." />
+                  <CommandList>
+                    <CommandEmpty>No confirmed sales orders found.</CommandEmpty>
+                    <CommandGroup>
+                      {confirmedSalesOrders.map((so: any) => (
+                        <CommandItem
+                          key={so.id}
+                          value={`${so.soNumber} ${so.buyerName}`}
+                          onSelect={() => {
+                            handleSOSelection(so.id);
+                            setSoPickerOpen(false);
+                          }}
+                          data-testid={`so-option-${so.id}`}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              watchedSalesOrderId === so.id ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          <div className="flex flex-col">
+                            <span className="font-medium">{so.soNumber}</span>
+                            <span className="text-xs text-muted-foreground">{so.buyerName} - ₹{(so.totalAmount / 100).toLocaleString()}</span>
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          </div>
+        )}
+
         {/* System automatically uses default template and terms & conditions */}
         {/* Hidden info display */}
         {defaultTemplate && (

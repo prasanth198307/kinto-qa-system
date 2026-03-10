@@ -55,6 +55,8 @@ import {
   partialTaskAnswers,
   machineStartupTasks,
   notificationConfig,
+  salesOrders,
+  salesOrderItems,
   type User,
   type UpsertUser,
   type InsertUser,
@@ -149,6 +151,10 @@ import {
   type InsertDebitNote,
   type DebitNoteItem,
   type InsertDebitNoteItem,
+  type SalesOrder,
+  type InsertSalesOrder,
+  type SalesOrderItem,
+  type InsertSalesOrderItem,
   type Role,
   type InsertRole,
   type RolePermission,
@@ -221,7 +227,7 @@ import {
   type InsertAccountSubtype,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, or, isNotNull, notInArray, inArray, gte, lte, sql, desc } from "drizzle-orm";
+import { eq, and, or, isNotNull, notInArray, inArray, gte, lte, sql, desc, ilike } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 
@@ -747,6 +753,18 @@ export interface IStorage {
   createAccountSubtype(data: InsertAccountSubtype): Promise<AccountSubtype>;
   deleteAccountSubtype(id: string): Promise<void>;
   getAccountSubtypeByName(accountType: string, name: string): Promise<AccountSubtype | undefined>;
+
+  // Sales Orders
+  createSalesOrder(so: InsertSalesOrder): Promise<SalesOrder>;
+  getAllSalesOrders(filters?: { search?: string; status?: string; page?: number; pageSize?: number }): Promise<{ data: SalesOrder[]; total: number }>;
+  getSalesOrder(id: string): Promise<SalesOrder | undefined>;
+  getSalesOrderByNumber(soNumber: string): Promise<SalesOrder | undefined>;
+  updateSalesOrder(id: string, updates: Partial<InsertSalesOrder>): Promise<SalesOrder | undefined>;
+  deleteSalesOrder(id: string): Promise<void>;
+  createSalesOrderItem(item: InsertSalesOrderItem): Promise<SalesOrderItem>;
+  getSalesOrderItems(soId: string): Promise<any[]>;
+  deleteSalesOrderItems(soId: string): Promise<void>;
+  getInvoicesBySalesOrder(soId: string): Promise<Invoice[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1392,6 +1410,10 @@ export class DatabaseStorage implements IStorage {
 
   async getPMExecutionsByPlan(planId: string): Promise<PMExecution[]> {
     return await db.select().from(pmExecutions).where(eq(pmExecutions.maintenancePlanId, planId));
+  }
+
+  async getPMExecutionTasks(executionId: string): Promise<PMExecutionTask[]> {
+    return await db.select().from(pmExecutionTasks).where(eq(pmExecutionTasks.executionId, executionId));
   }
 
   // UOM Management
@@ -4577,6 +4599,131 @@ export class DatabaseStorage implements IStorage {
       and(eq(accountSubtypes.accountType, accountType), eq(accountSubtypes.name, name), eq(accountSubtypes.recordStatus, 1))
     ).limit(1);
     return found;
+  }
+
+  // Sales Orders
+  async createSalesOrder(so: InsertSalesOrder): Promise<SalesOrder> {
+    const [result] = await db
+      .insert(salesOrders)
+      .values(so)
+      .returning();
+    return result;
+  }
+
+  async getAllSalesOrders(filters?: { search?: string; status?: string; page?: number; pageSize?: number }): Promise<{ data: SalesOrder[]; total: number }> {
+    const search = filters?.search;
+    const status = filters?.status;
+    const page = filters?.page || 1;
+    const pageSize = filters?.pageSize || 25;
+    const offset = (page - 1) * pageSize;
+
+    const whereClauses: any[] = [eq(salesOrders.recordStatus, 1)];
+    if (search) {
+      whereClauses.push(or(
+        ilike(salesOrders.soNumber, `%${search}%`),
+        ilike(salesOrders.buyerName, `%${search}%`)
+      ));
+    }
+    if (status) {
+      whereClauses.push(eq(salesOrders.status, status));
+    }
+
+    const where = and(...whereClauses);
+
+    const data = await db
+      .select()
+      .from(salesOrders)
+      .where(where)
+      .limit(pageSize)
+      .offset(offset)
+      .orderBy(desc(salesOrders.createdAt));
+
+    const [totalResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(salesOrders)
+      .where(where);
+
+    return {
+      data,
+      total: Number(totalResult.count)
+    };
+  }
+
+  async getSalesOrder(id: string): Promise<SalesOrder | undefined> {
+    const [result] = await db
+      .select()
+      .from(salesOrders)
+      .where(and(eq(salesOrders.id, id), eq(salesOrders.recordStatus, 1)));
+    return result;
+  }
+
+  async getSalesOrderByNumber(soNumber: string): Promise<SalesOrder | undefined> {
+    const [result] = await db
+      .select()
+      .from(salesOrders)
+      .where(and(eq(salesOrders.soNumber, soNumber), eq(salesOrders.recordStatus, 1)));
+    return result;
+  }
+
+  async updateSalesOrder(id: string, updates: Partial<InsertSalesOrder>): Promise<SalesOrder | undefined> {
+    const [result] = await db
+      .update(salesOrders)
+      .set({ ...updates, updatedAt: new Date().toISOString() })
+      .where(eq(salesOrders.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteSalesOrder(id: string): Promise<void> {
+    await db
+      .update(salesOrders)
+      .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
+      .where(eq(salesOrders.id, id));
+  }
+
+  async createSalesOrderItem(item: InsertSalesOrderItem): Promise<SalesOrderItem> {
+    const [result] = await db
+      .insert(salesOrderItems)
+      .values(item)
+      .returning();
+    return result;
+  }
+
+  async getSalesOrderItems(soId: string): Promise<any[]> {
+    return await db
+      .select({
+        id: salesOrderItems.id,
+        soId: salesOrderItems.soId,
+        productId: salesOrderItems.productId,
+        productName: products.productName,
+        description: salesOrderItems.description,
+        hsnCode: salesOrderItems.hsnCode,
+        quantity: salesOrderItems.quantity,
+        unitPrice: salesOrderItems.unitPrice,
+        cgstRate: salesOrderItems.cgstRate,
+        sgstRate: salesOrderItems.sgstRate,
+        igstRate: salesOrderItems.igstRate,
+        taxableAmount: salesOrderItems.taxableAmount,
+        totalAmount: salesOrderItems.totalAmount,
+        recordStatus: salesOrderItems.recordStatus,
+      })
+      .from(salesOrderItems)
+      .leftJoin(products, eq(salesOrderItems.productId, products.id))
+      .where(and(eq(salesOrderItems.soId, soId), eq(salesOrderItems.recordStatus, 1)));
+  }
+
+  async deleteSalesOrderItems(soId: string): Promise<void> {
+    await db
+      .update(salesOrderItems)
+      .set({ recordStatus: 0 })
+      .where(eq(salesOrderItems.soId, soId));
+  }
+
+  async getInvoicesBySalesOrder(soId: string): Promise<Invoice[]> {
+    return await db
+      .select()
+      .from(invoices)
+      .where(and(eq(invoices.salesOrderId, soId), eq(invoices.recordStatus, 1)));
   }
 }
 

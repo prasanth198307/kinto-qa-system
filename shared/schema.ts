@@ -1898,6 +1898,9 @@ export const invoices = pgTable("invoices", {
   replacedByInvoiceId: varchar("replaced_by_invoice_id"), // For cancelled invoice: points to the new replacement invoice
   cancelledAt: timestamp("cancelled_at", { mode: 'string' }), // When the invoice was cancelled
   cancelledBy: varchar("cancelled_by").references(() => users.id), // Who cancelled the invoice
+
+  // Sales Order link
+  salesOrderId: varchar("sales_order_id"), // FK to sales_orders (loose reference - no hard FK to avoid circular dep)
   
   recordStatus: integer("record_status").default(1).notNull(),
   generatedBy: varchar("generated_by").references(() => users.id),
@@ -3639,6 +3642,84 @@ export const insertAccountSubtypeSchema = createInsertSchema(accountSubtypes).om
 
 export type InsertAccountSubtype = z.infer<typeof insertAccountSubtypeSchema>;
 export type AccountSubtype = typeof accountSubtypes.$inferSelect;
+
+// ============================================================
+// Sales Orders
+// ============================================================
+export const salesOrders = pgTable("sales_orders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  soNumber: varchar("so_number", { length: 50 }).notNull().unique(),
+  soDate: varchar("so_date", { length: 20 }).notNull(), // date string YYYY-MM-DD
+  vendorId: varchar("vendor_id").references(() => vendors.id),
+  buyerName: varchar("buyer_name", { length: 255 }).notNull(),
+  buyerGstin: varchar("buyer_gstin", { length: 15 }),
+  buyerAddress: text("buyer_address"),
+  buyerContact: varchar("buyer_contact", { length: 50 }),
+  shipToName: varchar("ship_to_name", { length: 255 }),
+  shipToAddress: text("ship_to_address"),
+  shipToCity: varchar("ship_to_city", { length: 100 }),
+  shipToState: varchar("ship_to_state", { length: 100 }),
+  shipToPin: varchar("ship_to_pin", { length: 10 }),
+  status: varchar("status", { length: 30 }).default('draft').notNull(), // draft | confirmed | invoiced | partially_invoiced | cancelled
+  remarks: text("remarks"),
+  totalAmount: integer("total_amount").default(0).notNull(), // paise
+  recordedBy: varchar("recorded_by").references(() => users.id),
+  confirmedBy: varchar("confirmed_by").references(() => users.id),
+  confirmedAt: varchar("confirmed_at", { length: 50 }),
+  cancelledAt: varchar("cancelled_at", { length: 50 }),
+  cancelledBy: varchar("cancelled_by").references(() => users.id),
+  cancellationReason: varchar("cancellation_reason", { length: 255 }),
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
+}, (table) => [
+  index("so_buyer_idx").on(table.buyerName),
+  index("so_status_idx").on(table.status),
+  index("so_vendor_idx").on(table.vendorId),
+]);
+
+export const insertSalesOrderSchema = createInsertSchema(salesOrders).omit({
+  id: true,
+  soNumber: true, // Auto-generated on backend
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertSalesOrder = z.infer<typeof insertSalesOrderSchema>;
+export type SalesOrder = typeof salesOrders.$inferSelect;
+
+// Sales Order Items
+// ============================================================
+export const salesOrderItems = pgTable("sales_order_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  soId: varchar("so_id").references(() => salesOrders.id).notNull(),
+  productId: varchar("product_id").references(() => products.id).notNull(),
+  description: varchar("description", { length: 255 }),
+  hsnCode: varchar("hsn_code", { length: 8 }),
+  quantity: integer("quantity").default(0).notNull(),
+  unitPrice: integer("unit_price").default(0).notNull(), // paise
+  cgstRate: numeric("cgst_rate"),
+  sgstRate: numeric("sgst_rate"),
+  igstRate: numeric("igst_rate"),
+  taxableAmount: integer("taxable_amount").default(0).notNull(), // paise
+  totalAmount: integer("total_amount").default(0).notNull(), // paise
+  recordStatus: integer("record_status").default(1).notNull(),
+}, (table) => [
+  index("soi_so_idx").on(table.soId),
+]);
+
+export const insertSalesOrderItemSchema = createInsertSchema(salesOrderItems).omit({
+  id: true,
+  recordStatus: true,
+}).extend({
+  cgstRate: z.union([z.string(), z.number()]).transform(v => String(v)).optional(),
+  sgstRate: z.union([z.string(), z.number()]).transform(v => String(v)).optional(),
+  igstRate: z.union([z.string(), z.number()]).transform(v => String(v)).optional(),
+});
+
+export type InsertSalesOrderItem = z.infer<typeof insertSalesOrderItemSchema>;
+export type SalesOrderItem = typeof salesOrderItems.$inferSelect;
 
 // Budget Master - Annual/periodic budgets
 // ============================================================

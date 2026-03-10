@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import crypto from "crypto";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertPurchaseOrderItemSchema, purchaseOrders, purchaseOrderItems, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, paymentEvidence, salesReturns, salesReturnItems, creditNotes, creditNoteItems, debitNotes, debitNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes, vendors, users, uom, insertDocumentCategorySchema, insertDocumentSchema, insertExpenseCategorySchema, insertExpenseVoucherSchema, insertExpenseItemSchema, insertExpenseAttachmentSchema, rolePermissions, vendorDebitNotes, vendorDebitNoteItems, vendorDebitNoteAdjustments, transporters, vehicles, drivers, insertTransporterSchema, insertVehicleSchema, insertDriverSchema, scrapInventory, insertSparePartEntrySchema, insertSparePartIssuanceSchema, insertScrapInventorySchema, sparePartEntries, sparePartsCatalog, accountSubtypes } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertPurchaseOrderItemSchema, purchaseOrders, purchaseOrderItems, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesOrderSchema, insertSalesOrderItemSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, paymentEvidence, salesOrders, salesOrderItems, salesReturns, salesReturnItems, creditNotes, creditNoteItems, debitNotes, debitNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes, vendors, users, uom, insertDocumentCategorySchema, insertDocumentSchema, insertExpenseCategorySchema, insertExpenseVoucherSchema, insertExpenseItemSchema, insertExpenseAttachmentSchema, rolePermissions, vendorDebitNotes, vendorDebitNoteItems, vendorDebitNoteAdjustments, transporters, vehicles, drivers, insertTransporterSchema, insertVehicleSchema, insertDriverSchema, scrapInventory, insertSparePartEntrySchema, insertSparePartIssuanceSchema, insertScrapInventorySchema, sparePartEntries, sparePartsCatalog, accountSubtypes } from "@shared/schema";
 import { format } from "date-fns";
 import { z } from "zod";
 import path from "path";
@@ -122,6 +122,7 @@ const endpointToScreenKey: Record<string, string> = {
   '/api/raw-material-types': 'raw_material_types',
   '/api/finished-goods': 'finished_goods',
   '/api/finished-goods/consolidated': 'finished_goods',
+  '/api/sales-orders': 'sales_orders',
   '/api/inventory': 'inventory',
   '/api/uom': 'uom',
   
@@ -6912,6 +6913,201 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ==================== INVOICE MANAGEMENT ====================
   
   // Get all invoices
+  // Sales Orders Routes
+  app.get('/api/sales-orders', isAuthenticated, async (req: any, res) => {
+    try {
+      const { search, status, page, pageSize } = req.query;
+      const filters = {
+        search: search as string,
+        status: status as string,
+        page: page ? parseInt(page as string) : 1,
+        pageSize: pageSize ? parseInt(pageSize as string) : 25,
+      };
+      const result = await storage.getAllSalesOrders(filters);
+      res.json(result);
+    } catch (error) {
+      console.error('[SALES_ORDERS] Error fetching sales orders:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  app.get('/api/sales-orders/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const so = await storage.getSalesOrder(req.params.id);
+      if (!so) {
+        return res.status(404).json({ message: 'Sales order not found' });
+      }
+      const items = await storage.getSalesOrderItems(req.params.id);
+      res.json({ ...so, items });
+    } catch (error) {
+      console.error('[SALES_ORDERS] Error fetching sales order:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  app.post('/api/sales-orders', isAuthenticated, requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { header, items } = req.body;
+
+      // Validate header
+      const validatedHeader = insertSalesOrderSchema.parse(header);
+
+      // Auto-generate SO Number: SO-YYYYMMDD-NNN
+      const today = new Date();
+      const dateStr = format(today, 'yyyyMMdd');
+      const prefix = `SO-${dateStr}-`;
+
+      // Get count of SOs today to determine NNN
+      const { total } = await storage.getAllSalesOrders({ search: prefix });
+      const nextNum = (total + 1).toString().padStart(3, '0');
+      const soNumber = `${prefix}${nextNum}`;
+
+      // Create SO
+      const so = await storage.createSalesOrder({
+        ...validatedHeader,
+        soNumber,
+        recordedBy: req.user.id,
+        status: 'draft',
+      });
+
+      // Create items
+      const createdItems = [];
+      if (items && Array.isArray(items)) {
+        for (const item of items) {
+          const validatedItem = insertSalesOrderItemSchema.parse({
+            ...item,
+            soId: so.id,
+          });
+          const createdItem = await storage.createSalesOrderItem(validatedItem);
+          createdItems.push(createdItem);
+        }
+      }
+
+      await logAudit(req.user.id, 'CREATE', 'sales_orders', so.id, `Created sales order ${soNumber}`);
+      res.status(201).json({ ...so, items: createdItems });
+    } catch (error) {
+      console.error('[SALES_ORDERS] Error creating sales order:', error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: 'Validation error', errors: error.errors });
+      }
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  app.patch('/api/sales-orders/:id', isAuthenticated, requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { header, items } = req.body;
+      const so = await storage.getSalesOrder(req.params.id);
+      if (!so) {
+        return res.status(404).json({ message: 'Sales order not found' });
+      }
+
+      if (so.status === 'invoiced' || so.status === 'cancelled') {
+        return res.status(400).json({ message: `Cannot edit sales order in ${so.status} status` });
+      }
+
+      // Update header if provided
+      let updatedSo = so;
+      if (header) {
+        const validatedHeader = insertSalesOrderSchema.partial().parse(header);
+        updatedSo = await storage.updateSalesOrder(req.params.id, validatedHeader) || so;
+      }
+
+      // Replace items if provided
+      if (items && Array.isArray(items)) {
+        await storage.deleteSalesOrderItems(req.params.id);
+        const createdItems = [];
+        for (const item of items) {
+          const validatedItem = insertSalesOrderItemSchema.parse({
+            ...item,
+            soId: req.params.id,
+            recordStatus: 1, // Ensure recordStatus is 1 after being deleted
+          });
+          const createdItem = await storage.createSalesOrderItem(validatedItem);
+          createdItems.push(createdItem);
+        }
+        (updatedSo as any).items = createdItems;
+      }
+
+      await logAudit(req.user.id, 'UPDATE', 'sales_orders', so.id, `Updated sales order ${so.soNumber}`);
+      res.json(updatedSo);
+    } catch (error) {
+      console.error('[SALES_ORDERS] Error updating sales order:', error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: 'Validation error', errors: error.errors });
+      }
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  app.post('/api/sales-orders/:id/confirm', isAuthenticated, requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const so = await storage.getSalesOrder(req.params.id);
+      if (!so) {
+        return res.status(404).json({ message: 'Sales order not found' });
+      }
+
+      if (so.status !== 'draft') {
+        return res.status(400).json({ message: 'Only draft sales orders can be confirmed' });
+      }
+
+      const updatedSo = await storage.updateSalesOrder(req.params.id, {
+        status: 'confirmed',
+        confirmedBy: req.user.id,
+        confirmedAt: new Date().toISOString(),
+      });
+
+      await logAudit(req.user.id, 'CONFIRM', 'sales_orders', so.id, `Confirmed sales order ${so.soNumber}`);
+      res.json(updatedSo);
+    } catch (error) {
+      console.error('[SALES_ORDERS] Error confirming sales order:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  app.post('/api/sales-orders/:id/cancel', isAuthenticated, requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { cancellationReason } = req.body;
+      const so = await storage.getSalesOrder(req.params.id);
+      if (!so) {
+        return res.status(404).json({ message: 'Sales order not found' });
+      }
+
+      if (so.status === 'cancelled') {
+        return res.status(400).json({ message: 'Sales order is already cancelled' });
+      }
+
+      // Block if invoices exist
+      const linkedInvoices = await storage.getInvoicesBySalesOrder(req.params.id);
+      if (linkedInvoices.length > 0) {
+        return res.status(400).json({ message: 'Cannot cancel sales order with linked invoices' });
+      }
+
+      const updatedSo = await storage.updateSalesOrder(req.params.id, {
+        status: 'cancelled',
+        cancelledBy: req.user.id,
+        cancelledAt: new Date().toISOString(),
+        cancellationReason: cancellationReason || 'Cancelled by user',
+      });
+
+      await logAudit(req.user.id, 'CANCEL', 'sales_orders', so.id, `Cancelled sales order ${so.soNumber}`);
+      res.json(updatedSo);
+    } catch (error) {
+      console.error('[SALES_ORDERS] Error cancelling sales order:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  app.get('/api/sales-orders/:id/invoices', isAuthenticated, async (req: any, res) => {
+    try {
+      const invoices = await storage.getInvoicesBySalesOrder(req.params.id);
+      res.json(invoices);
+    } catch (error) {
+      console.error('[SALES_ORDERS] Error fetching invoices for sales order:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
   app.get('/api/invoices', isAuthenticated, async (req: any, res) => {
     try {
       const { page, pageSize, sortBy, sortOrder, search, ...filters } = req.query;
@@ -7463,6 +7659,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message = `Invoice created with auto-generated gatepass ${result.autoCreatedGatepass.gatepassNumber}. Update vehicle/driver details before dispatch.`;
       }
       
+      // T003: Update Sales Order status if linked
+      if (validatedHeader.salesOrderId) {
+        try {
+          const soId = validatedHeader.salesOrderId;
+          console.log(`[SO_LINK] Invoice ${result.invoice.invoiceNumber} linked to SO ${soId}. Updating SO status...`);
+
+          // 1. Get all items for this SO
+          const soItems = await db.select()
+            .from(salesOrderItems)
+            .where(and(eq(salesOrderItems.soId, soId), eq(salesOrderItems.recordStatus, 1)));
+
+          // 2. Get all invoices linked to this SO
+          const activeInvoices = await db.select()
+            .from(invoices)
+            .where(and(
+              eq(invoices.salesOrderId, soId),
+              eq(invoices.recordStatus, 1),
+              ne(invoices.status, 'cancelled')
+            ));
+
+          const invoiceIds = activeInvoices.map(inv => inv.id);
+
+          // 3. Get all items from these invoices
+          let allInvoicedItems: any[] = [];
+          if (invoiceIds.length > 0) {
+            allInvoicedItems = await db.select()
+              .from(invoiceItems)
+              .where(and(
+                inArray(invoiceItems.invoiceId, invoiceIds),
+                eq(invoiceItems.recordStatus, 1)
+              ));
+          }
+
+          // 4. Calculate fulfillment per SO item
+          let allFullyInvoiced = true;
+          let anyInvoiced = false;
+
+          for (const soItem of soItems) {
+            const totalInvoicedQty = allInvoicedItems
+              .filter(ii => ii.productId === soItem.productId)
+              .reduce((sum, ii) => sum + (ii.quantity || 0), 0);
+
+            if (totalInvoicedQty > 0) anyInvoiced = true;
+            if (totalInvoicedQty < soItem.quantity) allFullyInvoiced = false;
+          }
+
+          // 5. Determine and update SO status
+          const newStatus = allFullyInvoiced ? 'invoiced' : (anyInvoiced ? 'partially_invoiced' : 'confirmed');
+          await db.update(salesOrders)
+            .set({ status: newStatus, updatedAt: new Date().toISOString() })
+            .where(eq(salesOrders.id, soId));
+
+          console.log(`[SO_LINK] SO ${soId} status updated to ${newStatus}`);
+        } catch (soError) {
+          console.error('[SO_LINK_ERROR] Failed to update SO status:', soError);
+        }
+      }
+
       res.json({ 
         invoice: result.invoice, 
         gatepass: result.autoCreatedGatepass,
@@ -20436,6 +20690,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('[BACKFILL] Fatal error:', error.message);
       res.status(500).json({ message: error.message || 'Backfill failed' });
+    }
+  });
+
+  // Rectify old journal lines: migrate generic Sundry Debtors (1100) lines to party sub-accounts
+  app.post('/api/journal-entries/rectify-debtors', requireRole('admin'), async (req: any, res) => {
+    try {
+      const { rectifyDebtorJournalLines } = await import('./journal-service');
+      console.log('[RECTIFY] Admin triggered debtor journal rectification');
+      const results = await rectifyDebtorJournalLines();
+      res.json(results);
+    } catch (error: any) {
+      console.error('[RECTIFY] Fatal error:', error.message);
+      res.status(500).json({ message: error.message || 'Rectification failed' });
     }
   });
 
