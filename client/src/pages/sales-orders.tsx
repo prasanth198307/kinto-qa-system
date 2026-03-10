@@ -108,6 +108,7 @@ const salesOrderItemSchema = z.object({
 const salesOrderSchema = z.object({
   buyerName: z.string().optional(),
   soDate: z.string().min(1, "Date is required"),
+  deliveryDate: z.string().optional(),
   vendorId: z.string().min(1, "Customer is required"),
   buyerGstin: z.string().optional(),
   buyerAddress: z.string().optional(),
@@ -155,6 +156,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
         header: {
           buyerName: resolvedBuyerName,
           soDate: values.soDate,
+          deliveryDate: values.deliveryDate || null,
           vendorId: values.vendorId || null,
           buyerGstin: values.buyerGstin || null,
           buyerAddress: values.buyerAddress || null,
@@ -347,6 +349,19 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                           <FormLabel>Order Date *</FormLabel>
                           <FormControl>
                             <Input type="date" {...field} data-testid="input-so-date" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="deliveryDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Expected Delivery Date</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} data-testid="input-delivery-date" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -577,7 +592,8 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
               <TableHeader>
                 <TableRow>
                   <TableHead>SO Number</TableHead>
-                  <TableHead>Date</TableHead>
+                  <TableHead>Order Date</TableHead>
+                  <TableHead>Delivery Date</TableHead>
                   <TableHead>Buyer</TableHead>
                   <TableHead>Total Amount</TableHead>
                   <TableHead>Status</TableHead>
@@ -590,6 +606,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                     <TableRow key={i}>
                       <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                       <TableCell><Skeleton className="h-6 w-20" /></TableCell>
@@ -598,7 +615,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                   ))
                 ) : soResponse?.data?.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                       No sales orders found.
                     </TableCell>
                   </TableRow>
@@ -607,6 +624,12 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                     <TableRow key={so.id}>
                       <TableCell className="font-medium" data-testid={`text-so-number-${so.id}`}>{so.soNumber}</TableCell>
                       <TableCell>{format(new Date(so.soDate), 'dd MMM yyyy')}</TableCell>
+                      <TableCell className="text-sm">
+                        {so.deliveryDate
+                          ? <span className="text-foreground">{format(new Date(so.deliveryDate), 'dd MMM yyyy')}</span>
+                          : <span className="text-muted-foreground">—</span>
+                        }
+                      </TableCell>
                       <TableCell className="max-w-[200px] truncate" data-testid={`text-buyer-name-${so.id}`}>{so.buyerName}</TableCell>
                       <TableCell data-testid={`text-total-amount-${so.id}`}>
                         {formatCurrency(so.totalAmount)}

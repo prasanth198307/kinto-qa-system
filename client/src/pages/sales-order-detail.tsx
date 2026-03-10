@@ -32,7 +32,8 @@ import {
   Plus, 
   Edit, 
   ClipboardList,
-  FileText
+  FileText,
+  CalendarCheck
 } from "lucide-react";
 import { format } from "date-fns";
 import { useState } from "react";
@@ -237,6 +238,13 @@ export default function SalesOrderDetail() {
                 <CardTitle className="text-lg">Buyer & Shipping Details</CardTitle>
               </CardHeader>
               <CardContent>
+                {salesOrder.deliveryDate && (
+                  <div className="mb-4 p-3 rounded-md bg-muted/50 flex items-center gap-2 text-sm">
+                    <CalendarCheck className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <span className="text-muted-foreground">Expected Delivery:</span>
+                    <span className="font-medium">{format(new Date(salesOrder.deliveryDate), 'dd MMM yyyy')}</span>
+                  </div>
+                )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-4">
                     <div>

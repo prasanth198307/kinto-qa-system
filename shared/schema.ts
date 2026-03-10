@@ -3650,6 +3650,7 @@ export const salesOrders = pgTable("sales_orders", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   soNumber: varchar("so_number", { length: 50 }).notNull().unique(),
   soDate: varchar("so_date", { length: 20 }).notNull(), // date string YYYY-MM-DD
+  deliveryDate: varchar("delivery_date", { length: 20 }), // expected delivery date YYYY-MM-DD
   vendorId: varchar("vendor_id").references(() => vendors.id),
   buyerName: varchar("buyer_name", { length: 255 }).notNull(),
   buyerGstin: varchar("buyer_gstin", { length: 15 }),
