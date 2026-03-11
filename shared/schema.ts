@@ -1692,6 +1692,13 @@ export const insertGatepassSchema = createInsertSchema(gatepasses, {
     }
     return val;
   }),
+  // Explicit unbounded string overrides — prevents older drizzle-zod from generating max(255) from varchar columns
+  destination: z.string().optional(),
+  transporterName: z.string().optional(),
+  customerName: z.string().optional(),
+  driverName: z.string().optional(),
+  vehicleNumber: z.string().optional(),
+  remarks: z.string().optional(),
 }).omit({
   id: true,
   gatepassNumber: true, // Auto-generated on backend
