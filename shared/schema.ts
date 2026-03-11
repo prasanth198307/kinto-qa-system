@@ -1647,10 +1647,10 @@ export const gatepasses = pgTable("gatepasses", {
   vehicleNumber: varchar("vehicle_number", { length: 50 }).notNull(),
   driverName: varchar("driver_name", { length: 255 }).notNull(),
   driverContact: varchar("driver_contact", { length: 50 }),
-  transporterName: varchar("transporter_name", { length: 255 }),
-  destination: varchar("destination", { length: 255 }),
+  transporterName: text("transporter_name"),
+  destination: text("destination"),
   vendorId: varchar("vendor_id").references(() => vendors.id),
-  customerName: varchar("customer_name", { length: 255 }),
+  customerName: text("customer_name"),
   isCluster: integer("is_cluster").default(0).notNull(), // 0 = No, 1 = Yes (copied from vendor)
   invoiceId: varchar("invoice_id").references(() => invoices.id).unique(), // One-to-one: one gatepass per invoice
   remarks: text("remarks"),
