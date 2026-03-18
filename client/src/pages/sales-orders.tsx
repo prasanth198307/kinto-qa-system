@@ -106,10 +106,10 @@ const salesOrderItemSchema = z.object({
 });
 
 const salesOrderSchema = z.object({
-  buyerName: z.string().optional(),
+  buyerName: z.string().min(1, "Buyer name is required"),
   soDate: z.string().min(1, "Date is required"),
   deliveryDate: z.string().optional(),
-  vendorId: z.string().min(1, "Customer is required"),
+  vendorId: z.string().optional(),
   buyerGstin: z.string().optional(),
   buyerAddress: z.string().optional(),
   buyerContact: z.string().optional(),
@@ -148,13 +148,10 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
 
   const createSoMutation = useMutation({
     mutationFn: async (values: SalesOrderFormValues) => {
-      // Derive buyerName from selected vendor if not set explicitly
-      const selectedVendor = vendors.find(v => v.id === values.vendorId);
-      const resolvedBuyerName = values.buyerName || selectedVendor?.vendorName || '';
       // Map form values to API expected format
       const payload = {
         header: {
-          buyerName: resolvedBuyerName,
+          buyerName: values.buyerName,
           soDate: values.soDate,
           deliveryDate: values.deliveryDate || null,
           vendorId: values.vendorId || null,
@@ -215,6 +212,8 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
   const form = useForm<SalesOrderFormValues>({
     resolver: zodResolver(salesOrderSchema),
     defaultValues: {
+      buyerName: "",
+      vendorId: "",
       soDate: format(new Date(), 'yyyy-MM-dd'),
       items: [{
         productId: "",
@@ -281,10 +280,23 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
+                      name="buyerName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Buyer Name *</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter buyer / customer name" {...field} data-testid="input-buyer-name" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
                       name="vendorId"
                       render={({ field }) => (
                         <FormItem className="flex flex-col">
-                          <FormLabel>Customer / Buyer *</FormLabel>
+                          <FormLabel>Link to Vendor (Optional — auto-fills details)</FormLabel>
                           <Popover>
                             <PopoverTrigger asChild>
                               <FormControl>
@@ -299,7 +311,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                                 >
                                   {field.value
                                     ? vendors.find((v) => v.id === field.value)?.vendorName
-                                    : "Select vendor..."}
+                                    : "Select vendor (optional)..."}
                                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
                               </FormControl>
@@ -316,7 +328,6 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                                         key={vendor.id}
                                         onSelect={() => {
                                           form.setValue("vendorId", vendor.id);
-                                          // Pre-fill some details if available
                                           if (vendor.vendorName) form.setValue("buyerName", vendor.vendorName);
                                           if (vendor.gstNumber) form.setValue("buyerGstin", vendor.gstNumber);
                                           if (vendor.address) form.setValue("buyerAddress", vendor.address);
