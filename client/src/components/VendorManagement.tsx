@@ -643,11 +643,16 @@ export default function VendorManagement() {
         }
       }
 
+      // Build vendor ID → name map for resolving parent vendor names
+      const vendorNameMap: Record<string, string> = {};
+      allVendors.forEach((v: any) => { vendorNameMap[v.id] = v.vendorName || ''; });
+
       const XLSX = await import('xlsx');
       const rows = allVendors.map((v: any, i: number) => ({
         'Sr No': i + 1,
         'Vendor Name': v.vendorName || '',
         'Vendor Code': v.vendorCode || '',
+        'Parent Vendor': v.parentVendorId ? (vendorNameMap[v.parentVendorId] || v.parentVendorId) : '',
         'Type': vtMap[v.id] || '',
         'Contact Person': v.contactPerson || '',
         'Mobile': v.mobileNumber || '',
@@ -663,9 +668,9 @@ export default function VendorManagement() {
 
       const ws = XLSX.utils.json_to_sheet(rows);
       ws['!cols'] = [
-        { wch: 6 }, { wch: 30 }, { wch: 14 }, { wch: 18 }, { wch: 22 },
-        { wch: 14 }, { wch: 26 }, { wch: 18 }, { wch: 32 }, { wch: 16 },
-        { wch: 16 }, { wch: 22 }, { wch: 32 }, { wch: 8 },
+        { wch: 6 }, { wch: 30 }, { wch: 14 }, { wch: 22 }, { wch: 18 },
+        { wch: 22 }, { wch: 14 }, { wch: 26 }, { wch: 18 }, { wch: 32 },
+        { wch: 16 }, { wch: 16 }, { wch: 22 }, { wch: 32 }, { wch: 8 },
       ];
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Vendor Contacts');
