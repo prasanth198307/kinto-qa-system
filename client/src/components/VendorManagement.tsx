@@ -624,8 +624,8 @@ export default function VendorManagement() {
 
   const handleDownloadContacts = async () => {
     try {
-      // Fetch all vendors (large page size to get all)
-      const res = await fetch(`/api/vendors?pageSize=9999&page=1`, { credentials: 'include' });
+      // Fetch all vendors without pagination params — API returns full list as plain array
+      const res = await fetch(`/api/vendors`, { credentials: 'include' });
       if (!res.ok) throw new Error(`Failed to fetch vendors: ${res.status}`);
       const json = await res.json();
       const allVendors: any[] = Array.isArray(json) ? json : (json.data || []);
