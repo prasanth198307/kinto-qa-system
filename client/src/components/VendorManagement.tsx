@@ -43,7 +43,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Star, Search, X, Check, ChevronsUpDown, ShieldCheck, Loader2, AlertCircle, RefreshCw } from "lucide-react";
+import { Plus, Pencil, Trash2, Star, Search, X, Check, ChevronsUpDown, ShieldCheck, Loader2, AlertCircle, RefreshCw, Download } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -621,6 +621,61 @@ export default function VendorManagement() {
     }
   };
 
+  const handleDownloadContacts = async () => {
+    try {
+      // Fetch all vendors (large page size to get all)
+      const res = await fetch(`/api/vendors?pageSize=9999&page=1`);
+      const json = await res.json();
+      const allVendors: any[] = Array.isArray(json) ? json : (json.data || []);
+
+      // Fetch vendor-type mappings for all vendors
+      const vtRes = await fetch(`/api/vendor-vendor-types/batch?vendorIds=${allVendors.map((v: any) => v.id).join(',')}`);
+      let vtMap: Record<string, string> = {};
+      if (vtRes.ok) {
+        const vtData = await vtRes.json();
+        if (Array.isArray(vtData)) {
+          vtData.forEach((a: any) => {
+            const name = a.vendorType?.name || '';
+            if (name) {
+              vtMap[a.vendorId] = vtMap[a.vendorId] ? vtMap[a.vendorId] + ', ' + name : name;
+            }
+          });
+        }
+      }
+
+      const XLSX = await import('xlsx');
+      const rows = allVendors.map((v: any, i: number) => ({
+        'Sr No': i + 1,
+        'Vendor Name': v.vendorName || '',
+        'Vendor Code': v.vendorCode || '',
+        'Type': vtMap[v.id] || '',
+        'Contact Person': v.contactPerson || '',
+        'Mobile': v.mobileNumber || '',
+        'Email': v.email || '',
+        'GSTIN': v.gstNumber || '',
+        'Address': v.address || '',
+        'City': v.city || '',
+        'State': v.state || '',
+        'Ship To Name': v.shipToName || '',
+        'Ship To Address': v.shipToAddress || '',
+        'Active': v.isActive === 1 ? 'Yes' : 'No',
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      ws['!cols'] = [
+        { wch: 6 }, { wch: 30 }, { wch: 14 }, { wch: 18 }, { wch: 22 },
+        { wch: 14 }, { wch: 26 }, { wch: 18 }, { wch: 32 }, { wch: 16 },
+        { wch: 16 }, { wch: 22 }, { wch: 32 }, { wch: 8 },
+      ];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Vendor Contacts');
+      const { format } = await import('date-fns');
+      XLSX.writeFile(wb, `Vendor_Contacts_${format(new Date(), 'yyyyMMdd_HHmm')}.xlsx`);
+    } catch (e) {
+      toast({ title: 'Download failed', description: 'Could not export vendor contacts.', variant: 'destructive' });
+    }
+  };
+
   const bulkVerifyGst = async () => {
     setBulkVerifying(true);
     setBulkVerifyProgress(null);
@@ -666,6 +721,15 @@ export default function VendorManagement() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadContacts}
+              data-testid="button-download-contacts"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Download Contacts
+            </Button>
             <Button 
               variant="outline" 
               size="sm" 
