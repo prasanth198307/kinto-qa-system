@@ -625,12 +625,18 @@ export default function VendorManagement() {
   const handleDownloadContacts = async () => {
     try {
       // Fetch all vendors (large page size to get all)
-      const res = await fetch(`/api/vendors?pageSize=9999&page=1`);
+      const res = await fetch(`/api/vendors?pageSize=9999&page=1`, { credentials: 'include' });
+      if (!res.ok) throw new Error(`Failed to fetch vendors: ${res.status}`);
       const json = await res.json();
       const allVendors: any[] = Array.isArray(json) ? json : (json.data || []);
 
+      if (allVendors.length === 0) {
+        toast({ title: 'No vendors found', description: 'There are no vendors to export.', variant: 'destructive' });
+        return;
+      }
+
       // Fetch vendor-type mappings for all vendors
-      const vtRes = await fetch(`/api/vendor-vendor-types/batch?vendorIds=${allVendors.map((v: any) => v.id).join(',')}`);
+      const vtRes = await fetch(`/api/vendor-vendor-types/batch?vendorIds=${allVendors.map((v: any) => v.id).join(',')}`, { credentials: 'include' });
       let vtMap: Record<string, string> = {};
       if (vtRes.ok) {
         const vtData = await vtRes.json();
