@@ -9387,9 +9387,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { vendorTypeId } = req.query;
 
-      // Get all vendor types for dropdown
+      // Get all vendor types for dropdown (match the same filter as /api/vendor-types)
       const allVendorTypes = await db.select().from(vendorTypes)
-        .where(and(eq(vendorTypes.isActive, 1), eq(vendorTypes.recordStatus, 1)))
+        .where(eq(vendorTypes.recordStatus, 1))
         .orderBy(vendorTypes.name);
 
       // Build vendor query with optional type filter
@@ -9420,7 +9420,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       })
         .from(vendorVendorTypes)
         .innerJoin(vendorTypes, eq(vendorVendorTypes.vendorTypeId, vendorTypes.id))
-        .where(eq(vendorTypes.recordStatus, 1));
+        .where(and(eq(vendorVendorTypes.recordStatus, 1), eq(vendorTypes.recordStatus, 1)));
 
       const typesByVendor: Record<string, string[]> = {};
       allMappings.forEach(m => {
@@ -9476,13 +9476,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const vendorNames = [
           vendor.vendorName,
           vendor.shipToName || '',
-        ].filter(Boolean).map(n => n.toLowerCase());
+        ].filter(Boolean).map(n => n.trim().toLowerCase());
 
-        // Match invoices to this vendor by buyerName/shipToName
+        // Match invoices to this vendor by buyerName/shipToName (trimmed case-insensitive)
         const vendorInvoices = allInvoices.filter(inv =>
           vendorNames.some(name =>
-            (inv.buyerName && inv.buyerName.toLowerCase() === name) ||
-            (inv.shipToName && inv.shipToName.toLowerCase() === name)
+            (inv.buyerName && inv.buyerName.trim().toLowerCase() === name) ||
+            (inv.shipToName && inv.shipToName.trim().toLowerCase() === name)
           )
         );
 

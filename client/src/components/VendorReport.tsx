@@ -8,6 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { Download, Users, TrendingUp, AlertCircle, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 
+interface VendorType {
+  id: string;
+  code: string;
+  name: string;
+}
+
 interface VendorReportRow {
   id: string;
   vendorName: string;
@@ -27,7 +33,6 @@ interface VendorReportRow {
 }
 
 interface VendorReportData {
-  vendorTypes: { id: string; code: string; name: string }[];
   vendors: VendorReportRow[];
 }
 
@@ -38,10 +43,13 @@ function fmt(paise: number) {
 export default function VendorReport() {
   const [selectedTypeId, setSelectedTypeId] = useState<string>("all");
 
-  const queryKey = ["/api/reports/vendor-report", selectedTypeId];
+  // Fetch vendor types from dedicated endpoint (always works independently)
+  const { data: vendorTypes = [] } = useQuery<VendorType[]>({
+    queryKey: ["/api/vendor-types"],
+  });
 
-  const { data, isLoading, refetch, isFetching } = useQuery<VendorReportData>({
-    queryKey,
+  const { data, isLoading, refetch, isFetching, error } = useQuery<VendorReportData>({
+    queryKey: ["/api/reports/vendor-report", selectedTypeId],
     queryFn: async () => {
       const url =
         selectedTypeId && selectedTypeId !== "all"
@@ -53,7 +61,6 @@ export default function VendorReport() {
     },
   });
 
-  const vendorTypes = data?.vendorTypes || [];
   const rows = data?.vendors || [];
 
   // Totals
@@ -229,6 +236,11 @@ export default function VendorReport() {
           {isLoading ? (
             <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
               Loading vendor report...
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center py-16 text-destructive text-sm gap-2">
+              <AlertCircle className="w-8 h-8 opacity-50" />
+              <span>Failed to load report. Please refresh.</span>
             </div>
           ) : rows.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-muted-foreground text-sm gap-2">
