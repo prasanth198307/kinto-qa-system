@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import VendorReport from "@/components/VendorReport";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
@@ -26,7 +27,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { FileText, Package, Receipt, ShoppingCart, Wrench, Filter, FileCheck2, Download, Wallet, Banknote, CreditCard, Check, ChevronsUpDown, Boxes, Settings, Trash2, Undo2, RefreshCw } from "lucide-react";
+import { FileText, Package, Receipt, ShoppingCart, Wrench, Filter, FileCheck2, Download, Wallet, Banknote, CreditCard, Check, ChevronsUpDown, Boxes, Settings, Trash2, Undo2, RefreshCw, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import type { Gatepass, Invoice, RawMaterialIssuance, PurchaseOrder, PMExecution, InvoicePayment } from "@shared/schema";
@@ -886,11 +887,12 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
     'scrap': canAccessReportTab('report_scrap'),
     'sales-returns': canAccessReportTab('report_sales_returns'),
     'repacking': canAccessReportTab('report_repacking'),
+    'vendor-report': true,
   };
   
   // Find first accessible tab for default
   const getFirstAccessibleTab = () => {
-    const tabs = ['gatepasses', 'invoices', 'issuances', 'purchase-orders', 'maintenance', 'machines', 'expenses', 'cash-register', 'gst-reports', 'payments', 'finished-goods', 'monthly-sales', 'scrap', 'sales-returns', 'repacking'];
+    const tabs = ['gatepasses', 'invoices', 'issuances', 'purchase-orders', 'maintenance', 'machines', 'expenses', 'cash-register', 'gst-reports', 'payments', 'finished-goods', 'monthly-sales', 'scrap', 'sales-returns', 'repacking', 'vendor-report'];
     for (const tab of tabs) {
       if (tabPermissions[tab as keyof typeof tabPermissions]) return tab;
     }
@@ -1734,6 +1736,12 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
             <TabsTrigger value="repacking" data-testid="tab-repacking">
               <RefreshCw className="w-4 h-4 mr-2" />
               Repacking
+            </TabsTrigger>
+          )}
+          {tabPermissions['vendor-report'] && (
+            <TabsTrigger value="vendor-report" data-testid="tab-vendor-report">
+              <Users className="w-4 h-4 mr-2" />
+              Vendor Report
             </TabsTrigger>
           )}
         </TabsList>
@@ -3306,6 +3314,9 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
         </TabsContent>
         <TabsContent value="repacking">
           <RepackingReportContent />
+        </TabsContent>
+        <TabsContent value="vendor-report">
+          <VendorReport />
         </TabsContent>
       </Tabs>
       </div>

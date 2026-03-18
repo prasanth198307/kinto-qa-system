@@ -103,6 +103,7 @@ const endpointToScreenKey: Record<string, string> = {
   '/api/reports/finished-goods': 'report_finished_goods',
   '/api/reports/monthly-sales': 'reports',
   '/api/reports/sales-returns-summary': 'reports',
+  '/api/reports/vendor-report': 'reports',
   '/api/reports/repacking': 'reports',
   '/api/scrap-inventory/report': 'reports',
   '/api/gst-reports': 'report_gst',
@@ -9378,6 +9379,146 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.error("Error writing off payment:", error);
       res.status(500).json({ message: "Failed to write off payment" });
+    }
+  });
+
+  // Vendor Report - filtered by vendor type
+  app.get('/api/reports/vendor-report', isAuthenticated, async (req: any, res) => {
+    try {
+      const { vendorTypeId } = req.query;
+
+      // Get all vendor types for dropdown
+      const allVendorTypes = await db.select().from(vendorTypes)
+        .where(and(eq(vendorTypes.isActive, 1), eq(vendorTypes.recordStatus, 1)))
+        .orderBy(vendorTypes.name);
+
+      // Build vendor query with optional type filter
+      let vendorList: any[] = [];
+      if (vendorTypeId && vendorTypeId !== 'all') {
+        // Get vendors linked to this vendor type
+        const vendorIds = await db
+          .select({ vendorId: vendorVendorTypes.vendorId })
+          .from(vendorVendorTypes)
+          .where(eq(vendorVendorTypes.vendorTypeId, vendorTypeId as string));
+        const ids = vendorIds.map(v => v.vendorId);
+        if (ids.length === 0) {
+          return res.json({ vendorTypes: allVendorTypes, vendors: [] });
+        }
+        vendorList = await db.select().from(vendors)
+          .where(and(eq(vendors.recordStatus, 1), inArray(vendors.id, ids)))
+          .orderBy(vendors.vendorName);
+      } else {
+        vendorList = await db.select().from(vendors)
+          .where(eq(vendors.recordStatus, 1))
+          .orderBy(vendors.vendorName);
+      }
+
+      // Get all vendor-type mappings for display
+      const allMappings = await db.select({
+        vendorId: vendorVendorTypes.vendorId,
+        typeName: vendorTypes.name,
+      })
+        .from(vendorVendorTypes)
+        .innerJoin(vendorTypes, eq(vendorVendorTypes.vendorTypeId, vendorTypes.id))
+        .where(eq(vendorTypes.recordStatus, 1));
+
+      const typesByVendor: Record<string, string[]> = {};
+      allMappings.forEach(m => {
+        if (!typesByVendor[m.vendorId]) typesByVendor[m.vendorId] = [];
+        typesByVendor[m.vendorId].push(m.typeName);
+      });
+
+      // Get all active invoices (exclude cancelled)
+      const allInvoices = await db.select({
+        id: invoices.id,
+        buyerName: invoices.buyerName,
+        shipToName: invoices.shipToName,
+        grandTotal: invoices.grandTotal,
+        amountReceived: invoices.amountReceived,
+        status: invoices.status,
+        invoiceDate: invoices.invoiceDate,
+      })
+        .from(invoices)
+        .where(and(eq(invoices.recordStatus, 1), sql`${invoices.status} != 'cancelled'`));
+
+      // Get all payments (actual payment records, excluding write-offs)
+      const allPayments = await db.select({
+        invoiceId: invoicePayments.invoiceId,
+        amount: invoicePayments.amount,
+        paymentType: invoicePayments.paymentType,
+      })
+        .from(invoicePayments)
+        .where(and(
+          eq(invoicePayments.recordStatus, 1),
+          sql`${invoicePayments.paymentType} != 'Write-off'`
+        ));
+
+      // Get all active credit notes
+      const allCreditNotesList = await db.select({
+        invoiceId: creditNotes.invoiceId,
+        grandTotal: creditNotes.grandTotal,
+      })
+        .from(creditNotes)
+        .where(and(eq(creditNotes.recordStatus, 1), eq(creditNotes.status, 'issued')));
+
+      // Index payments and credit notes by invoiceId
+      const paymentsByInvoice: Record<string, number> = {};
+      allPayments.forEach(p => {
+        paymentsByInvoice[p.invoiceId] = (paymentsByInvoice[p.invoiceId] || 0) + Number(p.amount);
+      });
+      const cnByInvoice: Record<string, number> = {};
+      allCreditNotesList.forEach(cn => {
+        if (cn.invoiceId) cnByInvoice[cn.invoiceId] = (cnByInvoice[cn.invoiceId] || 0) + Number(cn.grandTotal);
+      });
+
+      // Build vendor summaries
+      const vendorReport = vendorList.map(vendor => {
+        const vendorNames = [
+          vendor.vendorName,
+          vendor.shipToName || '',
+        ].filter(Boolean).map(n => n.toLowerCase());
+
+        // Match invoices to this vendor by buyerName/shipToName
+        const vendorInvoices = allInvoices.filter(inv =>
+          vendorNames.some(name =>
+            (inv.buyerName && inv.buyerName.toLowerCase() === name) ||
+            (inv.shipToName && inv.shipToName.toLowerCase() === name)
+          )
+        );
+
+        const invoiceCount = vendorInvoices.length;
+        const totalInvoiceAmount = vendorInvoices.reduce((sum, inv) => sum + Number(inv.grandTotal || 0), 0);
+        const totalAmountReceived = vendorInvoices.reduce((sum, inv) => {
+          const payments = paymentsByInvoice[inv.id] || 0;
+          // Fallback to amountReceived if no payment records
+          return sum + (payments > 0 ? payments : Number(inv.amountReceived || 0));
+        }, 0);
+        const totalCreditNotes = vendorInvoices.reduce((sum, inv) => sum + (cnByInvoice[inv.id] || 0), 0);
+        const outstanding = Math.max(0, totalInvoiceAmount - totalAmountReceived - totalCreditNotes);
+
+        return {
+          id: vendor.id,
+          vendorName: vendor.vendorName,
+          vendorCode: vendor.vendorCode || '',
+          city: vendor.city || '',
+          state: vendor.state || '',
+          gstNumber: vendor.gstNumber || '',
+          mobileNumber: vendor.mobileNumber || '',
+          email: vendor.email || '',
+          contactPerson: vendor.contactPerson || '',
+          vendorTypeNames: (typesByVendor[vendor.id] || []).join(', '),
+          invoiceCount,
+          totalInvoiceAmount,
+          totalAmountReceived,
+          totalCreditNotes,
+          outstanding,
+        };
+      });
+
+      res.json({ vendorTypes: allVendorTypes, vendors: vendorReport });
+    } catch (error) {
+      console.error('[VENDOR REPORT] Error:', error);
+      res.status(500).json({ message: 'Failed to generate vendor report' });
     }
   });
 
