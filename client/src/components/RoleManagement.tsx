@@ -56,6 +56,11 @@ const AVAILABLE_SCREENS: ScreenDefinition[] = [
   { key: 'report_payments', label: 'Report: Payments', allowedActions: ['view'] },
   { key: 'report_finished_goods', label: 'Report: Finished Goods', allowedActions: ['view'] },
   { key: 'report_monthly_sales', label: 'Report: Monthly Sales', allowedActions: ['view'] },
+  { key: 'report_machines', label: 'Report: Machine Reports', allowedActions: ['view'] },
+  { key: 'report_scrap', label: 'Report: Scrap Report', allowedActions: ['view'] },
+  { key: 'report_sales_returns', label: 'Report: Sales Returns', allowedActions: ['view'] },
+  { key: 'report_repacking', label: 'Report: Repacking', allowedActions: ['view'] },
+  { key: 'report_vendor_report', label: 'Report: Vendor Report', allowedActions: ['view'] },
   
   // Analytics & Reports (Read-only)
   { key: 'production_reconciliation_report', label: 'Production Reconciliation Report', allowedActions: ['view'] },

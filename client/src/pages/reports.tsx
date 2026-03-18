@@ -887,7 +887,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
     'scrap': canAccessReportTab('report_scrap'),
     'sales-returns': canAccessReportTab('report_sales_returns'),
     'repacking': canAccessReportTab('report_repacking'),
-    'vendor-report': true,
+    'vendor-report': canAccessReportTab('report_vendor_report'),
   };
   
   // Find first accessible tab for default
