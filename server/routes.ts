@@ -9433,7 +9433,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         id: invoices.id,
         buyerName: invoices.buyerName,
         shipToName: invoices.shipToName,
-        grandTotal: invoices.grandTotal,
+        totalAmount: invoices.totalAmount,
         amountReceived: invoices.amountReceived,
         status: invoices.status,
         invoiceDate: invoices.invoiceDate,
@@ -9487,7 +9487,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
 
         const invoiceCount = vendorInvoices.length;
-        const totalInvoiceAmount = vendorInvoices.reduce((sum, inv) => sum + Number(inv.grandTotal || 0), 0);
+        const totalInvoiceAmount = vendorInvoices.reduce((sum, inv) => sum + Number(inv.totalAmount || 0), 0);
         const totalAmountReceived = vendorInvoices.reduce((sum, inv) => {
           const payments = paymentsByInvoice[inv.id] || 0;
           // Fallback to amountReceived if no payment records
