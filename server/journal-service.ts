@@ -669,7 +669,7 @@ export async function journalForInvoice(invoice: any): Promise<void> {
 }
 
 export async function journalForPayment(payment: any, invoice: any): Promise<void> {
-  const amount = payment.amount || 0;
+  const amount = Number(payment.amount) || 0;
   const method = (payment.paymentMethod || '').toLowerCase();
   const accountCode = (method === 'cash') ? ACCOUNT_CODES.CASH_IN_HAND : ACCOUNT_CODES.BANK_CURRENT;
   const debtorAccountCode = await getOrCreateDebtorAccount(invoice?.buyerName || payment.payerName || '');
@@ -686,7 +686,7 @@ export async function journalForPayment(payment: any, invoice: any): Promise<voi
 }
 
 export async function journalForCustomerAdvance(advance: any, vendorName: string): Promise<void> {
-  const amount = advance.amount || 0;
+  const amount = Number(advance.amount) || 0;
   const method = (advance.paymentMethod || '').toLowerCase();
   const accountCode = (method === 'cash') ? ACCOUNT_CODES.CASH_IN_HAND : ACCOUNT_CODES.BANK_CURRENT;
 
@@ -702,7 +702,7 @@ export async function journalForCustomerAdvance(advance: any, vendorName: string
 }
 
 export async function journalForAdvanceApplication(application: any, advance: any, invoice: any, vendorName: string): Promise<void> {
-  const amount = application.appliedAmount || 0;
+  const amount = Number(application.appliedAmount) || 0;
   const debtorAccountCode = await getOrCreateDebtorAccount(vendorName);
 
   await createJournalWithLines(
@@ -745,9 +745,9 @@ export async function journalForCreditNote(creditNote: any, invoiceNumber?: stri
 }
 
 export async function journalForExpenseVoucher(voucher: any): Promise<void> {
-  const totalAmount = voucher.totalAmount || 0;
-  const gstAmount = voucher.gstAmount || 0;
-  const subtotal = voucher.subtotal || (totalAmount - gstAmount) || 0;
+  const totalAmount = Number(voucher.totalAmount) || 0;
+  const gstAmount = Number(voucher.gstAmount) || 0;
+  const subtotal = Number(voucher.subtotal) || (totalAmount - gstAmount) || 0;
   const method = (voucher.paymentMode || '').toLowerCase();
   const accountCode = (method === 'cash') ? ACCOUNT_CODES.CASH_IN_HAND : ACCOUNT_CODES.BANK_CURRENT;
 
@@ -771,7 +771,7 @@ export async function journalForExpenseVoucher(voucher: any): Promise<void> {
 }
 
 export async function journalForWriteOff(payment: any, invoice: any): Promise<void> {
-  const amount = payment.amount || 0;
+  const amount = Number(payment.amount) || 0;
   const debtorAccountCode = await getOrCreateDebtorAccount(invoice?.buyerName || '');
 
   await createJournalWithLines(
@@ -786,16 +786,16 @@ export async function journalForWriteOff(payment: any, invoice: any): Promise<vo
 }
 
 export async function journalForDebitNote(debitNote: any, buyerName?: string): Promise<void> {
-  const subtotal = debitNote.subtotal || 0;
-  const cgst = debitNote.cgstAmount || 0;
-  const sgst = debitNote.sgstAmount || 0;
-  const igst = debitNote.igstAmount || 0;
-  const grandTotal = debitNote.grandTotal || 0;
+  const cgst = Number(debitNote.cgstAmount) || 0;
+  const sgst = Number(debitNote.sgstAmount) || 0;
+  const igst = Number(debitNote.igstAmount) || 0;
+  const grandTotal = Number(debitNote.grandTotal) || 0;
+  const income = grandTotal - cgst - sgst - igst;  // derived — always balances
   const debtorAccountCode = await getOrCreateDebtorAccount(buyerName || '');
 
   const lines: JournalLineInput[] = [
     { accountCode: debtorAccountCode, debit: grandTotal, credit: 0, memo: `Debit Note ${debitNote.noteNumber}` },
-    { accountCode: ACCOUNT_CODES.DEBIT_NOTE_INCOME, debit: 0, credit: subtotal, memo: `Corrective debit note ${debitNote.noteNumber}` },
+    { accountCode: ACCOUNT_CODES.DEBIT_NOTE_INCOME, debit: 0, credit: income, memo: `Corrective debit note ${debitNote.noteNumber}` },
   ];
 
   if (cgst > 0) lines.push({ accountCode: ACCOUNT_CODES.GST_CGST_PAYABLE, debit: 0, credit: cgst, memo: 'CGST on debit note' });
