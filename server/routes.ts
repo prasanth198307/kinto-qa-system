@@ -14036,9 +14036,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Use the debit note's original date for the adjustment, not today's date
       const adjustmentDate = debitNote.debitDate;
       
+      let createdAdjustment: any = null;
+      let linkedBuyerName: string | null = null;
+
       await db.transaction(async (tx) => {
         // Insert adjustment record
-        await tx.insert(vendorDebitNoteAdjustments).values({
+        const [inserted] = await tx.insert(vendorDebitNoteAdjustments).values({
           vendorDebitNoteId: debitNoteId,
           referenceType,
           invoiceId: referenceType === 'invoice' ? invoiceId : null,
@@ -14047,7 +14050,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           adjustmentDate,
           remarks,
           adjustedBy: req.user?.id,
-        });
+        }).returning();
+        createdAdjustment = inserted;
 
         // Update settled amount on debit note - use subtotal (without GST) for settlement tracking
         await tx.update(vendorDebitNotes)
@@ -14061,6 +14065,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (referenceType === 'invoice' && invoiceId) {
           // Get current invoice to update amountReceived
           const [currentInvoice] = await tx.select().from(invoices).where(eq(invoices.id, invoiceId));
+          linkedBuyerName = currentInvoice?.buyerName || null;
           
           // Use the debit note's original date for the payment record
           await tx.insert(invoicePayments).values({
@@ -14091,6 +14096,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       res.json({ message: "Adjustment created successfully" });
+
+      // Auto-generate journal entry for the adjustment (non-blocking)
+      if (createdAdjustment) {
+        try {
+          const { journalForVDNAdjustment } = await import('./journal-service');
+          // Look up vendor name for the journal
+          const [vdnVendor] = await db.select({ vendorName: vendors.vendorName })
+            .from(vendors).where(eq(vendors.id, debitNote.vendorId));
+          const vendorName = vdnVendor?.vendorName || 'Unknown';
+          const adjustmentWithMeta = { ...createdAdjustment, buyerName: linkedBuyerName };
+          await journalForVDNAdjustment(adjustmentWithMeta, debitNote, vendorName);
+        } catch (je) { console.error('[JOURNAL] VDN adjustment journal failed:', je); }
+      }
     } catch (error: any) {
       console.error("Error creating adjustment:", error);
       console.error("Error details:", error?.message, error?.stack);
