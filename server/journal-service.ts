@@ -913,21 +913,21 @@ export async function journalForCashRegisterTransfer(transaction: any, day: any)
 // ============================================================
 
 export async function journalForRawMaterialIssuance(issuance: any, items: any[], materialNames: Record<string, string>): Promise<void> {
-  let totalValue = 0;
+  let totalPaise = 0;
   const itemMemos: string[] = [];
 
   for (const item of items) {
     const qty = Number(item.quantityIssued) || 0;
     const unitCost = Number(item.unitCost) || 0;
-    const lineValue = Math.round(unitCost * qty * 100) / 100;
-    totalValue += lineValue;
+    totalPaise += Math.round(unitCost * qty * 100);
     const matName = materialNames[item.rawMaterialId] || item.rawMaterialId;
     itemMemos.push(`${matName}: ${qty} units @ ${unitCost.toFixed(2)}`);
   }
 
-  if (totalValue <= 0) return;
-
-  const totalPaise = Math.round(totalValue * 100);
+  if (totalPaise <= 0) {
+    console.log(`[JOURNAL] Skipping material issuance ${issuance.issuanceNumber || issuance.id}: total cost is zero (unit costs may not be set)`);
+    return;
+  }
 
   await createJournalWithLines(
     issuance.issuanceDate ? String(issuance.issuanceDate).slice(0, 10) : new Date().toISOString().slice(0, 10),
@@ -942,7 +942,10 @@ export async function journalForRawMaterialIssuance(issuance: any, items: any[],
 
 export async function journalForProductionEntry(productionEntry: any, productName: string, costValue: number): Promise<void> {
   const value = Math.round(Number(costValue) * 100);
-  if (value <= 0) return;
+  if (value <= 0) {
+    console.log(`[JOURNAL] Skipping production entry ${productionEntry.id}: costValue=${costValue} (link an issuance with costed materials to enable journaling)`);
+    return;
+  }
 
   const qty = Number(productionEntry.producedQuantity) || 0;
   const batch = productionEntry.batchNumber || 'N/A';
@@ -982,7 +985,10 @@ export async function journalForRawMaterialReceipt(material: any): Promise<void>
   const unitCost = Number(material.unitCost) || 0;
   const gstRate = Number(material.gstRate) || 0;
 
-  if (qty <= 0 || unitCost <= 0) return;
+  if (qty <= 0 || unitCost <= 0) {
+    console.log(`[JOURNAL] Skipping raw material receipt for ${material.materialName || material.id}: qty=${qty}, unitCost=${unitCost} (set unit cost to enable journaling)`);
+    return;
+  }
 
   const baseValue = Math.round(unitCost * qty * 100);
   const gstValue = Math.round(unitCost * qty * (gstRate / 100) * 100);
@@ -1405,8 +1411,8 @@ export async function backfillJournalEntries(): Promise<{
       vendor_debit_note: { table: 'vendor_debit_notes' },
       vdn_adjustment: { table: 'vendor_debit_note_adjustments' },
       expense: { table: 'expense_vouchers' },
-      material_receipt: { table: 'raw_material_receipts' },
-      material_issuance: { table: 'raw_material_issuances' },
+      material_receipt: { table: 'raw_materials' },
+      material_issuance: { table: 'raw_material_issuance' },
       production_entry: { table: 'production_entries' },
       spare_part_receipt: { table: 'spare_part_receipts' },
       spare_part_issuance: { table: 'spare_part_issuances' },
