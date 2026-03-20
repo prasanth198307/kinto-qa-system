@@ -668,6 +668,36 @@ export async function journalForInvoice(invoice: any): Promise<void> {
   );
 }
 
+export async function journalForInvoiceCancellation(invoice: any, reason?: string): Promise<void> {
+  // For current-period cancellations, the correct accounting treatment is to void
+  // the original invoice journal rather than posting a reversal entry.
+  // Posting a reversal would leave a permanent debit-sales / credit-debtor entry in the
+  // books with no offsetting original — resulting in a negative revenue balance.
+  //
+  // Instead: mark the original invoice journal (sourceType='invoice', sourceId=invoice.id)
+  // as inactive (record_status = 0) along with all its lines.
+  const label = reason ? ` (${reason})` : '';
+  try {
+    const existing: any[] = (await db.execute(sql`
+      SELECT id FROM journal_entries
+      WHERE source_type = 'invoice' AND source_id = ${invoice.id} AND record_status = 1
+      LIMIT 1
+    `)).rows;
+
+    if (existing.length === 0) {
+      console.log(`[JOURNAL] Invoice cancellation: no active journal found for invoice ${invoice.id}${label}`);
+      return;
+    }
+
+    const jeId = existing[0].id;
+    await db.execute(sql`UPDATE journal_entries SET record_status = 0 WHERE id = ${jeId}`);
+    await db.execute(sql`UPDATE journal_lines SET record_status = 0 WHERE journal_id = ${jeId}`);
+    console.log(`[JOURNAL] Voided journal ${jeId} for cancelled invoice ${invoice.invoiceNumber}${label}`);
+  } catch (e: any) {
+    console.error(`[JOURNAL] Failed to void journal for invoice ${invoice.id}:`, e.message);
+  }
+}
+
 export async function journalForPayment(payment: any, invoice: any): Promise<void> {
   const amount = Number(payment.amount) || 0;
   const method = (payment.paymentMethod || '').toLowerCase();

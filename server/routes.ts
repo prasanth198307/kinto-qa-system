@@ -8101,6 +8101,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         invoiceNumber: invoice.invoiceNumber,
         gatepassesCancelled: existingGatepasses.length
       });
+
+      // Auto-generate journal reversal (non-blocking)
+      try {
+        const { journalForInvoiceCancellation } = await import('./journal-service');
+        await journalForInvoiceCancellation(invoice, reason);
+      } catch (je) { console.error('[JOURNAL] Invoice cancellation reversal failed:', je); }
     } catch (error) {
       console.error("Error cancelling invoice:", error);
       res.status(500).json({ message: "Failed to cancel invoice" });
@@ -8372,6 +8378,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         invoiceItems: result.items,
         isReissue: true
       });
+
+      // Auto-generate journal reversal for cancelled invoice (non-blocking)
+      try {
+        const { journalForInvoiceCancellation } = await import('./journal-service');
+        await journalForInvoiceCancellation(invoice, 'Cancel & Reissue');
+      } catch (je) { console.error('[JOURNAL] Cancel-and-reissue reversal failed:', je); }
     } catch (error) {
       console.error("Error in cancel & reissue:", error);
       res.status(500).json({ message: "Failed to cancel & reissue invoice" });
