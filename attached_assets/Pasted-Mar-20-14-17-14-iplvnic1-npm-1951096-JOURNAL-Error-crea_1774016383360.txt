@@ -1,0 +1,54 @@
+Mar 20 14:17:14 iplvnic1 npm[1951096]: [JOURNAL] Error creating journal: duplicate key value violates unique constraint "journal_entries_journal_number_key"
+Mar 20 14:17:14 iplvnic1 npm[1951096]: [JOURNAL] Error creating journal: duplicate key value violates unique constraint "journal_entries_journal_number_key"
+Mar 20 14:17:14 iplvnic1 npm[1951096]: [JOURNAL] Error creating journal: duplicate key value violates unique constraint "journal_entries_journal_number_key"
+Mar 20 14:17:14 iplvnic1 npm[1951096]: [JOURNAL] Error creating journal: duplicate key value violates unique constraint "journal_entries_journal_number_key"
+Mar 20 14:17:14 iplvnic1 npm[1951096]: [JOURNAL] Error creating journal: duplicate key value violates unique constraint "journal_entries_journal_number_key"
+Mar 20 14:17:14 iplvnic1 npm[1951096]: [JOURNAL] Error creating journal: duplicate key value violates unique constraint "journal_entries_journal_number_key"
+Mar 20 14:17:14 iplvnic1 npm[1951096]: [JOURNAL] Error creating journal: duplicate key value violates unique constraint "journal_entries_journal_number_key"
+Mar 20 14:17:14 iplvnic1 npm[1951096]: [JOURNAL] Error creating journal: duplicate key value violates unique constraint "journal_entries_journal_number_key"
+Mar 20 14:17:14 iplvnic1 npm[1951096]: [JOURNAL] Error creating journal: duplicate key value violates unique constraint "journal_entries_journal_number_key"
+Mar 20 14:17:14 iplvnic1 npm[1951096]: [JOURNAL] Error creating journal: duplicate key value violates unique constraint "journal_entries_journal_number_key"
+Mar 20 14:17:14 iplvnic1 npm[1951096]: [JOURNAL] Error creating journal: duplicate key value violates unique constraint "journal_entries_journal_number_key"
+Mar 20 14:17:14 iplvnic1 npm[1951096]: [JOURNAL] Error creating journal: duplicate key value violates unique constraint "journal_entries_journal_number_key"
+Mar 20 14:17:14 iplvnic1 npm[1951096]: [JOURNAL] Error creating journal: duplicate key value violates unique constraint "journal_entries_journal_number_key"
+Mar 20 14:17:14 iplvnic1 npm[1951096]: [JOURNAL] Error creating journal: duplicate key value violates unique constraint "journal_entries_journal_number_key"
+Mar 20 14:17:14 iplvnic1 npm[1951096]: [JOURNAL] Error creating journal: duplicate key value violates unique constraint "journal_entries_journal_number_key"
+Mar 20 14:17:14 iplvnic1 npm[1951096]: [JOURNAL] Error creating journal: duplicate key value violates unique constraint "journal_entries_journal_number_key"
+Mar 20 14:17:14 iplvnic1 npm[1951096]: [JOURNAL] Error creating journal: duplicate key value violates unique constraint "journal_entries_journal_number_key"
+Mar 20 14:17:14 iplvnic1 npm[1951096]: [JOURNAL] Error creating journal: duplicate key value violates unique constraint "journal_entries_journal_number_key"
+Mar 20 14:17:14 iplvnic1 npm[1951096]: [JOURNAL] Error creating journal: duplicate key value violates unique constraint "journal_entries_journal_number_key"
+Mar 20 14:17:14 iplvnic1 npm[1951096]: [JOURNAL] Error creating journal: duplicate key value violates unique constraint "journal_entries_journal_number_key"
+Mar 20 14:17:14 iplvnic1 npm[1951096]: [JOURNAL] Error creating journal: duplicate key value violates unique constraint "journal_entries_journal_number_key"
+Mar 20 14:17:14 iplvnic1 npm[1951096]: [JOURNAL] Error creating journal: duplicate key value violates unique constraint "journal_entries_journal_number_key"
+Mar 20 14:17:14 iplvnic1 npm[1951096]: [JOURNAL] Error creating journal: duplicate key value violates unique constraint "journal_entries_journal_number_key"
+Mar 20 14:17:14 iplvnic1 npm[1951096]: [JOURNAL] Error creating journal: duplicate key value violates unique constraint "journal_entries_journal_number_key"
+Mar 20 14:17:14 iplvnic1 npm[1951096]: [BACKFILL] Cash Register Expenses done: 150 created, 708 skipped, 0 errors
+Mar 20 14:17:14 iplvnic1 npm[1951096]: [BACKFILL] === COMPLETE === Total: 252 created, 1778 skipped, 0 errors, 0 orphans removed
+Mar 20 14:17:14 iplvnic1 npm[1951096]: 2:17:14 PM [express] POST /api/journal-entries/backfill 200 in 6726ms :: {"invoices":{"processed":4,…
+Mar 20 14:17:21 iplvnic1 npm[1951096]: 🔹 Request: GET /api/journal-entries
+Mar 20 14:17:21 iplvnic1 npm[1951096]:    Cookie header: connect.sid=s%3Abn3ht7B5iW3PveufI07_sAZDZ6TfxHLc.D4FMiXB2FkSkw5%2BNJABhu3oSe%2BJOboaccgFK3fT7dgw; _ga=GA1.1.1321689309.1766052649; _ga_8MR6CJ1YLW=GS2.1.s1766052649$o1$g0$t1766052649$j60$l0$h0
+Mar 20 14:17:21 iplvnic1 npm[1951096]:    Session ID: bn3ht7B5iW3PveufI07_sAZDZ6TfxHLc
+Mar 20 14:17:21 iplvnic1 npm[1951096]:    Authenticated: true
+Mar 20 14:17:21 iplvnic1 npm[1951096]: 2:17:21 PM [express] GET /api/journal-entries 200 in 9ms :: {"entries":[],"total":0,"page":1,"pageSi…
+Mar 20 14:17:28 iplvnic1 npm[1951096]: 🔹 Request: GET /api/journal-entries
+Mar 20 14:17:28 iplvnic1 npm[1951096]:    Cookie header: connect.sid=s%3Abn3ht7B5iW3PveufI07_sAZDZ6TfxHLc.D4FMiXB2FkSkw5%2BNJABhu3oSe%2BJOboaccgFK3fT7dgw; _ga=GA1.1.1321689309.1766052649; _ga_8MR6CJ1YLW=GS2.1.s1766052649$o1$g0$t1766052649$j60$l0$h0
+Mar 20 14:17:28 iplvnic1 npm[1951096]:    Session ID: bn3ht7B5iW3PveufI07_sAZDZ6TfxHLc
+Mar 20 14:17:28 iplvnic1 npm[1951096]:    Authenticated: true
+Mar 20 14:17:28 iplvnic1 npm[1951096]: 2:17:28 PM [express] GET /api/journal-entries 304 in 7ms :: {"entries":[{"id":"1a870dee-aae5-407f-b1…
+Mar 20 14:18:01 iplvnic1 npm[1951096]: 🔹 Request: GET /api/chart-of-accounts
+Mar 20 14:18:01 iplvnic1 npm[1951096]:    Cookie header: connect.sid=s%3Abn3ht7B5iW3PveufI07_sAZDZ6TfxHLc.D4FMiXB2FkSkw5%2BNJABhu3oSe%2BJOboaccgFK3fT7dgw; _ga=GA1.1.1321689309.1766052649; _ga_8MR6CJ1YLW=GS2.1.s1766052649$o1$g0$t1766052649$j60$l0$h0
+Mar 20 14:18:01 iplvnic1 npm[1951096]:    Session ID: bn3ht7B5iW3PveufI07_sAZDZ6TfxHLc
+Mar 20 14:18:01 iplvnic1 npm[1951096]:    Authenticated: true
+Mar 20 14:18:01 iplvnic1 npm[1951096]: 2:18:01 PM [express] GET /api/chart-of-accounts 304 in 75ms :: [{"id":"a15b3947-5672-423b-abcc-5ea97…
+Mar 20 14:18:04 iplvnic1 npm[1951096]: 2:18:04 PM [express] GET /api/user 304 in 7ms :: {"id":"user-admin","username":"admin","password":"$…
+Mar 20 14:18:04 iplvnic1 npm[1951096]: 🔹 Request: GET /api/journal-entries
+Mar 20 14:18:04 iplvnic1 npm[1951096]:    Cookie header: connect.sid=s%3Abn3ht7B5iW3PveufI07_sAZDZ6TfxHLc.D4FMiXB2FkSkw5%2BNJABhu3oSe%2BJOboaccgFK3fT7dgw; _ga=GA1.1.1321689309.1766052649; _ga_8MR6CJ1YLW=GS2.1.s1766052649$o1$g0$t1766052649$j60$l0$h0
+Mar 20 14:18:04 iplvnic1 npm[1951096]:    Session ID: bn3ht7B5iW3PveufI07_sAZDZ6TfxHLc
+Mar 20 14:18:04 iplvnic1 npm[1951096]:    Authenticated: true
+Mar 20 14:18:04 iplvnic1 npm[1951096]: 2:18:04 PM [express] GET /api/journal-entries 304 in 27ms :: {"entries":[{"id":"81340334-bcfe-4af2-9…
+Mar 20 14:18:05 iplvnic1 npm[1951096]: 🔹 Request: GET /api/chart-of-accounts
+Mar 20 14:18:05 iplvnic1 npm[1951096]:    Cookie header: connect.sid=s%3Abn3ht7B5iW3PveufI07_sAZDZ6TfxHLc.D4FMiXB2FkSkw5%2BNJABhu3oSe%2BJOboaccgFK3fT7dgw; _ga=GA1.1.1321689309.1766052649; _ga_8MR6CJ1YLW=GS2.1.s1766052649$o1$g0$t1766052649$j60$l0$h0
+Mar 20 14:18:05 iplvnic1 npm[1951096]:    Session ID: bn3ht7B5iW3PveufI07_sAZDZ6TfxHLc
+Mar 20 14:18:05 iplvnic1 npm[1951096]:    Authenticated: true
+Mar 20 14:18:05 iplvnic1 npm[1951096]: 2:18:05 PM [express] GET /api/chart-of-accounts 304 in 42ms :: [{"id":"a15b3947-5672-423b-abcc-5ea97…
+[kinto@iplvnic1 ~]$ 
