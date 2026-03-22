@@ -2040,12 +2040,17 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
-    // Check for duplicate material types in the input
-    const materialTypeIds = bomItems.filter(item => item.materialTypeId).map(item => item.materialTypeId);
-    const uniqueMaterialTypeIds = [...new Set(materialTypeIds)];
-    if (materialTypeIds.length !== uniqueMaterialTypeIds.length) {
-      throw new Error("Duplicate material types found in BOM. Each material type can only be added once per configuration.");
+    // Deduplicate by materialTypeId — keep the last occurrence of each type
+    const seenTypeMap = new Map<string, InsertProductBom>();
+    for (const item of bomItems) {
+      if (item.materialTypeId) {
+        seenTypeMap.set(item.materialTypeId, item);
+      } else {
+        // Items without materialTypeId are kept as-is (legacy rawMaterialId based)
+        seenTypeMap.set(`raw_${item.rawMaterialId}`, item);
+      }
     }
+    const dedupedItems = Array.from(seenTypeMap.values());
     
     // Use transaction to ensure atomicity
     return await db.transaction(async (tx) => {
@@ -2067,12 +2072,12 @@ export class DatabaseStorage implements IStorage {
           ));
       }
       
-      // Insert new BOM items
-      if (bomItems.length === 0) {
+      // Insert new BOM items (using deduplicated list)
+      if (dedupedItems.length === 0) {
         return [];
       }
       
-      const bomItemsWithConfig = bomItems.map(item => ({
+      const bomItemsWithConfig = dedupedItems.map(item => ({
         ...item,
         productId,
         configurationId: configurationId || null,

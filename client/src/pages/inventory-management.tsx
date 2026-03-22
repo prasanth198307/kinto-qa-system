@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, Fragment } from "react";
+import { useState, useEffect, useMemo, Fragment, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -1042,6 +1042,8 @@ function ProductDialog({
   
   // Multi-BOM Configuration state
   const [selectedConfigId, setSelectedConfigId] = useState<string | null>(null);
+  // Set to true once the user manually adds/removes a BOM row — prevents refetches from wiping their work
+  const bomUserModifiedRef = useRef<boolean>(false);
   const [newConfigName, setNewConfigName] = useState("");
   const [newConfigDescription, setNewConfigDescription] = useState("");
   const [showNewConfigForm, setShowNewConfigForm] = useState(false);
@@ -1118,6 +1120,7 @@ function ProductDialog({
       toast({ title: "Success", description: "BOM configuration deleted successfully" });
       refetchConfigs();
       setSelectedConfigId(null);
+      bomUserModifiedRef.current = false;
       replace([]); // Clear BOM items when config is deleted
     },
     onError: (error: Error) => {
@@ -1271,6 +1274,7 @@ function ProductDialog({
       setActiveTab("info");
       // Reset BOM configuration state
       setSelectedConfigId(null);
+      bomUserModifiedRef.current = false; // Reset so dialog re-opens fresh
       setShowNewConfigForm(false);
       setNewConfigName("");
       setNewConfigDescription("");
@@ -1291,6 +1295,10 @@ function ProductDialog({
   // Effect 3: Hydrate BOM field array when BOM data loads (separate to avoid tab reset)
   useEffect(() => {
     if (open && item) {
+      // If the user has manually added/removed rows, don't re-hydrate on BOM data refetch
+      // (this prevents TanStack Query background refetches from wiping user's work)
+      if (bomUserModifiedRef.current) return;
+
       // Filter BOM by selected configuration
       const filteredBom = selectedConfigId 
         ? existingBom.filter(bom => bom.configurationId === selectedConfigId || bom.configuration_id === selectedConfigId)
@@ -1329,6 +1337,7 @@ function ProductDialog({
   }, [existingBom, open, item?.id, rawMaterials, selectedConfigId]); // When BOM data changes or dialog opens for edit or config changes
 
   const handleAddBomRow = () => {
+    bomUserModifiedRef.current = true; // User is actively editing — prevent refetch from wiping rows
     append({ materialTypeId: '', quantityRequired: 0, uom: '', notes: '' } as any, { shouldFocus: false });
   };
 
@@ -2003,7 +2012,7 @@ function ProductDialog({
                                   ? 'bg-primary text-primary-foreground border-primary' 
                                   : 'bg-background hover:bg-muted'
                               }`}
-                              onClick={() => setSelectedConfigId(config.id)}
+                              onClick={() => { bomUserModifiedRef.current = false; setSelectedConfigId(config.id); }}
                               data-testid={`config-tab-${config.id}`}
                             >
                               <span className="text-sm font-medium">{config.configName}</span>
