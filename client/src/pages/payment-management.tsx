@@ -57,6 +57,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Loader2, Plus, X, FileText, Search, Filter, Check, ChevronsUpDown, Pencil, ChevronDown, ChevronRight, Link2, CircleCheck, AlertTriangle, CircleDashed, AlertCircle, ArrowLeft } from "lucide-react";
@@ -374,32 +375,50 @@ export default function PaymentManagement() {
 
   return (
     <div className="space-y-4 p-4">
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate('/?tab=invoices')}
-            data-testid="button-back"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <div>
-            <h1 className="text-lg font-semibold">Payment Management</h1>
-            <p className="text-sm text-muted-foreground">
-              FIFO payment entry and payment history
-            </p>
-          </div>
+      <div className="flex items-center gap-4">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => navigate('/?tab=invoices')}
+          data-testid="button-back"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </Button>
+        <div>
+          <h1 className="text-lg font-semibold">Payment Management</h1>
+          <p className="text-sm text-muted-foreground">FIFO payment entry and payment history</p>
         </div>
-        {canCreate && (
-          <Button onClick={() => setShowPaymentDialog(true)} data-testid="button-add-payment">
-            <Plus className="w-4 h-4 mr-2" />
-            New Payment
-          </Button>
-        )}
       </div>
 
-      {/* Payment History */}
+      <Tabs defaultValue="history">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <TabsList>
+            <TabsTrigger value="history" data-testid="tab-payment-history">Payment History</TabsTrigger>
+            <TabsTrigger value="bulk" data-testid="tab-bulk-allocations">Bulk Allocations</TabsTrigger>
+          </TabsList>
+          <div className="flex items-center gap-2">
+            {canCreate && (
+              <Button onClick={() => setShowPaymentDialog(true)} data-testid="button-add-payment">
+                <Plus className="w-4 h-4 mr-2" />
+                New Payment
+              </Button>
+            )}
+            {isAdmin && (
+              <Button
+                variant="outline"
+                onClick={() => backfillMutation.mutate()}
+                disabled={backfillMutation.isPending}
+                data-testid="button-backfill-bulk-ids"
+              >
+                {backfillMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                Link Old Payments
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Tab 1 — Payment History */}
+        <TabsContent value="history" className="mt-4">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-4">
           <div>
@@ -567,26 +586,14 @@ export default function PaymentManagement() {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
 
-      {/* Bulk Allocations History */}
+        {/* Tab 2 — Bulk Allocations */}
+        <TabsContent value="bulk" className="mt-4">
       <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0 pb-3">
-          <div>
-            <CardTitle className="text-base">Bulk Payment Allocations</CardTitle>
-            <CardDescription>Each row is one payment split across multiple invoices. Expand to see the breakdown.</CardDescription>
-          </div>
-          {isAdmin && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => backfillMutation.mutate()}
-              disabled={backfillMutation.isPending}
-              data-testid="button-backfill-bulk-ids"
-            >
-              {backfillMutation.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : null}
-              Link Old Payments
-            </Button>
-          )}
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Bulk Payment Allocations</CardTitle>
+          <CardDescription>Each row is one payment split across multiple invoices. Click to expand the breakdown.</CardDescription>
         </CardHeader>
         <CardContent>
           {bulkAllocsLoading ? (
@@ -686,6 +693,8 @@ export default function PaymentManagement() {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+      </Tabs>
 
       <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
