@@ -1699,9 +1699,11 @@ export class DatabaseStorage implements IStorage {
     return bomItems.map(item => ({
       id: item.product_bom.id,
       productId: item.product_bom.productId,
+      configurationId: item.product_bom.configurationId,
+      materialTypeId: item.product_bom.materialTypeId,
       rawMaterialId: item.product_bom.rawMaterialId,
-      quantityRequired: item.product_bom.quantityRequired,  // Fixed: match schema field name
-      uom: item.product_bom.uom,  // Fixed: match schema field name
+      quantityRequired: item.product_bom.quantityRequired,
+      uom: item.product_bom.uom,
       notes: item.product_bom.notes,
       // Raw material details (will be null if material not found)
       materialCode: item.raw_materials?.materialCode || null,
