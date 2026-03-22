@@ -14867,6 +14867,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST backfill bulk_allocation_id for old payments that were entered together
   app.post('/api/invoice-payments/backfill-bulk-ids', requireRole('admin'), async (req: any, res) => {
     try {
+      // Build a vendor→rootParent map so child vendor payments group with parent
+      const allVendors = await db
+        .select({ id: vendors.id, parentVendorId: vendors.parentVendorId })
+        .from(vendors);
+      const vendorParentMap = new Map<string, string | null>();
+      for (const v of allVendors) vendorParentMap.set(v.id, v.parentVendorId ?? null);
+
+      const resolveRoot = (id: string): string => {
+        const parent = vendorParentMap.get(id);
+        return parent ? resolveRoot(parent) : id;
+      };
+
       // Fetch all active payments without a bulk_allocation_id, joined with invoices for vendor info
       const rows = await db
         .select({
@@ -14887,19 +14899,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         )
         .orderBy(invoicePayments.createdAt);
 
-      // Group by (createdAt truncated to the minute, paymentMethod, referenceNumber, payerName, vendorId)
+      // Group by (createdAt truncated to the minute, paymentMethod, referenceNumber, payerName, ROOT vendorId)
+      // Using root parent vendor so child-vendor splits are grouped with parent
       // Payments in the same DB transaction have virtually identical createdAt timestamps
       const groupMap = new Map<string, string[]>();
       for (const row of rows) {
         const minuteKey = row.createdAt
           ? row.createdAt.substring(0, 16) // "YYYY-MM-DD HH:MM" — same minute = same batch
           : 'no-date';
+        const rootVendorId = row.vendorId ? resolveRoot(row.vendorId) : '';
         const key = [
           minuteKey,
           row.paymentMethod || '',
           row.referenceNumber || '',
           row.payerName || '',
-          row.vendorId || '',
+          rootVendorId,
         ].join('||');
         if (!groupMap.has(key)) groupMap.set(key, []);
         groupMap.get(key)!.push(row.id);
