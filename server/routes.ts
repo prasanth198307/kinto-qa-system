@@ -9365,7 +9365,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (const [, ids] of groupMap) {
         if (ids.length < 2) continue;
         const bulkAllocationId = `BULK-BACKFILL-${format(new Date(), 'yyyyMMdd')}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
-        await db.update(invoicePayments).set({ bulkAllocationId }).where(sql`${invoicePayments.id} = ANY(${ids})`);
+        await db.update(invoicePayments).set({ bulkAllocationId }).where(inArray(invoicePayments.id, ids));
         groupsCreated++;
         paymentsUpdated += ids.length;
       }
