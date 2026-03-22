@@ -9345,7 +9345,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .innerJoin(invoices, eq(invoicePayments.invoiceId, invoices.id))
         .where(
           and(
-            sql`${invoicePayments.bulkAllocationId} IS NULL`,
+            isNull(invoicePayments.bulkAllocationId),
             eq(invoicePayments.recordStatus, 1)
           )
         )
