@@ -1,0 +1,35 @@
+ar 22 08:07:29 iplvnic1 npm[2074774]: 🔹 Request: GET /api/vendors
+Mar 22 08:07:29 iplvnic1 npm[2074774]:    Cookie header: connect.sid=s%3AdOloQhZY_mMZ2F8vBA7ruuQZ-aYqk4lR.bzdLvfUVl6uhvzCowuujFOhnF0h2m9oqdZt6O8CJuBI; _ga=GA1.1.1321689309.1766052649; _ga_8MR6CJ1YLW=GS2.1.s1766052649$o1$g0$t1766052649$j60$l0$h0
+Mar 22 08:07:29 iplvnic1 npm[2074774]:    Session ID: dOloQhZY_mMZ2F8vBA7ruuQZ-aYqk4lR
+Mar 22 08:07:29 iplvnic1 npm[2074774]:    Authenticated: true
+Mar 22 08:07:29 iplvnic1 npm[2074774]: 8:07:29 AM [express] GET /api/vendors 304 in 35ms :: [{"id":"e7b4a11c-574a-482f-bb8c-9854dda60dd8","…
+Mar 22 08:07:29 iplvnic1 npm[2074774]: 8:07:29 AM [express] GET /api/invoice-payments/history 304 in 38ms :: [{"id":"048c0dd4-7dfa-4e5e-81f…
+Mar 22 08:07:31 iplvnic1 npm[2074774]: 🔹 Request: POST /api/invoice-payments/backfill-bulk-ids
+Mar 22 08:07:31 iplvnic1 npm[2074774]:    Cookie header: connect.sid=s%3AdOloQhZY_mMZ2F8vBA7ruuQZ-aYqk4lR.bzdLvfUVl6uhvzCowuujFOhnF0h2m9oqdZt6O8CJuBI; _ga=GA1.1.1321689309.1766052649; _ga_8MR6CJ1YLW=GS2.1.s1766052649$o1$g0$t1766052649$j60$l0$h0
+Mar 22 08:07:31 iplvnic1 npm[2074774]:    Session ID: dOloQhZY_mMZ2F8vBA7ruuQZ-aYqk4lR
+Mar 22 08:07:31 iplvnic1 npm[2074774]:    Authenticated: true
+Mar 22 08:07:31 iplvnic1 npm[2074774]: [AUDIT] Role admin granted create access to /api/invoice-payments/backfill-bulk-ids via screen permission payments
+Mar 22 08:07:31 iplvnic1 npm[2074774]: Error backfilling bulk allocation IDs: error: column i.vendor_id does not exist
+Mar 22 08:07:31 iplvnic1 npm[2074774]:     at /home/kinto/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+Mar 22 08:07:31 iplvnic1 npm[2074774]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+Mar 22 08:07:31 iplvnic1 npm[2074774]:     at async file:///home/kinto/kinto-qa-system/dist/index.js:19534:27 {
+Mar 22 08:07:31 iplvnic1 npm[2074774]:   length: 110,
+Mar 22 08:07:31 iplvnic1 npm[2074774]:   severity: 'ERROR',
+Mar 22 08:07:31 iplvnic1 npm[2074774]:   code: '42703',
+Mar 22 08:07:31 iplvnic1 npm[2074774]:   detail: undefined,
+Mar 22 08:07:31 iplvnic1 npm[2074774]:   hint: undefined,
+Mar 22 08:07:31 iplvnic1 npm[2074774]:   position: '182',
+Mar 22 08:07:31 iplvnic1 npm[2074774]:   internalPosition: undefined,
+Mar 22 08:07:31 iplvnic1 npm[2074774]:   internalQuery: undefined,
+Mar 22 08:07:31 iplvnic1 npm[2074774]:   where: undefined,
+Mar 22 08:07:31 iplvnic1 npm[2074774]:   schema: undefined,
+Mar 22 08:07:31 iplvnic1 npm[2074774]:   table: undefined,
+Mar 22 08:07:31 iplvnic1 npm[2074774]:   column: undefined,
+Mar 22 08:07:31 iplvnic1 npm[2074774]:   dataType: undefined,
+Mar 22 08:07:31 iplvnic1 npm[2074774]:   constraint: undefined,
+Mar 22 08:07:31 iplvnic1 npm[2074774]:   file: 'parse_relation.c',
+Mar 22 08:07:31 iplvnic1 npm[2074774]:   line: '3722',
+Mar 22 08:07:31 iplvnic1 npm[2074774]:   routine: 'errorMissingColumn'
+Mar 22 08:07:31 iplvnic1 npm[2074774]: }
+Mar 22 08:07:31 iplvnic1 npm[2074774]: 8:07:31 AM [express] POST /api/invoice-payments/backfill-bulk-ids 500 in 28ms :: {"message":"column …
+[kinto@iplvnic1 ~]$ 

@@ -9321,44 +9321,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST backfill bulk_allocation_id for old payments — MUST be before /:invoiceId
   app.post('/api/invoice-payments/backfill-bulk-ids', requireRole('admin'), async (req: any, res) => {
     try {
-      // Use raw SQL so this works regardless of schema version on any deployment
-      const vendorRows = await db.execute(sql`SELECT id, parent_vendor_id FROM vendors`);
-      const vendorParentMap = new Map<string, string | null>();
-      for (const v of vendorRows.rows as any[]) vendorParentMap.set(v.id, v.parent_vendor_id ?? null);
-
-      const resolveRoot = (id: string): string => {
-        const parent = vendorParentMap.get(id);
-        return parent ? resolveRoot(parent) : id;
-      };
-
-      // Check if the bulk_allocation_id column exists before filtering on it
+      // Check if the bulk_allocation_id column exists before filtering/updating on it
       const colCheck = await db.execute(sql`
         SELECT column_name FROM information_schema.columns
         WHERE table_name = 'invoice_payments' AND column_name = 'bulk_allocation_id'
       `);
-      const hasBulkCol = colCheck.rows.length > 0;
+      const hasBulkCol = (colCheck.rows as any[]).length > 0;
 
+      // Check if payer_name column exists
+      const payerColCheck = await db.execute(sql`
+        SELECT column_name FROM information_schema.columns
+        WHERE table_name = 'invoice_payments' AND column_name = 'payer_name'
+      `);
+      const hasPayerCol = (payerColCheck.rows as any[]).length > 0;
+
+      // Fetch payments joined with invoice buyer_name — no vendor_id dependency
       const paymentRows = await db.execute(sql`
         SELECT
           ip.id,
           ip.created_at,
           ip.payment_method,
           ip.reference_number,
-          COALESCE(ip.payer_name, '') AS payer_name,
-          i.vendor_id
+          ${hasPayerCol ? sql`COALESCE(ip.payer_name, '')` : sql`''`} AS payer_name,
+          COALESCE(i.buyer_name, '') AS buyer_name
         FROM invoice_payments ip
         JOIN invoices i ON ip.invoice_id = i.id
-        WHERE
-          ip.record_status = 1
+        WHERE ip.record_status = 1
           ${hasBulkCol ? sql`AND ip.bulk_allocation_id IS NULL` : sql``}
         ORDER BY ip.created_at
       `);
 
+      // Group by same-minute + method + reference + payer + buyer
       const groupMap = new Map<string, string[]>();
       for (const row of paymentRows.rows as any[]) {
-        const createdAt: string = row.created_at ? String(row.created_at).substring(0, 16) : 'no-date';
-        const rootVendorId = row.vendor_id ? resolveRoot(row.vendor_id) : '';
-        const key = [createdAt, row.payment_method || '', row.reference_number || '', row.payer_name || '', rootVendorId].join('||');
+        const minuteKey = row.created_at ? String(row.created_at).substring(0, 16) : 'no-date';
+        const key = [minuteKey, row.payment_method || '', row.reference_number || '', row.payer_name || '', row.buyer_name || ''].join('||');
         if (!groupMap.has(key)) groupMap.set(key, []);
         groupMap.get(key)!.push(row.id);
       }
