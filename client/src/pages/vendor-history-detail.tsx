@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation, useParams } from "wouter";
+import { usePermissions } from "@/hooks/use-permissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -43,7 +44,9 @@ import {
   ChevronRight,
   CheckCircle,
   Clock,
-  AlertCircle
+  AlertCircle,
+  AlertTriangle,
+  Users
 } from "lucide-react";
 import { exportToExcel, formatCurrencyForExcel, formatDateForExcel } from "@/lib/excel-export";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -145,10 +148,13 @@ interface InvoiceTransactionsResponse {
 export default function VendorHistoryDetailPage() {
   const [, setLocation] = useLocation();
   const { vendorId } = useParams<{ vendorId: string }>();
+  const { hasPermission } = usePermissions();
+  const canViewPayments = hasPermission('payments', 'view');
   const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("ledger");
   const [expandedInvoices, setExpandedInvoices] = useState<Record<string, boolean>>({});
   const [txnFilter, setTxnFilter] = useState("all");
+  const [expandedClusters, setExpandedClusters] = useState<Record<string, boolean>>({});
 
   const { data, isLoading } = useQuery<VendorDetailResponse>({
     queryKey: ['/api/vendor-history', vendorId],
@@ -167,7 +173,7 @@ export default function VendorHistoryDetailPage() {
       if (!res.ok) throw new Error('Failed to fetch invoice transactions');
       return res.json();
     },
-    enabled: !!vendorId && activeTab === 'transactions',
+    enabled: !!vendorId && (activeTab === 'transactions' || activeTab === 'unpaid'),
   });
 
   const toggleInvoiceExpanded = (invoiceId: string) => {
@@ -180,6 +186,160 @@ export default function VendorHistoryDetailPage() {
     if (txnFilter === 'settled') return inv.outstanding <= 0;
     return true;
   }) || [];
+
+  // ── Unpaid tab derived data ────────────────────────────────────────────────
+  const unpaidInvoices = useMemo(() =>
+    (txnData?.invoices || []).filter(inv => inv.outstanding > 0)
+      .sort((a, b) => new Date(a.invoiceDate).getTime() - new Date(b.invoiceDate).getTime()),
+  [txnData]);
+
+  const unpaidByCluster = useMemo(() => {
+    const map = new Map<string, InvoiceTransaction[]>();
+    unpaidInvoices.forEach(inv => {
+      const key = inv.buyerName;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(inv);
+    });
+    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [unpaidInvoices]);
+
+  const paymentsByDate = useMemo(() => {
+    const map = new Map<string, { total: number; entries: Array<{ invoice: string; amount: number; method: string; ref: string }> }>();
+    (txnData?.invoices || []).forEach(inv => {
+      inv.allocations.filter(a => a.type === 'payment' || a.type === 'advance_application' || a.type === 'debit_note_adjustment').forEach(a => {
+        const dk = a.date.substring(0, 10);
+        if (!map.has(dk)) map.set(dk, { total: 0, entries: [] });
+        const g = map.get(dk)!;
+        g.total += a.amount;
+        g.entries.push({ invoice: inv.invoiceNumber, amount: a.amount, method: a.method || (a.type === 'advance_application' ? 'Advance' : a.type === 'debit_note_adjustment' ? 'DN Adj' : 'Cash'), ref: a.reference || a.advanceNumber || a.noteNumber || '' });
+      });
+    });
+    return Array.from(map.entries()).sort((a, b) => b[0].localeCompare(a[0])); // newest first
+  }, [txnData]);
+
+  const handleExportUnpaidExcel = async () => {
+    if (!data || !txnData) return;
+    const ExcelJS = (await import('exceljs')).default;
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'KINTO Ops';
+    wb.created = new Date();
+
+    // Fetch company info from default template
+    let companyName = 'KINTO Smart Ops', companyAddress = '', companyGstin = '', companyPhone = '', companyEmail = '';
+    try {
+      const tmplRes = await fetch('/api/invoice-templates/default', { credentials: 'include' });
+      if (tmplRes.ok) {
+        const t = await tmplRes.json();
+        companyName    = t.defaultSellerName    || companyName;
+        companyAddress = t.defaultSellerAddress || '';
+        companyGstin   = t.defaultSellerGstin   || '';
+        companyPhone   = t.defaultSellerPhone   || '';
+        companyEmail   = t.defaultSellerEmail   || '';
+      }
+    } catch (_) {}
+
+    const NAVY = 'FF1E3A5F', BLUE = 'FF2563AA', LBLUE = 'FFD6E4F7', WHITE = 'FFFFFFFF', LGREY = 'FFF5F7FA', DGREY = 'FF555555', ORANGE = 'FFEA580C';
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const addHeaderBlock = (ws: any, cols: number, reportTitle: string) => {
+      const merge = (n: number) => ws.mergeCells(n, 1, n, cols);
+      const r1 = ws.addRow([companyName]); r1.height = 32;
+      r1.getCell(1).font = { bold: true, size: 16, color: { argb: WHITE } };
+      r1.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
+      r1.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 2 };
+      merge(ws.rowCount);
+      if (companyAddress) {
+        const r2 = ws.addRow([companyAddress]); r2.height = 16;
+        r2.getCell(1).font = { size: 9, color: { argb: WHITE } };
+        r2.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
+        r2.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 2 };
+        merge(ws.rowCount);
+      }
+      const meta = [companyGstin ? `GSTIN: ${companyGstin}` : '', companyPhone ? `Ph: ${companyPhone}` : '', companyEmail ? `Email: ${companyEmail}` : ''].filter(Boolean).join('   |   ');
+      if (meta) {
+        const r3 = ws.addRow([meta]); r3.height = 14;
+        r3.getCell(1).font = { size: 8, color: { argb: WHITE } };
+        r3.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
+        r3.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 2 };
+        merge(ws.rowCount);
+      }
+      ws.addRow([]); merge(ws.rowCount);
+      const rt = ws.addRow([reportTitle]); rt.height = 22;
+      rt.getCell(1).font = { bold: true, size: 12, color: { argb: WHITE } };
+      rt.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BLUE } };
+      rt.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 2 };
+      merge(ws.rowCount);
+      const rd = ws.addRow([`Vendor: ${data.vendor.vendorName}   |   Generated: ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}`]); rd.height = 14;
+      rd.getCell(1).font = { italic: true, size: 8, color: { argb: DGREY } };
+      rd.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: LGREY } };
+      rd.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 2 };
+      merge(ws.rowCount);
+      ws.addRow([]); merge(ws.rowCount);
+    };
+
+    // Sheet 1 – Unpaid Invoices by Cluster
+    const ws1 = wb.addWorksheet('Unpaid Invoices');
+    ws1.columns = [
+      { key: 'c1', width: 20 }, { key: 'c2', width: 18 }, { key: 'c3', width: 30 },
+      { key: 'c4', width: 18 }, { key: 'c5', width: 18 }, { key: 'c6', width: 18 },
+    ];
+    addHeaderBlock(ws1, 6, 'UNPAID INVOICES — CLUSTER WISE');
+    const h1 = ws1.addRow(['Invoice #', 'Date', 'Cluster / Buyer', 'Invoice Amount', 'Settled', 'Outstanding']); h1.height = 20;
+    h1.eachCell(c => { c.font = { bold: true, size: 10, color: { argb: WHITE } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } }; c.alignment = { vertical: 'middle', indent: 1 }; });
+    [4,5,6].forEach(i => { h1.getCell(i).alignment = { vertical: 'middle', horizontal: 'right' }; });
+
+    let grandOutstanding = 0;
+    unpaidByCluster.forEach(([cluster, invs]) => {
+      const clusterTotal = invs.reduce((s, i) => s + i.outstanding, 0);
+      grandOutstanding += clusterTotal;
+      const cr = ws1.addRow([`Cluster: ${cluster}`, '', '', '', '', clusterTotal / 100]);
+      cr.height = 18; ws1.mergeCells(cr.number, 1, cr.number, 3);
+      cr.eachCell(c => { c.font = { bold: true, size: 10, color: { argb: NAVY } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: LBLUE } }; c.alignment = { vertical: 'middle', indent: 1 }; });
+      cr.getCell(6).numFmt = '₹#,##0.00'; cr.getCell(6).alignment = { vertical: 'middle', horizontal: 'right' };
+      invs.forEach(inv => {
+        const dr = ws1.addRow([inv.invoiceNumber, new Date(inv.invoiceDate).toLocaleDateString('en-IN'), inv.buyerName, inv.effectiveTotal / 100, inv.totalSettled / 100, inv.outstanding / 100]);
+        dr.height = 15; dr.eachCell(c => { c.font = { size: 9, color: { argb: DGREY } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } }; c.alignment = { vertical: 'middle', indent: 1 }; });
+        [4,5].forEach(i => { dr.getCell(i).numFmt = '₹#,##0.00'; dr.getCell(i).alignment = { vertical: 'middle', horizontal: 'right' }; });
+        dr.getCell(6).numFmt = '₹#,##0.00'; dr.getCell(6).alignment = { vertical: 'middle', horizontal: 'right' }; dr.getCell(6).font = { bold: true, size: 9, color: { argb: ORANGE } };
+      });
+    });
+    const gr1 = ws1.addRow(['', '', '', '', 'TOTAL OUTSTANDING', grandOutstanding / 100]); gr1.height = 22;
+    gr1.eachCell(c => { c.font = { bold: true, size: 11, color: { argb: WHITE } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } }; c.alignment = { vertical: 'middle', indent: 1 }; });
+    gr1.getCell(6).numFmt = '₹#,##0.00'; gr1.getCell(6).alignment = { vertical: 'middle', horizontal: 'right' };
+
+    // Sheet 2 – Payments by Date
+    const ws2 = wb.addWorksheet('Payments by Date');
+    ws2.columns = [
+      { key: 'c1', width: 18 }, { key: 'c2', width: 26 }, { key: 'c3', width: 16 }, { key: 'c4', width: 26 }, { key: 'c5', width: 18 },
+    ];
+    addHeaderBlock(ws2, 5, 'PAYMENTS RECEIVED — DATE WISE');
+    const h2 = ws2.addRow(['Date', 'Invoice #', 'Method / Ref', 'Details', 'Amount']); h2.height = 20;
+    h2.eachCell(c => { c.font = { bold: true, size: 10, color: { argb: WHITE } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } }; c.alignment = { vertical: 'middle', indent: 1 }; });
+    h2.getCell(5).alignment = { vertical: 'middle', horizontal: 'right' };
+
+    let grandPaid = 0;
+    paymentsByDate.forEach(([dateKey, grp]) => {
+      grandPaid += grp.total;
+      const dr2 = ws2.addRow([new Date(dateKey + 'T00:00:00').toLocaleDateString('en-IN'), `${grp.entries.length} transaction(s)`, '', '', grp.total / 100]);
+      dr2.height = 18; ws2.mergeCells(dr2.number, 2, dr2.number, 4);
+      dr2.eachCell(c => { c.font = { bold: true, size: 10, color: { argb: NAVY } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: LBLUE } }; c.alignment = { vertical: 'middle', indent: 1 }; });
+      dr2.getCell(5).numFmt = '₹#,##0.00'; dr2.getCell(5).alignment = { vertical: 'middle', horizontal: 'right' };
+      grp.entries.forEach(e => {
+        const sr = ws2.addRow(['', e.invoice, `${e.method}${e.ref ? ' / ' + e.ref : ''}`, '', e.amount / 100]);
+        sr.height = 15; sr.eachCell(c => { c.font = { size: 9, color: { argb: DGREY } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } }; c.alignment = { vertical: 'middle', indent: 1 }; });
+        sr.getCell(5).numFmt = '₹#,##0.00'; sr.getCell(5).alignment = { vertical: 'middle', horizontal: 'right' };
+      });
+    });
+    const gr2 = ws2.addRow(['', '', '', 'TOTAL PAID', grandPaid / 100]); gr2.height = 22;
+    gr2.eachCell(c => { c.font = { bold: true, size: 11, color: { argb: WHITE } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } }; c.alignment = { vertical: 'middle', indent: 1 }; });
+    gr2.getCell(5).numFmt = '₹#,##0.00'; gr2.getCell(5).alignment = { vertical: 'middle', horizontal: 'right' };
+
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url;
+    a.download = `${data.vendor.vendorName.replace(/[^a-zA-Z0-9]/g, '_')}_Unpaid_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    a.click(); URL.revokeObjectURL(url);
+  };
 
   const formatCurrency = (amount: number) => {
     return (amount / 100).toLocaleString('en-IN', { 
@@ -925,7 +1085,7 @@ export default function VendorHistoryDetailPage() {
 
       {/* Tabs: Ledger View + Invoice Transactions */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className={`grid w-full ${canViewPayments ? 'grid-cols-3' : 'grid-cols-2'}`}>
           <TabsTrigger value="ledger" className="gap-2" data-testid="tab-ledger">
             <Calendar className="h-4 w-4" />
             Transaction Ledger
@@ -934,6 +1094,12 @@ export default function VendorHistoryDetailPage() {
             <FileText className="h-4 w-4" />
             Invoice Transactions
           </TabsTrigger>
+          {canViewPayments && (
+            <TabsTrigger value="unpaid" className="gap-2" data-testid="tab-unpaid-invoices">
+              <AlertTriangle className="h-4 w-4" />
+              Unpaid Invoices
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* Ledger Tab - Existing View */}
@@ -1328,6 +1494,190 @@ export default function VendorHistoryDetailPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Unpaid Invoices Tab */}
+        {canViewPayments && (
+          <TabsContent value="unpaid">
+            <div className="space-y-4">
+              {/* Summary bar */}
+              {txnLoading ? (
+                <Card><CardContent className="p-4"><Skeleton className="h-16 w-full" /></CardContent></Card>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <Card><CardContent className="p-4">
+                    <p className="text-xs text-muted-foreground mb-1">Unpaid Invoices</p>
+                    <p className="text-2xl font-bold text-orange-600">{unpaidInvoices.length}</p>
+                  </CardContent></Card>
+                  <Card><CardContent className="p-4">
+                    <p className="text-xs text-muted-foreground mb-1">Total Outstanding</p>
+                    <p className="text-2xl font-bold text-orange-600">{formatCurrency(unpaidInvoices.reduce((s, i) => s + i.outstanding, 0))}</p>
+                  </CardContent></Card>
+                  <Card><CardContent className="p-4">
+                    <p className="text-xs text-muted-foreground mb-1">Clusters Affected</p>
+                    <p className="text-2xl font-bold">{unpaidByCluster.length}</p>
+                  </CardContent></Card>
+                  <Card><CardContent className="p-4">
+                    <p className="text-xs text-muted-foreground mb-1">Partial Payments</p>
+                    <p className="text-2xl font-bold text-yellow-600">{unpaidInvoices.filter(i => i.totalSettled > 0).length}</p>
+                  </CardContent></Card>
+                </div>
+              )}
+
+              {/* Section 1: Unpaid invoices by cluster */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4 pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Users className="h-5 w-5" />
+                    Unpaid Invoices — Cluster Wise
+                  </CardTitle>
+                  <Button variant="outline" size="sm" onClick={handleExportUnpaidExcel} disabled={txnLoading || !txnData} className="gap-1" data-testid="button-export-unpaid">
+                    <Download className="h-4 w-4" />
+                    <span className="hidden sm:inline">Excel</span>
+                  </Button>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {txnLoading ? (
+                    <div className="p-4 space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}</div>
+                  ) : unpaidByCluster.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-3">
+                      <CheckCircle className="h-12 w-12 text-green-400" />
+                      <p className="font-medium">All invoices are settled!</p>
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-8"></TableHead>
+                          <TableHead>Invoice #</TableHead>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Cluster / Buyer</TableHead>
+                          <TableHead className="text-right">Invoice Amt</TableHead>
+                          <TableHead className="text-right">Settled</TableHead>
+                          <TableHead className="text-right">Outstanding</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {unpaidByCluster.map(([cluster, invs]) => {
+                          const clusterOutstanding = invs.reduce((s, i) => s + i.outstanding, 0);
+                          const isOpen = expandedClusters[cluster] !== false; // default open
+                          return (
+                            <>
+                              {/* Cluster header row */}
+                              <TableRow key={`cluster-${cluster}`} className="bg-blue-50 dark:bg-blue-950/20 cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-950/30" onClick={() => setExpandedClusters(prev => ({ ...prev, [cluster]: !isOpen }))}>
+                                <TableCell>
+                                  {isOpen ? <ChevronDown className="h-4 w-4 text-blue-600" /> : <ChevronRight className="h-4 w-4 text-blue-600" />}
+                                </TableCell>
+                                <TableCell colSpan={3} className="font-semibold text-blue-700 dark:text-blue-400">
+                                  <div className="flex items-center gap-2">
+                                    <Building2 className="h-4 w-4" />
+                                    {cluster}
+                                    <Badge variant="outline" className="text-xs">{invs.length} invoice{invs.length !== 1 ? 's' : ''}</Badge>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-right font-medium">{formatCurrency(invs.reduce((s, i) => s + i.effectiveTotal, 0))}</TableCell>
+                                <TableCell className="text-right text-green-600 font-medium">{formatCurrency(invs.reduce((s, i) => s + i.totalSettled, 0))}</TableCell>
+                                <TableCell className="text-right font-bold text-orange-600">{formatCurrency(clusterOutstanding)}</TableCell>
+                                <TableCell></TableCell>
+                              </TableRow>
+                              {/* Invoice rows */}
+                              {isOpen && invs.map(inv => (
+                                <TableRow key={inv.invoiceId} className="text-sm">
+                                  <TableCell></TableCell>
+                                  <TableCell className="font-mono font-medium">{inv.invoiceNumber}</TableCell>
+                                  <TableCell className="text-muted-foreground">{formatDate(inv.invoiceDate)}</TableCell>
+                                  <TableCell className="text-muted-foreground">{inv.buyerName}{inv.isChildVendor && <Badge variant="outline" className="ml-1 text-xs">Child</Badge>}</TableCell>
+                                  <TableCell className="text-right">{formatCurrency(inv.effectiveTotal)}</TableCell>
+                                  <TableCell className="text-right text-green-600">{formatCurrency(inv.totalSettled)}</TableCell>
+                                  <TableCell className="text-right font-bold text-orange-600">{formatCurrency(inv.outstanding)}</TableCell>
+                                  <TableCell>
+                                    <Badge variant="outline" className={inv.totalSettled > 0 ? 'text-yellow-600 border-yellow-300' : 'text-red-600 border-red-300'}>
+                                      {inv.totalSettled > 0 ? 'Partial' : 'Unpaid'}
+                                    </Badge>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </>
+                          );
+                        })}
+                        {/* Grand total */}
+                        <TableRow className="bg-muted/50 font-bold">
+                          <TableCell></TableCell>
+                          <TableCell colSpan={5} className="text-right">Total Outstanding</TableCell>
+                          <TableCell className="text-right text-orange-600">{formatCurrency(unpaidInvoices.reduce((s, i) => s + i.outstanding, 0))}</TableCell>
+                          <TableCell></TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Section 2: Payments received by date */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <CreditCard className="h-5 w-5" />
+                    Payments Received — Date Wise
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {txnLoading ? (
+                    <div className="p-4 space-y-3">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
+                  ) : paymentsByDate.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
+                      <Clock className="h-8 w-8" />
+                      <p>No payments recorded yet</p>
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-8"></TableHead>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Transactions</TableHead>
+                          <TableHead className="text-right">Total Received</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {paymentsByDate.map(([dateKey, grp]) => {
+                          const isOpen = expandedClusters[`pmt-${dateKey}`] !== false;
+                          return (
+                            <>
+                              <TableRow key={`pmt-${dateKey}`} className="bg-green-50 dark:bg-green-950/20 cursor-pointer hover:bg-green-100 dark:hover:bg-green-950/30" onClick={() => setExpandedClusters(prev => ({ ...prev, [`pmt-${dateKey}`]: !isOpen }))}>
+                                <TableCell>{isOpen ? <ChevronDown className="h-4 w-4 text-green-600" /> : <ChevronRight className="h-4 w-4 text-green-600" />}</TableCell>
+                                <TableCell className="font-semibold">{formatDate(dateKey + 'T00:00:00')}</TableCell>
+                                <TableCell className="text-muted-foreground text-sm">{grp.entries.length} transaction(s)</TableCell>
+                                <TableCell className="text-right font-bold text-green-600">{formatCurrency(grp.total)}</TableCell>
+                              </TableRow>
+                              {isOpen && grp.entries.map((e, ei) => (
+                                <TableRow key={`${dateKey}-${ei}`} className="text-sm">
+                                  <TableCell></TableCell>
+                                  <TableCell className="text-muted-foreground"></TableCell>
+                                  <TableCell>
+                                    <span className="font-mono text-xs mr-2">{e.invoice}</span>
+                                    <Badge variant="outline" className="text-xs">{e.method}</Badge>
+                                    {e.ref && <span className="text-xs text-muted-foreground ml-2">{e.ref}</span>}
+                                  </TableCell>
+                                  <TableCell className="text-right text-green-600">{formatCurrency(e.amount)}</TableCell>
+                                </TableRow>
+                              ))}
+                            </>
+                          );
+                        })}
+                        <TableRow className="bg-muted/50 font-bold">
+                          <TableCell></TableCell>
+                          <TableCell colSpan={2} className="text-right">Total Payments</TableCell>
+                          <TableCell className="text-right text-green-600">{formatCurrency(paymentsByDate.reduce((s, [, g]) => s + g.total, 0))}</TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
