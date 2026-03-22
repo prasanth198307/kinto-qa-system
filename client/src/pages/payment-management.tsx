@@ -208,10 +208,15 @@ export default function PaymentManagement() {
   });
 
   const [bulkPage, setBulkPage] = useState(1);
+  const [bulkSearch, setBulkSearch] = useState('');
   const BULK_PAGE_SIZE = 50;
   const { data: bulkAllocsData, isLoading: bulkAllocsLoading } = useQuery<{ data: any[]; total: number }>({
-    queryKey: ['/api/invoice-payments/bulk-allocations', bulkPage],
-    queryFn: () => fetch(`/api/invoice-payments/bulk-allocations?page=${bulkPage}&limit=${BULK_PAGE_SIZE}`, { credentials: 'include' }).then(r => r.json()),
+    queryKey: ['/api/invoice-payments/bulk-allocations', bulkPage, bulkSearch],
+    queryFn: () => {
+      const params = new URLSearchParams({ page: String(bulkPage), limit: String(BULK_PAGE_SIZE) });
+      if (bulkSearch.trim()) params.set('search', bulkSearch.trim());
+      return fetch(`/api/invoice-payments/bulk-allocations?${params}`, { credentials: 'include' }).then(r => r.json());
+    },
   });
 
   const backfillMutation = useMutation({
@@ -598,14 +603,36 @@ export default function PaymentManagement() {
           <CardTitle className="text-base">Bulk Payment Allocations</CardTitle>
           <CardDescription>Each row is one payment split across multiple invoices. Click to expand the breakdown.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by vendor, payer, method, or reference..."
+              value={bulkSearch}
+              onChange={(e) => { setBulkSearch(e.target.value); setBulkPage(1); }}
+              className="pl-9"
+              data-testid="input-search-bulk"
+            />
+            {bulkSearch && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                onClick={() => { setBulkSearch(''); setBulkPage(1); }}
+                data-testid="button-clear-bulk-search"
+              >
+                <X className="w-3 h-3" />
+              </Button>
+            )}
+          </div>
           {bulkAllocsLoading ? (
             <div className="flex items-center justify-center py-10">
               <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
             </div>
           ) : !bulkAllocsData?.data?.length ? (
             <div className="text-center py-10 text-sm text-muted-foreground">
-              No bulk allocations yet. Use "New Payment" to split a payment across invoices.
+              {bulkSearch ? `No results for "${bulkSearch}"` : 'No bulk allocations yet. Use "New Payment" to split a payment across invoices.'}
             </div>
           ) : (
             <div className="rounded-md border">

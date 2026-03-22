@@ -9248,10 +9248,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // MUST be registered before /:invoiceId to avoid param clash
   app.get('/api/invoice-payments/bulk-allocations', isAuthenticated, async (req: any, res) => {
     try {
-      const { page = '1', limit = '50' } = req.query;
+      const { page = '1', limit = '50', search = '' } = req.query;
       const pageNum = Math.max(1, parseInt(page as string));
       const limitNum = Math.min(500, Math.max(1, parseInt(limit as string)));
       const offset = (pageNum - 1) * limitNum;
+      const searchTerm = (search as string).trim().toLowerCase();
 
       // Check which optional columns exist on invoice_payments
       const colsResult = await db.execute(sql`
@@ -9315,7 +9316,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const allGroups = Array.from(groupMap.values());
+      let allGroups = Array.from(groupMap.values());
+      if (searchTerm) {
+        allGroups = allGroups.filter(g =>
+          (g.vendorName || '').toLowerCase().includes(searchTerm) ||
+          (g.payerName || '').toLowerCase().includes(searchTerm) ||
+          (g.paymentMethod || '').toLowerCase().includes(searchTerm) ||
+          (g.referenceNumber || '').toLowerCase().includes(searchTerm)
+        );
+      }
       const totalCount = allGroups.length;
       const paginated = allGroups.slice(offset, offset + limitNum);
       res.json({ data: paginated, total: totalCount, page: pageNum, limit: limitNum });
