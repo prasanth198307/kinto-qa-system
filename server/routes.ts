@@ -3136,7 +3136,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Filter only invoices with outstanding balance and sort by invoice date (FIFO)
       const pendingInvoices = invoicesWithBalance
         .filter(inv => inv.outstanding > 0)
-        .sort((a, b) => new Date(a.invoiceDate).getTime() - new Date(b.invoiceDate).getTime());
+        .sort((a, b) => {
+          const dateDiff = new Date(a.invoiceDate).getTime() - new Date(b.invoiceDate).getTime();
+          if (dateDiff !== 0) return dateDiff;
+          const numA = parseInt(a.invoiceNumber?.split('-').pop() || '0', 10);
+          const numB = parseInt(b.invoiceNumber?.split('-').pop() || '0', 10);
+          return numA - numB;
+        });
 
       // Calculate totals
       const totalOutstanding = pendingInvoices.reduce((sum, inv) => sum + inv.outstanding, 0);
@@ -9133,8 +9139,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Sort by invoice date (oldest first)
-      pendingInvoices.sort((a, b) => new Date(a.invoiceDate).getTime() - new Date(b.invoiceDate).getTime());
+      // Sort by invoice date (oldest first), tiebreak by invoice number
+      pendingInvoices.sort((a, b) => {
+        const dateDiff = new Date(a.invoiceDate).getTime() - new Date(b.invoiceDate).getTime();
+        if (dateDiff !== 0) return dateDiff;
+        const numA = parseInt(a.invoiceNumber?.split('-').pop() || '0', 10);
+        const numB = parseInt(b.invoiceNumber?.split('-').pop() || '0', 10);
+        return numA - numB;
+      });
       
       // Calculate aggregate statistics
       const totalOutstanding = pendingInvoices.reduce((sum, inv) => sum + inv.outstandingBalance, 0);
@@ -14880,10 +14892,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             })
           );
 
-          // Filter and sort by invoice date (FIFO)
+          // Filter and sort by invoice date (FIFO) — tiebreak by numeric invoice number suffix
           const outstandingInvoices = invoicesWithBalance
             .filter(inv => inv.outstanding > 0)
-            .sort((a, b) => new Date(a.invoiceDate).getTime() - new Date(b.invoiceDate).getTime());
+            .sort((a, b) => {
+              const dateDiff = new Date(a.invoiceDate).getTime() - new Date(b.invoiceDate).getTime();
+              if (dateDiff !== 0) return dateDiff;
+              // Same date: allocate to the earlier invoice number first
+              const numA = parseInt(a.invoiceNumber?.split('-').pop() || '0', 10);
+              const numB = parseInt(b.invoiceNumber?.split('-').pop() || '0', 10);
+              return numA - numB;
+            });
 
           if (outstandingInvoices.length === 0) {
             throw new Error("No outstanding invoices for this vendor");
