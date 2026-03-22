@@ -14695,9 +14695,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         } else {
           // Standard FIFO Logic
-          // Get all outstanding invoices for this vendor, ordered by invoice date (FIFO)
+          // Get all outstanding invoices for this vendor family (parent + child vendors)
+          const allVendors = await storage.getAllVendors();
+          const childVendors = allVendors.filter(v => v.parentVendorId === vendorId);
+          const vendorNamesToInclude = [vendor.vendorName, ...childVendors.map(cv => cv.vendorName)];
+
           const allInvoices = await storage.getAllInvoices();
-          const vendorInvoices = allInvoices.filter(inv => inv.buyerName === vendor.vendorName);
+          const vendorInvoices = allInvoices.filter(inv =>
+            vendorNamesToInclude.includes(inv.buyerName) && inv.recordStatus === 1
+          );
 
           if (vendorInvoices.length === 0) {
             throw new Error("No invoices found for this vendor");
