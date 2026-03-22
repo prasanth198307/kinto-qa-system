@@ -9304,34 +9304,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({ data: [], total: 0, page: pageNum, limit: limitNum });
       }
 
-      const rows = await db.execute(sql`
-        SELECT
-          ip.bulk_allocation_id,
-          ip.payment_date,
-          ip.payment_method,
-          ip.reference_number,
-          ${existingCols.has('bank_name') ? sql`ip.bank_name,` : sql`NULL AS bank_name,`}
-          ${existingCols.has('payer_name') ? sql`COALESCE(ip.payer_name, '') AS payer_name,` : sql`'' AS payer_name,`}
-          ${existingCols.has('remarks') ? sql`ip.remarks,` : sql`NULL AS remarks,`}
-          ip.amount,
-          ip.id AS payment_id,
-          ip.invoice_id,
-          i.invoice_number,
-          i.buyer_name,
-          ip.created_at
-        FROM invoice_payments ip
-        JOIN invoices i ON ip.invoice_id = i.id
-        WHERE ip.bulk_allocation_id IS NOT NULL
-          AND ip.record_status = 1
-        ORDER BY ip.created_at DESC
-      `);
+      // When vendor filter is active: fetch ALL payments for that family (bulk + individual).
+      // When no vendor filter: fetch only bulk-allocated payments (existing behaviour).
+      let rawRows: any[];
+      if (vendorFamilyNames && vendorFamilyNames.size > 0) {
+        const familyArr = Array.from(vendorFamilyNames);
+        const inClause = sql.join(familyArr.map(n => sql`${n}`), sql`, `);
+        const result = await db.execute(sql`
+          SELECT
+            ip.bulk_allocation_id,
+            ip.payment_date,
+            ip.payment_method,
+            ip.reference_number,
+            ${existingCols.has('bank_name') ? sql`ip.bank_name,` : sql`NULL AS bank_name,`}
+            ${existingCols.has('payer_name') ? sql`COALESCE(ip.payer_name, '') AS payer_name,` : sql`'' AS payer_name,`}
+            ${existingCols.has('remarks') ? sql`ip.remarks,` : sql`NULL AS remarks,`}
+            ip.amount,
+            ip.id AS payment_id,
+            ip.invoice_id,
+            i.invoice_number,
+            i.buyer_name,
+            ip.created_at
+          FROM invoice_payments ip
+          JOIN invoices i ON ip.invoice_id = i.id
+          WHERE ip.record_status = 1
+            AND i.buyer_name IN (${inClause})
+          ORDER BY ip.payment_date DESC, ip.created_at DESC
+        `);
+        rawRows = result.rows as any[];
+      } else {
+        const result = await db.execute(sql`
+          SELECT
+            ip.bulk_allocation_id,
+            ip.payment_date,
+            ip.payment_method,
+            ip.reference_number,
+            ${existingCols.has('bank_name') ? sql`ip.bank_name,` : sql`NULL AS bank_name,`}
+            ${existingCols.has('payer_name') ? sql`COALESCE(ip.payer_name, '') AS payer_name,` : sql`'' AS payer_name,`}
+            ${existingCols.has('remarks') ? sql`ip.remarks,` : sql`NULL AS remarks,`}
+            ip.amount,
+            ip.id AS payment_id,
+            ip.invoice_id,
+            i.invoice_number,
+            i.buyer_name,
+            ip.created_at
+          FROM invoice_payments ip
+          JOIN invoices i ON ip.invoice_id = i.id
+          WHERE ip.bulk_allocation_id IS NOT NULL
+            AND ip.record_status = 1
+          ORDER BY ip.created_at DESC
+        `);
+        rawRows = result.rows as any[];
+      }
 
       const groupMap = new Map<string, any>();
-      for (const row of rows.rows as any[]) {
-        const id = row.bulk_allocation_id;
+      for (const row of rawRows) {
+        // Individual payments (no bulk_allocation_id) each form their own group
+        const id = row.bulk_allocation_id || `INDIVIDUAL-${row.payment_id}`;
         if (!groupMap.has(id)) {
           groupMap.set(id, {
-            bulkAllocationId: id,
+            bulkAllocationId: row.bulk_allocation_id || null,
+            isIndividual: !row.bulk_allocation_id,
             paymentDate: row.payment_date,
             paymentMethod: row.payment_method,
             referenceNumber: row.reference_number,
@@ -9355,13 +9388,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       let allGroups = Array.from(groupMap.values());
-
-      // Filter by vendor family (parent + children) if vendorId provided
-      if (vendorFamilyNames) {
-        allGroups = allGroups.filter(g =>
-          g.splits.some((s: any) => vendorFamilyNames!.has(s.buyerName))
-        );
-      }
 
       if (searchTerm) {
         allGroups = allGroups.filter(g =>

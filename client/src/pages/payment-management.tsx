@@ -837,18 +837,20 @@ export default function PaymentManagement() {
                     <TableHead className="text-center">Invoices</TableHead>
                   </TableRow>
                 </TableHeader>
-                {bulkAllocsData.data.map((alloc: any) => {
-                    const isExpanded = expandedBulkAllocs.has(alloc.bulkAllocationId);
+                {bulkAllocsData.data.map((alloc: any, allocIdx: number) => {
+                    // Individual payments have no bulkAllocationId — use fallback unique key
+                    const rowKey = alloc.bulkAllocationId || `individual-${alloc.splits[0]?.paymentId || allocIdx}`;
+                    const isExpanded = expandedBulkAllocs.has(rowKey);
                     return (
-                      <TableBody key={alloc.bulkAllocationId}>
+                      <TableBody key={rowKey}>
                         <TableRow
                           className="cursor-pointer hover-elevate"
                           onClick={() => setExpandedBulkAllocs(prev => {
                             const next = new Set(prev);
-                            next.has(alloc.bulkAllocationId) ? next.delete(alloc.bulkAllocationId) : next.add(alloc.bulkAllocationId);
+                            next.has(rowKey) ? next.delete(rowKey) : next.add(rowKey);
                             return next;
                           })}
-                          data-testid={`row-bulk-alloc-${alloc.bulkAllocationId}`}
+                          data-testid={`row-bulk-alloc-${rowKey}`}
                         >
                           <TableCell className="pl-3">
                             {isExpanded ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
@@ -869,11 +871,14 @@ export default function PaymentManagement() {
                             ₹{(alloc.totalAmount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                           </TableCell>
                           <TableCell className="text-center">
-                            <Badge variant="outline" className="text-xs">{alloc.splits.length}</Badge>
+                            {alloc.isIndividual
+                              ? <Badge variant="outline" className="text-xs text-muted-foreground">Indv</Badge>
+                              : <Badge variant="outline" className="text-xs">{alloc.splits.length}</Badge>
+                            }
                           </TableCell>
                         </TableRow>
                         {isExpanded && (
-                          <TableRow key={`${alloc.bulkAllocationId}-detail`} className="bg-muted/30">
+                          <TableRow key={`${rowKey}-detail`} className="bg-muted/30">
                             <TableCell colSpan={7} className="px-6 pb-3 pt-0">
                               <div className="text-xs text-muted-foreground mb-2 font-medium uppercase tracking-wide">Split Breakdown</div>
                               <table className="w-full text-sm">
