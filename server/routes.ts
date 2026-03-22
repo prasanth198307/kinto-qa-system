@@ -9446,7 +9446,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const groupMap = new Map<string, string[]>();
       for (const row of paymentRows.rows as any[]) {
         const dateKey = row.payment_date ? String(row.payment_date).substring(0, 10) : 'no-date';
-        const key = [dateKey, row.payment_method || '', row.reference_number || '', row.payer_name || '', row.buyer_name || ''].join('||');
+        const key = [dateKey, row.payment_method || '', row.reference_number || '', row.buyer_name || ''].join('||');
         if (!groupMap.has(key)) groupMap.set(key, []);
         groupMap.get(key)!.push(row.id);
       }
@@ -9531,7 +9531,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const reGroupMap = new Map<string, string[]>();
       for (const row of badPayments.rows as any[]) {
         const dateKey = row.payment_date ? String(row.payment_date).substring(0, 10) : 'no-date';
-        const key = [dateKey, row.payment_method || '', row.reference_number || '', row.payer_name || '', row.buyer_name || ''].join('||');
+        const key = [dateKey, row.payment_method || '', row.reference_number || '', row.buyer_name || ''].join('||');
         if (!reGroupMap.has(key)) reGroupMap.set(key, []);
         reGroupMap.get(key)!.push(row.id);
       }
@@ -9564,7 +9564,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const backfillMap = new Map<string, string[]>();
       for (const row of remainingRows.rows as any[]) {
         const dateKey = row.payment_date ? String(row.payment_date).substring(0, 10) : 'no-date';
-        const key = [dateKey, row.payment_method || '', row.reference_number || '', row.payer_name || '', row.buyer_name || ''].join('||');
+        const key = [dateKey, row.payment_method || '', row.reference_number || '', row.buyer_name || ''].join('||');
         if (!backfillMap.has(key)) backfillMap.set(key, []);
         backfillMap.get(key)!.push(row.id);
       }
