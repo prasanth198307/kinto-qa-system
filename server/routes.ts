@@ -9248,9 +9248,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // MUST be registered before /:invoiceId to avoid param clash
   app.get('/api/invoice-payments/bulk-allocations', isAuthenticated, async (req: any, res) => {
     try {
-      const { page = '1', limit = '20' } = req.query;
+      const { page = '1', limit = '50' } = req.query;
       const pageNum = Math.max(1, parseInt(page as string));
-      const limitNum = Math.min(100, Math.max(1, parseInt(limit as string)));
+      const limitNum = Math.min(500, Math.max(1, parseInt(limit as string)));
       const offset = (pageNum - 1) * limitNum;
 
       // Check which optional columns exist on invoice_payments

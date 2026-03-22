@@ -207,8 +207,11 @@ export default function PaymentManagement() {
     queryKey: ['/api/invoice-payments/history'],
   });
 
+  const [bulkPage, setBulkPage] = useState(1);
+  const BULK_PAGE_SIZE = 50;
   const { data: bulkAllocsData, isLoading: bulkAllocsLoading } = useQuery<{ data: any[]; total: number }>({
-    queryKey: ['/api/invoice-payments/bulk-allocations'],
+    queryKey: ['/api/invoice-payments/bulk-allocations', bulkPage],
+    queryFn: () => fetch(`/api/invoice-payments/bulk-allocations?page=${bulkPage}&limit=${BULK_PAGE_SIZE}`, { credentials: 'include' }).then(r => r.json()),
   });
 
   const backfillMutation = useMutation({
@@ -689,6 +692,37 @@ export default function PaymentManagement() {
                     );
                   })}
               </Table>
+            </div>
+          )}
+          {/* Pagination */}
+          {bulkAllocsData && bulkAllocsData.total > BULK_PAGE_SIZE && (
+            <div className="flex items-center justify-between pt-3 border-t">
+              <p className="text-sm text-muted-foreground">
+                Showing {((bulkPage - 1) * BULK_PAGE_SIZE) + 1}–{Math.min(bulkPage * BULK_PAGE_SIZE, bulkAllocsData.total)} of {bulkAllocsData.total}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setBulkPage(p => Math.max(1, p - 1))}
+                  disabled={bulkPage === 1}
+                  data-testid="button-bulk-prev"
+                >
+                  Previous
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  Page {bulkPage} of {Math.ceil(bulkAllocsData.total / BULK_PAGE_SIZE)}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setBulkPage(p => p + 1)}
+                  disabled={bulkPage * BULK_PAGE_SIZE >= bulkAllocsData.total}
+                  data-testid="button-bulk-next"
+                >
+                  Next
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
