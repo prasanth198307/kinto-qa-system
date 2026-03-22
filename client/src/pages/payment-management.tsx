@@ -209,6 +209,21 @@ export default function PaymentManagement() {
     queryKey: ['/api/invoice-payments/bulk-allocations'],
   });
 
+  const backfillMutation = useMutation({
+    mutationFn: async () => apiRequest('POST', '/api/invoice-payments/backfill-bulk-ids', {}),
+    onSuccess: async (res: any) => {
+      const data = await res.json();
+      queryClient.invalidateQueries({ queryKey: ['/api/invoice-payments/bulk-allocations'] });
+      toast({
+        title: "Backfill complete",
+        description: data.message,
+      });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Backfill failed", description: error.message, variant: "destructive" });
+    },
+  });
+
   const cancelMutation = useMutation({
     mutationFn: async ({ paymentId, remarks }: { paymentId: string; remarks: string }) => {
       await apiRequest('PATCH', `/api/invoice-payments/${paymentId}/cancel`, { cancellationRemarks: remarks });
@@ -554,11 +569,23 @@ export default function PaymentManagement() {
 
       {/* Bulk Allocations History */}
       <Card>
-        <CardHeader className="pb-3">
+        <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0 pb-3">
           <div>
             <CardTitle className="text-base">Bulk Payment Allocations</CardTitle>
             <CardDescription>Each row is one payment split across multiple invoices. Expand to see the breakdown.</CardDescription>
           </div>
+          {hasPermission('payments', 'create') && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => backfillMutation.mutate()}
+              disabled={backfillMutation.isPending}
+              data-testid="button-backfill-bulk-ids"
+            >
+              {backfillMutation.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : null}
+              Link Old Payments
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           {bulkAllocsLoading ? (

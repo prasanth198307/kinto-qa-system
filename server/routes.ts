@@ -14864,6 +14864,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST backfill bulk_allocation_id for old payments that were entered together
+  app.post('/api/invoice-payments/backfill-bulk-ids', requireRole('admin'), async (req: any, res) => {
+    try {
+      // Fetch all active payments without a bulk_allocation_id, joined with invoices for vendor info
+      const rows = await db
+        .select({
+          id: invoicePayments.id,
+          createdAt: invoicePayments.createdAt,
+          paymentMethod: invoicePayments.paymentMethod,
+          referenceNumber: invoicePayments.referenceNumber,
+          payerName: invoicePayments.payerName,
+          vendorId: invoices.vendorId,
+        })
+        .from(invoicePayments)
+        .innerJoin(invoices, eq(invoicePayments.invoiceId, invoices.id))
+        .where(
+          and(
+            sql`${invoicePayments.bulkAllocationId} IS NULL`,
+            eq(invoicePayments.recordStatus, 1)
+          )
+        )
+        .orderBy(invoicePayments.createdAt);
+
+      // Group by (createdAt truncated to the minute, paymentMethod, referenceNumber, payerName, vendorId)
+      // Payments in the same DB transaction have virtually identical createdAt timestamps
+      const groupMap = new Map<string, string[]>();
+      for (const row of rows) {
+        const minuteKey = row.createdAt
+          ? row.createdAt.substring(0, 16) // "YYYY-MM-DD HH:MM" — same minute = same batch
+          : 'no-date';
+        const key = [
+          minuteKey,
+          row.paymentMethod || '',
+          row.referenceNumber || '',
+          row.payerName || '',
+          row.vendorId || '',
+        ].join('||');
+        if (!groupMap.has(key)) groupMap.set(key, []);
+        groupMap.get(key)!.push(row.id);
+      }
+
+      // Only backfill groups with 2+ payments (single payments need no bulk ID)
+      let groupsCreated = 0;
+      let paymentsUpdated = 0;
+      for (const [, ids] of groupMap) {
+        if (ids.length < 2) continue;
+        const bulkAllocationId = `BULK-BACKFILL-${format(new Date(), 'yyyyMMdd')}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+        await db
+          .update(invoicePayments)
+          .set({ bulkAllocationId })
+          .where(sql`${invoicePayments.id} = ANY(${ids})`);
+        groupsCreated++;
+        paymentsUpdated += ids.length;
+      }
+
+      res.json({ groupsCreated, paymentsUpdated, message: `Linked ${paymentsUpdated} old payments into ${groupsCreated} bulk allocation groups.` });
+    } catch (error: any) {
+      console.error("Error backfilling bulk allocation IDs:", error);
+      res.status(500).json({ message: error.message || "Backfill failed" });
+    }
+  });
+
   // Edit Payment - Update payment date, method, reference, bank, remarks, and amount (PY- only)
   app.patch('/api/invoice-payments/:id', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
