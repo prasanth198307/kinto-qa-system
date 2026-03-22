@@ -9244,6 +9244,139 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET bulk allocations - grouped by bulkAllocationId with total and split details
+  // MUST be registered before /:invoiceId to avoid param clash
+  app.get('/api/invoice-payments/bulk-allocations', isAuthenticated, async (req: any, res) => {
+    try {
+      const { vendorId, page = '1', limit = '20' } = req.query;
+      const pageNum = Math.max(1, parseInt(page as string));
+      const limitNum = Math.min(100, Math.max(1, parseInt(limit as string)));
+      const offset = (pageNum - 1) * limitNum;
+
+      const rows = await db
+        .select({
+          bulkAllocationId: invoicePayments.bulkAllocationId,
+          paymentDate: invoicePayments.paymentDate,
+          paymentMethod: invoicePayments.paymentMethod,
+          referenceNumber: invoicePayments.referenceNumber,
+          bankName: invoicePayments.bankName,
+          payerName: invoicePayments.payerName,
+          remarks: invoicePayments.remarks,
+          amount: invoicePayments.amount,
+          paymentId: invoicePayments.id,
+          invoiceId: invoicePayments.invoiceId,
+          invoiceNumber: invoices.invoiceNumber,
+          buyerName: invoices.buyerName,
+          vendorId: invoices.vendorId,
+        })
+        .from(invoicePayments)
+        .innerJoin(invoices, eq(invoicePayments.invoiceId, invoices.id))
+        .where(
+          and(
+            sql`${invoicePayments.bulkAllocationId} IS NOT NULL`,
+            eq(invoicePayments.recordStatus, 1),
+            vendorId ? eq(invoices.vendorId, vendorId as string) : sql`1=1`
+          )
+        )
+        .orderBy(desc(invoicePayments.createdAt));
+
+      const groupMap = new Map<string, any>();
+      for (const row of rows) {
+        const id = row.bulkAllocationId!;
+        if (!groupMap.has(id)) {
+          groupMap.set(id, {
+            bulkAllocationId: id,
+            paymentDate: row.paymentDate,
+            paymentMethod: row.paymentMethod,
+            referenceNumber: row.referenceNumber,
+            bankName: row.bankName,
+            payerName: row.payerName,
+            remarks: row.remarks,
+            vendorName: row.buyerName,
+            totalAmount: 0,
+            splits: [],
+          });
+        }
+        const group = groupMap.get(id)!;
+        group.totalAmount += row.amount;
+        group.splits.push({
+          paymentId: row.paymentId,
+          invoiceId: row.invoiceId,
+          invoiceNumber: row.invoiceNumber,
+          buyerName: row.buyerName,
+          amount: row.amount,
+        });
+      }
+
+      const allGroups = Array.from(groupMap.values());
+      const totalCount = allGroups.length;
+      const paginated = allGroups.slice(offset, offset + limitNum);
+      res.json({ data: paginated, total: totalCount, page: pageNum, limit: limitNum });
+    } catch (error: any) {
+      console.error("Error fetching bulk allocations:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch bulk allocations" });
+    }
+  });
+
+  // POST backfill bulk_allocation_id for old payments — MUST be before /:invoiceId
+  app.post('/api/invoice-payments/backfill-bulk-ids', requireRole('admin'), async (req: any, res) => {
+    try {
+      const allVendors = await db
+        .select({ id: vendors.id, parentVendorId: vendors.parentVendorId })
+        .from(vendors);
+      const vendorParentMap = new Map<string, string | null>();
+      for (const v of allVendors) vendorParentMap.set(v.id, v.parentVendorId ?? null);
+
+      const resolveRoot = (id: string): string => {
+        const parent = vendorParentMap.get(id);
+        return parent ? resolveRoot(parent) : id;
+      };
+
+      const rows = await db
+        .select({
+          id: invoicePayments.id,
+          createdAt: invoicePayments.createdAt,
+          paymentMethod: invoicePayments.paymentMethod,
+          referenceNumber: invoicePayments.referenceNumber,
+          payerName: invoicePayments.payerName,
+          vendorId: invoices.vendorId,
+        })
+        .from(invoicePayments)
+        .innerJoin(invoices, eq(invoicePayments.invoiceId, invoices.id))
+        .where(
+          and(
+            sql`${invoicePayments.bulkAllocationId} IS NULL`,
+            eq(invoicePayments.recordStatus, 1)
+          )
+        )
+        .orderBy(invoicePayments.createdAt);
+
+      const groupMap = new Map<string, string[]>();
+      for (const row of rows) {
+        const minuteKey = row.createdAt ? row.createdAt.substring(0, 16) : 'no-date';
+        const rootVendorId = row.vendorId ? resolveRoot(row.vendorId) : '';
+        const key = [minuteKey, row.paymentMethod || '', row.referenceNumber || '', row.payerName || '', rootVendorId].join('||');
+        if (!groupMap.has(key)) groupMap.set(key, []);
+        groupMap.get(key)!.push(row.id);
+      }
+
+      let groupsCreated = 0;
+      let paymentsUpdated = 0;
+      for (const [, ids] of groupMap) {
+        if (ids.length < 2) continue;
+        const bulkAllocationId = `BULK-BACKFILL-${format(new Date(), 'yyyyMMdd')}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+        await db.update(invoicePayments).set({ bulkAllocationId }).where(sql`${invoicePayments.id} = ANY(${ids})`);
+        groupsCreated++;
+        paymentsUpdated += ids.length;
+      }
+
+      res.json({ groupsCreated, paymentsUpdated, message: `Linked ${paymentsUpdated} old payments into ${groupsCreated} bulk allocation groups.` });
+    } catch (error: any) {
+      console.error("Error backfilling bulk allocation IDs:", error);
+      res.status(500).json({ message: error.message || "Backfill failed" });
+    }
+  });
+
   // Get payments for a specific invoice
   app.get('/api/invoice-payments/:invoiceId', isAuthenticated, async (req: any, res) => {
     try {
@@ -14785,158 +14918,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error in bulk allocation:", error);
       res.status(500).json({ message: error.message || "Failed to allocate payment" });
-    }
-  });
-
-  // GET bulk allocations - grouped by bulkAllocationId with total and split details
-  app.get('/api/invoice-payments/bulk-allocations', isAuthenticated, async (req: any, res) => {
-    try {
-      const { vendorId, page = '1', limit = '20' } = req.query;
-      const pageNum = Math.max(1, parseInt(page as string));
-      const limitNum = Math.min(100, Math.max(1, parseInt(limit as string)));
-      const offset = (pageNum - 1) * limitNum;
-
-      // Fetch all payments with a bulkAllocationId, join with invoice and vendor info
-      const rows = await db
-        .select({
-          bulkAllocationId: invoicePayments.bulkAllocationId,
-          paymentDate: invoicePayments.paymentDate,
-          paymentMethod: invoicePayments.paymentMethod,
-          referenceNumber: invoicePayments.referenceNumber,
-          bankName: invoicePayments.bankName,
-          payerName: invoicePayments.payerName,
-          remarks: invoicePayments.remarks,
-          amount: invoicePayments.amount,
-          paymentId: invoicePayments.id,
-          invoiceId: invoicePayments.invoiceId,
-          invoiceNumber: invoices.invoiceNumber,
-          buyerName: invoices.buyerName,
-          vendorId: invoices.vendorId,
-        })
-        .from(invoicePayments)
-        .innerJoin(invoices, eq(invoicePayments.invoiceId, invoices.id))
-        .where(
-          and(
-            sql`${invoicePayments.bulkAllocationId} IS NOT NULL`,
-            eq(invoicePayments.recordStatus, 1),
-            vendorId ? eq(invoices.vendorId, vendorId as string) : sql`1=1`
-          )
-        )
-        .orderBy(desc(invoicePayments.createdAt));
-
-      // Group by bulkAllocationId
-      const groupMap = new Map<string, any>();
-      for (const row of rows) {
-        const id = row.bulkAllocationId!;
-        if (!groupMap.has(id)) {
-          groupMap.set(id, {
-            bulkAllocationId: id,
-            paymentDate: row.paymentDate,
-            paymentMethod: row.paymentMethod,
-            referenceNumber: row.referenceNumber,
-            bankName: row.bankName,
-            payerName: row.payerName,
-            remarks: row.remarks,
-            vendorName: row.buyerName,
-            totalAmount: 0,
-            splits: [],
-          });
-        }
-        const group = groupMap.get(id)!;
-        group.totalAmount += row.amount;
-        group.splits.push({
-          paymentId: row.paymentId,
-          invoiceId: row.invoiceId,
-          invoiceNumber: row.invoiceNumber,
-          buyerName: row.buyerName,
-          amount: row.amount,
-        });
-      }
-
-      const allGroups = Array.from(groupMap.values());
-      const totalCount = allGroups.length;
-      const paginated = allGroups.slice(offset, offset + limitNum);
-
-      res.json({ data: paginated, total: totalCount, page: pageNum, limit: limitNum });
-    } catch (error: any) {
-      console.error("Error fetching bulk allocations:", error);
-      res.status(500).json({ message: error.message || "Failed to fetch bulk allocations" });
-    }
-  });
-
-  // POST backfill bulk_allocation_id for old payments that were entered together
-  app.post('/api/invoice-payments/backfill-bulk-ids', requireRole('admin'), async (req: any, res) => {
-    try {
-      // Build a vendor→rootParent map so child vendor payments group with parent
-      const allVendors = await db
-        .select({ id: vendors.id, parentVendorId: vendors.parentVendorId })
-        .from(vendors);
-      const vendorParentMap = new Map<string, string | null>();
-      for (const v of allVendors) vendorParentMap.set(v.id, v.parentVendorId ?? null);
-
-      const resolveRoot = (id: string): string => {
-        const parent = vendorParentMap.get(id);
-        return parent ? resolveRoot(parent) : id;
-      };
-
-      // Fetch all active payments without a bulk_allocation_id, joined with invoices for vendor info
-      const rows = await db
-        .select({
-          id: invoicePayments.id,
-          createdAt: invoicePayments.createdAt,
-          paymentMethod: invoicePayments.paymentMethod,
-          referenceNumber: invoicePayments.referenceNumber,
-          payerName: invoicePayments.payerName,
-          vendorId: invoices.vendorId,
-        })
-        .from(invoicePayments)
-        .innerJoin(invoices, eq(invoicePayments.invoiceId, invoices.id))
-        .where(
-          and(
-            sql`${invoicePayments.bulkAllocationId} IS NULL`,
-            eq(invoicePayments.recordStatus, 1)
-          )
-        )
-        .orderBy(invoicePayments.createdAt);
-
-      // Group by (createdAt truncated to the minute, paymentMethod, referenceNumber, payerName, ROOT vendorId)
-      // Using root parent vendor so child-vendor splits are grouped with parent
-      // Payments in the same DB transaction have virtually identical createdAt timestamps
-      const groupMap = new Map<string, string[]>();
-      for (const row of rows) {
-        const minuteKey = row.createdAt
-          ? row.createdAt.substring(0, 16) // "YYYY-MM-DD HH:MM" — same minute = same batch
-          : 'no-date';
-        const rootVendorId = row.vendorId ? resolveRoot(row.vendorId) : '';
-        const key = [
-          minuteKey,
-          row.paymentMethod || '',
-          row.referenceNumber || '',
-          row.payerName || '',
-          rootVendorId,
-        ].join('||');
-        if (!groupMap.has(key)) groupMap.set(key, []);
-        groupMap.get(key)!.push(row.id);
-      }
-
-      // Only backfill groups with 2+ payments (single payments need no bulk ID)
-      let groupsCreated = 0;
-      let paymentsUpdated = 0;
-      for (const [, ids] of groupMap) {
-        if (ids.length < 2) continue;
-        const bulkAllocationId = `BULK-BACKFILL-${format(new Date(), 'yyyyMMdd')}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
-        await db
-          .update(invoicePayments)
-          .set({ bulkAllocationId })
-          .where(sql`${invoicePayments.id} = ANY(${ids})`);
-        groupsCreated++;
-        paymentsUpdated += ids.length;
-      }
-
-      res.json({ groupsCreated, paymentsUpdated, message: `Linked ${paymentsUpdated} old payments into ${groupsCreated} bulk allocation groups.` });
-    } catch (error: any) {
-      console.error("Error backfilling bulk allocation IDs:", error);
-      res.status(500).json({ message: error.message || "Backfill failed" });
     }
   });
 
