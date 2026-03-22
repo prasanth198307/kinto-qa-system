@@ -9428,6 +9428,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         SELECT
           ip.id,
           ip.created_at,
+          ip.payment_date,
           ip.payment_method,
           ip.reference_number,
           ${hasPayerCol ? sql`COALESCE(ip.payer_name, '')` : sql`''`} AS payer_name,
@@ -9439,11 +9440,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ORDER BY ip.created_at
       `);
 
-      // Group by same-minute + method + reference + payer + buyer
+      // Group by payment_date + method + reference + payer + buyer
+      // NOTE: use payment_date (not created_at) so Excel-imported payments from different
+      // dates don't collapse into one bulk group just because they were imported together
       const groupMap = new Map<string, string[]>();
       for (const row of paymentRows.rows as any[]) {
-        const minuteKey = row.created_at ? String(row.created_at).substring(0, 16) : 'no-date';
-        const key = [minuteKey, row.payment_method || '', row.reference_number || '', row.payer_name || '', row.buyer_name || ''].join('||');
+        const dateKey = row.payment_date ? String(row.payment_date).substring(0, 10) : 'no-date';
+        const key = [dateKey, row.payment_method || '', row.reference_number || '', row.payer_name || '', row.buyer_name || ''].join('||');
         if (!groupMap.has(key)) groupMap.set(key, []);
         groupMap.get(key)!.push(row.id);
       }
@@ -9468,6 +9471,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error backfilling bulk allocation IDs:", error);
       res.status(500).json({ message: error.message || "Backfill failed" });
+    }
+  });
+
+  // POST repair wrongly-grouped bulk allocations (mixed payment_dates in same bulk ID)
+  app.post('/api/invoice-payments/repair-bulk-dates', requireRole('admin'), async (req: any, res) => {
+    try {
+      const colCheck = await db.execute(sql`
+        SELECT column_name FROM information_schema.columns
+        WHERE table_name = 'invoice_payments'
+          AND column_name IN ('bulk_allocation_id', 'payer_name')
+      `);
+      const existingCols = new Set((colCheck.rows as any[]).map((r: any) => r.column_name));
+      if (!existingCols.has('bulk_allocation_id')) {
+        return res.json({ fixed: 0, message: 'bulk_allocation_id column not present' });
+      }
+
+      // Find bulk IDs that span more than one payment_date — these are wrong
+      const badGroups = await db.execute(sql`
+        SELECT bulk_allocation_id
+        FROM invoice_payments
+        WHERE bulk_allocation_id IS NOT NULL AND record_status = 1
+        GROUP BY bulk_allocation_id
+        HAVING COUNT(DISTINCT DATE(payment_date)) > 1
+      `);
+
+      const badIds = (badGroups.rows as any[]).map((r: any) => r.bulk_allocation_id);
+      if (badIds.length === 0) {
+        return res.json({ fixed: 0, message: 'No mixed-date bulk groups found — everything looks correct.' });
+      }
+
+      // Fetch all payments in bad groups with their details
+      const inClause = sql.join(badIds.map(id => sql`${id}`), sql`, `);
+      const hasPayerCol = existingCols.has('payer_name');
+      const badPayments = await db.execute(sql`
+        SELECT
+          ip.id,
+          ip.payment_date,
+          ip.payment_method,
+          ip.reference_number,
+          ip.bulk_allocation_id,
+          ${hasPayerCol ? sql`COALESCE(ip.payer_name, '')` : sql`''`} AS payer_name,
+          COALESCE(i.buyer_name, '') AS buyer_name
+        FROM invoice_payments ip
+        JOIN invoices i ON ip.invoice_id = i.id
+        WHERE ip.bulk_allocation_id IN (${inClause})
+          AND ip.record_status = 1
+        ORDER BY ip.payment_date
+      `);
+
+      // Nullify all bad bulk IDs first
+      for (const badId of badIds) {
+        await db.execute(sql`
+          UPDATE invoice_payments SET bulk_allocation_id = NULL WHERE bulk_allocation_id = ${badId}
+        `);
+      }
+
+      // Re-group by payment_date + method + reference + payer + buyer
+      const reGroupMap = new Map<string, string[]>();
+      for (const row of badPayments.rows as any[]) {
+        const dateKey = row.payment_date ? String(row.payment_date).substring(0, 10) : 'no-date';
+        const key = [dateKey, row.payment_method || '', row.reference_number || '', row.payer_name || '', row.buyer_name || ''].join('||');
+        if (!reGroupMap.has(key)) reGroupMap.set(key, []);
+        reGroupMap.get(key)!.push(row.id);
+      }
+
+      let groupsFixed = 0;
+      for (const [, ids] of reGroupMap) {
+        if (ids.length < 2) continue; // leave single payments as individual
+        const newBulkId = `BULK-REPAIRED-${format(new Date(), 'yyyyMMdd')}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+        for (const id of ids) {
+          await db.execute(sql`UPDATE invoice_payments SET bulk_allocation_id = ${newBulkId} WHERE id = ${id}`);
+        }
+        groupsFixed++;
+      }
+
+      res.json({
+        fixed: badIds.length,
+        groupsCreated: groupsFixed,
+        message: `Repaired ${badIds.length} mixed-date group(s) into ${groupsFixed} correctly dated group(s).`,
+      });
+    } catch (error: any) {
+      console.error("Error repairing bulk dates:", error);
+      res.status(500).json({ message: error.message || "Repair failed" });
     }
   });
 

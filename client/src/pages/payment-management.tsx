@@ -230,6 +230,16 @@ export default function PaymentManagement() {
     },
   });
 
+  const repairBulkDatesMutation = useMutation({
+    mutationFn: async () => apiRequest('POST', '/api/invoice-payments/repair-bulk-dates', {}),
+    onSuccess: async (res: any) => {
+      const data = await res.json();
+      queryClient.invalidateQueries({ queryKey: ['/api/invoice-payments/bulk-allocations'] });
+      toast({ title: 'Repair complete', description: data.message });
+    },
+    onError: () => toast({ title: 'Repair failed', variant: 'destructive' }),
+  });
+
   const backfillMutation = useMutation({
     mutationFn: async () => apiRequest('POST', '/api/invoice-payments/backfill-bulk-ids', {}),
     onSuccess: async (res: any) => {
@@ -560,6 +570,17 @@ export default function PaymentManagement() {
               >
                 {backfillMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                 Link Old Payments
+              </Button>
+            )}
+            {isAdmin && (
+              <Button
+                variant="outline"
+                onClick={() => repairBulkDatesMutation.mutate()}
+                disabled={repairBulkDatesMutation.isPending}
+                data-testid="button-repair-bulk-dates"
+              >
+                {repairBulkDatesMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                Fix Date Groupings
               </Button>
             )}
           </div>
