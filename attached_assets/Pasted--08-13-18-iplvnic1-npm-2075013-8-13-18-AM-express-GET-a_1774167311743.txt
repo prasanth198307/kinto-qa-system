@@ -1,0 +1,30 @@
+ 08:13:18 iplvnic1 npm[2075013]: 8:13:18 AM [express] GET /api/invoice-payments/bulk-allocations 500 in 12ms :: {"message":"Cannot co…
+Mar 22 08:13:18 iplvnic1 npm[2075013]: 8:13:18 AM [express] GET /api/vendors 304 in 17ms :: [{"id":"e7b4a11c-574a-482f-bb8c-9854dda60dd8","…
+Mar 22 08:13:18 iplvnic1 npm[2075013]: 🔹 Request: GET /api/invoice-payments/history
+Mar 22 08:13:18 iplvnic1 npm[2075013]:    Cookie header: connect.sid=s%3Ai-qIGlYMfuQzDVkq7opa7Q6E6Ciw-ypH.M%2FypPDKBGE2%2B53Pgw9X0mI9Fpp8%2FY9ZdyslS4XIv78c; _ga=GA1.1.1321689309.1766052649; _ga_8MR6CJ1YLW=GS2.1.s1766052649$o1$g0$t1766052649$j60$l0$h0
+Mar 22 08:13:18 iplvnic1 npm[2075013]:    Session ID: i-qIGlYMfuQzDVkq7opa7Q6E6Ciw-ypH
+Mar 22 08:13:18 iplvnic1 npm[2075013]:    Authenticated: true
+Mar 22 08:13:18 iplvnic1 npm[2075013]: 8:13:18 AM [express] GET /api/invoice-payments/history 304 in 32ms :: [{"id":"048c0dd4-7dfa-4e5e-81f…
+Mar 22 08:13:23 iplvnic1 npm[2075013]: 🔹 Request: POST /api/invoice-payments/backfill-bulk-ids
+Mar 22 08:13:23 iplvnic1 npm[2075013]:    Cookie header: connect.sid=s%3Ai-qIGlYMfuQzDVkq7opa7Q6E6Ciw-ypH.M%2FypPDKBGE2%2B53Pgw9X0mI9Fpp8%2FY9ZdyslS4XIv78c; _ga=GA1.1.1321689309.1766052649; _ga_8MR6CJ1YLW=GS2.1.s1766052649$o1$g0$t1766052649$j60$l0$h0
+Mar 22 08:13:23 iplvnic1 npm[2075013]:    Session ID: i-qIGlYMfuQzDVkq7opa7Q6E6Ciw-ypH
+Mar 22 08:13:23 iplvnic1 npm[2075013]:    Authenticated: true
+Mar 22 08:13:23 iplvnic1 npm[2075013]: [AUDIT] Role admin granted create access to /api/invoice-payments/backfill-bulk-ids via screen permission payments
+Mar 22 08:13:23 iplvnic1 npm[2075013]: 8:13:23 AM [express] POST /api/invoice-payments/backfill-bulk-ids 200 in 231ms :: {"groupsCreated":7…
+Mar 22 08:13:23 iplvnic1 npm[2075013]: 🔹 Request: GET /api/invoice-payments/bulk-allocations
+Mar 22 08:13:23 iplvnic1 npm[2075013]:    Cookie header: connect.sid=s%3Ai-qIGlYMfuQzDVkq7opa7Q6E6Ciw-ypH.M%2FypPDKBGE2%2B53Pgw9X0mI9Fpp8%2FY9ZdyslS4XIv78c; _ga=GA1.1.1321689309.1766052649; _ga_8MR6CJ1YLW=GS2.1.s1766052649$o1$g0$t1766052649$j60$l0$h0
+Mar 22 08:13:23 iplvnic1 npm[2075013]:    Session ID: i-qIGlYMfuQzDVkq7opa7Q6E6Ciw-ypH
+Mar 22 08:13:23 iplvnic1 npm[2075013]:    Authenticated: true
+Mar 22 08:13:23 iplvnic1 npm[2075013]: Error fetching bulk allocations: TypeError: Cannot convert undefined or null to object
+Mar 22 08:13:23 iplvnic1 npm[2075013]:     at Function.entries (<anonymous>)
+Mar 22 08:13:23 iplvnic1 npm[2075013]:     at orderSelectedFields (file:///home/kinto/kinto-qa-system/node_modules/drizzle-orm/utils.js:53:17)
+Mar 22 08:13:23 iplvnic1 npm[2075013]:     at file:///home/kinto/kinto-qa-system/node_modules/drizzle-orm/utils.js:63:22
+Mar 22 08:13:23 iplvnic1 npm[2075013]:     at Array.reduce (<anonymous>)
+Mar 22 08:13:23 iplvnic1 npm[2075013]:     at orderSelectedFields (file:///home/kinto/kinto-qa-system/node_modules/drizzle-orm/utils.js:53:33)
+Mar 22 08:13:23 iplvnic1 npm[2075013]:     at file:///home/kinto/kinto-qa-system/node_modules/drizzle-orm/pg-core/query-builders/select.js:684:26
+Mar 22 08:13:23 iplvnic1 npm[2075013]:     at Object.startActiveSpan (file:///home/kinto/kinto-qa-system/node_modules/drizzle-orm/tracing.js:8:14)
+Mar 22 08:13:23 iplvnic1 npm[2075013]:     at PgSelectBase._prepare (file:///home/kinto/kinto-qa-system/node_modules/drizzle-orm/pg-core/query-builders/select.js:683:19)
+Mar 22 08:13:23 iplvnic1 npm[2075013]:     at file:///home/kinto/kinto-qa-system/node_modules/drizzle-orm/pg-core/query-builders/select.js:708:19
+Mar 22 08:13:23 iplvnic1 npm[2075013]:     at Object.startActiveSpan (file:///home/kinto/kinto-qa-system/node_modules/drizzle-orm/tracing.js:8:14)
+Mar 22 08:13:23 iplvnic1 npm[2075013]: 8:13:23 AM [express] GET /api/invoice-payments/bulk-allocations 500 in 5ms :: {"message":"Cannot con…
+[kinto@iplvnic1 ~]$ 

@@ -9248,51 +9248,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // MUST be registered before /:invoiceId to avoid param clash
   app.get('/api/invoice-payments/bulk-allocations', isAuthenticated, async (req: any, res) => {
     try {
-      const { vendorId, page = '1', limit = '20' } = req.query;
+      const { page = '1', limit = '20' } = req.query;
       const pageNum = Math.max(1, parseInt(page as string));
       const limitNum = Math.min(100, Math.max(1, parseInt(limit as string)));
       const offset = (pageNum - 1) * limitNum;
 
-      const rows = await db
-        .select({
-          bulkAllocationId: invoicePayments.bulkAllocationId,
-          paymentDate: invoicePayments.paymentDate,
-          paymentMethod: invoicePayments.paymentMethod,
-          referenceNumber: invoicePayments.referenceNumber,
-          bankName: invoicePayments.bankName,
-          payerName: invoicePayments.payerName,
-          remarks: invoicePayments.remarks,
-          amount: invoicePayments.amount,
-          paymentId: invoicePayments.id,
-          invoiceId: invoicePayments.invoiceId,
-          invoiceNumber: invoices.invoiceNumber,
-          buyerName: invoices.buyerName,
-          vendorId: invoices.vendorId,
-        })
-        .from(invoicePayments)
-        .innerJoin(invoices, eq(invoicePayments.invoiceId, invoices.id))
-        .where(
-          and(
-            sql`${invoicePayments.bulkAllocationId} IS NOT NULL`,
-            eq(invoicePayments.recordStatus, 1),
-            vendorId ? eq(invoices.vendorId, vendorId as string) : sql`1=1`
-          )
-        )
-        .orderBy(desc(invoicePayments.createdAt));
+      // Check which optional columns exist on invoice_payments
+      const colsResult = await db.execute(sql`
+        SELECT column_name FROM information_schema.columns
+        WHERE table_name = 'invoice_payments'
+          AND column_name IN ('bulk_allocation_id', 'payer_name', 'bank_name', 'remarks')
+      `);
+      const existingCols = new Set((colsResult.rows as any[]).map((r: any) => r.column_name));
+
+      if (!existingCols.has('bulk_allocation_id')) {
+        return res.json({ data: [], total: 0, page: pageNum, limit: limitNum });
+      }
+
+      const rows = await db.execute(sql`
+        SELECT
+          ip.bulk_allocation_id,
+          ip.payment_date,
+          ip.payment_method,
+          ip.reference_number,
+          ${existingCols.has('bank_name') ? sql`ip.bank_name,` : sql`NULL AS bank_name,`}
+          ${existingCols.has('payer_name') ? sql`COALESCE(ip.payer_name, '') AS payer_name,` : sql`'' AS payer_name,`}
+          ${existingCols.has('remarks') ? sql`ip.remarks,` : sql`NULL AS remarks,`}
+          ip.amount,
+          ip.id AS payment_id,
+          ip.invoice_id,
+          i.invoice_number,
+          i.buyer_name,
+          ip.created_at
+        FROM invoice_payments ip
+        JOIN invoices i ON ip.invoice_id = i.id
+        WHERE ip.bulk_allocation_id IS NOT NULL
+          AND ip.record_status = 1
+        ORDER BY ip.created_at DESC
+      `);
 
       const groupMap = new Map<string, any>();
-      for (const row of rows) {
-        const id = row.bulkAllocationId!;
+      for (const row of rows.rows as any[]) {
+        const id = row.bulk_allocation_id;
         if (!groupMap.has(id)) {
           groupMap.set(id, {
             bulkAllocationId: id,
-            paymentDate: row.paymentDate,
-            paymentMethod: row.paymentMethod,
-            referenceNumber: row.referenceNumber,
-            bankName: row.bankName,
-            payerName: row.payerName,
+            paymentDate: row.payment_date,
+            paymentMethod: row.payment_method,
+            referenceNumber: row.reference_number,
+            bankName: row.bank_name,
+            payerName: row.payer_name,
             remarks: row.remarks,
-            vendorName: row.buyerName,
+            vendorName: row.buyer_name,
             totalAmount: 0,
             splits: [],
           });
@@ -9300,10 +9307,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const group = groupMap.get(id)!;
         group.totalAmount += row.amount;
         group.splits.push({
-          paymentId: row.paymentId,
-          invoiceId: row.invoiceId,
-          invoiceNumber: row.invoiceNumber,
-          buyerName: row.buyerName,
+          paymentId: row.payment_id,
+          invoiceId: row.invoice_id,
+          invoiceNumber: row.invoice_number,
+          buyerName: row.buyer_name,
           amount: row.amount,
         });
       }
