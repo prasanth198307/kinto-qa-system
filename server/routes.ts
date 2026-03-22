@@ -9616,11 +9616,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // Pass 4: VDN adjustment payments — assign bulk_allocation_id = VDN-{referenceNumber}
+      // so each VDN's splits are always grouped, even single-invoice ones.
+      const vdnOrphans = await db.execute(sql`
+        SELECT id, reference_number
+        FROM invoice_payments
+        WHERE bulk_allocation_id IS NULL
+          AND payment_method = 'Debit Note Adjustment'
+          AND record_status = 1
+          AND reference_number IS NOT NULL
+      `);
+      let vdnFixed = 0;
+      for (const row of vdnOrphans.rows as any[]) {
+        const vdnBulkId = `VDN-${row.reference_number}`;
+        await db.execute(sql`UPDATE invoice_payments SET bulk_allocation_id = ${vdnBulkId} WHERE id = ${row.id}`);
+        vdnFixed++;
+      }
+
       res.json({
         fixed: badIds.length,
         groupsCreated: groupsFixed + newGroupsLinked,
         orphansMerged,
-        message: `Repaired ${badIds.length} mixed-date group(s). Created ${groupsFixed + newGroupsLinked} corrected groups. Merged ${orphansMerged} orphan payment(s) into existing groups.`,
+        vdnAdjustmentsFixed: vdnFixed,
+        message: `Repaired ${badIds.length} mixed-date group(s). Created ${groupsFixed + newGroupsLinked} corrected groups. Merged ${orphansMerged} orphan payment(s). Fixed ${vdnFixed} VDN adjustment(s).`,
       });
     } catch (error: any) {
       console.error("Error repairing bulk dates:", error);
@@ -14452,6 +14470,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           linkedBuyerName = currentInvoice?.buyerName || null;
           
           // Use the debit note's original date for the payment record
+          // Assign a bulk_allocation_id keyed to the VDN so all splits of the same
+          // VDN are automatically grouped — no "Fix Date Groupings" needed.
+          const vdnBulkId = `VDN-${debitNote.noteNumber}`;
           await tx.insert(invoicePayments).values({
             invoiceId,
             paymentDate: adjustmentDate,
@@ -14461,6 +14482,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             paymentType: 'Adjustment',
             remarks: `Adjusted against Vendor Debit Note ${debitNote.noteNumber}`,
             recordedBy: req.user?.id,
+            bulkAllocationId: vdnBulkId,
           });
 
           // Update invoice amountReceived to reflect the adjustment
