@@ -210,12 +210,22 @@ export default function PaymentManagement() {
 
   const [bulkPage, setBulkPage] = useState(1);
   const [bulkSearch, setBulkSearch] = useState('');
+  const [bulkVendorId, setBulkVendorId] = useState('');
   const BULK_PAGE_SIZE = 50;
+
+  // Derive parent vendors + children count for the dropdown
+  const parentVendors = (vendors as any[]).filter(v => !v.parentVendorId);
+  const childCountMap = (vendors as any[]).reduce((acc: Record<string, number>, v: any) => {
+    if (v.parentVendorId) acc[v.parentVendorId] = (acc[v.parentVendorId] || 0) + 1;
+    return acc;
+  }, {});
+
   const { data: bulkAllocsData, isLoading: bulkAllocsLoading } = useQuery<{ data: any[]; total: number }>({
-    queryKey: ['/api/invoice-payments/bulk-allocations', bulkPage, bulkSearch],
+    queryKey: ['/api/invoice-payments/bulk-allocations', bulkPage, bulkSearch, bulkVendorId],
     queryFn: () => {
       const params = new URLSearchParams({ page: String(bulkPage), limit: String(BULK_PAGE_SIZE) });
       if (bulkSearch.trim()) params.set('search', bulkSearch.trim());
+      if (bulkVendorId) params.set('vendorId', bulkVendorId);
       return fetch(`/api/invoice-payments/bulk-allocations?${params}`, { credentials: 'include' }).then(r => r.json());
     },
   });
@@ -242,6 +252,7 @@ export default function PaymentManagement() {
     try {
       const params = new URLSearchParams({ page: '1', limit: '10000' });
       if (bulkSearch.trim()) params.set('search', bulkSearch.trim());
+      if (bulkVendorId) params.set('vendorId', bulkVendorId);
       const res = await fetch(`/api/invoice-payments/bulk-allocations?${params}`, { credentials: 'include' });
       const json = await res.json();
       const groups: any[] = json.data || [];
@@ -702,25 +713,60 @@ export default function PaymentManagement() {
           )}
         </CardHeader>
         <CardContent className="space-y-3">
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by vendor, payer, method, or reference..."
-              value={bulkSearch}
-              onChange={(e) => { setBulkSearch(e.target.value); setBulkPage(1); }}
-              className="pl-9"
-              data-testid="input-search-bulk"
-            />
-            {bulkSearch && (
+          {/* Filters row */}
+          <div className="flex flex-wrap gap-2">
+            {/* Vendor selector */}
+            <Select
+              value={bulkVendorId || 'all'}
+              onValueChange={(v) => { setBulkVendorId(v === 'all' ? '' : v); setBulkPage(1); }}
+              data-testid="select-bulk-vendor"
+            >
+              <SelectTrigger className="w-60" data-testid="trigger-bulk-vendor">
+                <SelectValue placeholder="All vendors" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Vendors</SelectItem>
+                {parentVendors.map((v: any) => (
+                  <SelectItem key={v.id} value={v.id}>
+                    {v.vendorName}
+                    {childCountMap[v.id] ? ` (+ ${childCountMap[v.id]} child${childCountMap[v.id] > 1 ? 'ren' : ''})` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Text search */}
+            <div className="relative flex-1 min-w-48">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by method, reference..."
+                value={bulkSearch}
+                onChange={(e) => { setBulkSearch(e.target.value); setBulkPage(1); }}
+                className="pl-9"
+                data-testid="input-search-bulk"
+              />
+              {bulkSearch && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                  onClick={() => { setBulkSearch(''); setBulkPage(1); }}
+                  data-testid="button-clear-bulk-search"
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              )}
+            </div>
+
+            {/* Clear all filters */}
+            {(bulkVendorId || bulkSearch) && (
               <Button
                 variant="ghost"
-                size="icon"
-                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                onClick={() => { setBulkSearch(''); setBulkPage(1); }}
-                data-testid="button-clear-bulk-search"
+                size="sm"
+                onClick={() => { setBulkVendorId(''); setBulkSearch(''); setBulkPage(1); }}
+                data-testid="button-clear-bulk-filters"
               >
-                <X className="w-3 h-3" />
+                <X className="w-3 h-3 mr-1" /> Clear
               </Button>
             )}
           </div>
