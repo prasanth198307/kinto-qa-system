@@ -268,48 +268,69 @@ export default function PaymentManagement() {
       const headerStyle = { font: { bold: true, color: { argb: 'FFFFFFFF' } }, fill: { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FF1E3A5F' } }, alignment: { vertical: 'middle' as const } };
 
       if (bulkVendorId) {
-        // Vendor selected → download ALL payments (bulk + individual) for that vendor family
-        const histParams = new URLSearchParams({ vendorId: bulkVendorId });
-        const histRes = await fetch(`/api/invoice-payments/history?${histParams}`, { credentials: 'include' });
-        const payments: any[] = await histRes.json();
+        // Vendor selected → download from bulk-allocations endpoint (has totals + splits)
+        const params = new URLSearchParams({ page: '1', limit: '10000', vendorId: bulkVendorId });
+        const allocRes = await fetch(`/api/invoice-payments/bulk-allocations?${params}`, { credentials: 'include' });
+        const allocJson = await allocRes.json();
+        const groups: any[] = allocJson.data || [];
 
-        const ws = wb.addWorksheet('Payment History');
+        const ws = wb.addWorksheet('Payment Report');
+        // 5 columns: Date | Vendor/Payer | Method | Invoice | Amount
         ws.columns = [
-          { header: 'Payment Date',   key: 'date',      width: 16 },
-          { header: 'Buyer / Vendor', key: 'buyer',     width: 32 },
-          { header: 'Invoice Number', key: 'invoice',   width: 20 },
-          { header: 'Invoice Date',   key: 'invDate',   width: 14 },
-          { header: 'Amount (₹)',     key: 'amount',    width: 16 },
-          { header: 'Method',         key: 'method',    width: 14 },
-          { header: 'Reference',      key: 'reference', width: 22 },
-          { header: 'Type',           key: 'type',      width: 12 },
-          { header: 'Bulk ID',        key: 'bulkId',    width: 32 },
+          { key: 'date',    width: 16 },
+          { key: 'vendor',  width: 34 },
+          { key: 'method',  width: 14 },
+          { key: 'invoice', width: 24 },
+          { key: 'amount',  width: 18 },
         ];
-        const hr = ws.getRow(1);
-        Object.assign(hr, headerStyle);
-        hr.height = 20;
 
-        for (const p of payments) {
-          ws.addRow({
-            date:      p.paymentDate ? new Date(p.paymentDate).toLocaleDateString('en-IN') : '-',
-            buyer:     p.buyerName || p.vendorName || '-',
-            invoice:   p.invoiceNumber || '-',
-            invDate:   p.invoiceDate ? new Date(p.invoiceDate).toLocaleDateString('en-IN') : '-',
-            amount:    Number((p.amount / 100).toFixed(2)),
-            method:    p.paymentMethod || '-',
-            reference: p.referenceNumber || '-',
-            type:      p.paymentType || '-',
-            bulkId:    (p as any).bulkAllocationId || 'Individual',
-          });
-        }
-        ws.getColumn('amount').numFmt = '#,##0.00';
-        ws.eachRow((row, rowNum) => {
-          if (rowNum > 1 && rowNum % 2 === 0) {
-            row.eachCell(cell => {
-              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F4FA' } };
-            });
+        // Column header row
+        const colHeaderRow = ws.addRow(['Date', 'Vendor / Payer', 'Method', 'Invoice', 'Amount (₹)']);
+        colHeaderRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        colHeaderRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A5F' } };
+        colHeaderRow.alignment = { vertical: 'middle' };
+        colHeaderRow.height = 20;
+
+        let grandTotal = 0;
+
+        for (const g of groups) {
+          const date = g.paymentDate ? new Date(g.paymentDate).toLocaleDateString('en-IN') : '-';
+          const total = Number((g.totalAmount / 100).toFixed(2));
+          grandTotal += total;
+
+          // Group TOTAL row — medium blue
+          const totalRow = ws.addRow([
+            date,
+            g.payerName || g.vendorName || '-',
+            g.paymentMethod || '-',
+            g.isIndividual ? 'Individual Payment' : `${g.splits.length} Invoice(s)`,
+            total,
+          ]);
+          totalRow.font = { bold: true, color: { argb: 'FF1E3A5F' } };
+          totalRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD6E4F7' } };
+          totalRow.getCell(5).numFmt = '#,##0.00';
+
+          // Split rows — indented, lighter
+          for (const s of g.splits) {
+            const splitRow = ws.addRow([
+              '',
+              `    ${s.buyerName || '-'}`,
+              '',
+              s.invoiceNumber || '-',
+              Number((s.amount / 100).toFixed(2)),
+            ]);
+            splitRow.font = { color: { argb: 'FF555555' } };
+            splitRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FBFF' } };
+            splitRow.getCell(5).numFmt = '#,##0.00';
           }
-        });
+        }
+
+        // Grand total row
+        const grandRow = ws.addRow(['', 'GRAND TOTAL', '', '', grandTotal]);
+        grandRow.font = { bold: true, size: 11, color: { argb: 'FFFFFFFF' } };
+        grandRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A5F' } };
+        grandRow.getCell(5).numFmt = '#,##0.00';
+        grandRow.height = 18;
 
         const selectedVendor = (vendors as any[]).find(v => v.id === bulkVendorId);
         const vendorSlug = (selectedVendor?.vendorName || 'vendor').replace(/\s+/g, '-').toLowerCase();
