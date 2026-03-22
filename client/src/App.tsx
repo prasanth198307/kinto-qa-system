@@ -1400,8 +1400,10 @@ const navItemToScreenKey: Record<string, string> = {
   'variance-analytics': 'variance_analytics',
   'spare-parts': 'spare_parts',
   // Finance & Sales
+  'sales-orders': 'sales_orders',
   'invoices': 'invoices',
   'vendor-history': 'vendors',
+  'vendor-debit-notes': 'vendor_debit_notes',
   'pending-payments': 'pending_payments',
   'payment-management': 'payments',
   'customer-advances': 'customer_advances',
@@ -1412,6 +1414,7 @@ const navItemToScreenKey: Record<string, string> = {
   // Dispatch & Logistics
   'gatepasses': 'gatepasses',
   'dispatch-tracking': 'dispatch_tracking',
+  'dispatch-masters': 'dispatch_masters',
   // Cash & Expenses
   'cash-register': 'cash_register',
   'cash-register-report': 'cash_register_report',
