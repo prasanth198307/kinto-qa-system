@@ -178,7 +178,8 @@ export default function PaymentManagement() {
   const { hasPermission, role } = usePermissions();
   const canCreate = hasPermission('payments', 'create');
   const canEdit = hasPermission('payments', 'edit');
-  const canDownloadBulkReport = hasPermission('bulk_payment_report', 'view');
+  const canViewPayments = hasPermission('payments', 'view');
+  const canDownloadBulkReport = canViewPayments || hasPermission('bulk_payment_report', 'view');
   const isAdmin = role === 'admin';
   
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
@@ -768,7 +769,9 @@ export default function PaymentManagement() {
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <TabsList>
             <TabsTrigger value="history" data-testid="tab-payment-history">Payment History</TabsTrigger>
-            <TabsTrigger value="bulk" data-testid="tab-bulk-allocations">Bulk Allocations</TabsTrigger>
+            {canViewPayments && (
+              <TabsTrigger value="bulk" data-testid="tab-bulk-allocations">Bulk Allocations</TabsTrigger>
+            )}
           </TabsList>
           <div className="flex items-center gap-2">
             {canCreate && (
