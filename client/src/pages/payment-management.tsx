@@ -174,9 +174,10 @@ function PaymentEvidenceRow({ paymentId }: { paymentId: string }) {
 export default function PaymentManagement() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const { hasPermission } = usePermissions();
+  const { hasPermission, role } = usePermissions();
   const canCreate = hasPermission('payments', 'create');
   const canEdit = hasPermission('payments', 'edit');
+  const isAdmin = role === 'admin';
   
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [cancelPaymentId, setCancelPaymentId] = useState<string | null>(null);
@@ -574,7 +575,7 @@ export default function PaymentManagement() {
             <CardTitle className="text-base">Bulk Payment Allocations</CardTitle>
             <CardDescription>Each row is one payment split across multiple invoices. Expand to see the breakdown.</CardDescription>
           </div>
-          {hasPermission('payments', 'create') && (
+          {isAdmin && (
             <Button
               variant="outline"
               size="sm"
