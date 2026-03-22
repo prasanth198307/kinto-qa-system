@@ -9321,41 +9321,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST backfill bulk_allocation_id for old payments — MUST be before /:invoiceId
   app.post('/api/invoice-payments/backfill-bulk-ids', requireRole('admin'), async (req: any, res) => {
     try {
-      const allVendors = await db
-        .select({ id: vendors.id, parentVendorId: vendors.parentVendorId })
-        .from(vendors);
+      // Use raw SQL so this works regardless of schema version on any deployment
+      const vendorRows = await db.execute(sql`SELECT id, parent_vendor_id FROM vendors`);
       const vendorParentMap = new Map<string, string | null>();
-      for (const v of allVendors) vendorParentMap.set(v.id, v.parentVendorId ?? null);
+      for (const v of vendorRows.rows as any[]) vendorParentMap.set(v.id, v.parent_vendor_id ?? null);
 
       const resolveRoot = (id: string): string => {
         const parent = vendorParentMap.get(id);
         return parent ? resolveRoot(parent) : id;
       };
 
-      const rows = await db
-        .select({
-          id: invoicePayments.id,
-          createdAt: invoicePayments.createdAt,
-          paymentMethod: invoicePayments.paymentMethod,
-          referenceNumber: invoicePayments.referenceNumber,
-          payerName: invoicePayments.payerName,
-          vendorId: invoices.vendorId,
-        })
-        .from(invoicePayments)
-        .innerJoin(invoices, eq(invoicePayments.invoiceId, invoices.id))
-        .where(
-          and(
-            isNull(invoicePayments.bulkAllocationId),
-            eq(invoicePayments.recordStatus, 1)
-          )
-        )
-        .orderBy(invoicePayments.createdAt);
+      // Check if the bulk_allocation_id column exists before filtering on it
+      const colCheck = await db.execute(sql`
+        SELECT column_name FROM information_schema.columns
+        WHERE table_name = 'invoice_payments' AND column_name = 'bulk_allocation_id'
+      `);
+      const hasBulkCol = colCheck.rows.length > 0;
+
+      const paymentRows = await db.execute(sql`
+        SELECT
+          ip.id,
+          ip.created_at,
+          ip.payment_method,
+          ip.reference_number,
+          COALESCE(ip.payer_name, '') AS payer_name,
+          i.vendor_id
+        FROM invoice_payments ip
+        JOIN invoices i ON ip.invoice_id = i.id
+        WHERE
+          ip.record_status = 1
+          ${hasBulkCol ? sql`AND ip.bulk_allocation_id IS NULL` : sql``}
+        ORDER BY ip.created_at
+      `);
 
       const groupMap = new Map<string, string[]>();
-      for (const row of rows) {
-        const minuteKey = row.createdAt ? row.createdAt.substring(0, 16) : 'no-date';
-        const rootVendorId = row.vendorId ? resolveRoot(row.vendorId) : '';
-        const key = [minuteKey, row.paymentMethod || '', row.referenceNumber || '', row.payerName || '', rootVendorId].join('||');
+      for (const row of paymentRows.rows as any[]) {
+        const createdAt: string = row.created_at ? String(row.created_at).substring(0, 16) : 'no-date';
+        const rootVendorId = row.vendor_id ? resolveRoot(row.vendor_id) : '';
+        const key = [createdAt, row.payment_method || '', row.reference_number || '', row.payer_name || '', rootVendorId].join('||');
         if (!groupMap.has(key)) groupMap.set(key, []);
         groupMap.get(key)!.push(row.id);
       }
@@ -9365,7 +9368,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (const [, ids] of groupMap) {
         if (ids.length < 2) continue;
         const bulkAllocationId = `BULK-BACKFILL-${format(new Date(), 'yyyyMMdd')}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
-        await db.update(invoicePayments).set({ bulkAllocationId }).where(inArray(invoicePayments.id, ids));
+        if (hasBulkCol) {
+          for (const id of ids) {
+            await db.execute(sql`
+              UPDATE invoice_payments SET bulk_allocation_id = ${bulkAllocationId} WHERE id = ${id}
+            `);
+          }
+        }
         groupsCreated++;
         paymentsUpdated += ids.length;
       }
