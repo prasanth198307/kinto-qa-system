@@ -47,9 +47,17 @@ interface ProductType {
 interface ProductBom {
   id: string;
   productId: string;
-  rawMaterialId: string;
-  quantity: number;
-  uomId: string | null;
+  rawMaterialId: string | null;
+  materialTypeId: string | null;
+  quantityRequired: string | number;
+  uom: string | null;
+  notes: string | null;
+}
+
+interface RawMaterialType {
+  id: string;
+  typeName: string;
+  baseUnit: string | null;
 }
 
 interface RawMaterial {
@@ -97,12 +105,16 @@ export default function ProductDetail({ showHeader = true }: ProductDetailProps)
   });
 
   const { data: bom = [] } = useQuery<ProductBom[]>({
-    queryKey: ['/api/product-bom', id],
+    queryKey: ['/api/products', id, 'bom'],
     enabled: !!id,
   });
 
   const { data: rawMaterials = [] } = useQuery<RawMaterial[]>({
     queryKey: ['/api/raw-materials'],
+  });
+
+  const { data: materialTypes = [] } = useQuery<RawMaterialType[]>({
+    queryKey: ['/api/raw-material-types'],
   });
 
   const { data: finishedGoods = [] } = useQuery<FinishedGood[]>({
@@ -130,15 +142,22 @@ export default function ProductDetail({ showHeader = true }: ProductDetailProps)
     return type?.name || typeId;
   };
 
-  const getRawMaterialName = (rmId: string) => {
+  const getRawMaterialName = (rmId: string | null) => {
+    if (!rmId) return '—';
     const rm = rawMaterials.find(r => r.id === rmId);
     return rm?.materialName || rmId;
+  };
+
+  const getMaterialTypeName = (typeId: string | null) => {
+    if (!typeId) return '—';
+    const mt = materialTypes.find(t => t.id === typeId);
+    return mt ? `${mt.typeName}${mt.baseUnit ? ` (${mt.baseUnit})` : ''}` : typeId;
   };
 
   const getUomName = (uomId: string | null) => {
     if (!uomId) return '';
     const uom = uoms.find(u => u.id === uomId);
-    return uom?.name || '';
+    return uom?.name || uomId;
   };
 
   const formatCurrency = (amount: string | number | undefined | null) => {
@@ -322,13 +341,15 @@ export default function ProductDetail({ showHeader = true }: ProductDetailProps)
                   {bom.map((item) => (
                     <TableRow 
                       key={item.id}
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => setLocation(`/raw-material/${item.rawMaterialId}`)}
                       data-testid={`row-bom-${item.id}`}
                     >
-                      <TableCell className="font-medium">{getRawMaterialName(item.rawMaterialId)}</TableCell>
-                      <TableCell>{item.quantity}</TableCell>
-                      <TableCell>{getUomName(item.uomId)}</TableCell>
+                      <TableCell className="font-medium">
+                        {item.materialTypeId
+                          ? getMaterialTypeName(item.materialTypeId)
+                          : getRawMaterialName(item.rawMaterialId)}
+                      </TableCell>
+                      <TableCell>{Number(item.quantityRequired)}</TableCell>
+                      <TableCell>{item.uom || '—'}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
