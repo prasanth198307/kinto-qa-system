@@ -14821,7 +14821,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             const outstanding = invoice.totalAmount - Number(paymentSum.sum);
             
-            // Create payment record
+            // Create payment record — use invoice's own buyerName so child records carry the child name
             const [payment] = await tx.insert(invoicePayments).values({
               invoiceId: invoice.id,
               paymentDate: paymentDate ? new Date(paymentDate).toISOString() : new Date().toISOString(),
@@ -14829,7 +14829,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               paymentMethod: paymentMethod || 'Cash',
               paymentType: allocateAmount >= outstanding ? 'Full' : 'Partial',
               paidBy: paidBy || 'buyer',
-              payerName: payerName || '',
+              payerName: invoice.buyerName || payerName || '',
               referenceNumber: referenceNumber || null,
               bankName: bankName || null,
               remarks: remarks || `Manual allocation from bulk payment`,
@@ -14894,6 +14894,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             const allocateAmount = Math.min(remainingAmount, invoice.outstanding);
             
+            // Use invoice's own buyerName so child invoice records carry the child name, not the parent
             const [payment] = await tx.insert(invoicePayments).values({
               invoiceId: invoice.id,
               paymentDate: paymentDate ? new Date(paymentDate).toISOString() : new Date().toISOString(),
@@ -14901,7 +14902,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               paymentMethod: paymentMethod || 'Cash',
               paymentType: allocateAmount === invoice.outstanding ? 'Full' : 'Partial',
               paidBy: paidBy || 'buyer',
-              payerName: payerName || '',
+              payerName: invoice.buyerName || payerName || '',
               referenceNumber: referenceNumber || null,
               bankName: bankName || null,
               remarks: remarks || `FIFO allocation from bulk payment`,
