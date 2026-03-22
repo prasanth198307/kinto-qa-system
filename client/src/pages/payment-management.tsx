@@ -452,51 +452,137 @@ export default function PaymentManagement() {
         a.click();
         URL.revokeObjectURL(url);
       } else {
-        // No vendor selected → download bulk allocations only (existing behaviour)
+        // No vendor selected → all vendors overview with branded header
         const params = new URLSearchParams({ page: '1', limit: '10000' });
         if (bulkSearch.trim()) params.set('search', bulkSearch.trim());
-        const res = await fetch(`/api/invoice-payments/bulk-allocations?${params}`, { credentials: 'include' });
-        const json = await res.json();
+        const [res, tmplRes] = await Promise.all([
+          fetch(`/api/invoice-payments/bulk-allocations?${params}`, { credentials: 'include' }),
+          fetch('/api/invoice-templates/default', { credentials: 'include' }),
+        ]);
+        const json   = await res.json();
         const groups: any[] = json.data || [];
+        const tmpl   = tmplRes.ok ? await tmplRes.json() : null;
 
+        const companyName    = tmpl?.defaultSellerName    || 'KINTO Smart Ops';
+        const companyAddress = tmpl?.defaultSellerAddress || '';
+        const companyGstin   = tmpl?.defaultSellerGstin   || '';
+        const companyPhone   = tmpl?.defaultSellerPhone   || '';
+        const companyEmail   = tmpl?.defaultSellerEmail   || '';
+
+        const NAVY  = 'FF1E3A5F';
+        const BLUE  = 'FF2563AA';
+        const LGREY = 'FFF5F7FA';
+        const WHITE = 'FFFFFFFF';
+        const DGREY = 'FF555555';
+
+        const COLS = 9;
         const ws = wb.addWorksheet('Bulk Payment Allocations');
         ws.columns = [
-          { header: 'Bulk ID',          key: 'bulkId',     width: 32 },
-          { header: 'Date',             key: 'date',       width: 14 },
-          { header: 'Vendor / Payer',   key: 'vendor',     width: 30 },
-          { header: 'Method',           key: 'method',     width: 14 },
-          { header: 'Reference',        key: 'reference',  width: 20 },
-          { header: 'Total Paid (₹)',   key: 'total',      width: 16 },
-          { header: 'Invoice Number',   key: 'invoice',    width: 20 },
-          { header: 'Buyer Name',       key: 'buyer',      width: 30 },
-          { header: 'Split Amount (₹)', key: 'split',      width: 16 },
+          { key: 'bulkId',    width: 32 },
+          { key: 'date',      width: 14 },
+          { key: 'vendor',    width: 30 },
+          { key: 'method',    width: 14 },
+          { key: 'reference', width: 20 },
+          { key: 'total',     width: 16 },
+          { key: 'invoice',   width: 20 },
+          { key: 'buyer',     width: 30 },
+          { key: 'split',     width: 16 },
         ];
-        const hr = ws.getRow(1);
-        Object.assign(hr, headerStyle);
-        hr.height = 20;
 
+        const mergeRow = (rowNum: number) => ws.mergeCells(rowNum, 1, rowNum, COLS);
+
+        // ── Company name ──────────────────────────────────────────────────────
+        const r1 = ws.addRow([companyName]);
+        r1.height = 32;
+        r1.getCell(1).font      = { bold: true, size: 16, color: { argb: WHITE } };
+        r1.getCell(1).fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
+        r1.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 2 };
+        mergeRow(1);
+
+        // ── Address ───────────────────────────────────────────────────────────
+        if (companyAddress) {
+          const r2 = ws.addRow([companyAddress]);
+          r2.height = 16;
+          r2.getCell(1).font      = { size: 9, color: { argb: WHITE } };
+          r2.getCell(1).fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
+          r2.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 2 };
+          mergeRow(ws.rowCount);
+        }
+
+        // ── GSTIN | Phone | Email ─────────────────────────────────────────────
+        const metaParts = [
+          companyGstin ? `GSTIN: ${companyGstin}` : '',
+          companyPhone ? `Ph: ${companyPhone}` : '',
+          companyEmail ? `Email: ${companyEmail}` : '',
+        ].filter(Boolean).join('   |   ');
+        if (metaParts) {
+          const r3 = ws.addRow([metaParts]);
+          r3.height = 14;
+          r3.getCell(1).font      = { size: 8, color: { argb: WHITE } };
+          r3.getCell(1).fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
+          r3.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 2 };
+          mergeRow(ws.rowCount);
+        }
+
+        // ── Spacer ────────────────────────────────────────────────────────────
+        ws.addRow([]); mergeRow(ws.rowCount);
+
+        // ── Report title ──────────────────────────────────────────────────────
+        const rTitle = ws.addRow(['ALL VENDORS — BULK PAYMENT REPORT']);
+        rTitle.height = 22;
+        rTitle.getCell(1).font      = { bold: true, size: 12, color: { argb: WHITE } };
+        rTitle.getCell(1).fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: BLUE } };
+        rTitle.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 2 };
+        mergeRow(ws.rowCount);
+
+        // ── Generated date ────────────────────────────────────────────────────
+        const rDate = ws.addRow([`Generated on: ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}`]);
+        rDate.height = 14;
+        rDate.getCell(1).font      = { italic: true, size: 8, color: { argb: DGREY } };
+        rDate.getCell(1).fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: LGREY } };
+        rDate.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 2 };
+        mergeRow(ws.rowCount);
+
+        // ── Empty spacer ──────────────────────────────────────────────────────
+        ws.addRow([]); mergeRow(ws.rowCount);
+
+        // ── Column header row ─────────────────────────────────────────────────
+        const hr = ws.addRow(['Bulk ID', 'Date', 'Vendor / Payer', 'Method', 'Reference', 'Total Paid (₹)', 'Invoice Number', 'Buyer Name', 'Split Amount (₹)']);
+        hr.height = 20;
+        hr.eachCell(cell => {
+          cell.font      = { bold: true, size: 10, color: { argb: WHITE } };
+          cell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
+          cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+        });
+        [6, 9].forEach(col => { hr.getCell(col).alignment = { vertical: 'middle', horizontal: 'right' }; });
+
+        // ── Data rows ─────────────────────────────────────────────────────────
+        let isOdd = true;
         for (const g of groups) {
-          const date = g.paymentDate ? new Date(g.paymentDate).toLocaleDateString('en-IN') : '-';
+          const date  = g.paymentDate ? new Date(g.paymentDate).toLocaleDateString('en-IN') : '-';
           const total = Number((g.totalAmount / 100).toFixed(2));
+          const rowBg = isOdd ? 'FFFFFFFF' : 'FFF0F4FA';
+          isOdd = !isOdd;
           for (const s of g.splits) {
-            ws.addRow({
-              bulkId: g.bulkAllocationId || '-', date,
-              vendor: g.vendorName || g.payerName || '-',
-              method: g.paymentMethod || '-', reference: g.referenceNumber || '-',
-              total, invoice: s.invoiceNumber || '-', buyer: s.buyerName || '-',
-              split: Number((s.amount / 100).toFixed(2)),
+            const dr = ws.addRow([
+              g.bulkAllocationId || '-', date,
+              g.vendorName || g.payerName || '-',
+              g.paymentMethod || '-', g.referenceNumber || '-',
+              total, s.invoiceNumber || '-', s.buyerName || '-',
+              Number((s.amount / 100).toFixed(2)),
+            ]);
+            dr.height = 15;
+            dr.eachCell(cell => {
+              cell.font = { size: 9, color: { argb: DGREY } };
+              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowBg } };
+              cell.alignment = { vertical: 'middle', indent: 1 };
             });
+            dr.getCell(6).numFmt    = '₹#,##0.00';
+            dr.getCell(9).numFmt    = '₹#,##0.00';
+            dr.getCell(6).alignment = { vertical: 'middle', horizontal: 'right' };
+            dr.getCell(9).alignment = { vertical: 'middle', horizontal: 'right' };
           }
         }
-        ws.getColumn('total').numFmt = '#,##0.00';
-        ws.getColumn('split').numFmt = '#,##0.00';
-        ws.eachRow((row, rowNum) => {
-          if (rowNum > 1 && rowNum % 2 === 0) {
-            row.eachCell(cell => {
-              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F4FA' } };
-            });
-          }
-        });
 
         const buffer = await wb.xlsx.writeBuffer();
         const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
