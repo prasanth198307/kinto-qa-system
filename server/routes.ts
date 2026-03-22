@@ -9527,18 +9527,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `);
       }
 
-      // Re-group by payment_date + method + reference + payer + buyer
+      // Re-group by payment_date + method + reference ONLY (no buyer_name so cross-vendor
+      // payments in the same family that were part of the same bulk can stay together)
       const reGroupMap = new Map<string, string[]>();
       for (const row of badPayments.rows as any[]) {
         const dateKey = row.payment_date ? String(row.payment_date).substring(0, 10) : 'no-date';
-        const key = [dateKey, row.payment_method || '', row.reference_number || '', row.buyer_name || ''].join('||');
+        const key = [dateKey, row.payment_method || '', row.reference_number || ''].join('||');
         if (!reGroupMap.has(key)) reGroupMap.set(key, []);
         reGroupMap.get(key)!.push(row.id);
       }
 
       let groupsFixed = 0;
       for (const [, ids] of reGroupMap) {
-        if (ids.length < 2) continue; // leave single payments as individual
+        if (ids.length < 2) continue;
         const newBulkId = `BULK-REPAIRED-${format(new Date(), 'yyyyMMdd')}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
         for (const id of ids) {
           await db.execute(sql`UPDATE invoice_payments SET bulk_allocation_id = ${newBulkId} WHERE id = ${id}`);
@@ -9546,25 +9547,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         groupsFixed++;
       }
 
-      // Pass 2: backfill ALL remaining NULL payments (both from repaired groups and
-      // payments that were never linked at all) using the corrected payment_date key
+      // Pass 2: group remaining NULL payments by date+method+reference (no buyer_name)
       const remainingRows = await db.execute(sql`
         SELECT
           ip.id,
           ip.payment_date,
           ip.payment_method,
-          ip.reference_number,
-          ${hasPayerCol ? sql`COALESCE(ip.payer_name, '')` : sql`''`} AS payer_name,
-          COALESCE(i.buyer_name, '') AS buyer_name
+          ip.reference_number
         FROM invoice_payments ip
-        JOIN invoices i ON ip.invoice_id = i.id
         WHERE ip.bulk_allocation_id IS NULL AND ip.record_status = 1
       `);
 
       const backfillMap = new Map<string, string[]>();
       for (const row of remainingRows.rows as any[]) {
         const dateKey = row.payment_date ? String(row.payment_date).substring(0, 10) : 'no-date';
-        const key = [dateKey, row.payment_method || '', row.reference_number || '', row.buyer_name || ''].join('||');
+        const key = [dateKey, row.payment_method || '', row.reference_number || ''].join('||');
         if (!backfillMap.has(key)) backfillMap.set(key, []);
         backfillMap.get(key)!.push(row.id);
       }
@@ -9579,10 +9576,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
         newGroupsLinked++;
       }
 
+      // Pass 3: merge any still-NULL payments into an existing bulk group on the same
+      // date+method+reference (handles orphans left when one payment in a pair was already grouped)
+      const orphanRows = await db.execute(sql`
+        SELECT
+          ip.id,
+          ip.payment_date,
+          ip.payment_method,
+          ip.reference_number
+        FROM invoice_payments ip
+        WHERE ip.bulk_allocation_id IS NULL AND ip.record_status = 1
+      `);
+
+      // Build a lookup: date+method+reference → existing bulk_allocation_id
+      const existingGroupLookup = await db.execute(sql`
+        SELECT
+          CAST(DATE(payment_date) AS TEXT) AS date_key,
+          COALESCE(payment_method, '') AS payment_method,
+          COALESCE(reference_number, '') AS reference_number,
+          bulk_allocation_id
+        FROM invoice_payments
+        WHERE bulk_allocation_id IS NOT NULL AND record_status = 1
+        GROUP BY date_key, payment_method, reference_number, bulk_allocation_id
+        ORDER BY date_key DESC
+      `);
+
+      const existingGroupMap = new Map<string, string>();
+      for (const row of existingGroupLookup.rows as any[]) {
+        const key = [row.date_key, row.payment_method, row.reference_number].join('||');
+        if (!existingGroupMap.has(key)) existingGroupMap.set(key, row.bulk_allocation_id);
+      }
+
+      let orphansMerged = 0;
+      for (const row of orphanRows.rows as any[]) {
+        const dateKey = row.payment_date ? String(row.payment_date).substring(0, 10) : 'no-date';
+        const key = [dateKey, row.payment_method || '', row.reference_number || ''].join('||');
+        const existingId = existingGroupMap.get(key);
+        if (existingId) {
+          await db.execute(sql`UPDATE invoice_payments SET bulk_allocation_id = ${existingId} WHERE id = ${row.id}`);
+          orphansMerged++;
+        }
+      }
+
       res.json({
         fixed: badIds.length,
         groupsCreated: groupsFixed + newGroupsLinked,
-        message: `Repaired ${badIds.length} mixed-date group(s). Created ${groupsFixed} corrected groups + linked ${newGroupsLinked} previously unlinked group(s).`,
+        orphansMerged,
+        message: `Repaired ${badIds.length} mixed-date group(s). Created ${groupsFixed + newGroupsLinked} corrected groups. Merged ${orphansMerged} orphan payment(s) into existing groups.`,
       });
     } catch (error: any) {
       console.error("Error repairing bulk dates:", error);
