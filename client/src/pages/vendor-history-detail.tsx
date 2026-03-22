@@ -287,10 +287,9 @@ export default function VendorHistoryDetailPage() {
     h1.eachCell(c => { c.font = { bold: true, size: 10, color: { argb: WHITE } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } }; c.alignment = { vertical: 'middle', indent: 1 }; });
     [4,5,6].forEach(i => { h1.getCell(i).alignment = { vertical: 'middle', horizontal: 'right' }; });
 
-    let grandOutstanding = 0;
+    const grandOutstanding = txnData.summary.totalOutstanding;
     unpaidByCluster.forEach(([cluster, invs]) => {
       const clusterTotal = invs.reduce((s, i) => s + i.outstanding, 0);
-      grandOutstanding += clusterTotal;
       const cr = ws1.addRow([`Cluster: ${cluster}`, '', '', '', '', clusterTotal / 100]);
       cr.height = 18; ws1.mergeCells(cr.number, 1, cr.number, 3);
       cr.eachCell(c => { c.font = { bold: true, size: 10, color: { argb: NAVY } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: LBLUE } }; c.alignment = { vertical: 'middle', indent: 1 }; });
@@ -1509,8 +1508,9 @@ export default function VendorHistoryDetailPage() {
                     <p className="text-2xl font-bold text-orange-600">{unpaidInvoices.length}</p>
                   </CardContent></Card>
                   <Card><CardContent className="p-4">
-                    <p className="text-xs text-muted-foreground mb-1">Total Outstanding</p>
-                    <p className="text-2xl font-bold text-orange-600">{formatCurrency(unpaidInvoices.reduce((s, i) => s + i.outstanding, 0))}</p>
+                    <p className="text-xs text-muted-foreground mb-1">Net Outstanding</p>
+                    <p className="text-2xl font-bold text-orange-600">{formatCurrency(txnData?.summary.totalOutstanding ?? 0)}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Credit balances netted</p>
                   </CardContent></Card>
                   <Card><CardContent className="p-4">
                     <p className="text-xs text-muted-foreground mb-1">Clusters Affected</p>
@@ -1603,8 +1603,8 @@ export default function VendorHistoryDetailPage() {
                         {/* Grand total */}
                         <TableRow className="bg-muted/50 font-bold">
                           <TableCell></TableCell>
-                          <TableCell colSpan={5} className="text-right">Total Outstanding</TableCell>
-                          <TableCell className="text-right text-orange-600">{formatCurrency(unpaidInvoices.reduce((s, i) => s + i.outstanding, 0))}</TableCell>
+                          <TableCell colSpan={5} className="text-right">Net Outstanding</TableCell>
+                          <TableCell className="text-right text-orange-600">{formatCurrency(txnData?.summary.totalOutstanding ?? 0)}</TableCell>
                           <TableCell></TableCell>
                         </TableRow>
                       </TableBody>
