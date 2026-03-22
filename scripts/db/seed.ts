@@ -185,7 +185,8 @@ async function seedRolePermissions() {
     "notification_settings", "cancelled_invoices_report", "scrap_inventory",
     "mis_dashboard", "mis_production", "mis_inventory", "mis_sales",
     "mis_delivery", "sales_dashboard", "vendor_analytics", "report_gst",
-    "report_finished_goods", "machine_startup_reminders", "whatsapp_analytics"
+    "report_finished_goods", "machine_startup_reminders", "whatsapp_analytics",
+    "bulk_payment_report"
   ];
 
   const permissions: Array<{
@@ -220,7 +221,7 @@ async function seedRolePermissions() {
     "production_reconciliation", "variance_analytics",
     "journal_entries", "chart_of_accounts", "trial_balance", "profit_loss",
     "bank_transactions", "expenses", "cash_register", "payments",
-    "credit_notes", "customer_advances", "pending_payments"
+    "credit_notes", "customer_advances", "pending_payments", "bulk_payment_report"
   ];
   
   for (const screen of managerScreens) {

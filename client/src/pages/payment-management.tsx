@@ -178,6 +178,7 @@ export default function PaymentManagement() {
   const { hasPermission, role } = usePermissions();
   const canCreate = hasPermission('payments', 'create');
   const canEdit = hasPermission('payments', 'edit');
+  const canDownloadBulkReport = hasPermission('bulk_payment_report', 'view');
   const isAdmin = role === 'admin';
   
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
@@ -245,36 +246,72 @@ export default function PaymentManagement() {
       const json = await res.json();
       const groups: any[] = json.data || [];
 
-      const rows: string[][] = [];
-      rows.push(['Bulk ID', 'Date', 'Vendor / Payer', 'Method', 'Reference', 'Total Paid (₹)', 'Invoice Number', 'Buyer Name', 'Split Amount (₹)']);
+      const ExcelJS = (await import('exceljs')).default;
+      const wb = new ExcelJS.Workbook();
+      wb.creator = 'KINTO Ops';
+      wb.created = new Date();
+
+      const ws = wb.addWorksheet('Bulk Payment Allocations');
+
+      ws.columns = [
+        { header: 'Bulk ID',          key: 'bulkId',     width: 32 },
+        { header: 'Date',             key: 'date',       width: 14 },
+        { header: 'Vendor / Payer',   key: 'vendor',     width: 30 },
+        { header: 'Method',           key: 'method',     width: 14 },
+        { header: 'Reference',        key: 'reference',  width: 20 },
+        { header: 'Total Paid (₹)',   key: 'total',      width: 16 },
+        { header: 'Invoice Number',   key: 'invoice',    width: 20 },
+        { header: 'Buyer Name',       key: 'buyer',      width: 30 },
+        { header: 'Split Amount (₹)', key: 'split',      width: 16 },
+      ];
+
+      // Style header row
+      const headerRow = ws.getRow(1);
+      headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A5F' } };
+      headerRow.alignment = { vertical: 'middle' };
+      headerRow.height = 20;
 
       for (const g of groups) {
         const date = g.paymentDate ? new Date(g.paymentDate).toLocaleDateString('en-IN') : '-';
-        const total = (g.totalAmount / 100).toFixed(2);
+        const total = Number((g.totalAmount / 100).toFixed(2));
         for (const s of g.splits) {
-          rows.push([
-            g.bulkAllocationId,
+          ws.addRow({
+            bulkId:    g.bulkAllocationId || '-',
             date,
-            g.vendorName || g.payerName || '-',
-            g.paymentMethod || '-',
-            g.referenceNumber || '-',
+            vendor:    g.vendorName || g.payerName || '-',
+            method:    g.paymentMethod || '-',
+            reference: g.referenceNumber || '-',
             total,
-            s.invoiceNumber || '-',
-            s.buyerName || '-',
-            (s.amount / 100).toFixed(2),
-          ]);
+            invoice:   s.invoiceNumber || '-',
+            buyer:     s.buyerName || '-',
+            split:     Number((s.amount / 100).toFixed(2)),
+          });
         }
       }
 
-      const csv = rows.map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      // Format amount columns as numbers
+      ws.getColumn('total').numFmt = '#,##0.00';
+      ws.getColumn('split').numFmt = '#,##0.00';
+
+      // Alternate row shading
+      ws.eachRow((row, rowNum) => {
+        if (rowNum > 1 && rowNum % 2 === 0) {
+          row.eachCell(cell => {
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F4FA' } };
+          });
+        }
+      });
+
+      const buffer = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `bulk-payment-allocations-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.download = `bulk-payment-allocations-${new Date().toISOString().slice(0, 10)}.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch {
+    } catch (err) {
       toast({ title: 'Download failed', description: 'Could not export report', variant: 'destructive' });
     } finally {
       setIsDownloading(false);
@@ -651,16 +688,18 @@ export default function PaymentManagement() {
             <CardTitle className="text-base">Bulk Payment Allocations</CardTitle>
             <CardDescription>Each row is one payment split across multiple invoices. Click to expand the breakdown.</CardDescription>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={downloadBulkReport}
-            disabled={isDownloading}
-            data-testid="button-download-bulk-report"
-          >
-            {isDownloading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
-            Download CSV
-          </Button>
+          {canDownloadBulkReport && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={downloadBulkReport}
+              disabled={isDownloading}
+              data-testid="button-download-bulk-report"
+            >
+              {isDownloading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+              Download Excel
+            </Button>
+          )}
         </CardHeader>
         <CardContent className="space-y-3">
           {/* Search */}
