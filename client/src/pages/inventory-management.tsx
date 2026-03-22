@@ -631,10 +631,15 @@ function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSea
       const { bomItems: rawBomItems, bomConfigurationId, ...productData } = data;
       
       // Filter out empty/incomplete BOM rows (those without materialTypeId)
-      const bomItems = (rawBomItems || []).filter(item => 
+      const filteredItems = (rawBomItems || []).filter(item => 
         item.materialTypeId && item.materialTypeId.trim() !== ''
       );
-      
+
+      // Deduplicate by materialTypeId — keep the last occurrence if user accidentally added same type twice
+      const seenTypes = new Map<string, typeof filteredItems[0]>();
+      filteredItems.forEach(item => { seenTypes.set(item.materialTypeId!.trim(), item); });
+      const bomItems = Array.from(seenTypes.values());
+
       // Step 0: Validate remaining BOM items for valid quantity
       if (bomItems && bomItems.length > 0) {
         const invalidRows: number[] = [];
