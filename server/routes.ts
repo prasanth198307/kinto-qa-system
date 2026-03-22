@@ -9546,10 +9546,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         groupsFixed++;
       }
 
+      // Pass 2: backfill ALL remaining NULL payments (both from repaired groups and
+      // payments that were never linked at all) using the corrected payment_date key
+      const remainingRows = await db.execute(sql`
+        SELECT
+          ip.id,
+          ip.payment_date,
+          ip.payment_method,
+          ip.reference_number,
+          ${hasPayerCol ? sql`COALESCE(ip.payer_name, '')` : sql`''`} AS payer_name,
+          COALESCE(i.buyer_name, '') AS buyer_name
+        FROM invoice_payments ip
+        JOIN invoices i ON ip.invoice_id = i.id
+        WHERE ip.bulk_allocation_id IS NULL AND ip.record_status = 1
+      `);
+
+      const backfillMap = new Map<string, string[]>();
+      for (const row of remainingRows.rows as any[]) {
+        const dateKey = row.payment_date ? String(row.payment_date).substring(0, 10) : 'no-date';
+        const key = [dateKey, row.payment_method || '', row.reference_number || '', row.payer_name || '', row.buyer_name || ''].join('||');
+        if (!backfillMap.has(key)) backfillMap.set(key, []);
+        backfillMap.get(key)!.push(row.id);
+      }
+
+      let newGroupsLinked = 0;
+      for (const [, ids] of backfillMap) {
+        if (ids.length < 2) continue;
+        const bulkId = `BULK-BACKFILL-${format(new Date(), 'yyyyMMdd')}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+        for (const id of ids) {
+          await db.execute(sql`UPDATE invoice_payments SET bulk_allocation_id = ${bulkId} WHERE id = ${id}`);
+        }
+        newGroupsLinked++;
+      }
+
       res.json({
         fixed: badIds.length,
-        groupsCreated: groupsFixed,
-        message: `Repaired ${badIds.length} mixed-date group(s) into ${groupsFixed} correctly dated group(s).`,
+        groupsCreated: groupsFixed + newGroupsLinked,
+        message: `Repaired ${badIds.length} mixed-date group(s). Created ${groupsFixed} corrected groups + linked ${newGroupsLinked} previously unlinked group(s).`,
       });
     } catch (error: any) {
       console.error("Error repairing bulk dates:", error);
