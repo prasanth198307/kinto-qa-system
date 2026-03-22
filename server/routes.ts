@@ -9206,7 +9206,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // MUST be before /:invoiceId route to avoid "history" being matched as invoiceId
   app.get('/api/invoice-payments/history', isAuthenticated, async (req: any, res) => {
     try {
-      // First, get all payments with invoice info (no vendor join to avoid duplicates)
+      const { vendorId: filterVendorId = '' } = req.query;
+
+      // Get all vendors to build family name set if vendor filter requested
+      const allVendors = await storage.getAllVendors();
+      let vendorFamilyNames: Set<string> | null = null;
+      if (filterVendorId) {
+        const selected = allVendors.find(v => v.id === filterVendorId);
+        if (selected) {
+          const children = allVendors.filter(v => v.parentVendorId === filterVendorId);
+          vendorFamilyNames = new Set([selected.vendorName, ...children.map(c => c.vendorName)]);
+        }
+      }
+
+      // Get all payments with invoice info (no vendor join to avoid duplicates)
       const payments = await db.select({
         id: invoicePayments.id,
         invoiceId: invoicePayments.invoiceId,
@@ -9228,26 +9241,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       .where(eq(invoicePayments.recordStatus, 1))
       .orderBy(desc(invoicePayments.paymentDate));
 
-      // Get all vendors to lookup by name (using a Map for O(1) lookup)
-      const allVendors = await storage.getAllVendors();
       const vendorByName = new Map<string, typeof allVendors[0]>();
       allVendors.forEach(v => {
-        // Only store first match (avoid duplicates from parent-child vendors with same name)
         const lowerName = v.vendorName.toLowerCase();
         if (!vendorByName.has(lowerName)) {
           vendorByName.set(lowerName, v);
         }
       });
 
-      // Attach vendor info to each payment
-      const paymentsWithVendor = payments.map(p => {
-        const vendor = p.buyerName ? vendorByName.get(p.buyerName.toLowerCase()) : null;
-        return {
-          ...p,
-          vendorId: vendor?.id || null,
-          vendorName: p.buyerName || null,
-        };
-      });
+      // Attach vendor info and apply optional vendor family filter
+      const paymentsWithVendor = payments
+        .filter(p => !vendorFamilyNames || (p.buyerName && vendorFamilyNames.has(p.buyerName)))
+        .map(p => {
+          const vendor = p.buyerName ? vendorByName.get(p.buyerName.toLowerCase()) : null;
+          return {
+            ...p,
+            vendorId: vendor?.id || null,
+            vendorName: p.buyerName || null,
+          };
+        });
 
       res.json(paymentsWithVendor);
     } catch (error: any) {

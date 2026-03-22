@@ -250,78 +250,123 @@ export default function PaymentManagement() {
   const downloadBulkReport = async () => {
     setIsDownloading(true);
     try {
-      const params = new URLSearchParams({ page: '1', limit: '10000' });
-      if (bulkSearch.trim()) params.set('search', bulkSearch.trim());
-      if (bulkVendorId) params.set('vendorId', bulkVendorId);
-      const res = await fetch(`/api/invoice-payments/bulk-allocations?${params}`, { credentials: 'include' });
-      const json = await res.json();
-      const groups: any[] = json.data || [];
-
       const ExcelJS = (await import('exceljs')).default;
       const wb = new ExcelJS.Workbook();
       wb.creator = 'KINTO Ops';
       wb.created = new Date();
 
-      const ws = wb.addWorksheet('Bulk Payment Allocations');
+      const headerStyle = { font: { bold: true, color: { argb: 'FFFFFFFF' } }, fill: { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FF1E3A5F' } }, alignment: { vertical: 'middle' as const } };
 
-      ws.columns = [
-        { header: 'Bulk ID',          key: 'bulkId',     width: 32 },
-        { header: 'Date',             key: 'date',       width: 14 },
-        { header: 'Vendor / Payer',   key: 'vendor',     width: 30 },
-        { header: 'Method',           key: 'method',     width: 14 },
-        { header: 'Reference',        key: 'reference',  width: 20 },
-        { header: 'Total Paid (₹)',   key: 'total',      width: 16 },
-        { header: 'Invoice Number',   key: 'invoice',    width: 20 },
-        { header: 'Buyer Name',       key: 'buyer',      width: 30 },
-        { header: 'Split Amount (₹)', key: 'split',      width: 16 },
-      ];
+      if (bulkVendorId) {
+        // Vendor selected → download ALL payments (bulk + individual) for that vendor family
+        const histParams = new URLSearchParams({ vendorId: bulkVendorId });
+        const histRes = await fetch(`/api/invoice-payments/history?${histParams}`, { credentials: 'include' });
+        const payments: any[] = await histRes.json();
 
-      // Style header row
-      const headerRow = ws.getRow(1);
-      headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-      headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A5F' } };
-      headerRow.alignment = { vertical: 'middle' };
-      headerRow.height = 20;
+        const ws = wb.addWorksheet('Payment History');
+        ws.columns = [
+          { header: 'Payment Date',   key: 'date',      width: 16 },
+          { header: 'Buyer / Vendor', key: 'buyer',     width: 32 },
+          { header: 'Invoice Number', key: 'invoice',   width: 20 },
+          { header: 'Invoice Date',   key: 'invDate',   width: 14 },
+          { header: 'Amount (₹)',     key: 'amount',    width: 16 },
+          { header: 'Method',         key: 'method',    width: 14 },
+          { header: 'Reference',      key: 'reference', width: 22 },
+          { header: 'Type',           key: 'type',      width: 12 },
+          { header: 'Bulk ID',        key: 'bulkId',    width: 32 },
+        ];
+        const hr = ws.getRow(1);
+        Object.assign(hr, headerStyle);
+        hr.height = 20;
 
-      for (const g of groups) {
-        const date = g.paymentDate ? new Date(g.paymentDate).toLocaleDateString('en-IN') : '-';
-        const total = Number((g.totalAmount / 100).toFixed(2));
-        for (const s of g.splits) {
+        for (const p of payments) {
           ws.addRow({
-            bulkId:    g.bulkAllocationId || '-',
-            date,
-            vendor:    g.vendorName || g.payerName || '-',
-            method:    g.paymentMethod || '-',
-            reference: g.referenceNumber || '-',
-            total,
-            invoice:   s.invoiceNumber || '-',
-            buyer:     s.buyerName || '-',
-            split:     Number((s.amount / 100).toFixed(2)),
+            date:      p.paymentDate ? new Date(p.paymentDate).toLocaleDateString('en-IN') : '-',
+            buyer:     p.buyerName || p.vendorName || '-',
+            invoice:   p.invoiceNumber || '-',
+            invDate:   p.invoiceDate ? new Date(p.invoiceDate).toLocaleDateString('en-IN') : '-',
+            amount:    Number((p.amount / 100).toFixed(2)),
+            method:    p.paymentMethod || '-',
+            reference: p.referenceNumber || '-',
+            type:      p.paymentType || '-',
+            bulkId:    (p as any).bulkAllocationId || 'Individual',
           });
         }
+        ws.getColumn('amount').numFmt = '#,##0.00';
+        ws.eachRow((row, rowNum) => {
+          if (rowNum > 1 && rowNum % 2 === 0) {
+            row.eachCell(cell => {
+              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F4FA' } };
+            });
+          }
+        });
+
+        const selectedVendor = (vendors as any[]).find(v => v.id === bulkVendorId);
+        const vendorSlug = (selectedVendor?.vendorName || 'vendor').replace(/\s+/g, '-').toLowerCase();
+        const buffer = await wb.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `payments-${vendorSlug}-${new Date().toISOString().slice(0, 10)}.xlsx`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } else {
+        // No vendor selected → download bulk allocations only (existing behaviour)
+        const params = new URLSearchParams({ page: '1', limit: '10000' });
+        if (bulkSearch.trim()) params.set('search', bulkSearch.trim());
+        const res = await fetch(`/api/invoice-payments/bulk-allocations?${params}`, { credentials: 'include' });
+        const json = await res.json();
+        const groups: any[] = json.data || [];
+
+        const ws = wb.addWorksheet('Bulk Payment Allocations');
+        ws.columns = [
+          { header: 'Bulk ID',          key: 'bulkId',     width: 32 },
+          { header: 'Date',             key: 'date',       width: 14 },
+          { header: 'Vendor / Payer',   key: 'vendor',     width: 30 },
+          { header: 'Method',           key: 'method',     width: 14 },
+          { header: 'Reference',        key: 'reference',  width: 20 },
+          { header: 'Total Paid (₹)',   key: 'total',      width: 16 },
+          { header: 'Invoice Number',   key: 'invoice',    width: 20 },
+          { header: 'Buyer Name',       key: 'buyer',      width: 30 },
+          { header: 'Split Amount (₹)', key: 'split',      width: 16 },
+        ];
+        const hr = ws.getRow(1);
+        Object.assign(hr, headerStyle);
+        hr.height = 20;
+
+        for (const g of groups) {
+          const date = g.paymentDate ? new Date(g.paymentDate).toLocaleDateString('en-IN') : '-';
+          const total = Number((g.totalAmount / 100).toFixed(2));
+          for (const s of g.splits) {
+            ws.addRow({
+              bulkId: g.bulkAllocationId || '-', date,
+              vendor: g.vendorName || g.payerName || '-',
+              method: g.paymentMethod || '-', reference: g.referenceNumber || '-',
+              total, invoice: s.invoiceNumber || '-', buyer: s.buyerName || '-',
+              split: Number((s.amount / 100).toFixed(2)),
+            });
+          }
+        }
+        ws.getColumn('total').numFmt = '#,##0.00';
+        ws.getColumn('split').numFmt = '#,##0.00';
+        ws.eachRow((row, rowNum) => {
+          if (rowNum > 1 && rowNum % 2 === 0) {
+            row.eachCell(cell => {
+              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F4FA' } };
+            });
+          }
+        });
+
+        const buffer = await wb.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `bulk-payment-allocations-${new Date().toISOString().slice(0, 10)}.xlsx`;
+        a.click();
+        URL.revokeObjectURL(url);
       }
-
-      // Format amount columns as numbers
-      ws.getColumn('total').numFmt = '#,##0.00';
-      ws.getColumn('split').numFmt = '#,##0.00';
-
-      // Alternate row shading
-      ws.eachRow((row, rowNum) => {
-        if (rowNum > 1 && rowNum % 2 === 0) {
-          row.eachCell(cell => {
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F4FA' } };
-          });
-        }
-      });
-
-      const buffer = await wb.xlsx.writeBuffer();
-      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `bulk-payment-allocations-${new Date().toISOString().slice(0, 10)}.xlsx`;
-      a.click();
-      URL.revokeObjectURL(url);
     } catch (err) {
       toast({ title: 'Download failed', description: 'Could not export report', variant: 'destructive' });
     } finally {
