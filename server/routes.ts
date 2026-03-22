@@ -9497,54 +9497,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
       `);
 
       const badIds = (badGroups.rows as any[]).map((r: any) => r.bulk_allocation_id);
-      if (badIds.length === 0) {
-        return res.json({ fixed: 0, message: 'No mixed-date bulk groups found — everything looks correct.' });
-      }
 
-      // Fetch all payments in bad groups with their details
-      const inClause = sql.join(badIds.map(id => sql`${id}`), sql`, `);
-      const hasPayerCol = existingCols.has('payer_name');
-      const badPayments = await db.execute(sql`
-        SELECT
-          ip.id,
-          ip.payment_date,
-          ip.payment_method,
-          ip.reference_number,
-          ip.bulk_allocation_id,
-          ${hasPayerCol ? sql`COALESCE(ip.payer_name, '')` : sql`''`} AS payer_name,
-          COALESCE(i.buyer_name, '') AS buyer_name
-        FROM invoice_payments ip
-        JOIN invoices i ON ip.invoice_id = i.id
-        WHERE ip.bulk_allocation_id IN (${inClause})
-          AND ip.record_status = 1
-        ORDER BY ip.payment_date
-      `);
-
-      // Nullify all bad bulk IDs first
-      for (const badId of badIds) {
-        await db.execute(sql`
-          UPDATE invoice_payments SET bulk_allocation_id = NULL WHERE bulk_allocation_id = ${badId}
-        `);
-      }
-
-      // Re-group by payment_date + method + reference ONLY (no buyer_name so cross-vendor
-      // payments in the same family that were part of the same bulk can stay together)
-      const reGroupMap = new Map<string, string[]>();
-      for (const row of badPayments.rows as any[]) {
-        const dateKey = row.payment_date ? String(row.payment_date).substring(0, 10) : 'no-date';
-        const key = [dateKey, row.payment_method || '', row.reference_number || ''].join('||');
-        if (!reGroupMap.has(key)) reGroupMap.set(key, []);
-        reGroupMap.get(key)!.push(row.id);
-      }
-
+      // Pass 1: Fix mixed-date bulk groups (nullify them, then re-group correctly)
       let groupsFixed = 0;
-      for (const [, ids] of reGroupMap) {
-        if (ids.length < 2) continue;
-        const newBulkId = `BULK-REPAIRED-${format(new Date(), 'yyyyMMdd')}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
-        for (const id of ids) {
-          await db.execute(sql`UPDATE invoice_payments SET bulk_allocation_id = ${newBulkId} WHERE id = ${id}`);
+      if (badIds.length > 0) {
+        const inClause = sql.join(badIds.map(id => sql`${id}`), sql`, `);
+        const hasPayerCol = existingCols.has('payer_name');
+        const badPayments = await db.execute(sql`
+          SELECT
+            ip.id,
+            ip.payment_date,
+            ip.payment_method,
+            ip.reference_number,
+            ip.bulk_allocation_id,
+            ${hasPayerCol ? sql`COALESCE(ip.payer_name, '')` : sql`''`} AS payer_name,
+            COALESCE(i.buyer_name, '') AS buyer_name
+          FROM invoice_payments ip
+          JOIN invoices i ON ip.invoice_id = i.id
+          WHERE ip.bulk_allocation_id IN (${inClause})
+            AND ip.record_status = 1
+          ORDER BY ip.payment_date
+        `);
+
+        // Nullify all bad bulk IDs first
+        for (const badId of badIds) {
+          await db.execute(sql`
+            UPDATE invoice_payments SET bulk_allocation_id = NULL WHERE bulk_allocation_id = ${badId}
+          `);
         }
-        groupsFixed++;
+
+        // Re-group by payment_date + method + reference only
+        const reGroupMap = new Map<string, string[]>();
+        for (const row of badPayments.rows as any[]) {
+          const dateKey = row.payment_date ? String(row.payment_date).substring(0, 10) : 'no-date';
+          const key = [dateKey, row.payment_method || '', row.reference_number || ''].join('||');
+          if (!reGroupMap.has(key)) reGroupMap.set(key, []);
+          reGroupMap.get(key)!.push(row.id);
+        }
+
+        for (const [, ids] of reGroupMap) {
+          if (ids.length < 2) continue;
+          const newBulkId = `BULK-REPAIRED-${format(new Date(), 'yyyyMMdd')}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+          for (const id of ids) {
+            await db.execute(sql`UPDATE invoice_payments SET bulk_allocation_id = ${newBulkId} WHERE id = ${id}`);
+          }
+          groupsFixed++;
+        }
       }
 
       // Pass 2: group remaining NULL payments by date+method+reference (no buyer_name)
