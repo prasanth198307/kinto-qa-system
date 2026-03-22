@@ -268,37 +268,120 @@ export default function PaymentManagement() {
       const headerStyle = { font: { bold: true, color: { argb: 'FFFFFFFF' } }, fill: { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FF1E3A5F' } }, alignment: { vertical: 'middle' as const } };
 
       if (bulkVendorId) {
-        // Vendor selected → download from bulk-allocations endpoint (has totals + splits)
-        const params = new URLSearchParams({ page: '1', limit: '10000', vendorId: bulkVendorId });
-        const allocRes = await fetch(`/api/invoice-payments/bulk-allocations?${params}`, { credentials: 'include' });
+        // Fetch company details from default template
+        const [allocRes, tmplRes] = await Promise.all([
+          fetch(`/api/invoice-payments/bulk-allocations?${new URLSearchParams({ page: '1', limit: '10000', vendorId: bulkVendorId })}`, { credentials: 'include' }),
+          fetch('/api/invoice-templates/default', { credentials: 'include' }),
+        ]);
         const allocJson = await allocRes.json();
         const groups: any[] = allocJson.data || [];
+        const tmpl = tmplRes.ok ? await tmplRes.json() : null;
+
+        const selectedVendor = (vendors as any[]).find(v => v.id === bulkVendorId);
+        const vendorName = selectedVendor?.vendorName || 'Vendor';
+
+        const companyName    = tmpl?.defaultSellerName    || 'KINTO Smart Ops';
+        const companyAddress = tmpl?.defaultSellerAddress || '';
+        const companyGstin   = tmpl?.defaultSellerGstin   || '';
+        const companyPhone   = tmpl?.defaultSellerPhone   || '';
+        const companyEmail   = tmpl?.defaultSellerEmail   || '';
+
+        const NAVY  = 'FF1E3A5F';
+        const BLUE  = 'FF2563AA';
+        const LBLUE = 'FFD6E4F7';
+        const WHITE = 'FFFFFFFF';
+        const LGREY = 'FFF5F7FA';
+        const DGREY = 'FF555555';
 
         const ws = wb.addWorksheet('Payment Report');
-        // 5 columns: Date | Vendor/Payer | Method | Invoice | Amount
         ws.columns = [
-          { key: 'date',    width: 16 },
-          { key: 'vendor',  width: 34 },
-          { key: 'method',  width: 14 },
-          { key: 'invoice', width: 24 },
-          { key: 'amount',  width: 18 },
+          { key: 'c1', width: 18 },
+          { key: 'c2', width: 32 },
+          { key: 'c3', width: 14 },
+          { key: 'c4', width: 26 },
+          { key: 'c5', width: 18 },
         ];
 
-        // Column header row
+        const COLS = 5;
+        const mergeRow = (rowNum: number) => ws.mergeCells(rowNum, 1, rowNum, COLS);
+
+        // ── Row 1: company name (large, navy background) ────────────────────
+        const r1 = ws.addRow([companyName]);
+        r1.height = 32;
+        r1.getCell(1).font  = { bold: true, size: 16, color: { argb: WHITE } };
+        r1.getCell(1).fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
+        r1.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 2 };
+        mergeRow(1);
+
+        // ── Row 2: address ───────────────────────────────────────────────────
+        if (companyAddress) {
+          const r2 = ws.addRow([companyAddress]);
+          r2.height = 16;
+          r2.getCell(1).font  = { size: 9, color: { argb: WHITE } };
+          r2.getCell(1).fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
+          r2.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 2 };
+          mergeRow(2);
+        }
+
+        // ── Row 3: GSTIN | Phone | Email ─────────────────────────────────────
+        const metaParts = [
+          companyGstin ? `GSTIN: ${companyGstin}` : '',
+          companyPhone ? `Ph: ${companyPhone}` : '',
+          companyEmail ? `Email: ${companyEmail}` : '',
+        ].filter(Boolean).join('   |   ');
+        if (metaParts) {
+          const r3 = ws.addRow([metaParts]);
+          r3.height = 14;
+          r3.getCell(1).font  = { size: 8, color: { argb: WHITE } };
+          r3.getCell(1).fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
+          r3.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 2 };
+          mergeRow(ws.rowCount);
+        }
+
+        // ── Spacer ───────────────────────────────────────────────────────────
+        const spacer = ws.addRow([]);
+        spacer.height = 6;
+        mergeRow(ws.rowCount);
+
+        // ── Report title row ─────────────────────────────────────────────────
+        const rTitle = ws.addRow([`BULK PAYMENT REPORT — ${vendorName.toUpperCase()}`]);
+        rTitle.height = 22;
+        rTitle.getCell(1).font  = { bold: true, size: 12, color: { argb: WHITE } };
+        rTitle.getCell(1).fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: BLUE } };
+        rTitle.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 2 };
+        mergeRow(ws.rowCount);
+
+        // ── Generated date ────────────────────────────────────────────────────
+        const rDate = ws.addRow([`Generated on: ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}`]);
+        rDate.height = 14;
+        rDate.getCell(1).font  = { italic: true, size: 8, color: { argb: DGREY } };
+        rDate.getCell(1).fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: LGREY } };
+        rDate.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 2 };
+        mergeRow(ws.rowCount);
+
+        // ── Empty spacer ──────────────────────────────────────────────────────
+        const spacer2 = ws.addRow([]);
+        spacer2.height = 4;
+        mergeRow(ws.rowCount);
+
+        // ── Column header row ─────────────────────────────────────────────────
         const colHeaderRow = ws.addRow(['Date', 'Vendor / Payer', 'Method', 'Invoice', 'Amount (₹)']);
-        colHeaderRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-        colHeaderRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A5F' } };
-        colHeaderRow.alignment = { vertical: 'middle' };
         colHeaderRow.height = 20;
+        colHeaderRow.eachCell(cell => {
+          cell.font      = { bold: true, size: 10, color: { argb: WHITE } };
+          cell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
+          cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+        });
+        colHeaderRow.getCell(5).alignment = { vertical: 'middle', horizontal: 'right' };
 
+        // ── Data rows ─────────────────────────────────────────────────────────
         let grandTotal = 0;
-
         for (const g of groups) {
-          const date = g.paymentDate ? new Date(g.paymentDate).toLocaleDateString('en-IN') : '-';
+          const date  = g.paymentDate ? new Date(g.paymentDate).toLocaleDateString('en-IN') : '-';
           const total = Number((g.totalAmount / 100).toFixed(2));
           grandTotal += total;
 
-          // Group TOTAL row — medium blue
+          // Group total row (light blue, bold)
           const totalRow = ws.addRow([
             date,
             g.payerName || g.vendorName || '-',
@@ -306,34 +389,60 @@ export default function PaymentManagement() {
             g.isIndividual ? 'Individual Payment' : `${g.splits.length} Invoice(s)`,
             total,
           ]);
-          totalRow.font = { bold: true, color: { argb: 'FF1E3A5F' } };
-          totalRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD6E4F7' } };
-          totalRow.getCell(5).numFmt = '#,##0.00';
+          totalRow.height = 18;
+          totalRow.eachCell(cell => {
+            cell.font = { bold: true, size: 10, color: { argb: NAVY } };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: LBLUE } };
+            cell.alignment = { vertical: 'middle', indent: 1 };
+          });
+          totalRow.getCell(5).numFmt    = '₹#,##0.00';
+          totalRow.getCell(5).alignment = { vertical: 'middle', horizontal: 'right' };
 
-          // Split rows — indented, lighter
+          // Split rows (white, indented, smaller text)
           for (const s of g.splits) {
             const splitRow = ws.addRow([
               '',
-              `    ${s.buyerName || '-'}`,
+              `      ${s.buyerName || '-'}`,
               '',
               s.invoiceNumber || '-',
               Number((s.amount / 100).toFixed(2)),
             ]);
-            splitRow.font = { color: { argb: 'FF555555' } };
-            splitRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FBFF' } };
-            splitRow.getCell(5).numFmt = '#,##0.00';
+            splitRow.height = 15;
+            splitRow.eachCell(cell => {
+              cell.font = { size: 9, color: { argb: DGREY } };
+              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } };
+              cell.alignment = { vertical: 'middle', indent: 1 };
+            });
+            splitRow.getCell(5).numFmt    = '₹#,##0.00';
+            splitRow.getCell(5).alignment = { vertical: 'middle', horizontal: 'right' };
           }
         }
 
-        // Grand total row
+        // ── Grand total row ────────────────────────────────────────────────────
         const grandRow = ws.addRow(['', 'GRAND TOTAL', '', '', grandTotal]);
-        grandRow.font = { bold: true, size: 11, color: { argb: 'FFFFFFFF' } };
-        grandRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A5F' } };
-        grandRow.getCell(5).numFmt = '#,##0.00';
-        grandRow.height = 18;
+        grandRow.height = 22;
+        grandRow.eachCell(cell => {
+          cell.font = { bold: true, size: 11, color: { argb: WHITE } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
+          cell.alignment = { vertical: 'middle', indent: 1 };
+        });
+        grandRow.getCell(5).numFmt    = '₹#,##0.00';
+        grandRow.getCell(5).alignment = { vertical: 'middle', horizontal: 'right' };
 
-        const selectedVendor = (vendors as any[]).find(v => v.id === bulkVendorId);
-        const vendorSlug = (selectedVendor?.vendorName || 'vendor').replace(/\s+/g, '-').toLowerCase();
+        // Add thin border around data area
+        const firstDataRow = ws.rowCount - groups.reduce((acc, g) => acc + 1 + g.splits.length, 0) - 1;
+        for (let r = firstDataRow; r <= ws.rowCount; r++) {
+          ws.getRow(r).eachCell({ includeEmpty: true }, cell => {
+            cell.border = {
+              top:    { style: 'thin', color: { argb: 'FFD0D9E8' } },
+              bottom: { style: 'thin', color: { argb: 'FFD0D9E8' } },
+              left:   { style: 'thin', color: { argb: 'FFD0D9E8' } },
+              right:  { style: 'thin', color: { argb: 'FFD0D9E8' } },
+            };
+          });
+        }
+
+        const vendorSlug = vendorName.replace(/\s+/g, '-').toLowerCase();
         const buffer = await wb.xlsx.writeBuffer();
         const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         const url = URL.createObjectURL(blob);
