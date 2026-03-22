@@ -60,7 +60,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2, Plus, X, FileText, Search, Filter, Check, ChevronsUpDown, Pencil, ChevronDown, ChevronRight, Link2, CircleCheck, AlertTriangle, CircleDashed, AlertCircle, ArrowLeft } from "lucide-react";
+import { Loader2, Plus, X, FileText, Search, Filter, Check, ChevronsUpDown, Pencil, ChevronDown, ChevronRight, Link2, CircleCheck, AlertTriangle, CircleDashed, AlertCircle, ArrowLeft, Download } from "lucide-react";
 import { usePermissions } from "@/hooks/use-permissions";
 import { cn } from "@/lib/utils";
 import FIFOPaymentAllocation from "@/components/FIFOPaymentAllocation";
@@ -233,6 +233,53 @@ export default function PaymentManagement() {
       toast({ title: "Backfill failed", description: error.message, variant: "destructive" });
     },
   });
+
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const downloadBulkReport = async () => {
+    setIsDownloading(true);
+    try {
+      const params = new URLSearchParams({ page: '1', limit: '10000' });
+      if (bulkSearch.trim()) params.set('search', bulkSearch.trim());
+      const res = await fetch(`/api/invoice-payments/bulk-allocations?${params}`, { credentials: 'include' });
+      const json = await res.json();
+      const groups: any[] = json.data || [];
+
+      const rows: string[][] = [];
+      rows.push(['Bulk ID', 'Date', 'Vendor / Payer', 'Method', 'Reference', 'Total Paid (₹)', 'Invoice Number', 'Buyer Name', 'Split Amount (₹)']);
+
+      for (const g of groups) {
+        const date = g.paymentDate ? new Date(g.paymentDate).toLocaleDateString('en-IN') : '-';
+        const total = (g.totalAmount / 100).toFixed(2);
+        for (const s of g.splits) {
+          rows.push([
+            g.bulkAllocationId,
+            date,
+            g.vendorName || g.payerName || '-',
+            g.paymentMethod || '-',
+            g.referenceNumber || '-',
+            total,
+            s.invoiceNumber || '-',
+            s.buyerName || '-',
+            (s.amount / 100).toFixed(2),
+          ]);
+        }
+      }
+
+      const csv = rows.map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `bulk-payment-allocations-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast({ title: 'Download failed', description: 'Could not export report', variant: 'destructive' });
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   const cancelMutation = useMutation({
     mutationFn: async ({ paymentId, remarks }: { paymentId: string; remarks: string }) => {
@@ -599,9 +646,21 @@ export default function PaymentManagement() {
         {/* Tab 2 — Bulk Allocations */}
         <TabsContent value="bulk" className="mt-4">
       <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Bulk Payment Allocations</CardTitle>
-          <CardDescription>Each row is one payment split across multiple invoices. Click to expand the breakdown.</CardDescription>
+        <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0 pb-3">
+          <div>
+            <CardTitle className="text-base">Bulk Payment Allocations</CardTitle>
+            <CardDescription>Each row is one payment split across multiple invoices. Click to expand the breakdown.</CardDescription>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={downloadBulkReport}
+            disabled={isDownloading}
+            data-testid="button-download-bulk-report"
+          >
+            {isDownloading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+            Download CSV
+          </Button>
         </CardHeader>
         <CardContent className="space-y-3">
           {/* Search */}
