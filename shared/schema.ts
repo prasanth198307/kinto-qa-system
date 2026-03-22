@@ -2043,7 +2043,8 @@ export const invoicePayments = pgTable("invoice_payments", {
   payerName: varchar("payer_name", { length: 255 }), // Specific name of the person/entity who paid
   bankName: varchar("bank_name", { length: 255 }), // Bank name for cheque/transfer
   remarks: text("remarks"),
-  
+  bulkAllocationId: varchar("bulk_allocation_id", { length: 100 }), // Groups split payments from a single FIFO/manual bulk allocation
+
   // Payment Cancellation fields
   cancelledAt: timestamp("cancelled_at", { mode: 'string' }),
   cancellationRemarks: text("cancellation_remarks"),

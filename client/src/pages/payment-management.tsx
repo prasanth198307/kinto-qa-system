@@ -194,6 +194,8 @@ export default function PaymentManagement() {
   
   // Track expanded VY- payments to show evidence
   const [expandedPayments, setExpandedPayments] = useState<Set<string>>(new Set());
+  // Track expanded bulk allocation rows
+  const [expandedBulkAllocs, setExpandedBulkAllocs] = useState<Set<string>>(new Set());
 
   const { data: vendors = [] } = useQuery<any[]>({
     queryKey: ['/api/vendors'],
@@ -201,6 +203,10 @@ export default function PaymentManagement() {
 
   const { data: paymentsData = [], isLoading } = useQuery<any[]>({
     queryKey: ['/api/invoice-payments/history'],
+  });
+
+  const { data: bulkAllocsData, isLoading: bulkAllocsLoading } = useQuery<{ data: any[]; total: number }>({
+    queryKey: ['/api/invoice-payments/bulk-allocations'],
   });
 
   const cancelMutation = useMutation({
@@ -546,6 +552,113 @@ export default function PaymentManagement() {
         </CardContent>
       </Card>
 
+      {/* Bulk Allocations History */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div>
+            <CardTitle className="text-base">Bulk Payment Allocations</CardTitle>
+            <CardDescription>Each row is one payment split across multiple invoices. Expand to see the breakdown.</CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {bulkAllocsLoading ? (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : !bulkAllocsData?.data?.length ? (
+            <div className="text-center py-10 text-sm text-muted-foreground">
+              No bulk allocations yet. Use "New Payment" to split a payment across invoices.
+            </div>
+          ) : (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-8"></TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Vendor / Payer</TableHead>
+                    <TableHead>Method</TableHead>
+                    <TableHead>Reference</TableHead>
+                    <TableHead className="text-right">Total Paid</TableHead>
+                    <TableHead className="text-center">Invoices</TableHead>
+                  </TableRow>
+                </TableHeader>
+                {bulkAllocsData.data.map((alloc: any) => {
+                    const isExpanded = expandedBulkAllocs.has(alloc.bulkAllocationId);
+                    return (
+                      <TableBody key={alloc.bulkAllocationId}>
+                        <TableRow
+                          className="cursor-pointer hover-elevate"
+                          onClick={() => setExpandedBulkAllocs(prev => {
+                            const next = new Set(prev);
+                            next.has(alloc.bulkAllocationId) ? next.delete(alloc.bulkAllocationId) : next.add(alloc.bulkAllocationId);
+                            return next;
+                          })}
+                          data-testid={`row-bulk-alloc-${alloc.bulkAllocationId}`}
+                        >
+                          <TableCell className="pl-3">
+                            {isExpanded ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {alloc.paymentDate ? format(new Date(alloc.paymentDate), 'dd MMM yyyy') : '-'}
+                          </TableCell>
+                          <TableCell className="text-sm font-medium">
+                            {alloc.payerName || alloc.vendorName || '-'}
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            <Badge variant="secondary" className="text-xs">{alloc.paymentMethod}</Badge>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {alloc.referenceNumber || '-'}
+                          </TableCell>
+                          <TableCell className="text-sm font-semibold text-right">
+                            ₹{(alloc.totalAmount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant="outline" className="text-xs">{alloc.splits.length}</Badge>
+                          </TableCell>
+                        </TableRow>
+                        {isExpanded && (
+                          <TableRow key={`${alloc.bulkAllocationId}-detail`} className="bg-muted/30">
+                            <TableCell colSpan={7} className="px-6 pb-3 pt-0">
+                              <div className="text-xs text-muted-foreground mb-2 font-medium uppercase tracking-wide">Split Breakdown</div>
+                              <table className="w-full text-sm">
+                                <thead>
+                                  <tr className="text-xs text-muted-foreground">
+                                    <th className="text-left pb-1 font-medium">Invoice</th>
+                                    <th className="text-left pb-1 font-medium">Buyer</th>
+                                    <th className="text-right pb-1 font-medium">Amount Paid</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {alloc.splits.map((split: any, i: number) => (
+                                    <tr key={split.paymentId} className={i < alloc.splits.length - 1 ? 'border-b border-border/50' : ''}>
+                                      <td className="py-1 font-mono text-xs">{split.invoiceNumber}</td>
+                                      <td className="py-1 text-muted-foreground">{split.buyerName}</td>
+                                      <td className="py-1 text-right font-medium">₹{(split.amount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                                    </tr>
+                                  ))}
+                                  <tr className="border-t-2 border-border font-semibold">
+                                    <td colSpan={2} className="pt-2 text-xs uppercase tracking-wide text-muted-foreground">Total</td>
+                                    <td className="pt-2 text-right">₹{(alloc.totalAmount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                              {alloc.remarks && (
+                                <p className="text-xs text-muted-foreground mt-2">Remarks: {alloc.remarks}</p>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    );
+                  })}
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -559,6 +672,7 @@ export default function PaymentManagement() {
             onSuccess={() => {
               setShowPaymentDialog(false);
               queryClient.invalidateQueries({ queryKey: ['/api/invoice-payments/history'] });
+              queryClient.invalidateQueries({ queryKey: ['/api/invoice-payments/bulk-allocations'] });
               queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
             }} 
             onCancel={() => setShowPaymentDialog(false)} 

@@ -14643,6 +14643,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Vendor not found" });
       }
 
+      // Generate one shared ID for all split payments in this allocation
+      const bulkAllocationId = `BULK-${format(new Date(), 'yyyyMMdd-HHmmss')}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+
       const result = await db.transaction(async (tx) => {
         let remainingAmount = amount;
         const allocations = [];
@@ -14675,6 +14678,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               referenceNumber: referenceNumber || null,
               bankName: bankName || null,
               remarks: remarks || `Manual allocation from bulk payment`,
+              bulkAllocationId,
               recordedBy: req.user?.id,
             }).returning();
 
@@ -14746,6 +14750,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               referenceNumber: referenceNumber || null,
               bankName: bankName || null,
               remarks: remarks || `FIFO allocation from bulk payment`,
+              bulkAllocationId,
               recordedBy: req.user?.id,
             }).returning();
 
@@ -14770,15 +14775,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totalAmount: amount,
           allocated: amount - remainingAmount,
           remaining: remainingAmount,
-          allocations
+          allocations,
+          bulkAllocationId,
         };
       });
 
-      await logAudit(req.user?.id, 'CREATE', 'invoice_payments', 'bulk-allocation', `Allocated payment of ₹${(amount / 100).toFixed(2)} using ${allocationMethod || 'fifo'} method`);
+      await logAudit(req.user?.id, 'CREATE', 'invoice_payments', 'bulk-allocation', `Allocated payment of ₹${(amount / 100).toFixed(2)} using ${allocationMethod || 'fifo'} method (${result.bulkAllocationId})`);
       res.json(result);
     } catch (error: any) {
       console.error("Error in bulk allocation:", error);
       res.status(500).json({ message: error.message || "Failed to allocate payment" });
+    }
+  });
+
+  // GET bulk allocations - grouped by bulkAllocationId with total and split details
+  app.get('/api/invoice-payments/bulk-allocations', isAuthenticated, async (req: any, res) => {
+    try {
+      const { vendorId, page = '1', limit = '20' } = req.query;
+      const pageNum = Math.max(1, parseInt(page as string));
+      const limitNum = Math.min(100, Math.max(1, parseInt(limit as string)));
+      const offset = (pageNum - 1) * limitNum;
+
+      // Fetch all payments with a bulkAllocationId, join with invoice and vendor info
+      const rows = await db
+        .select({
+          bulkAllocationId: invoicePayments.bulkAllocationId,
+          paymentDate: invoicePayments.paymentDate,
+          paymentMethod: invoicePayments.paymentMethod,
+          referenceNumber: invoicePayments.referenceNumber,
+          bankName: invoicePayments.bankName,
+          payerName: invoicePayments.payerName,
+          remarks: invoicePayments.remarks,
+          amount: invoicePayments.amount,
+          paymentId: invoicePayments.id,
+          invoiceId: invoicePayments.invoiceId,
+          invoiceNumber: invoices.invoiceNumber,
+          buyerName: invoices.buyerName,
+          vendorId: invoices.vendorId,
+        })
+        .from(invoicePayments)
+        .innerJoin(invoices, eq(invoicePayments.invoiceId, invoices.id))
+        .where(
+          and(
+            sql`${invoicePayments.bulkAllocationId} IS NOT NULL`,
+            eq(invoicePayments.recordStatus, 1),
+            vendorId ? eq(invoices.vendorId, vendorId as string) : sql`1=1`
+          )
+        )
+        .orderBy(desc(invoicePayments.createdAt));
+
+      // Group by bulkAllocationId
+      const groupMap = new Map<string, any>();
+      for (const row of rows) {
+        const id = row.bulkAllocationId!;
+        if (!groupMap.has(id)) {
+          groupMap.set(id, {
+            bulkAllocationId: id,
+            paymentDate: row.paymentDate,
+            paymentMethod: row.paymentMethod,
+            referenceNumber: row.referenceNumber,
+            bankName: row.bankName,
+            payerName: row.payerName,
+            remarks: row.remarks,
+            vendorName: row.buyerName,
+            totalAmount: 0,
+            splits: [],
+          });
+        }
+        const group = groupMap.get(id)!;
+        group.totalAmount += row.amount;
+        group.splits.push({
+          paymentId: row.paymentId,
+          invoiceId: row.invoiceId,
+          invoiceNumber: row.invoiceNumber,
+          buyerName: row.buyerName,
+          amount: row.amount,
+        });
+      }
+
+      const allGroups = Array.from(groupMap.values());
+      const totalCount = allGroups.length;
+      const paginated = allGroups.slice(offset, offset + limitNum);
+
+      res.json({ data: paginated, total: totalCount, page: pageNum, limit: limitNum });
+    } catch (error: any) {
+      console.error("Error fetching bulk allocations:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch bulk allocations" });
     }
   });
 
