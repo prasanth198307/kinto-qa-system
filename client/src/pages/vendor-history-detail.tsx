@@ -203,18 +203,34 @@ export default function VendorHistoryDetailPage() {
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   }, [unpaidInvoices]);
 
+  // Only real payments + advance applications (NOT debit note adjustments)
   const paymentsByDate = useMemo(() => {
     const map = new Map<string, { total: number; entries: Array<{ invoice: string; amount: number; method: string; ref: string }> }>();
     (txnData?.invoices || []).forEach(inv => {
-      inv.allocations.filter(a => a.type === 'payment' || a.type === 'advance_application' || a.type === 'debit_note_adjustment').forEach(a => {
+      inv.allocations.filter(a => a.type === 'payment' || a.type === 'advance_application').forEach(a => {
         const dk = a.date.substring(0, 10);
         if (!map.has(dk)) map.set(dk, { total: 0, entries: [] });
         const g = map.get(dk)!;
         g.total += a.amount;
-        g.entries.push({ invoice: inv.invoiceNumber, amount: a.amount, method: a.method || (a.type === 'advance_application' ? 'Advance' : a.type === 'debit_note_adjustment' ? 'DN Adj' : 'Cash'), ref: a.reference || a.advanceNumber || a.noteNumber || '' });
+        g.entries.push({ invoice: inv.invoiceNumber, amount: a.amount, method: a.method || (a.type === 'advance_application' ? 'Advance Applied' : 'Cash'), ref: a.reference || a.advanceNumber || '' });
       });
     });
-    return Array.from(map.entries()).sort((a, b) => b[0].localeCompare(a[0])); // newest first
+    return Array.from(map.entries()).sort((a, b) => b[0].localeCompare(a[0]));
+  }, [txnData]);
+
+  // Debit note adjustments — separated out from payments
+  const dnAdjByDate = useMemo(() => {
+    const map = new Map<string, { total: number; entries: Array<{ invoice: string; amount: number; noteNumber: string; reason: string }> }>();
+    (txnData?.invoices || []).forEach(inv => {
+      inv.allocations.filter(a => a.type === 'debit_note_adjustment').forEach(a => {
+        const dk = a.date.substring(0, 10);
+        if (!map.has(dk)) map.set(dk, { total: 0, entries: [] });
+        const g = map.get(dk)!;
+        g.total += a.amount;
+        g.entries.push({ invoice: inv.invoiceNumber, amount: a.amount, noteNumber: a.noteNumber || a.reference || '', reason: a.reason || a.remarks || '' });
+      });
+    });
+    return Array.from(map.entries()).sort((a, b) => b[0].localeCompare(a[0]));
   }, [txnData]);
 
   const handleExportUnpaidExcel = async () => {
@@ -1613,13 +1629,14 @@ export default function VendorHistoryDetailPage() {
                 </CardContent>
               </Card>
 
-              {/* Section 2: Payments received by date */}
+              {/* Section 2: Payments received by date (cash + advance only) */}
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-base">
-                    <CreditCard className="h-5 w-5" />
+                    <CreditCard className="h-5 w-5 text-green-600" />
                     Payments Received — Date Wise
                   </CardTitle>
+                  <p className="text-xs text-muted-foreground">Cash payments and advance applications only · Debit note adjustments shown separately below</p>
                 </CardHeader>
                 <CardContent className="p-0">
                   {txnLoading ? (
@@ -1635,8 +1652,8 @@ export default function VendorHistoryDetailPage() {
                         <TableRow>
                           <TableHead className="w-8"></TableHead>
                           <TableHead>Date</TableHead>
-                          <TableHead>Transactions</TableHead>
-                          <TableHead className="text-right">Total Received</TableHead>
+                          <TableHead>Invoice / Mode</TableHead>
+                          <TableHead className="text-right">Amount</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1647,13 +1664,13 @@ export default function VendorHistoryDetailPage() {
                               <TableRow key={`pmt-${dateKey}`} className="bg-green-50 dark:bg-green-950/20 cursor-pointer hover:bg-green-100 dark:hover:bg-green-950/30" onClick={() => setExpandedClusters(prev => ({ ...prev, [`pmt-${dateKey}`]: !isOpen }))}>
                                 <TableCell>{isOpen ? <ChevronDown className="h-4 w-4 text-green-600" /> : <ChevronRight className="h-4 w-4 text-green-600" />}</TableCell>
                                 <TableCell className="font-semibold">{formatDate(dateKey + 'T00:00:00')}</TableCell>
-                                <TableCell className="text-muted-foreground text-sm">{grp.entries.length} transaction(s)</TableCell>
+                                <TableCell className="text-muted-foreground text-sm">{grp.entries.length} payment{grp.entries.length !== 1 ? 's' : ''}</TableCell>
                                 <TableCell className="text-right font-bold text-green-600">{formatCurrency(grp.total)}</TableCell>
                               </TableRow>
                               {isOpen && grp.entries.map((e, ei) => (
                                 <TableRow key={`${dateKey}-${ei}`} className="text-sm">
                                   <TableCell></TableCell>
-                                  <TableCell className="text-muted-foreground"></TableCell>
+                                  <TableCell className="text-muted-foreground text-xs">{formatDate(dateKey + 'T00:00:00')}</TableCell>
                                   <TableCell>
                                     <span className="font-mono text-xs mr-2">{e.invoice}</span>
                                     <Badge variant="outline" className="text-xs">{e.method}</Badge>
@@ -1667,8 +1684,83 @@ export default function VendorHistoryDetailPage() {
                         })}
                         <TableRow className="bg-muted/50 font-bold">
                           <TableCell></TableCell>
-                          <TableCell colSpan={2} className="text-right">Total Payments</TableCell>
+                          <TableCell colSpan={2} className="text-right">Total Cash Payments</TableCell>
                           <TableCell className="text-right text-green-600">{formatCurrency(paymentsByDate.reduce((s, [, g]) => s + g.total, 0))}</TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Section 3: Debit note adjustments — separated from payments */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between gap-2 flex-wrap">
+                    <div>
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <TrendingUp className="h-5 w-5 text-purple-600" />
+                        Debit Note Adjustments — Date Wise
+                      </CardTitle>
+                      <p className="text-xs text-muted-foreground mt-1">Vendor debit notes applied against invoices · These reduce the payable amount but are not cash payments</p>
+                    </div>
+                    {dnAdjByDate.length > 0 && (
+                      <Badge variant="outline" className="text-purple-600 border-purple-300 text-xs">
+                        Total: {formatCurrency(dnAdjByDate.reduce((s, [, g]) => s + g.total, 0))}
+                      </Badge>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {txnLoading ? (
+                    <div className="p-4 space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
+                  ) : dnAdjByDate.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
+                      <AlertCircle className="h-8 w-8" />
+                      <p>No debit note adjustments found</p>
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-8"></TableHead>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Invoice / Debit Note</TableHead>
+                          <TableHead>Reason</TableHead>
+                          <TableHead className="text-right">Amount Adjusted</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {dnAdjByDate.map(([dateKey, grp]) => {
+                          const isOpen = expandedClusters[`dn-${dateKey}`] !== false;
+                          return (
+                            <>
+                              <TableRow key={`dn-${dateKey}`} className="bg-purple-50 dark:bg-purple-950/20 cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-950/30" onClick={() => setExpandedClusters(prev => ({ ...prev, [`dn-${dateKey}`]: !isOpen }))}>
+                                <TableCell>{isOpen ? <ChevronDown className="h-4 w-4 text-purple-600" /> : <ChevronRight className="h-4 w-4 text-purple-600" />}</TableCell>
+                                <TableCell className="font-semibold">{formatDate(dateKey + 'T00:00:00')}</TableCell>
+                                <TableCell className="text-muted-foreground text-sm">{grp.entries.length} adjustment{grp.entries.length !== 1 ? 's' : ''}</TableCell>
+                                <TableCell></TableCell>
+                                <TableCell className="text-right font-bold text-purple-600">{formatCurrency(grp.total)}</TableCell>
+                              </TableRow>
+                              {isOpen && grp.entries.map((e, ei) => (
+                                <TableRow key={`dn-${dateKey}-${ei}`} className="text-sm">
+                                  <TableCell></TableCell>
+                                  <TableCell className="text-muted-foreground text-xs">{formatDate(dateKey + 'T00:00:00')}</TableCell>
+                                  <TableCell>
+                                    <span className="font-mono text-xs mr-2">{e.invoice}</span>
+                                    {e.noteNumber && <Badge variant="outline" className="text-xs text-purple-600 border-purple-200">{e.noteNumber}</Badge>}
+                                  </TableCell>
+                                  <TableCell className="text-xs text-muted-foreground">{e.reason || '—'}</TableCell>
+                                  <TableCell className="text-right text-purple-600">{formatCurrency(e.amount)}</TableCell>
+                                </TableRow>
+                              ))}
+                            </>
+                          );
+                        })}
+                        <TableRow className="bg-muted/50 font-bold">
+                          <TableCell></TableCell>
+                          <TableCell colSpan={3} className="text-right">Total DN Adjustments</TableCell>
+                          <TableCell className="text-right text-purple-600">{formatCurrency(dnAdjByDate.reduce((s, [, g]) => s + g.total, 0))}</TableCell>
                         </TableRow>
                       </TableBody>
                     </Table>
