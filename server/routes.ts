@@ -280,6 +280,15 @@ function requireRole(...allowedRoles: string[]) {
       // Try exact match first
       screenKey = endpointToScreenKey[pathBase];
       
+      // Dispatch sub-action suffix matching (must run before generic prefix matching so
+      // /api/gatepasses/123/vehicle-exit maps to dispatch_tracking, not gatepasses)
+      if (!screenKey) {
+        const dispatchSuffixes = ['/vehicle-exit', '/pod'];
+        if (dispatchSuffixes.some(s => pathBase.endsWith(s))) {
+          screenKey = 'dispatch_tracking';
+        }
+      }
+
       // If no exact match, try prefix matching (e.g., /api/invoices/123 -> /api/invoices)
       if (!screenKey) {
         for (const [endpoint, key] of Object.entries(endpointToScreenKey)) {
