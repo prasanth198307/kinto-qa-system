@@ -24621,14 +24621,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ─── MIS: Financial Analytics ──────────────────────────────────────────────
   app.get('/api/mis/financial-analytics', requireRole('admin', 'manager', 'AccountsManager'), async (req: any, res: Response) => {
     try {
-      // Indian FY: April-March
+      // ── Period / FY resolution ─────────────────────────────────────────────
       const today = new Date();
-      const fyStart = today.getMonth() >= 3
-        ? new Date(today.getFullYear(), 3, 1)
-        : new Date(today.getFullYear() - 1, 3, 1);
-      const fyStartStr = fyStart.toISOString().split('T')[0];
-      const todayStr = today.toISOString().split('T')[0];
-      const fyYear = fyStart.getFullYear();
+      const defaultFyYear = today.getMonth() >= 3 ? today.getFullYear() : today.getFullYear() - 1;
+      const fyYear = parseInt((req.query.fy as string) || String(defaultFyYear));
+      const period = (req.query.period as string) || 'full_year';
+
+      // FY bounds (Apr 1 → Mar 31)
+      const fyStartFull = new Date(fyYear, 3, 1);          // Apr 1
+      const fyEndFull   = new Date(fyYear + 1, 2, 31);     // Mar 31
+
+      let periodStart: Date, periodEnd: Date;
+      if (period === 'q1') {
+        periodStart = new Date(fyYear, 3, 1);  periodEnd = new Date(fyYear, 5, 30);
+      } else if (period === 'q2') {
+        periodStart = new Date(fyYear, 6, 1);  periodEnd = new Date(fyYear, 8, 30);
+      } else if (period === 'q3') {
+        periodStart = new Date(fyYear, 9, 1);  periodEnd = new Date(fyYear, 11, 31);
+      } else if (period === 'q4') {
+        periodStart = new Date(fyYear + 1, 0, 1); periodEnd = new Date(fyYear + 1, 2, 31);
+      } else if (period === 'h1') {
+        periodStart = new Date(fyYear, 3, 1);  periodEnd = new Date(fyYear, 8, 30);
+      } else if (period === 'h2') {
+        periodStart = new Date(fyYear, 9, 1);  periodEnd = new Date(fyYear + 1, 2, 31);
+      } else if (period === 'custom') {
+        const from = req.query.from as string;
+        const to   = req.query.to   as string;
+        periodStart = from ? new Date(from) : fyStartFull;
+        periodEnd   = to   ? new Date(to)   : today;
+      } else {
+        // full_year
+        periodStart = fyStartFull;
+        periodEnd   = today < fyEndFull ? today : fyEndFull;
+      }
+
+      const fyStartStr = periodStart.toISOString().split('T')[0];
+      const todayStr   = periodEnd.toISOString().split('T')[0];
 
       // ── 1. P&L Summary from journal lines ──────────────────────────────────
       let plRevenue = 0, plExpenses = 0;

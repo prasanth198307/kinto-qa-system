@@ -4,6 +4,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from "recharts";
+import { exportToExcel, formatDateForExcel } from "@/lib/excel-export";
+import { format } from "date-fns";
 
 /* ─── Color palette from mockup ─────────────────────────────────────── */
 const C = {
@@ -314,14 +316,50 @@ function ChartTooltip({ active, payload, label }: any) {
   );
 }
 
+/* ─── Period helpers ─────────────────────────────────────────────────── */
+const PERIODS = [
+  { value: "full_year", label: "Full Year" },
+  { value: "h1",        label: "H1 (Apr–Sep)" },
+  { value: "h2",        label: "H2 (Oct–Mar)" },
+  { value: "q1",        label: "Q1 (Apr–Jun)" },
+  { value: "q2",        label: "Q2 (Jul–Sep)" },
+  { value: "q3",        label: "Q3 (Oct–Dec)" },
+  { value: "q4",        label: "Q4 (Jan–Mar)" },
+  { value: "custom",    label: "Custom Range" },
+];
+
+function buildFyOptions() {
+  const cur = new Date().getMonth() >= 3 ? new Date().getFullYear() : new Date().getFullYear() - 1;
+  return [cur, cur - 1, cur - 2].map((y) => ({
+    value: String(y),
+    label: `FY ${y}–${String(y + 1).slice(2)}`,
+  }));
+}
+
+const FY_OPTIONS = buildFyOptions();
+
 /* ═══════════════════════════════════════════════════════════════════════
    Main Component
 ═══════════════════════════════════════════════════════════════════════ */
 export default function MISFinancial() {
-  const [_exporting, setExporting] = useState(false);
+  const curFyYear = new Date().getMonth() >= 3 ? new Date().getFullYear() : new Date().getFullYear() - 1;
+  const [period, setPeriod] = useState("full_year");
+  const [fy, setFy] = useState(String(curFyYear));
+  const [customFrom, setCustomFrom] = useState(format(new Date(curFyYear, 3, 1), "yyyy-MM-dd"));
+  const [customTo, setCustomTo] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [isExporting, setIsExporting] = useState(false);
+
+  const qParams: Record<string, string> = { period, fy };
+  if (period === "custom") { qParams.from = customFrom; qParams.to = customTo; }
 
   const { data, isLoading } = useQuery<FinancialData>({
-    queryKey: ["/api/mis/financial-analytics"],
+    queryKey: ["/api/mis/financial-analytics", qParams],
+    queryFn: async () => {
+      const qs = new URLSearchParams(qParams).toString();
+      const res = await fetch(`/api/mis/financial-analytics?${qs}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
   });
 
   const kpis = data?.kpis;
@@ -341,13 +379,92 @@ export default function MISFinancial() {
   const marginChip: ChipColor =
     netMargin >= 15 ? "green" : netMargin >= 5 ? "amber" : "red";
 
-  const arChipColor: ChipColor = (kpis?.totalOutstanding ?? 0) > 0 ? "red" : "green";
   const expRatio = kpis?.plRevenue ? PCT(kpis.plExpenses, kpis.plRevenue) : 0;
   const expChipColor: ChipColor = expRatio > 90 ? "red" : expRatio > 70 ? "amber" : "green";
 
-  const fyLabel = data?.fy
-    ? `FY ${data.fy}–${String(parseInt(data.fy) + 1).slice(2)}`
-    : "FY 2025–26";
+  const fyLabel = data?.fy ?? FY_OPTIONS.find(o => o.value === fy)?.label ?? "FY 2025–26";
+  const periodLabel = PERIODS.find(p => p.value === period)?.label ?? period;
+
+  const handleExportExcel = async () => {
+    if (!data) return;
+    setIsExporting(true);
+    try {
+      await exportToExcel({
+        filename: `financial-ledger-mis-${fy}-${period}-${format(new Date(), "yyyy-MM-dd")}.xlsx`,
+        sheets: [
+          {
+            name: "KPI Summary",
+            data: [
+              ["Metric", "Value"],
+              ["Period", `${fyLabel} — ${periodLabel}`],
+              ["Total Revenue (₹)", Math.round((kpis?.plRevenue ?? 0) / 100)],
+              ["Total Expenses (₹)", Math.round((kpis?.plExpenses ?? 0) / 100)],
+              ["Net Profit/Loss (₹)", Math.round(netProfit / 100)],
+              ["Net Margin (%)", kpis?.netMargin ?? 0],
+              ["Total Outstanding AR (₹)", Math.round((kpis?.totalOutstanding ?? 0) / 100)],
+              ["Overdue Invoices", kpis?.overdueCount ?? 0],
+              ["Cash/Bank Balance (₹)", Math.round((kpis?.cashBalance ?? 0) / 100)],
+              ["Unreconciled Entries", kpis?.unreconciledCount ?? 0],
+            ],
+          },
+          {
+            name: "Monthly Trend",
+            data: [
+              ["Month", "Revenue (₹)", "Expenses (₹)", "Net (₹)"],
+              ...(data.monthlyTrend ?? []).map(m => [
+                m.month,
+                Math.round(m.revenue / 100),
+                Math.round(m.expenses / 100),
+                Math.round((m.revenue - m.expenses) / 100),
+              ]),
+            ],
+          },
+          {
+            name: "Trial Balance Groups",
+            data: [
+              ["Account Group", "Type", "Debit (₹)", "Credit (₹)", "Net (₹)"],
+              ...(data.trialGroups ?? []).map(g => [
+                g.groupName, g.accountType,
+                Math.round(g.totalDebit), Math.round(g.totalCredit),
+                Math.round(g.netBalance ?? (g.totalDebit - g.totalCredit)),
+              ]),
+            ],
+          },
+          {
+            name: "Receivables Aging",
+            data: [
+              ["Bucket", "Invoice Count", "Outstanding (₹)"],
+              ...(data.receivablesAging ?? []).map(r => [r.bucket, r.count, Math.round(r.outstanding / 100)]),
+            ],
+          },
+          {
+            name: "Top Debtors",
+            data: [
+              ["Customer", "Invoices", "Total Billed (₹)", "Collected (₹)", "Outstanding (₹)"],
+              ...(data.topDebtors ?? []).map(d => [
+                d.customer, d.invoiceCount,
+                Math.round(d.totalBilled / 100),
+                Math.round(d.totalCollected / 100),
+                Math.round(d.outstanding / 100),
+              ]),
+            ],
+          },
+          {
+            name: "Journal Entries",
+            data: [
+              ["Date", "Reference", "Type", "Amount (₹)", "Narration", "Flags"],
+              ...(data.recentJournals ?? []).map(j => [
+                formatDateForExcel(j.date), j.reference || j.id, j.sourceType,
+                Math.round(j.amount / 100), j.narration ?? "", (j.flags ?? []).join(", "),
+              ]),
+            ],
+          },
+        ],
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -371,22 +488,69 @@ export default function MISFinancial() {
 
       {/* ── PAGE HEADER ── */}
       <div style={{
-        background: C.dark, padding: "16px 28px",
-        display: "flex", justifyContent: "space-between", alignItems: "center",
+        background: C.dark, padding: "14px 28px",
+        display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10,
       }}>
         <div>
           <div style={{ fontSize: 17, fontWeight: 600, color: "#fff" }}>Financial Accounting — Formal Ledger MIS</div>
           <div style={{ fontSize: 11, color: C.hint, marginTop: 3 }}>
-            Decision Support System · {fyLabel} · KINTO · Accountant / CA view
+            Decision Support System · {fyLabel} · {periodLabel} · KINTO · Accountant / CA view
           </div>
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          {/* FY Selector */}
+          <select
+            value={fy}
+            onChange={(e) => setFy(e.target.value)}
+            style={{ fontSize: 11, padding: "7px 10px", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 8, background: "rgba(255,255,255,0.1)", color: "#fff", cursor: "pointer" }}
+          >
+            {FY_OPTIONS.map(o => <option key={o.value} value={o.value} style={{ background: C.dark }}>{o.label}</option>)}
+          </select>
+
+          {/* Period Selector */}
+          <select
+            value={period}
+            onChange={(e) => setPeriod(e.target.value)}
+            style={{ fontSize: 11, padding: "7px 10px", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 8, background: "rgba(255,255,255,0.1)", color: "#fff", cursor: "pointer" }}
+          >
+            {PERIODS.map(p => <option key={p.value} value={p.value} style={{ background: C.dark }}>{p.label}</option>)}
+          </select>
+
+          {/* Custom date pickers — only shown when Custom Range selected */}
+          {period === "custom" && (
+            <>
+              <input
+                type="date" value={customFrom}
+                onChange={(e) => setCustomFrom(e.target.value)}
+                style={{ fontSize: 11, padding: "6px 10px", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 8, background: "rgba(255,255,255,0.1)", color: "#fff", cursor: "pointer" }}
+              />
+              <span style={{ color: C.hint, fontSize: 11 }}>to</span>
+              <input
+                type="date" value={customTo}
+                onChange={(e) => setCustomTo(e.target.value)}
+                style={{ fontSize: 11, padding: "6px 10px", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 8, background: "rgba(255,255,255,0.1)", color: "#fff", cursor: "pointer" }}
+              />
+            </>
+          )}
+
+          {/* Export Excel */}
           <button
+            onClick={handleExportExcel}
+            disabled={isExporting || !data}
+            style={{ fontSize: 11, fontWeight: 500, padding: "7px 14px", border: `1px solid ${C.border}`, borderRadius: 8, background: C.surface, color: C.dark, cursor: "pointer", opacity: isExporting ? 0.6 : 1 }}
+          >
+            {isExporting ? "Exporting…" : "↓ Export Excel"}
+          </button>
+
+          {/* Export PDF placeholder */}
+          <button
+            onClick={() => window.print()}
             style={{ fontSize: 11, fontWeight: 500, padding: "7px 14px", border: `1px solid ${C.border}`, borderRadius: 8, background: C.surface, color: C.dark, cursor: "pointer" }}
-            onClick={() => setExporting(true)}
           >
             ↓ Export PDF
           </button>
+
           <span style={{ background: C.purpleMid, color: "#fff", fontSize: 10, fontWeight: 700, padding: "7px 14px", borderRadius: 8 }}>
             ACCOUNTANT VIEW
           </span>
