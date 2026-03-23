@@ -84,6 +84,7 @@ const AVAILABLE_SCREENS: ScreenDefinition[] = [
   { key: 'mis_inventory', label: 'MIS Inventory Intelligence', allowedActions: ['view'] },
   { key: 'mis_sales', label: 'MIS Sales Analysis', allowedActions: ['view'] },
   { key: 'mis_delivery', label: 'MIS Delivery Performance', allowedActions: ['view'] },
+  { key: 'mis_cash', label: 'MIS Cash Analytics', allowedActions: ['view'] },
   
   // Master Data - Products & Materials
   { key: 'products', label: 'Products', allowedActions: ['view', 'create', 'edit', 'delete'] },
